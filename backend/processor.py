@@ -304,6 +304,8 @@ def analyze_photos(client: anthropic.Anthropic, photo_paths: list[str], user_not
     shingle_condition = ""
     damage_type = ""
     severity = ""
+    chalk_test_results = []
+    test_square_results = []
 
     for batch_idx in range(0, len(image_paths), BATCH_SIZE):
         batch = image_paths[batch_idx:batch_idx + BATCH_SIZE]
@@ -330,33 +332,69 @@ def analyze_photos(client: anthropic.Anthropic, photo_paths: list[str], user_not
 
         content.append({
             "type": "text",
-            "text": f"""You are a forensic roofing damage analyst. These are photos {start_num}-{start_num + len(batch) - 1} from a property inspection.{notes_ctx} Analyze them and provide:
+            "text": f"""You are a forensic storm damage analyst for insurance claims. Your goal is to document ALL hail and wind damage to support full claim approval. These are photos {start_num}-{start_num + len(batch) - 1} from a property inspection.{notes_ctx}
 
-1. A damage summary describing the conditions visible in these photos
-2. Photo-by-photo forensic annotations (clinical, professional language)
-3. Key forensic findings
-4. Identified trades needed (roofing, gutters, siding, etc.)
-5. Shingle type identification (3-tab, architectural/laminated, material)
-6. Any code violations visible
+CRITICAL — CHALK TESTING (you MUST understand this):
+Inspectors use chalk testing to document hail damage. This is standard industry practice, NOT sealant, paint, caulk, or repair material.
+
+ON FLAT SOFT METALS (gutters, flashing, pipe collars, vents, standing seam, power fan covers):
+- Inspector runs chalk SIDEWAYS (flat, wide edge) across the metal surface
+- A surface WITHOUT hail damage shows one solid continuous chalk line
+- A surface WITH hail damage shows CIRCULAR GAPS in the chalk line — the gaps are hail impact dents/indentations where chalk cannot reach because the metal is pushed inward
+- The circular unmarked areas within the chalk line = CONFIRMED HAIL IMPACTS
+- More gaps = more hail hits = more severe damage
+
+ON SHINGLES (test square methodology):
+- Inspector draws a chalk circle or box on the shingle to mark a test square
+- Chalk letters indicate slope: F=Front, R=Right, L=Left, B/R=Back/Rear
+- "H = 10" means 10 hail hits counted in that test square
+- "W = 4" means 4 wind-damaged shingles in that test square
+- A chalk LINE across a shingle = wind crease mark (functional wind damage requiring replacement)
+- Individual chalk circles on shingles = marked hail impact points
+
+WIND DAMAGE INDICATORS:
+- Creased shingles (chalk line across crease) = functional wind damage, shingle must be replaced
+- Missing shingles with exposed nails underneath: if nail shows NO rust = RECENT storm damage (not old)
+- Lifted/bent shingle tabs or edges
+
+HAIL DAMAGE INDICATORS:
+- Hail splatter (oxidation marks from hail impact) = confirms RECENT damage (splatter fades within ~6 months)
+- Circular dents on metals (shown by chalk test gaps)
+- Granule displacement on shingles exposing dark asphalt mat
+- Fractured/cracked shingle mat (per HAAG standard = functional damage requiring full replacement)
+- Soft metal deformation (gutters, vents, flashing)
+
+IMPORTANT FRAMING:
+- Focus on STORM-RELATED damages (hail and wind) — this is what gets claims approved
+- Any pre-existing deterioration, brittleness, or aging makes the roof MORE vulnerable to storm damage and LESS repairable — use this to argue for FULL REPLACEMENT rather than spot repair
+- Frame worn/brittle materials as: "Pre-existing condition renders the roofing system non-repairable following storm impact — spot repair is not feasible on aged/brittle materials"
+- NEVER dismiss damage as "just wear and tear" — connect it to why storm damage requires full replacement
 
 Number the photos starting at {start_num}. Return ONLY valid JSON:
 {{
-  "damage_summary": "Professional summary of damage observed in these photos...",
+  "damage_summary": "Professional summary focusing on storm damage and why full replacement is required...",
   "photo_annotations": {{
-    "photo_{start_num:02d}": "Clinical forensic observation...",
-    "photo_{start_num + 1:02d}": "Clinical forensic observation..."
+    "photo_{start_num:02d}": "Forensic observation focusing on storm damage evidence...",
+    "photo_{start_num + 1:02d}": "Forensic observation..."
   }},
-  "shingle_type": "architectural laminated / 3-tab 25yr / etc",
-  "shingle_condition": "description of overall shingle condition",
-  "trades_identified": ["roofing", "gutters"],
+  "shingle_type": "natural slate / architectural laminated / 3-tab 25yr / standing seam metal / etc",
+  "shingle_condition": "description focusing on storm vulnerability and non-repairability",
+  "trades_identified": ["roofing", "gutters", "flashing"],
   "key_findings": [
-    "Finding 1: description with forensic detail"
+    "Finding 1: storm damage evidence with forensic detail"
   ],
   "code_violations": [
     {{"code": "RCNYS R905.2.8.5", "description": "Missing drip edge at rake edges"}}
   ],
   "damage_type": "hail / wind / combined",
-  "severity": "minor / moderate / severe"
+  "severity": "minor / moderate / severe",
+  "chalk_test_results": {{
+    "observed": true,
+    "details": "Chalk testing on [component] reveals [N] circular gaps indicating hail impact dents"
+  }},
+  "test_square_results": [
+    {{"slope": "F", "hail_hits": 10, "wind_damage": 0, "notes": "Front slope test square"}}
+  ]
 }}"""
         })
 
@@ -382,6 +420,10 @@ Number the photos starting at {start_num}. Return ONLY valid JSON:
             damage_type = batch_result["damage_type"]
         if batch_result.get("severity"):
             severity = batch_result["severity"]
+        if batch_result.get("chalk_test_results"):
+            chalk_test_results.append(batch_result["chalk_test_results"])
+        if batch_result.get("test_square_results"):
+            test_square_results.extend(batch_result["test_square_results"])
 
     # Clean up resized temp files
     for path in image_paths:
@@ -402,6 +444,8 @@ Number the photos starting at {start_num}. Return ONLY valid JSON:
         "damage_type": damage_type,
         "severity": severity,
         "photo_count": len(image_paths),
+        "chalk_test_results": chalk_test_results,
+        "test_square_results": test_square_results,
     }
 
 
@@ -434,25 +478,35 @@ def analyze_photo_integrity(client: anthropic.Anthropic, photo_paths: list[str])
 
     content.append({
         "type": "text",
-        "text": f"""You are a forensic photo integrity analyst for insurance claims. Examine these {len(sample_paths)} inspection photos for ANY signs of:
+        "text": f"""You are a forensic photo integrity analyst for insurance claims. Examine these {len(sample_paths)} inspection photos for signs of fraud.
 
-1. STAGED DAMAGE — damage that appears artificially created (tool marks, unnatural patterns, fresh gouges on aged materials, damage inconsistent with claimed peril)
-2. PHOTO MANIPULATION — digital editing, splicing, cloning, resolution inconsistencies, EXIF anomalies, lighting/shadow mismatches
-3. MISREPRESENTATION — photos from a different property, recycled photos, date inconsistencies, weather condition mismatches
+CRITICAL — UNDERSTAND CHALK TESTING (this is NOT fraud):
+Roofing inspectors use chalk as a standard diagnostic tool. You MUST recognize these as legitimate inspection techniques:
 
-For each photo, assign: PASS (no integrity concerns) or FLAG (specific concern identified).
+ON METALS (gutters, flashing, vents, pipe collars, standing seam): Inspector runs chalk SIDEWAYS across the surface. Circular GAPS in the chalk line = hail impact dents where chalk cannot reach the indented metal. This is standard hail damage documentation — NOT sealant, paint, caulk, graffiti, or vandalism.
+
+ON SHINGLES: Chalk circles/boxes mark test squares. Letters (F/R/L/B) indicate slope direction. Numbers (H=10) count hail hits. Lines across shingles mark wind creases. This is standard inspection methodology.
+
+Chalk marks, test square notations, and circled damage areas are LEGITIMATE INSPECTION TOOLS and must ALWAYS pass integrity checks.
+
+Only FLAG photos for genuine fraud indicators:
+1. STAGED DAMAGE — tool marks creating artificial dents, BB gun impacts, intentional gouging with sharp instruments
+2. PHOTO MANIPULATION — digital editing, Photoshop artifacts, cloned regions, impossible lighting/shadows
+3. MISREPRESENTATION — photos clearly from a different property, recycled/stock photos
+
+For each photo, assign: PASS (authentic) or FLAG (fraud concern).
 
 Return ONLY valid JSON:
 {{
   "photo_results": [
-    {{"photo": 1, "status": "PASS", "notes": "Authentic hail impact damage consistent with storm event"}},
-    {{"photo": 2, "status": "PASS", "notes": "Natural weathering and storm damage patterns confirmed"}}
+    {{"photo": 1, "status": "PASS", "notes": "Chalk testing on metal surface showing hail impact documentation — standard inspection technique"}},
+    {{"photo": 2, "status": "PASS", "notes": "Test square with hail hit count — legitimate damage assessment"}}
   ],
   "flagged_count": 0,
-  "summary": "All photos show consistent, authentic storm damage patterns with no indicators of staging or manipulation."
+  "summary": "All photos show authentic inspection techniques and storm damage documentation with no fraud indicators."
 }}
 
-Be conservative — only FLAG photos with clear, articulable integrity concerns. Genuine storm damage should always PASS.""",
+Be VERY conservative — chalk marks and test square notations are NEVER fraud. Only flag clear, unambiguous manipulation or staging.""",
     })
 
     response = _call_claude_with_retry(client,
