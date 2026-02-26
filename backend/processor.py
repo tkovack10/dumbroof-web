@@ -332,7 +332,7 @@ def analyze_photos(client: anthropic.Anthropic, photo_paths: list[str], user_not
 
         content.append({
             "type": "text",
-            "text": f"""You are a forensic storm damage analyst for insurance claims. Your goal is to document ALL hail and wind damage to support full claim approval. These are photos {start_num}-{start_num + len(batch) - 1} from a property inspection.{notes_ctx}
+            "text": f"""You are a forensic roofing damage analyst specializing in storm damage assessment. Analyze these inspection photos ({start_num}-{start_num + len(batch) - 1}) and document all visible damage with clinical, professional observations.{notes_ctx}
 
 CRITICAL — CHALK TESTING (you MUST understand this):
 Inspectors use chalk testing to document hail damage. This is standard industry practice, NOT sealant, paint, caulk, or repair material.
@@ -364,11 +364,11 @@ HAIL DAMAGE INDICATORS:
 - Fractured/cracked shingle mat (per HAAG standard = functional damage requiring full replacement)
 - Soft metal deformation (gutters, vents, flashing)
 
-IMPORTANT FRAMING:
-- Focus on STORM-RELATED damages (hail and wind) — this is what gets claims approved
-- Any pre-existing deterioration, brittleness, or aging makes the roof MORE vulnerable to storm damage and LESS repairable — use this to argue for FULL REPLACEMENT rather than spot repair
-- Frame worn/brittle materials as: "Pre-existing condition renders the roofing system non-repairable following storm impact — spot repair is not feasible on aged/brittle materials"
-- NEVER dismiss damage as "just wear and tear" — connect it to why storm damage requires full replacement
+ANALYSIS PRIORITIES:
+- Prioritize identifying and documenting storm-related damage (hail and wind impacts)
+- Note how pre-existing material condition (age, brittleness, weathering) affects the feasibility of spot repairs vs. full system replacement
+- When materials show both storm damage and age-related wear, document both — aged/brittle materials that sustain storm damage often cannot be spot-repaired because replacement materials won't integrate with the degraded existing system
+- Document all damage types observed — storm impacts are the primary focus of this forensic assessment
 
 Number the photos starting at {start_num}. Return ONLY valid JSON:
 {{
