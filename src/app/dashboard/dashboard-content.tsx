@@ -157,7 +157,7 @@ export function DashboardContent({ user }: { user: User }) {
                 <div key={claim.id} className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
                   {/* Claim Header */}
                   <div className="px-6 py-4 flex items-center justify-between">
-                    <div className="flex items-center gap-4">
+                    <a href={`/dashboard/claim/${claim.id}`} className="flex items-center gap-4 hover:opacity-80 transition-opacity">
                       <div>
                         <h3 className="text-sm font-semibold text-[var(--navy)]">
                           {claim.address}
@@ -166,7 +166,7 @@ export function DashboardContent({ user }: { user: User }) {
                           {claim.carrier} &middot; {claim.phase === "pre-scope" ? "Pre-Scope" : "Supplement"} &middot; {new Date(claim.created_at).toLocaleDateString()}
                         </p>
                       </div>
-                    </div>
+                    </a>
                     <div className="flex items-center gap-3">
                       <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium ${sc.color}`}>
                         {isProcessing && (

@@ -86,6 +86,30 @@ def get_media_type(filename: str) -> str:
     }.get(ext, "application/octet-stream")
 
 
+def resize_photo(path: str, max_dim: int = 1024) -> str:
+    """Resize a photo to max_dim on longest side using sips. Returns path to resized copy."""
+    ext = path.lower().rsplit(".", 1)[-1]
+    if ext not in ("jpg", "jpeg", "png"):
+        return path
+
+    size = os.path.getsize(path)
+    # Skip if already small (under 500KB)
+    if size < 500_000:
+        return path
+
+    resized = path + ".resized.jpg"
+    try:
+        subprocess.run(
+            ["sips", "-Z", str(max_dim), "--setProperty", "formatOptions", "60", path, "--out", resized],
+            capture_output=True, timeout=15
+        )
+        if os.path.exists(resized) and os.path.getsize(resized) > 0:
+            return resized
+    except Exception:
+        pass
+    return path
+
+
 # ===================================================================
 # CLAUDE API — DOCUMENT ANALYSIS
 # ===================================================================
@@ -154,62 +178,209 @@ Use 0 for any values not found. Calculate SQ = SF / 100. Include waste_factor if
     return _parse_json_response(response.content[0].text)
 
 
-def analyze_photos(client: anthropic.Anthropic, photo_paths: list[str]) -> dict:
-    """Send inspection photos to Claude for forensic analysis."""
-    content = []
+def analyze_photos(client: anthropic.Anthropic, photo_paths: list[str], user_notes: Optional[str] = None) -> dict:
+    """Send inspection photos to Claude for forensic analysis, in batches."""
+    BATCH_SIZE = 5  # 5 resized photos per batch to stay well under API limits
 
-    # Send up to 20 photos (API limit considerations)
+    # Filter to image files and resize
+    image_paths = []
     for path in photo_paths[:20]:
         media_type = get_media_type(path)
         if media_type.startswith("image/"):
+            resized = resize_photo(path)
+            image_paths.append(resized)
+            sz = os.path.getsize(resized) / 1024
+            print(f"[PHOTO] {os.path.basename(path)} -> {sz:.0f}KB")
+
+    print(f"[PHOTOS] {len(image_paths)} images ready, processing in batches of {BATCH_SIZE}")
+
+    # Process in batches, merge results
+    all_annotations = {}
+    all_findings = []
+    all_violations = []
+    trades_set = set()
+    damage_summary_parts = []
+    shingle_type = ""
+    shingle_condition = ""
+    damage_type = ""
+    severity = ""
+
+    for batch_idx in range(0, len(image_paths), BATCH_SIZE):
+        batch = image_paths[batch_idx:batch_idx + BATCH_SIZE]
+        batch_num = batch_idx // BATCH_SIZE + 1
+        total_batches = (len(image_paths) + BATCH_SIZE - 1) // BATCH_SIZE
+        start_num = batch_idx + 1
+
+        print(f"[PHOTOS] Batch {batch_num}/{total_batches} ({len(batch)} photos)")
+
+        content = []
+        for path in batch:
             content.append({
                 "type": "image",
                 "source": {
                     "type": "base64",
-                    "media_type": media_type,
+                    "media_type": "image/jpeg",
                     "data": file_to_base64(path),
                 },
             })
 
-    content.append({
-        "type": "text",
-        "text": """You are a forensic roofing damage analyst. Analyze these inspection photos and provide:
+        notes_ctx = ""
+        if batch_idx == 0 and user_notes:
+            notes_ctx = f"\n\nCONTEXT FROM CONTRACTOR: {user_notes}\nUse this context to inform your analysis — identify specific materials mentioned, note any adjuster claims to address, and focus on items the contractor highlighted.\n"
 
-1. A damage summary describing the overall condition
+        content.append({
+            "type": "text",
+            "text": f"""You are a forensic roofing damage analyst. These are photos {start_num}-{start_num + len(batch) - 1} from a property inspection.{notes_ctx} Analyze them and provide:
+
+1. A damage summary describing the conditions visible in these photos
 2. Photo-by-photo forensic annotations (clinical, professional language)
 3. Key forensic findings
 4. Identified trades needed (roofing, gutters, siding, etc.)
 5. Shingle type identification (3-tab, architectural/laminated, material)
 6. Any code violations visible
 
-Return ONLY valid JSON:
-{
-  "damage_summary": "Professional summary of damage observed...",
-  "photo_annotations": {
-    "photo_01": "Clinical forensic observation for photo 1...",
-    "photo_02": "Clinical forensic observation for photo 2..."
-  },
+Number the photos starting at {start_num}. Return ONLY valid JSON:
+{{
+  "damage_summary": "Professional summary of damage observed in these photos...",
+  "photo_annotations": {{
+    "photo_{start_num:02d}": "Clinical forensic observation...",
+    "photo_{start_num + 1:02d}": "Clinical forensic observation..."
+  }},
   "shingle_type": "architectural laminated / 3-tab 25yr / etc",
   "shingle_condition": "description of overall shingle condition",
   "trades_identified": ["roofing", "gutters"],
   "key_findings": [
-    "Finding 1: description with forensic detail",
-    "Finding 2: description with forensic detail"
+    "Finding 1: description with forensic detail"
   ],
   "code_violations": [
-    {"code": "RCNYS R905.2.8.5", "description": "Missing drip edge at rake edges"}
+    {{"code": "RCNYS R905.2.8.5", "description": "Missing drip edge at rake edges"}}
   ],
   "damage_type": "hail / wind / combined",
   "severity": "minor / moderate / severe"
-}"""
+}}"""
+        })
+
+        response = _call_claude_with_retry(client,
+            model="claude-sonnet-4-6",
+            max_tokens=4096,
+            messages=[{"role": "user", "content": content}]
+        )
+        batch_result = _parse_json_response(response.content[0].text)
+
+        # Merge batch results
+        all_annotations.update(batch_result.get("photo_annotations", {}))
+        all_findings.extend(batch_result.get("key_findings", []))
+        all_violations.extend(batch_result.get("code_violations", []))
+        trades_set.update(batch_result.get("trades_identified", []))
+        if batch_result.get("damage_summary"):
+            damage_summary_parts.append(batch_result["damage_summary"])
+        if batch_result.get("shingle_type"):
+            shingle_type = batch_result["shingle_type"]
+        if batch_result.get("shingle_condition"):
+            shingle_condition = batch_result["shingle_condition"]
+        if batch_result.get("damage_type"):
+            damage_type = batch_result["damage_type"]
+        if batch_result.get("severity"):
+            severity = batch_result["severity"]
+
+    # Clean up resized temp files
+    for path in image_paths:
+        if path.endswith(".resized.jpg"):
+            try:
+                os.remove(path)
+            except OSError:
+                pass
+
+    return {
+        "damage_summary": " ".join(damage_summary_parts),
+        "photo_annotations": all_annotations,
+        "shingle_type": shingle_type,
+        "shingle_condition": shingle_condition,
+        "trades_identified": sorted(trades_set),
+        "key_findings": all_findings,
+        "code_violations": all_violations,
+        "damage_type": damage_type,
+        "severity": severity,
+        "photo_count": len(image_paths),
+    }
+
+
+def analyze_photo_integrity(client: anthropic.Anthropic, photo_paths: list[str]) -> dict:
+    """Analyze photos for signs of staging, manipulation, or man-made damage.
+
+    Returns a photo integrity report that gets stamped onto generated PDFs.
+    This is DumbRoof.AI proprietary IP — fraud detection at the inspection level.
+    """
+    # Sample up to 10 photos for integrity check (cost-efficient)
+    sample_paths = []
+    for path in photo_paths[:10]:
+        if get_media_type(path).startswith("image/"):
+            resized = resize_photo(path)
+            sample_paths.append(resized)
+
+    if not sample_paths:
+        return {"total": 0, "flagged": 0, "score": "N/A", "findings": []}
+
+    content = []
+    for path in sample_paths:
+        content.append({
+            "type": "image",
+            "source": {
+                "type": "base64",
+                "media_type": "image/jpeg",
+                "data": file_to_base64(path),
+            },
+        })
+
+    content.append({
+        "type": "text",
+        "text": f"""You are a forensic photo integrity analyst for insurance claims. Examine these {len(sample_paths)} inspection photos for ANY signs of:
+
+1. STAGED DAMAGE — damage that appears artificially created (tool marks, unnatural patterns, fresh gouges on aged materials, damage inconsistent with claimed peril)
+2. PHOTO MANIPULATION — digital editing, splicing, cloning, resolution inconsistencies, EXIF anomalies, lighting/shadow mismatches
+3. MISREPRESENTATION — photos from a different property, recycled photos, date inconsistencies, weather condition mismatches
+
+For each photo, assign: PASS (no integrity concerns) or FLAG (specific concern identified).
+
+Return ONLY valid JSON:
+{{
+  "photo_results": [
+    {{"photo": 1, "status": "PASS", "notes": "Authentic hail impact damage consistent with storm event"}},
+    {{"photo": 2, "status": "PASS", "notes": "Natural weathering and storm damage patterns confirmed"}}
+  ],
+  "flagged_count": 0,
+  "summary": "All photos show consistent, authentic storm damage patterns with no indicators of staging or manipulation."
+}}
+
+Be conservative — only FLAG photos with clear, articulable integrity concerns. Genuine storm damage should always PASS.""",
     })
 
     response = _call_claude_with_retry(client,
-        model="claude-opus-4-6",
-        max_tokens=8192,
+        model="claude-sonnet-4-6",
+        max_tokens=2048,
         messages=[{"role": "user", "content": content}]
     )
-    return _parse_json_response(response.content[0].text)
+    result = _parse_json_response(response.content[0].text)
+
+    flagged = result.get("flagged_count", 0)
+    total = len(sample_paths)
+    score = "100%" if flagged == 0 else f"{round((total - flagged) / total * 100)}%"
+
+    # Clean up resized temps
+    for path in sample_paths:
+        if path.endswith(".resized.jpg"):
+            try:
+                os.remove(path)
+            except OSError:
+                pass
+
+    return {
+        "total": total,
+        "flagged": flagged,
+        "score": score,
+        "summary": result.get("summary", ""),
+        "findings": result.get("photo_results", []),
+    }
 
 
 def extract_carrier_scope(client: anthropic.Anthropic, pdf_path: str) -> dict:
@@ -326,6 +497,8 @@ def build_claim_config(
     photo_filenames: list,
     weather_data: Optional[dict] = None,
     company_profile: Optional[dict] = None,
+    user_notes: Optional[str] = None,
+    photo_integrity: Optional[dict] = None,
 ) -> dict:
     """Build a complete claim_config.json from extracted data."""
     prop = measurements.get("property", {})
@@ -462,6 +635,20 @@ def build_claim_config(
             "Supplement report with line-by-line variance analysis",
             "Formal appeal letter",
         ])
+
+    # Photo integrity stamp
+    if photo_integrity and photo_integrity.get("total", 0) > 0:
+        config["photo_integrity"] = {
+            "total_analyzed": photo_integrity["total"],
+            "flagged": photo_integrity["flagged"],
+            "score": photo_integrity["score"],
+            "summary": photo_integrity.get("summary", ""),
+            "stamp": f"PHOTO INTEGRITY VERIFIED — {photo_integrity['score']} | {photo_integrity['total']} photos analyzed, {photo_integrity['flagged']} flagged for manipulation indicators | DumbRoof.AI Fraud Detection Engine",
+        }
+
+    # User-provided notes (context from upload form)
+    if user_notes:
+        config["user_notes"] = user_notes
 
     return config
 
@@ -713,9 +900,19 @@ async def process_claim(claim_id: str):
 
         # 7. Analyze photos via Claude
         print(f"[PROCESS] Analyzing {len(photo_paths)} photos...")
-        photo_analysis = {"trades_identified": ["roofing"], "photo_annotations": {}}
+        photo_analysis = {"trades_identified": ["roofing"], "photo_annotations": {}, "photo_count": 0}
         if photo_paths:
-            photo_analysis = analyze_photos(claude, photo_paths)
+            photo_analysis = analyze_photos(claude, photo_paths, user_notes=claim.get("user_notes"))
+
+        # 7b. Photo integrity analysis (fraud detection)
+        print(f"[PROCESS] Running photo integrity analysis...")
+        photo_integrity = {"total": 0, "flagged": 0, "score": "N/A", "summary": "", "findings": []}
+        if photo_paths:
+            try:
+                photo_integrity = analyze_photo_integrity(claude, photo_paths)
+                print(f"[INTEGRITY] {photo_integrity['total']} photos analyzed — {photo_integrity['flagged']} flagged — Score: {photo_integrity['score']}")
+            except Exception as e:
+                print(f"[INTEGRITY] Analysis failed (non-fatal): {e}")
 
         # 8. Extract carrier scope (if present)
         carrier_data = None
@@ -732,7 +929,9 @@ async def process_claim(claim_id: str):
         # 9. Build claim config
         print(f"[PROCESS] Building claim config...")
         config = build_claim_config(
-            claim, measurements, photo_analysis, carrier_data, photo_filenames, weather_data, company_profile
+            claim, measurements, photo_analysis, carrier_data, photo_filenames, weather_data, company_profile,
+            user_notes=claim.get("user_notes"),
+            photo_integrity=photo_integrity,
         )
 
         # Set paths for the generator
@@ -758,10 +957,17 @@ async def process_claim(claim_id: str):
             print(f"[PROCESS] Uploaded: {pdf_name}")
 
         # 12. Update claim status to ready
-        sb.table("claims").update({
+        update_data: dict = {
             "status": "ready",
             "output_files": uploaded_pdfs,
-        }).eq("id", claim_id).execute()
+        }
+        if photo_integrity and photo_integrity.get("total", 0) > 0:
+            update_data["photo_integrity"] = {
+                "total": photo_integrity["total"],
+                "flagged": photo_integrity["flagged"],
+                "score": photo_integrity["score"],
+            }
+        sb.table("claims").update(update_data).eq("id", claim_id).execute()
 
         print(f"[PROCESS] Claim complete: {claim['address']} — {len(pdfs)} PDFs ready")
 

@@ -13,6 +13,7 @@ export default function NewClaimPage() {
   const [photoFiles, setPhotoFiles] = useState<File[]>([]);
   const [scopeFiles, setScopeFiles] = useState<File[]>([]);
   const [weatherFiles, setWeatherFiles] = useState<File[]>([]);
+  const [userNotes, setUserNotes] = useState("");
   const [status, setStatus] = useState<UploadStatus>("idle");
   const [errorMsg, setErrorMsg] = useState("");
 
@@ -89,6 +90,7 @@ export default function NewClaimPage() {
         photo_files: photoFiles.map((f) => f.name),
         scope_files: scopeFiles.map((f) => f.name),
         weather_files: weatherFiles.map((f) => f.name),
+        ...(userNotes.trim() ? { user_notes: userNotes.trim() } : {}),
       });
 
       if (dbError) throw new Error(dbError.message);
@@ -267,6 +269,31 @@ export default function NewClaimPage() {
               files={weatherFiles}
               onFilesChange={setWeatherFiles}
             />
+          </div>
+
+          {/* Additional Context */}
+          <div className="space-y-2">
+            <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider">
+              Additional Context
+            </h3>
+            <div>
+              <div className="flex items-baseline gap-2 mb-1">
+                <label className="block text-sm font-semibold text-[var(--navy)]">
+                  Notes for the AI
+                </label>
+                <span className="text-xs text-gray-400 font-medium">Not required</span>
+              </div>
+              <p className="text-xs text-gray-500 mb-2">
+                Describe what you want included in the scope, materials on the property, or anything the adjuster said during inspection.
+              </p>
+              <textarea
+                value={userNotes}
+                onChange={(e) => setUserNotes(e.target.value)}
+                placeholder='e.g. "Shingle roof, standing seam metal on rear slope, aluminum siding" or "Adjuster said wear and tear during inspection"'
+                rows={3}
+                className="w-full px-4 py-3 rounded-lg border border-gray-200 focus:border-[var(--navy)] focus:ring-1 focus:ring-[var(--navy)] outline-none transition-colors text-sm resize-none"
+              />
+            </div>
           </div>
 
           {/* Phase Indicator */}

@@ -56,6 +56,20 @@ def health():
     return {"status": "ok"}
 
 
+@app.post("/api/reprocess/{claim_id}")
+async def reprocess_claim(claim_id: str, background_tasks: BackgroundTasks):
+    """Re-process a claim after additional documents are uploaded."""
+    sb = get_supabase_client()
+    # Verify claim exists
+    result = sb.table("claims").select("id, status").eq("id", claim_id).single().execute()
+    if not result.data:
+        raise HTTPException(status_code=404, detail="Claim not found")
+    # Set status back to uploaded so the poller picks it up
+    sb.table("claims").update({"status": "uploaded"}).eq("id", claim_id).execute()
+    background_tasks.add_task(run_processing, claim_id)
+    return {"status": "reprocessing", "claim_id": claim_id}
+
+
 @app.post("/api/process/{claim_id}")
 async def trigger_processing(claim_id: str, background_tasks: BackgroundTasks):
     """Manually trigger processing for a specific claim."""
