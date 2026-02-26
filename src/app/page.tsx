@@ -25,6 +25,9 @@ export default function Home() {
             </span>
           </div>
           <div className="flex items-center gap-6">
+            <a href="#problem" className="text-gray-300 hover:text-white text-sm transition-colors hidden sm:block">
+              The Problem
+            </a>
             <a href="#how-it-works" className="text-gray-300 hover:text-white text-sm transition-colors hidden sm:block">
               How It Works
             </a>
@@ -51,15 +54,15 @@ export default function Home() {
           </div>
 
           <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold text-white leading-tight mb-6">
-            Stop leaving money
+            Don&apos;t tell them they have damage.
             <br />
-            <span className="text-[var(--red)]">on the roof.</span>
+            <span className="text-[var(--red)]">Show them.</span>
           </h1>
 
           <p className="text-lg sm:text-xl text-gray-300 max-w-2xl mx-auto mb-10 leading-relaxed">
-            Upload your source docs. Get a forensic-grade, code-cited appeal
-            package back in 15 minutes. Built by roofers who got tired of
-            carriers underpaying every claim.
+            Generate forensic-grade claim documentation that would impress
+            the best carrier litigation attorney in the country. Upload your
+            docs, get back a 5-document appeal package in 15 minutes.
           </p>
 
           <div className="flex flex-col sm:flex-row gap-4 justify-center mb-16">
@@ -70,10 +73,10 @@ export default function Home() {
               Request Early Access
             </a>
             <a
-              href="#how-it-works"
+              href="#problem"
               className="border border-white/30 hover:border-white/60 text-white px-8 py-4 rounded-xl text-lg font-semibold transition-colors"
             >
-              See How It Works
+              See Why This Exists
             </a>
           </div>
 
@@ -96,102 +99,193 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Problem / Solution */}
-      <section className="py-20 px-6 bg-[var(--gray-50)]">
+      {/* The Trust Problem */}
+      <section id="problem" className="py-20 px-6 bg-[var(--gray-50)] scroll-mt-20">
         <div className="max-w-5xl mx-auto">
-          <div className="grid md:grid-cols-2 gap-12">
-            {/* Problem */}
-            <div className="bg-white rounded-2xl p-8 shadow-sm border border-gray-100">
-              <div className="w-12 h-12 rounded-xl bg-red-50 flex items-center justify-center mb-5">
-                <svg
-                  className="w-6 h-6 text-[var(--red)]"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                  strokeWidth={2}
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                  />
-                </svg>
+          <h2 className="text-3xl sm:text-4xl font-bold text-[var(--navy)] text-center mb-4">
+            Homeowners Don&apos;t Trust You
+          </h2>
+          <p className="text-gray-500 text-center mb-14 max-w-2xl mx-auto">
+            Studies prove it. The BBB confirms it. And insurance carriers are counting on it.
+          </p>
+
+          {/* Stats Grid */}
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-14">
+            {[
+              { stat: "#1", detail: "Roofing is the #1 most-complained industry on the BBB &mdash; 3,392 complaints in a single year", source: "BBB" },
+              { stat: "70%", detail: "of consumers won&apos;t return to a contractor after one bad experience", source: "BBB Consumer Survey" },
+              { stat: "16 mo", detail: "Average time a roofing employee stays before leaving &mdash; vs. 4.6 years in other industries", source: "Construction Industry Data" },
+              { stat: "40%", detail: "of homeowners say poor communication is their #1 frustration with contractors", source: "Roofing Contractor Magazine" },
+            ].map((item, i) => (
+              <div key={i} className="bg-white rounded-xl p-6 border border-gray-100 text-center">
+                <p className="text-3xl font-bold text-[var(--red)] mb-2" dangerouslySetInnerHTML={{ __html: item.stat }} />
+                <p className="text-sm text-gray-600 leading-relaxed" dangerouslySetInnerHTML={{ __html: item.detail }} />
+                <p className="text-xs text-gray-400 mt-2">{item.source}</p>
               </div>
-              <h3 className="text-xl font-bold text-[var(--navy)] mb-3">
-                The Problem
+            ))}
+          </div>
+
+          {/* The Real Problems */}
+          <div className="space-y-6">
+            <div className="bg-white rounded-2xl p-8 border border-gray-100">
+              <h3 className="text-xl font-bold text-[var(--navy)] mb-4">
+                The Contractor&apos;s Impossible Choice
               </h3>
-              <ul className="space-y-3 text-gray-600">
-                <li className="flex items-start gap-2">
-                  <span className="text-[var(--red)] mt-0.5">&#x2715;</span>
-                  Carriers underpay every storm claim by 40-60%
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="text-[var(--red)] mt-0.5">&#x2715;</span>
-                  Supplements take 1-3 months and cost $7,500-$30,000
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="text-[var(--red)] mt-0.5">&#x2715;</span>
-                  5 out of 50 reps know how to fight a carrier scope
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="text-[var(--red)] mt-0.5">&#x2715;</span>
-                  Estimate services write numbers &mdash; not arguments
-                </li>
-              </ul>
+              <div className="grid md:grid-cols-2 gap-8">
+                <div className="space-y-4">
+                  <div className="flex items-start gap-3">
+                    <span className="text-[var(--red)] text-lg mt-0.5 shrink-0">01</span>
+                    <div>
+                      <p className="font-semibold text-[var(--navy)]">Train reps for years on insurance</p>
+                      <p className="text-sm text-gray-500 mt-1">
+                        It takes years to learn the full insurance process &mdash; building codes, Xactimate,
+                        supplement negotiations, carrier tactics. Just when they hit their stride...
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <span className="text-[var(--red)] text-lg mt-0.5 shrink-0">02</span>
+                    <div>
+                      <p className="font-semibold text-[var(--navy)]">They leave and start their own company</p>
+                      <p className="text-sm text-gray-500 mt-1">
+                        They take every skill you trained them on. Average roofing employee tenure: 16 months.
+                        You just funded your next competitor.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+                <div className="space-y-4">
+                  <div className="flex items-start gap-3">
+                    <span className="text-[var(--red)] text-lg mt-0.5 shrink-0">03</span>
+                    <div>
+                      <p className="font-semibold text-[var(--navy)]">Or don&apos;t train them enough</p>
+                      <p className="text-sm text-gray-500 mt-1">
+                        Untrained reps miss supplements and line items. One photo could add a $5,000 line item
+                        to a claim &mdash; but they don&apos;t know to take it. Money left on every roof.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <span className="text-[var(--red)] text-lg mt-0.5 shrink-0">04</span>
+                    <div>
+                      <p className="font-semibold text-[var(--navy)]">Or skip insurance work entirely</p>
+                      <p className="text-sm text-gray-500 mt-1">
+                        Most contractors avoid insurance claims because the process is too frustrating.
+                        That&apos;s by design &mdash; carriers built it that way.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
 
-            {/* Solution */}
-            <div className="bg-white rounded-2xl p-8 shadow-sm border border-[var(--navy)]/20">
-              <div className="w-12 h-12 rounded-xl bg-green-50 flex items-center justify-center mb-5">
-                <svg
-                  className="w-6 h-6 text-green-600"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                  strokeWidth={2}
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-                  />
-                </svg>
-              </div>
-              <h3 className="text-xl font-bold text-[var(--navy)] mb-3">
-                The Dumb Roof Solution
+            {/* PE Problem */}
+            <div className="bg-[var(--navy)] rounded-2xl p-8 text-white">
+              <h3 className="text-xl font-bold mb-4">
+                Why Private Equity Hates Insurance Work
               </h3>
-              <ul className="space-y-3 text-gray-600">
-                <li className="flex items-start gap-2">
-                  <span className="text-green-600 mt-0.5">&#x2713;</span>
-                  5-document forensic appeal package in 15 minutes
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="text-green-600 mt-0.5">&#x2713;</span>
-                  AI pairs building codes to specific photos to specific line items
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="text-green-600 mt-0.5">&#x2713;</span>
-                  Self-learning carrier playbooks &mdash; gets smarter every claim
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="text-green-600 mt-0.5">&#x2713;</span>
-                  Makes every rep look like a 20-year insurance veteran
-                </li>
-              </ul>
+              <p className="text-gray-300 mb-6 leading-relaxed">
+                PE firms don&apos;t hate the money insurance claims generate &mdash; they hate the
+                inconsistency. They hate the complexity. They hate that it takes years to train
+                a rep who might leave in 16 months. With 25+ PE rollups now operating in roofing,
+                the firms doing $100M-$400M/year need a system that makes insurance claims
+                predictable, repeatable, and scalable. That&apos;s what this is.
+              </p>
+              <div className="grid sm:grid-cols-3 gap-4">
+                {[
+                  { label: "The Problem", value: "Inconsistent claim outcomes across 50+ reps" },
+                  { label: "The Cost", value: "25-50% revenue leakage from missed supplements" },
+                  { label: "The Fix", value: "World-class system that plugs directly into your company" },
+                ].map((item) => (
+                  <div key={item.label} className="bg-white/10 rounded-xl p-4 border border-white/10">
+                    <p className="text-xs text-gray-400 font-semibold uppercase tracking-wider">{item.label}</p>
+                    <p className="text-sm text-gray-200 mt-2">{item.value}</p>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         </div>
       </section>
 
+      {/* The Solution */}
+      <section className="py-20 px-6 bg-white">
+        <div className="max-w-5xl mx-auto">
+          <h2 className="text-3xl sm:text-4xl font-bold text-[var(--navy)] text-center mb-4">
+            Don&apos;t Tell. Prove.
+          </h2>
+          <p className="text-gray-500 text-center mb-14 max-w-2xl mx-auto">
+            Homeowners don&apos;t trust storm chasers. Carriers dismiss sloppy supplements.
+            So we built documentation so thorough, so forensic, so code-cited that
+            it speaks for itself.
+          </p>
+
+          <div className="grid md:grid-cols-2 gap-8">
+            <div className="bg-[var(--gray-50)] rounded-2xl p-8 border border-gray-100">
+              <h3 className="text-lg font-bold text-[var(--navy)] mb-4">What Estimate Services Do</h3>
+              <ul className="space-y-3 text-gray-600 text-sm">
+                <li className="flex items-start gap-2">
+                  <span className="text-[var(--red)] mt-0.5 shrink-0">&#x2715;</span>
+                  Write numbers on a spreadsheet
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="text-[var(--red)] mt-0.5 shrink-0">&#x2715;</span>
+                  No photos, no code citations, no forensic analysis
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="text-[var(--red)] mt-0.5 shrink-0">&#x2715;</span>
+                  No carrier-specific strategy or intelligence
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="text-[var(--red)] mt-0.5 shrink-0">&#x2715;</span>
+                  Adjuster sees it, ignores it, moves on
+                </li>
+              </ul>
+            </div>
+            <div className="bg-[var(--gray-50)] rounded-2xl p-8 border border-[var(--navy)]/20">
+              <h3 className="text-lg font-bold text-[var(--navy)] mb-4">What Dumb Roof Generates</h3>
+              <ul className="space-y-3 text-gray-600 text-sm">
+                <li className="flex items-start gap-2">
+                  <span className="text-green-600 mt-0.5 shrink-0">&#x2713;</span>
+                  Forensic report with annotated photos tied to specific damage
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="text-green-600 mt-0.5 shrink-0">&#x2713;</span>
+                  Every line item paired with building code + photo evidence
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="text-green-600 mt-0.5 shrink-0">&#x2713;</span>
+                  Carrier-specific playbooks that learn from every claim
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="text-green-600 mt-0.5 shrink-0">&#x2713;</span>
+                  Package so thorough it would hold up in front of a carrier litigation attorney
+                </li>
+              </ul>
+            </div>
+          </div>
+
+          <div className="mt-8 bg-amber-50 border border-amber-200 rounded-xl p-6">
+            <p className="text-amber-900 text-sm leading-relaxed">
+              <span className="font-bold">The real difference:</span> Other services write estimates.
+              We build forensic evidence chains &mdash; pairing specific building code citations to specific
+              photos to specific line items. That&apos;s what makes carriers move. That&apos;s what makes
+              adjusters take you seriously. That&apos;s what separates you from every other contractor
+              knocking on doors after a storm.
+            </p>
+          </div>
+        </div>
+      </section>
+
       {/* How It Works */}
-      <section id="how-it-works" className="py-20 px-6 bg-white scroll-mt-20">
+      <section id="how-it-works" className="py-20 px-6 bg-[var(--gray-50)] scroll-mt-20">
         <div className="max-w-5xl mx-auto">
           <h2 className="text-3xl sm:text-4xl font-bold text-[var(--navy)] text-center mb-4">
             How It Works
           </h2>
           <p className="text-gray-500 text-center mb-14 max-w-xl mx-auto">
-            Three steps. Fifteen minutes. A package that makes carriers take you
-            seriously.
+            Three steps. Fifteen minutes. Every rep on your team performs like a
+            20-year insurance veteran.
           </p>
 
           <div className="grid md:grid-cols-3 gap-8">
@@ -199,67 +293,37 @@ export default function Home() {
               {
                 step: "01",
                 title: "Upload",
-                desc: "Drop in your carrier scope, EagleView report, inspection photos, and HailTrace weather data.",
+                desc: "Drop in your measurements, inspection photos, and carrier scope (if you have one). That's it.",
                 icon: (
-                  <svg
-                    className="w-8 h-8 text-[var(--navy)]"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                    strokeWidth={1.5}
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5"
-                    />
+                  <svg className="w-8 h-8 text-[var(--navy)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
                   </svg>
                 ),
               },
               {
                 step: "02",
-                title: "Process",
-                desc: "AI reads every document, analyzes every photo, cross-references building codes, and builds your evidence chain.",
+                title: "AI Analyzes Everything",
+                desc: "Reads every document. Analyzes every photo forensically. Cross-references building codes. Checks carrier playbooks. Builds the evidence chain.",
                 icon: (
-                  <svg
-                    className="w-8 h-8 text-[var(--navy)]"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                    strokeWidth={1.5}
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="M9.75 3.104v5.714a2.25 2.25 0 01-.659 1.591L5 14.5M9.75 3.104c-.251.023-.501.05-.75.082m.75-.082a24.301 24.301 0 014.5 0m0 0v5.714c0 .597.237 1.17.659 1.591L19.8 15.3M14.25 3.104c.251.023.501.05.75.082M19.8 15.3l-1.57.393A9.065 9.065 0 0112 15a9.065 9.065 0 00-6.23.693L5 14.5m14.8.8l1.402 1.402c1.232 1.232.65 3.318-1.067 3.611A48.309 48.309 0 0112 21c-2.773 0-5.491-.235-8.135-.687-1.718-.293-2.3-2.379-1.067-3.61L5 14.5"
-                    />
+                  <svg className="w-8 h-8 text-[var(--navy)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9.75 3.104v5.714a2.25 2.25 0 01-.659 1.591L5 14.5M9.75 3.104c-.251.023-.501.05-.75.082m.75-.082a24.301 24.301 0 014.5 0m0 0v5.714c0 .597.237 1.17.659 1.591L19.8 15.3M14.25 3.104c.251.023.501.05.75.082M19.8 15.3l-1.57.393A9.065 9.065 0 0112 15a9.065 9.065 0 00-6.23.693L5 14.5m14.8.8l1.402 1.402c1.232 1.232.65 3.318-1.067 3.611A48.309 48.309 0 0112 21c-2.773 0-5.491-.235-8.135-.687-1.718-.293-2.3-2.379-1.067-3.61L5 14.5" />
                   </svg>
                 ),
               },
               {
                 step: "03",
-                title: "Receive",
-                desc: "Download 5 professional PDFs: forensic report, Xactimate estimate, supplement, appeal letter, and cover email.",
+                title: "Download Your Package",
+                desc: "Get back up to 5 professional PDFs branded with your company logo. Forensic report, estimate, supplement, appeal letter, and cover email.",
                 icon: (
-                  <svg
-                    className="w-8 h-8 text-[var(--navy)]"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                    strokeWidth={1.5}
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"
-                    />
+                  <svg className="w-8 h-8 text-[var(--navy)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
                   </svg>
                 ),
               },
             ].map((item) => (
               <div
                 key={item.step}
-                className="relative bg-[var(--gray-50)] rounded-2xl p-8 border border-gray-100 hover:border-[var(--navy)]/20 transition-colors"
+                className="relative bg-white rounded-2xl p-8 border border-gray-100 hover:border-[var(--navy)]/20 transition-colors"
               >
                 <span className="absolute top-6 right-6 text-5xl font-bold text-gray-100">
                   {item.step}
@@ -268,70 +332,68 @@ export default function Home() {
                 <h3 className="text-xl font-bold text-[var(--navy)] mb-2">
                   {item.title}
                 </h3>
-                <p className="text-gray-600 leading-relaxed">{item.desc}</p>
+                <p className="text-gray-600 leading-relaxed text-sm">{item.desc}</p>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* What You Get */}
+      {/* The 5 Documents */}
       <section className="py-20 px-6 bg-[var(--navy)]">
         <div className="max-w-5xl mx-auto">
           <h2 className="text-3xl sm:text-4xl font-bold text-white text-center mb-4">
             The 5-Document Package
           </h2>
           <p className="text-gray-400 text-center mb-14 max-w-xl mx-auto">
-            Every document is forensic-grade, code-cited, and built to make
-            carriers move.
+            Every document forensic-grade, code-cited, and branded
+            with your company logo.
           </p>
 
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {[
-              {
-                num: "01",
-                title: "Forensic Causation Report",
-                desc: "Photo-annotated damage analysis with clinical forensic observations. Every finding tied to HAAG standards.",
-              },
-              {
-                num: "02",
-                title: "Xactimate Estimate",
-                desc: "Line-item scope at current regional pricing. Every line item backed by building code citations.",
-              },
-              {
-                num: "03",
-                title: "Supplement Report",
-                desc: "Line-by-line carrier vs. our scope. Exposes every underpayment, missed item, and pricing discrepancy.",
-              },
-              {
-                num: "04",
-                title: "Appeal Letter",
-                desc: "Formal demand citing building codes, insurance regulations, and forensic evidence. Written to move adjusters.",
-              },
-              {
-                num: "05",
-                title: "Cover Email",
-                desc: "Ready-to-send email with professional tone, attachment summary, and response deadline.",
-              },
-              {
-                num: "++",
-                title: "Carrier Intelligence",
-                desc: "Every claim feeds self-learning playbooks. The system knows your carrier's tactics before you do.",
-              },
+              { num: "01", title: "Forensic Causation Report", desc: "Photo-annotated damage analysis with clinical observations. Every finding tied to HAAG engineering standards." },
+              { num: "02", title: "Xactimate Estimate", desc: "Line-item scope at current regional pricing. Every line item backed by building code citations and photo evidence." },
+              { num: "03", title: "Supplement Report", desc: "Line-by-line carrier vs. your scope. Exposes every underpayment, missed item, and pricing discrepancy." },
+              { num: "04", title: "Appeal Letter", desc: "Formal demand citing building codes, insurance regulations, and forensic evidence. Written to move adjusters." },
+              { num: "05", title: "Cover Email", desc: "Ready-to-send email with professional tone, attachment summary, and regulatory response deadline." },
+              { num: "++", title: "Carrier Intelligence", desc: "Every claim feeds self-learning carrier playbooks. By claim #20, the system knows your carrier's tactics before you do." },
             ].map((doc) => (
-              <div
-                key={doc.num}
-                className="bg-white/5 border border-white/10 rounded-xl p-6 hover:bg-white/10 transition-colors"
-              >
-                <span className="text-[var(--red)] text-sm font-mono font-bold">
-                  {doc.num}
-                </span>
-                <h4 className="text-white font-semibold mt-2 mb-2">
-                  {doc.title}
-                </h4>
-                <p className="text-gray-400 text-sm leading-relaxed">
-                  {doc.desc}
-                </p>
+              <div key={doc.num} className="bg-white/5 border border-white/10 rounded-xl p-6 hover:bg-white/10 transition-colors">
+                <span className="text-[var(--red)] text-sm font-mono font-bold">{doc.num}</span>
+                <h4 className="text-white font-semibold mt-2 mb-2">{doc.title}</h4>
+                <p className="text-gray-400 text-sm leading-relaxed">{doc.desc}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Who This Is For */}
+      <section className="py-20 px-6 bg-white">
+        <div className="max-w-5xl mx-auto">
+          <h2 className="text-3xl sm:text-4xl font-bold text-[var(--navy)] text-center mb-14">
+            Built For Companies That Are Tired of Leaving Money on the Table
+          </h2>
+
+          <div className="grid md:grid-cols-3 gap-6">
+            {[
+              {
+                title: "Roofing Contractors",
+                desc: "You have 50 reps. Maybe 5 know insurance. This makes all 50 perform like your best insurance specialist. Every claim, every time.",
+              },
+              {
+                title: "PE Rollup Platforms",
+                desc: "You're acquiring contractors doing $100-400M/year. 40% is storm-related. This standardizes insurance claims across every location you own.",
+              },
+              {
+                title: "Restoration Companies",
+                desc: "Supplements are your biggest profit leak. One missed photo costs you $5,000. This catches every line item, every code citation, every time.",
+              },
+            ].map((item) => (
+              <div key={item.title} className="bg-[var(--gray-50)] rounded-2xl p-8 border border-gray-100">
+                <h3 className="text-lg font-bold text-[var(--navy)] mb-3">{item.title}</h3>
+                <p className="text-gray-600 text-sm leading-relaxed">{item.desc}</p>
               </div>
             ))}
           </div>
@@ -339,79 +401,37 @@ export default function Home() {
       </section>
 
       {/* Results */}
-      <section id="results" className="py-20 px-6 bg-white scroll-mt-20">
+      <section id="results" className="py-20 px-6 bg-[var(--gray-50)] scroll-mt-20">
         <div className="max-w-5xl mx-auto">
           <h2 className="text-3xl sm:text-4xl font-bold text-[var(--navy)] text-center mb-4">
-            Real Results. Real Claims.
+            Real Results. Real Claims. Real Carrier Movement.
           </h2>
           <p className="text-gray-500 text-center mb-14 max-w-xl mx-auto">
-            Not projections. Not estimates. Documented carrier movement from
-            actual claims processed through the platform.
+            Not projections. Documented carrier movement from actual claims.
           </p>
 
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-14">
             {[
-              {
-                carrier: "Church Mutual",
-                before: "$20,408",
-                after: "$943,233",
-                increase: "4,522%",
-              },
-              {
-                carrier: "Allstate",
-                before: "$81,170",
-                after: "$120,312",
-                increase: "48%",
-              },
-              {
-                carrier: "Erie Insurance",
-                before: "$32,048",
-                after: "$72,145",
-                increase: "125%",
-              },
-              {
-                carrier: "Nationwide",
-                before: "$77,019",
-                after: "$122,155",
-                increase: "59%",
-              },
-              {
-                carrier: "Hanover",
-                before: "$33,394",
-                after: "$56,769",
-                increase: "70%",
-              },
-              {
-                carrier: "State Farm",
-                before: "$37,669",
-                after: "$80,963",
-                increase: "115%",
-              },
+              { carrier: "Church Mutual", before: "$20,408", after: "$943,233", increase: "4,522%" },
+              { carrier: "Allstate", before: "$81,170", after: "$120,312", increase: "48%" },
+              { carrier: "Erie Insurance", before: "$32,048", after: "$72,145", increase: "125%" },
+              { carrier: "Nationwide", before: "$77,019", after: "$122,155", increase: "59%" },
+              { carrier: "Hanover", before: "$33,394", after: "$56,769", increase: "70%" },
+              { carrier: "State Farm", before: "$37,669", after: "$80,963", increase: "115%" },
             ].map((result) => (
-              <div
-                key={result.carrier}
-                className="bg-[var(--gray-50)] rounded-xl p-6 border border-gray-100"
-              >
-                <div className="text-sm font-semibold text-gray-500 mb-3">
-                  {result.carrier}
-                </div>
+              <div key={result.carrier} className="bg-white rounded-xl p-6 border border-gray-100">
+                <div className="text-sm font-semibold text-gray-500 mb-3">{result.carrier}</div>
                 <div className="flex items-baseline gap-3 mb-1">
-                  <span className="text-gray-400 line-through text-sm">
-                    {result.before}
-                  </span>
-                  <span className="text-[var(--navy)] font-bold text-xl">
-                    {result.after}
-                  </span>
+                  <span className="text-gray-400 line-through text-sm">{result.before}</span>
+                  <span className="text-[var(--navy)] font-bold text-xl">{result.after}</span>
                 </div>
-                <div className="text-[var(--red)] font-bold text-sm">
-                  +{result.increase}
-                </div>
+                <div className="text-[var(--red)] font-bold text-sm">+{result.increase}</div>
               </div>
             ))}
           </div>
 
           {/* Comparison Table */}
-          <div className="bg-[var(--gray-50)] rounded-2xl p-8 border border-gray-100">
+          <div className="bg-white rounded-2xl p-8 border border-gray-100">
             <h3 className="text-xl font-bold text-[var(--navy)] mb-6 text-center">
               Dumb Roof vs. The Old Way
             </h3>
@@ -420,48 +440,25 @@ export default function Home() {
                 <thead>
                   <tr className="border-b border-gray-200">
                     <th className="pb-3 text-sm text-gray-500 font-medium"></th>
-                    <th className="pb-3 text-sm text-gray-500 font-medium">
-                      Traditional
-                    </th>
-                    <th className="pb-3 text-sm text-[var(--red)] font-bold">
-                      Dumb Roof
-                    </th>
+                    <th className="pb-3 text-sm text-gray-500 font-medium">Traditional</th>
+                    <th className="pb-3 text-sm text-[var(--red)] font-bold">Dumb Roof</th>
                   </tr>
                 </thead>
                 <tbody className="text-sm">
                   {[
                     ["Time per claim", "1-3 months", "15 minutes"],
                     ["Cost per claim", "$7,500 - $30,000", "~$10"],
-                    ["Documents generated", "1 (maybe)", "5 professional PDFs"],
-                    [
-                      "Code citations",
-                      "Rarely included",
-                      "Every line item cited",
-                    ],
-                    [
-                      "Photo forensics",
-                      "Unlabeled photos",
-                      "Annotated evidence chain",
-                    ],
-                    [
-                      "Carrier intelligence",
-                      "None",
-                      "Self-learning playbooks",
-                    ],
-                    [
-                      "Who can use it",
-                      "Insurance specialists only",
-                      "Any sales rep",
-                    ],
+                    ["Documents generated", "1 estimate (maybe)", "5 forensic-grade PDFs"],
+                    ["Code citations", "Rarely included", "Every line item cited"],
+                    ["Photo evidence", "Unlabeled photos", "Forensic annotations tied to line items"],
+                    ["Carrier intelligence", "Start from scratch every time", "Self-learning playbooks"],
+                    ["Training required", "Years of insurance experience", "Upload and click"],
+                    ["Rep turnover risk", "Knowledge walks out the door", "System stays. Forever."],
                   ].map(([label, old, dr]) => (
                     <tr key={label} className="border-b border-gray-100">
-                      <td className="py-3 font-medium text-gray-700">
-                        {label}
-                      </td>
+                      <td className="py-3 font-medium text-gray-700">{label}</td>
                       <td className="py-3 text-gray-500">{old}</td>
-                      <td className="py-3 font-semibold text-[var(--navy)]">
-                        {dr}
-                      </td>
+                      <td className="py-3 font-semibold text-[var(--navy)]">{dr}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -478,8 +475,8 @@ export default function Home() {
             Get Early Access
           </h2>
           <p className="text-gray-400 mb-10">
-            We&apos;re onboarding contractors for private beta. Drop your email
-            and we&apos;ll be in touch.
+            We&apos;re onboarding contractors for private beta. A world-class insurance
+            claims system, directly integrated into your company.
           </p>
 
           {!submitted ? (
@@ -504,12 +501,8 @@ export default function Home() {
             </form>
           ) : (
             <div className="bg-white/10 border border-white/20 rounded-xl p-6">
-              <p className="text-white font-semibold text-lg">
-                You&apos;re on the list.
-              </p>
-              <p className="text-gray-400 mt-1">
-                We&apos;ll reach out when your spot opens up.
-              </p>
+              <p className="text-white font-semibold text-lg">You&apos;re on the list.</p>
+              <p className="text-gray-400 mt-1">We&apos;ll reach out when your spot opens up.</p>
             </div>
           )}
         </div>
@@ -519,16 +512,11 @@ export default function Home() {
       <footer className="bg-[var(--navy)] border-t border-white/10 py-8 px-6">
         <div className="max-w-5xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-[var(--red)] flex items-center justify-center font-bold text-white text-sm">
-              DR
-            </div>
-            <span className="text-gray-400 text-sm">
-              Dumb Roof Technologies
-            </span>
+            <div className="w-8 h-8 rounded-lg bg-[var(--red)] flex items-center justify-center font-bold text-white text-sm">DR</div>
+            <span className="text-gray-400 text-sm">Dumb Roof Technologies</span>
           </div>
           <p className="text-gray-500 text-sm">
-            &copy; {new Date().getFullYear()} Dumb Roof Technologies. All
-            rights reserved.
+            &copy; {new Date().getFullYear()} Dumb Roof Technologies. All rights reserved.
           </p>
         </div>
       </footer>
