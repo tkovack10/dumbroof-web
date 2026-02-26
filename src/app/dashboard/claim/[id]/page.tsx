@@ -69,6 +69,7 @@ export default function ClaimDetailPage() {
   const [selectedCategory, setSelectedCategory] = useState<UploadCategory>("photos");
   const [newFiles, setNewFiles] = useState<File[]>([]);
   const [showUpload, setShowUpload] = useState(false);
+  const [reprocessing, setReprocessing] = useState(false);
   const formRef = useRef<HTMLDivElement>(null);
 
   const fetchClaim = useCallback(async () => {
@@ -164,6 +165,23 @@ export default function ClaimDetailPage() {
       setUploadError(err instanceof Error ? err.message : "Upload failed");
     }
     setUploading(false);
+  };
+
+  const handleReprocess = async () => {
+    if (!claim) return;
+    setReprocessing(true);
+    try {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+      const res = await fetch(`${apiUrl}/api/reprocess/${claim.id}`, {
+        method: "POST",
+      });
+      if (!res.ok) throw new Error("Reprocess failed");
+      // Status will change to processing — poll will pick it up
+      fetchClaim();
+    } catch (err) {
+      console.error("Reprocess failed:", err);
+    }
+    setReprocessing(false);
   };
 
   const statusConfig: Record<string, { color: string; label: string; bg: string }> = {
@@ -401,6 +419,27 @@ export default function ClaimDetailPage() {
               </button>
             )}
           </div>
+
+          {/* Reprocess button — visible when claim is ready and user may have uploaded new docs */}
+          {isReady && !showUpload && (
+            <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-3 mb-4 flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-blue-800">
+                  Updated documents? Reprocess to generate new reports.
+                </p>
+                <p className="text-xs text-blue-600 mt-0.5">
+                  If you uploaded a revised scope or appraisal award, reprocess to compare and record changes.
+                </p>
+              </div>
+              <button
+                onClick={handleReprocess}
+                disabled={reprocessing}
+                className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ml-4"
+              >
+                {reprocessing ? "Starting..." : "Reprocess Claim"}
+              </button>
+            </div>
+          )}
 
           {/* Success/Error messages */}
           {uploadSuccess && (

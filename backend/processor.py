@@ -600,6 +600,136 @@ Extract every line item. Use 0 for values not found."""
     return _parse_json_response(response.content[0].text)
 
 
+def diff_carrier_scopes(
+    client: anthropic.Anthropic,
+    old_carrier_data: dict,
+    new_carrier_data: dict,
+    usarm_line_items: list,
+    usarm_arguments: list,
+) -> dict:
+    """Compare old vs new carrier scope and identify what changed.
+    Returns a revision record with added/increased/still-missing items
+    and which USARM arguments likely drove each change."""
+
+    old_rcv = old_carrier_data.get("carrier_rcv", 0) or 0
+    new_rcv = new_carrier_data.get("carrier_rcv", 0) or 0
+    movement = new_rcv - old_rcv
+    movement_pct = (movement / old_rcv * 100) if old_rcv > 0 else 0
+
+    old_items = old_carrier_data.get("carrier_line_items", [])
+    new_items = new_carrier_data.get("carrier_line_items", [])
+
+    # Build lookup by description (normalized)
+    def normalize(desc):
+        return desc.lower().strip().replace("  ", " ")
+
+    old_lookup = {}
+    for item in old_items:
+        key = normalize(item.get("carrier_desc", ""))
+        old_lookup[key] = item
+
+    new_lookup = {}
+    for item in new_items:
+        key = normalize(item.get("carrier_desc", ""))
+        new_lookup[key] = item
+
+    items_added = []
+    items_increased = []
+    items_unchanged = []
+
+    for key, new_item in new_lookup.items():
+        if key not in old_lookup:
+            items_added.append({
+                "description": new_item.get("carrier_desc", ""),
+                "new_amount": new_item.get("carrier_amount", 0),
+                "qty": new_item.get("qty", 0),
+                "unit": new_item.get("unit", ""),
+            })
+        else:
+            old_amt = old_lookup[key].get("carrier_amount", 0) or 0
+            new_amt = new_item.get("carrier_amount", 0) or 0
+            if new_amt > old_amt * 1.05:  # >5% increase = meaningful
+                items_increased.append({
+                    "description": new_item.get("carrier_desc", ""),
+                    "old_amount": old_amt,
+                    "new_amount": new_amt,
+                    "increase": new_amt - old_amt,
+                })
+            else:
+                items_unchanged.append(key)
+
+    # Items in old but not new (removed/reclassified)
+    items_removed = []
+    for key, old_item in old_lookup.items():
+        if key not in new_lookup:
+            items_removed.append({
+                "description": old_item.get("carrier_desc", ""),
+                "old_amount": old_item.get("carrier_amount", 0),
+            })
+
+    # Use Claude to map changes to USARM arguments that likely drove them
+    argument_mapping = []
+    if (items_added or items_increased) and usarm_arguments:
+        try:
+            changes_text = ""
+            for item in items_added[:10]:
+                changes_text += f"ADDED: {item['description']} (${item['new_amount']:,.2f})\n"
+            for item in items_increased[:10]:
+                changes_text += f"INCREASED: {item['description']} (${item['old_amount']:,.2f} → ${item['new_amount']:,.2f})\n"
+
+            args_text = "\n".join(f"- {arg}" for arg in usarm_arguments[:15])
+
+            prompt = f"""A carrier revised their insurance scope after receiving our supplement. Map each change to the USARM argument that likely drove it.
+
+CHANGES IN CARRIER'S REVISED SCOPE:
+{changes_text}
+
+OUR USARM ARGUMENTS (from supplement/appeal):
+{args_text}
+
+For each change, identify which USARM argument most likely convinced the carrier. Return ONLY a JSON array:
+[{{"change": "description", "likely_argument": "the argument that drove this", "confidence": "high/medium/low"}}]"""
+
+            response = _call_claude_with_retry(client,
+                model="claude-sonnet-4-6",
+                max_tokens=2048,
+                messages=[{"role": "user", "content": prompt}]
+            )
+            argument_mapping = _parse_json_response(response.content[0].text)
+            if not isinstance(argument_mapping, list):
+                argument_mapping = []
+        except Exception as e:
+            print(f"[REVISION] Argument mapping failed (non-fatal): {e}")
+
+    revision = {
+        "revision_date": datetime.now().strftime("%Y-%m-%d"),
+        "previous_rcv": round(old_rcv, 2),
+        "new_rcv": round(new_rcv, 2),
+        "movement": round(movement, 2),
+        "movement_pct": round(movement_pct, 1),
+        "items_added": items_added,
+        "items_added_count": len(items_added),
+        "items_increased": items_increased,
+        "items_increased_count": len(items_increased),
+        "items_removed": items_removed,
+        "items_still_missing_count": 0,  # Could compute from USARM vs new carrier
+        "argument_mapping": argument_mapping,
+    }
+
+    # Determine if this is a win
+    is_win = movement > 0 and movement_pct >= 5  # 5%+ increase = win
+
+    print(f"[REVISION] Carrier moved ${old_rcv:,.2f} → ${new_rcv:,.2f} ({movement_pct:+.1f}%)")
+    print(f"[REVISION] {len(items_added)} items added, {len(items_increased)} increased, {len(items_removed)} removed")
+    if is_win:
+        print(f"[REVISION] WIN DETECTED — ${movement:,.2f} carrier movement (+{movement_pct:.1f}%)")
+
+    return {
+        "revision": revision,
+        "is_win": is_win,
+    }
+
+
 # ===================================================================
 # CONFIG BUILDER
 # ===================================================================
@@ -1285,7 +1415,49 @@ async def process_claim(claim_id: str):
     if not claim:
         raise ValueError(f"Claim {claim_id} not found")
 
-    print(f"[PROCESS] Starting claim: {claim['address']} ({claim['phase']})")
+    # Detect if this is a REVISION (claim was already processed before)
+    is_revision = bool(claim.get("output_files"))
+    previous_carrier_data = None
+    original_carrier_rcv = 0
+
+    if is_revision:
+        print(f"[PROCESS] Starting REVISED claim: {claim['address']} ({claim['phase']}) — revision detected")
+        # Load previous carrier data from DB or local claim config
+        previous_carrier_data = claim.get("previous_carrier_data")
+        original_carrier_rcv = claim.get("original_carrier_rcv", 0)
+
+        if not previous_carrier_data:
+            # Try reading from local claim config
+            slug = claim.get("slug", "")
+            if not slug:
+                slug = claim["address"].lower().replace(",", "").replace("  ", " ").replace(" ", "-").strip("-")
+            local_config_path = os.path.join(PLATFORM_DIR, "claims", slug, "claim_config.json")
+            if os.path.exists(local_config_path):
+                try:
+                    with open(local_config_path) as f:
+                        prev_config = json.load(f)
+                    previous_carrier_data = {
+                        "carrier_rcv": prev_config.get("carrier", {}).get("carrier_rcv", 0),
+                        "carrier_line_items": prev_config.get("carrier", {}).get("carrier_line_items", []),
+                        "carrier_arguments": prev_config.get("carrier", {}).get("carrier_arguments", []),
+                    }
+                    if not original_carrier_rcv:
+                        original_carrier_rcv = prev_config.get("dashboard", {}).get("carrier_1st_scope", 0) or prev_config.get("carrier", {}).get("carrier_rcv", 0)
+                    print(f"[REVISION] Loaded previous carrier data from local config: ${previous_carrier_data['carrier_rcv']:,.2f}")
+                except Exception as e:
+                    print(f"[REVISION] Could not load previous config (non-fatal): {e}")
+
+        # Save current carrier data as previous BEFORE reprocessing (for future revisions)
+        if previous_carrier_data:
+            try:
+                sb.table("claims").update({
+                    "previous_carrier_data": previous_carrier_data,
+                    "original_carrier_rcv": original_carrier_rcv or previous_carrier_data.get("carrier_rcv", 0),
+                }).eq("id", claim_id).execute()
+            except Exception:
+                pass  # DB columns may not exist yet — that's OK
+    else:
+        print(f"[PROCESS] Starting claim: {claim['address']} ({claim['phase']})")
 
     # Update status to processing
     sb.table("claims").update({"status": "processing"}).eq("id", claim_id).execute()
@@ -1472,6 +1644,47 @@ async def process_claim(claim_id: str):
         # Point to a file that doesn't exist — generator will print "not found" and skip extraction
         config["source_docs"] = {"companycam_pdf": "_no_companycam.pdf"}
 
+        # 9c. REVISION DIFF — if this is a reprocess with prior carrier data, diff and record
+        revision_data = None
+        if is_revision and previous_carrier_data and carrier_data:
+            try:
+                print(f"[PROCESS] Running scope revision analysis...")
+                usarm_arguments = config.get("forensic_findings", {}).get("key_arguments", [])
+                diff_result = diff_carrier_scopes(
+                    claude,
+                    previous_carrier_data,
+                    carrier_data,
+                    config.get("line_items", []),
+                    usarm_arguments,
+                )
+                revision_data = diff_result["revision"]
+                is_win = diff_result["is_win"]
+
+                # Append revision to config
+                existing_revisions = config.get("scope_revisions", [])
+                existing_revisions.append(revision_data)
+                config["scope_revisions"] = existing_revisions
+
+                # Update dashboard section for revision
+                if original_carrier_rcv:
+                    config["dashboard"]["carrier_1st_scope"] = original_carrier_rcv
+                config["dashboard"]["carrier_current"] = revision_data["new_rcv"]
+
+                if is_win:
+                    config["dashboard"]["status"] = "won"
+                    config["dashboard"]["phase"] = "Settled"
+                    config["dashboard"]["notes"] = (
+                        f"WIN: ${original_carrier_rcv:,.0f} → ${revision_data['new_rcv']:,.0f} "
+                        f"(+{revision_data['movement_pct']:.0f}%) | "
+                        f"{revision_data['items_added_count']} items added, "
+                        f"{revision_data['items_increased_count']} increased"
+                    )
+                    print(f"[REVISION] Marked as WIN on dashboard")
+
+            except Exception as e:
+                print(f"[REVISION] Scope diff failed (non-fatal): {e}")
+                traceback.print_exc()
+
         # 10. Generate PDFs
         print(f"[PROCESS] Generating PDFs...")
         pdfs = generate_pdfs(config, work_dir)
@@ -1497,6 +1710,36 @@ async def process_claim(claim_id: str):
                 "flagged": photo_integrity["flagged"],
                 "score": photo_integrity["score"],
             }
+
+        # Save revision data to DB (columns may not exist yet — handle gracefully)
+        if revision_data:
+            try:
+                update_data["scope_revisions"] = config.get("scope_revisions", [])
+                if diff_result.get("is_win"):
+                    update_data["claim_outcome"] = "won"
+                    update_data["settlement_amount"] = revision_data["new_rcv"]
+                # Save current carrier data as previous for future revisions
+                update_data["previous_carrier_data"] = {
+                    "carrier_rcv": carrier_data.get("carrier_rcv", 0),
+                    "carrier_line_items": carrier_data.get("carrier_line_items", []),
+                    "carrier_arguments": carrier_data.get("carrier_arguments", []),
+                }
+                if not original_carrier_rcv:
+                    update_data["original_carrier_rcv"] = previous_carrier_data.get("carrier_rcv", 0)
+            except Exception:
+                pass  # DB columns may not exist — revision data is in config anyway
+        elif carrier_data and not is_revision:
+            # First processing — save carrier data for future revision diffs
+            try:
+                update_data["previous_carrier_data"] = {
+                    "carrier_rcv": carrier_data.get("carrier_rcv", 0),
+                    "carrier_line_items": carrier_data.get("carrier_line_items", []),
+                    "carrier_arguments": carrier_data.get("carrier_arguments", []),
+                }
+                update_data["original_carrier_rcv"] = carrier_data.get("carrier_rcv", 0)
+            except Exception:
+                pass
+
         sb.table("claims").update(update_data).eq("id", claim_id).execute()
 
         print(f"[PROCESS] Claim complete: {claim['address']} — {len(pdfs)} PDFs ready")
@@ -1574,16 +1817,24 @@ def sync_to_github_dashboard(config: dict, claim: dict, photo_analysis: dict, ca
     financials = compute_financials(config)
     carrier_rcv = config.get("carrier", {}).get("carrier_rcv", 0)
 
-    # Add dashboard section to config
+    # Add dashboard section to config — preserve existing dashboard data from revision processing
     carrier_name = config.get("carrier", {}).get("name", claim.get("carrier", ""))
-    config["dashboard"] = {
-        "status": "pending",
-        "phase": "Pre-Scope" if config.get("phase") == "pre-scope" else "Supplement Filed",
-        "carrier_1st_scope": carrier_rcv,
-        "carrier_current": carrier_rcv,
-        "primary_tactic": "",
-        "notes": f"Processed via dumbroof.ai | {len(config.get('line_items', []))} line items | Source: web upload",
-    }
+    existing_dashboard = config.get("dashboard", {})
+    if not existing_dashboard or existing_dashboard.get("status") == "pending":
+        # Fresh claim or no revision — build default dashboard
+        config["dashboard"] = {
+            "status": "pending",
+            "phase": "Pre-Scope" if config.get("phase") == "pre-scope" else "Supplement Filed",
+            "carrier_1st_scope": carrier_rcv,
+            "carrier_current": carrier_rcv,
+            "primary_tactic": "",
+            "notes": f"Processed via dumbroof.ai | {len(config.get('line_items', []))} line items | Source: web upload",
+        }
+    else:
+        # Revision already set dashboard (won/settled/etc) — preserve it, just update carrier_current
+        config["dashboard"]["carrier_current"] = carrier_rcv
+        if not config["dashboard"].get("carrier_1st_scope"):
+            config["dashboard"]["carrier_1st_scope"] = carrier_rcv
 
     # Remove internal paths before saving
     config_to_save = {k: v for k, v in config.items() if k != "_paths"}
@@ -1754,7 +2005,31 @@ def update_carrier_playbook(carrier_name: str, claim: dict, config: dict, financ
     if key_findings:
         entry += f"- **Key Findings:** {'; '.join(key_findings[:3])}\n"
 
-    entry += f"- **Status:** Pending\n\n"
+    # Revision/win data
+    revisions = config.get("scope_revisions", [])
+    dashboard = config.get("dashboard", {})
+    if revisions:
+        latest = revisions[-1]
+        entry += f"\n#### Scope Revision ({latest.get('revision_date', 'N/A')})\n"
+        entry += f"- **Previous RCV:** ${latest.get('previous_rcv', 0):,.2f}\n"
+        entry += f"- **New RCV:** ${latest.get('new_rcv', 0):,.2f}\n"
+        entry += f"- **Movement:** ${latest.get('movement', 0):,.2f} (+{latest.get('movement_pct', 0):.1f}%)\n"
+        entry += f"- **Items Added:** {latest.get('items_added_count', 0)}\n"
+        entry += f"- **Items Increased:** {latest.get('items_increased_count', 0)}\n"
+
+        # Proven arguments
+        mappings = latest.get("argument_mapping", [])
+        if mappings:
+            entry += "\n##### Proven Arguments (What Moved the Carrier)\n"
+            for m in mappings[:8]:
+                conf = m.get("confidence", "")
+                entry += f"- [{conf}] {m.get('change', '')} ← **{m.get('likely_argument', '')}**\n"
+
+    status = dashboard.get("status", "pending")
+    if status == "won":
+        entry += f"\n**RESULT: WIN** — ${dashboard.get('carrier_1st_scope', 0):,.0f} → ${dashboard.get('carrier_current', 0):,.0f}\n\n"
+    else:
+        entry += f"- **Status:** {status.title()}\n\n"
 
     # Append to playbook
     with open(playbook_path, "a") as f:
