@@ -782,6 +782,50 @@ def _detect_roof_material(photo_analysis: dict, user_notes: str = "") -> str:
     return "3tab"
 
 
+def _estimate_linear_measurements(area_sf: float, facets: int, style: str = "combination") -> dict:
+    """Estimate linear measurements from roof area when EagleView data is incomplete.
+
+    Uses industry rules of thumb for residential roofs:
+    - Perimeter ≈ 4 × √(area_sf)
+    - Eave ≈ 40% of perimeter
+    - Rake ≈ 30% of perimeter
+    - Ridge ≈ 50% of eave
+    - Valley count scales with facet count
+    - Hip depends on roof style
+    """
+    import math
+    if area_sf <= 0:
+        return {}
+
+    perimeter = 4 * math.sqrt(area_sf)
+    eave = round(perimeter * 0.40)
+    rake = round(perimeter * 0.30)
+    ridge = round(eave * 0.50)
+
+    # Valley estimation: complex roofs (many facets) have more valleys
+    valley_count = max(0, (facets - 4) // 3)  # ~1 valley per 3 facets beyond 4
+    valley = round(valley_count * 12)  # Average valley length ~12 LF
+
+    # Hip estimation
+    hip = 0
+    if style in ("hip", "combination"):
+        hip = round(eave * 0.30)
+
+    # Step flashing: estimate ~20 LF per chimney/wall intersection
+    step_flashing = round(facets * 1.5)  # More facets = more wall intersections
+
+    # General flashing
+    flashing = round(facets * 2.0)
+
+    return {
+        "eave": eave, "rake": rake, "ridge": ridge,
+        "valley": valley, "hip": hip,
+        "step_flashing": step_flashing, "flashing": flashing,
+        "drip_edge": eave + rake,
+        "_estimated": True,
+    }
+
+
 def build_line_items(measurements: dict, photo_analysis: dict, state: str, user_notes: str = "") -> list:
     """Build Xactimate line items from measurements, analysis, and user context."""
     meas = measurements.get("measurements", {})
@@ -790,22 +834,53 @@ def build_line_items(measurements: dict, photo_analysis: dict, state: str, user_
     area_sq = struct.get("roof_area_sq", measurements.get("total_roof_area_sq", 0))
     area_sf = struct.get("roof_area_sf", measurements.get("total_roof_area_sf", 0))
     penetrations = measurements.get("penetrations", {})
+    facets = struct.get("facets", 0)
+    style = struct.get("style", "combination")
+
+    material = _detect_roof_material(photo_analysis, user_notes)
+
+    # Pitch correction: pre-pitch EagleView reports give 2D (flat) area at 0/12.
+    # Apply pitch factor to get true area. Slate/tile roofs are typically 8/12+.
+    pitch_str = struct.get("predominant_pitch", "")
+    if pitch_str in ("0/12", "0", ""):
+        import math
+        if material in ("slate", "tile"):
+            default_rise = 8  # Slate/tile is typically steep
+        else:
+            default_rise = 6  # Standard residential
+        pitch_factor = math.sqrt(1 + (default_rise / 12) ** 2)
+        area_sf = round(area_sf * pitch_factor)
+        area_sq = round(area_sf / 100, 2)
+        pitch_str = f"{default_rise}/12"
+        print(f"[LINE ITEMS] Pre-pitch report — applied {pitch_str} factor ({pitch_factor:.3f}x) → {area_sf} SF ({area_sq} SQ)")
+
+    # If linear measurements are all zero but we have area, estimate them
     eave = meas.get("eave", 0)
     valley = meas.get("valley", 0)
     ridge = meas.get("ridge", 0)
     hip = meas.get("hip", 0)
     rake = meas.get("rake", 0)
 
-    material = _detect_roof_material(photo_analysis, user_notes)
+    if area_sf > 0 and eave == 0 and ridge == 0:
+        print(f"[LINE ITEMS] No linear measurements — estimating from {area_sf:.0f} SF roof area, {facets} facets")
+        est = _estimate_linear_measurements(area_sf, facets, style)
+        eave = est.get("eave", 0)
+        rake = est.get("rake", 0)
+        ridge = est.get("ridge", 0)
+        valley = est.get("valley", 0)
+        hip = est.get("hip", 0)
+        meas = {**meas, **est}
     notes_lower = (user_notes or "").lower()
 
     items = []
 
     # ===================== PRIMARY ROOFING MATERIAL =====================
     if material == "slate":
-        items.append({"category": "ROOFING", "description": "Remove slate roofing", "qty": area_sq, "unit": "SQ", "unit_price": 250.00})
-        items.append({"category": "ROOFING", "description": "Slate roofing - natural", "qty": area_sq, "unit": "SQ", "unit_price": 1450.00})
+        items.append({"category": "ROOFING", "description": "Remove slate roofing", "qty": area_sq, "unit": "SQ", "unit_price": 325.00})
+        items.append({"category": "ROOFING", "description": "Slate roofing - high grade natural", "qty": area_sq, "unit": "SQ", "unit_price": 1850.00})
         items.append({"category": "ROOFING", "description": "Underlayment - felt 30#", "qty": area_sq, "unit": "SQ", "unit_price": 22.00})
+        items.append({"category": "ROOFING", "description": "Copper nails & hooks for slate", "qty": area_sq, "unit": "SQ", "unit_price": 45.00})
+        items.append({"category": "ROOFING", "description": "Slate roofing - additional labor (specialist)", "qty": area_sq, "unit": "SQ", "unit_price": 350.00})
     elif material == "tile":
         items.append({"category": "ROOFING", "description": "Remove concrete/clay tile roofing", "qty": area_sq, "unit": "SQ", "unit_price": 200.00})
         items.append({"category": "ROOFING", "description": "Concrete/clay tile roofing", "qty": area_sq, "unit": "SQ", "unit_price": 900.00})
@@ -843,7 +918,7 @@ def build_line_items(measurements: dict, photo_analysis: dict, state: str, user_
     # ===================== RIDGE CAP =====================
     if ridge > 0:
         if material == "slate":
-            items.append({"category": "ROOFING", "description": "R&R Ridge cap - slate", "qty": ridge, "unit": "LF", "unit_price": 32.00})
+            items.append({"category": "ROOFING", "description": "R&R Ridge cap - slate", "qty": ridge, "unit": "LF", "unit_price": 38.00})
         elif material == "tile":
             items.append({"category": "ROOFING", "description": "R&R Ridge cap - tile", "qty": ridge, "unit": "LF", "unit_price": 28.00})
         elif material == "metal_standing_seam":
@@ -859,7 +934,7 @@ def build_line_items(measurements: dict, photo_analysis: dict, state: str, user_
     # ===================== HIP CAP =====================
     if hip > 0:
         if material == "slate":
-            items.append({"category": "ROOFING", "description": "R&R Hip cap - slate", "qty": hip, "unit": "LF", "unit_price": 32.00})
+            items.append({"category": "ROOFING", "description": "R&R Hip cap - slate", "qty": hip, "unit": "LF", "unit_price": 38.00})
         elif material == "tile":
             items.append({"category": "ROOFING", "description": "R&R Hip cap - tile", "qty": hip, "unit": "LF", "unit_price": 28.00})
         else:
@@ -892,7 +967,7 @@ def build_line_items(measurements: dict, photo_analysis: dict, state: str, user_
         items.append({"category": "ROOFING", "description": "R&R Exhaust vent", "qty": vents, "unit": "EA", "unit_price": 125.00})
 
     # ===================== STEEP / HIGH CHARGES =====================
-    pitch_str = struct.get("predominant_pitch", "")
+    # Use the corrected pitch_str (may have been updated from 0/12 to estimated pitch)
     if pitch_str:
         try:
             rise = int(pitch_str.split("/")[0])
