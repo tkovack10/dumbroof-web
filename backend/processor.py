@@ -1230,11 +1230,11 @@ async def process_claim(claim_id: str):
             except Exception as e:
                 print(f"[INTEGRITY] Analysis failed (non-fatal): {e}")
 
-        # 8. Extract carrier scope (if present)
+        # 8. Extract carrier scope (if present) — use last scope file (most recent upload)
         carrier_data = None
         if scope_paths:
-            print(f"[PROCESS] Extracting carrier scope...")
-            carrier_data = extract_carrier_scope(claude, scope_paths[0])
+            print(f"[PROCESS] Extracting carrier scope ({len(scope_paths)} file(s))...")
+            carrier_data = extract_carrier_scope(claude, scope_paths[-1])
 
         # 8b. Extract weather data (if present)
         weather_data = {}
