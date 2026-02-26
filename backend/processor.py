@@ -325,6 +325,7 @@ def build_claim_config(
     carrier_data: Optional[dict],
     photo_filenames: list,
     weather_data: Optional[dict] = None,
+    company_profile: Optional[dict] = None,
 ) -> dict:
     """Build a complete claim_config.json from extracted data."""
     prop = measurements.get("property", {})
@@ -369,15 +370,15 @@ def build_claim_config(
     config = {
         "phase": phase,
         "company": {
-            "name": "Dumb Roof Technologies",
-            "address": "",
-            "city_state_zip": "",
-            "ceo_name": "",
-            "ceo_title": "",
-            "email": "",
-            "cell_phone": "",
+            "name": (company_profile or {}).get("company_name", ""),
+            "address": (company_profile or {}).get("address", ""),
+            "city_state_zip": (company_profile or {}).get("city_state_zip", ""),
+            "ceo_name": (company_profile or {}).get("contact_name", ""),
+            "ceo_title": (company_profile or {}).get("contact_title", ""),
+            "email": (company_profile or {}).get("email", ""),
+            "cell_phone": (company_profile or {}).get("phone", ""),
             "office_phone": "",
-            "website": "dumbroof.ai"
+            "website": (company_profile or {}).get("website", ""),
         },
         "property": {
             "address": prop.get("address", claim.get("address", "")),
@@ -634,6 +635,16 @@ async def process_claim(claim_id: str):
     # Update status to processing
     sb.table("claims").update({"status": "processing"}).eq("id", claim_id).execute()
 
+    # 1b. Get user's company profile for white-label branding
+    company_profile = None
+    try:
+        profile_result = sb.table("company_profiles").select("*").eq("user_id", claim["user_id"]).single().execute()
+        company_profile = profile_result.data
+        if company_profile:
+            print(f"[PROCESS] Using company branding: {company_profile.get('company_name', 'N/A')}")
+    except Exception:
+        pass  # No profile set — use defaults
+
     # 2. Create temp work directory
     with tempfile.TemporaryDirectory(prefix="dumbroof_") as work_dir:
         photos_dir = os.path.join(work_dir, "photos")
@@ -643,7 +654,18 @@ async def process_claim(claim_id: str):
         os.makedirs(source_dir)
         os.makedirs(output_dir)
 
-        # Copy USARM logo if available
+        # Download user's logo from Supabase if they have one
+        if company_profile and company_profile.get("logo_path"):
+            try:
+                logo_data = sb.storage.from_("claim-documents").download(company_profile["logo_path"])
+                logo_dest = os.path.join(photos_dir, "usarm_logo.jpg")
+                with open(logo_dest, "wb") as f:
+                    f.write(logo_data)
+                print(f"[PROCESS] Downloaded user logo")
+            except Exception as e:
+                print(f"[PROCESS] Could not download logo: {e}")
+
+        # Fallback: Copy USARM logo if no user logo
         logo_src = os.path.expanduser(
             "~/Library/Mobile Documents/com~apple~CloudDocs/logo-version-2-2 2.JPG"
         )
@@ -710,7 +732,7 @@ async def process_claim(claim_id: str):
         # 9. Build claim config
         print(f"[PROCESS] Building claim config...")
         config = build_claim_config(
-            claim, measurements, photo_analysis, carrier_data, photo_filenames, weather_data
+            claim, measurements, photo_analysis, carrier_data, photo_filenames, weather_data, company_profile
         )
 
         # Set paths for the generator

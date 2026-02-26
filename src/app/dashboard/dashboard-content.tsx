@@ -93,6 +93,9 @@ export function DashboardContent({ user }: { user: User }) {
             </span>
           </div>
           <div className="flex items-center gap-4">
+            <a href="/dashboard/settings" className="text-gray-400 hover:text-white text-sm transition-colors hidden sm:block">
+              Settings
+            </a>
             <span className="text-gray-400 text-sm hidden sm:block">
               {user.email}
             </span>
