@@ -765,10 +765,254 @@ async def process_claim(claim_id: str):
 
         print(f"[PROCESS] Claim complete: {claim['address']} — {len(pdfs)} PDFs ready")
 
+        # 13. Sync to GitHub dashboard + carrier playbooks
+        try:
+            sync_to_github_dashboard(config, claim, photo_analysis, carrier_data)
+        except Exception as e:
+            print(f"[SYNC] GitHub sync failed (non-fatal): {e}")
+
 
 # ===================================================================
 # HELPERS
 # ===================================================================
+
+PLATFORM_DIR = os.path.expanduser("~/USARM-Claims-Platform")
+SYNC_SCRIPT = os.path.join(PLATFORM_DIR, "sync_dashboard.py")
+
+
+def compute_financials(config: dict) -> dict:
+    """Calculate financial totals from line items."""
+    line_total = sum(
+        item.get("qty", 0) * item.get("unit_price", 0)
+        for item in config.get("line_items", [])
+    )
+    tax_rate = config.get("financials", {}).get("tax_rate", 0.08)
+    tax = line_total * tax_rate
+    rcv = line_total + tax
+    o_and_p_amount = line_total * 0.20 if config.get("scope", {}).get("o_and_p") else 0
+    total = rcv + o_and_p_amount
+    deductible = config.get("financials", {}).get("deductible", 0)
+    net = total - deductible
+    carrier_rcv = config.get("carrier", {}).get("carrier_rcv", 0)
+    variance = total - carrier_rcv if carrier_rcv else 0
+    return {
+        "line_total": round(line_total, 2),
+        "tax": round(tax, 2),
+        "rcv": round(rcv, 2),
+        "o_and_p": round(o_and_p_amount, 2),
+        "total": round(total, 2),
+        "deductible": round(deductible, 2),
+        "net": round(net, 2),
+        "variance": round(variance, 2),
+    }
+
+
+def sync_to_github_dashboard(config: dict, claim: dict, photo_analysis: dict, carrier_data: Optional[dict]):
+    """Sync processed claim to USARM GitHub dashboard + carrier playbooks."""
+    if not os.path.exists(PLATFORM_DIR):
+        print("[SYNC] USARM-Claims-Platform not found — skipping GitHub sync")
+        return
+
+    # Build slug
+    slug = claim.get("slug", "")
+    if not slug:
+        slug = claim["address"].lower().replace(",", "").replace(" ", "-").strip("-")
+
+    claim_dir = os.path.join(PLATFORM_DIR, "claims", slug)
+    os.makedirs(os.path.join(claim_dir, "pdf_output"), exist_ok=True)
+
+    # Compute financials
+    financials = compute_financials(config)
+    carrier_rcv = config.get("carrier", {}).get("carrier_rcv", 0)
+
+    # Add dashboard section to config
+    carrier_name = config.get("carrier", {}).get("name", claim.get("carrier", ""))
+    config["dashboard"] = {
+        "status": "pending",
+        "phase": "Pre-Scope" if config.get("phase") == "pre-scope" else "Supplement Filed",
+        "carrier_1st_scope": carrier_rcv,
+        "carrier_current": carrier_rcv,
+        "primary_tactic": "",
+        "notes": f"Processed via dumbroof.ai | {len(config.get('line_items', []))} line items | Source: web upload",
+    }
+
+    # Remove internal paths before saving
+    config_to_save = {k: v for k, v in config.items() if k != "_paths"}
+
+    # Write claim_config.json
+    config_path = os.path.join(claim_dir, "claim_config.json")
+    with open(config_path, "w") as f:
+        json.dump(config_to_save, f, indent=2)
+    print(f"[SYNC] Saved config: {config_path}")
+
+    # Update carrier playbook
+    update_carrier_playbook(carrier_name, claim, config, financials, photo_analysis, carrier_data)
+
+    # Run dashboard sync
+    if os.path.exists(SYNC_SCRIPT):
+        result = subprocess.run(
+            ["python3", SYNC_SCRIPT, "--update-html"],
+            capture_output=True, text=True, cwd=PLATFORM_DIR,
+            timeout=30,
+        )
+        if result.returncode == 0:
+            print(f"[SYNC] Dashboard HTML updated")
+        else:
+            print(f"[SYNC] Dashboard sync warning: {result.stderr[:200]}")
+
+    # Update memory files
+    update_memory_files(claim, config, financials, carrier_name)
+
+    # Git commit and push
+    try:
+        subprocess.run(
+            ["git", "add", f"claims/{slug}/", "docs/index.html"],
+            capture_output=True, text=True, cwd=PLATFORM_DIR, timeout=10,
+        )
+        # Also add carrier playbook and memory files
+        carrier_slug = carrier_name.lower().replace(" ", "-")
+        playbook_path = f"carrier_playbooks/{carrier_slug}.md"
+        if os.path.exists(os.path.join(PLATFORM_DIR, playbook_path)):
+            subprocess.run(
+                ["git", "add", playbook_path],
+                capture_output=True, text=True, cwd=PLATFORM_DIR, timeout=10,
+            )
+
+        # Add memory files
+        memory_dir = os.path.expanduser("~/.claude/projects/-Users-thomaskovackjr-USARM-Claims-Platform/memory")
+        if os.path.exists(memory_dir):
+            # Copy memory files into repo for git tracking
+            repo_memory = os.path.join(PLATFORM_DIR, "memory")
+            os.makedirs(repo_memory, exist_ok=True)
+            import shutil
+            for mf in os.listdir(memory_dir):
+                if mf.endswith(".md"):
+                    shutil.copy2(os.path.join(memory_dir, mf), os.path.join(repo_memory, mf))
+            subprocess.run(
+                ["git", "add", "memory/"],
+                capture_output=True, text=True, cwd=PLATFORM_DIR, timeout=10,
+            )
+
+        commit_msg = f"Add {claim['address']} claim ({carrier_name}) — via dumbroof.ai"
+        result = subprocess.run(
+            ["git", "commit", "-m", commit_msg],
+            capture_output=True, text=True, cwd=PLATFORM_DIR, timeout=10,
+        )
+        if result.returncode == 0:
+            push_result = subprocess.run(
+                ["git", "push"],
+                capture_output=True, text=True, cwd=PLATFORM_DIR, timeout=30,
+            )
+            if push_result.returncode == 0:
+                print(f"[SYNC] Git push successful — dashboard updated")
+            else:
+                print(f"[SYNC] Git push failed: {push_result.stderr[:200]}")
+        else:
+            print(f"[SYNC] Git commit: {result.stdout[:200]}")
+    except Exception as e:
+        print(f"[SYNC] Git error: {e}")
+
+
+def update_memory_files(claim: dict, config: dict, financials: dict, carrier_name: str):
+    """Update PROJECTS.md and completed-claims.md in the memory directory."""
+    memory_dir = os.path.expanduser("~/.claude/projects/-Users-thomaskovackjr-USARM-Claims-Platform/memory")
+    if not os.path.exists(memory_dir):
+        print("[SYNC] Memory directory not found — skipping memory updates")
+        return
+
+    address = claim.get("address", "Unknown")
+    phase = config.get("phase", "unknown")
+    trades = ", ".join(config.get("scope", {}).get("trades", []))
+    usarm_rcv = financials.get("total", 0)
+    carrier_rcv = config.get("carrier", {}).get("carrier_rcv", 0)
+    date = datetime.now().strftime("%Y-%m-%d")
+
+    # Update completed-claims.md
+    claims_file = os.path.join(memory_dir, "completed-claims.md")
+    entry = f"\n### {address}\n"
+    entry += f"- **Date:** {date}\n"
+    entry += f"- **Carrier:** {carrier_name}\n"
+    entry += f"- **Phase:** {phase}\n"
+    entry += f"- **Trades:** {trades}\n"
+    entry += f"- **USARM RCV:** ${usarm_rcv:,.2f}\n"
+    entry += f"- **Carrier RCV:** ${carrier_rcv:,.2f}\n"
+    entry += f"- **Variance:** ${financials.get('variance', 0):,.2f}\n"
+    entry += f"- **Status:** Pending\n"
+    entry += f"- **Source:** dumbroof.ai\n"
+    entry += f"- **Claim #:** {config.get('carrier', {}).get('claim_number', 'N/A')}\n\n"
+
+    try:
+        with open(claims_file, "a") as f:
+            f.write(entry)
+        print(f"[SYNC] Updated completed-claims.md")
+    except Exception as e:
+        print(f"[SYNC] Could not update completed-claims.md: {e}")
+
+    # Update PROJECTS.md if it exists
+    projects_file = os.path.join(memory_dir, "PROJECTS.md")
+    if os.path.exists(projects_file):
+        try:
+            with open(projects_file, "a") as f:
+                f.write(f"\n| {address} | {carrier_name} | {phase} | ${usarm_rcv:,.0f} | Pending | dumbroof.ai | {date} |\n")
+            print(f"[SYNC] Updated PROJECTS.md")
+        except Exception as e:
+            print(f"[SYNC] Could not update PROJECTS.md: {e}")
+
+
+def update_carrier_playbook(carrier_name: str, claim: dict, config: dict, financials: dict, photo_analysis: dict, carrier_data: Optional[dict]):
+    """Append claim data to the carrier's playbook file."""
+    if not carrier_name:
+        return
+
+    carrier_slug = carrier_name.lower().replace(" ", "-")
+    playbook_path = os.path.join(PLATFORM_DIR, "carrier_playbooks", f"{carrier_slug}.md")
+
+    # Create playbook if it doesn't exist
+    if not os.path.exists(playbook_path):
+        with open(playbook_path, "w") as f:
+            f.write(f"# {carrier_name} — Carrier Playbook\n\n")
+            f.write(f"> Auto-generated. Updated after every claim against {carrier_name}.\n\n")
+            f.write("---\n\n## Claims History\n\n")
+
+    # Build entry
+    address = claim.get("address", "Unknown")
+    phase = config.get("phase", "unknown")
+    trades = ", ".join(config.get("scope", {}).get("trades", []))
+    usarm_rcv = financials.get("total", 0)
+    carrier_rcv = config.get("carrier", {}).get("carrier_rcv", 0)
+    damage_type = photo_analysis.get("damage_type", "unknown")
+    severity = photo_analysis.get("severity", "unknown")
+    date = datetime.now().strftime("%Y-%m-%d")
+
+    entry = f"\n### {address} ({date})\n"
+    entry += f"- **Phase:** {phase}\n"
+    entry += f"- **Trades:** {trades}\n"
+    entry += f"- **USARM RCV:** ${usarm_rcv:,.2f}\n"
+    entry += f"- **Carrier RCV:** ${carrier_rcv:,.2f}\n"
+    entry += f"- **Variance:** ${financials.get('variance', 0):,.2f}\n"
+    entry += f"- **Damage Type:** {damage_type} | Severity: {severity}\n"
+    entry += f"- **Source:** dumbroof.ai web upload\n"
+
+    if carrier_data:
+        arguments = carrier_data.get("carrier_arguments", [])
+        if arguments:
+            entry += f"- **Carrier Arguments:** {'; '.join(arguments[:3])}\n"
+        acknowledged = carrier_data.get("carrier_acknowledged_items", [])
+        if acknowledged:
+            entry += f"- **Carrier Acknowledged:** {'; '.join(acknowledged[:5])}\n"
+
+    key_findings = photo_analysis.get("key_findings", [])
+    if key_findings:
+        entry += f"- **Key Findings:** {'; '.join(key_findings[:3])}\n"
+
+    entry += f"- **Status:** Pending\n\n"
+
+    # Append to playbook
+    with open(playbook_path, "a") as f:
+        f.write(entry)
+
+    print(f"[SYNC] Updated carrier playbook: {carrier_slug}.md")
+
 
 def _parse_json_response(text: str) -> dict:
     """Parse JSON from Claude's response, handling markdown code blocks."""
