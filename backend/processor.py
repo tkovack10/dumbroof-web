@@ -86,6 +86,91 @@ def get_media_type(filename: str) -> str:
     }.get(ext, "application/octet-stream")
 
 
+def extract_images_from_pdf(pdf_path: str, output_dir: str) -> list[str]:
+    """Extract images from a PDF file using pdfimages (poppler) or PyMuPDF fallback.
+
+    Returns list of extracted image file paths.
+    """
+    extracted = []
+    basename = os.path.splitext(os.path.basename(pdf_path))[0]
+    prefix = os.path.join(output_dir, f"{basename}_")
+
+    # Try pdfimages first (fast, high quality)
+    try:
+        subprocess.run(
+            ["pdfimages", "-j", pdf_path, prefix],
+            capture_output=True, timeout=30
+        )
+        # pdfimages outputs files like prefix-000.jpg, prefix-001.jpg, etc.
+        import glob
+        for img_path in sorted(glob.glob(f"{prefix}*.jpg") + glob.glob(f"{prefix}*.ppm") + glob.glob(f"{prefix}*.png")):
+            # Convert PPM to JPEG if needed
+            if img_path.endswith(".ppm"):
+                jpg_path = img_path.rsplit(".", 1)[0] + ".jpg"
+                try:
+                    subprocess.run(
+                        ["sips", "-s", "format", "jpeg", img_path, "--out", jpg_path],
+                        capture_output=True, timeout=15
+                    )
+                    if os.path.exists(jpg_path) and os.path.getsize(jpg_path) > 0:
+                        os.remove(img_path)
+                        img_path = jpg_path
+                except Exception:
+                    pass
+            # Skip small images (icons, logos, UI elements) — real photos are 30KB+
+            if os.path.getsize(img_path) > 30000:
+                extracted.append(img_path)
+
+        if extracted:
+            print(f"[PHOTOS] Extracted {len(extracted)} images from PDF via pdfimages: {os.path.basename(pdf_path)}")
+            return extracted
+    except FileNotFoundError:
+        pass  # pdfimages not installed, try PyMuPDF
+    except Exception as e:
+        print(f"[PHOTOS] pdfimages failed: {e}")
+
+    # Fallback: PyMuPDF (fitz)
+    try:
+        import fitz
+        doc = fitz.open(pdf_path)
+        img_idx = 0
+        skipped = 0
+        for page_num in range(len(doc)):
+            page = doc[page_num]
+            for img in page.get_images(full=True):
+                xref = img[0]
+                pix = fitz.Pixmap(doc, xref)
+                if pix.n >= 5:  # CMYK — convert to RGB
+                    pix = fitz.Pixmap(fitz.csRGB, pix)
+
+                # Skip small images (icons, logos, UI elements) — real photos are 200x200+
+                if pix.width < 200 or pix.height < 200:
+                    pix = None
+                    skipped += 1
+                    continue
+
+                img_path = f"{prefix}p{page_num:02d}_{img_idx:03d}.jpg"
+                pix.save(img_path)
+                pix = None
+
+                # Also skip by file size — real photos are 30KB+ even compressed
+                if os.path.getsize(img_path) < 30000:
+                    os.remove(img_path)
+                    skipped += 1
+                else:
+                    extracted.append(img_path)
+                img_idx += 1
+        doc.close()
+        if skipped:
+            print(f"[PHOTOS] Skipped {skipped} small/non-photo images")
+        if extracted:
+            print(f"[PHOTOS] Extracted {len(extracted)} inspection photos from PDF via PyMuPDF: {os.path.basename(pdf_path)}")
+    except Exception as e:
+        print(f"[PHOTOS] PyMuPDF extraction failed: {e}")
+
+    return extracted
+
+
 def resize_photo(path: str, max_dim: int = 1024) -> str:
     """Resize a photo to max_dim on longest side using sips. Returns path to resized copy."""
     ext = path.lower().rsplit(".", 1)[-1]
@@ -869,14 +954,25 @@ async def process_claim(claim_id: str):
             download_file(sb, "claim-documents", f"{file_path}/measurements/{fname}", local)
             measurement_paths.append(local)
 
-        # 4. Download photos
+        # 4. Download photos (extract images from PDFs if needed)
         photo_paths = []
         photo_filenames = []
         for fname in claim.get("photo_files", []):
             local = os.path.join(photos_dir, fname)
             download_file(sb, "claim-documents", f"{file_path}/photos/{fname}", local)
-            photo_paths.append(local)
-            photo_filenames.append(fname)
+
+            # If the photo file is a PDF, extract images from it
+            if fname.lower().endswith(".pdf"):
+                print(f"[PHOTOS] Photo file is a PDF — extracting images: {fname}")
+                extracted = extract_images_from_pdf(local, photos_dir)
+                if extracted:
+                    photo_paths.extend(extracted)
+                    photo_filenames.extend([os.path.basename(p) for p in extracted])
+                else:
+                    print(f"[PHOTOS] WARNING: No images extracted from {fname}")
+            else:
+                photo_paths.append(local)
+                photo_filenames.append(fname)
 
         # 5. Download carrier scope (if any)
         scope_paths = []
@@ -941,6 +1037,10 @@ async def process_claim(claim_id: str):
             "output": output_dir,
             "source_docs": source_dir,
         }
+
+        # Set source_docs config so generator doesn't try to extract from a nonexistent CompanyCam PDF
+        # Point to a file that doesn't exist — generator will print "not found" and skip extraction
+        config["source_docs"] = {"companycam_pdf": "_no_companycam.pdf"}
 
         # 10. Generate PDFs
         print(f"[PROCESS] Generating PDFs...")
