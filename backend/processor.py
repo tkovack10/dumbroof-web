@@ -18,6 +18,7 @@ from typing import Optional, List, Dict
 import time
 
 import anthropic
+import traceback
 from supabase import create_client, Client
 
 
@@ -365,10 +366,11 @@ HAIL DAMAGE INDICATORS:
 - Soft metal deformation (gutters, vents, flashing)
 
 ANALYSIS PRIORITIES:
-- Prioritize identifying and documenting storm-related damage (hail and wind impacts)
-- Note how pre-existing material condition (age, brittleness, weathering) affects the feasibility of spot repairs vs. full system replacement
-- When materials show both storm damage and age-related wear, document both — aged/brittle materials that sustain storm damage often cannot be spot-repaired because replacement materials won't integrate with the degraded existing system
-- Document all damage types observed — storm impacts are the primary focus of this forensic assessment
+- FOCUS ON STORM DAMAGE — hail impacts, wind displacement, fractures from the storm event. This is 90% of the report.
+- Do NOT catalog every minor wear detail (lichen, moss, minor surface weathering, faded paint). Only mention pre-existing condition ONCE, briefly, if it makes spot repair infeasible.
+- Keep annotations concise — 1-2 sentences per photo focusing on the storm damage evidence visible
+- For chalk test photos: describe what the chalk test reveals (number of gaps = hail impacts), not the chalk itself
+- For test square photos: report the counts (H=hits, W=wind) and what they prove
 
 Number the photos starting at {start_num}. Return ONLY valid JSON:
 {{
@@ -641,6 +643,167 @@ Use empty strings for values not found."""
         messages=[{"role": "user", "content": content}]
     )
     return _parse_json_response(response.content[0].text)
+
+
+def search_weather_corroboration(city: str, state: str, storm_date: str) -> list[dict]:
+    """Search web for corroborating weather reports — NOAA, local news, social media."""
+    results = []
+    try:
+        from duckduckgo_search import DDGS
+    except ImportError:
+        print("[WEATHER] duckduckgo_search not installed — skipping corroboration search")
+        return results
+
+    queries = [
+        f"{city} {state} hail storm {storm_date}",
+        f"{city} {state} severe weather damage {storm_date}",
+        f"NOAA storm report {city} {state} {storm_date} hail",
+    ]
+
+    seen_urls = set()
+    for query in queries:
+        try:
+            with DDGS() as ddgs:
+                for r in ddgs.text(query, max_results=5):
+                    url = r.get("href", "")
+                    if url in seen_urls:
+                        continue
+                    seen_urls.add(url)
+
+                    # Classify the source type
+                    source_lower = (r.get("title", "") + " " + url).lower()
+                    if any(k in source_lower for k in ["noaa", "nws", "weather.gov", "ncdc"]):
+                        source_type = "NOAA / National Weather Service"
+                    elif any(k in source_lower for k in ["facebook", "twitter", "x.com", "reddit", "nextdoor"]):
+                        source_type = "Social Media"
+                    elif any(k in source_lower for k in ["news", "patch", "herald", "tribune", "times", "post", "abc", "nbc", "cbs", "fox", "wfmz", "wnep", "wpvi"]):
+                        source_type = "Local News"
+                    else:
+                        source_type = "Web Report"
+
+                    results.append({
+                        "title": r.get("title", ""),
+                        "url": url,
+                        "snippet": r.get("body", "")[:200],
+                        "source_type": source_type,
+                    })
+        except Exception as e:
+            print(f"[WEATHER] Search error for '{query}': {e}")
+            continue
+
+    # Deduplicate and limit to top 8
+    print(f"[WEATHER] Found {len(results)} corroborating weather reports")
+    return results[:8]
+
+
+def synthesize_executive_summary(
+    client: anthropic.Anthropic,
+    damage_summary: str,
+    weather_data: dict,
+    carrier_data: Optional[dict],
+    material: str,
+    key_findings: list,
+    photo_count: int,
+) -> list[str]:
+    """Use Claude to synthesize raw damage data into a structured executive summary.
+    Returns a list of paragraph strings (3-5 paragraphs)."""
+    carrier_rcv = carrier_data.get("carrier_rcv", 0) if carrier_data else 0
+    carrier_name = carrier_data["carrier"]["name"] if carrier_data and "carrier" in carrier_data else "the carrier"
+
+    prompt = f"""You are writing the Executive Summary for a forensic causation report on a storm-damaged property.
+The roofing material is: {material}
+
+Raw damage analysis from photo inspection:
+{damage_summary[:3000]}
+
+Weather data: Storm date {weather_data.get('storm_date', 'N/A')}, hail size {weather_data.get('hail_size', 'N/A')}
+Carrier RCV: ${carrier_rcv:,.2f}
+Photo count: {photo_count}
+Key findings count: {len(key_findings)}
+
+Write 3-5 SHORT paragraphs (2-4 sentences each) that build evidence gracefully:
+
+Paragraph 1 — SCOPE: What property was inspected, what material systems are involved, what storm event caused the damage, and the date of loss. Set the scene.
+
+Paragraph 2 — KEY DAMAGE FINDINGS: Summarize the primary storm damage documented — hail impacts on soft metals (confirmed by chalk testing), slate/roofing damage, gutter deformation. Be specific but concise. Do NOT list every minor observation.
+
+Paragraph 3 — TECHNICAL BASIS: Why full replacement is required vs. spot repair — material matching impossibility, code compliance triggers, non-repairability of aged system post-storm.
+
+Paragraph 4 (if carrier scope exists) — CARRIER VARIANCE: The carrier's scope at ${carrier_rcv:,.2f} does not account for [key missing items]. Our forensic analysis identifies a scope significantly beyond the carrier's approved amount.
+
+RULES:
+- NO run-on paragraphs — each paragraph should be 2-4 sentences max
+- Professional, clinical forensic tone — NOT marketing language
+- Do NOT mention every minor wear detail — focus on the storm damage evidence that matters
+- Weave evidence together gracefully — build the case paragraph by paragraph
+- Reference specific evidence (chalk testing, fracture patterns, code requirements) without being exhaustive
+
+Return ONLY a JSON array of paragraph strings: ["paragraph 1...", "paragraph 2...", ...]"""
+
+    response = _call_claude_with_retry(client,
+        model="claude-sonnet-4-6",
+        max_tokens=2048,
+        messages=[{"role": "user", "content": prompt}]
+    )
+    paragraphs = _parse_json_response(response.content[0].text)
+    if isinstance(paragraphs, list):
+        return paragraphs
+    return [damage_summary]
+
+
+def synthesize_conclusion(
+    client: anthropic.Anthropic,
+    damage_summary: str,
+    key_findings: list,
+    code_violations: list,
+    material: str,
+    carrier_data: Optional[dict],
+) -> list[str]:
+    """Use Claude to synthesize a structured conclusion. Returns list of paragraph strings."""
+    carrier_rcv = carrier_data.get("carrier_rcv", 0) if carrier_data else 0
+    findings_text = "\n".join(f"- {f}" for f in key_findings[:15])
+    violations_text = "\n".join(f"- {v.get('code','')}: {v.get('requirement', v.get('description',''))}" for v in code_violations[:10])
+
+    prompt = f"""You are writing the Conclusion & Scope Determination section for a forensic causation report.
+Roofing material: {material}
+
+Key forensic findings:
+{findings_text}
+
+Code violations documented:
+{violations_text}
+
+Carrier RCV: ${carrier_rcv:,.2f}
+Damage summary context: {damage_summary[:1500]}
+
+Write 3-4 SHORT paragraphs (2-4 sentences each) that tie everything together:
+
+Paragraph 1 — EVIDENCE SYNTHESIS: Based on our forensic analysis of [N] documented findings, the property at [address] sustained confirmed storm damage from [storm event]. Summarize the weight of evidence — chalk-tested hail impacts, fracture patterns, code violations.
+
+Paragraph 2 — TECHNICAL DETERMINATION: The confirmed damage to [material] and associated components requires full system replacement. Explain WHY in 2-3 sentences — material matching, code triggers, non-repairability.
+
+Paragraph 3 — SCOPE RECOMMENDATION: Based on the documented damage, applicable building codes, and industry standards, we recommend full replacement of [systems]. The carrier's current scope of ${carrier_rcv:,.2f} does not adequately address the documented conditions.
+
+Paragraph 4 (optional) — PROFESSIONAL STANDARD: Reference the applicable standards (HAAG, NRCA, IRC) that support the determination.
+
+RULES:
+- NO run-on paragraphs — 2-4 sentences each
+- Professional, authoritative tone
+- Tie the evidence together — don't just repeat findings
+- Build toward the conclusion logically
+- Do NOT pad with filler or repeat minor wear details
+
+Return ONLY a JSON array of paragraph strings: ["paragraph 1...", "paragraph 2...", ...]"""
+
+    response = _call_claude_with_retry(client,
+        model="claude-sonnet-4-6",
+        max_tokens=2048,
+        messages=[{"role": "user", "content": prompt}]
+    )
+    paragraphs = _parse_json_response(response.content[0].text)
+    if isinstance(paragraphs, list):
+        return paragraphs
+    return [damage_summary[:500]]
 
 
 def build_claim_config(
@@ -1242,6 +1405,18 @@ async def process_claim(claim_id: str):
             print(f"[PROCESS] Extracting weather data...")
             weather_data = extract_weather_data(claude, weather_paths[0])
 
+        # 8c. Search for corroborating weather reports (NOAA, news, social media)
+        city = measurements.get("property", {}).get("city", "")
+        state = measurements.get("property", {}).get("state", "")
+        storm_date = (weather_data or {}).get("storm_date", "")
+        corroborating_reports = []
+        if city and storm_date:
+            print(f"[PROCESS] Searching for corroborating weather reports...")
+            try:
+                corroborating_reports = search_weather_corroboration(city, state, storm_date)
+            except Exception as e:
+                print(f"[WEATHER] Corroboration search failed (non-fatal): {e}")
+
         # 9. Build claim config
         print(f"[PROCESS] Building claim config...")
         config = build_claim_config(
@@ -1249,6 +1424,41 @@ async def process_claim(claim_id: str):
             user_notes=claim.get("user_notes"),
             photo_integrity=photo_integrity,
         )
+
+        # Add corroborating weather reports to config
+        if corroborating_reports:
+            config["weather"]["corroborating_reports"] = corroborating_reports
+
+        # 9b. Synthesize structured executive summary + conclusion (replaces run-on paragraphs)
+        material = config.get("structures", [{}])[0].get("shingle_type", "roofing material")
+        try:
+            print(f"[PROCESS] Synthesizing executive summary...")
+            exec_paragraphs = synthesize_executive_summary(
+                claude,
+                photo_analysis.get("damage_summary", ""),
+                weather_data or {},
+                carrier_data,
+                material,
+                photo_analysis.get("key_findings", []),
+                photo_analysis.get("photo_count", 0),
+            )
+            config["forensic_findings"]["executive_summary"] = exec_paragraphs
+        except Exception as e:
+            print(f"[PROCESS] Executive summary synthesis failed (non-fatal): {e}")
+
+        try:
+            print(f"[PROCESS] Synthesizing conclusion...")
+            conclusion_paragraphs = synthesize_conclusion(
+                claude,
+                photo_analysis.get("damage_summary", ""),
+                photo_analysis.get("key_findings", []),
+                photo_analysis.get("code_violations", []),
+                material,
+                carrier_data,
+            )
+            config["forensic_findings"]["conclusion_paragraphs"] = conclusion_paragraphs
+        except Exception as e:
+            print(f"[PROCESS] Conclusion synthesis failed (non-fatal): {e}")
 
         # Set paths for the generator
         config["_paths"] = {
@@ -1291,9 +1501,9 @@ async def process_claim(claim_id: str):
 
         print(f"[PROCESS] Claim complete: {claim['address']} — {len(pdfs)} PDFs ready")
 
-        # 13. Sync to GitHub dashboard + carrier playbooks
+        # 13. Sync to GitHub dashboard + carrier playbooks (pass PDFs for local copy)
         try:
-            sync_to_github_dashboard(config, claim, photo_analysis, carrier_data)
+            sync_to_github_dashboard(config, claim, photo_analysis, carrier_data, pdfs)
         except Exception as e:
             print(f"[SYNC] GitHub sync failed (non-fatal): {e}")
 
@@ -1333,7 +1543,7 @@ def compute_financials(config: dict) -> dict:
     }
 
 
-def sync_to_github_dashboard(config: dict, claim: dict, photo_analysis: dict, carrier_data: Optional[dict]):
+def sync_to_github_dashboard(config: dict, claim: dict, photo_analysis: dict, carrier_data: Optional[dict], pdfs: Optional[list] = None):
     """Sync processed claim to USARM GitHub dashboard + carrier playbooks."""
     if not os.path.exists(PLATFORM_DIR):
         print("[SYNC] USARM-Claims-Platform not found — skipping GitHub sync")
@@ -1345,7 +1555,20 @@ def sync_to_github_dashboard(config: dict, claim: dict, photo_analysis: dict, ca
         slug = claim["address"].lower().replace(",", "").replace(" ", "-").strip("-")
 
     claim_dir = os.path.join(PLATFORM_DIR, "claims", slug)
-    os.makedirs(os.path.join(claim_dir, "pdf_output"), exist_ok=True)
+    pdf_output_dir = os.path.join(claim_dir, "pdf_output")
+    os.makedirs(pdf_output_dir, exist_ok=True)
+
+    # Copy generated PDFs to local claims folder
+    if pdfs:
+        import shutil
+        copied = 0
+        for pdf_path in pdfs:
+            if os.path.exists(pdf_path):
+                dest = os.path.join(pdf_output_dir, os.path.basename(pdf_path))
+                shutil.copy2(pdf_path, dest)
+                copied += 1
+        if copied:
+            print(f"[SYNC] Copied {copied} PDFs to {pdf_output_dir}")
 
     # Compute financials
     financials = compute_financials(config)
