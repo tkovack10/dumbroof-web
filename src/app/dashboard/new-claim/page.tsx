@@ -12,6 +12,7 @@ export default function NewClaimPage() {
   const [measurementFiles, setMeasurementFiles] = useState<File[]>([]);
   const [photoFiles, setPhotoFiles] = useState<File[]>([]);
   const [scopeFiles, setScopeFiles] = useState<File[]>([]);
+  const [weatherFiles, setWeatherFiles] = useState<File[]>([]);
   const [status, setStatus] = useState<UploadStatus>("idle");
   const [errorMsg, setErrorMsg] = useState("");
 
@@ -70,6 +71,11 @@ export default function NewClaimPage() {
         await uploadFile(file, "scope");
       }
 
+      // Upload weather data (if provided)
+      for (const file of weatherFiles) {
+        await uploadFile(file, "weather");
+      }
+
       // Save claim record to database
       const { error: dbError } = await supabase.from("claims").insert({
         user_id: user.id,
@@ -82,6 +88,7 @@ export default function NewClaimPage() {
         measurement_files: measurementFiles.map((f) => f.name),
         photo_files: photoFiles.map((f) => f.name),
         scope_files: scopeFiles.map((f) => f.name),
+        weather_files: weatherFiles.map((f) => f.name),
       });
 
       if (dbError) throw new Error(dbError.message);
@@ -250,6 +257,15 @@ export default function NewClaimPage() {
               accept=".pdf"
               files={scopeFiles}
               onFilesChange={setScopeFiles}
+            />
+
+            <FileUploadZone
+              label="Weather Data"
+              description="HailTrace report, NOAA data, or any storm/weather documentation for the loss date. Strengthens the forensic case."
+              accept=".pdf,.jpg,.jpeg,.png"
+              multiple
+              files={weatherFiles}
+              onFilesChange={setWeatherFiles}
             />
           </div>
 

@@ -5,15 +5,34 @@ Uses Claude API to read uploaded documents, extract structured data,
 build a claim config, generate PDFs, and upload results.
 """
 
+from __future__ import annotations
+
 import os
 import json
 import base64
 import tempfile
 import subprocess
 from datetime import datetime
+from typing import Optional, List, Dict
+
+import time
 
 import anthropic
 from supabase import create_client, Client
+
+
+def _call_claude_with_retry(client, max_retries=3, **kwargs):
+    """Call Claude API with retry on rate limits."""
+    for attempt in range(max_retries):
+        try:
+            return client.messages.create(**kwargs)
+        except anthropic.RateLimitError as e:
+            if attempt < max_retries - 1:
+                wait = 60 * (attempt + 1)
+                print(f"[RATE LIMIT] Waiting {wait}s before retry {attempt + 2}/{max_retries}...")
+                time.sleep(wait)
+            else:
+                raise e
 
 # ===================================================================
 # CLIENTS
@@ -75,7 +94,7 @@ def extract_measurements(client: anthropic.Anthropic, pdf_path: str) -> dict:
     """Send measurement PDF to Claude and extract structured data."""
     pdf_b64 = file_to_base64(pdf_path)
 
-    response = client.messages.create(
+    response = _call_claude_with_retry(client,
         model="claude-sonnet-4-6",
         max_tokens=4096,
         messages=[{
@@ -185,7 +204,7 @@ Return ONLY valid JSON:
 }"""
     })
 
-    response = client.messages.create(
+    response = _call_claude_with_retry(client,
         model="claude-opus-4-6",
         max_tokens=8192,
         messages=[{"role": "user", "content": content}]
@@ -197,7 +216,7 @@ def extract_carrier_scope(client: anthropic.Anthropic, pdf_path: str) -> dict:
     """Extract carrier scope data from insurance estimate PDF."""
     pdf_b64 = file_to_base64(pdf_path)
 
-    response = client.messages.create(
+    response = _call_claude_with_retry(client,
         model="claude-sonnet-4-6",
         max_tokens=8192,
         messages=[{
@@ -258,12 +277,54 @@ Extract every line item. Use 0 for values not found."""
 # CONFIG BUILDER
 # ===================================================================
 
+def extract_weather_data(client: anthropic.Anthropic, file_path: str) -> dict:
+    """Extract weather/storm data from HailTrace, NOAA, or similar report."""
+    media_type = get_media_type(file_path)
+    file_b64 = file_to_base64(file_path)
+
+    content = []
+    if media_type == "application/pdf":
+        content.append({
+            "type": "document",
+            "source": {"type": "base64", "media_type": media_type, "data": file_b64},
+        })
+    else:
+        content.append({
+            "type": "image",
+            "source": {"type": "base64", "media_type": media_type, "data": file_b64},
+        })
+
+    content.append({
+        "type": "text",
+        "text": """Read this weather/storm report (HailTrace, NOAA, or similar) and extract data into this JSON format. Return ONLY valid JSON:
+
+{
+  "hail_size": "diameter in inches (e.g. 1.75)",
+  "storm_date": "date of storm event",
+  "storm_description": "brief description of the storm event",
+  "nws_reports": ["any NWS storm reports referenced"],
+  "wind_speed": "max wind speed if available",
+  "source": "HailTrace / NOAA / other"
+}
+
+Use empty strings for values not found."""
+    })
+
+    response = _call_claude_with_retry(client,
+        model="claude-sonnet-4-6",
+        max_tokens=2048,
+        messages=[{"role": "user", "content": content}]
+    )
+    return _parse_json_response(response.content[0].text)
+
+
 def build_claim_config(
     claim: dict,
     measurements: dict,
     photo_analysis: dict,
-    carrier_data: dict | None,
-    photo_filenames: list[str],
+    carrier_data: Optional[dict],
+    photo_filenames: list,
+    weather_data: Optional[dict] = None,
 ) -> dict:
     """Build a complete claim_config.json from extracted data."""
     prop = measurements.get("property", {})
@@ -361,9 +422,9 @@ def build_claim_config(
         },
         "structures": structs,
         "weather": {
-            "hail_size": "",
-            "storm_date": "",
-            "storm_description": "",
+            "hail_size": (weather_data or {}).get("hail_size", ""),
+            "storm_date": (weather_data or {}).get("storm_date", ""),
+            "storm_description": (weather_data or {}).get("storm_description", ""),
         },
         "measurements": meas,
         "line_items": line_items,
@@ -372,7 +433,14 @@ def build_claim_config(
         "photo_sections": photo_sections,
         "forensic_findings": {
             "damage_summary": photo_analysis.get("damage_summary", ""),
-            "code_violations": photo_analysis.get("code_violations", []),
+            "code_violations": [
+                {
+                    "code": cv.get("code", ""),
+                    "requirement": cv.get("requirement", cv.get("description", "")),
+                    "status": cv.get("status", "Non-compliant — requires correction"),
+                }
+                for cv in photo_analysis.get("code_violations", [])
+            ],
             "key_arguments": photo_analysis.get("key_findings", []),
         },
         "appeal_letter": {
@@ -608,6 +676,13 @@ async def process_claim(claim_id: str):
             download_file(sb, "claim-documents", f"{file_path}/scope/{fname}", local)
             scope_paths.append(local)
 
+        # 5b. Download weather data (if any)
+        weather_paths = []
+        for fname in claim.get("weather_files", []):
+            local = os.path.join(source_dir, fname)
+            download_file(sb, "claim-documents", f"{file_path}/weather/{fname}", local)
+            weather_paths.append(local)
+
         # 6. Extract measurements via Claude
         print(f"[PROCESS] Extracting measurements...")
         measurements = {}
@@ -626,10 +701,16 @@ async def process_claim(claim_id: str):
             print(f"[PROCESS] Extracting carrier scope...")
             carrier_data = extract_carrier_scope(claude, scope_paths[0])
 
+        # 8b. Extract weather data (if present)
+        weather_data = {}
+        if weather_paths:
+            print(f"[PROCESS] Extracting weather data...")
+            weather_data = extract_weather_data(claude, weather_paths[0])
+
         # 9. Build claim config
         print(f"[PROCESS] Building claim config...")
         config = build_claim_config(
-            claim, measurements, photo_analysis, carrier_data, photo_filenames
+            claim, measurements, photo_analysis, carrier_data, photo_filenames, weather_data
         )
 
         # Set paths for the generator
