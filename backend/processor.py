@@ -135,16 +135,31 @@ def extract_images_from_pdf(pdf_path: str, output_dir: str) -> list[str]:
         doc = fitz.open(pdf_path)
         img_idx = 0
         skipped = 0
+        seen_xrefs = set()  # Deduplicate — logos/headers repeat on every page
+
         for page_num in range(len(doc)):
             page = doc[page_num]
             for img in page.get_images(full=True):
                 xref = img[0]
+
+                # Skip duplicates (same image embedded on multiple pages = logo/header)
+                if xref in seen_xrefs:
+                    continue
+                seen_xrefs.add(xref)
+
                 pix = fitz.Pixmap(doc, xref)
                 if pix.n >= 5:  # CMYK — convert to RGB
                     pix = fitz.Pixmap(fitz.csRGB, pix)
 
-                # Skip small images (icons, logos, UI elements) — real photos are 200x200+
-                if pix.width < 200 or pix.height < 200:
+                # Skip small images (icons, UI elements) — real photos are 400x300+
+                if pix.width < 400 or pix.height < 300:
+                    pix = None
+                    skipped += 1
+                    continue
+
+                # Skip extreme aspect ratios (banners/headers) — real photos are between 1:3 and 3:1
+                aspect = max(pix.width, pix.height) / max(min(pix.width, pix.height), 1)
+                if aspect > 3.0:
                     pix = None
                     skipped += 1
                     continue
@@ -153,8 +168,8 @@ def extract_images_from_pdf(pdf_path: str, output_dir: str) -> list[str]:
                 pix.save(img_path)
                 pix = None
 
-                # Also skip by file size — real photos are 30KB+ even compressed
-                if os.path.getsize(img_path) < 30000:
+                # Also skip by file size — real inspection photos are 50KB+ even compressed
+                if os.path.getsize(img_path) < 50000:
                     os.remove(img_path)
                     skipped += 1
                 else:
@@ -162,7 +177,7 @@ def extract_images_from_pdf(pdf_path: str, output_dir: str) -> list[str]:
                 img_idx += 1
         doc.close()
         if skipped:
-            print(f"[PHOTOS] Skipped {skipped} small/non-photo images")
+            print(f"[PHOTOS] Skipped {skipped} non-photo images (logos, icons, headers)")
         if extracted:
             print(f"[PHOTOS] Extracted {len(extracted)} inspection photos from PDF via PyMuPDF: {os.path.basename(pdf_path)}")
     except Exception as e:
@@ -600,7 +615,7 @@ def build_claim_config(
     tax_rate = {"NY": 0.08, "PA": 0.0, "NJ": 0.06625}.get(state, 0.08)
 
     # Build line items based on measurements and analysis
-    line_items = build_line_items(measurements, photo_analysis, state)
+    line_items = build_line_items(measurements, photo_analysis, state, user_notes=user_notes or "")
 
     # Build photo annotations mapping
     photo_annotations = {}
@@ -738,84 +753,145 @@ def build_claim_config(
     return config
 
 
-def build_line_items(measurements: dict, photo_analysis: dict, state: str) -> list:
-    """Build Xactimate line items from measurements and analysis."""
+def _detect_roof_material(photo_analysis: dict, user_notes: str = "") -> str:
+    """Detect roofing material type from photo analysis and user notes.
+
+    Returns one of: 'slate', 'tile', 'metal_standing_seam', 'copper',
+    'laminated', '3tab', or defaults to 'laminated'.
+    """
+    combined = " ".join([
+        user_notes or "",
+        photo_analysis.get("shingle_type", ""),
+        photo_analysis.get("damage_summary", ""),
+    ]).lower()
+
+    if "slate" in combined:
+        return "slate"
+    if "tile" in combined or "clay" in combined or "concrete tile" in combined:
+        return "tile"
+    if "standing seam" in combined:
+        return "metal_standing_seam"
+    if "copper" in combined and "roof" in combined and "gutter" not in combined:
+        return "copper"
+    if "metal" in combined and "roof" in combined:
+        return "metal_standing_seam"
+
+    shingle_type = photo_analysis.get("shingle_type", "architectural laminated").lower()
+    if "laminated" in shingle_type or "architectural" in shingle_type:
+        return "laminated"
+    return "3tab"
+
+
+def build_line_items(measurements: dict, photo_analysis: dict, state: str, user_notes: str = "") -> list:
+    """Build Xactimate line items from measurements, analysis, and user context."""
     meas = measurements.get("measurements", {})
     structs = measurements.get("structures", [{}])
     struct = structs[0] if structs else {}
     area_sq = struct.get("roof_area_sq", measurements.get("total_roof_area_sq", 0))
     area_sf = struct.get("roof_area_sf", measurements.get("total_roof_area_sf", 0))
-    shingle_type = photo_analysis.get("shingle_type", "architectural laminated").lower()
     penetrations = measurements.get("penetrations", {})
     eave = meas.get("eave", 0)
+    valley = meas.get("valley", 0)
+    ridge = meas.get("ridge", 0)
+    hip = meas.get("hip", 0)
+    rake = meas.get("rake", 0)
 
-    is_laminated = "laminated" in shingle_type or "architectural" in shingle_type
+    material = _detect_roof_material(photo_analysis, user_notes)
+    notes_lower = (user_notes or "").lower()
 
     items = []
 
-    # ROOFING
-    if is_laminated:
+    # ===================== PRIMARY ROOFING MATERIAL =====================
+    if material == "slate":
+        items.append({"category": "ROOFING", "description": "Remove slate roofing", "qty": area_sq, "unit": "SQ", "unit_price": 250.00})
+        items.append({"category": "ROOFING", "description": "Slate roofing - natural", "qty": area_sq, "unit": "SQ", "unit_price": 1450.00})
+        items.append({"category": "ROOFING", "description": "Underlayment - felt 30#", "qty": area_sq, "unit": "SQ", "unit_price": 22.00})
+    elif material == "tile":
+        items.append({"category": "ROOFING", "description": "Remove concrete/clay tile roofing", "qty": area_sq, "unit": "SQ", "unit_price": 200.00})
+        items.append({"category": "ROOFING", "description": "Concrete/clay tile roofing", "qty": area_sq, "unit": "SQ", "unit_price": 900.00})
+        items.append({"category": "ROOFING", "description": "Underlayment - felt 30#", "qty": area_sq, "unit": "SQ", "unit_price": 22.00})
+    elif material == "metal_standing_seam":
+        items.append({"category": "ROOFING", "description": "Remove metal roofing - standing seam", "qty": area_sq, "unit": "SQ", "unit_price": 150.00})
+        items.append({"category": "ROOFING", "description": "Metal roofing - standing seam", "qty": area_sq, "unit": "SQ", "unit_price": 850.00})
+        items.append({"category": "ROOFING", "description": "Synthetic underlayment", "qty": area_sq, "unit": "SQ", "unit_price": 32.00})
+    elif material == "laminated":
         items.append({"category": "ROOFING", "description": "Remove laminated comp shingle roofing", "qty": area_sq, "unit": "SQ", "unit_price": 74.00})
         items.append({"category": "ROOFING", "description": "Laminated comp shingle roofing - w/out felt", "qty": area_sq, "unit": "SQ", "unit_price": 320.00})
-    else:
+        items.append({"category": "ROOFING", "description": "Synthetic underlayment", "qty": area_sq, "unit": "SQ", "unit_price": 32.00})
+    else:  # 3tab
         items.append({"category": "ROOFING", "description": "Remove 3-tab 25yr comp shingle roofing", "qty": area_sq, "unit": "SQ", "unit_price": 73.14})
         items.append({"category": "ROOFING", "description": "3-tab 25yr comp shingle roofing - w/out felt", "qty": area_sq, "unit": "SQ", "unit_price": 312.92})
+        items.append({"category": "ROOFING", "description": "Synthetic underlayment", "qty": area_sq, "unit": "SQ", "unit_price": 32.00})
 
-    # Underlayment
-    items.append({"category": "ROOFING", "description": "Synthetic underlayment", "qty": area_sq, "unit": "SQ", "unit_price": 32.00})
-
-    # Ice & water barrier (2 courses at eaves + 1 in valleys)
-    valley = meas.get("valley", 0)
+    # ===================== ICE & WATER BARRIER =====================
     iw_sf = (eave * 6) + (valley * 3)
     if iw_sf > 0:
         items.append({"category": "ROOFING", "description": "Ice & water barrier", "qty": round(iw_sf), "unit": "SF", "unit_price": 2.24})
 
-    # Drip edge
-    drip = meas.get("drip_edge", 0) or (meas.get("eave", 0) + meas.get("rake", 0))
+    # ===================== DRIP EDGE =====================
+    drip = meas.get("drip_edge", 0) or (eave + rake)
     if drip > 0:
-        items.append({"category": "ROOFING", "description": "R&R Drip edge - aluminum", "qty": drip, "unit": "LF", "unit_price": 4.25})
+        if material in ("copper", "slate") and "copper" in notes_lower:
+            items.append({"category": "ROOFING", "description": "R&R Drip edge - copper", "qty": drip, "unit": "LF", "unit_price": 18.50})
+        else:
+            items.append({"category": "ROOFING", "description": "R&R Drip edge - aluminum", "qty": drip, "unit": "LF", "unit_price": 4.25})
 
-    # Starter strip
-    if eave > 0:
+    # ===================== STARTER STRIP (comp shingle only) =====================
+    if material in ("laminated", "3tab") and eave > 0:
         items.append({"category": "ROOFING", "description": "R&R Starter strip - asphalt shingle", "qty": eave, "unit": "LF", "unit_price": 3.50})
 
-    # Ridge cap
-    ridge = meas.get("ridge", 0)
+    # ===================== RIDGE CAP =====================
     if ridge > 0:
-        price = 7.49
-        desc = "R&R Ridge cap - laminated" if is_laminated else "R&R Ridge cap - 3 tab"
-        items.append({"category": "ROOFING", "description": desc, "qty": ridge, "unit": "LF", "unit_price": price})
+        if material == "slate":
+            items.append({"category": "ROOFING", "description": "R&R Ridge cap - slate", "qty": ridge, "unit": "LF", "unit_price": 32.00})
+        elif material == "tile":
+            items.append({"category": "ROOFING", "description": "R&R Ridge cap - tile", "qty": ridge, "unit": "LF", "unit_price": 28.00})
+        elif material == "metal_standing_seam":
+            items.append({"category": "ROOFING", "description": "R&R Ridge cap - metal", "qty": ridge, "unit": "LF", "unit_price": 22.00})
+        else:
+            desc = "R&R Ridge cap - laminated" if material == "laminated" else "R&R Ridge cap - 3 tab"
+            items.append({"category": "ROOFING", "description": desc, "qty": ridge, "unit": "LF", "unit_price": 7.49})
 
-    # Ridge vent
-    if ridge > 0:
+    # ===================== RIDGE VENT =====================
+    if ridge > 0 and material not in ("slate", "tile"):
         items.append({"category": "ROOFING", "description": "R&R Ridge vent - aluminum", "qty": ridge, "unit": "LF", "unit_price": 8.50})
 
-    # Hip cap
-    hip = meas.get("hip", 0)
+    # ===================== HIP CAP =====================
     if hip > 0:
-        items.append({"category": "ROOFING", "description": "R&R Hip cap - laminated", "qty": hip, "unit": "LF", "unit_price": 7.49})
+        if material == "slate":
+            items.append({"category": "ROOFING", "description": "R&R Hip cap - slate", "qty": hip, "unit": "LF", "unit_price": 32.00})
+        elif material == "tile":
+            items.append({"category": "ROOFING", "description": "R&R Hip cap - tile", "qty": hip, "unit": "LF", "unit_price": 28.00})
+        else:
+            items.append({"category": "ROOFING", "description": "R&R Hip cap - laminated", "qty": hip, "unit": "LF", "unit_price": 7.49})
 
-    # Step flashing
+    # ===================== FLASHING =====================
     step = meas.get("step_flashing", 0)
-    if step > 0:
-        items.append({"category": "ROOFING", "description": "R&R Step flashing", "qty": step, "unit": "LF", "unit_price": 8.00})
-
-    # Flashing
     flashing = meas.get("flashing", 0)
-    if flashing > 0:
-        items.append({"category": "ROOFING", "description": "R&R Counter/apron flashing", "qty": flashing, "unit": "LF", "unit_price": 9.50})
+    is_copper_flashing = "copper" in notes_lower and "flash" in notes_lower
 
-    # Pipe boots
+    if step > 0:
+        if is_copper_flashing:
+            items.append({"category": "ROOFING", "description": "R&R Step flashing - copper", "qty": step, "unit": "LF", "unit_price": 22.00})
+        else:
+            items.append({"category": "ROOFING", "description": "R&R Step flashing", "qty": step, "unit": "LF", "unit_price": 8.00})
+
+    if flashing > 0:
+        if is_copper_flashing:
+            items.append({"category": "ROOFING", "description": "R&R Counter/apron flashing - copper", "qty": flashing, "unit": "LF", "unit_price": 28.00})
+        else:
+            items.append({"category": "ROOFING", "description": "R&R Counter/apron flashing", "qty": flashing, "unit": "LF", "unit_price": 9.50})
+
+    # ===================== PENETRATIONS =====================
     pipes = penetrations.get("pipes", 0)
     if pipes > 0:
         items.append({"category": "ROOFING", "description": "Pipe boot/jack", "qty": pipes, "unit": "EA", "unit_price": 68.00})
 
-    # Exhaust vents
     vents = penetrations.get("vents", 0)
     if vents > 0:
         items.append({"category": "ROOFING", "description": "R&R Exhaust vent", "qty": vents, "unit": "EA", "unit_price": 125.00})
 
-    # Steep charge (if predominant pitch >= 7/12)
+    # ===================== STEEP / HIGH CHARGES =====================
     pitch_str = struct.get("predominant_pitch", "")
     if pitch_str:
         try:
@@ -825,18 +901,33 @@ def build_line_items(measurements: dict, photo_analysis: dict, state: str) -> li
         except (ValueError, IndexError):
             pass
 
-    # High roof charge (2+ stories)
     stories = measurements.get("stories", 1)
     if stories >= 2:
         items.append({"category": "ROOFING", "description": "High roof charge - 2+ stories", "qty": area_sq, "unit": "SQ", "unit_price": 85.00})
 
-    # DEBRIS
+    # ===================== DEBRIS =====================
     dumpster_loads = max(1, round(area_sq / 25))
     items.append({"category": "DEBRIS", "description": "Dumpster load - roofing debris", "qty": dumpster_loads, "unit": "EA", "unit_price": 450.00})
 
-    # GUTTERS (if in trades)
+    # ===================== COPPER COMPONENTS (from user notes) =====================
+    if "copper" in notes_lower:
+        # Copper half round gutters
+        if "half round" in notes_lower or ("copper" in notes_lower and "gutter" in notes_lower):
+            gutter_lf = round(eave * 1.6) if eave > 0 else 0
+            if gutter_lf > 0:
+                items.append({"category": "GUTTERS", "description": "R&R Copper half round gutter & downspout", "qty": gutter_lf, "unit": "LF", "unit_price": 55.00})
+
+        # Flat panel copper (lower slopes)
+        if "flat panel copper" in notes_lower or "flat seam copper" in notes_lower:
+            # Estimate lower slope area as ~20% of total roof area if not specified
+            copper_sf = round(area_sf * 0.20)
+            if copper_sf > 0:
+                items.append({"category": "ROOFING", "description": "R&R Flat seam copper roofing", "qty": copper_sf, "unit": "SF", "unit_price": 28.00})
+
+    # ===================== GUTTERS (standard — if in trades and not already added) =====================
     trades = photo_analysis.get("trades_identified", [])
-    if "gutters" in [t.lower() for t in trades]:
+    has_gutter_line = any("gutter" in item["description"].lower() for item in items)
+    if "gutters" in [t.lower() for t in trades] and not has_gutter_line:
         gutter_lf = round(eave * 1.6) if eave > 0 else 0
         if gutter_lf > 0:
             items.append({"category": "GUTTERS", "description": "R&R Seamless aluminum gutter & downspout", "qty": gutter_lf, "unit": "LF", "unit_price": 10.50})
