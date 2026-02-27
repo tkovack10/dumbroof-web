@@ -82,7 +82,11 @@ async def run_processing(claim_id: str):
     try:
         await process_claim(claim_id)
     except Exception as e:
-        print(f"[ERROR] Failed to process claim {claim_id}: {e}")
+        import traceback, sys
+        print(f"[ERROR] Failed to process claim {claim_id}: {e}", flush=True)
+        traceback.print_exc()
+        sys.stdout.flush()
+        sys.stderr.flush()
         # Update status to error
         sb = get_supabase_client()
         sb.table("claims").update({"status": "error"}).eq("id", claim_id).execute()

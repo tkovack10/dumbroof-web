@@ -1666,6 +1666,8 @@ async def process_claim(claim_id: str):
                 config["scope_revisions"] = existing_revisions
 
                 # Update dashboard section for revision
+                if "dashboard" not in config:
+                    config["dashboard"] = {}
                 if original_carrier_rcv:
                     config["dashboard"]["carrier_1st_scope"] = original_carrier_rcv
                 config["dashboard"]["carrier_current"] = revision_data["new_rcv"]
@@ -1711,36 +1713,36 @@ async def process_claim(claim_id: str):
                 "score": photo_integrity["score"],
             }
 
-        # Save revision data to DB (columns may not exist yet — handle gracefully)
-        if revision_data:
-            try:
-                update_data["scope_revisions"] = config.get("scope_revisions", [])
-                if diff_result.get("is_win"):
-                    update_data["claim_outcome"] = "won"
-                    update_data["settlement_amount"] = revision_data["new_rcv"]
-                # Save current carrier data as previous for future revisions
-                update_data["previous_carrier_data"] = {
-                    "carrier_rcv": carrier_data.get("carrier_rcv", 0),
-                    "carrier_line_items": carrier_data.get("carrier_line_items", []),
-                    "carrier_arguments": carrier_data.get("carrier_arguments", []),
-                }
-                if not original_carrier_rcv:
-                    update_data["original_carrier_rcv"] = previous_carrier_data.get("carrier_rcv", 0)
-            except Exception:
-                pass  # DB columns may not exist — revision data is in config anyway
-        elif carrier_data and not is_revision:
-            # First processing — save carrier data for future revision diffs
-            try:
-                update_data["previous_carrier_data"] = {
-                    "carrier_rcv": carrier_data.get("carrier_rcv", 0),
-                    "carrier_line_items": carrier_data.get("carrier_line_items", []),
-                    "carrier_arguments": carrier_data.get("carrier_arguments", []),
-                }
-                update_data["original_carrier_rcv"] = carrier_data.get("carrier_rcv", 0)
-            except Exception:
-                pass
-
+        # Core update (status + output_files + photo_integrity — always works)
         sb.table("claims").update(update_data).eq("id", claim_id).execute()
+
+        # Save revision data to DB (columns may not exist yet — separate call so core update isn't blocked)
+        revision_update = {}
+        if revision_data:
+            revision_update["scope_revisions"] = config.get("scope_revisions", [])
+            if diff_result.get("is_win"):
+                revision_update["claim_outcome"] = "won"
+                revision_update["settlement_amount"] = revision_data["new_rcv"]
+            revision_update["previous_carrier_data"] = {
+                "carrier_rcv": carrier_data.get("carrier_rcv", 0),
+                "carrier_line_items": carrier_data.get("carrier_line_items", []),
+                "carrier_arguments": carrier_data.get("carrier_arguments", []),
+            }
+            if not original_carrier_rcv:
+                revision_update["original_carrier_rcv"] = previous_carrier_data.get("carrier_rcv", 0)
+        elif carrier_data and not is_revision:
+            revision_update["previous_carrier_data"] = {
+                "carrier_rcv": carrier_data.get("carrier_rcv", 0),
+                "carrier_line_items": carrier_data.get("carrier_line_items", []),
+                "carrier_arguments": carrier_data.get("carrier_arguments", []),
+            }
+            revision_update["original_carrier_rcv"] = carrier_data.get("carrier_rcv", 0)
+
+        if revision_update:
+            try:
+                sb.table("claims").update(revision_update).eq("id", claim_id).execute()
+            except Exception as e:
+                print(f"[DB] Revision columns not available yet (non-fatal): {e}", flush=True)
 
         print(f"[PROCESS] Claim complete: {claim['address']} — {len(pdfs)} PDFs ready")
 
