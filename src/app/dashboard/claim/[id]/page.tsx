@@ -94,9 +94,14 @@ export default function ClaimDetailPage() {
 
   useEffect(() => {
     fetchClaim();
+  }, [fetchClaim]);
+
+  // Poll for status changes only when claim is actively being processed
+  useEffect(() => {
+    if (!claim || (claim.status !== "uploaded" && claim.status !== "processing")) return;
     const interval = setInterval(fetchClaim, 5000);
     return () => clearInterval(interval);
-  }, [fetchClaim]);
+  }, [claim?.status, fetchClaim]);
 
   const handleDownload = async (filename: string) => {
     if (!claim) return;
@@ -150,10 +155,12 @@ export default function ClaimDetailPage() {
         (claim as unknown as Record<string, unknown>)[catConfig.dbField] as string[] || [];
       const updatedFiles = [...existingFiles, ...uploadedNames];
 
-      await supabase
+      const { error: updateError } = await supabase
         .from("claims")
         .update({ [catConfig.dbField]: updatedFiles })
         .eq("id", claim.id);
+
+      if (updateError) throw new Error(`Failed to update claim: ${updateError.message}`);
 
       setUploadSuccess(
         `${uploadedNames.length} file${uploadedNames.length > 1 ? "s" : ""} uploaded successfully`
@@ -170,16 +177,18 @@ export default function ClaimDetailPage() {
   const handleReprocess = async () => {
     if (!claim) return;
     setReprocessing(true);
+    setUploadError("");
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
-      const res = await fetch(`${apiUrl}/api/reprocess/${claim.id}`, {
-        method: "POST",
-      });
-      if (!res.ok) throw new Error("Reprocess failed");
-      // Status will change to processing — poll will pick it up
+      const { error: reprocessError } = await supabase
+        .from("claims")
+        .update({ status: "uploaded" })
+        .eq("id", claim.id);
+
+      if (reprocessError) throw new Error(`Reprocess failed: ${reprocessError.message}`);
+      // Status set to "uploaded" — local backend poller picks it up automatically
       fetchClaim();
     } catch (err) {
-      console.error("Reprocess failed:", err);
+      setUploadError(err instanceof Error ? err.message : "Reprocess failed");
     }
     setReprocessing(false);
   };
@@ -215,6 +224,8 @@ export default function ClaimDetailPage() {
   const sc = statusConfig[claim.status] || statusConfig.uploaded;
   const isReady = claim.status === "ready" && claim.output_files?.length;
   const isProcessing = claim.status === "processing";
+  const isUploaded = claim.status === "uploaded";
+  const isReprocessingState = isProcessing || isUploaded;
   const integrity = claim.photo_integrity;
 
   return (
@@ -256,7 +267,7 @@ export default function ClaimDetailPage() {
             <span
               className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium ${sc.bg} ${sc.color}`}
             >
-              {isProcessing && (
+              {isReprocessingState && (
                 <svg
                   className="animate-spin w-3 h-3"
                   fill="none"
@@ -277,7 +288,7 @@ export default function ClaimDetailPage() {
                   />
                 </svg>
               )}
-              {sc.label}
+              {isUploaded ? "Queued for Processing" : sc.label}
             </span>
           </div>
 
@@ -309,7 +320,7 @@ export default function ClaimDetailPage() {
         </div>
 
         {/* Processing indicator */}
-        {isProcessing && (
+        {isReprocessingState && (
           <div className="bg-amber-50 border border-amber-100 rounded-2xl p-5">
             <div className="flex items-center gap-3">
               <svg
@@ -333,10 +344,14 @@ export default function ClaimDetailPage() {
               </svg>
               <div>
                 <p className="text-sm font-medium text-amber-800">
-                  Analyzing documents and generating your claim package...
+                  {isUploaded
+                    ? "Claim queued — waiting for processing to begin..."
+                    : "Analyzing documents and generating your claim package..."}
                 </p>
                 <p className="text-xs text-amber-600 mt-0.5">
-                  This typically takes 2-5 minutes
+                  {isUploaded
+                    ? "The system will pick this up shortly"
+                    : "This typically takes 2-5 minutes"}
                 </p>
               </div>
             </div>
@@ -421,7 +436,7 @@ export default function ClaimDetailPage() {
           </div>
 
           {/* Reprocess button — visible when claim is ready and user may have uploaded new docs */}
-          {isReady && !showUpload && (
+          {isReady && !showUpload && !isReprocessingState && (
             <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-3 mb-4 flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-blue-800">
