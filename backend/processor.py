@@ -16,6 +16,7 @@ from datetime import datetime
 from typing import Optional, List, Dict
 
 import time
+import asyncio
 
 import anthropic
 import traceback
@@ -50,16 +51,44 @@ def get_anthropic_client() -> anthropic.Anthropic:
 
 
 # ===================================================================
+# EXTERNAL PRICING
+# ===================================================================
+
+_PRICING_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "pricing")
+
+def _load_pricing(price_list: str = "nybi26") -> dict:
+    """Load pricing from external JSON file. Falls back to empty dict."""
+    path = os.path.join(_PRICING_DIR, f"{price_list}.json")
+    if os.path.exists(path):
+        with open(path) as f:
+            return json.load(f)
+    print(f"[PRICING] Warning: {path} not found — using hardcoded fallbacks")
+    return {}
+
+PRICING = _load_pricing()
+
+
+# ===================================================================
 # FILE HELPERS
 # ===================================================================
 
 def download_file(sb: Client, bucket: str, path: str, local_path: str):
-    """Download a file from Supabase Storage."""
-    data = sb.storage.from_(bucket).download(path)
-    os.makedirs(os.path.dirname(local_path), exist_ok=True)
-    with open(local_path, "wb") as f:
-        f.write(data)
-    return local_path
+    """Download a file from Supabase Storage with retry on failure."""
+    max_retries = 3
+    for attempt in range(max_retries):
+        try:
+            data = sb.storage.from_(bucket).download(path)
+            os.makedirs(os.path.dirname(local_path), exist_ok=True)
+            with open(local_path, "wb") as f:
+                f.write(data)
+            return local_path
+        except Exception as e:
+            if attempt < max_retries - 1:
+                wait = 5 * (2 ** attempt)  # 5s, 10s, 20s
+                print(f"[DOWNLOAD] Retry {attempt + 1}/{max_retries} for {os.path.basename(path)} in {wait}s: {e}")
+                time.sleep(wait)
+            else:
+                raise RuntimeError(f"Failed to download {path} after {max_retries} attempts: {e}")
 
 
 def upload_file(sb: Client, bucket: str, path: str, local_path: str):
@@ -959,7 +988,10 @@ def build_claim_config(
 
     # Determine state for tax rate
     state = prop.get("state", "NY").upper()
-    tax_rate = {"NY": 0.08, "PA": 0.0, "NJ": 0.06625}.get(state, 0.08)
+    _tax_rates = {"NY": 0.08, "PA": 0.0, "NJ": 0.06625}
+    tax_rate = _tax_rates.get(state, 0.08)
+    if state not in _tax_rates:
+        print(f"[CONFIG] WARNING: No tax rate configured for state '{state}' — defaulting to 8%. Verify with Tom.")
 
     # Build line items based on measurements and analysis
     line_items = build_line_items(measurements, photo_analysis, state, user_notes=user_notes or "")
@@ -1263,70 +1295,71 @@ def build_line_items(measurements: dict, photo_analysis: dict, state: str, user_
     items = []
 
     # ===================== PRIMARY ROOFING MATERIAL =====================
+    # Pricing loaded from backend/pricing/nybi26.json — PRICING.get(key, fallback)
     if material == "slate":
-        items.append({"category": "ROOFING", "description": "Remove slate roofing", "qty": area_sq, "unit": "SQ", "unit_price": 325.00})
-        items.append({"category": "ROOFING", "description": "Slate roofing - high grade natural", "qty": area_sq, "unit": "SQ", "unit_price": 1850.00})
-        items.append({"category": "ROOFING", "description": "Underlayment - felt 30#", "qty": area_sq, "unit": "SQ", "unit_price": 22.00})
-        items.append({"category": "ROOFING", "description": "Copper nails & hooks for slate", "qty": area_sq, "unit": "SQ", "unit_price": 45.00})
-        items.append({"category": "ROOFING", "description": "Slate roofing - additional labor (specialist)", "qty": area_sq, "unit": "SQ", "unit_price": 350.00})
+        items.append({"category": "ROOFING", "description": "Remove slate roofing", "qty": area_sq, "unit": "SQ", "unit_price": PRICING.get("slate_remove", 325.00)})
+        items.append({"category": "ROOFING", "description": "Slate roofing - high grade natural", "qty": area_sq, "unit": "SQ", "unit_price": PRICING.get("slate_install", 1850.00)})
+        items.append({"category": "ROOFING", "description": "Underlayment - felt 30#", "qty": area_sq, "unit": "SQ", "unit_price": PRICING.get("slate_underlayment", 22.00)})
+        items.append({"category": "ROOFING", "description": "Copper nails & hooks for slate", "qty": area_sq, "unit": "SQ", "unit_price": PRICING.get("slate_nails_hooks", 45.00)})
+        items.append({"category": "ROOFING", "description": "Slate roofing - additional labor (specialist)", "qty": area_sq, "unit": "SQ", "unit_price": PRICING.get("slate_specialist_labor", 350.00)})
     elif material == "tile":
-        items.append({"category": "ROOFING", "description": "Remove concrete/clay tile roofing", "qty": area_sq, "unit": "SQ", "unit_price": 200.00})
-        items.append({"category": "ROOFING", "description": "Concrete/clay tile roofing", "qty": area_sq, "unit": "SQ", "unit_price": 900.00})
-        items.append({"category": "ROOFING", "description": "Underlayment - felt 30#", "qty": area_sq, "unit": "SQ", "unit_price": 22.00})
+        items.append({"category": "ROOFING", "description": "Remove concrete/clay tile roofing", "qty": area_sq, "unit": "SQ", "unit_price": PRICING.get("tile_remove", 200.00)})
+        items.append({"category": "ROOFING", "description": "Concrete/clay tile roofing", "qty": area_sq, "unit": "SQ", "unit_price": PRICING.get("tile_install", 900.00)})
+        items.append({"category": "ROOFING", "description": "Underlayment - felt 30#", "qty": area_sq, "unit": "SQ", "unit_price": PRICING.get("tile_underlayment", 22.00)})
     elif material == "metal_standing_seam":
-        items.append({"category": "ROOFING", "description": "Remove metal roofing - standing seam", "qty": area_sq, "unit": "SQ", "unit_price": 150.00})
-        items.append({"category": "ROOFING", "description": "Metal roofing - standing seam", "qty": area_sq, "unit": "SQ", "unit_price": 850.00})
-        items.append({"category": "ROOFING", "description": "Synthetic underlayment", "qty": area_sq, "unit": "SQ", "unit_price": 32.00})
+        items.append({"category": "ROOFING", "description": "Remove metal roofing - standing seam", "qty": area_sq, "unit": "SQ", "unit_price": PRICING.get("metal_remove", 150.00)})
+        items.append({"category": "ROOFING", "description": "Metal roofing - standing seam", "qty": area_sq, "unit": "SQ", "unit_price": PRICING.get("metal_install", 850.00)})
+        items.append({"category": "ROOFING", "description": "Synthetic underlayment", "qty": area_sq, "unit": "SQ", "unit_price": PRICING.get("metal_underlayment", 32.00)})
     elif material == "laminated":
-        items.append({"category": "ROOFING", "description": "Remove laminated comp shingle roofing", "qty": area_sq, "unit": "SQ", "unit_price": 74.00})
-        items.append({"category": "ROOFING", "description": "Laminated comp shingle roofing - w/out felt", "qty": area_sq, "unit": "SQ", "unit_price": 320.00})
-        items.append({"category": "ROOFING", "description": "Synthetic underlayment", "qty": area_sq, "unit": "SQ", "unit_price": 32.00})
+        items.append({"category": "ROOFING", "description": "Remove laminated comp shingle roofing", "qty": area_sq, "unit": "SQ", "unit_price": PRICING.get("laminated_remove", 74.00)})
+        items.append({"category": "ROOFING", "description": "Laminated comp shingle roofing - w/out felt", "qty": area_sq, "unit": "SQ", "unit_price": PRICING.get("laminated_install", 320.00)})
+        items.append({"category": "ROOFING", "description": "Synthetic underlayment", "qty": area_sq, "unit": "SQ", "unit_price": PRICING.get("laminated_underlayment", 32.00)})
     else:  # 3tab
-        items.append({"category": "ROOFING", "description": "Remove 3-tab 25yr comp shingle roofing", "qty": area_sq, "unit": "SQ", "unit_price": 73.14})
-        items.append({"category": "ROOFING", "description": "3-tab 25yr comp shingle roofing - w/out felt", "qty": area_sq, "unit": "SQ", "unit_price": 312.92})
-        items.append({"category": "ROOFING", "description": "Synthetic underlayment", "qty": area_sq, "unit": "SQ", "unit_price": 32.00})
+        items.append({"category": "ROOFING", "description": "Remove 3-tab 25yr comp shingle roofing", "qty": area_sq, "unit": "SQ", "unit_price": PRICING.get("3tab_remove", 73.14)})
+        items.append({"category": "ROOFING", "description": "3-tab 25yr comp shingle roofing - w/out felt", "qty": area_sq, "unit": "SQ", "unit_price": PRICING.get("3tab_install", 312.92)})
+        items.append({"category": "ROOFING", "description": "Synthetic underlayment", "qty": area_sq, "unit": "SQ", "unit_price": PRICING.get("3tab_underlayment", 32.00)})
 
     # ===================== ICE & WATER BARRIER =====================
     iw_sf = (eave * 6) + (valley * 3)
     if iw_sf > 0:
-        items.append({"category": "ROOFING", "description": "Ice & water barrier", "qty": round(iw_sf), "unit": "SF", "unit_price": 2.24})
+        items.append({"category": "ROOFING", "description": "Ice & water barrier", "qty": round(iw_sf), "unit": "SF", "unit_price": PRICING.get("ice_water", 2.24)})
 
     # ===================== DRIP EDGE =====================
     drip = meas.get("drip_edge", 0) or (eave + rake)
     if drip > 0:
         if material in ("copper", "slate") and "copper" in notes_lower:
-            items.append({"category": "ROOFING", "description": "R&R Drip edge - copper", "qty": drip, "unit": "LF", "unit_price": 18.50})
+            items.append({"category": "ROOFING", "description": "R&R Drip edge - copper", "qty": drip, "unit": "LF", "unit_price": PRICING.get("drip_edge_copper", 18.50)})
         else:
-            items.append({"category": "ROOFING", "description": "R&R Drip edge - aluminum", "qty": drip, "unit": "LF", "unit_price": 4.25})
+            items.append({"category": "ROOFING", "description": "R&R Drip edge - aluminum", "qty": drip, "unit": "LF", "unit_price": PRICING.get("drip_edge_aluminum", 4.25)})
 
     # ===================== STARTER STRIP (comp shingle only) =====================
     if material in ("laminated", "3tab") and eave > 0:
-        items.append({"category": "ROOFING", "description": "R&R Starter strip - asphalt shingle", "qty": eave, "unit": "LF", "unit_price": 3.50})
+        items.append({"category": "ROOFING", "description": "R&R Starter strip - asphalt shingle", "qty": eave, "unit": "LF", "unit_price": PRICING.get("starter_strip", 3.50)})
 
     # ===================== RIDGE CAP =====================
     if ridge > 0:
         if material == "slate":
-            items.append({"category": "ROOFING", "description": "R&R Ridge cap - slate", "qty": ridge, "unit": "LF", "unit_price": 38.00})
+            items.append({"category": "ROOFING", "description": "R&R Ridge cap - slate", "qty": ridge, "unit": "LF", "unit_price": PRICING.get("slate_ridge_cap", 38.00)})
         elif material == "tile":
-            items.append({"category": "ROOFING", "description": "R&R Ridge cap - tile", "qty": ridge, "unit": "LF", "unit_price": 28.00})
+            items.append({"category": "ROOFING", "description": "R&R Ridge cap - tile", "qty": ridge, "unit": "LF", "unit_price": PRICING.get("tile_ridge_cap", 28.00)})
         elif material == "metal_standing_seam":
-            items.append({"category": "ROOFING", "description": "R&R Ridge cap - metal", "qty": ridge, "unit": "LF", "unit_price": 22.00})
+            items.append({"category": "ROOFING", "description": "R&R Ridge cap - metal", "qty": ridge, "unit": "LF", "unit_price": PRICING.get("metal_ridge_cap", 22.00)})
         else:
             desc = "R&R Ridge cap - laminated" if material == "laminated" else "R&R Ridge cap - 3 tab"
-            items.append({"category": "ROOFING", "description": desc, "qty": ridge, "unit": "LF", "unit_price": 7.49})
+            items.append({"category": "ROOFING", "description": desc, "qty": ridge, "unit": "LF", "unit_price": PRICING.get("laminated_ridge_cap", 7.49)})
 
     # ===================== RIDGE VENT =====================
     if ridge > 0 and material not in ("slate", "tile"):
-        items.append({"category": "ROOFING", "description": "R&R Ridge vent - aluminum", "qty": ridge, "unit": "LF", "unit_price": 8.50})
+        items.append({"category": "ROOFING", "description": "R&R Ridge vent - aluminum", "qty": ridge, "unit": "LF", "unit_price": PRICING.get("ridge_vent", 8.50)})
 
     # ===================== HIP CAP =====================
     if hip > 0:
         if material == "slate":
-            items.append({"category": "ROOFING", "description": "R&R Hip cap - slate", "qty": hip, "unit": "LF", "unit_price": 38.00})
+            items.append({"category": "ROOFING", "description": "R&R Hip cap - slate", "qty": hip, "unit": "LF", "unit_price": PRICING.get("slate_hip_cap", 38.00)})
         elif material == "tile":
-            items.append({"category": "ROOFING", "description": "R&R Hip cap - tile", "qty": hip, "unit": "LF", "unit_price": 28.00})
+            items.append({"category": "ROOFING", "description": "R&R Hip cap - tile", "qty": hip, "unit": "LF", "unit_price": PRICING.get("tile_hip_cap", 28.00)})
         else:
-            items.append({"category": "ROOFING", "description": "R&R Hip cap - laminated", "qty": hip, "unit": "LF", "unit_price": 7.49})
+            items.append({"category": "ROOFING", "description": "R&R Hip cap - laminated", "qty": hip, "unit": "LF", "unit_price": PRICING.get("comp_hip_cap", 7.49)})
 
     # ===================== FLASHING =====================
     step = meas.get("step_flashing", 0)
@@ -1335,24 +1368,24 @@ def build_line_items(measurements: dict, photo_analysis: dict, state: str, user_
 
     if step > 0:
         if is_copper_flashing:
-            items.append({"category": "ROOFING", "description": "R&R Step flashing - copper", "qty": step, "unit": "LF", "unit_price": 22.00})
+            items.append({"category": "ROOFING", "description": "R&R Step flashing - copper", "qty": step, "unit": "LF", "unit_price": PRICING.get("step_flashing_copper", 22.00)})
         else:
-            items.append({"category": "ROOFING", "description": "R&R Step flashing", "qty": step, "unit": "LF", "unit_price": 8.00})
+            items.append({"category": "ROOFING", "description": "R&R Step flashing", "qty": step, "unit": "LF", "unit_price": PRICING.get("step_flashing", 8.00)})
 
     if flashing > 0:
         if is_copper_flashing:
-            items.append({"category": "ROOFING", "description": "R&R Counter/apron flashing - copper", "qty": flashing, "unit": "LF", "unit_price": 28.00})
+            items.append({"category": "ROOFING", "description": "R&R Counter/apron flashing - copper", "qty": flashing, "unit": "LF", "unit_price": PRICING.get("counter_flashing_copper", 28.00)})
         else:
-            items.append({"category": "ROOFING", "description": "R&R Counter/apron flashing", "qty": flashing, "unit": "LF", "unit_price": 9.50})
+            items.append({"category": "ROOFING", "description": "R&R Counter/apron flashing", "qty": flashing, "unit": "LF", "unit_price": PRICING.get("counter_flashing", 9.50)})
 
     # ===================== PENETRATIONS =====================
     pipes = penetrations.get("pipes", 0)
     if pipes > 0:
-        items.append({"category": "ROOFING", "description": "Pipe boot/jack", "qty": pipes, "unit": "EA", "unit_price": 68.00})
+        items.append({"category": "ROOFING", "description": "Pipe boot/jack", "qty": pipes, "unit": "EA", "unit_price": PRICING.get("pipe_boot", 68.00)})
 
     vents = penetrations.get("vents", 0)
     if vents > 0:
-        items.append({"category": "ROOFING", "description": "R&R Exhaust vent", "qty": vents, "unit": "EA", "unit_price": 125.00})
+        items.append({"category": "ROOFING", "description": "R&R Exhaust vent", "qty": vents, "unit": "EA", "unit_price": PRICING.get("exhaust_vent", 125.00)})
 
     # ===================== STEEP / HIGH CHARGES =====================
     # Use the corrected pitch_str (may have been updated from 0/12 to estimated pitch)
@@ -1360,17 +1393,17 @@ def build_line_items(measurements: dict, photo_analysis: dict, state: str, user_
         try:
             rise = int(pitch_str.split("/")[0])
             if rise >= 7:
-                items.append({"category": "ROOFING", "description": f"Steep charge - {pitch_str} pitch", "qty": area_sq, "unit": "SQ", "unit_price": 85.00})
+                items.append({"category": "ROOFING", "description": f"Steep charge - {pitch_str} pitch", "qty": area_sq, "unit": "SQ", "unit_price": PRICING.get("steep_charge", 85.00)})
         except (ValueError, IndexError):
             pass
 
     stories = measurements.get("stories", 1)
     if stories >= 2:
-        items.append({"category": "ROOFING", "description": "High roof charge - 2+ stories", "qty": area_sq, "unit": "SQ", "unit_price": 85.00})
+        items.append({"category": "ROOFING", "description": "High roof charge - 2+ stories", "qty": area_sq, "unit": "SQ", "unit_price": PRICING.get("high_roof_charge", 85.00)})
 
     # ===================== DEBRIS =====================
     dumpster_loads = max(1, round(area_sq / 25))
-    items.append({"category": "DEBRIS", "description": "Dumpster load - roofing debris", "qty": dumpster_loads, "unit": "EA", "unit_price": 450.00})
+    items.append({"category": "DEBRIS", "description": "Dumpster load - roofing debris", "qty": dumpster_loads, "unit": "EA", "unit_price": PRICING.get("dumpster", 450.00)})
 
     # ===================== COPPER COMPONENTS (from user notes) =====================
     if "copper" in notes_lower:
@@ -1378,14 +1411,14 @@ def build_line_items(measurements: dict, photo_analysis: dict, state: str, user_
         if "half round" in notes_lower or ("copper" in notes_lower and "gutter" in notes_lower):
             gutter_lf = round(eave * 1.6) if eave > 0 else 0
             if gutter_lf > 0:
-                items.append({"category": "GUTTERS", "description": "R&R Copper half round gutter & downspout", "qty": gutter_lf, "unit": "LF", "unit_price": 55.00})
+                items.append({"category": "GUTTERS", "description": "R&R Copper half round gutter & downspout", "qty": gutter_lf, "unit": "LF", "unit_price": PRICING.get("gutter_copper_half_round", 55.00)})
 
         # Flat panel copper (lower slopes)
         if "flat panel copper" in notes_lower or "flat seam copper" in notes_lower:
             # Estimate lower slope area as ~20% of total roof area if not specified
             copper_sf = round(area_sf * 0.20)
             if copper_sf > 0:
-                items.append({"category": "ROOFING", "description": "R&R Flat seam copper roofing", "qty": copper_sf, "unit": "SF", "unit_price": 28.00})
+                items.append({"category": "ROOFING", "description": "R&R Flat seam copper roofing", "qty": copper_sf, "unit": "SF", "unit_price": PRICING.get("flat_seam_copper", 28.00)})
 
     # ===================== GUTTERS (standard — if in trades and not already added) =====================
     trades = photo_analysis.get("trades_identified", [])
@@ -1393,7 +1426,7 @@ def build_line_items(measurements: dict, photo_analysis: dict, state: str, user_
     if "gutters" in [t.lower() for t in trades] and not has_gutter_line:
         gutter_lf = round(eave * 1.6) if eave > 0 else 0
         if gutter_lf > 0:
-            items.append({"category": "GUTTERS", "description": "R&R Seamless aluminum gutter & downspout", "qty": gutter_lf, "unit": "LF", "unit_price": 10.50})
+            items.append({"category": "GUTTERS", "description": "R&R Seamless aluminum gutter & downspout", "qty": gutter_lf, "unit": "LF", "unit_price": PRICING.get("gutter_aluminum", 10.50)})
 
     return items
 
@@ -1584,39 +1617,56 @@ async def process_claim(claim_id: str):
             download_file(sb, "claim-documents", f"{file_path}/weather/{fname}", local)
             weather_paths.append(local)
 
-        # 6. Extract measurements via Claude
-        print(f"[PROCESS] Extracting measurements...")
-        measurements = {}
-        if measurement_paths:
-            measurements = extract_measurements(claude, measurement_paths[0])
+        # 6-8b. Extract all data in parallel via asyncio.to_thread
+        # Measurements, photos, integrity, scope, and weather are independent
+        # Running in parallel cuts processing from ~7min to ~3-4min
+        _default_photo = {"trades_identified": ["roofing"], "photo_annotations": {}, "photo_count": 0}
+        _default_integrity = {"total": 0, "flagged": 0, "score": "N/A", "summary": "", "findings": []}
 
-        # 7. Analyze photos via Claude
-        print(f"[PROCESS] Analyzing {len(photo_paths)} photos...")
-        photo_analysis = {"trades_identified": ["roofing"], "photo_annotations": {}, "photo_count": 0}
-        if photo_paths:
-            photo_analysis = analyze_photos(claude, photo_paths, user_notes=claim.get("user_notes"))
+        async def _get_measurements():
+            if not measurement_paths:
+                return {}
+            print("[PROCESS] Extracting measurements...")
+            return await asyncio.to_thread(extract_measurements, claude, measurement_paths[0])
 
-        # 7b. Photo integrity analysis (fraud detection)
-        print(f"[PROCESS] Running photo integrity analysis...")
-        photo_integrity = {"total": 0, "flagged": 0, "score": "N/A", "summary": "", "findings": []}
-        if photo_paths:
+        async def _get_photo_analysis():
+            if not photo_paths:
+                return _default_photo
+            print(f"[PROCESS] Analyzing {len(photo_paths)} photos...")
+            return await asyncio.to_thread(analyze_photos, claude, photo_paths, user_notes=claim.get("user_notes"))
+
+        async def _get_photo_integrity():
+            if not photo_paths:
+                return _default_integrity
+            print("[PROCESS] Running photo integrity analysis...")
             try:
-                photo_integrity = analyze_photo_integrity(claude, photo_paths)
-                print(f"[INTEGRITY] {photo_integrity['total']} photos analyzed — {photo_integrity['flagged']} flagged — Score: {photo_integrity['score']}")
+                result = await asyncio.to_thread(analyze_photo_integrity, claude, photo_paths)
+                print(f"[INTEGRITY] {result['total']} photos analyzed — {result['flagged']} flagged — Score: {result['score']}")
+                return result
             except Exception as e:
                 print(f"[INTEGRITY] Analysis failed (non-fatal): {e}")
+                return _default_integrity
 
-        # 8. Extract carrier scope (if present) — use last scope file (most recent upload)
-        carrier_data = None
-        if scope_paths:
+        async def _get_carrier_data():
+            if not scope_paths:
+                return None
             print(f"[PROCESS] Extracting carrier scope ({len(scope_paths)} file(s))...")
-            carrier_data = extract_carrier_scope(claude, scope_paths[-1])
+            return await asyncio.to_thread(extract_carrier_scope, claude, scope_paths[-1])
 
-        # 8b. Extract weather data (if present)
-        weather_data = {}
-        if weather_paths:
-            print(f"[PROCESS] Extracting weather data...")
-            weather_data = extract_weather_data(claude, weather_paths[0])
+        async def _get_weather_data():
+            if not weather_paths:
+                return {}
+            print("[PROCESS] Extracting weather data...")
+            return await asyncio.to_thread(extract_weather_data, claude, weather_paths[0])
+
+        print("[PROCESS] Running extraction steps in parallel...")
+        measurements, photo_analysis, photo_integrity, carrier_data, weather_data = await asyncio.gather(
+            _get_measurements(),
+            _get_photo_analysis(),
+            _get_photo_integrity(),
+            _get_carrier_data(),
+            _get_weather_data(),
+        )
 
         # 8c. Search for corroborating weather reports (NOAA, news, social media)
         city = measurements.get("property", {}).get("city", "")

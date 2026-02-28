@@ -1,0 +1,57 @@
+{
+  "_meta": {
+    "price_list": "NYBI26",
+    "region": "Binghamton, NY",
+    "last_updated": "2026-02-28",
+    "notes": "Update this file when Xactimate pricing changes — no code changes needed"
+  },
+
+  "slate_remove": 325.00,
+  "slate_install": 1850.00,
+  "slate_underlayment": 22.00,
+  "slate_nails_hooks": 45.00,
+  "slate_specialist_labor": 350.00,
+  "slate_ridge_cap": 38.00,
+  "slate_hip_cap": 38.00,
+
+  "tile_remove": 200.00,
+  "tile_install": 900.00,
+  "tile_underlayment": 22.00,
+  "tile_ridge_cap": 28.00,
+  "tile_hip_cap": 28.00,
+
+  "metal_remove": 150.00,
+  "metal_install": 850.00,
+  "metal_underlayment": 32.00,
+  "metal_ridge_cap": 22.00,
+
+  "laminated_remove": 74.00,
+  "laminated_install": 320.00,
+  "laminated_underlayment": 32.00,
+  "laminated_ridge_cap": 7.49,
+
+  "3tab_remove": 73.14,
+  "3tab_install": 312.92,
+  "3tab_underlayment": 32.00,
+  "3tab_ridge_cap": 7.49,
+
+  "comp_hip_cap": 7.49,
+
+  "ice_water": 2.24,
+  "drip_edge_aluminum": 4.25,
+  "drip_edge_copper": 18.50,
+  "starter_strip": 3.50,
+  "ridge_vent": 8.50,
+  "step_flashing": 8.00,
+  "step_flashing_copper": 22.00,
+  "counter_flashing": 9.50,
+  "counter_flashing_copper": 28.00,
+  "pipe_boot": 68.00,
+  "exhaust_vent": 125.00,
+  "steep_charge": 85.00,
+  "high_roof_charge": 85.00,
+  "dumpster": 450.00,
+  "gutter_aluminum": 10.50,
+  "gutter_copper_half_round": 55.00,
+  "flat_seam_copper": 28.00
+}

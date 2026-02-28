@@ -16,6 +16,7 @@ interface Claim {
   created_at: string;
   user_notes?: string | null;
   photo_integrity?: { total: number; flagged: number; score: string } | null;
+  error_message?: string | null;
 }
 
 type UploadCategory = "photos" | "scope" | "weather" | "other";
@@ -397,10 +398,18 @@ export default function ClaimDetailPage() {
         {/* Error state */}
         {claim.status === "error" && (
           <div className="bg-red-50 border border-red-100 rounded-2xl p-5">
-            <p className="text-sm text-red-700">
-              Processing failed. Our team has been notified and will look into
-              it.
+            <p className="text-sm font-medium text-red-800 mb-1">
+              Processing failed
             </p>
+            {claim.error_message ? (
+              <p className="text-sm text-red-600 font-mono bg-red-100/50 rounded px-3 py-2 mt-2">
+                {claim.error_message}
+              </p>
+            ) : (
+              <p className="text-sm text-red-600">
+                Our team has been notified and will look into it.
+              </p>
+            )}
           </div>
         )}
 

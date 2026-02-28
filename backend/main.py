@@ -87,9 +87,12 @@ async def run_processing(claim_id: str):
         traceback.print_exc()
         sys.stdout.flush()
         sys.stderr.flush()
-        # Update status to error
+        # Update status to error with message so user sees what went wrong
         sb = get_supabase_client()
-        sb.table("claims").update({"status": "error"}).eq("id", claim_id).execute()
+        sb.table("claims").update({
+            "status": "error",
+            "error_message": str(e)[:500],
+        }).eq("id", claim_id).execute()
 
 
 async def poll_for_claims():

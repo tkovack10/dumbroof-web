@@ -30,3 +30,9 @@ ALTER TABLE claims ADD COLUMN IF NOT EXISTS original_carrier_rcv numeric DEFAULT
 
 -- Previous carrier data — full carrier line items from prior processing (for diff)
 ALTER TABLE claims ADD COLUMN IF NOT EXISTS previous_carrier_data jsonb;
+
+-- ============================================================
+-- ERROR TRACKING (Added 2026-02-28)
+-- Stores error message when claim processing fails
+-- ============================================================
+ALTER TABLE claims ADD COLUMN IF NOT EXISTS error_message text;

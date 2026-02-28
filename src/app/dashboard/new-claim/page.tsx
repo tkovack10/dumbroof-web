@@ -40,11 +40,13 @@ export default function NewClaimPage() {
       } = await supabase.auth.getUser();
       if (!user) throw new Error("Not authenticated");
 
-      // Create a slug from the address
-      const slug = propertyAddress
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, "-")
-        .replace(/^-|-$/g, "");
+      // Create a slug from the address — append timestamp to prevent collisions
+      const slug =
+        propertyAddress
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, "-")
+          .replace(/^-|-$/g, "") +
+        `-${Date.now()}`;
       const claimPath = `${user.id}/${slug}`;
 
       // Upload all files
