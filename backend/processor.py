@@ -1105,6 +1105,11 @@ def _detect_roof_material(photo_analysis: dict, user_notes: str = "") -> str:
 
     Returns one of: 'slate', 'tile', 'metal_standing_seam', 'copper',
     'laminated', '3tab', or defaults to 'laminated'.
+
+    IMPORTANT: "metal" alone is NOT a roofing material indicator — virtually
+    every roof has metal components (flashing, trim, drip edge, vents, gutters).
+    Only detect metal roofing when explicitly stated as the primary roof covering
+    (e.g., "standing seam", "metal roof", "metal roofing panel").
     """
     combined = " ".join([
         user_notes or "",
@@ -1112,16 +1117,38 @@ def _detect_roof_material(photo_analysis: dict, user_notes: str = "") -> str:
         photo_analysis.get("damage_summary", ""),
     ]).lower()
 
-    if "slate" in combined:
+    # Check for explicit comp shingle keywords FIRST — these override everything
+    # because if someone says "laminate comp shingle roof" that IS the material,
+    # regardless of any "metal trim" or "metal flashing" also mentioned.
+    has_comp_shingle = any(kw in combined for kw in [
+        "laminate", "laminated", "architectural", "comp shingle",
+        "composite shingle", "asphalt shingle", "3-tab", "3 tab",
+        "dimensional shingle", "strip shingle",
+    ])
+
+    if "slate" in combined and not has_comp_shingle:
         return "slate"
-    if "tile" in combined or "clay" in combined or "concrete tile" in combined:
+    if ("tile" in combined or "clay" in combined or "concrete tile" in combined) and not has_comp_shingle:
         return "tile"
-    if "standing seam" in combined:
+    # "standing seam" is an explicit metal roofing phrase — safe to match
+    if "standing seam" in combined and not has_comp_shingle:
         return "metal_standing_seam"
-    if "copper" in combined and "roof" in combined and "gutter" not in combined:
+    if "copper" in combined and "copper roof" in combined and not has_comp_shingle:
         return "copper"
-    if "metal" in combined and "roof" in combined:
+    # Only match metal roofing when explicitly described as the roof covering.
+    # "metal" alone appears on every claim (flashing, trim, drip edge, vents,
+    # gutters, downspouts). Require explicit phrases like "metal roof" or
+    # "metal roofing" — NOT just "metal" + "roof" as separate words.
+    if any(phrase in combined for phrase in [
+        "metal roof", "metal roofing", "metal panel roof",
+    ]) and not has_comp_shingle:
         return "metal_standing_seam"
+
+    # If comp shingle keywords found, or fallback to shingle_type field
+    if has_comp_shingle:
+        if "3-tab" in combined or "3 tab" in combined or "strip shingle" in combined:
+            return "3tab"
+        return "laminated"
 
     shingle_type = photo_analysis.get("shingle_type", "architectural laminated").lower()
     if "laminated" in shingle_type or "architectural" in shingle_type:
