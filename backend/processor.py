@@ -1041,7 +1041,7 @@ def build_claim_config(
             "price_list": carrier_data.get("price_list", "NYBI26") if carrier_data else "NYBI26",
             "deductible": carrier_data.get("carrier_deductible", 0) if carrier_data else 0,
         },
-        "structures": structs,
+        "structures": structs,  # shingle_type populated below from photo analysis
         "weather": {
             "hail_size": (weather_data or {}).get("hail_size", ""),
             "storm_date": (weather_data or {}).get("storm_date", ""),
@@ -1096,6 +1096,20 @@ def build_claim_config(
     # User-provided notes (context from upload form)
     if user_notes:
         config["user_notes"] = user_notes
+
+    # Propagate detected roof material into structures[0].shingle_type
+    # Photo analysis identifies the material visually; this ensures it's in the config
+    detected_material = _detect_roof_material(photo_analysis, user_notes or "")
+    material_labels = {
+        "laminated": "Architectural Laminated Comp Shingle",
+        "3tab": "3-Tab 25yr Comp Shingle",
+        "slate": "Natural Slate",
+        "tile": "Clay/Concrete Tile",
+        "metal_standing_seam": "Standing Seam Metal",
+        "copper": "Copper",
+    }
+    if config.get("structures") and len(config["structures"]) > 0:
+        config["structures"][0]["shingle_type"] = material_labels.get(detected_material, detected_material)
 
     return config
 
