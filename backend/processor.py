@@ -1417,7 +1417,7 @@ def generate_pdfs(config: dict, work_dir: str) -> list[str]:
     result = subprocess.run(
         ["python3", GENERATOR_PATH, config_path],
         capture_output=True, text=True, cwd=work_dir,
-        timeout=120,
+        timeout=300,
     )
 
     if result.returncode != 0:
@@ -1728,6 +1728,42 @@ async def process_claim(claim_id: str):
                 print(f"[REVISION] Scope diff failed (non-fatal): {e}")
                 traceback.print_exc()
 
+        # 9d. Resize oversized photos before PDF generation
+        # Raw iPhone/camera photos (8-18 MB each) cause Chrome headless to timeout
+        # when base64-encoded into HTML, and Supabase Storage rejects PDFs over 50MB.
+        # Resize to max 1024px at 50% JPEG quality — keeps forensic detail while
+        # ensuring PDF stays under upload limits even with 30+ photos.
+        resized_count = 0
+        for fname in os.listdir(photos_dir):
+            fpath = os.path.join(photos_dir, fname)
+            if not os.path.isfile(fpath):
+                continue
+            if fname.lower().rsplit(".", 1)[-1] not in ("jpg", "jpeg", "png"):
+                continue
+            if os.path.getsize(fpath) < 300_000:
+                continue
+            try:
+                original_size = os.path.getsize(fpath)
+                result = subprocess.run(
+                    ["sips", "-Z", "1024", "--setProperty", "formatOptions", "50",
+                     fpath, "--out", fpath],
+                    capture_output=True, timeout=15
+                )
+                if result.returncode == 0:
+                    new_size = os.path.getsize(fpath)
+                    resized_count += 1
+                    print(f"[PHOTOS] Resized {fname}: {original_size/1024:.0f}KB → {new_size/1024:.0f}KB")
+            except Exception as e:
+                print(f"[PHOTOS] Resize failed for {fname} (non-fatal): {e}")
+
+        if resized_count:
+            total_size = sum(
+                os.path.getsize(os.path.join(photos_dir, f))
+                for f in os.listdir(photos_dir)
+                if os.path.isfile(os.path.join(photos_dir, f))
+            )
+            print(f"[PHOTOS] Resized {resized_count} photos — total photos dir: {total_size/1024/1024:.1f}MB")
+
         # 10. Generate PDFs
         print(f"[PROCESS] Generating PDFs...")
         pdfs = generate_pdfs(config, work_dir)
@@ -1913,7 +1949,7 @@ def sync_to_github_dashboard(config: dict, claim: dict, photo_analysis: dict, ca
             capture_output=True, text=True, cwd=PLATFORM_DIR, timeout=10,
         )
         # Also add carrier playbook and memory files
-        carrier_slug = carrier_name.lower().replace(" ", "-")
+        carrier_slug = carrier_name.lower().replace("/", "-").replace(" ", "-").replace("--", "-").strip("-")
         playbook_path = f"carrier_playbooks/{carrier_slug}.md"
         if os.path.exists(os.path.join(PLATFORM_DIR, playbook_path)):
             subprocess.run(
@@ -2007,7 +2043,7 @@ def update_carrier_playbook(carrier_name: str, claim: dict, config: dict, financ
     if not carrier_name:
         return
 
-    carrier_slug = carrier_name.lower().replace(" ", "-")
+    carrier_slug = carrier_name.lower().replace("/", "-").replace(" ", "-").replace("--", "-").strip("-")
     playbook_path = os.path.join(PLATFORM_DIR, "carrier_playbooks", f"{carrier_slug}.md")
 
     # Create playbook if it doesn't exist

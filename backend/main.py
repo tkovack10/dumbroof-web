@@ -64,8 +64,8 @@ async def reprocess_claim(claim_id: str, background_tasks: BackgroundTasks):
     result = sb.table("claims").select("id, status").eq("id", claim_id).single().execute()
     if not result.data:
         raise HTTPException(status_code=404, detail="Claim not found")
-    # Set status back to uploaded so the poller picks it up
-    sb.table("claims").update({"status": "uploaded"}).eq("id", claim_id).execute()
+    # Set status to processing directly — don't use "uploaded" to avoid poller race condition
+    sb.table("claims").update({"status": "processing"}).eq("id", claim_id).execute()
     background_tasks.add_task(run_processing, claim_id)
     return {"status": "reprocessing", "claim_id": claim_id}
 
