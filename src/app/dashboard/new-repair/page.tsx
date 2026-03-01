@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { FileUploadZone } from "@/components/file-upload-zone";
+import { AddressAutocomplete } from "@/components/address-autocomplete";
 
 type UploadStatus = "idle" | "uploading" | "success" | "error";
 
@@ -170,11 +171,10 @@ export default function NewRepairPage() {
               <label className="block text-sm font-semibold text-[var(--navy)] mb-1">
                 Property Address
               </label>
-              <input
-                type="text"
+              <AddressAutocomplete
                 required
                 value={propertyAddress}
-                onChange={(e) => setPropertyAddress(e.target.value)}
+                onChange={setPropertyAddress}
                 placeholder="123 Main St, Bensalem, PA 19020"
                 className="w-full px-4 py-3 rounded-lg border border-gray-200 focus:border-[var(--navy)] focus:ring-1 focus:ring-[var(--navy)] outline-none transition-colors text-sm"
               />
