@@ -93,6 +93,9 @@ export function DashboardContent({ user }: { user: User }) {
             </span>
           </div>
           <div className="flex items-center gap-4">
+            <a href="/dashboard/repairs" className="text-gray-400 hover:text-white text-sm transition-colors hidden sm:block">
+              Repairs
+            </a>
             <a href="/dashboard/settings" className="text-gray-400 hover:text-white text-sm transition-colors hidden sm:block">
               Settings
             </a>
@@ -113,17 +116,25 @@ export function DashboardContent({ user }: { user: User }) {
       <div className="max-w-6xl mx-auto px-6 py-10">
         <div className="flex items-center justify-between mb-8">
           <div>
-            <h1 className="text-2xl font-bold text-[var(--navy)]">Dashboard</h1>
+            <h1 className="text-2xl font-bold text-[var(--navy)]">Claims Dashboard</h1>
             <p className="text-gray-500 mt-1">
               Upload documents and generate claim packages.
             </p>
           </div>
-          <a
-            href="/dashboard/new-claim"
-            className="bg-[var(--red)] hover:bg-[var(--red-dark)] text-white px-6 py-3 rounded-xl font-semibold transition-colors text-sm"
-          >
-            + New Claim
-          </a>
+          <div className="flex items-center gap-3">
+            <a
+              href="/dashboard/new-repair"
+              className="bg-[var(--navy)] hover:bg-[var(--navy-light)] text-white px-5 py-3 rounded-xl font-semibold transition-colors text-sm"
+            >
+              + New Repair
+            </a>
+            <a
+              href="/dashboard/new-claim"
+              className="bg-[var(--red)] hover:bg-[var(--red-dark)] text-white px-6 py-3 rounded-xl font-semibold transition-colors text-sm"
+            >
+              + New Claim
+            </a>
+          </div>
         </div>
 
         {/* Claims List */}

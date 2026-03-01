@@ -21,16 +21,19 @@ from fastapi import FastAPI, BackgroundTasks, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
 from processor import process_claim, get_supabase_client
+from repair_processor import process_repair
 
 load_dotenv()
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Start background poller on startup."""
-    task = asyncio.create_task(poll_for_claims())
+    """Start background pollers on startup."""
+    claims_task = asyncio.create_task(poll_for_claims())
+    repairs_task = asyncio.create_task(poll_for_repairs())
     yield
-    task.cancel()
+    claims_task.cancel()
+    repairs_task.cancel()
 
 
 app = FastAPI(
@@ -95,6 +98,30 @@ async def run_processing(claim_id: str):
         }).eq("id", claim_id).execute()
 
 
+async def run_repair_processing(repair_id: str):
+    """Run repair processing in background."""
+    try:
+        await process_repair(repair_id)
+    except Exception as e:
+        import traceback, sys
+        print(f"[ERROR] Failed to process repair {repair_id}: {e}", flush=True)
+        traceback.print_exc()
+        sys.stdout.flush()
+        sys.stderr.flush()
+        sb = get_supabase_client()
+        sb.table("repairs").update({
+            "status": "error",
+            "error_message": str(e)[:500],
+        }).eq("id", repair_id).execute()
+
+
+@app.post("/api/process-repair/{repair_id}")
+async def trigger_repair_processing(repair_id: str, background_tasks: BackgroundTasks):
+    """Manually trigger processing for a specific repair."""
+    background_tasks.add_task(run_repair_processing, repair_id)
+    return {"status": "processing", "repair_id": repair_id}
+
+
 async def poll_for_claims():
     """Background poller — checks for new claims every 10 seconds."""
     while True:
@@ -106,4 +133,18 @@ async def poll_for_claims():
                 await run_processing(claim["id"])
         except Exception as e:
             print(f"[POLLER] Error: {e}")
+        await asyncio.sleep(10)
+
+
+async def poll_for_repairs():
+    """Background poller — checks for new repairs every 10 seconds."""
+    while True:
+        try:
+            sb = get_supabase_client()
+            result = sb.table("repairs").select("id").eq("status", "uploaded").execute()
+            for repair in result.data:
+                print(f"[REPAIR POLLER] Found new repair: {repair['id']}")
+                await run_repair_processing(repair["id"])
+        except Exception as e:
+            print(f"[REPAIR POLLER] Error: {e}")
         await asyncio.sleep(10)

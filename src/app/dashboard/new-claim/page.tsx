@@ -247,8 +247,8 @@ export default function NewClaimPage() {
 
             <FileUploadZone
               label="Inspection Photos"
-              description="Photos from your property inspection (JPG, PNG, or PDF from CompanyCam, etc.)"
-              accept=".jpg,.jpeg,.png,.pdf,.heic"
+              description="Upload from camera roll, CompanyCam, JobNimbus, Acculynx, or any source. ZIP archives and PDFs with photos are also supported."
+              accept=".jpg,.jpeg,.png,.heic,.heif,.webp,.tiff,.tif,.bmp,.pdf,.zip"
               multiple
               required
               files={photoFiles}
@@ -266,7 +266,7 @@ export default function NewClaimPage() {
             <FileUploadZone
               label="Weather Data"
               description="HailTrace report, NOAA data, or any storm/weather documentation for the loss date. Strengthens the forensic case."
-              accept=".pdf,.jpg,.jpeg,.png"
+              accept=".pdf,.jpg,.jpeg,.png,.heic,.heif,.webp,.tiff,.tif,.bmp,.zip"
               multiple
               files={weatherFiles}
               onFilesChange={setWeatherFiles}

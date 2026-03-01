@@ -27,8 +27,8 @@ const CATEGORY_CONFIG: Record<
 > = {
   photos: {
     label: "Additional Photos",
-    description: "More inspection photos, construction photos, or damage close-ups",
-    accept: ".jpg,.jpeg,.png,.heic",
+    description: "More inspection photos, construction photos, or damage close-ups. ZIP archives and PDFs with photos also supported.",
+    accept: ".jpg,.jpeg,.png,.heic,.heif,.webp,.tiff,.tif,.bmp,.pdf,.zip",
     multiple: true,
     dbField: "photo_files",
   },
@@ -42,14 +42,14 @@ const CATEGORY_CONFIG: Record<
   weather: {
     label: "Weather Data",
     description: "HailTrace report, NOAA data, or storm documentation",
-    accept: ".pdf,.jpg,.jpeg,.png",
+    accept: ".pdf,.jpg,.jpeg,.png,.heic,.heif,.webp,.tiff,.tif,.bmp,.zip",
     multiple: true,
     dbField: "weather_files",
   },
   other: {
     label: "Other Documents",
     description: "Email screenshots, adjuster correspondence, change orders, or any other supporting documents",
-    accept: ".pdf,.jpg,.jpeg,.png,.doc,.docx",
+    accept: ".pdf,.jpg,.jpeg,.png,.heic,.heif,.webp,.tiff,.tif,.bmp,.doc,.docx,.zip",
     multiple: true,
     dbField: "other_files",
   },

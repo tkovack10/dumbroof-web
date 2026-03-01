@@ -22,6 +22,21 @@ import anthropic
 import traceback
 from supabase import create_client, Client
 
+from photo_utils import (
+    convert_to_jpeg,
+    resize_photo as _shared_resize_photo,
+    prepare_photo_for_api,
+    prepare_photo_for_pdf,
+    extract_images_from_pdf as _shared_extract_pdf,
+    extract_images_from_zip,
+    ingest_photos,
+    get_media_type as _shared_get_media_type,
+    is_image_file,
+    is_container_file,
+    NEEDS_CONVERSION,
+    ALL_IMAGE_FORMATS,
+)
+
 
 def _call_claude_with_retry(client, max_retries=3, **kwargs):
     """Call Claude API with retry on rate limits."""
@@ -106,138 +121,29 @@ def file_to_base64(path: str) -> str:
 
 
 def get_media_type(filename: str) -> str:
-    ext = filename.lower().rsplit(".", 1)[-1]
-    return {
-        "pdf": "application/pdf",
-        "jpg": "image/jpeg",
-        "jpeg": "image/jpeg",
-        "png": "image/png",
-        "heic": "image/heic",
-    }.get(ext, "application/octet-stream")
+    """Return MIME type — delegates to shared photo_utils."""
+    return _shared_get_media_type(filename)
 
 
 def extract_images_from_pdf(pdf_path: str, output_dir: str) -> list[str]:
-    """Extract images from a PDF file using pdfimages (poppler) or PyMuPDF fallback.
-
-    Returns list of extracted image file paths.
-    """
-    extracted = []
-    basename = os.path.splitext(os.path.basename(pdf_path))[0]
-    prefix = os.path.join(output_dir, f"{basename}_")
-
-    # Try pdfimages first (fast, high quality)
-    try:
-        subprocess.run(
-            ["pdfimages", "-j", pdf_path, prefix],
-            capture_output=True, timeout=30
-        )
-        # pdfimages outputs files like prefix-000.jpg, prefix-001.jpg, etc.
-        import glob
-        for img_path in sorted(glob.glob(f"{prefix}*.jpg") + glob.glob(f"{prefix}*.ppm") + glob.glob(f"{prefix}*.png")):
-            # Convert PPM to JPEG if needed
-            if img_path.endswith(".ppm"):
-                jpg_path = img_path.rsplit(".", 1)[0] + ".jpg"
-                try:
-                    subprocess.run(
-                        ["sips", "-s", "format", "jpeg", img_path, "--out", jpg_path],
-                        capture_output=True, timeout=15
-                    )
-                    if os.path.exists(jpg_path) and os.path.getsize(jpg_path) > 0:
-                        os.remove(img_path)
-                        img_path = jpg_path
-                except Exception:
-                    pass
-            # Skip small images (icons, logos, UI elements) — real photos are 30KB+
-            if os.path.getsize(img_path) > 30000:
-                extracted.append(img_path)
-
-        if extracted:
-            print(f"[PHOTOS] Extracted {len(extracted)} images from PDF via pdfimages: {os.path.basename(pdf_path)}")
-            return extracted
-    except FileNotFoundError:
-        pass  # pdfimages not installed, try PyMuPDF
-    except Exception as e:
-        print(f"[PHOTOS] pdfimages failed: {e}")
-
-    # Fallback: PyMuPDF (fitz)
-    try:
-        import fitz
-        doc = fitz.open(pdf_path)
-        img_idx = 0
-        skipped = 0
-        seen_xrefs = set()  # Deduplicate — logos/headers repeat on every page
-
-        for page_num in range(len(doc)):
-            page = doc[page_num]
-            for img in page.get_images(full=True):
-                xref = img[0]
-
-                # Skip duplicates (same image embedded on multiple pages = logo/header)
-                if xref in seen_xrefs:
-                    continue
-                seen_xrefs.add(xref)
-
-                pix = fitz.Pixmap(doc, xref)
-                if pix.n >= 5:  # CMYK — convert to RGB
-                    pix = fitz.Pixmap(fitz.csRGB, pix)
-
-                # Skip small images (icons, UI elements) — real photos are 400x300+
-                if pix.width < 400 or pix.height < 300:
-                    pix = None
-                    skipped += 1
-                    continue
-
-                # Skip extreme aspect ratios (banners/headers) — real photos are between 1:3 and 3:1
-                aspect = max(pix.width, pix.height) / max(min(pix.width, pix.height), 1)
-                if aspect > 3.0:
-                    pix = None
-                    skipped += 1
-                    continue
-
-                img_path = f"{prefix}p{page_num:02d}_{img_idx:03d}.jpg"
-                pix.save(img_path)
-                pix = None
-
-                # Also skip by file size — real inspection photos are 50KB+ even compressed
-                if os.path.getsize(img_path) < 50000:
-                    os.remove(img_path)
-                    skipped += 1
-                else:
-                    extracted.append(img_path)
-                img_idx += 1
-        doc.close()
-        if skipped:
-            print(f"[PHOTOS] Skipped {skipped} non-photo images (logos, icons, headers)")
-        if extracted:
-            print(f"[PHOTOS] Extracted {len(extracted)} inspection photos from PDF via PyMuPDF: {os.path.basename(pdf_path)}")
-    except Exception as e:
-        print(f"[PHOTOS] PyMuPDF extraction failed: {e}")
-
-    return extracted
+    """Extract images from a PDF — delegates to shared photo_utils."""
+    return _shared_extract_pdf(pdf_path, output_dir)
 
 
 def resize_photo(path: str, max_dim: int = 1024) -> str:
-    """Resize a photo to max_dim on longest side using sips. Returns path to resized copy."""
-    ext = path.lower().rsplit(".", 1)[-1]
-    if ext not in ("jpg", "jpeg", "png"):
-        return path
+    """Resize a photo — handles HEIC, TIFF, BMP, RAW, and all standard formats.
+    Delegates to shared photo_utils for format conversion + resize."""
+    ext = path.lower().rsplit(".", 1)[-1] if "." in path else ""
 
-    size = os.path.getsize(path)
-    # Skip if already small (under 500KB)
-    if size < 500_000:
-        return path
+    # Convert non-native formats to JPEG first
+    if ext in NEEDS_CONVERSION:
+        converted = convert_to_jpeg(path)
+        if not converted:
+            print(f"[PHOTOS] Could not convert {os.path.basename(path)} ({ext}) — skipping")
+            return ""
+        path = converted
 
-    resized = path + ".resized.jpg"
-    try:
-        subprocess.run(
-            ["sips", "-Z", str(max_dim), "--setProperty", "formatOptions", "60", path, "--out", resized],
-            capture_output=True, timeout=15
-        )
-        if os.path.exists(resized) and os.path.getsize(resized) > 0:
-            return resized
-    except Exception:
-        pass
-    return path
+    return _shared_resize_photo(path, max_dim=max_dim, quality=60, suffix="_resized")
 
 
 # ===================================================================
@@ -1583,25 +1489,22 @@ async def process_claim(claim_id: str):
             download_file(sb, "claim-documents", f"{file_path}/measurements/{fname}", local)
             measurement_paths.append(local)
 
-        # 4. Download photos (extract images from PDFs if needed)
+        # 4. Download photos — handles any format: images, ZIPs, PDFs
+        #    Uses shared photo_utils for format-agnostic ingestion
         photo_paths = []
         photo_filenames = []
+        downloaded_paths = []
         for fname in claim.get("photo_files", []):
             local = os.path.join(photos_dir, fname)
             download_file(sb, "claim-documents", f"{file_path}/photos/{fname}", local)
+            downloaded_paths.append(local)
 
-            # If the photo file is a PDF, extract images from it
-            if fname.lower().endswith(".pdf"):
-                print(f"[PHOTOS] Photo file is a PDF — extracting images: {fname}")
-                extracted = extract_images_from_pdf(local, photos_dir)
-                if extracted:
-                    photo_paths.extend(extracted)
-                    photo_filenames.extend([os.path.basename(p) for p in extracted])
-                else:
-                    print(f"[PHOTOS] WARNING: No images extracted from {fname}")
-            else:
-                photo_paths.append(local)
-                photo_filenames.append(fname)
+        # Ingest all downloaded files — extracts ZIPs, PDFs, converts HEIC/TIFF/etc.
+        photo_paths = ingest_photos(downloaded_paths, photos_dir)
+        photo_filenames = [os.path.basename(p) for p in photo_paths]
+
+        if not photo_paths:
+            print(f"[PHOTOS] WARNING: No usable photos found from {len(downloaded_paths)} uploaded files")
 
         # 5. Download carrier scope (if any)
         scope_paths = []
