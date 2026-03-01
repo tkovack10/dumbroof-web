@@ -46,17 +46,22 @@ export default function NewRepairPage() {
         `-repair-${Date.now()}`;
       const filePath = `${user.id}/${slug}`;
 
-      // Sanitize filename for Supabase storage
-      const sanitize = (name: string) =>
-        name.replace(/[^a-zA-Z0-9._-]/g, "_").replace(/_{2,}/g, "_");
-
-      // Upload photos
+      // Upload photos via server-signed URLs
+      const uploadedPhotos: string[] = [];
       for (const file of photoFiles) {
-        const path = `${filePath}/photos/${sanitize(file.name)}`;
+        const res = await fetch("/api/storage/sign-upload", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ folder: "photos", fileName: file.name, claimPath: filePath }),
+        });
+        const urlData = await res.json();
+        if (!res.ok) throw new Error(`Failed to upload ${file.name}: ${urlData.error}`);
+
         const { error } = await supabase.storage
           .from("claim-documents")
-          .upload(path, file, { upsert: true });
+          .uploadToSignedUrl(urlData.path, urlData.token, file);
         if (error) throw new Error(`Failed to upload ${file.name}: ${error.message}`);
+        uploadedPhotos.push(urlData.safeName);
       }
 
       // Save repair record
@@ -67,7 +72,7 @@ export default function NewRepairPage() {
         slug,
         status: "uploaded",
         file_path: filePath,
-        photo_files: photoFiles.map((f) => sanitize(f.name)),
+        photo_files: uploadedPhotos,
         leak_description: leakDescription.trim(),
         roofer_name: rooferName.trim(),
         skill_level: skillLevel,

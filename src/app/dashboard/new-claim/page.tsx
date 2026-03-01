@@ -49,38 +49,50 @@ export default function NewClaimPage() {
         `-${Date.now()}`;
       const claimPath = `${user.id}/${slug}`;
 
-      // Sanitize filename for Supabase storage (no spaces, parens, or special chars)
-      const sanitize = (name: string) =>
-        name.replace(/[^a-zA-Z0-9._-]/g, "_").replace(/_{2,}/g, "_");
-
-      // Upload all files
+      // Upload via server-signed URLs (bypasses RLS, sanitizes server-side)
       const uploadFile = async (file: File, folder: string) => {
-        const filePath = `${claimPath}/${folder}/${sanitize(file.name)}`;
+        // Get signed upload URL from server
+        const res = await fetch("/api/storage/sign-upload", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ folder, fileName: file.name, claimPath }),
+        });
+        const urlData = await res.json();
+        if (!res.ok) throw new Error(`Failed to upload ${file.name}: ${urlData.error}`);
+
+        // Upload directly to Supabase using signed URL
         const { error } = await supabase.storage
           .from("claim-documents")
-          .upload(filePath, file, { upsert: true });
+          .uploadToSignedUrl(urlData.path, urlData.token, file);
         if (error) throw new Error(`Failed to upload ${file.name}: ${error.message}`);
-        return filePath;
+        return urlData.safeName;
+      };
+
+      const uploadedNames: Record<string, string[]> = {
+        measurements: [],
+        photos: [],
+        scope: [],
+        weather: [],
       };
 
       // Upload measurements
       for (const file of measurementFiles) {
-        await uploadFile(file, "measurements");
+        uploadedNames.measurements.push(await uploadFile(file, "measurements"));
       }
 
       // Upload photos
       for (const file of photoFiles) {
-        await uploadFile(file, "photos");
+        uploadedNames.photos.push(await uploadFile(file, "photos"));
       }
 
       // Upload scope (if provided)
       for (const file of scopeFiles) {
-        await uploadFile(file, "scope");
+        uploadedNames.scope.push(await uploadFile(file, "scope"));
       }
 
       // Upload weather data (if provided)
       for (const file of weatherFiles) {
-        await uploadFile(file, "weather");
+        uploadedNames.weather.push(await uploadFile(file, "weather"));
       }
 
       // Save claim record to database
@@ -92,10 +104,10 @@ export default function NewClaimPage() {
         phase,
         status: "uploaded",
         file_path: claimPath,
-        measurement_files: measurementFiles.map((f) => sanitize(f.name)),
-        photo_files: photoFiles.map((f) => sanitize(f.name)),
-        scope_files: scopeFiles.map((f) => sanitize(f.name)),
-        weather_files: weatherFiles.map((f) => sanitize(f.name)),
+        measurement_files: uploadedNames.measurements,
+        photo_files: uploadedNames.photos,
+        scope_files: uploadedNames.scope,
+        weather_files: uploadedNames.weather,
         ...(userNotes.trim() ? { user_notes: userNotes.trim() } : {}),
       });
 
