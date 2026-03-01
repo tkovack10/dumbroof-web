@@ -57,7 +57,7 @@ export default function LoginPage() {
               DR
             </div>
             <span className="text-white font-bold text-2xl tracking-tight">
-              dumb roof
+              dumb roof<sup className="text-[10px] font-medium align-super ml-0.5">™</sup>
             </span>
           </a>
         </div>

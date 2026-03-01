@@ -98,7 +98,7 @@ export default function NewRepairPage() {
               DR
             </div>
             <span className="text-white font-bold text-lg tracking-tight">
-              dumb roof
+              dumb roof<sup className="text-[9px] font-medium align-super ml-0.5">™</sup>
             </span>
           </div>
         </nav>
@@ -139,7 +139,7 @@ export default function NewRepairPage() {
               DR
             </div>
             <span className="text-white font-bold text-lg tracking-tight">
-              dumb roof
+              dumb roof<sup className="text-[9px] font-medium align-super ml-0.5">™</sup>
             </span>
           </div>
           <a

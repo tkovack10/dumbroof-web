@@ -75,7 +75,7 @@ export default function Home() {
               DR
             </div>
             <span className="text-white font-bold text-xl tracking-tight">
-              dumb roof
+              dumb roof<sup className="text-[10px] font-medium align-super ml-0.5">™</sup>
             </span>
           </div>
           <div className="flex items-center gap-6">
@@ -791,11 +791,16 @@ export default function Home() {
         <div className="max-w-5xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-lg bg-[var(--red)] flex items-center justify-center font-bold text-white text-sm">DR</div>
-            <span className="text-gray-400 text-sm">Dumb Roof Technologies</span>
+            <span className="text-gray-400 text-sm">Dumb Roof Technologies™</span>
           </div>
-          <p className="text-gray-500 text-sm">
-            &copy; {new Date().getFullYear()} Dumb Roof Technologies. All rights reserved.
-          </p>
+          <div className="text-center sm:text-right">
+            <p className="text-gray-500 text-sm">
+              &copy; {new Date().getFullYear()} Dumb Roof Technologies. All rights reserved.
+            </p>
+            <p className="text-gray-600 text-xs mt-1">
+              Patent Pending
+            </p>
+          </div>
         </div>
       </footer>
     </main>
