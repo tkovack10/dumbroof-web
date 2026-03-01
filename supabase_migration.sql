@@ -36,3 +36,28 @@ ALTER TABLE claims ADD COLUMN IF NOT EXISTS previous_carrier_data jsonb;
 -- Stores error message when claim processing fails
 -- ============================================================
 ALTER TABLE claims ADD COLUMN IF NOT EXISTS error_message text;
+
+-- ============================================================
+-- INSPECTOR APPLICATIONS (Added 2026-03-01)
+-- Public form — no auth required, RLS allows anonymous inserts
+-- ============================================================
+CREATE TABLE IF NOT EXISTS inspector_applications (
+  id bigint primary key generated always as identity,
+  name text not null,
+  email text not null,
+  phone text not null,
+  city text not null,
+  state text not null,
+  experience text not null,
+  haag_certified text not null,
+  willing_to_travel text not null,
+  insurance_carrier text,
+  notes text,
+  status text default 'pending',
+  created_at timestamptz default now()
+);
+
+ALTER TABLE inspector_applications ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Anyone can submit inspector applications"
+  ON inspector_applications FOR INSERT
+  WITH CHECK (true);

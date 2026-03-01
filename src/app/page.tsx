@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { createClient } from "@/lib/supabase/client";
 
 export default function Home() {
   const [email, setEmail] = useState("");
@@ -20,15 +21,43 @@ export default function Home() {
     notes: "",
   });
   const [inspectorSubmitted, setInspectorSubmitted] = useState(false);
+  const [inspectorSubmitting, setInspectorSubmitting] = useState(false);
+  const [inspectorError, setInspectorError] = useState("");
 
   const handleWaitlist = (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitted(true);
   };
 
-  const handleInspectorSubmit = (e: React.FormEvent) => {
+  const handleInspectorSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setInspectorSubmitted(true);
+    setInspectorSubmitting(true);
+    setInspectorError("");
+
+    try {
+      const supabase = createClient();
+      const { error } = await supabase.from("inspector_applications").insert({
+        name: inspectorForm.name,
+        email: inspectorForm.email,
+        phone: inspectorForm.phone,
+        city: inspectorForm.city,
+        state: inspectorForm.state,
+        experience: inspectorForm.experience,
+        haag_certified: inspectorForm.haagCertified,
+        willing_to_travel: inspectorForm.willingToTravel,
+        insurance_carrier: inspectorForm.insuranceCarrier || null,
+        notes: inspectorForm.notes || null,
+      });
+
+      if (error) throw new Error(error.message);
+      setInspectorSubmitted(true);
+    } catch (err) {
+      setInspectorError(
+        err instanceof Error ? err.message : "Submission failed. Please try again."
+      );
+    } finally {
+      setInspectorSubmitting(false);
+    }
   };
 
   const updateInspector = (field: string, value: string) => {
@@ -680,9 +709,23 @@ export default function Home() {
                       className="w-full px-4 py-3 rounded-lg border border-gray-200 focus:border-[var(--navy)] focus:ring-1 focus:ring-[var(--navy)] outline-none text-sm resize-none" />
                   </div>
 
-                  <button type="submit"
-                    className="w-full bg-[var(--navy)] hover:bg-[var(--navy-light)] text-white py-4 rounded-xl font-semibold transition-colors">
-                    Submit Application
+                  {inspectorError && (
+                    <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3">
+                      {inspectorError}
+                    </div>
+                  )}
+
+                  <button type="submit" disabled={inspectorSubmitting}
+                    className="w-full bg-[var(--navy)] hover:bg-[var(--navy-light)] disabled:opacity-50 disabled:cursor-not-allowed text-white py-4 rounded-xl font-semibold transition-colors">
+                    {inspectorSubmitting ? (
+                      <span className="flex items-center justify-center gap-2">
+                        <svg className="animate-spin w-5 h-5" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                        </svg>
+                        Submitting...
+                      </span>
+                    ) : "Submit Application"}
                   </button>
 
                   <p className="text-xs text-gray-400 text-center leading-relaxed">
