@@ -6,9 +6,33 @@ export default function Home() {
   const [email, setEmail] = useState("");
   const [submitted, setSubmitted] = useState(false);
 
+  // Inspector application form
+  const [inspectorForm, setInspectorForm] = useState({
+    name: "",
+    email: "",
+    phone: "",
+    city: "",
+    state: "",
+    experience: "",
+    haagCertified: "",
+    willingToTravel: "",
+    insuranceCarrier: "",
+    notes: "",
+  });
+  const [inspectorSubmitted, setInspectorSubmitted] = useState(false);
+
   const handleWaitlist = (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitted(true);
+  };
+
+  const handleInspectorSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setInspectorSubmitted(true);
+  };
+
+  const updateInspector = (field: string, value: string) => {
+    setInspectorForm((prev) => ({ ...prev, [field]: value }));
   };
 
   return (
@@ -33,6 +57,9 @@ export default function Home() {
             </a>
             <a href="#results" className="text-gray-300 hover:text-white text-sm transition-colors hidden sm:block">
               Results
+            </a>
+            <a href="#inspectors" className="text-gray-300 hover:text-white text-sm transition-colors hidden sm:block">
+              Inspectors
             </a>
             <a
               href="#waitlist"
@@ -463,6 +490,222 @@ export default function Home() {
                   ))}
                 </tbody>
               </table>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Inspector Network */}
+      <section id="inspectors" className="py-20 px-6 bg-white scroll-mt-20">
+        <div className="max-w-5xl mx-auto">
+          <div className="text-center mb-14">
+            <div className="inline-block mb-4 px-4 py-1.5 rounded-full bg-[var(--navy)]/5 border border-[var(--navy)]/10">
+              <span className="text-[var(--navy)] text-sm font-semibold">
+                Now Recruiting Nationwide
+              </span>
+            </div>
+            <h2 className="text-3xl sm:text-4xl font-bold text-[var(--navy)] mb-4">
+              Join the Dumb Roof Inspector Network
+            </h2>
+            <p className="text-gray-500 max-w-2xl mx-auto leading-relaxed">
+              Professional roof inspections. No angry homeowners. No &ldquo;my roof is leaking&rdquo;
+              calls six months later. No punch lists. No warranty callbacks.
+              Just detailed, standards-based inspections.
+            </p>
+          </div>
+
+          <div className="grid lg:grid-cols-2 gap-10">
+            {/* Left — Value Props */}
+            <div className="space-y-6">
+              <div className="bg-[var(--gray-50)] rounded-2xl p-8 border border-gray-100">
+                <h3 className="text-xl font-bold text-[var(--navy)] mb-6">
+                  Just Inspections. Nothing Else.
+                </h3>
+                <div className="space-y-5">
+                  {[
+                    {
+                      title: "Inspect. Document. Get paid.",
+                      desc: "Show up, follow industry best practices, take photos, document damage. Our AI handles the forensic report, the estimate, and the appeal package. You never touch paperwork.",
+                    },
+                    {
+                      title: "No construction liability",
+                      desc: "You are not the contractor. You don\u2019t build anything, warranty anything, or manage any crews. When the phone rings 6 months later \u2014 it\u2019s not your phone.",
+                    },
+                    {
+                      title: "Pick your jobs, set your schedule",
+                      desc: "Inspection requests appear in your market. Accept what works for your schedule. Decline what doesn\u2019t. No quotas, no mandatory availability windows.",
+                    },
+                    {
+                      title: "Get paid more than carrier-side work",
+                      desc: "Carrier inspection companies pay $75\u2013$150 per inspection. Policyholder-side inspections through our network pay significantly more for the same work.",
+                    },
+                  ].map((item) => (
+                    <div key={item.title} className="flex items-start gap-3">
+                      <div className="w-6 h-6 rounded-full bg-green-100 flex items-center justify-center shrink-0 mt-0.5">
+                        <svg className="w-3.5 h-3.5 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                        </svg>
+                      </div>
+                      <div>
+                        <p className="font-semibold text-[var(--navy)] text-sm">{item.title}</p>
+                        <p className="text-gray-500 text-sm mt-1 leading-relaxed">{item.desc}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="bg-[var(--navy)] rounded-2xl p-8">
+                <h4 className="text-white font-bold mb-4">Two Tiers. Same Respect.</h4>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="bg-white/10 border border-white/10 rounded-xl p-5">
+                    <div className="flex items-center gap-2 mb-2">
+                      <div className="w-2 h-2 rounded-full bg-[var(--gold)]" />
+                      <span className="text-[var(--gold)] text-xs font-bold uppercase tracking-wider">HAAG Certified</span>
+                    </div>
+                    <p className="text-gray-300 text-sm leading-relaxed">
+                      Premium rate. Your HAAG stamp goes on the report.
+                      The gold standard carriers trust &mdash; now working for the policyholder.
+                    </p>
+                  </div>
+                  <div className="bg-white/10 border border-white/10 rounded-xl p-5">
+                    <div className="flex items-center gap-2 mb-2">
+                      <div className="w-2 h-2 rounded-full bg-gray-400" />
+                      <span className="text-gray-300 text-xs font-bold uppercase tracking-wider">Experienced</span>
+                    </div>
+                    <p className="text-gray-300 text-sm leading-relaxed">
+                      Competitive rate. Years of field experience without
+                      HAAG certification. Proper 1099 insurance required.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Right — Application Form */}
+            <div>
+              {!inspectorSubmitted ? (
+                <form onSubmit={handleInspectorSubmit} className="bg-[var(--gray-50)] rounded-2xl p-8 border border-gray-100 space-y-5">
+                  <h3 className="text-lg font-bold text-[var(--navy)]">Apply to Join</h3>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Full Name</label>
+                      <input type="text" required value={inspectorForm.name} onChange={(e) => updateInspector("name", e.target.value)}
+                        className="w-full px-4 py-3 rounded-lg border border-gray-200 focus:border-[var(--navy)] focus:ring-1 focus:ring-[var(--navy)] outline-none text-sm" />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Phone</label>
+                      <input type="tel" required value={inspectorForm.phone} onChange={(e) => updateInspector("phone", e.target.value)}
+                        className="w-full px-4 py-3 rounded-lg border border-gray-200 focus:border-[var(--navy)] focus:ring-1 focus:ring-[var(--navy)] outline-none text-sm" />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Email</label>
+                    <input type="email" required value={inspectorForm.email} onChange={(e) => updateInspector("email", e.target.value)}
+                      placeholder="you@example.com"
+                      className="w-full px-4 py-3 rounded-lg border border-gray-200 focus:border-[var(--navy)] focus:ring-1 focus:ring-[var(--navy)] outline-none text-sm" />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">City</label>
+                      <input type="text" required value={inspectorForm.city} onChange={(e) => updateInspector("city", e.target.value)}
+                        className="w-full px-4 py-3 rounded-lg border border-gray-200 focus:border-[var(--navy)] focus:ring-1 focus:ring-[var(--navy)] outline-none text-sm" />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">State</label>
+                      <input type="text" required value={inspectorForm.state} onChange={(e) => updateInspector("state", e.target.value)}
+                        placeholder="e.g. TX, FL, NY"
+                        className="w-full px-4 py-3 rounded-lg border border-gray-200 focus:border-[var(--navy)] focus:ring-1 focus:ring-[var(--navy)] outline-none text-sm" />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Years of Experience</label>
+                      <select required value={inspectorForm.experience} onChange={(e) => updateInspector("experience", e.target.value)}
+                        className="w-full px-4 py-3 rounded-lg border border-gray-200 focus:border-[var(--navy)] focus:ring-1 focus:ring-[var(--navy)] outline-none text-sm bg-white">
+                        <option value="">Select</option>
+                        <option value="1-3">1 - 3 years</option>
+                        <option value="3-5">3 - 5 years</option>
+                        <option value="5-10">5 - 10 years</option>
+                        <option value="10+">10+ years</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">HAAG Certified?</label>
+                      <select required value={inspectorForm.haagCertified} onChange={(e) => updateInspector("haagCertified", e.target.value)}
+                        className="w-full px-4 py-3 rounded-lg border border-gray-200 focus:border-[var(--navy)] focus:ring-1 focus:ring-[var(--navy)] outline-none text-sm bg-white">
+                        <option value="">Select</option>
+                        <option value="yes">Yes &mdash; HAAG Certified</option>
+                        <option value="in-progress">In Progress</option>
+                        <option value="no">No &mdash; Field Experience Only</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
+                      Willing to Travel?
+                      <span className="ml-1 text-[var(--red)]">*</span>
+                    </label>
+                    <select required value={inspectorForm.willingToTravel} onChange={(e) => updateInspector("willingToTravel", e.target.value)}
+                      className="w-full px-4 py-3 rounded-lg border border-gray-200 focus:border-[var(--navy)] focus:ring-1 focus:ring-[var(--navy)] outline-none text-sm bg-white">
+                      <option value="">Select travel radius</option>
+                      <option value="local">Local only (within 50 miles)</option>
+                      <option value="regional">Regional (within 150 miles)</option>
+                      <option value="state">Anywhere in my state</option>
+                      <option value="multi-state">Multi-state / neighboring states</option>
+                      <option value="nationwide">Nationwide &mdash; will travel anywhere</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
+                      Insurance Carrier &amp; Policy Type
+                    </label>
+                    <input type="text" value={inspectorForm.insuranceCarrier} onChange={(e) => updateInspector("insuranceCarrier", e.target.value)}
+                      placeholder="e.g. General liability, E&O, carrier name"
+                      className="w-full px-4 py-3 rounded-lg border border-gray-200 focus:border-[var(--navy)] focus:ring-1 focus:ring-[var(--navy)] outline-none text-sm" />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
+                      Anything else we should know?
+                    </label>
+                    <textarea value={inspectorForm.notes} onChange={(e) => updateInspector("notes", e.target.value)}
+                      rows={3} placeholder="Certifications, specialties (tile, slate, metal, commercial), current employer, etc."
+                      className="w-full px-4 py-3 rounded-lg border border-gray-200 focus:border-[var(--navy)] focus:ring-1 focus:ring-[var(--navy)] outline-none text-sm resize-none" />
+                  </div>
+
+                  <button type="submit"
+                    className="w-full bg-[var(--navy)] hover:bg-[var(--navy-light)] text-white py-4 rounded-xl font-semibold transition-colors">
+                    Submit Application
+                  </button>
+
+                  <p className="text-xs text-gray-400 text-center leading-relaxed">
+                    We review every application within 48 hours.
+                    All inspectors must carry valid 1099 insurance to be activated on the network.
+                  </p>
+                </form>
+              ) : (
+                <div className="bg-[var(--gray-50)] rounded-2xl p-8 border border-gray-100 text-center">
+                  <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-6">
+                    <svg className="w-8 h-8 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </div>
+                  <h3 className="text-xl font-bold text-[var(--navy)] mb-2">Application Received</h3>
+                  <p className="text-gray-500 mb-1">
+                    We&apos;ll review your application and reach out within 48 hours.
+                  </p>
+                  <p className="text-sm text-gray-400">
+                    Welcome to the network, {inspectorForm.name.split(" ")[0] || "Inspector"}.
+                  </p>
+                </div>
+              )}
             </div>
           </div>
         </div>
