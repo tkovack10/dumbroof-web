@@ -49,9 +49,13 @@ export default function NewClaimPage() {
         `-${Date.now()}`;
       const claimPath = `${user.id}/${slug}`;
 
+      // Sanitize filename for Supabase storage (no spaces, parens, or special chars)
+      const sanitize = (name: string) =>
+        name.replace(/[^a-zA-Z0-9._-]/g, "_").replace(/_{2,}/g, "_");
+
       // Upload all files
       const uploadFile = async (file: File, folder: string) => {
-        const filePath = `${claimPath}/${folder}/${file.name}`;
+        const filePath = `${claimPath}/${folder}/${sanitize(file.name)}`;
         const { error } = await supabase.storage
           .from("claim-documents")
           .upload(filePath, file, { upsert: true });
@@ -88,10 +92,10 @@ export default function NewClaimPage() {
         phase,
         status: "uploaded",
         file_path: claimPath,
-        measurement_files: measurementFiles.map((f) => f.name),
-        photo_files: photoFiles.map((f) => f.name),
-        scope_files: scopeFiles.map((f) => f.name),
-        weather_files: weatherFiles.map((f) => f.name),
+        measurement_files: measurementFiles.map((f) => sanitize(f.name)),
+        photo_files: photoFiles.map((f) => sanitize(f.name)),
+        scope_files: scopeFiles.map((f) => sanitize(f.name)),
+        weather_files: weatherFiles.map((f) => sanitize(f.name)),
         ...(userNotes.trim() ? { user_notes: userNotes.trim() } : {}),
       });
 
