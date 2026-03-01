@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { createClient } from "@/lib/supabase/client";
 
 export default function Home() {
   const [email, setEmail] = useState("");
@@ -35,21 +34,25 @@ export default function Home() {
     setInspectorError("");
 
     try {
-      const supabase = createClient();
-      const { error } = await supabase.from("inspector_applications").insert({
-        name: inspectorForm.name,
-        email: inspectorForm.email,
-        phone: inspectorForm.phone,
-        city: inspectorForm.city,
-        state: inspectorForm.state,
-        experience: inspectorForm.experience,
-        haag_certified: inspectorForm.haagCertified,
-        willing_to_travel: inspectorForm.willingToTravel,
-        insurance_carrier: inspectorForm.insuranceCarrier || null,
-        notes: inspectorForm.notes || null,
+      const res = await fetch("/api/inspector-apply", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: inspectorForm.name,
+          email: inspectorForm.email,
+          phone: inspectorForm.phone,
+          city: inspectorForm.city,
+          state: inspectorForm.state,
+          experience: inspectorForm.experience,
+          haag_certified: inspectorForm.haagCertified,
+          willing_to_travel: inspectorForm.willingToTravel,
+          insurance_carrier: inspectorForm.insuranceCarrier || null,
+          notes: inspectorForm.notes || null,
+        }),
       });
 
-      if (error) throw new Error(error.message);
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Submission failed");
       setInspectorSubmitted(true);
     } catch (err) {
       setInspectorError(
