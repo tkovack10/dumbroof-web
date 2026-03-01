@@ -410,7 +410,7 @@ export default function Home() {
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {[
               { num: "01", title: "Forensic Causation Report", desc: "Photo-annotated damage analysis with clinical observations. Every finding tied to HAAG engineering standards." },
-              { num: "02", title: "Xactimate Estimate", desc: "Line-item scope at current regional pricing. Every line item backed by building code citations and photo evidence." },
+              { num: "02", title: "X Style Build Scope", desc: "Line-item scope at current regional pricing. Every line item backed by building code citations and photo evidence." },
               { num: "03", title: "Supplement Report", desc: "Line-by-line carrier vs. your scope. Exposes every underpayment, missed item, and pricing discrepancy." },
               { num: "04", title: "Appeal Letter", desc: "Formal demand citing building codes, insurance regulations, and forensic evidence. Written to move adjusters." },
               { num: "05", title: "Cover Email", desc: "Ready-to-send email with professional tone, attachment summary, and regulatory response deadline." },

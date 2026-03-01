@@ -8,7 +8,7 @@ export const metadata: Metadata = {
   keywords: [
     "roofing claims",
     "insurance supplement",
-    "Xactimate estimate",
+    "X style build scope",
     "roof damage",
     "storm damage",
     "forensic report",

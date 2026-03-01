@@ -1269,35 +1269,47 @@ def build_line_items(measurements: dict, photo_analysis: dict, state: str, user_
 
     items = []
 
+    # ===================== ICE & WATER BARRIER (calculate first — needed for underlayment) =====================
+    # 2 courses at eaves (6 ft width) + 1 course in valleys (3 ft width) per IRC R905.2.7.1
+    iw_sf = (eave * 6) + (valley * 3)
+
+    # ===================== UNDERLAYMENT =====================
+    # Felt/synthetic covers the REMAINDER of the roof deck NOT covered by ice & water barrier.
+    # I&W goes at eaves + valleys; felt covers the rest of the deck.
+    if iw_sf > 0 and area_sf > 0:
+        felt_sf = max(0, area_sf - iw_sf)
+        felt_sq = round(felt_sf / 100, 2)
+    else:
+        felt_sq = area_sq  # No I&W = felt covers entire deck
+
     # ===================== PRIMARY ROOFING MATERIAL =====================
     # Pricing loaded from backend/pricing/nybi26.json — PRICING.get(key, fallback)
     if material == "slate":
         items.append({"category": "ROOFING", "description": "Remove slate roofing", "qty": area_sq, "unit": "SQ", "unit_price": PRICING.get("slate_remove", 325.00)})
         items.append({"category": "ROOFING", "description": "Slate roofing - high grade natural", "qty": area_sq, "unit": "SQ", "unit_price": PRICING.get("slate_install", 1850.00)})
-        items.append({"category": "ROOFING", "description": "Underlayment - felt 30#", "qty": area_sq, "unit": "SQ", "unit_price": PRICING.get("slate_underlayment", 22.00)})
+        items.append({"category": "ROOFING", "description": "Underlayment - felt 30# (deck area not covered by I&W)", "qty": felt_sq, "unit": "SQ", "unit_price": PRICING.get("slate_underlayment", 22.00)})
         items.append({"category": "ROOFING", "description": "Copper nails & hooks for slate", "qty": area_sq, "unit": "SQ", "unit_price": PRICING.get("slate_nails_hooks", 45.00)})
         items.append({"category": "ROOFING", "description": "Slate roofing - additional labor (specialist)", "qty": area_sq, "unit": "SQ", "unit_price": PRICING.get("slate_specialist_labor", 350.00)})
     elif material == "tile":
         items.append({"category": "ROOFING", "description": "Remove concrete/clay tile roofing", "qty": area_sq, "unit": "SQ", "unit_price": PRICING.get("tile_remove", 200.00)})
         items.append({"category": "ROOFING", "description": "Concrete/clay tile roofing", "qty": area_sq, "unit": "SQ", "unit_price": PRICING.get("tile_install", 900.00)})
-        items.append({"category": "ROOFING", "description": "Underlayment - felt 30#", "qty": area_sq, "unit": "SQ", "unit_price": PRICING.get("tile_underlayment", 22.00)})
+        items.append({"category": "ROOFING", "description": "Underlayment - felt 30# (deck area not covered by I&W)", "qty": felt_sq, "unit": "SQ", "unit_price": PRICING.get("tile_underlayment", 22.00)})
     elif material == "metal_standing_seam":
         items.append({"category": "ROOFING", "description": "Remove metal roofing - standing seam", "qty": area_sq, "unit": "SQ", "unit_price": PRICING.get("metal_remove", 150.00)})
         items.append({"category": "ROOFING", "description": "Metal roofing - standing seam", "qty": area_sq, "unit": "SQ", "unit_price": PRICING.get("metal_install", 850.00)})
-        items.append({"category": "ROOFING", "description": "Synthetic underlayment", "qty": area_sq, "unit": "SQ", "unit_price": PRICING.get("metal_underlayment", 32.00)})
+        items.append({"category": "ROOFING", "description": "Synthetic underlayment (deck area not covered by I&W)", "qty": felt_sq, "unit": "SQ", "unit_price": PRICING.get("metal_underlayment", 32.00)})
     elif material == "laminated":
         items.append({"category": "ROOFING", "description": "Remove laminated comp shingle roofing", "qty": area_sq, "unit": "SQ", "unit_price": PRICING.get("laminated_remove", 74.00)})
         items.append({"category": "ROOFING", "description": "Laminated comp shingle roofing - w/out felt", "qty": area_sq, "unit": "SQ", "unit_price": PRICING.get("laminated_install", 320.00)})
-        items.append({"category": "ROOFING", "description": "Synthetic underlayment", "qty": area_sq, "unit": "SQ", "unit_price": PRICING.get("laminated_underlayment", 32.00)})
+        items.append({"category": "ROOFING", "description": "Synthetic underlayment (deck area not covered by I&W)", "qty": felt_sq, "unit": "SQ", "unit_price": PRICING.get("laminated_underlayment", 32.00)})
     else:  # 3tab
         items.append({"category": "ROOFING", "description": "Remove 3-tab 25yr comp shingle roofing", "qty": area_sq, "unit": "SQ", "unit_price": PRICING.get("3tab_remove", 73.14)})
         items.append({"category": "ROOFING", "description": "3-tab 25yr comp shingle roofing - w/out felt", "qty": area_sq, "unit": "SQ", "unit_price": PRICING.get("3tab_install", 312.92)})
-        items.append({"category": "ROOFING", "description": "Synthetic underlayment", "qty": area_sq, "unit": "SQ", "unit_price": PRICING.get("3tab_underlayment", 32.00)})
+        items.append({"category": "ROOFING", "description": "Synthetic underlayment (deck area not covered by I&W)", "qty": felt_sq, "unit": "SQ", "unit_price": PRICING.get("3tab_underlayment", 32.00)})
 
     # ===================== ICE & WATER BARRIER =====================
-    iw_sf = (eave * 6) + (valley * 3)
     if iw_sf > 0:
-        items.append({"category": "ROOFING", "description": "Ice & water barrier", "qty": round(iw_sf), "unit": "SF", "unit_price": PRICING.get("ice_water", 2.24)})
+        items.append({"category": "ROOFING", "description": "Ice & water barrier (2 courses eaves + 1 course valleys)", "qty": round(iw_sf), "unit": "SF", "unit_price": PRICING.get("ice_water", 2.24)})
 
     # ===================== DRIP EDGE =====================
     drip = meas.get("drip_edge", 0) or (eave + rake)
