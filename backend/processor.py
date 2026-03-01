@@ -203,10 +203,23 @@ def extract_measurements(client: anthropic.Anthropic, pdf_path: str) -> dict:
   },
   "stories": 0,
   "total_roof_area_sf": 0,
-  "total_roof_area_sq": 0
+  "total_roof_area_sq": 0,
+  "walls": {
+    "total_wall_area_sf": 0,
+    "elevations": [
+      {"name": "Front", "area_sf": 0},
+      {"name": "Right", "area_sf": 0},
+      {"name": "Left", "area_sf": 0},
+      {"name": "Rear", "area_sf": 0}
+    ],
+    "window_count": 0,
+    "door_count": 0,
+    "garage_door_count": 0
+  }
 }
 
-Use 0 for any values not found. Calculate SQ = SF / 100. Include waste_factor if stated (default 1.10 = 10% waste)."""
+Use 0 for any values not found. Calculate SQ = SF / 100. Include waste_factor if stated (default 1.10 = 10% waste).
+If this report includes wall/siding measurements (EagleView Walls report or similar), extract wall areas per elevation, window count, and door count into the walls section. Use 0 for any wall values not found."""
                 }
             ]
         }]
@@ -238,6 +251,7 @@ def analyze_photos(client: anthropic.Anthropic, photo_paths: list[str], user_not
     damage_summary_parts = []
     shingle_type = ""
     shingle_condition = ""
+    siding_type = ""
     damage_type = ""
     severity = ""
     chalk_test_results = []
@@ -300,6 +314,14 @@ HAIL DAMAGE INDICATORS:
 - Fractured/cracked shingle mat (per HAAG standard = functional damage requiring full replacement)
 - Soft metal deformation (gutters, vents, flashing)
 
+SIDING DAMAGE — Look for:
+- Hail dents on metal/aluminum siding (chalk test gaps on flat metal panels)
+- Cracked, chipped, or broken vinyl siding panels
+- Damaged cedar shake/shingle siding
+- Identify the siding material type: aluminum, vinyl, cedar, fiber cement, or none visible
+- WINDOW/DOOR WRAPS: If aluminum wraps (coil stock) around windows show chalk-marked hail impacts, include window_wraps in trades
+- FASCIA/SOFFIT: If metal fascia or soffit shows hail damage, include in trades
+
 ANALYSIS PRIORITIES:
 - FOCUS ON STORM DAMAGE — hail impacts, wind displacement, fractures from the storm event. This is 90% of the report.
 - Do NOT catalog every minor wear detail (lichen, moss, minor surface weathering, faded paint). Only mention pre-existing condition ONCE, briefly, if it makes spot repair infeasible.
@@ -316,7 +338,8 @@ Number the photos starting at {start_num}. Return ONLY valid JSON:
   }},
   "shingle_type": "natural slate / architectural laminated / 3-tab 25yr / standing seam metal / etc",
   "shingle_condition": "description focusing on storm vulnerability and non-repairability",
-  "trades_identified": ["roofing", "gutters", "flashing"],
+  "trades_identified": ["roofing", "gutters", "siding", "window_wraps"],
+  "siding_type": "aluminum / vinyl / cedar / fiber_cement / none",
   "key_findings": [
     "Finding 1: storm damage evidence with forensic detail"
   ],
@@ -353,6 +376,8 @@ Number the photos starting at {start_num}. Return ONLY valid JSON:
             shingle_type = batch_result["shingle_type"]
         if batch_result.get("shingle_condition"):
             shingle_condition = batch_result["shingle_condition"]
+        if batch_result.get("siding_type") and batch_result["siding_type"] != "none":
+            siding_type = batch_result["siding_type"]
         if batch_result.get("damage_type"):
             damage_type = batch_result["damage_type"]
         if batch_result.get("severity"):
@@ -375,6 +400,7 @@ Number the photos starting at {start_num}. Return ONLY valid JSON:
         "photo_annotations": all_annotations,
         "shingle_type": shingle_type,
         "shingle_condition": shingle_condition,
+        "siding_type": siding_type,
         "trades_identified": sorted(trades_set),
         "key_findings": all_findings,
         "code_violations": all_violations,
@@ -1152,6 +1178,49 @@ def _estimate_linear_measurements(area_sf: float, facets: int, style: str = "com
     }
 
 
+def _has_trade(trades: list, keyword: str) -> bool:
+    """Fuzzy trade matching — checks if keyword appears in any trade name."""
+    kw = keyword.lower()
+    return any(kw in t.lower() for t in trades)
+
+
+def _detect_siding_material(photo_analysis: dict, user_notes: str = "") -> str:
+    """Detect siding material from photo analysis and user notes.
+    Returns: aluminum, vinyl, vinyl_high, vinyl_insulated, cedar, fiber_cement, metal
+    Default: aluminum (safer to price higher)."""
+    siding_type = photo_analysis.get("siding_type", "").lower()
+    notes = (user_notes or "").lower()
+
+    # Check photo analysis first
+    if "vinyl" in siding_type:
+        if "insulated" in siding_type or "insulated" in notes:
+            return "vinyl_insulated"
+        if "premium" in siding_type or "premium" in notes:
+            return "vinyl_premium"
+        return "vinyl"
+    if "cedar" in siding_type:
+        return "cedar"
+    if "fiber" in siding_type or "hardie" in siding_type or "cement" in siding_type:
+        return "fiber_cement"
+    if "metal" in siding_type:
+        return "metal"
+    if "aluminum" in siding_type:
+        return "aluminum"
+
+    # Check user notes as fallback
+    if "vinyl siding" in notes or "vinyl" in notes:
+        return "vinyl"
+    if "cedar" in notes:
+        return "cedar"
+    if "fiber cement" in notes or "hardie" in notes:
+        return "fiber_cement"
+    if "metal siding" in notes:
+        return "metal"
+
+    # Default to aluminum (most common in NY/PA, prices higher = safer estimate)
+    return "aluminum"
+
+
 def build_line_items(measurements: dict, photo_analysis: dict, state: str, user_notes: str = "") -> list:
     """Build Xactimate line items from measurements, analysis, and user context."""
     meas = measurements.get("measurements", {})
@@ -1238,34 +1307,27 @@ def build_line_items(measurements: dict, photo_analysis: dict, state: str, user_
         else:
             items.append({"category": "ROOFING", "description": "R&R Drip edge - aluminum", "qty": drip, "unit": "LF", "unit_price": PRICING.get("drip_edge_aluminum", 4.25)})
 
-    # ===================== STARTER STRIP (comp shingle only) =====================
-    if material in ("laminated", "3tab") and eave > 0:
-        items.append({"category": "ROOFING", "description": "R&R Starter strip - asphalt shingle", "qty": eave, "unit": "LF", "unit_price": PRICING.get("starter_strip", 3.50)})
+    # ===================== STARTER STRIP (comp shingle — eaves + rakes) =====================
+    starter_lf = eave + rake
+    if material in ("laminated", "3tab") and starter_lf > 0:
+        items.append({"category": "ROOFING", "description": "R&R Starter strip - asphalt shingle", "qty": starter_lf, "unit": "LF", "unit_price": PRICING.get("starter_strip", 3.50)})
 
-    # ===================== RIDGE CAP =====================
-    if ridge > 0:
+    # ===================== RIDGE CAP (ridges + hips) =====================
+    ridge_hip_lf = ridge + hip
+    if ridge_hip_lf > 0:
         if material == "slate":
-            items.append({"category": "ROOFING", "description": "R&R Ridge cap - slate", "qty": ridge, "unit": "LF", "unit_price": PRICING.get("slate_ridge_cap", 38.00)})
+            items.append({"category": "ROOFING", "description": "R&R Ridge cap - slate", "qty": ridge_hip_lf, "unit": "LF", "unit_price": PRICING.get("slate_ridge_cap", 38.00)})
         elif material == "tile":
-            items.append({"category": "ROOFING", "description": "R&R Ridge cap - tile", "qty": ridge, "unit": "LF", "unit_price": PRICING.get("tile_ridge_cap", 28.00)})
+            items.append({"category": "ROOFING", "description": "R&R Ridge cap - tile", "qty": ridge_hip_lf, "unit": "LF", "unit_price": PRICING.get("tile_ridge_cap", 28.00)})
         elif material == "metal_standing_seam":
-            items.append({"category": "ROOFING", "description": "R&R Ridge cap - metal", "qty": ridge, "unit": "LF", "unit_price": PRICING.get("metal_ridge_cap", 22.00)})
+            items.append({"category": "ROOFING", "description": "R&R Ridge cap - metal", "qty": ridge_hip_lf, "unit": "LF", "unit_price": PRICING.get("metal_ridge_cap", 22.00)})
         else:
             desc = "R&R Ridge cap - laminated" if material == "laminated" else "R&R Ridge cap - 3 tab"
-            items.append({"category": "ROOFING", "description": desc, "qty": ridge, "unit": "LF", "unit_price": PRICING.get("laminated_ridge_cap", 7.49)})
+            items.append({"category": "ROOFING", "description": desc, "qty": ridge_hip_lf, "unit": "LF", "unit_price": PRICING.get("laminated_ridge_cap", 7.49)})
 
-    # ===================== RIDGE VENT =====================
+    # ===================== RIDGE VENT (ridges only — shingle-over style) =====================
     if ridge > 0 and material not in ("slate", "tile"):
-        items.append({"category": "ROOFING", "description": "R&R Ridge vent - aluminum", "qty": ridge, "unit": "LF", "unit_price": PRICING.get("ridge_vent", 8.50)})
-
-    # ===================== HIP CAP =====================
-    if hip > 0:
-        if material == "slate":
-            items.append({"category": "ROOFING", "description": "R&R Hip cap - slate", "qty": hip, "unit": "LF", "unit_price": PRICING.get("slate_hip_cap", 38.00)})
-        elif material == "tile":
-            items.append({"category": "ROOFING", "description": "R&R Hip cap - tile", "qty": hip, "unit": "LF", "unit_price": PRICING.get("tile_hip_cap", 28.00)})
-        else:
-            items.append({"category": "ROOFING", "description": "R&R Hip cap - laminated", "qty": hip, "unit": "LF", "unit_price": PRICING.get("comp_hip_cap", 7.49)})
+        items.append({"category": "ROOFING", "description": "R&R Ridge vent - shingle over", "qty": ridge, "unit": "LF", "unit_price": PRICING.get("ridge_vent", 8.50)})
 
     # ===================== FLASHING =====================
     step = meas.get("step_flashing", 0)
@@ -1284,6 +1346,16 @@ def build_line_items(measurements: dict, photo_analysis: dict, state: str, user_
         else:
             items.append({"category": "ROOFING", "description": "R&R Counter/apron flashing", "qty": flashing, "unit": "LF", "unit_price": PRICING.get("counter_flashing", 9.50)})
 
+    # ===================== CHIMNEY FLASHING =====================
+    # Step + counter/apron flashing around chimney perimeter. ~20 LF per chimney (standard).
+    chimneys = penetrations.get("chimneys", 0)
+    if chimneys > 0:
+        chimney_lf = chimneys * 20  # ~20 LF perimeter per chimney
+        if is_copper_flashing:
+            items.append({"category": "ROOFING", "description": "R&R Chimney flashing - copper", "qty": chimney_lf, "unit": "LF", "unit_price": PRICING.get("chimney_flashing_copper_lf", 18.42)})
+        else:
+            items.append({"category": "ROOFING", "description": "R&R Chimney flashing", "qty": chimney_lf, "unit": "LF", "unit_price": PRICING.get("chimney_flashing_lf", 15.57)})
+
     # ===================== PENETRATIONS =====================
     pipes = penetrations.get("pipes", 0)
     if pipes > 0:
@@ -1293,19 +1365,84 @@ def build_line_items(measurements: dict, photo_analysis: dict, state: str, user_
     if vents > 0:
         items.append({"category": "ROOFING", "description": "R&R Exhaust vent", "qty": vents, "unit": "EA", "unit_price": PRICING.get("exhaust_vent", 125.00)})
 
-    # ===================== STEEP / HIGH CHARGES =====================
-    # Use the corrected pitch_str (may have been updated from 0/12 to estimated pitch)
-    if pitch_str:
-        try:
-            rise = int(pitch_str.split("/")[0])
-            if rise >= 7:
-                items.append({"category": "ROOFING", "description": f"Steep charge - {pitch_str} pitch", "qty": area_sq, "unit": "SQ", "unit_price": PRICING.get("steep_charge", 85.00)})
-        except (ValueError, IndexError):
-            pass
+    # ===================== STEEP CHARGES =====================
+    # Per-facet steep charges from EagleView pitches — separate REMOVE + INSTALL lines.
+    # Tiers: 7/12–9/12, 10/12–12/12, >12/12. Applied to the SF at each pitch tier.
+    pitches = struct.get("pitches", [])
+    steep_7_9_sf = 0
+    steep_10_12_sf = 0
+    steep_gt12_sf = 0
 
+    if pitches:
+        # Use per-facet pitch data from EagleView when available
+        for p in pitches:
+            p_str = p.get("pitch", "")
+            p_area = p.get("area_sf", 0)
+            try:
+                rise = int(str(p_str).split("/")[0])
+            except (ValueError, IndexError):
+                continue
+            if rise > 12:
+                steep_gt12_sf += p_area
+            elif rise >= 10:
+                steep_10_12_sf += p_area
+            elif rise >= 7:
+                steep_7_9_sf += p_area
+    else:
+        # Fallback: use predominant pitch applied to full roof area
+        if pitch_str:
+            try:
+                rise = int(pitch_str.split("/")[0])
+                if rise > 12:
+                    steep_gt12_sf = area_sf
+                elif rise >= 10:
+                    steep_10_12_sf = area_sf
+                elif rise >= 7:
+                    steep_7_9_sf = area_sf
+            except (ValueError, IndexError):
+                pass
+
+    if steep_7_9_sf > 0:
+        steep_sq = round(steep_7_9_sf / 100, 2)
+        items.append({"category": "ROOFING", "description": "Remove - Additional charge for steep roof 7/12-9/12", "qty": steep_sq, "unit": "SQ", "unit_price": PRICING.get("steep_remove_7_9", 18.00)})
+        items.append({"category": "ROOFING", "description": "Additional charge for steep roof 7/12-9/12", "qty": steep_sq, "unit": "SQ", "unit_price": PRICING.get("steep_install_7_9", 64.07)})
+
+    if steep_10_12_sf > 0:
+        steep_sq = round(steep_10_12_sf / 100, 2)
+        items.append({"category": "ROOFING", "description": "Remove - Additional charge for steep roof 10/12-12/12", "qty": steep_sq, "unit": "SQ", "unit_price": PRICING.get("steep_remove_10_12", 28.29)})
+        items.append({"category": "ROOFING", "description": "Additional charge for steep roof 10/12-12/12", "qty": steep_sq, "unit": "SQ", "unit_price": PRICING.get("steep_install_10_12", 100.73)})
+
+    if steep_gt12_sf > 0:
+        steep_sq = round(steep_gt12_sf / 100, 2)
+        items.append({"category": "ROOFING", "description": "Remove - Additional charge for steep roof >12/12", "qty": steep_sq, "unit": "SQ", "unit_price": PRICING.get("steep_remove_gt12", 36.24)})
+        items.append({"category": "ROOFING", "description": "Additional charge for steep roof >12/12", "qty": steep_sq, "unit": "SQ", "unit_price": PRICING.get("steep_install_gt12", 131.43)})
+
+    # ===================== HIGH ROOF CHARGE =====================
+    # Only when property is 2+ stories. Separate REMOVE + INSTALL lines on full roof area.
     stories = measurements.get("stories", 1)
     if stories >= 2:
-        items.append({"category": "ROOFING", "description": "High roof charge - 2+ stories", "qty": area_sq, "unit": "SQ", "unit_price": PRICING.get("high_roof_charge", 85.00)})
+        items.append({"category": "ROOFING", "description": "Remove - Additional charge for high roof (2+ stories)", "qty": area_sq, "unit": "SQ", "unit_price": PRICING.get("high_roof_remove", 7.31)})
+        items.append({"category": "ROOFING", "description": "Additional charge for high roof (2+ stories)", "qty": area_sq, "unit": "SQ", "unit_price": PRICING.get("high_roof_install", 30.44)})
+
+    # ===================== ROOFING LABOR & EQUIPMENT =====================
+    # 8 roofer hours on every roofing estimate (industry standard)
+    items.append({"category": "ROOFING", "description": "Roofer - per hour (labor minimum)", "qty": 8, "unit": "HR", "unit_price": PRICING.get("roofer_per_hour", 194.00)})
+    items.append({"category": "ROOFING", "description": "Equipment operator", "qty": 1, "unit": "EA", "unit_price": PRICING.get("equipment_operator", 450.00)})
+
+    # ===================== GABLE CORNICE RETURNS =====================
+    # Included on gable and combination roofs — decorative trim at gable ends
+    if style in ("gable", "combination"):
+        # Estimate 2 cornice returns per gable end (1 per side)
+        # Gable roof = 2 gable ends = 4 returns; combination = estimate 2 returns
+        cornice_count = 4 if style == "gable" else 2
+        if material in ("laminated", "3tab"):
+            mat_label = "laminated" if material == "laminated" else "3tab"
+            if stories >= 2:
+                cornice_key = f"gable_cornice_return_{mat_label}_2story"
+                items.append({"category": "ROOFING", "description": f"R&R Gable cornice return - {material} - 2+ stories", "qty": cornice_count, "unit": "EA", "unit_price": PRICING.get(cornice_key, 165.29)})
+            else:
+                cornice_key = f"gable_cornice_return_{mat_label}"
+                items.append({"category": "ROOFING", "description": f"R&R Gable cornice return - {material}", "qty": cornice_count, "unit": "EA", "unit_price": PRICING.get(cornice_key, 136.32)})
 
     # ===================== DEBRIS =====================
     dumpster_loads = max(1, round(area_sq / 25))
@@ -1329,10 +1466,83 @@ def build_line_items(measurements: dict, photo_analysis: dict, state: str, user_
     # ===================== GUTTERS (standard — if in trades and not already added) =====================
     trades = photo_analysis.get("trades_identified", [])
     has_gutter_line = any("gutter" in item["description"].lower() for item in items)
-    if "gutters" in [t.lower() for t in trades] and not has_gutter_line:
+    if _has_trade(trades, "gutter") and not has_gutter_line:
         gutter_lf = round(eave * 1.6) if eave > 0 else 0
         if gutter_lf > 0:
             items.append({"category": "GUTTERS", "description": "R&R Seamless aluminum gutter & downspout", "qty": gutter_lf, "unit": "LF", "unit_price": PRICING.get("gutter_aluminum", 10.50)})
+
+    # ===================== SIDING =====================
+    # Triggered when photos identify siding damage. ALWAYS includes house wrap
+    # (RCNYS R703.2 — continuous weather-resistant exterior wall envelope required).
+    # House wrap corner rule forces full replacement when carrier approves partial.
+    if _has_trade(trades, "siding"):
+        walls = measurements.get("walls", {})
+        wall_area = walls.get("total_wall_area_sf", 0)
+
+        if wall_area > 0:
+            siding_mat = _detect_siding_material(photo_analysis, user_notes)
+            print(f"[LINE ITEMS] Siding trade detected — {siding_mat}, {wall_area} SF")
+
+            # Siding material pricing map
+            siding_prices = {
+                "aluminum": ("R&R Aluminum siding .024\"", PRICING.get("siding_aluminum_024", 12.47)),
+                "vinyl": ("R&R Vinyl siding", PRICING.get("siding_vinyl", 7.55)),
+                "vinyl_high": ("R&R Vinyl siding - high grade", PRICING.get("siding_vinyl_high", 7.83)),
+                "vinyl_premium": ("R&R Vinyl siding - premium", PRICING.get("siding_vinyl_premium", 8.21)),
+                "vinyl_insulated": ("R&R Vinyl siding - insulated", PRICING.get("siding_vinyl_insulated", 11.45)),
+                "cedar": ("R&R Cedar shingle siding", PRICING.get("siding_cedar_shingle", 18.13)),
+                "fiber_cement": ("R&R Fiber cement siding", PRICING.get("siding_vinyl_insulated", 11.45)),
+                "metal": ("R&R Metal siding .019\"", PRICING.get("siding_metal_019", 12.20)),
+            }
+            desc, price = siding_prices.get(siding_mat, siding_prices["aluminum"])
+            items.append({"category": "SIDING", "description": desc, "qty": wall_area, "unit": "SF", "unit_price": price})
+
+            # House wrap — ALWAYS included with siding (RCNYS R703.2 code requirement)
+            # This is the key argument: house wrap must wrap continuously around outside
+            # corners — cannot terminate at a corner joint. Forces full replacement.
+            items.append({"category": "SIDING", "description": "House wrap / Tyvek (code-required per RCNYS R703.2)", "qty": wall_area, "unit": "SF", "unit_price": PRICING.get("house_wrap", 0.64)})
+
+            # Fanfold insulation (under siding, standard on re-side jobs)
+            items.append({"category": "SIDING", "description": "Fanfold insulation board", "qty": wall_area, "unit": "SF", "unit_price": PRICING.get("fanfold_insulation", 1.23)})
+
+            # Siding labor minimum
+            items.append({"category": "SIDING", "description": "Siding labor minimum", "qty": 1, "unit": "EA", "unit_price": PRICING.get("siding_labor_min", 519.46)})
+
+            # Scaffolding
+            items.append({"category": "SIDING", "description": "Scaffolding - per week", "qty": 1, "unit": "WK", "unit_price": PRICING.get("scaffolding_week", 1405.00)})
+        else:
+            print(f"[LINE ITEMS] Siding trade detected but no wall measurements — skipping siding line items")
+
+    # ===================== WINDOW WRAPS =====================
+    # Included when siding is in scope — windows need re-wrapping after siding replacement
+    if _has_trade(trades, "siding") or _has_trade(trades, "window"):
+        walls = measurements.get("walls", {})
+        window_count = walls.get("window_count", 0)
+        wall_area = walls.get("total_wall_area_sf", 0)
+
+        # If no explicit window count, estimate from wall area (1 window per 150 SF)
+        if window_count == 0 and wall_area > 0:
+            window_count = max(1, round(wall_area / 150))
+            print(f"[LINE ITEMS] Estimated {window_count} windows from {wall_area} SF wall area")
+
+        if window_count > 0:
+            items.append({"category": "SIDING", "description": "R&R Window wrap - aluminum coil stock", "qty": window_count, "unit": "EA", "unit_price": PRICING.get("window_wrap_small", 256.48)})
+
+    # ===================== DOOR WRAPS =====================
+    if _has_trade(trades, "siding"):
+        walls = measurements.get("walls", {})
+        door_count = walls.get("door_count", 0)
+        garage_door_count = walls.get("garage_door_count", 0)
+
+        if door_count > 0:
+            # Standard door perimeter ~17 LF
+            door_lf = door_count * 17
+            items.append({"category": "SIDING", "description": "R&R Door frame wrap - aluminum coil stock", "qty": door_lf, "unit": "LF", "unit_price": PRICING.get("door_wrap_aluminum_lf", 27.51)})
+
+        if garage_door_count > 0:
+            # Garage door perimeter ~34 LF (wider opening)
+            garage_lf = garage_door_count * 34
+            items.append({"category": "SIDING", "description": "R&R Garage door wrap - aluminum coil stock", "qty": garage_lf, "unit": "LF", "unit_price": PRICING.get("garage_door_wrap_lf", 24.55)})
 
     return items
 
