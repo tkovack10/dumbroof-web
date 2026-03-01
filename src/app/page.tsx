@@ -16,7 +16,6 @@ export default function Home() {
     experience: "",
     haagCertified: "",
     willingToTravel: "",
-    insuranceCarrier: "",
     notes: "",
   });
   const [inspectorSubmitted, setInspectorSubmitted] = useState(false);
@@ -46,7 +45,6 @@ export default function Home() {
           experience: inspectorForm.experience,
           haag_certified: inspectorForm.haagCertified,
           willing_to_travel: inspectorForm.willingToTravel,
-          insurance_carrier: inspectorForm.insuranceCarrier || null,
           notes: inspectorForm.notes || null,
         }),
       });
@@ -692,15 +690,6 @@ export default function Home() {
                       <option value="multi-state">Multi-state / neighboring states</option>
                       <option value="nationwide">Nationwide &mdash; will travel anywhere</option>
                     </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
-                      Insurance Carrier &amp; Policy Type
-                    </label>
-                    <input type="text" value={inspectorForm.insuranceCarrier} onChange={(e) => updateInspector("insuranceCarrier", e.target.value)}
-                      placeholder="e.g. General liability, E&O, carrier name"
-                      className="w-full px-4 py-3 rounded-lg border border-gray-200 focus:border-[var(--navy)] focus:ring-1 focus:ring-[var(--navy)] outline-none text-sm" />
                   </div>
 
                   <div>

@@ -25,7 +25,6 @@ interface InspectorApplication {
   experience: string;
   haag_certified: string;
   willing_to_travel: string;
-  insurance_carrier: string | null;
   notes: string | null;
   status: string;
   created_at: string;
@@ -329,9 +328,6 @@ export function AdminDashboard() {
                         </div>
                         <div className="col-span-2">
                           <p className="text-gray-600 text-xs">{travelLabels[app.willing_to_travel] || app.willing_to_travel}</p>
-                          {app.insurance_carrier && (
-                            <p className="text-xs text-gray-400 mt-0.5 truncate" title={app.insurance_carrier}>{app.insurance_carrier}</p>
-                          )}
                         </div>
                         <div className="col-span-1">
                           <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${inspectorStatusColors[app.status] || "bg-gray-100 text-gray-600"}`}>

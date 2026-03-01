@@ -20,7 +20,6 @@ export async function POST(request: Request) {
       experience,
       haag_certified,
       willing_to_travel,
-      insurance_carrier,
       notes,
     } = body;
 
@@ -41,7 +40,6 @@ export async function POST(request: Request) {
         experience,
         haag_certified,
         willing_to_travel,
-        insurance_carrier: insurance_carrier || null,
         notes: notes || null,
       });
 
@@ -113,11 +111,6 @@ export async function POST(request: Request) {
                   <td style="padding: 10px 0; color: #6b7280;">Willing to Travel</td>
                   <td style="padding: 10px 0; font-weight: 600; color: #0d2137;">${travelLabel[willing_to_travel] || willing_to_travel}</td>
                 </tr>
-                ${insurance_carrier ? `
-                <tr style="border-bottom: 1px solid #f3f4f6;">
-                  <td style="padding: 10px 0; color: #6b7280;">Insurance</td>
-                  <td style="padding: 10px 0; color: #0d2137;">${insurance_carrier}</td>
-                </tr>` : ""}
                 ${notes ? `
                 <tr>
                   <td style="padding: 10px 0; color: #6b7280; vertical-align: top;">Notes</td>
