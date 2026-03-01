@@ -61,3 +61,11 @@ ALTER TABLE inspector_applications ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Anyone can submit inspector applications"
   ON inspector_applications FOR INSERT
   WITH CHECK (true);
+
+CREATE POLICY "Admins can view inspector applications"
+  ON inspector_applications FOR SELECT
+  USING (EXISTS (SELECT 1 FROM admins WHERE admins.user_id = auth.uid()));
+
+CREATE POLICY "Admins can update inspector applications"
+  ON inspector_applications FOR UPDATE
+  USING (EXISTS (SELECT 1 FROM admins WHERE admins.user_id = auth.uid()));
