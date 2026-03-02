@@ -96,6 +96,9 @@ export function DashboardContent({ user }: { user: User }) {
             <a href="/dashboard/repairs" className="text-gray-400 hover:text-white text-sm transition-colors hidden sm:block">
               Repairs
             </a>
+            <a href="/dashboard/analytics" className="text-gray-400 hover:text-white text-sm transition-colors hidden sm:block">
+              Analytics
+            </a>
             <a href="/dashboard/settings" className="text-gray-400 hover:text-white text-sm transition-colors hidden sm:block">
               Settings
             </a>
