@@ -22,6 +22,19 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from processor import process_claim, get_supabase_client
 from repair_processor import process_repair
+from analytics import (
+    get_claim_analytics,
+    get_processing_costs,
+    get_pricing_report,
+    get_photo_analytics,
+    predict_settlement,
+)
+from carrier_intelligence import (
+    get_carrier_score,
+    get_all_carrier_scores,
+    get_effective_arguments,
+    suggest_arguments,
+)
 
 load_dotenv()
 
@@ -121,6 +134,82 @@ async def trigger_repair_processing(repair_id: str, background_tasks: Background
     background_tasks.add_task(run_repair_processing, repair_id)
     return {"status": "processing", "repair_id": repair_id}
 
+
+# ===================================================================
+# ANALYTICS & INTELLIGENCE ENDPOINTS
+# ===================================================================
+
+@app.get("/api/analytics/overview")
+def analytics_overview():
+    """Portfolio-wide claim analytics."""
+    sb = get_supabase_client()
+    return get_claim_analytics(sb)
+
+
+@app.get("/api/analytics/processing-costs")
+def analytics_processing_costs(claim_id: str = None):
+    """Processing cost breakdown (per-claim or aggregate)."""
+    sb = get_supabase_client()
+    return get_processing_costs(sb, claim_id)
+
+
+@app.get("/api/analytics/pricing")
+def analytics_pricing(region: str = None, category: str = None):
+    """Pricing intelligence report — USARM vs carrier prices."""
+    sb = get_supabase_client()
+    return get_pricing_report(sb, region, category)
+
+
+@app.get("/api/analytics/photos")
+def analytics_photos():
+    """Photo portfolio analytics — damage types, materials, trades."""
+    sb = get_supabase_client()
+    return get_photo_analytics(sb)
+
+
+@app.get("/api/analytics/predict")
+def analytics_predict(carrier: str, trades: str, state: str = "",
+                      roof_area_sq: float = 0, hail_size: str = "",
+                      carrier_rcv: float = 0):
+    """Predict settlement range for a new claim."""
+    sb = get_supabase_client()
+    trade_list = [t.strip() for t in trades.split(",") if t.strip()]
+    return predict_settlement(sb, carrier, trade_list, state,
+                              roof_area_sq, hail_size, carrier_rcv)
+
+
+@app.get("/api/intelligence/carriers")
+def intelligence_all_carriers():
+    """Get scores for all carriers."""
+    sb = get_supabase_client()
+    return get_all_carrier_scores(sb)
+
+
+@app.get("/api/intelligence/carrier/{carrier_name}")
+def intelligence_carrier(carrier_name: str):
+    """Get detailed intelligence for a specific carrier."""
+    sb = get_supabase_client()
+    return get_carrier_score(sb, carrier_name)
+
+
+@app.get("/api/intelligence/arguments/{carrier_name}")
+def intelligence_arguments(carrier_name: str, trade: str = None, limit: int = 10):
+    """Get most effective arguments against a carrier."""
+    sb = get_supabase_client()
+    return get_effective_arguments(sb, carrier_name, trade, limit)
+
+
+@app.get("/api/intelligence/suggest/{carrier_name}")
+def intelligence_suggest(carrier_name: str, trades: str, state: str = ""):
+    """Pre-claim intelligence: suggest arguments based on historical effectiveness."""
+    sb = get_supabase_client()
+    trade_list = [t.strip() for t in trades.split(",") if t.strip()]
+    return suggest_arguments(sb, carrier_name, trade_list, state)
+
+
+# ===================================================================
+# BACKGROUND POLLERS
+# ===================================================================
 
 async def poll_for_claims():
     """Background poller — checks for new claims every 10 seconds."""

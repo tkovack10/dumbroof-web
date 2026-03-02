@@ -22,6 +22,15 @@ import anthropic
 import traceback
 from supabase import create_client, Client
 
+from telemetry import (
+    call_claude_logged,
+    write_photos,
+    write_line_items,
+    write_carrier_tactics,
+    write_claim_outcome,
+    write_pricing_benchmarks,
+)
+
 from photo_utils import (
     convert_to_jpeg,
     resize_photo as _shared_resize_photo,
@@ -38,8 +47,19 @@ from photo_utils import (
 )
 
 
-def _call_claude_with_retry(client, max_retries=3, **kwargs):
-    """Call Claude API with retry on rate limits."""
+_TELEMETRY_SB = None    # Set by process_claim() for per-request telemetry
+_TELEMETRY_CLAIM_ID = None
+
+def _call_claude_with_retry(client, max_retries=3, _step_name="unknown", _metadata=None, **kwargs):
+    """Call Claude API with retry on rate limits + optional telemetry logging."""
+    # If telemetry is enabled, use the logged version
+    if _TELEMETRY_SB:
+        return call_claude_logged(
+            client, _TELEMETRY_SB, _TELEMETRY_CLAIM_ID,
+            step_name=_step_name, max_retries=max_retries,
+            metadata=_metadata, **kwargs,
+        )
+    # Fallback: no telemetry (standalone usage, tests)
     for attempt in range(max_retries):
         try:
             return client.messages.create(**kwargs)
@@ -155,6 +175,7 @@ def extract_measurements(client: anthropic.Anthropic, pdf_path: str) -> dict:
     pdf_b64 = file_to_base64(pdf_path)
 
     response = _call_claude_with_retry(client,
+        _step_name="extract_measurements",
         model="claude-sonnet-4-6",
         max_tokens=4096,
         messages=[{
@@ -247,6 +268,7 @@ def analyze_photos(client: anthropic.Anthropic, photo_paths: list[str], user_not
     all_annotations = {}
     all_findings = []
     all_violations = []
+    all_photo_tags = {}
     trades_set = set()
     damage_summary_parts = []
     shingle_type = ""
@@ -354,11 +376,22 @@ Number the photos starting at {start_num}. Return ONLY valid JSON:
   }},
   "test_square_results": [
     {{"slope": "F", "hail_hits": 10, "wind_damage": 0, "notes": "Front slope test square"}}
-  ]
+  ],
+  "photo_tags": {{
+    "photo_{start_num:02d}": {{
+      "damage_type": "hail_dent | crack | missing | granule_loss | lifted_tab | wind_crease | chalk_test | corrosion | overview | none",
+      "material": "comp_shingle_laminated | comp_shingle_3tab | aluminum_siding | vinyl_siding | metal_flashing | aluminum_gutter | copper | slate | aluminum_trim | metal_vent",
+      "trade": "roofing | siding | gutters | window_wraps | flashing | general",
+      "elevation": "front | rear | left | right | roof | detail | interior",
+      "severity": "minor | moderate | severe | critical"
+    }}
+  }}
 }}"""
         })
 
         response = _call_claude_with_retry(client,
+            _step_name="analyze_photos",
+            _metadata={"batch": batch_num, "total_batches": total_batches, "photos_in_batch": len(batch)},
             model="claude-sonnet-4-6",
             max_tokens=4096,
             messages=[{"role": "user", "content": content}]
@@ -386,6 +419,8 @@ Number the photos starting at {start_num}. Return ONLY valid JSON:
             chalk_test_results.append(batch_result["chalk_test_results"])
         if batch_result.get("test_square_results"):
             test_square_results.extend(batch_result["test_square_results"])
+        if batch_result.get("photo_tags"):
+            all_photo_tags.update(batch_result["photo_tags"])
 
     # Clean up resized temp files
     for path in image_paths:
@@ -398,6 +433,7 @@ Number the photos starting at {start_num}. Return ONLY valid JSON:
     return {
         "damage_summary": " ".join(damage_summary_parts),
         "photo_annotations": all_annotations,
+        "photo_tags": all_photo_tags,
         "shingle_type": shingle_type,
         "shingle_condition": shingle_condition,
         "siding_type": siding_type,
@@ -473,6 +509,8 @@ Be VERY conservative — chalk marks and test square notations are NEVER fraud. 
     })
 
     response = _call_claude_with_retry(client,
+        _step_name="photo_integrity",
+        _metadata={"photo_count": len(sample_paths)},
         model="claude-sonnet-4-6",
         max_tokens=2048,
         messages=[{"role": "user", "content": content}]
@@ -505,6 +543,7 @@ def extract_carrier_scope(client: anthropic.Anthropic, pdf_path: str) -> dict:
     pdf_b64 = file_to_base64(pdf_path)
 
     response = _call_claude_with_retry(client,
+        _step_name="extract_carrier_scope",
         model="claude-sonnet-4-6",
         max_tokens=8192,
         messages=[{
@@ -652,6 +691,7 @@ For each change, identify which USARM argument most likely convinced the carrier
 [{{"change": "description", "likely_argument": "the argument that drove this", "confidence": "high/medium/low"}}]"""
 
             response = _call_claude_with_retry(client,
+                _step_name="diff_scopes",
                 model="claude-sonnet-4-6",
                 max_tokens=2048,
                 messages=[{"role": "user", "content": prompt}]
@@ -729,6 +769,7 @@ Use empty strings for values not found."""
     })
 
     response = _call_claude_with_retry(client,
+        _step_name="extract_weather",
         model="claude-sonnet-4-6",
         max_tokens=2048,
         messages=[{"role": "user", "content": content}]
@@ -832,6 +873,7 @@ RULES:
 Return ONLY a JSON array of paragraph strings: ["paragraph 1...", "paragraph 2...", ...]"""
 
     response = _call_claude_with_retry(client,
+        _step_name="synthesize_summary",
         model="claude-sonnet-4-6",
         max_tokens=2048,
         messages=[{"role": "user", "content": prompt}]
@@ -887,6 +929,7 @@ RULES:
 Return ONLY a JSON array of paragraph strings: ["paragraph 1...", "paragraph 2...", ...]"""
 
     response = _call_claude_with_retry(client,
+        _step_name="synthesize_conclusion",
         model="claude-sonnet-4-6",
         max_tokens=2048,
         messages=[{"role": "user", "content": prompt}]
@@ -1608,8 +1651,13 @@ def generate_pdfs(config: dict, work_dir: str) -> list[str]:
 
 async def process_claim(claim_id: str):
     """Full claim processing pipeline."""
+    global _TELEMETRY_SB, _TELEMETRY_CLAIM_ID
     sb = get_supabase_client()
     claude = get_anthropic_client()
+
+    # Enable telemetry for all Claude calls during this claim
+    _TELEMETRY_SB = sb
+    _TELEMETRY_CLAIM_ID = claim_id
 
     # 1. Get claim from database
     result = sb.table("claims").select("*").eq("id", claim_id).single().execute()
@@ -1998,11 +2046,83 @@ async def process_claim(claim_id: str):
 
         print(f"[PROCESS] Claim complete: {claim['address']} — {len(pdfs)} PDFs ready")
 
+        # 12b. Write to data warehouse tables (non-blocking — failures don't affect claim)
+        try:
+            _write_to_warehouse(sb, claim_id, config, photo_analysis, photo_integrity,
+                                carrier_data, revision_data)
+        except Exception as e:
+            print(f"[WAREHOUSE] Data warehouse write failed (non-fatal): {e}")
+
         # 13. Sync to GitHub dashboard + carrier playbooks (pass PDFs for local copy)
         try:
             sync_to_github_dashboard(config, claim, photo_analysis, carrier_data, pdfs)
         except Exception as e:
             print(f"[SYNC] GitHub sync failed (non-fatal): {e}")
+
+    # Reset telemetry globals
+    _TELEMETRY_SB = None
+    _TELEMETRY_CLAIM_ID = None
+
+
+# ===================================================================
+# DATA WAREHOUSE
+# ===================================================================
+
+def _write_to_warehouse(sb, claim_id: str, config: dict, photo_analysis: dict,
+                        photo_integrity: dict, carrier_data: dict, revision_data: dict):
+    """Write processed claim data to all warehouse tables. Non-fatal on any failure."""
+    financials = compute_financials(config)
+    carrier = config.get("carrier", {}).get("name", "")
+    price_list = config.get("financials", {}).get("price_list", "NYBI26")
+    state = config.get("property", {}).get("state", "")
+    city = config.get("property", {}).get("city", "")
+    region = f"{city}, {state}".strip(", ")
+
+    # 1. Photos — write photo annotations + structured tags
+    photo_count = write_photos(sb, claim_id, photo_analysis, photo_integrity)
+    print(f"[WAREHOUSE] Wrote {photo_count} photos")
+
+    # 2. USARM line items
+    usarm_count = write_line_items(
+        sb, claim_id, config.get("line_items", []),
+        source="usarm", price_list=price_list, region=region,
+    )
+    print(f"[WAREHOUSE] Wrote {usarm_count} USARM line items")
+
+    # 3. Carrier line items (if carrier data exists)
+    if carrier_data:
+        carrier_items = carrier_data.get("carrier_line_items", [])
+        carrier_count = write_line_items(
+            sb, claim_id, carrier_items,
+            source="carrier", price_list=price_list, region=region,
+        )
+        print(f"[WAREHOUSE] Wrote {carrier_count} carrier line items")
+
+    # 4. Carrier tactics
+    if carrier_data and carrier:
+        tactics_count = write_carrier_tactics(
+            sb, claim_id, carrier, carrier_data, config, revision_data,
+        )
+        print(f"[WAREHOUSE] Wrote {tactics_count} carrier tactics")
+
+    # 5. Claim outcome
+    outcome_ok = write_claim_outcome(sb, claim_id, config, financials, carrier_data, revision_data)
+    print(f"[WAREHOUSE] Claim outcome: {'written' if outcome_ok else 'failed'}")
+
+    # 6. Pricing benchmarks (USARM prices)
+    usarm_pricing = write_pricing_benchmarks(
+        sb, claim_id, config.get("line_items", []),
+        source="usarm", price_list=price_list, region=region,
+    )
+    print(f"[WAREHOUSE] Wrote {usarm_pricing} USARM pricing benchmarks")
+
+    # 7. Pricing benchmarks (carrier prices)
+    if carrier_data:
+        carrier_pricing = write_pricing_benchmarks(
+            sb, claim_id, carrier_data.get("carrier_line_items", []),
+            source="carrier", price_list=price_list, region=region,
+        )
+        print(f"[WAREHOUSE] Wrote {carrier_pricing} carrier pricing benchmarks")
 
 
 # ===================================================================
