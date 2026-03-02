@@ -17,24 +17,30 @@ interface CarrierWinRate {
   carrier: string;
   total_claims: number;
   wins: number;
-  win_rate: number;
-  avg_movement: number;
+  losses: number;
+  win_rate_pct: number;
+  avg_win_movement_pct: number;
+  avg_win_movement_dollars: number;
   avg_usarm_rcv: number;
 }
 
 interface PricingComparison {
-  line_item: string;
+  description: string;
   unit: string;
+  region: string;
   avg_usarm_price: number;
   avg_carrier_price: number;
   price_gap: number;
-  sample_count: number;
+  usarm_count: number;
+  carrier_count: number;
 }
 
 interface PhotoDamage {
   damage_type: string;
   material: string;
+  trade: string;
   photo_count: number;
+  avg_fraud_score: number;
 }
 
 interface EffectiveArgument {
@@ -42,19 +48,22 @@ interface EffectiveArgument {
   tactic_type: string;
   counter_argument: string;
   times_used: number;
-  success_rate: number;
+  times_effective: number;
+  effectiveness_pct: number;
   avg_dollar_impact: number;
 }
 
 interface ClaimOutcome {
-  claim_id: string;
+  id: string;
+  claim_id: string | null;
   carrier: string;
-  status: string;
   usarm_rcv: number;
-  carrier_initial_rcv: number;
-  carrier_final_rcv: number;
-  dollar_movement: number;
-  percent_movement: number;
+  original_carrier_rcv: number;
+  current_carrier_rcv: number;
+  movement_amount: number;
+  movement_pct: number;
+  win: boolean;
+  slug: string;
 }
 
 function fmtMoney(val: number): string {
@@ -128,11 +137,11 @@ export function AnalyticsContent({ user }: { user: User }) {
 
   // KPIs from claim_outcomes
   const totalClaims = outcomes.length;
-  const wins = outcomes.filter((o) => o.status === "won").length;
+  const wins = outcomes.filter((o) => o.win).length;
   const winRate = totalClaims > 0 ? ((wins / totalClaims) * 100).toFixed(1) : "0";
   const totalMovement = outcomes
-    .filter((o) => o.status === "won")
-    .reduce((sum, o) => sum + (o.dollar_movement || 0), 0);
+    .filter((o) => o.win)
+    .reduce((sum, o) => sum + (o.movement_amount || 0), 0);
   const totalUsarmRcv = outcomes.reduce((sum, o) => sum + (o.usarm_rcv || 0), 0);
   const avgClaimSize = totalClaims > 0 ? totalUsarmRcv / totalClaims : 0;
 
@@ -161,7 +170,7 @@ export function AnalyticsContent({ user }: { user: User }) {
   const chartData = carriers
     .map((c) => ({
       name: c.carrier,
-      winRate: c.win_rate,
+      winRate: c.win_rate_pct ?? 0,
     }))
     .sort((a, b) => b.winRate - a.winRate);
 
@@ -295,12 +304,12 @@ export function AnalyticsContent({ user }: { user: User }) {
                           <td className="px-4 py-3 text-right text-gray-600">{c.total_claims}</td>
                           <td className="px-4 py-3 text-right text-gray-600">{c.wins}</td>
                           <td className="px-4 py-3 text-center">
-                            <span className={`inline-block px-3 py-1 rounded-full text-xs font-medium ${winRateBadge(c.win_rate)}`}>
-                              {c.win_rate.toFixed(1)}%
+                            <span className={`inline-block px-3 py-1 rounded-full text-xs font-medium ${winRateBadge(c.win_rate_pct ?? 0)}`}>
+                              {(c.win_rate_pct ?? 0).toFixed(1)}%
                             </span>
                           </td>
-                          <td className="px-4 py-3 text-right text-gray-600">{fmtMoney(c.avg_movement)}</td>
-                          <td className="px-6 py-3 text-right text-gray-600">{fmtMoney(c.avg_usarm_rcv)}</td>
+                          <td className="px-4 py-3 text-right text-gray-600">{fmtMoney(c.avg_win_movement_dollars ?? 0)}</td>
+                          <td className="px-6 py-3 text-right text-gray-600">{fmtMoney(c.avg_usarm_rcv ?? 0)}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -400,12 +409,12 @@ export function AnalyticsContent({ user }: { user: User }) {
                     <tbody className="divide-y divide-gray-100">
                       {pricing.map((p, i) => (
                         <tr key={i} className="hover:bg-gray-50">
-                          <td className="px-6 py-3 text-[var(--navy)] font-medium max-w-[280px] truncate">{p.line_item}</td>
+                          <td className="px-6 py-3 text-[var(--navy)] font-medium max-w-[280px] truncate">{p.description}</td>
                           <td className="px-4 py-3 text-center text-gray-500">{p.unit}</td>
-                          <td className="px-4 py-3 text-right text-gray-600">${p.avg_usarm_price.toFixed(2)}</td>
-                          <td className="px-4 py-3 text-right text-gray-600">${p.avg_carrier_price.toFixed(2)}</td>
-                          <td className="px-4 py-3 text-right font-medium text-green-600">+${p.price_gap.toFixed(2)}</td>
-                          <td className="px-6 py-3 text-right text-gray-500">{p.sample_count}</td>
+                          <td className="px-4 py-3 text-right text-gray-600">${(p.avg_usarm_price ?? 0).toFixed(2)}</td>
+                          <td className="px-4 py-3 text-right text-gray-600">${(p.avg_carrier_price ?? 0).toFixed(2)}</td>
+                          <td className="px-4 py-3 text-right font-medium text-green-600">+${(p.price_gap ?? 0).toFixed(2)}</td>
+                          <td className="px-6 py-3 text-right text-gray-500">{p.usarm_count}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -441,10 +450,10 @@ export function AnalyticsContent({ user }: { user: User }) {
                           Used {arg.times_used}x
                         </span>
                         <span className="text-xs text-gray-400">
-                          {arg.success_rate.toFixed(0)}% effective
+                          {(arg.effectiveness_pct ?? 0).toFixed(0)}% effective
                         </span>
                         <span className="text-xs font-medium text-green-600">
-                          Avg impact {fmtMoney(arg.avg_dollar_impact)}
+                          Avg impact {fmtMoney(arg.avg_dollar_impact ?? 0)}
                         </span>
                       </div>
                     </div>
