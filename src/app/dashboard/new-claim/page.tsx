@@ -254,8 +254,8 @@ export default function NewClaimPage() {
 
             <FileUploadZone
               label="Measurements"
-              description="EagleView, HOVER, GAF QuickMeasure, or any roof measurement report (PDF)"
-              accept=".pdf"
+              description="EagleView, HOVER, GAF QuickMeasure, or any roof measurement report. PDFs or email files (.eml) with attachments."
+              accept=".pdf,.eml"
               required
               files={measurementFiles}
               onFilesChange={setMeasurementFiles}
@@ -263,8 +263,8 @@ export default function NewClaimPage() {
 
             <FileUploadZone
               label="Inspection Photos"
-              description="Upload from camera roll, CompanyCam, JobNimbus, Acculynx, or any source. ZIP archives and PDFs with photos are also supported."
-              accept=".jpg,.jpeg,.png,.heic,.heif,.webp,.tiff,.tif,.bmp,.pdf,.zip"
+              description="Upload from camera roll, CompanyCam, JobNimbus, Acculynx, or any source. ZIP archives, PDFs, and email files (.eml) with photo attachments are also supported."
+              accept=".jpg,.jpeg,.png,.heic,.heif,.webp,.tiff,.tif,.bmp,.pdf,.zip,.eml"
               multiple
               required
               files={photoFiles}
@@ -273,16 +273,16 @@ export default function NewClaimPage() {
 
             <FileUploadZone
               label="Carrier Scope"
-              description="The insurance company's estimate or scope of loss. If you don't have one yet, skip this — we'll generate a pre-scope package."
-              accept=".pdf"
+              description="The insurance company's estimate or scope of loss. You can upload the PDF directly or forward the email (.eml). If you don't have one yet, skip this — we'll generate a pre-scope package."
+              accept=".pdf,.eml"
               files={scopeFiles}
               onFilesChange={setScopeFiles}
             />
 
             <FileUploadZone
               label="Weather Data"
-              description="HailTrace report, NOAA data, or any storm/weather documentation for the loss date. Strengthens the forensic case."
-              accept=".pdf,.jpg,.jpeg,.png,.heic,.heif,.webp,.tiff,.tif,.bmp,.zip"
+              description="HailTrace report, NOAA data, or any storm/weather documentation for the loss date. You can forward the email (.eml) directly. Strengthens the forensic case."
+              accept=".pdf,.jpg,.jpeg,.png,.heic,.heif,.webp,.tiff,.tif,.bmp,.zip,.eml"
               multiple
               files={weatherFiles}
               onFilesChange={setWeatherFiles}

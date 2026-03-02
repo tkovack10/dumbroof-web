@@ -10,6 +10,7 @@ Supported input:
            JPG, JPEG, PNG, GIF, WEBP
   Archives: ZIP (extracts all images inside, including nested folders)
   Documents: PDF (extracts embedded photos via pdfimages or PyMuPDF)
+  Email: EML (extracts PDF/image/ZIP attachments from saved emails)
 """
 
 from __future__ import annotations
@@ -40,7 +41,7 @@ NATIVE_IMAGE = frozenset({
 ALL_IMAGE_FORMATS = NATIVE_IMAGE | NEEDS_CONVERSION
 
 # Archive/document formats that contain images
-CONTAINER_FORMATS = frozenset({"zip", "pdf"})
+CONTAINER_FORMATS = frozenset({"zip", "pdf", "eml"})
 
 # Everything we accept
 ALL_ACCEPTED = ALL_IMAGE_FORMATS | CONTAINER_FORMATS
@@ -388,6 +389,93 @@ def extract_images_from_pdf(pdf_path: str, output_dir: str) -> List[str]:
 
 
 # ===================================================================
+# EML ATTACHMENT EXTRACTION
+# ===================================================================
+
+def extract_attachments_from_eml(eml_path: str, output_dir: str) -> List[str]:
+    """Extract file attachments from a .eml email file.
+
+    Uses Python's stdlib email module to parse RFC 2822 messages.
+    Extracts PDFs, images, ZIPs — skips inline images (signatures),
+    HTML/text body parts, and tiny files (tracking pixels, icons).
+
+    Returns list of extracted file paths.
+    """
+    import email
+    import email.policy
+
+    extracted = []
+
+    try:
+        with open(eml_path, "rb") as f:
+            msg = email.message_from_binary_file(f, policy=email.policy.default)
+
+        print(f"[PHOTO_UTILS] Parsing EML: {os.path.basename(eml_path)} — Subject: {msg.get('subject', '(none)')}")
+
+        for part in msg.walk():
+            # Skip multipart containers themselves
+            if part.get_content_maintype() == "multipart":
+                continue
+
+            # Skip text/html body parts (not attachments)
+            if part.get_content_type() in ("text/plain", "text/html"):
+                continue
+
+            # Must have a filename to be a real attachment
+            filename = part.get_filename()
+            if not filename:
+                continue
+
+            # Sanitize filename — remove path separators, null bytes
+            filename = filename.replace("/", "_").replace("\\", "_").replace("\x00", "")
+            filename = filename.strip(". ")
+            if not filename:
+                continue
+
+            # Get the file extension
+            ext = filename.lower().rsplit(".", 1)[-1] if "." in filename else ""
+
+            # Only extract files we can use (images, PDFs, ZIPs, EMLs)
+            if ext not in ALL_ACCEPTED:
+                print(f"[PHOTO_UTILS] EML skip non-supported: {filename}")
+                continue
+
+            # Extract the attachment content
+            payload = part.get_payload(decode=True)
+            if not payload:
+                continue
+
+            # Skip tiny files — tracking pixels, icons, email signatures
+            if len(payload) < 5_000:
+                print(f"[PHOTO_UTILS] EML skip tiny ({len(payload)}B): {filename}")
+                continue
+
+            # Write to output dir with collision handling
+            out_path = os.path.join(output_dir, filename)
+            counter = 1
+            while os.path.exists(out_path):
+                name, ext_str = os.path.splitext(filename)
+                out_path = os.path.join(output_dir, f"{name}_{counter}{ext_str}")
+                counter += 1
+
+            with open(out_path, "wb") as dst:
+                dst.write(payload)
+
+            extracted.append(out_path)
+            print(f"[PHOTO_UTILS] EML extracted: {os.path.basename(out_path)} ({len(payload):,}B)")
+
+        if extracted:
+            print(f"[PHOTO_UTILS] Extracted {len(extracted)} attachments from EML: {os.path.basename(eml_path)}")
+        else:
+            print(f"[PHOTO_UTILS] No usable attachments found in EML: {os.path.basename(eml_path)}")
+
+    except Exception as e:
+        print(f"[PHOTO_UTILS] EML parsing failed: {e}")
+
+    return extracted
+
+
+# ===================================================================
 # UNIFIED PHOTO INGESTION
 # ===================================================================
 
@@ -419,6 +507,13 @@ def ingest_photos(file_paths: List[str], output_dir: str) -> List[str]:
         elif ext == "pdf":
             extracted = extract_images_from_pdf(path, output_dir)
             all_photos.extend(extracted)
+
+        elif ext == "eml":
+            eml_files = extract_attachments_from_eml(path, output_dir)
+            # Recursively ingest extracted attachments (PDFs, ZIPs, images, nested EMLs)
+            if eml_files:
+                nested = ingest_photos(eml_files, output_dir)
+                all_photos.extend(nested)
 
         elif ext in ALL_IMAGE_FORMATS:
             # Convert non-native formats to JPEG
@@ -454,4 +549,5 @@ def get_media_type(filename: str) -> str:
         "tif": "image/tiff",
         "bmp": "image/bmp",
         "zip": "application/zip",
+        "eml": "message/rfc822",
     }.get(ext, "application/octet-stream")

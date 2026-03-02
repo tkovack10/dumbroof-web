@@ -38,6 +38,7 @@ from photo_utils import (
     prepare_photo_for_pdf,
     extract_images_from_pdf as _shared_extract_pdf,
     extract_images_from_zip,
+    extract_attachments_from_eml,
     ingest_photos,
     get_media_type as _shared_get_media_type,
     is_image_file,
@@ -148,6 +149,32 @@ def get_media_type(filename: str) -> str:
 def extract_images_from_pdf(pdf_path: str, output_dir: str) -> list[str]:
     """Extract images from a PDF — delegates to shared photo_utils."""
     return _shared_extract_pdf(pdf_path, output_dir)
+
+
+def resolve_eml_to_document(path: str, work_dir: str) -> str:
+    """If path is a .eml file, extract attachments and return the best document.
+
+    Returns the first PDF found (preferred for scope/measurements/weather),
+    or the first image if no PDFs. If not .eml, returns path unchanged.
+    """
+    ext = path.lower().rsplit(".", 1)[-1] if "." in path else ""
+    if ext != "eml":
+        return path
+
+    extracted = extract_attachments_from_eml(path, work_dir)
+    if not extracted:
+        print(f"[PROCESS] EML had no extractable attachments: {os.path.basename(path)}")
+        return path  # Fall through — will fail downstream but with a clear error
+
+    # Prefer PDFs (scope docs, measurement reports, weather reports are PDFs)
+    pdfs = [f for f in extracted if f.lower().endswith(".pdf")]
+    if pdfs:
+        print(f"[PROCESS] EML resolved to PDF: {os.path.basename(pdfs[0])}")
+        return pdfs[0]
+
+    # Fallback to first image
+    print(f"[PROCESS] EML resolved to image: {os.path.basename(extracted[0])}")
+    return extracted[0]
 
 
 def resize_photo(path: str, max_dim: int = 1024) -> str:
@@ -1799,8 +1826,9 @@ async def process_claim(claim_id: str):
         async def _get_measurements():
             if not measurement_paths:
                 return {}
+            resolved = resolve_eml_to_document(measurement_paths[0], source_dir)
             print("[PROCESS] Extracting measurements...")
-            return await asyncio.to_thread(extract_measurements, claude, measurement_paths[0])
+            return await asyncio.to_thread(extract_measurements, claude, resolved)
 
         async def _get_photo_analysis():
             if not photo_paths:
@@ -1823,14 +1851,16 @@ async def process_claim(claim_id: str):
         async def _get_carrier_data():
             if not scope_paths:
                 return None
+            resolved = resolve_eml_to_document(scope_paths[-1], source_dir)
             print(f"[PROCESS] Extracting carrier scope ({len(scope_paths)} file(s))...")
-            return await asyncio.to_thread(extract_carrier_scope, claude, scope_paths[-1])
+            return await asyncio.to_thread(extract_carrier_scope, claude, resolved)
 
         async def _get_weather_data():
             if not weather_paths:
                 return {}
+            resolved = resolve_eml_to_document(weather_paths[0], source_dir)
             print("[PROCESS] Extracting weather data...")
-            return await asyncio.to_thread(extract_weather_data, claude, weather_paths[0])
+            return await asyncio.to_thread(extract_weather_data, claude, resolved)
 
         print("[PROCESS] Running extraction steps in parallel...")
         measurements, photo_analysis, photo_integrity, carrier_data, weather_data = await asyncio.gather(
