@@ -151,20 +151,66 @@ def extract_images_from_pdf(pdf_path: str, output_dir: str) -> list[str]:
     return _shared_extract_pdf(pdf_path, output_dir)
 
 
+def _extract_eml_body_as_text(eml_path: str, work_dir: str) -> str:
+    """Extract the email body (text or HTML) and save as a .txt file.
+
+    Used as a fallback when an .eml has no file attachments — the document
+    content IS the email body (e.g., denial letters sent as email text).
+    """
+    import email
+    import email.policy
+
+    with open(eml_path, "rb") as f:
+        msg = email.message_from_binary_file(f, policy=email.policy.default)
+
+    # Try to get plain text body first, then HTML
+    body = msg.get_body(preferencelist=("plain", "html"))
+    if not body:
+        return ""
+
+    content = body.get_content()
+    if not content or not content.strip():
+        return ""
+
+    # If HTML, do a basic tag strip to get readable text
+    if body.get_content_type() == "text/html":
+        import re
+        content = re.sub(r"<style[^>]*>.*?</style>", "", content, flags=re.DOTALL | re.IGNORECASE)
+        content = re.sub(r"<script[^>]*>.*?</script>", "", content, flags=re.DOTALL | re.IGNORECASE)
+        content = re.sub(r"<br\s*/?>", "\n", content, flags=re.IGNORECASE)
+        content = re.sub(r"</?p[^>]*>", "\n", content, flags=re.IGNORECASE)
+        content = re.sub(r"<[^>]+>", "", content)
+        content = content.strip()
+
+    # Prepend email metadata for context
+    subject = msg.get("subject", "")
+    from_addr = msg.get("from", "")
+    date = msg.get("date", "")
+    header = f"From: {from_addr}\nDate: {date}\nSubject: {subject}\n{'='*60}\n\n"
+    content = header + content
+
+    # Save as .txt
+    basename = os.path.splitext(os.path.basename(eml_path))[0]
+    txt_path = os.path.join(work_dir, f"{basename}_body.txt")
+    with open(txt_path, "w", encoding="utf-8") as f:
+        f.write(content)
+
+    print(f"[PROCESS] EML body extracted as text: {os.path.basename(txt_path)} ({len(content):,} chars)")
+    return txt_path
+
+
 def resolve_eml_to_document(path: str, work_dir: str) -> str:
     """If path is a .eml file, extract attachments and return the best document.
 
     Returns the first PDF found (preferred for scope/measurements/weather),
-    or the first image if no PDFs. If not .eml, returns path unchanged.
+    or the first image if no PDFs, or the email body as text if no attachments.
+    If not .eml, returns path unchanged.
     """
     ext = path.lower().rsplit(".", 1)[-1] if "." in path else ""
     if ext != "eml":
         return path
 
     extracted = extract_attachments_from_eml(path, work_dir)
-    if not extracted:
-        print(f"[PROCESS] EML had no extractable attachments: {os.path.basename(path)}")
-        return path  # Fall through — will fail downstream but with a clear error
 
     # Prefer PDFs (scope docs, measurement reports, weather reports are PDFs)
     pdfs = [f for f in extracted if f.lower().endswith(".pdf")]
@@ -172,9 +218,22 @@ def resolve_eml_to_document(path: str, work_dir: str) -> str:
         print(f"[PROCESS] EML resolved to PDF: {os.path.basename(pdfs[0])}")
         return pdfs[0]
 
-    # Fallback to first image
-    print(f"[PROCESS] EML resolved to image: {os.path.basename(extracted[0])}")
-    return extracted[0]
+    # Then images
+    from photo_utils import ALL_IMAGE_FORMATS
+    images = [f for f in extracted
+              if f.lower().rsplit(".", 1)[-1] in ALL_IMAGE_FORMATS]
+    if images:
+        print(f"[PROCESS] EML resolved to image: {os.path.basename(images[0])}")
+        return images[0]
+
+    # Fallback: the email body IS the document (e.g., denial letters)
+    txt_path = _extract_eml_body_as_text(path, work_dir)
+    if txt_path:
+        print(f"[PROCESS] EML had no attachments — using email body as text")
+        return txt_path
+
+    print(f"[PROCESS] EML had no extractable content: {os.path.basename(path)}")
+    return path
 
 
 def resize_photo(path: str, max_dim: int = 1024) -> str:
@@ -566,8 +625,25 @@ Be VERY conservative — chalk marks and test square notations are NEVER fraud. 
 
 
 def extract_carrier_scope(client: anthropic.Anthropic, pdf_path: str) -> dict:
-    """Extract carrier scope data from insurance estimate PDF."""
-    pdf_b64 = file_to_base64(pdf_path)
+    """Extract carrier scope data from insurance estimate PDF or text file."""
+    ext = pdf_path.lower().rsplit(".", 1)[-1] if "." in pdf_path else ""
+
+    # Build content block based on file type
+    if ext == "txt":
+        # Email body extracted as text (e.g., denial letter was the email itself)
+        with open(pdf_path, "r", encoding="utf-8") as f:
+            text_content = f.read()
+        file_block = {
+            "type": "text",
+            "text": f"[CARRIER DOCUMENT — extracted from email]\n\n{text_content}",
+        }
+    else:
+        # Standard PDF
+        pdf_b64 = file_to_base64(pdf_path)
+        file_block = {
+            "type": "document",
+            "source": {"type": "base64", "media_type": "application/pdf", "data": pdf_b64},
+        }
 
     response = _call_claude_with_retry(client,
         _step_name="extract_carrier_scope",
@@ -576,10 +652,7 @@ def extract_carrier_scope(client: anthropic.Anthropic, pdf_path: str) -> dict:
         messages=[{
             "role": "user",
             "content": [
-                {
-                    "type": "document",
-                    "source": {"type": "base64", "media_type": "application/pdf", "data": pdf_b64},
-                },
+                file_block,
                 {
                     "type": "text",
                     "text": """Read this insurance carrier scope/estimate and extract ALL data into this exact JSON format. Return ONLY valid JSON:
@@ -764,16 +837,26 @@ For each change, identify which USARM argument most likely convinced the carrier
 
 def extract_weather_data(client: anthropic.Anthropic, file_path: str) -> dict:
     """Extract weather/storm data from HailTrace, NOAA, or similar report."""
+    ext = file_path.lower().rsplit(".", 1)[-1] if "." in file_path else ""
     media_type = get_media_type(file_path)
-    file_b64 = file_to_base64(file_path)
 
     content = []
-    if media_type == "application/pdf":
+    if ext == "txt":
+        # Email body extracted as text
+        with open(file_path, "r", encoding="utf-8") as f:
+            text_content = f.read()
+        content.append({
+            "type": "text",
+            "text": f"[WEATHER REPORT — extracted from email]\n\n{text_content}",
+        })
+    elif media_type == "application/pdf":
+        file_b64 = file_to_base64(file_path)
         content.append({
             "type": "document",
             "source": {"type": "base64", "media_type": media_type, "data": file_b64},
         })
     else:
+        file_b64 = file_to_base64(file_path)
         content.append({
             "type": "image",
             "source": {"type": "base64", "media_type": media_type, "data": file_b64},
