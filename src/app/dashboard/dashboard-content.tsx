@@ -197,7 +197,7 @@ export function DashboardContent({ user }: { user: User }) {
                           className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-red-100 text-red-700 animate-pulse"
                         >
                           <span className="w-1.5 h-1.5 bg-red-500 rounded-full" />
-                          {claim.pending_drafts} response{claim.pending_drafts > 1 ? "s" : ""} pending
+                          {claim.pending_drafts} response{(claim.pending_drafts ?? 0) > 1 ? "s" : ""} pending
                         </a>
                       )}
                       <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium ${sc.color}`}>
