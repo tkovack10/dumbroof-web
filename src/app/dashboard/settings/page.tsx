@@ -3,6 +3,14 @@
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 
+interface Forwarder {
+  id: string;
+  email: string;
+  name: string | null;
+  role: string;
+  created_at: string;
+}
+
 export default function SettingsPage() {
   const supabase = createClient();
   const [loading, setLoading] = useState(true);
@@ -10,6 +18,13 @@ export default function SettingsPage() {
   const [saved, setSaved] = useState(false);
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
+  const [forwarders, setForwarders] = useState<Forwarder[]>([]);
+  const [newForwarderEmail, setNewForwarderEmail] = useState("");
+  const [newForwarderName, setNewForwarderName] = useState("");
+  const [newForwarderRole, setNewForwarderRole] = useState("sales_rep");
+  const [addingForwarder, setAddingForwarder] = useState(false);
+  const [forwarderError, setForwarderError] = useState("");
+  const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000";
   const [form, setForm] = useState({
     company_name: "",
     address: "",
@@ -57,9 +72,20 @@ export default function SettingsPage() {
         }
       }
       setLoading(false);
+
+      // Load authorized forwarders
+      try {
+        const res = await fetch(`${BACKEND_URL}/api/forwarders?user_id=${user.id}`);
+        if (res.ok) {
+          const fwdData = await res.json();
+          setForwarders(fwdData.forwarders || []);
+        }
+      } catch (err) {
+        console.error("Failed to load forwarders:", err);
+      }
     }
     loadProfile();
-  }, [supabase]);
+  }, [supabase, BACKEND_URL]);
 
   const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -114,6 +140,50 @@ export default function SettingsPage() {
     setSaving(false);
     setSaved(true);
     setTimeout(() => setSaved(false), 3000);
+  };
+
+  const handleAddForwarder = async () => {
+    if (!newForwarderEmail.trim()) return;
+    setAddingForwarder(true);
+    setForwarderError("");
+
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    try {
+      const res = await fetch(`${BACKEND_URL}/api/forwarders?user_id=${user.id}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: newForwarderEmail.trim(),
+          name: newForwarderName.trim() || null,
+          role: newForwarderRole,
+        }),
+      });
+
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.detail || "Failed to add forwarder");
+      }
+
+      const newFwd = await res.json();
+      setForwarders([...forwarders, newFwd]);
+      setNewForwarderEmail("");
+      setNewForwarderName("");
+      setNewForwarderRole("sales_rep");
+    } catch (err) {
+      setForwarderError(err instanceof Error ? err.message : "Failed to add");
+    }
+    setAddingForwarder(false);
+  };
+
+  const handleDeleteForwarder = async (id: string) => {
+    try {
+      await fetch(`${BACKEND_URL}/api/forwarders/${id}`, { method: "DELETE" });
+      setForwarders(forwarders.filter((f) => f.id !== id));
+    } catch (err) {
+      console.error("Failed to delete forwarder:", err);
+    }
   };
 
   const fields = [
@@ -209,6 +279,81 @@ export default function SettingsPage() {
             )}
           </div>
         </form>
+
+        {/* Authorized Forwarders */}
+        <div className="mt-12 pt-8 border-t border-gray-200">
+          <h2 className="text-xl font-bold text-[var(--navy)] mb-1">Email Forwarding</h2>
+          <p className="text-gray-500 text-sm mb-6">
+            Add team members authorized to forward carrier emails to <strong>claims@dumbroof.ai</strong>.
+            The system will match forwarded emails to their account.
+          </p>
+
+          {/* Existing forwarders */}
+          {forwarders.length > 0 && (
+            <div className="space-y-2 mb-6">
+              {forwarders.map((fwd) => (
+                <div key={fwd.id} className="flex items-center justify-between bg-gray-50 rounded-lg px-4 py-3">
+                  <div>
+                    <p className="text-sm font-medium text-[var(--navy)]">
+                      {fwd.name || fwd.email}
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      {fwd.email} &middot; {fwd.role.replace(/_/g, " ")}
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => handleDeleteForwarder(fwd.id)}
+                    className="text-gray-400 hover:text-red-500 transition-colors"
+                    title="Remove forwarder"
+                  >
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Add new forwarder */}
+          <div className="bg-white border border-gray-200 rounded-xl p-4 space-y-3">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <input
+                type="email"
+                value={newForwarderEmail}
+                onChange={(e) => setNewForwarderEmail(e.target.value)}
+                placeholder="Email address"
+                className="px-3 py-2.5 rounded-lg border border-gray-200 focus:border-[var(--navy)] focus:ring-1 focus:ring-[var(--navy)] outline-none transition-colors text-sm"
+              />
+              <input
+                type="text"
+                value={newForwarderName}
+                onChange={(e) => setNewForwarderName(e.target.value)}
+                placeholder="Name (optional)"
+                className="px-3 py-2.5 rounded-lg border border-gray-200 focus:border-[var(--navy)] focus:ring-1 focus:ring-[var(--navy)] outline-none transition-colors text-sm"
+              />
+              <select
+                value={newForwarderRole}
+                onChange={(e) => setNewForwarderRole(e.target.value)}
+                className="px-3 py-2.5 rounded-lg border border-gray-200 focus:border-[var(--navy)] focus:ring-1 focus:ring-[var(--navy)] outline-none transition-colors text-sm"
+              >
+                <option value="sales_rep">Sales Rep</option>
+                <option value="team_member">Team Member</option>
+                <option value="office_admin">Office Admin</option>
+              </select>
+            </div>
+            {forwarderError && (
+              <p className="text-red-600 text-xs">{forwarderError}</p>
+            )}
+            <button
+              onClick={handleAddForwarder}
+              disabled={!newForwarderEmail.trim() || addingForwarder}
+              className="bg-[var(--navy)] hover:bg-[var(--navy-light)] disabled:opacity-50 text-white px-5 py-2.5 rounded-lg text-sm font-medium transition-colors"
+            >
+              {addingForwarder ? "Adding..." : "Add Forwarder"}
+            </button>
+          </div>
+        </div>
       </div>
     </main>
   );

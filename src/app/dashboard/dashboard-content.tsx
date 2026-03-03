@@ -13,6 +13,9 @@ interface Claim {
   file_path: string;
   output_files: string[] | null;
   created_at: string;
+  pending_drafts?: number;
+  correspondence_count?: number;
+  latest_carrier_position?: string;
 }
 
 export function DashboardContent({ user }: { user: User }) {
@@ -95,6 +98,12 @@ export function DashboardContent({ user }: { user: User }) {
           <div className="flex items-center gap-4">
             <a href="/dashboard/repairs" className="text-gray-400 hover:text-white text-sm transition-colors hidden sm:block">
               Repairs
+            </a>
+            <a href="/dashboard/correspondence" className="text-gray-400 hover:text-white text-sm transition-colors hidden sm:block relative">
+              Correspondence
+              {claims.some((c) => (c.pending_drafts || 0) > 0) && (
+                <span className="absolute -top-1 -right-3 w-2 h-2 bg-red-500 rounded-full animate-pulse" />
+              )}
             </a>
             <a href="/dashboard/analytics" className="text-gray-400 hover:text-white text-sm transition-colors hidden sm:block">
               Analytics
@@ -182,6 +191,15 @@ export function DashboardContent({ user }: { user: User }) {
                       </div>
                     </a>
                     <div className="flex items-center gap-3">
+                      {(claim.pending_drafts || 0) > 0 && (
+                        <a
+                          href={`/dashboard/claim/${claim.id}`}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-red-100 text-red-700 animate-pulse"
+                        >
+                          <span className="w-1.5 h-1.5 bg-red-500 rounded-full" />
+                          {claim.pending_drafts} response{claim.pending_drafts > 1 ? "s" : ""} pending
+                        </a>
+                      )}
                       <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium ${sc.color}`}>
                         {isProcessing && (
                           <svg className="animate-spin w-3 h-3" fill="none" viewBox="0 0 24 24">
