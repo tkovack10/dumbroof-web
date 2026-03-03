@@ -254,8 +254,9 @@ export default function NewClaimPage() {
 
             <FileUploadZone
               label="Measurements"
-              description="EagleView, HOVER, GAF QuickMeasure, or any roof measurement report. PDFs or email files (.eml) with attachments."
+              description="EagleView, HOVER, GAF QuickMeasure, or any roof measurement report. You can upload multiple reports (e.g. separate roof and siding EagleViews). PDFs or email files (.eml) with attachments."
               accept=".pdf,.eml"
+              multiple
               required
               files={measurementFiles}
               onFilesChange={setMeasurementFiles}
