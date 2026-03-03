@@ -42,6 +42,7 @@ from correspondence_analyzer import (
     analyze_correspondence,
     regenerate_draft,
 )
+from gmail_poller import poll_gmail_inbox
 
 load_dotenv()
 
@@ -51,9 +52,12 @@ async def lifespan(app: FastAPI):
     """Start background pollers on startup."""
     claims_task = asyncio.create_task(poll_for_claims())
     repairs_task = asyncio.create_task(poll_for_repairs())
+    sb = get_supabase_client()
+    gmail_task = asyncio.create_task(poll_gmail_inbox(sb))
     yield
     claims_task.cancel()
     repairs_task.cancel()
+    gmail_task.cancel()
 
 
 app = FastAPI(
