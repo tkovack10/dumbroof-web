@@ -340,7 +340,7 @@ def analyze_photos(client: anthropic.Anthropic, photo_paths: list[str], user_not
 
     # Filter to image files and resize
     image_paths = []
-    for path in photo_paths[:20]:
+    for path in photo_paths[:100]:
         media_type = get_media_type(path)
         if media_type.startswith("image/"):
             resized = resize_photo(path)
@@ -542,7 +542,7 @@ def analyze_photo_integrity(client: anthropic.Anthropic, photo_paths: list[str])
     """
     # Sample up to 10 photos for integrity check (cost-efficient)
     sample_paths = []
-    for path in photo_paths[:10]:
+    for path in photo_paths[:20]:
         if get_media_type(path).startswith("image/"):
             resized = resize_photo(path)
             sample_paths.append(resized)
@@ -1736,7 +1736,9 @@ def generate_pdfs(config: dict, work_dir: str) -> list[str]:
 
     if result.returncode != 0:
         print(f"[GENERATOR] stderr: {result.stderr}")
-        raise RuntimeError(f"PDF generator failed: {result.stderr[:500]}")
+        print(f"[GENERATOR] stdout: {result.stdout[-2000:]}")
+        error_detail = result.stderr.strip() or result.stdout.strip()
+        raise RuntimeError(f"PDF generator failed: {error_detail[-500:]}")
 
     # Find generated PDFs
     output_dir = os.path.join(work_dir, "pdf_output")
