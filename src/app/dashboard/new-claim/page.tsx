@@ -274,8 +274,9 @@ export default function NewClaimPage() {
 
             <FileUploadZone
               label="Carrier Scope"
-              description="The insurance company's estimate or scope of loss. You can upload the PDF directly or forward the email (.eml). If you don't have one yet, skip this — we'll generate a pre-scope package."
+              description="The insurance company's estimate or scope of loss. You can upload the PDF directly or forward the email (.eml). Upload multiple if you have revised scopes. If you don't have one yet, skip this — we'll generate a pre-scope package."
               accept=".pdf,.eml"
+              multiple
               files={scopeFiles}
               onFilesChange={setScopeFiles}
             />
