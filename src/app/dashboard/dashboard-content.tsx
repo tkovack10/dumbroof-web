@@ -14,6 +14,7 @@ interface Claim {
   output_files: string[] | null;
   created_at: string;
   pending_drafts?: number;
+  pending_edits?: number;
   correspondence_count?: number;
   latest_carrier_position?: string;
 }
@@ -104,6 +105,9 @@ export function DashboardContent({ user }: { user: User }) {
               {claims.some((c) => (c.pending_drafts || 0) > 0) && (
                 <span className="absolute -top-1 -right-3 w-2 h-2 bg-red-500 rounded-full animate-pulse" />
               )}
+              {claims.some((c) => (c.pending_edits || 0) > 0) && (
+                <span className="absolute -top-1 -right-6 w-2 h-2 bg-amber-500 rounded-full animate-pulse" />
+              )}
             </a>
             <a href="/dashboard/analytics" className="text-gray-400 hover:text-white text-sm transition-colors hidden sm:block">
               Analytics
@@ -191,6 +195,15 @@ export function DashboardContent({ user }: { user: User }) {
                       </div>
                     </a>
                     <div className="flex items-center gap-3">
+                      {(claim.pending_edits || 0) > 0 && (
+                        <a
+                          href={`/dashboard/claim/${claim.id}`}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-700 animate-pulse"
+                        >
+                          <span className="w-1.5 h-1.5 bg-amber-500 rounded-full" />
+                          {claim.pending_edits} edit{(claim.pending_edits ?? 0) > 1 ? "s" : ""} pending
+                        </a>
+                      )}
                       {(claim.pending_drafts || 0) > 0 && (
                         <a
                           href={`/dashboard/claim/${claim.id}`}

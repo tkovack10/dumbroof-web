@@ -460,6 +460,92 @@ def delete_forwarder(forwarder_id: str):
 
 
 # ===================================================================
+# EDIT REQUESTS — Team-emailed report change requests
+# ===================================================================
+
+
+class EditRequestUpdate(BaseModel):
+    status: str  # approved | rejected
+
+
+@app.get("/api/edit-requests/{claim_id}")
+def get_edit_requests(claim_id: str):
+    """Get edit requests for a claim."""
+    sb = get_supabase_client()
+    result = sb.table("edit_requests").select("*").eq(
+        "claim_id", claim_id
+    ).order("created_at", desc=True).execute()
+    return {"edit_requests": result.data or []}
+
+
+@app.put("/api/edit-requests/{request_id}")
+def update_edit_request(request_id: str, update: EditRequestUpdate):
+    """Approve or reject an edit request."""
+    sb = get_supabase_client()
+
+    updates = {"status": update.status}
+    if update.status == "rejected":
+        # Decrement pending_edits on the claim
+        req = sb.table("edit_requests").select("claim_id").eq(
+            "id", request_id
+        ).single().execute()
+        if req.data and req.data.get("claim_id"):
+            claim = sb.table("claims").select("pending_edits").eq(
+                "id", req.data["claim_id"]
+            ).single().execute()
+            current = (claim.data or {}).get("pending_edits", 1)
+            sb.table("claims").update({
+                "pending_edits": max(0, current - 1)
+            }).eq("id", req.data["claim_id"]).execute()
+
+    result = sb.table("edit_requests").update(updates).eq(
+        "id", request_id
+    ).select("*").single().execute()
+    if not result.data:
+        raise HTTPException(status_code=404, detail="Edit request not found")
+
+    return result.data
+
+
+@app.post("/api/edit-requests/{request_id}/apply")
+async def apply_edit_request(request_id: str, background_tasks: BackgroundTasks):
+    """Apply an edit request — uploads attachments and triggers reprocess."""
+    sb = get_supabase_client()
+    from datetime import datetime as dt
+
+    req = sb.table("edit_requests").select("*").eq(
+        "id", request_id
+    ).single().execute()
+    if not req.data:
+        raise HTTPException(status_code=404, detail="Edit request not found")
+
+    claim_id = req.data.get("claim_id")
+    if not claim_id:
+        raise HTTPException(status_code=400, detail="Edit request not matched to a claim")
+
+    # Mark as approved + applied
+    sb.table("edit_requests").update({
+        "status": "applied",
+        "applied_at": dt.utcnow().isoformat(),
+    }).eq("id", request_id).execute()
+
+    # Decrement pending_edits
+    claim = sb.table("claims").select("pending_edits").eq(
+        "id", claim_id
+    ).single().execute()
+    current = (claim.data or {}).get("pending_edits", 1)
+    sb.table("claims").update({
+        "pending_edits": max(0, current - 1)
+    }).eq("id", claim_id).execute()
+
+    # Trigger reprocess
+    sb.table("claims").update({"status": "processing"}).eq("id", claim_id).execute()
+    background_tasks.add_task(run_processing, claim_id)
+
+    return {"status": "applied", "request_id": request_id, "claim_id": claim_id}
+
+
+# ===================================================================
 # BACKGROUND POLLERS
 # ===================================================================
 

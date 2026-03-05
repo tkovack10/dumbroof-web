@@ -19,7 +19,26 @@ interface Claim {
   error_message?: string | null;
   correspondence_count?: number;
   pending_drafts?: number;
+  pending_edits?: number;
   latest_carrier_position?: string;
+}
+
+interface EditRequest {
+  id: string;
+  claim_id: string;
+  from_email: string;
+  original_subject: string;
+  original_body: string;
+  request_type: string;
+  attachment_paths: string[];
+  ai_summary: {
+    changes: { action: string; item: string; details: string }[];
+    request_type: string;
+    confidence: number;
+  } | null;
+  status: string;
+  applied_at: string | null;
+  created_at: string;
 }
 
 interface Correspondence {
@@ -119,6 +138,8 @@ export default function ClaimDetailPage() {
   const [editedHtml, setEditedHtml] = useState<string>("");
   const [sendingDraft, setSendingDraft] = useState<string | null>(null);
   const [regenerating, setRegenerating] = useState<string | null>(null);
+  const [editRequests, setEditRequests] = useState<EditRequest[]>([]);
+  const [applyingEdit, setApplyingEdit] = useState<string | null>(null);
   const formRef = useRef<HTMLDivElement>(null);
 
   const fetchClaim = useCallback(async () => {
@@ -167,11 +188,24 @@ export default function ClaimDetailPage() {
     }
   }, [claimId, BACKEND_URL]);
 
+  const fetchEditRequests = useCallback(async () => {
+    try {
+      const res = await fetch(`${BACKEND_URL}/api/edit-requests/${claimId}`);
+      if (res.ok) {
+        const data = await res.json();
+        setEditRequests(data.edit_requests || []);
+      }
+    } catch (err) {
+      console.error("Failed to fetch edit requests:", err);
+    }
+  }, [claimId, BACKEND_URL]);
+
   useEffect(() => {
     fetchClaim();
     fetchCorrespondence();
     fetchDrafts();
-  }, [fetchClaim, fetchCorrespondence, fetchDrafts]);
+    fetchEditRequests();
+  }, [fetchClaim, fetchCorrespondence, fetchDrafts, fetchEditRequests]);
 
   // Poll for status changes only when claim is actively being processed
   useEffect(() => {
@@ -360,6 +394,39 @@ export default function ClaimDetailPage() {
       }, 15000);
     } catch (err) {
       console.error("Failed to trigger analysis:", err);
+    }
+  };
+
+  const handleApplyEditRequest = async (requestId: string) => {
+    setApplyingEdit(requestId);
+    try {
+      const res = await fetch(`${BACKEND_URL}/api/edit-requests/${requestId}/apply`, {
+        method: "POST",
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.detail || "Apply failed");
+      }
+      fetchEditRequests();
+      fetchClaim();
+    } catch (err) {
+      console.error("Failed to apply edit request:", err);
+      alert(err instanceof Error ? err.message : "Failed to apply edit request");
+    }
+    setApplyingEdit(null);
+  };
+
+  const handleRejectEditRequest = async (requestId: string) => {
+    try {
+      await fetch(`${BACKEND_URL}/api/edit-requests/${requestId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "rejected" }),
+      });
+      fetchEditRequests();
+      fetchClaim();
+    } catch (err) {
+      console.error("Failed to reject edit request:", err);
     }
   };
 
@@ -744,6 +811,161 @@ export default function ClaimDetailPage() {
             </div>
           )}
         </div>
+
+        {/* ============================================================ */}
+        {/* EDIT REQUESTS PANEL                                          */}
+        {/* ============================================================ */}
+        {editRequests.filter((r) => r.status === "pending").length > 0 && (
+          <div className="bg-white rounded-2xl border-2 border-amber-300 p-6">
+            <div className="flex items-center gap-2 mb-4">
+              <div className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+              <h2 className="text-sm font-semibold text-[var(--navy)]">
+                Edit Requests
+              </h2>
+              <span className="ml-auto text-xs text-amber-600 font-medium">
+                {editRequests.filter((r) => r.status === "pending").length} pending
+              </span>
+            </div>
+            <div className="space-y-3">
+              {editRequests
+                .filter((r) => r.status === "pending")
+                .map((req) => {
+                  const summary =
+                    typeof req.ai_summary === "string"
+                      ? JSON.parse(req.ai_summary)
+                      : req.ai_summary;
+                  const isApplying = applyingEdit === req.id;
+
+                  return (
+                    <div
+                      key={req.id}
+                      className="border border-amber-200 bg-amber-50/50 rounded-xl p-4"
+                    >
+                      <div className="flex items-start justify-between mb-2">
+                        <div>
+                          <p className="text-sm font-medium text-[var(--navy)]">
+                            {req.original_subject || "Edit Request"}
+                          </p>
+                          <p className="text-xs text-gray-500 mt-0.5">
+                            From {req.from_email} &middot;{" "}
+                            {new Date(req.created_at).toLocaleDateString()}{" "}
+                            {new Date(req.created_at).toLocaleTimeString([], {
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })}
+                          </p>
+                        </div>
+                        <span className="inline-flex px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-700">
+                          {req.request_type.replace(/_/g, " ")}
+                        </span>
+                      </div>
+
+                      {/* AI Summary of Changes */}
+                      {summary && summary.changes && summary.changes.length > 0 && (
+                        <div className="bg-white border border-amber-100 rounded-lg p-3 mb-3">
+                          <p className="text-xs font-semibold text-gray-500 mb-1.5">
+                            AI-Parsed Changes
+                            {summary.confidence && (
+                              <span className="ml-2 text-gray-400 font-normal">
+                                ({summary.confidence}% confidence)
+                              </span>
+                            )}
+                          </p>
+                          <ul className="space-y-1">
+                            {summary.changes.map(
+                              (
+                                change: { action: string; item: string; details: string },
+                                i: number,
+                              ) => (
+                                <li
+                                  key={i}
+                                  className="text-xs text-gray-700 flex items-start gap-1.5"
+                                >
+                                  <span
+                                    className={`mt-0.5 font-semibold ${
+                                      change.action === "add"
+                                        ? "text-green-600"
+                                        : change.action === "remove"
+                                          ? "text-red-600"
+                                          : "text-blue-600"
+                                    }`}
+                                  >
+                                    {change.action.toUpperCase()}
+                                  </span>
+                                  <span>
+                                    <strong>{change.item}</strong>
+                                    {change.details && ` — ${change.details}`}
+                                  </span>
+                                </li>
+                              ),
+                            )}
+                          </ul>
+                        </div>
+                      )}
+
+                      {/* Original email body preview */}
+                      {req.original_body && (
+                        <div className="text-xs text-gray-600 bg-gray-50 rounded-lg p-2 mb-3 max-h-20 overflow-y-auto whitespace-pre-wrap">
+                          {req.original_body.slice(0, 300)}
+                          {req.original_body.length > 300 && "..."}
+                        </div>
+                      )}
+
+                      {/* Attachments */}
+                      {req.attachment_paths && req.attachment_paths.length > 0 && (
+                        <p className="text-xs text-gray-500 mb-3">
+                          {req.attachment_paths.length} attachment
+                          {req.attachment_paths.length !== 1 ? "s" : ""} included
+                        </p>
+                      )}
+
+                      {/* Action buttons */}
+                      <div className="flex items-center gap-3 pt-2 border-t border-amber-100">
+                        <button
+                          onClick={() => handleApplyEditRequest(req.id)}
+                          disabled={isApplying}
+                          className="bg-amber-600 hover:bg-amber-700 disabled:opacity-50 text-white px-4 py-2 rounded-lg text-xs font-semibold transition-colors flex items-center gap-2"
+                        >
+                          {isApplying ? (
+                            <>
+                              <svg
+                                className="animate-spin w-3 h-3"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                              >
+                                <circle
+                                  className="opacity-25"
+                                  cx="12"
+                                  cy="12"
+                                  r="10"
+                                  stroke="currentColor"
+                                  strokeWidth="4"
+                                />
+                                <path
+                                  className="opacity-75"
+                                  fill="currentColor"
+                                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                                />
+                              </svg>
+                              Applying...
+                            </>
+                          ) : (
+                            "Approve & Apply"
+                          )}
+                        </button>
+                        <button
+                          onClick={() => handleRejectEditRequest(req.id)}
+                          className="text-gray-400 hover:text-red-500 text-xs transition-colors"
+                        >
+                          Reject
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+            </div>
+          </div>
+        )}
 
         {/* ============================================================ */}
         {/* CARRIER CORRESPONDENCE TIMELINE                              */}

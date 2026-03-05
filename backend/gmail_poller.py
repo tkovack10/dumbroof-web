@@ -620,7 +620,9 @@ async def poll_gmail_inbox(sb: Client, backend_url: str = "http://localhost:8000
 
     while True:
         try:
-            service = get_gmail_service()
+            # Run Gmail API calls in a thread to avoid blocking the event loop
+            # (Gmail API client is synchronous — blocking here prevents claims/repairs pollers)
+            service = await asyncio.to_thread(get_gmail_service)
             await _poll_once(service, sb, backend_url)
         except Exception as e:
             print(f"[GMAIL POLLER] Error: {e}", flush=True)
@@ -630,12 +632,14 @@ async def poll_gmail_inbox(sb: Client, backend_url: str = "http://localhost:8000
 
 async def _poll_once(service, sb: Client, backend_url: str):
     """Single poll iteration — fetch and process unread messages."""
-    # List unread messages in inbox
-    results = service.users().messages().list(
-        userId="me",
-        q="is:unread",
-        maxResults=10,
-    ).execute()
+    # List unread messages in inbox (run in thread — Gmail API is synchronous)
+    results = await asyncio.to_thread(
+        lambda: service.users().messages().list(
+            userId="me",
+            q="is:unread",
+            maxResults=10,
+        ).execute()
+    )
 
     messages = results.get("messages", [])
     if not messages:
