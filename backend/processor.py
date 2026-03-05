@@ -8,6 +8,7 @@ build a claim config, generate PDFs, and upload results.
 from __future__ import annotations
 
 import os
+import re
 import json
 import base64
 import tempfile
@@ -1408,7 +1409,116 @@ def build_claim_config(
         if reasoning:
             config.setdefault("forensic_findings", {}).setdefault("key_arguments", []).append(reasoning)
 
+    # Cross-reference carrier line items against USARM line items
+    if carrier_data and config.get("carrier", {}).get("carrier_line_items"):
+        _cross_reference_line_items(config)
+
     return config
+
+
+def _cross_reference_line_items(config: dict) -> None:
+    """Populate usarm_desc, usarm_amount, and note on each carrier line item by matching against USARM line items."""
+    carrier_items = config.get("carrier", {}).get("carrier_line_items", [])
+    line_items = config.get("line_items", [])
+    if not carrier_items or not line_items:
+        return
+
+    stop_words = {'the', 'a', 'an', 'for', 'of', 'and', 'or', 'w/', 'w/out', '-', 'to', 'per', 'sq', 'lf'}
+
+    def _clean_carrier(name: str) -> str:
+        """Strip structure prefixes from carrier item names."""
+        return re.sub(
+            r'^(shed|dwelling\s*roof|front\s*elevation|rear\s*elevation|'
+            r'left\s*elevation|right\s*elevation|debris\s*removal|'
+            r'interior|garage|porch)\s*[-–—]\s*', '', name.lower().strip()
+        ).strip()
+
+    def _clean_usarm(desc: str) -> str:
+        """Strip R&R prefix from USARM descriptions."""
+        return re.sub(r'^r&r\s+', '', desc.lower().strip()).strip()
+
+    # --- Two-pass matching to prevent duplicate USARM assignments ---
+
+    # Pass 1: Score all potential carrier↔USARM matches
+    potential_matches = []  # (score, ci_idx, li_idx, amt, desc)
+    for ci_idx, ci in enumerate(carrier_items):
+        item_name = ci.get("item", "")
+        item_clean = _clean_carrier(item_name)
+        if not item_clean:
+            continue
+
+        for li_idx, li in enumerate(line_items):
+            li_desc = li.get("description", "")
+            li_clean = _clean_usarm(li_desc)
+            score = 0
+
+            # Substring match (both directions) — score by match length
+            if item_clean in li_clean or li_clean in item_clean:
+                score = max(len(item_clean), len(li_clean))
+            # Keyword overlap
+            elif len(item_clean.split()) >= 3:
+                item_words = set(item_clean.split()) - stop_words
+                li_words = set(li_clean.split()) - stop_words
+                overlap = item_words & li_words
+                if len(overlap) >= 3 or (len(overlap) >= 2 and len(item_words) <= 4):
+                    score = len(overlap)
+
+            if score > 0:
+                amt = round(li["qty"] * li["unit_price"], 2)
+                potential_matches.append((score, ci_idx, li_idx, amt, li_desc))
+
+    # Pass 2: Sort by score desc, greedily assign — each USARM item claimed at most once
+    potential_matches.sort(key=lambda x: x[0], reverse=True)
+    claimed_usarm = set()
+    carrier_matches = {}  # ci_idx -> list of (amt, desc)
+
+    for score, ci_idx, li_idx, amt, desc in potential_matches:
+        if li_idx in claimed_usarm:
+            continue
+        claimed_usarm.add(li_idx)
+        carrier_matches.setdefault(ci_idx, []).append((amt, desc))
+
+    # Apply results to carrier items
+    for ci_idx, ci in enumerate(carrier_items):
+        matches = carrier_matches.get(ci_idx, [])
+        if matches:
+            total_amt = sum(m[0] for m in matches)
+            best_desc = max(matches, key=lambda m: m[0])[1]
+            ci["usarm_amount"] = round(total_amt, 2)
+            ci["usarm_desc"] = best_desc
+            # Generate variance note
+            carrier_amt = 0
+            try:
+                carrier_amt = float(ci.get("carrier_amount", 0))
+            except (ValueError, TypeError):
+                pass
+            if carrier_amt > 0 and total_amt > carrier_amt:
+                ci["note"] = f"Carrier underpaid by {round(total_amt - carrier_amt, 2):.2f}"
+            elif carrier_amt > 0 and total_amt < carrier_amt:
+                ci["note"] = f"Carrier overpaid by {round(carrier_amt - total_amt, 2):.2f}"
+            elif carrier_amt > 0:
+                ci["note"] = "Amounts match"
+            else:
+                ci["note"] = "Not in carrier scope"
+        else:
+            ci["usarm_amount"] = 0
+            ci["usarm_desc"] = ""
+            ci["note"] = "No matching USARM line item"
+
+    # Append USARM items NOT in carrier scope as "NOT INCLUDED" rows
+    for idx, li in enumerate(line_items):
+        if idx not in claimed_usarm:
+            amt = round(li["qty"] * li["unit_price"], 2)
+            if amt < 10:  # Skip trivial items
+                continue
+            carrier_items.append({
+                "item": li.get("description", ""),
+                "carrier_desc": "NOT INCLUDED",
+                "carrier_amount": 0,
+                "usarm_desc": li.get("description", ""),
+                "usarm_amount": amt,
+                "note": "Carrier scope incomplete — missing component",
+            })
 
 
 def _classify_from_text(text: str) -> Optional[str]:
