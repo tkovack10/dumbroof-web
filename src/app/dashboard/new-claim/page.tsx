@@ -24,7 +24,6 @@ export default function NewClaimPage() {
   const phase = hasScope ? "post-scope" : "pre-scope";
   const canSubmit =
     propertyAddress.trim() !== "" &&
-    insuranceCarrier.trim() !== "" &&
     measurementFiles.length > 0 &&
     photoFiles.length > 0;
 
@@ -232,12 +231,14 @@ export default function NewClaimPage() {
               />
             </div>
             <div>
-              <label className="block text-sm font-semibold text-[var(--navy)] mb-1">
-                Insurance Carrier
-              </label>
+              <div className="flex items-baseline gap-2 mb-1">
+                <label className="block text-sm font-semibold text-[var(--navy)]">
+                  Insurance Carrier
+                </label>
+                <span className="text-xs text-gray-400 font-medium">Optional</span>
+              </div>
               <input
                 type="text"
-                required
                 value={insuranceCarrier}
                 onChange={(e) => setInsuranceCarrier(e.target.value)}
                 placeholder="e.g. State Farm, Allstate, Erie..."
