@@ -244,6 +244,11 @@ export default function NewClaimPage() {
                 placeholder="e.g. State Farm, Allstate, Erie..."
                 className="w-full px-4 py-3 rounded-lg border border-gray-200 focus:border-[var(--navy)] focus:ring-1 focus:ring-[var(--navy)] outline-none transition-colors text-sm"
               />
+              <p className="text-xs text-gray-400 mt-1">
+                {hasScope
+                  ? "We'll auto-detect the carrier from your scope if left blank."
+                  : "Leave blank if you don't know yet — you can add it later."}
+              </p>
             </div>
           </div>
 
@@ -398,6 +403,18 @@ export default function NewClaimPage() {
               "Submit Claim"
             )}
           </button>
+          {!canSubmit && status === "idle" && (
+            <p className="text-xs text-gray-400 text-center">
+              Still need:{" "}
+              {[
+                !propertyAddress.trim() && "property address",
+                measurementFiles.length === 0 && "measurements",
+                photoFiles.length === 0 && "inspection photos",
+              ]
+                .filter(Boolean)
+                .join(", ")}
+            </p>
+          )}
         </form>
       </div>
     </main>
