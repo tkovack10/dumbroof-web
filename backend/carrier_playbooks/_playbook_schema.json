@@ -1,0 +1,65 @@
+{
+  "_schema_version": "1.0",
+  "_description": "Structured carrier playbook — machine-queryable companion to the .md prose file. Updated automatically by /update-scope when carrier revisions are processed.",
+
+  "carrier": "Carrier Name",
+  "carrier_slug": "carrier-name",
+  "email": "claims@carrier.com",
+
+  "stats": {
+    "claims_processed": 0,
+    "wins": 0,
+    "win_rate": 0.0,
+    "total_usarm_rcv": 0,
+    "total_carrier_movement": 0,
+    "avg_underpayment_ratio": 0.0,
+    "avg_response_days": 0
+  },
+
+  "tactics": [
+    {
+      "id": "XX-T001",
+      "type": "partial_scope | full_denial | spot_repair | code_omission | pricing_manipulation | quantity_understatement | o_and_p_omission | siding_minimization",
+      "description": "What the carrier does",
+      "frequency": "every_claim | most_claims | occasional | rare",
+      "claims_seen": ["slug-1", "slug-2"],
+      "effective_counter": "XX-A001"
+    }
+  ],
+
+  "arguments": [
+    {
+      "id": "XX-A001",
+      "argument": "Human-readable argument name",
+      "trade": "roofing | siding | gutters | general | all",
+      "times_used": 0,
+      "times_effective": 0,
+      "success_rate": 0.0,
+      "avg_dollar_impact": 0,
+      "total_dollar_impact": 0,
+      "claims_used": ["slug-1"],
+      "claims_proven": ["slug-1"],
+      "claims_failed": [],
+      "counters_tactic": "XX-T001"
+    }
+  ],
+
+  "claims": [
+    {
+      "slug": "address-slug",
+      "address": "Full Address",
+      "date_of_loss": "Month DD, YYYY",
+      "trades": ["roofing"],
+      "carrier_1st_scope": 0,
+      "carrier_final": 0,
+      "usarm_rcv": 0,
+      "outcome": "won | pending | denied | appraisal",
+      "settlement_amount": 0,
+      "carrier_movement": 0,
+      "tactics_observed": ["XX-T001"],
+      "arguments_used": ["XX-A001"],
+      "arguments_proven": ["XX-A001"],
+      "arguments_failed": []
+    }
+  ]
+}

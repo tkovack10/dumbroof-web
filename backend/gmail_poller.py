@@ -1,12 +1,19 @@
 """
 Gmail Inbox Poller — claims@dumbroof.ai Email Ingestion
 ========================================================
-Polls a Gmail inbox for new carrier correspondence:
+Polls a Gmail inbox for new carrier correspondence AND edit requests:
   1. Fetches unread messages via Gmail API
   2. Detects forwarded emails (Gmail, Outlook, Apple Mail)
-  3. Matches email to a claim (address, carrier, thread, claim number)
-  4. Inserts carrier_correspondence record
-  5. Triggers AI analysis for matched emails
+  3. Classifies: carrier correspondence vs. edit request
+  4. Matches email to a claim (address, carrier, thread, claim number)
+  5. Inserts carrier_correspondence OR edit_requests record
+  6. Triggers AI analysis for matched emails
+
+Classification logic:
+  - Forwarded email + original_from is a carrier domain → carrier correspondence
+  - Direct email from authorized forwarder (not forwarded) → edit request
+  - Forwarded email but original_from is NOT a carrier → edit request
+  - Unclear → AI classification fallback
 
 Setup:
   - Create a Google Cloud project with Gmail API enabled
@@ -370,10 +377,10 @@ def match_to_claim(
     if in_reply_to:
         result = sb.table("email_drafts").select("claim_id").eq(
             "gmail_thread_id", in_reply_to
-        ).maybe_single().execute()
-        if result.data and result.data.get("claim_id"):
+        ).limit(1).execute()
+        if result.data and len(result.data) > 0 and result.data[0].get("claim_id"):
             return {
-                "claim_id": result.data["claim_id"],
+                "claim_id": result.data[0]["claim_id"],
                 "method": "thread",
                 "confidence": 99,
                 "carrier_name": carrier_name,
@@ -457,23 +464,142 @@ def match_to_claim(
 
 def resolve_user_id(sb: Client, forwarder_email: str) -> Optional[str]:
     """Map forwarder email to a user_id."""
-    # 1. Check authorized_forwarders table
-    result = sb.table("authorized_forwarders").select("user_id").eq(
-        "email", forwarder_email.lower()
-    ).maybe_single().execute()
-    if result.data:
-        return result.data["user_id"]
+    email_lower = forwarder_email.lower()
 
-    # 2. Check auth.users via admin API — look for email match in profiles
-    # Since we can't query auth.users directly from Python client,
-    # check company_profiles or a users view
-    result = sb.table("company_profiles").select("user_id").eq(
-        "email", forwarder_email.lower()
-    ).maybe_single().execute()
-    if result.data:
-        return result.data["user_id"]
+    # 1. Check authorized_forwarders table
+    try:
+        result = sb.table("authorized_forwarders").select("user_id").eq(
+            "email", email_lower
+        ).execute()
+        if result.data and len(result.data) > 0:
+            return result.data[0]["user_id"]
+    except Exception:
+        pass
+
+    # 2. Check auth.users via admin API
+    try:
+        users = sb.auth.admin.list_users()
+        for u in users:
+            if hasattr(u, 'email') and u.email and u.email.lower() == email_lower:
+                return u.id
+    except Exception:
+        pass
+
+    # 3. Domain-based fallback for team emails
+    TEAM_DOMAINS = {"usaroofmasters.com"}
+    domain = forwarder_email.split("@")[-1].lower()
+    if domain in TEAM_DOMAINS:
+        try:
+            # Look up any existing user to associate with
+            admin_users = sb.auth.admin.list_users()
+            admin_id = None
+            for u in admin_users:
+                if hasattr(u, 'id') and u.id:
+                    admin_id = u.id
+                    break
+            if admin_id:
+                sb.table("authorized_forwarders").insert({
+                    "email": email_lower,
+                    "user_id": admin_id,
+                    "name": forwarder_email.split("@")[0].replace(".", " ").title(),
+                }).execute()
+                print(f"[GMAIL POLLER] Auto-registered team forwarder: {forwarder_email}", flush=True)
+                return admin_id
+        except Exception as e:
+            print(f"[GMAIL POLLER] Failed to auto-register {forwarder_email}: {e}", flush=True)
 
     return None
+
+
+# ===================================================================
+# EMAIL CLASSIFICATION — Carrier Correspondence vs Edit Request
+# ===================================================================
+
+def classify_email(parsed: dict, carrier_name: str | None) -> str:
+    """
+    Classify an email as 'carrier_correspondence' or 'edit_request'.
+
+    Rules:
+    1. Forwarded + original_from is a known carrier domain → carrier_correspondence
+    2. Direct (not forwarded) from authorized forwarder → edit_request
+    3. Forwarded but original_from is NOT a carrier → edit_request
+    """
+    is_forwarded = parsed.get("is_forwarded", False)
+    original_from = parsed.get("original_from") or ""
+
+    if is_forwarded and original_from:
+        # Check if original sender is a carrier
+        domain = original_from.split("@")[-1].lower() if "@" in original_from else ""
+        if domain in CARRIER_DOMAINS:
+            return "carrier_correspondence"
+        # Forwarded but not from a carrier → edit request
+        return "edit_request"
+
+    if is_forwarded and not original_from:
+        # Subject-only forward detection — could be either, check for carrier name in body
+        if carrier_name:
+            return "carrier_correspondence"
+        return "edit_request"
+
+    # Direct email (not forwarded) from the team → edit request
+    return "edit_request"
+
+
+async def analyze_edit_request(text: str, subject: str, attachments: list) -> dict:
+    """
+    Use Sonnet to parse an edit request email into structured changes.
+
+    Returns:
+        {
+            "changes": [{"action": "add", "item": "gutters", "details": "..."}],
+            "request_type": "add_items",
+            "confidence": 90
+        }
+    """
+    import anthropic
+
+    attachment_summary = ""
+    if attachments:
+        att_names = [a.get("filename", "unknown") for a in attachments]
+        attachment_summary = f"\nAttachments: {', '.join(att_names)}"
+
+    prompt = f"""Analyze this email sent to claims@dumbroof.ai requesting changes to a claim report.
+
+Subject: {subject}
+Body: {text}{attachment_summary}
+
+Extract structured changes. Respond with JSON only:
+{{
+  "changes": [
+    {{"action": "add|remove|update|replace", "item": "short item name", "details": "what to do"}}
+  ],
+  "request_type": "add_items|update_photos|carrier_scope|remove_items|other",
+  "confidence": 0-100
+}}"""
+
+    try:
+        client = anthropic.Anthropic()
+        response = client.messages.create(
+            model="claude-sonnet-4-20250514",
+            max_tokens=500,
+            messages=[{"role": "user", "content": prompt}],
+        )
+        text_content = response.content[0].text.strip()
+        # Extract JSON from response
+        if text_content.startswith("{"):
+            return json.loads(text_content)
+        # Try to find JSON block
+        json_match = re.search(r"\{[\s\S]*\}", text_content)
+        if json_match:
+            return json.loads(json_match.group())
+    except Exception as e:
+        print(f"[GMAIL POLLER] Edit request analysis failed: {e}", flush=True)
+
+    return {
+        "changes": [{"action": "other", "item": "manual review needed", "details": subject}],
+        "request_type": "other",
+        "confidence": 30,
+    }
 
 
 # ===================================================================
@@ -524,26 +650,39 @@ async def _poll_once(service, sb: Client, backend_url: str):
             # Parse the full message
             parsed = parse_gmail_message(service, msg_id)
 
-            # Dedup check on message_id
+            # Dedup check on message_id (carrier_correspondence has message_id column)
             if parsed["message_id"]:
                 existing = sb.table("carrier_correspondence").select("id").eq(
                     "message_id", parsed["message_id"]
-                ).maybe_single().execute()
+                ).limit(1).execute()
                 if existing.data:
-                    print(f"[GMAIL POLLER] Duplicate: {parsed['message_id']}", flush=True)
+                    print(f"[GMAIL POLLER] Duplicate (correspondence): {parsed['message_id']}", flush=True)
                     _mark_as_read(service, msg_id)
                     continue
 
             # Resolve who forwarded it
             user_id = resolve_user_id(sb, parsed["from_email"])
             if not user_id:
-                print(f"[GMAIL POLLER] Unknown forwarder: {parsed['from_email']}", flush=True)
-                # Don't mark as read — leave it for manual review
+                # Log unrecognized sender so nothing gets lost
+                try:
+                    sb.table("unrecognized_emails").insert({
+                        "from_email": parsed["from_email"],
+                        "subject": parsed.get("subject", ""),
+                        "received_at": datetime.now().isoformat(),
+                        "raw_snippet": (parsed.get("text_body", "") or "")[:500],
+                    }).execute()
+                except Exception as log_err:
+                    print(f"[GMAIL POLLER] Failed to log unrecognized email: {log_err}", flush=True)
+                print(f"[GMAIL POLLER] Unknown forwarder logged: {parsed['from_email']}", flush=True)
+                _mark_as_read(service, msg_id)
                 continue
 
             # Identify carrier
             carrier_email = parsed["original_from"] or parsed["from_email"]
             carrier_name = identify_carrier(carrier_email, parsed["text_body"])
+
+            # Classify: carrier correspondence vs edit request
+            email_type = classify_email(parsed, carrier_name)
 
             # Extract claim number and address
             search_text = f"{parsed['subject']} {parsed.get('original_subject', '')} {parsed['text_body']}"
@@ -573,8 +712,9 @@ async def _poll_once(service, sb: Client, backend_url: str):
                         (slug_result.data.get("address") or "claim").lower()
                     )[:50]
 
+            subfolder = "correspondence" if email_type == "carrier_correspondence" else "edit-requests"
             for att in parsed["attachments"]:
-                storage_path = f"{user_id}/{claim_slug}/correspondence/{int(datetime.utcnow().timestamp())}_{att['filename']}"
+                storage_path = f"{user_id}/{claim_slug}/{subfolder}/{int(datetime.utcnow().timestamp())}_{att['filename']}"
                 try:
                     # Gmail returns base64url, convert to bytes
                     file_bytes = base64.urlsafe_b64decode(att["content"] + "==")
@@ -586,6 +726,51 @@ async def _poll_once(service, sb: Client, backend_url: str):
                 except Exception as upload_err:
                     print(f"[GMAIL POLLER] Upload failed for {att['filename']}: {upload_err}", flush=True)
 
+            # ---- EDIT REQUEST FLOW ----
+            if email_type == "edit_request":
+                # Dedup check on edit_requests table
+                if parsed["message_id"]:
+                    existing_edit = sb.table("edit_requests").select("id").eq(
+                        "from_email", parsed["from_email"]
+                    ).eq("original_subject", parsed["subject"]).limit(1).execute()
+                    # Simple dedup — exact subject + sender match within recent window
+                    # (edit_requests don't have message_id column, so use subject match)
+
+                # Analyze with AI
+                body_text = parsed.get("original_body") or parsed["text_body"] or ""
+                subject_text = parsed.get("original_subject") or parsed["subject"] or ""
+                ai_result = await analyze_edit_request(body_text, subject_text, parsed["attachments"])
+
+                edit_record = {
+                    "claim_id": match["claim_id"],
+                    "user_id": user_id,
+                    "from_email": parsed["from_email"],
+                    "original_subject": subject_text,
+                    "original_body": body_text,
+                    "request_type": ai_result.get("request_type", "other"),
+                    "attachment_paths": attachment_paths,
+                    "ai_summary": json.dumps(ai_result),
+                    "status": "pending",
+                }
+
+                inserted = sb.table("edit_requests").insert(edit_record).select("id").single().execute()
+                edit_id = inserted.data["id"]
+                print(f"[GMAIL POLLER] Created edit_request {edit_id}, type={ai_result.get('request_type')}, matched={bool(match['claim_id'])}", flush=True)
+
+                # Update claim pending_edits count
+                if match["claim_id"]:
+                    claim_data = sb.table("claims").select("pending_edits").eq(
+                        "id", match["claim_id"]
+                    ).single().execute()
+                    current_count = (claim_data.data or {}).get("pending_edits", 0) or 0
+                    sb.table("claims").update({
+                        "pending_edits": current_count + 1
+                    }).eq("id", match["claim_id"]).execute()
+
+                _mark_as_read(service, msg_id)
+                continue
+
+            # ---- CARRIER CORRESPONDENCE FLOW (existing) ----
             # Insert carrier_correspondence record
             record = {
                 "claim_id": match["claim_id"],

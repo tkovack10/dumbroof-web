@@ -101,7 +101,22 @@ def _load_pricing(price_list: str = "nybi26") -> dict:
     print(f"[PRICING] Warning: {path} not found — using hardcoded fallbacks")
     return {}
 
-PRICING = _load_pricing()
+PRICING = _load_pricing()  # Default NYBI26
+_PRICING_CACHE = {"nybi26": PRICING}
+
+
+def get_pricing_for_state(state: str) -> dict:
+    """Get pricing for a given state. NY=NYBI26, PA=PAPI26, others=NYBI26."""
+    price_map = {"PA": "papi26", "NJ": "njbi26"}
+    price_list = price_map.get(state.upper(), "nybi26")
+    if price_list not in _PRICING_CACHE:
+        loaded = _load_pricing(price_list)
+        if loaded and "_meta" in loaded:
+            _PRICING_CACHE[price_list] = loaded
+        else:
+            # Fallback to NYBI26 if state-specific pricing doesn't exist
+            _PRICING_CACHE[price_list] = PRICING
+    return _PRICING_CACHE[price_list]
 
 
 # ===================================================================
@@ -358,6 +373,7 @@ def analyze_photos(client: anthropic.Anthropic, photo_paths: list[str], user_not
     trades_set = set()
     damage_summary_parts = []
     shingle_type = ""
+    shingle_votes = []
     shingle_condition = ""
     siding_type = ""
     damage_type = ""
@@ -430,12 +446,33 @@ SIDING DAMAGE — Look for:
 - WINDOW/DOOR WRAPS: If aluminum wraps (coil stock) around windows show chalk-marked hail impacts, include window_wraps in trades
 - FASCIA/SOFFIT: If metal fascia or soffit shows hail damage, include in trades
 
+SHINGLE EXPOSURE CHECK (CRITICAL FOR REPAIRABILITY):
+- If visible, measure the shingle exposure (butt-to-butt distance between courses).
+- 5" exposure = pre-metric shingle = UNREPAIRABLE with ANY current product on the market.
+- Current metric products are 5-5/8" exposure — mixing 5" and 5-5/8" creates 5/8" offset per course.
+- After 10 courses = 6-1/4" cumulative offset = full course misalignment after 20 courses.
+- This applies to BOTH 3-tab AND laminate/architectural shingles.
+- If 5" exposure is observed, note it as a KEY FINDING — it proves the roof cannot be spot-repaired.
+
+SLATE/TILE/METAL IDENTIFICATION:
+- If the roofing material is natural slate, clay tile, concrete tile, or standing seam metal, identify it EXACTLY.
+- Slate: Look for natural stone texture, irregular edges, muted colors, copper/lead flashing, thick profile.
+- Tile: Look for barrel/S-curve profile, terracotta/concrete color, mortar ridges.
+- Do NOT default to "comp shingle" if the material is clearly slate, tile, or metal.
+
 ANALYSIS PRIORITIES:
 - FOCUS ON STORM DAMAGE — hail impacts, wind displacement, fractures from the storm event. This is 90% of the report.
 - Do NOT catalog every minor wear detail (lichen, moss, minor surface weathering, faded paint). Only mention pre-existing condition ONCE, briefly, if it makes spot repair infeasible.
 - Keep annotations concise — 1-2 sentences per photo focusing on the storm damage evidence visible
 - For chalk test photos: describe what the chalk test reveals (number of gaps = hail impacts), not the chalk itself
 - For test square photos: report the counts (H=hits, W=wind) and what they prove
+
+IMPORTANT: If an image is NOT a roofing/damage inspection photo (e.g., company logos,
+certification seals, report headers/footers, diagrams, tables, text pages), identify it as:
+- shingle_type: leave unchanged from previous observations
+- photo_tag material: "non_photo"
+- annotation: "Non-inspection image — [description of what it actually shows]"
+Do NOT describe non-photo images as if they show roofing materials or damage.
 
 Number the photos starting at {start_num}. Return ONLY valid JSON:
 {{
@@ -491,8 +528,16 @@ Number the photos starting at {start_num}. Return ONLY valid JSON:
         trades_set.update(batch_result.get("trades_identified", []))
         if batch_result.get("damage_summary"):
             damage_summary_parts.append(batch_result["damage_summary"])
-        if batch_result.get("shingle_type"):
-            shingle_type = batch_result["shingle_type"]
+        # Collect shingle_type votes (majority vote, not last-write-wins)
+        # Skip vote if batch contains only non-photo images
+        batch_has_real_photos = True
+        if batch_result.get("photo_tags"):
+            real_photos = [k for k, v in batch_result["photo_tags"].items()
+                           if v.get("material", "") != "non_photo"]
+            if not real_photos:
+                batch_has_real_photos = False
+        if batch_result.get("shingle_type") and batch_has_real_photos:
+            shingle_votes.append(batch_result["shingle_type"].lower().strip())
         if batch_result.get("shingle_condition"):
             shingle_condition = batch_result["shingle_condition"]
         if batch_result.get("siding_type") and batch_result["siding_type"] != "none":
@@ -507,6 +552,10 @@ Number the photos starting at {start_num}. Return ONLY valid JSON:
             test_square_results.extend(batch_result["test_square_results"])
         if batch_result.get("photo_tags"):
             all_photo_tags.update(batch_result["photo_tags"])
+
+    # Resolve shingle_type by majority vote across batches
+    if shingle_votes:
+        shingle_type = _majority_vote_material(shingle_votes)
 
     # Clean up resized temp files
     for path in image_paths:
@@ -952,6 +1001,12 @@ def synthesize_executive_summary(
     carrier_rcv = carrier_data.get("carrier_rcv", 0) if carrier_data else 0
     carrier_name = carrier_data["carrier"]["name"] if carrier_data and "carrier" in carrier_data else "the carrier"
 
+    # Load carrier playbook for informed synthesis
+    playbook_ctx = load_carrier_playbook(carrier_name)
+    playbook_section = ""
+    if playbook_ctx:
+        playbook_section = f"\n\nCARRIER INTELLIGENCE ({carrier_name}):\n{playbook_ctx[:1500]}\nUse this intelligence to inform your language — reference known carrier tactics and effective counter-arguments.\n"
+
     prompt = f"""You are writing the Executive Summary for a forensic causation report on a storm-damaged property.
 The roofing material is: {material}
 
@@ -962,6 +1017,7 @@ Weather data: Storm date {weather_data.get('storm_date', 'N/A')}, hail size {wea
 Carrier RCV: ${carrier_rcv:,.2f}
 Photo count: {photo_count}
 Key findings count: {len(key_findings)}
+{playbook_section}
 
 Write 3-5 SHORT paragraphs (2-4 sentences each) that build evidence gracefully:
 
@@ -979,6 +1035,7 @@ RULES:
 - Do NOT mention every minor wear detail — focus on the storm damage evidence that matters
 - Weave evidence together gracefully — build the case paragraph by paragraph
 - Reference specific evidence (chalk testing, fracture patterns, code requirements) without being exhaustive
+- CRITICAL UPPA COMPLIANCE: This is written for a CONTRACTOR (not a public adjuster or attorney). NEVER use "on behalf of," "demand," "appeal," cite 11 NYCRR, § 2601, or any advocacy/regulatory language. Contractors document and recommend — they do NOT advocate or negotiate.
 
 Return ONLY a JSON array of paragraph strings: ["paragraph 1...", "paragraph 2...", ...]"""
 
@@ -1035,6 +1092,7 @@ RULES:
 - Tie the evidence together — don't just repeat findings
 - Build toward the conclusion logically
 - Do NOT pad with filler or repeat minor wear details
+- CRITICAL UPPA COMPLIANCE: This is written for a CONTRACTOR. NEVER use "on behalf of," "demand," "appeal," cite 11 NYCRR, § 2601, or any advocacy language. Use factual documentation language — "our analysis identifies," "the documented damage requires," NOT "we demand" or "the carrier must."
 
 Return ONLY a JSON array of paragraph strings: ["paragraph 1...", "paragraph 2...", ...]"""
 
@@ -1122,6 +1180,7 @@ def build_claim_config(
             "city": prop.get("city", ""),
             "state": state,
             "zip": prop.get("zip", ""),
+            "year_built_OPTIONAL": prop.get("year_built", None),
         },
         "insured": {
             "name": "Property Owner",
@@ -1141,7 +1200,7 @@ def build_claim_config(
             "carrier_arguments": carrier_data.get("carrier_arguments", []) if carrier_data else [],
         },
         "dates": {
-            "date_of_loss": "",
+            "date_of_loss": (weather_data or {}).get("storm_date", "") or (carrier_data or {}).get("date_of_loss", "") or "",
             "usarm_inspection_date": "",
             "report_date": datetime.now().strftime("%B %d, %Y"),
         },
@@ -1155,7 +1214,7 @@ def build_claim_config(
         },
         "financials": {
             "tax_rate": tax_rate,
-            "price_list": carrier_data.get("price_list", "NYBI26") if carrier_data else "NYBI26",
+            "price_list": carrier_data.get("price_list", "PAPI26" if state == "PA" else "NYBI26") if carrier_data else ("PAPI26" if state == "PA" else "NYBI26"),
             "deductible": carrier_data.get("carrier_deductible", 0) if carrier_data else 0,
         },
         "structures": structs,  # shingle_type populated below from photo analysis
@@ -1214,9 +1273,18 @@ def build_claim_config(
     if user_notes:
         config["user_notes"] = user_notes
 
+    # UPPA Compliance — determines language constraints
+    # Contractors CANNOT use public adjuster language (UPPA violation)
+    # Default to contractor (safest) unless company profile specifies otherwise
+    user_role = (company_profile or {}).get("user_role", "contractor")
+    config["compliance"] = {
+        "user_role": user_role,
+        "aob_signed": bool((company_profile or {}).get("aob_signed", False)),
+    }
+
     # Propagate detected roof material into structures[0].shingle_type
     # Photo analysis identifies the material visually; this ensures it's in the config
-    detected_material = _detect_roof_material(photo_analysis, user_notes or "")
+    detected_material = _detect_roof_material(photo_analysis, user_notes or "", config.get("carrier"))
     material_labels = {
         "laminated": "Architectural Laminated Comp Shingle",
         "3tab": "3-Tab 25yr Comp Shingle",
@@ -1231,60 +1299,107 @@ def build_claim_config(
     return config
 
 
-def _detect_roof_material(photo_analysis: dict, user_notes: str = "") -> str:
-    """Detect roofing material type from photo analysis and user notes.
+def _classify_from_text(text: str) -> Optional[str]:
+    """Classify roofing material from a text string.
+
+    Returns one of: 'slate', 'tile', 'metal_standing_seam', 'copper',
+    'laminated', '3tab', or None if no material detected.
+    """
+    if not text:
+        return None
+    text = text.lower()
+
+    if "slate" in text:
+        return "slate"
+    if any(kw in text for kw in ["clay tile", "concrete tile", "barrel tile", "terracotta"]):
+        return "tile"
+    if "tile" in text and any(kw in text for kw in ["roof tile", "tile roof", "clay", "concrete"]):
+        return "tile"
+    if any(phrase in text for phrase in ["standing seam", "metal roof", "metal roofing", "metal panel roof"]):
+        return "metal_standing_seam"
+    if "copper roof" in text:
+        return "copper"
+    if any(kw in text for kw in ["3-tab", "3 tab", "strip shingle"]):
+        return "3tab"
+    if any(kw in text for kw in ["laminate", "laminated", "architectural", "comp shingle",
+                                  "composite shingle", "asphalt shingle", "dimensional shingle"]):
+        return "laminated"
+    return None
+
+
+def _majority_vote_material(votes: list) -> str:
+    """Resolve material type by majority vote across batch results.
+
+    Specialty materials (slate, tile, metal) take priority in ties
+    because they are more specific identifications.
+    """
+    if not votes:
+        return ""
+
+    # Normalize votes to material categories
+    categories = {}
+    priority = ["slate", "tile", "metal_standing_seam", "copper", "3tab", "laminated"]
+
+    for vote in votes:
+        material = _classify_from_text(vote)
+        if material:
+            categories[material] = categories.get(material, 0) + 1
+
+    if not categories:
+        return votes[0]  # fallback to first raw vote
+
+    # Find max count
+    max_count = max(categories.values())
+    winners = [m for m, c in categories.items() if c == max_count]
+
+    # If tie, prefer specialty materials (earlier in priority list)
+    for p in priority:
+        if p in winners:
+            return p
+
+    return winners[0]
+
+
+def _detect_roof_material(photo_analysis: dict, user_notes: str = "",
+                          carrier_scope: dict = None) -> str:
+    """Detect roofing material type using triple verification with weighted voting.
+
+    Three independent signals:
+    - Photo analysis (weight 1.0): What the AI saw in photos
+    - User notes (weight 3.0): What the human explicitly stated
+    - Carrier scope line items (weight 2.0): What official documentation says
 
     Returns one of: 'slate', 'tile', 'metal_standing_seam', 'copper',
     'laminated', '3tab', or defaults to 'laminated'.
-
-    IMPORTANT: "metal" alone is NOT a roofing material indicator — virtually
-    every roof has metal components (flashing, trim, drip edge, vents, gutters).
-    Only detect metal roofing when explicitly stated as the primary roof covering
-    (e.g., "standing seam", "metal roof", "metal roofing panel").
     """
-    combined = " ".join([
-        user_notes or "",
-        photo_analysis.get("shingle_type", ""),
-        photo_analysis.get("damage_summary", ""),
-    ]).lower()
+    votes = {}  # material -> weighted score
 
-    # Check for explicit comp shingle keywords FIRST — these override everything
-    # because if someone says "laminate comp shingle roof" that IS the material,
-    # regardless of any "metal trim" or "metal flashing" also mentioned.
-    has_comp_shingle = any(kw in combined for kw in [
-        "laminate", "laminated", "architectural", "comp shingle",
-        "composite shingle", "asphalt shingle", "3-tab", "3 tab",
-        "dimensional shingle", "strip shingle",
-    ])
+    # Source 1: Photo analysis (weight 1.0)
+    photo_material = _classify_from_text(
+        (photo_analysis.get("shingle_type", "") + " " +
+         photo_analysis.get("damage_summary", "")).strip()
+    )
+    if photo_material:
+        votes[photo_material] = votes.get(photo_material, 0) + 1.0
 
-    if "slate" in combined and not has_comp_shingle:
-        return "slate"
-    if ("tile" in combined or "clay" in combined or "concrete tile" in combined) and not has_comp_shingle:
-        return "tile"
-    # "standing seam" is an explicit metal roofing phrase — safe to match
-    if "standing seam" in combined and not has_comp_shingle:
-        return "metal_standing_seam"
-    if "copper" in combined and "copper roof" in combined and not has_comp_shingle:
-        return "copper"
-    # Only match metal roofing when explicitly described as the roof covering.
-    # "metal" alone appears on every claim (flashing, trim, drip edge, vents,
-    # gutters, downspouts). Require explicit phrases like "metal roof" or
-    # "metal roofing" — NOT just "metal" + "roof" as separate words.
-    if any(phrase in combined for phrase in [
-        "metal roof", "metal roofing", "metal panel roof",
-    ]) and not has_comp_shingle:
-        return "metal_standing_seam"
+    # Source 2: User notes (weight 3.0 — user explicitly stated the material)
+    user_material = _classify_from_text(user_notes or "")
+    if user_material:
+        votes[user_material] = votes.get(user_material, 0) + 3.0
 
-    # If comp shingle keywords found, or fallback to shingle_type field
-    if has_comp_shingle:
-        if "3-tab" in combined or "3 tab" in combined or "strip shingle" in combined:
-            return "3tab"
-        return "laminated"
+    # Source 3: Carrier scope line items (weight 2.0 — official documentation)
+    if carrier_scope and carrier_scope.get("carrier_line_items"):
+        items_text = " ".join(
+            str(item.get("item", "")) + " " + str(item.get("carrier_desc", ""))
+            for item in carrier_scope["carrier_line_items"]
+        )
+        carrier_material = _classify_from_text(items_text)
+        if carrier_material:
+            votes[carrier_material] = votes.get(carrier_material, 0) + 2.0
 
-    shingle_type = photo_analysis.get("shingle_type", "architectural laminated").lower()
-    if "laminated" in shingle_type or "architectural" in shingle_type:
-        return "laminated"
-    return "3tab"
+    if votes:
+        return max(votes, key=votes.get)
+    return "laminated"  # fallback only when no signals at all
 
 
 def _estimate_linear_measurements(area_sf: float, facets: int, style: str = "combination") -> dict:
@@ -1376,6 +1491,9 @@ def _detect_siding_material(photo_analysis: dict, user_notes: str = "") -> str:
 
 def build_line_items(measurements: dict, photo_analysis: dict, state: str, user_notes: str = "") -> list:
     """Build Xactimate line items from measurements, analysis, and user context."""
+    # Use state-specific pricing (PA=PAPI26, NY=NYBI26, etc.)
+    PRICING = get_pricing_for_state(state)
+
     meas = measurements.get("measurements", {})
     structs = measurements.get("structures", [{}])
     struct = structs[0] if structs else {}
@@ -1438,11 +1556,14 @@ def build_line_items(measurements: dict, photo_analysis: dict, state: str, user_
     # ===================== PRIMARY ROOFING MATERIAL =====================
     # Pricing loaded from backend/pricing/nybi26.json — PRICING.get(key, fallback)
     if material == "slate":
-        items.append({"category": "ROOFING", "description": "Remove slate roofing", "qty": area_sq, "unit": "SQ", "unit_price": PRICING.get("slate_remove", 325.00)})
-        items.append({"category": "ROOFING", "description": "Slate roofing - high grade natural", "qty": area_sq, "unit": "SQ", "unit_price": PRICING.get("slate_install", 1850.00)})
+        # Combined R&R for slate (remove + install as single line per USARM standard)
+        slate_rr_price = PRICING.get("slate_remove", 325.00) + PRICING.get("slate_install", 1850.00)
+        items.append({"category": "ROOFING", "description": "R&R Natural slate roofing - high grade", "qty": area_sq, "unit": "SQ", "unit_price": slate_rr_price})
         items.append({"category": "ROOFING", "description": "Underlayment - felt 30# (deck area not covered by I&W)", "qty": felt_sq, "unit": "SQ", "unit_price": PRICING.get("slate_underlayment", 22.00)})
         items.append({"category": "ROOFING", "description": "Copper nails & hooks for slate", "qty": area_sq, "unit": "SQ", "unit_price": PRICING.get("slate_nails_hooks", 45.00)})
         items.append({"category": "ROOFING", "description": "Slate roofing - additional labor (specialist)", "qty": area_sq, "unit": "SQ", "unit_price": PRICING.get("slate_specialist_labor", 350.00)})
+        # Scaffold/staging — required for slate work (heavy material, steep pitches)
+        items.append({"category": "ROOFING", "description": "Scaffold/staging setup & removal", "qty": 1, "unit": "EA", "unit_price": PRICING.get("scaffold_staging", 1405.00)})
     elif material == "tile":
         items.append({"category": "ROOFING", "description": "Remove concrete/clay tile roofing", "qty": area_sq, "unit": "SQ", "unit_price": PRICING.get("tile_remove", 200.00)})
         items.append({"category": "ROOFING", "description": "Concrete/clay tile roofing", "qty": area_sq, "unit": "SQ", "unit_price": PRICING.get("tile_install", 900.00)})
@@ -1494,10 +1615,20 @@ def build_line_items(measurements: dict, photo_analysis: dict, state: str, user_
     if ridge > 0 and material not in ("slate", "tile"):
         items.append({"category": "ROOFING", "description": "R&R Ridge vent - shingle over", "qty": ridge, "unit": "LF", "unit_price": PRICING.get("ridge_vent", 8.50)})
 
+    # ===================== COPPER VALLEY FLASHING (slate/tile — valleys require copper) =====================
+    if valley > 0 and material in ("slate", "tile"):
+        items.append({"category": "ROOFING", "description": "R&R Valley flashing - copper", "qty": valley, "unit": "LF", "unit_price": PRICING.get("copper_valley_flashing", 32.00)})
+
+    # ===================== SKYLIGHT FLASHING =====================
+    skylights = penetrations.get("skylights", 0)
+    if skylights > 0:
+        items.append({"category": "ROOFING", "description": "R&R Skylight flashing kit", "qty": skylights, "unit": "EA", "unit_price": PRICING.get("skylight_flashing", 275.00)})
+
     # ===================== FLASHING =====================
     step = meas.get("step_flashing", 0)
     flashing = meas.get("flashing", 0)
-    is_copper_flashing = "copper" in notes_lower and "flash" in notes_lower
+    # Slate and tile roofs use copper flashing by default (standard practice)
+    is_copper_flashing = material in ("slate", "tile") or ("copper" in notes_lower and "flash" in notes_lower)
 
     if step > 0:
         if is_copper_flashing:
@@ -1610,8 +1741,13 @@ def build_line_items(measurements: dict, photo_analysis: dict, state: str, user_
                 items.append({"category": "ROOFING", "description": f"R&R Gable cornice return - {material}", "qty": cornice_count, "unit": "EA", "unit_price": PRICING.get(cornice_key, 136.32)})
 
     # ===================== DEBRIS =====================
-    dumpster_loads = max(1, round(area_sq / 25))
-    items.append({"category": "DEBRIS", "description": "Dumpster load - roofing debris", "qty": dumpster_loads, "unit": "EA", "unit_price": PRICING.get("dumpster", 450.00)})
+    # Slate/tile debris is significantly heavier — smaller loads, higher price per load
+    if material in ("slate", "tile"):
+        dumpster_loads = max(2, round(area_sq / 15))  # More loads for heavy material
+        items.append({"category": "DEBRIS", "description": "Dumpster load - heavy roofing debris (slate/tile)", "qty": dumpster_loads, "unit": "EA", "unit_price": PRICING.get("dumpster_heavy", 950.00)})
+    else:
+        dumpster_loads = max(1, round(area_sq / 25))
+        items.append({"category": "DEBRIS", "description": "Dumpster load - roofing debris", "qty": dumpster_loads, "unit": "EA", "unit_price": PRICING.get("dumpster", 850.00)})
 
     # ===================== COPPER COMPONENTS (from user notes) =====================
     if "copper" in notes_lower:
@@ -1718,14 +1854,78 @@ def build_line_items(measurements: dict, photo_analysis: dict, state: str, user_
 
 CHROME = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
 GENERATOR_PATH = os.path.expanduser("~/USARM-Claims-Platform/usarm_pdf_generator.py")
+BACKEND_DIR = os.path.dirname(os.path.abspath(__file__))
+
+
+def load_carrier_playbook(carrier_name: str) -> str:
+    """Load carrier playbook markdown for synthesis context. Returns empty string if not found."""
+    if not carrier_name:
+        return ""
+    slug = carrier_name.lower().replace("/", "-").replace(" ", "-").replace("--", "-").strip("-")
+    # Check backend local copy first, then platform directory
+    for base in [os.path.join(BACKEND_DIR, "carrier_playbooks"),
+                 os.path.join(os.path.expanduser("~/USARM-Claims-Platform"), "carrier_playbooks")]:
+        path = os.path.join(base, f"{slug}.md")
+        if os.path.exists(path):
+            try:
+                with open(path) as f:
+                    content = f.read()
+                # Return first 2000 chars to keep prompt manageable
+                return content[:2000]
+            except Exception:
+                pass
+    return ""
+
+
+def load_reference_file(name: str) -> str:
+    """Load a reference file for synthesis context. Returns empty string if not found."""
+    for base in [os.path.join(BACKEND_DIR, "references"),
+                 os.path.join(os.path.expanduser("~/USARM-Claims-Platform"), "references")]:
+        path = os.path.join(base, name)
+        if os.path.exists(path):
+            try:
+                with open(path) as f:
+                    return f.read()[:3000]
+            except Exception:
+                pass
+    return ""
+
+
+VALIDATOR_PATH = os.path.expanduser("~/USARM-Claims-Platform/validate_config.py")
 
 
 def generate_pdfs(config: dict, work_dir: str) -> list[str]:
-    """Generate PDF package using the USARM PDF generator."""
+    """Generate PDF package using the USARM PDF generator.
+
+    Runs validate_config.py --fix before generation to catch all 40+ documented
+    error patterns (E001-E040). Validation failures are logged but do not block
+    generation — the generator has its own fallback handling.
+    """
     # Write config to work directory
     config_path = os.path.join(work_dir, "claim_config.json")
     with open(config_path, "w") as f:
         json.dump(config, f, indent=2)
+
+    # Run validation + auto-fix before generation (catches E001-E040)
+    if os.path.exists(VALIDATOR_PATH):
+        try:
+            val_result = subprocess.run(
+                ["python3", VALIDATOR_PATH, config_path, "--fix"],
+                capture_output=True, text=True,
+                cwd=os.path.dirname(VALIDATOR_PATH),
+                timeout=30,
+            )
+            if val_result.returncode != 0:
+                print(f"[VALIDATE] Warnings found (continuing with generation):")
+                for line in (val_result.stdout + val_result.stderr).strip().split("\n")[-10:]:
+                    print(f"  {line}")
+            else:
+                print(f"[VALIDATE] Config passed validation")
+            # Re-read config after --fix may have modified it
+            with open(config_path) as f:
+                config = json.load(f)
+        except Exception as e:
+            print(f"[VALIDATE] Validation skipped (non-fatal): {e}")
 
     # Run the generator
     result = subprocess.run(
@@ -2259,7 +2459,8 @@ def compute_financials(config: dict) -> dict:
     rcv = line_total + tax
     o_and_p_amount = line_total * 0.20 if config.get("scope", {}).get("o_and_p") else 0
     total = rcv + o_and_p_amount
-    deductible = config.get("financials", {}).get("deductible", 0)
+    # Deductible lives in carrier.deductible (NOT financials.deductible — generator ignores that)
+    deductible = config.get("carrier", {}).get("deductible", 0) or config.get("financials", {}).get("deductible", 0)
     net = total - deductible
     carrier_rcv = config.get("carrier", {}).get("carrier_rcv", 0)
     variance = total - carrier_rcv if carrier_rcv else 0

@@ -319,8 +319,22 @@ def extract_images_from_pdf(pdf_path: str, output_dir: str) -> List[str]:
                         img_path = jpg_path
                 except Exception:
                     pass
-            # Skip small images (icons, logos, UI elements) — real photos are 30KB+
-            if os.path.getsize(img_path) > 30_000:
+            # Skip small images (icons, logos, UI elements) — real photos are 50KB+
+            if os.path.getsize(img_path) > 50_000:
+                # Check dimensions — real photos are 400x300+
+                try:
+                    from PIL import Image
+                    with Image.open(img_path) as im:
+                        w, h = im.size
+                        if w < 400 or h < 300:
+                            continue  # Skip small images (logos, icons)
+                        aspect = max(w, h) / max(min(w, h), 1)
+                        if aspect > 3.0:
+                            continue  # Skip banners/headers
+                except ImportError:
+                    pass  # PIL not available, keep the image
+                except Exception:
+                    pass  # If image can't be read, keep it
                 extracted.append(img_path)
 
         if extracted:
