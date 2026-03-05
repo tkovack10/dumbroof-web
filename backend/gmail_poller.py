@@ -753,8 +753,8 @@ async def _poll_once(service, sb: Client, backend_url: str):
                     "status": "pending",
                 }
 
-                inserted = sb.table("edit_requests").insert(edit_record).select("id").single().execute()
-                edit_id = inserted.data["id"]
+                inserted = sb.table("edit_requests").insert(edit_record).execute()
+                edit_id = inserted.data[0]["id"] if inserted.data else "unknown"
                 print(f"[GMAIL POLLER] Created edit_request {edit_id}, type={ai_result.get('request_type')}, matched={bool(match['claim_id'])}", flush=True)
 
                 # Update claim pending_edits count
@@ -793,8 +793,8 @@ async def _poll_once(service, sb: Client, backend_url: str):
                 "analysis_status": "pending",
             }
 
-            inserted = sb.table("carrier_correspondence").insert(record).select("id").single().execute()
-            corr_id = inserted.data["id"]
+            inserted = sb.table("carrier_correspondence").insert(record).execute()
+            corr_id = inserted.data[0]["id"] if inserted.data else "unknown"
             print(f"[GMAIL POLLER] Created correspondence {corr_id}, matched={bool(match['claim_id'])}, confidence={match['confidence']}", flush=True)
 
             # Update claim counts
