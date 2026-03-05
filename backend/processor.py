@@ -380,6 +380,7 @@ def analyze_photos(client: anthropic.Anthropic, photo_paths: list[str], user_not
     severity = ""
     chalk_test_results = []
     test_square_results = []
+    exposure_inches = None
 
     for batch_idx in range(0, len(image_paths), BATCH_SIZE):
         batch = image_paths[batch_idx:batch_idx + BATCH_SIZE]
@@ -500,6 +501,7 @@ Number the photos starting at {start_num}. Return ONLY valid JSON:
   "test_square_results": [
     {{"slope": "F", "hail_hits": 10, "wind_damage": 0, "notes": "Front slope test square"}}
   ],
+  "exposure_inches": 5.0,
   "photo_tags": {{
     "photo_{start_num:02d}": {{
       "damage_type": "hail_dent | crack | missing | granule_loss | lifted_tab | wind_crease | chalk_test | corrosion | overview | none",
@@ -550,6 +552,11 @@ Number the photos starting at {start_num}. Return ONLY valid JSON:
             chalk_test_results.append(batch_result["chalk_test_results"])
         if batch_result.get("test_square_results"):
             test_square_results.extend(batch_result["test_square_results"])
+        if batch_result.get("exposure_inches") and exposure_inches is None:
+            try:
+                exposure_inches = float(batch_result["exposure_inches"])
+            except (TypeError, ValueError):
+                pass
         if batch_result.get("photo_tags"):
             all_photo_tags.update(batch_result["photo_tags"])
 
@@ -580,6 +587,7 @@ Number the photos starting at {start_num}. Return ONLY valid JSON:
         "photo_count": len(image_paths),
         "chalk_test_results": chalk_test_results,
         "test_square_results": test_square_results,
+        "exposure_inches": exposure_inches,
     }
 
 
@@ -841,7 +849,7 @@ For each change, identify which USARM argument most likely convinced the carrier
 
             response = _call_claude_with_retry(client,
                 _step_name="diff_scopes",
-                model="claude-sonnet-4-6",
+                model="claude-opus-4-6",
                 max_tokens=2048,
                 messages=[{"role": "user", "content": prompt}]
             )
@@ -1041,7 +1049,7 @@ Return ONLY a JSON array of paragraph strings: ["paragraph 1...", "paragraph 2..
 
     response = _call_claude_with_retry(client,
         _step_name="synthesize_summary",
-        model="claude-sonnet-4-6",
+        model="claude-opus-4-6",
         max_tokens=2048,
         messages=[{"role": "user", "content": prompt}]
     )
@@ -1098,7 +1106,7 @@ Return ONLY a JSON array of paragraph strings: ["paragraph 1...", "paragraph 2..
 
     response = _call_claude_with_retry(client,
         _step_name="synthesize_conclusion",
-        model="claude-sonnet-4-6",
+        model="claude-opus-4-6",
         max_tokens=2048,
         messages=[{"role": "user", "content": prompt}]
     )
@@ -1106,6 +1114,86 @@ Return ONLY a JSON array of paragraph strings: ["paragraph 1...", "paragraph 2..
     if isinstance(paragraphs, list):
         return paragraphs
     return [damage_summary[:500]]
+
+
+def _estimate_roof_age(config: dict, photo_analysis: dict) -> tuple:
+    """Estimate roof age from available data when no explicit age is provided.
+
+    Cascade: explicit age → exposure dating → product timelines → year_built → defaults.
+    Returns (int_age_or_None, reasoning_string).
+    """
+    current_year = datetime.now().year
+    structures = config.get("structures", [{}])
+    struct = structures[0] if structures else {}
+    shingle_type = (struct.get("shingle_type", "") or "").lower()
+
+    # Step 1: Explicit age
+    age = struct.get("age")
+    if age:
+        try:
+            return int(age), ""
+        except (TypeError, ValueError):
+            pass
+
+    data_points = []
+    min_ages = []
+
+    is_three_tab = any(kw in shingle_type for kw in ["3-tab", "three-tab", "three tab"])
+    is_laminate = any(kw in shingle_type for kw in ["architectural", "laminate", "dimensional"])
+    type_label = "three-tab" if is_three_tab else "laminate/architectural" if is_laminate else "asphalt composition"
+
+    if is_three_tab or is_laminate:
+        data_points.append(("Shingle Type", f"{type_label.title()} shingle"))
+
+    # Step 2: Exposure-based dating
+    measured_exposure = photo_analysis.get("exposure_inches")
+    if measured_exposure:
+        try:
+            exp_val = float(measured_exposure)
+        except (TypeError, ValueError):
+            exp_val = None
+        if exp_val is not None and exp_val <= 5.25:
+            if is_laminate:
+                min_ages.append(current_year - 2012)
+                data_points.append(("Measured Exposure",
+                    f'{exp_val}" — pre-metric standard (laminate last manufactured ~2012)'))
+            elif is_three_tab:
+                min_ages.append(current_year - 2010)
+                data_points.append(("Measured Exposure",
+                    f'{exp_val}" — pre-metric standard (three-tab last manufactured ~2010)'))
+            else:
+                min_ages.append(current_year - 2012)
+                data_points.append(("Measured Exposure",
+                    f'{exp_val}" — pre-metric standard (manufactured prior to ~2012)'))
+
+    # Step 3: Property year built
+    year_built = config.get("property", {}).get("year_built_OPTIONAL")
+    if year_built:
+        try:
+            yb = int(year_built)
+            building_age = current_year - yb
+            data_points.append(("Property Built", f"{yb} per public records"))
+            if not min_ages:
+                min_ages.append(building_age)
+        except (TypeError, ValueError):
+            pass
+
+    # Step 4: Combine evidence
+    if min_ages:
+        estimated_age = max(min_ages)
+    elif is_three_tab:
+        estimated_age = 18
+    elif is_laminate:
+        estimated_age = 12
+    else:
+        return None, ""
+
+    estimated_age = max(1, round(estimated_age))
+    reasoning = f"Estimated roof age: ~{estimated_age} years (installed circa {current_year - estimated_age})"
+    if data_points:
+        reasoning += " — " + "; ".join(f"{label}: {finding}" for label, finding in data_points)
+
+    return estimated_age, reasoning
 
 
 def build_claim_config(
@@ -1295,6 +1383,30 @@ def build_claim_config(
     }
     if config.get("structures") and len(config["structures"]) > 0:
         config["structures"][0]["shingle_type"] = material_labels.get(detected_material, detected_material)
+
+    # Shingle exposure detection — 5" = unrepairable with current products
+    exposure = photo_analysis.get("exposure_inches")
+    if exposure:
+        try:
+            exp_val = float(exposure)
+            if exp_val <= 5.25:
+                finding = (
+                    f'Measured shingle exposure of {exp_val}" indicates pre-metric product '
+                    f'(manufactured before ~2012). Current metric products are 5-5/8" exposure — '
+                    f'mixing creates 5/8" offset per course, full misalignment after 20 courses. '
+                    f'No manufacturer will warrant field-cut shingles. Roof is unrepairable by spot repair.'
+                )
+                config.setdefault("forensic_findings", {}).setdefault("key_arguments", []).append(finding)
+        except (TypeError, ValueError):
+            pass
+
+    # Roof age estimation
+    age, reasoning = _estimate_roof_age(config, photo_analysis)
+    if age:
+        if config.get("structures") and len(config["structures"]) > 0:
+            config["structures"][0]["age"] = age
+        if reasoning:
+            config.setdefault("forensic_findings", {}).setdefault("key_arguments", []).append(reasoning)
 
     return config
 
@@ -1891,7 +2003,9 @@ def load_reference_file(name: str) -> str:
     return ""
 
 
-VALIDATOR_PATH = os.path.expanduser("~/USARM-Claims-Platform/validate_config.py")
+VALIDATOR_PATH = os.path.join(os.path.dirname(__file__), "validate_config.py")
+if not os.path.exists(VALIDATOR_PATH):
+    VALIDATOR_PATH = os.path.expanduser("~/USARM-Claims-Platform/validate_config.py")
 
 
 def generate_pdfs(config: dict, work_dir: str) -> list[str]:

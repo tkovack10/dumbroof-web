@@ -1,0 +1,240 @@
+{
+  "_description": "Canonical field registry for usarm_pdf_generator.py. Every config field the generator reads is listed here with its exact path, type, and known wrong names. Used by validate_config.py.",
+  "_version": "1.0",
+  "_source": "Parsed from usarm_pdf_generator.py (2305 lines) on 2026-03-02",
+
+  "required_sections": {
+    "_note": "Top-level sections the generator requires (KeyError if missing)",
+    "sections": [
+      {"path": "property", "type": "object"},
+      {"path": "insured", "type": "object"},
+      {"path": "carrier", "type": "object"},
+      {"path": "dates", "type": "object"},
+      {"path": "company", "type": "object"},
+      {"path": "structures", "type": "array", "min_length": 1},
+      {"path": "line_items", "type": "array", "min_length": 1},
+      {"path": "photo_sections", "type": "array"},
+      {"path": "forensic_findings", "type": "object"},
+      {"path": "weather", "type": "object"}
+    ]
+  },
+
+  "property": {
+    "required": ["address", "city", "state", "zip"],
+    "optional": []
+  },
+
+  "insured": {
+    "required": ["name"],
+    "optional": ["type", "email"]
+  },
+
+  "carrier": {
+    "required": ["name", "claim_number"],
+    "optional": [
+      "policy_number", "adjuster_email", "carrier_rcv", "carrier_net",
+      "inspector_company", "inspector_name", "inspection_date",
+      "carrier_line_items", "carrier_arguments", "carrier_acknowledged_items",
+      "deductible", "claims_email", "claim_rep_name", "claim_rep_phone",
+      "scope_document_name", "scope_revisions"
+    ],
+    "wrong_names_seen": {
+      "deductible": {
+        "wrong_locations": ["financials.deductible"],
+        "correct_location": "carrier.deductible",
+        "error_refs": ["E004", "E011"],
+        "note": "Generator reads config.carrier.deductible at line 177. financials.deductible is ignored."
+      }
+    }
+  },
+
+  "company": {
+    "required": ["name", "ceo_name", "ceo_title", "email", "cell_phone", "office_phone", "address", "city_state_zip"],
+    "optional": ["website", "tagline"]
+  },
+
+  "dates": {
+    "required": ["date_of_loss", "report_date"],
+    "optional": ["usarm_inspection_date", "carrier_inspection_date", "usarm_inspection_dates"]
+  },
+
+  "inspectors": {
+    "required_one_of": ["usarm_inspector", "usarm_inspectors"],
+    "optional": ["usarm_title"],
+    "note": "Generator checks for usarm_inspectors (array of {name, role, date}) first, falls back to usarm_inspector (string)"
+  },
+
+  "scope": {
+    "required": ["trades"],
+    "optional": ["o_and_p", "o_and_p_note"],
+    "note": "o_and_p is computed from len(trades) >= 3 by compute_financials, but config can override"
+  },
+
+  "financials": {
+    "required": ["tax_rate"],
+    "optional": ["price_list", "deductible"],
+    "note": "deductible here is NOT read by generator — use carrier.deductible"
+  },
+
+  "structures": {
+    "item_required": ["shingle_type"],
+    "item_optional": [
+      "name", "roof_area_sf", "roof_area_sq", "waste_factor", "waste_percent",
+      "roof_area_sq_with_waste", "pitches", "predominant_pitch", "facets",
+      "style", "shingle_condition", "note"
+    ],
+    "pitches_format": {
+      "correct": [{"pitch": "6/12", "area_sf": 1014, "percent": 77}],
+      "wrong_seen": ["6/12"],
+      "note": "Generator reads p.get('pitch'), p.get('area_sf'), p.get('percent'), p.get('note'). Strings won't work."
+    }
+  },
+
+  "weather": {
+    "required": ["storm_date"],
+    "optional": [
+      "hail_size", "hail_size_algorithm", "hail_size_meteorologist",
+      "hail_duration", "wind_speed", "hailtrace_id", "hailtrace_url",
+      "storm_description", "verification_method", "coordinates",
+      "hail_size_nws_reports", "nws_warning_tag", "nws_warning_detail",
+      "additional_events", "corroborating_reports", "damage_thresholds", "duration",
+      "noaa"
+    ],
+    "noaa_format": {
+      "fields": ["query_date", "query_coords", "search_radius_miles", "query_urls",
+                  "max_hail_inches", "max_wind_mph", "event_count", "events"],
+      "note": "Auto-populated by noaa_weather module. Events array contains SWDI_PLSR, SWDI_NX3HAIL, SPC_DAILY records."
+    },
+    "additional_events_format": {
+      "correct": {"date": "", "type": "", "detail": ""},
+      "wrong_seen": {"date": "", "magnitude": "", "source": ""},
+      "error_refs": ["E009"]
+    },
+    "damage_thresholds_format": {
+      "correct_fields": ["material", "threshold", "confirmed_size", "result"],
+      "alt_fields": {"material": "component", "confirmed_size": "storm_actual"},
+      "required_field": "result",
+      "error_refs": ["E015"],
+      "note": "Generator handles both material/confirmed_size and component/storm_actual. But 'result' is ALWAYS required."
+    }
+  },
+
+  "measurements": {
+    "required": [],
+    "optional": [
+      "eagleview_report", "eagleview_report_number",
+      "ridge", "hip", "valley", "rake", "eave", "drip_edge",
+      "step_flashing", "counter_flashing", "ridge_vent"
+    ]
+  },
+
+  "line_items": {
+    "item_required": ["description", "qty", "unit_price"],
+    "item_optional": ["code", "category", "unit", "trade", "evidence_photos"],
+    "note": "Generator computes extension as qty * unit_price. Never hardcode totals."
+  },
+
+  "forensic_findings": {
+    "required": ["damage_summary"],
+    "optional": [
+      "executive_summary", "conclusion", "conclusion_paragraphs",
+      "total_photos", "code_violations", "key_arguments",
+      "fieldassist_findings", "damage_thresholds",
+      "differentiation_table", "critical_observations",
+      "conclusion_findings", "recommended_scope", "toc_sections",
+      "repairability"
+    ],
+    "code_violations_format": {
+      "correct_fields": ["code", "requirement", "status"],
+      "wrong_seen": ["description"],
+      "error_refs": ["E018"],
+      "note": "Must have 3 separate fields. Do NOT embed code in requirement string."
+    },
+    "differentiation_table_format": {
+      "correct_fields": ["cause", "characteristics", "observed", "conclusion"],
+      "wrong_seen": [
+        {"characteristic": "", "hail_damage": "", "other_cause": ""},
+        {"indicator": "", "storm_damage": "", "non_storm_cause": ""},
+        {"indicator": "", "storm_cause": "", "non_storm_cause": ""}
+      ],
+      "error_refs": ["E013", "E016", "E019"],
+      "note": "This is the MOST REPEATED error (3 occurrences). conclusion must be CONSISTENT or NOT CONSISTENT."
+    },
+    "critical_observations_format": {
+      "correct_fields": ["title", "content"],
+      "wrong_seen": [{"text": ""}],
+      "error_refs": ["E014"],
+      "note": "Must have BOTH title and content. Schema template shows 'text' which is wrong."
+    },
+    "repairability_format": {
+      "correct_fields": ["measured_exposure_inches", "determination", "reasons"],
+      "optional_fields": ["exposure_type", "product_identified", "manufacturer", "product_line", "manufacturer_bulletins_cited", "conclusion"],
+      "note": "Auto-populated from scoring data. If measured_exposure_inches <= 5.25, triggers full unrepairable section with manufacturer bulletin citations (GAF SS-TS-03/03a, Haag 2024, CertainTeed, IKO). Also reads from scoring.photo_analysis and scoring.product_intelligence."
+    }
+  },
+
+  "appeal_letter": {
+    "required": [],
+    "optional": [
+      "demand_items", "enclosed_documents", "cc", "cc_recipients",
+      "subject_line", "salutation", "sections"
+    ],
+    "enclosed_documents_format": {
+      "accepts": ["string", {"name": "", "detail": ""}],
+      "note": "Generator handles both string and dict formats (fixed in E009)"
+    },
+    "cc_fallback": {
+      "primary": "cc",
+      "fallback": "cc_recipients",
+      "note": "Generator checks cc first, falls back to cc_recipients (fixed in E009)"
+    }
+  },
+
+  "cover_email": {
+    "required": [],
+    "optional": [
+      "to_email", "to", "cc_email", "cc", "subject_line", "subject",
+      "summary_paragraphs", "highlight_paragraphs", "enclosed_documents"
+    ],
+    "field_fallbacks": {
+      "to": ["to", "to_email"],
+      "cc": ["cc", "cc_email"],
+      "subject": ["subject", "subject_line"],
+      "note": "Generator checks primary first, falls back to alternate (fixed in E009)"
+    }
+  },
+
+  "compliance": {
+    "required": [],
+    "optional": ["user_role", "has_aob", "license_number", "license_state"],
+    "defaults": {"user_role": "contractor", "has_aob": true},
+    "note": "Missing compliance section = contractor with AOB (safe mode)"
+  },
+
+  "photo_map": {
+    "type": "object",
+    "note": "Maps annotation keys (p03_01) to actual filenames. Checked FIRST by find_photo()."
+  },
+
+  "photo_annotations": {
+    "type": "object",
+    "note": "Keys are p{page}_{img} format. Values are forensic observation strings."
+  },
+
+  "photo_sections": {
+    "formats": {
+      "flat": {"title": "", "photos": [["p03_01", 3, 1]]},
+      "subsection": {"title": "", "subsections": [{"title": "", "photo_range": [1, 5]}]},
+      "overview": {"title": "", "type": "overview", "pages": ["page03"]}
+    }
+  },
+
+  "optional_sections": {
+    "note": "These sections are read if present but never cause KeyError if missing",
+    "sections": [
+      "dashboard", "email_sequences", "evidence_map", "photo_integrity",
+      "supplement_variance_summary", "source_docs", "cover_letter",
+      "phase", "user_notes"
+    ]
+  }
+}

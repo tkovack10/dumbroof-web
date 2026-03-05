@@ -1,0 +1,405 @@
+{
+  "_schema_notes": {
+    "description": "USARM Claims Platform — Claim Configuration Schema",
+    "version": "1.0",
+    "usage": "Copy this file to claims/{address-slug}/claim_config.json and fill in all fields.",
+    "generator": "python3 usarm_pdf_generator.py claims/{address-slug}/claim_config.json",
+    "required_fields": "All fields without '_OPTIONAL' in their name are required. Remove _OPTIONAL suffix and fill in, or delete the field entirely.",
+    "photo_setup": "1) Extract photos: pdfimages -j companycam.pdf photos/page  2) Copy logo: cp usarm_logo.jpg photos/"
+  },
+
+  "property": {
+    "address": "123 Main St, City, NY 13901",
+    "city": "City",
+    "state": "NY",
+    "zip": "13901",
+    "year_built_OPTIONAL": ""
+  },
+
+  "insured": {
+    "name": "First Last",
+    "type": "homeowner"
+  },
+
+  "carrier": {
+    "name": "Insurance Company Name",
+    "claim_number": "",
+    "policy_number": "",
+    "adjuster_name_OPTIONAL": "",
+    "adjuster_email": "",
+    "carrier_rcv": 0.00,
+    "carrier_net_OPTIONAL": 0.00,
+    "inspector_company": "",
+    "inspector_name": "",
+    "inspection_date": "Month DD, YYYY",
+    "carrier_line_items": [
+      {
+        "description": "Carrier line item description",
+        "amount": 0.00,
+        "evidence_photos_OPTIONAL": ["p14_01", "p14_02"],
+        "dispute_note_OPTIONAL": "Why this carrier line item is inadequate — links to photo evidence"
+      }
+    ],
+    "carrier_arguments": [
+      "Reason 1 why carrier scope is inadequate",
+      "Reason 2 why carrier scope is inadequate"
+    ],
+    "carrier_acknowledged_items_OPTIONAL": [
+      "Items carrier DID approve (used in appeal letter logical inconsistency argument)"
+    ]
+  },
+
+  "dates": {
+    "date_of_loss": "Month DD, YYYY",
+    "usarm_inspection_date": "Month DD, YYYY",
+    "report_date": "Month DD, YYYY"
+  },
+
+  "inspectors": {
+    "_note": "Use usarm_inspector for single inspector, usarm_inspectors array for multiple",
+    "usarm_inspector": "Inspector Name",
+    "usarm_title": "Licensed Roofing Consultant",
+    "usarm_inspectors_OPTIONAL": [
+      {"name": "Inspector 1", "title": "Title 1"},
+      {"name": "Inspector 2", "title": "Title 2"}
+    ],
+    "usarm_inspection_dates_OPTIONAL": ["Month DD, YYYY", "Month DD, YYYY"]
+  },
+
+  "scope": {
+    "trades": ["roofing"],
+    "_trades_note": "Common trades: roofing, gutters, siding, interior, painting. O&P auto-applies when 3+ trades.",
+    "o_and_p": false,
+    "o_and_p_note_OPTIONAL": "Single trade involved; O&P does not apply per industry standard (3+ trades required)."
+  },
+
+  "financials": {
+    "tax_rate": 0.08,
+    "price_list": "NYBI26",
+    "deductible": 1000.00
+  },
+
+  "structures": [
+    {
+      "name": "Main Dwelling",
+      "roof_area_sf": 0,
+      "roof_area_sq": 0.00,
+      "waste_factor": 0.12,
+      "roof_area_sq_with_waste": 0.00,
+      "pitches": ["5/12"],
+      "predominant_pitch": "5/12",
+      "facets": 0,
+      "style": "gable",
+      "shingle_type": "Laminated composition (architectural)",
+      "shingle_condition": ""
+    }
+  ],
+
+  "weather": {
+    "hail_size": "",
+    "hail_duration_OPTIONAL": "",
+    "wind_speed_OPTIONAL": "",
+    "hailtrace_id": "",
+    "hailtrace_url": "",
+    "storm_date": "Month DD, YYYY",
+    "storm_description": "Severe thunderstorm with X\" diameter hail",
+    "hail_size_nws_reports_OPTIONAL": [
+      {"date": "YYYY-MM-DD", "size": "X.XX in", "location": "City, ST", "source": "NWS Storm Reports"}
+    ],
+    "nws_warning_tag_OPTIONAL": "Hail: X.XX in | Wind: XX mph | Source: NWS",
+    "noaa_OPTIONAL": {
+      "query_date": "YYYY-MM-DD",
+      "query_coords": [0.0, 0.0],
+      "search_radius_miles": 10.0,
+      "query_urls": [],
+      "max_hail_inches": 0.0,
+      "max_wind_mph": 0.0,
+      "event_count": 0,
+      "events": [
+        {
+          "source": "SWDI_PLSR | SWDI_NX3HAIL | SPC_DAILY",
+          "event_type": "Hail | Thunderstorm Wind",
+          "date": "YYYY-MM-DD",
+          "time_utc": "",
+          "latitude": 0.0,
+          "longitude": 0.0,
+          "distance_miles": 0.0,
+          "magnitude": 0.0,
+          "magnitude_type": "hail_inches | wind_mph",
+          "narrative": "",
+          "source_detail": "",
+          "noaa_url": ""
+        }
+      ]
+    }
+  },
+
+  "measurements": {
+    "eagleview_report": "",
+    "ridge": "",
+    "hip": "",
+    "valley": "",
+    "rake": "",
+    "eave": "",
+    "drip_edge": "",
+    "step_flashing_OPTIONAL": "",
+    "counter_flashing_OPTIONAL": "",
+    "ridge_vent_OPTIONAL": ""
+  },
+
+  "line_items": [
+    {
+      "_note": "code field is optional. category groups items in estimate table.",
+      "code_OPTIONAL": "RFG LAMI",
+      "category": "ROOFING",
+      "description": "Line item description",
+      "qty": 0.00,
+      "unit": "SQ",
+      "unit_price": 0.00,
+      "trade_OPTIONAL": "roofing",
+      "evidence_photos_OPTIONAL": ["p14_01", "p14_02"]
+    }
+  ],
+
+  "photo_map": {
+    "_note": "Optional. Maps annotation keys to photo filenames. Use for ZIP-based photo imports where filenames don't follow pageNN_imgNN convention. When present, generator uses this instead of page/img glob matching.",
+    "p03_01": "original-photo-filename.jpg"
+  },
+
+  "photo_annotations": {
+    "_note": "Keys match photo files. Format: p{page}_{img} e.g. p03_01 for page03_img01",
+    "p03_01": "Description of what this photo shows — forensic observation"
+  },
+
+  "photo_sections": [
+    {
+      "_format_note": "Two formats supported: flat (photos array) or subsections (photo_range). Pick one.",
+
+      "_flat_format_example": {
+        "title": "Section Title",
+        "photos": [
+          ["p03_01", 3, 1],
+          ["p03_02", 3, 2]
+        ]
+      },
+
+      "_subsection_format_example": {
+        "title": "Section Title",
+        "subsections": [
+          {
+            "subtitle": "Subsection Title",
+            "photo_range": [1, 3],
+            "callout_OPTIONAL": "Important note displayed as highlight box"
+          }
+        ]
+      },
+
+      "_overview_format_example": {
+        "title": "Overview Section",
+        "type": "overview",
+        "pages": ["page03", "page06"]
+      },
+
+      "title": "Section Title — Update This",
+      "photos": [
+        ["p03_01", 3, 1]
+      ]
+    }
+  ],
+
+  "forensic_findings": {
+    "damage_summary": "Overall summary of hail/storm damage found during inspection",
+    "total_photos_OPTIONAL": "XX",
+    "code_violations": [
+      {
+        "code": "IRC R905.2.7.1",
+        "description": "Ice barrier requirement"
+      },
+      {
+        "code": "IRC R905.2.8.2",
+        "description": "Underlayment requirement"
+      },
+      {
+        "code": "IRC R905.2.8.5",
+        "description": "Drip edge requirement"
+      }
+    ],
+    "key_arguments": [
+      "Argument 1 for supplement/appeal",
+      "Argument 2 for supplement/appeal"
+    ],
+    "fieldassist_findings_OPTIONAL": {
+      "_note": "Include ONLY if carrier used FieldAssist/Accurence for inspection",
+      "covered_damage_confirmed": true,
+      "test_square_count": 0,
+      "contradictions": [
+        "Contradiction between inspector findings and scope"
+      ]
+    },
+    "damage_thresholds_OPTIONAL": [
+      {"component": "Asphalt Shingles", "threshold": "1\" diameter hail", "storm_actual": "1.75\"", "result": "EXCEEDED"}
+    ],
+    "differentiation_table_OPTIONAL": [
+      {"characteristic": "Shape", "hail_damage": "Circular/round", "other_cause": "Irregular/random"}
+    ],
+    "critical_observations_OPTIONAL": [
+      {"title": "Observation Title", "text": "Detailed observation text"}
+    ],
+    "conclusion_findings_OPTIONAL": ["Finding 1", "Finding 2"],
+    "recommended_scope_OPTIONAL": ["Scope item 1", "Scope item 2"],
+    "repairability_OPTIONAL": {
+      "_note": "Method of Repair Analysis — auto-populated from scoring data or manually specified. Triggers dedicated forensic report section documenting why spot repair is not feasible.",
+      "measured_exposure_inches": 5.0,
+      "exposure_type": "pre_metric_standard",
+      "_exposure_type_options": "pre_metric_standard | metric | iko_advantage | tamko_vintage | atlas_variant | transitional_metric",
+      "product_identified": "CertainTeed XT25",
+      "manufacturer": "CertainTeed",
+      "product_line": "XT25",
+      "determination": "unrepairable",
+      "_determination_options": "unrepairable | repairable | limited_repairability",
+      "reasons": [
+        "No manufacturer currently produces shingles with 5-inch exposure",
+        "Nailing zones incompatible between standard and metric dimensions (GAF SS-TS-03 vs SS-TS-03a)",
+        "5/8-inch per-course offset compounds to 12.5 inches over 20 courses",
+        "Field cutting does not resolve nailing zone incompatibility and voids warranty"
+      ],
+      "manufacturer_bulletins_cited": ["GAF SS-TS-03/03a", "Haag Engineering May 2024", "CertainTeed NailTrak"],
+      "conclusion": "Full replacement of the roof system is the only method of repair."
+    }
+  },
+
+  "evidence_map": [
+    {
+      "_note": "One entry per disputed/added line item. Links line items to their supporting evidence.",
+      "line_item": "R&R Counter flashing - copper",
+      "status": "carrier_missed",
+      "_status_options": "carrier_missed | carrier_underpaid | carrier_denied | code_upgrade | matching_required",
+      "evidence": [
+        {
+          "type": "photo",
+          "ref": "p14_01",
+          "description": "Close-up of copper counter flashing with hail dents and patina consistent with pre-loss installation"
+        },
+        {
+          "type": "measurement",
+          "ref": "EagleView",
+          "description": "Counter flashing: 22 LF per EagleView report"
+        },
+        {
+          "type": "code",
+          "ref": "RCNYS R905.2.8 / R903.2",
+          "description": "Flashing required at all roof-to-wall intersections and chimneys"
+        },
+        {
+          "type": "weather",
+          "ref": "HailTrace",
+          "description": "1.75\" hail confirmed at property location on date of loss"
+        }
+      ],
+      "carrier_challenge": "Anticipated carrier pushback on this item",
+      "rebuttal": "Our response citing evidence, codes, and forensic standards"
+    }
+  ],
+
+  "compliance": {
+    "_note": "UPPA Compliance — Role-based document language. Controls whether documents use advocacy language (PAs/attorneys) or safe contractor language. Default: contractor with AOB.",
+    "user_role": "contractor",
+    "_user_role_options": "contractor | public_adjuster | attorney | homeowner",
+    "has_aob": true,
+    "_has_aob_note": "Relevant for contractors. With AOB, slightly more direct language and carrier scope references are permitted. Without AOB, pure contractor scope with no carrier references.",
+    "license_number_OPTIONAL": "",
+    "license_state_OPTIONAL": "NY"
+  },
+
+  "dashboard": {
+    "_note": "Dashboard display data — used by sync_dashboard.py to update Google Sheets and embedded fallback. Generator ignores this section.",
+    "status": "pending",
+    "_status_options": "pending | won | denied | appraisal",
+    "phase": "Supplement Filed",
+    "_phase_options": "Pre-Scope | Supplement Filed | Appraisal | Settled | Litigation",
+    "carrier_1st_scope": 0.00,
+    "carrier_current": 0.00,
+    "primary_tactic": "Short summary of carrier's main underpayment tactic (1 sentence)",
+    "notes": ""
+  },
+
+  "email_sequences": {
+    "_note": "Email tracking for automated follow-up sequences. Managed by /send-email and /check-followups slash commands. Generator ignores this section.",
+    "_touchpoints": "aob | pre_inspection | supplement | change_order | completion",
+    "_statuses": "not_started | awaiting_response | carrier_responded | escalated | completed | paused",
+    "supplement_OPTIONAL": {
+      "touchpoint": "supplement",
+      "started": "YYYY-MM-DD",
+      "status": "awaiting_response",
+      "emails": [
+        {
+          "step": "initial",
+          "sent_date": "YYYY-MM-DD",
+          "gmail_thread_id": "",
+          "gmail_message_id": "",
+          "subject": ""
+        }
+      ],
+      "next_followup_date": "YYYY-MM-DD",
+      "next_step": "day3_receipt",
+      "carrier_response_date_OPTIONAL": "",
+      "notes_OPTIONAL": ""
+    },
+    "aob_OPTIONAL": {
+      "touchpoint": "aob",
+      "started": "YYYY-MM-DD",
+      "status": "not_started",
+      "emails": [],
+      "next_followup_date": "",
+      "next_step": "initial"
+    }
+  },
+
+  "appeal_letter": {
+    "demand_items": [
+      "Issue a revised scope acknowledging full roof replacement",
+      "Include all code-required components",
+      "Process this claim within 15 business days per 11 NYCRR 216.4(b)"
+    ],
+    "enclosed_documents": [
+      {"name": "Forensic Causation Report", "detail": "with annotated inspection photos"},
+      {"name": "Xactimate-Format Estimate", "detail": "using current pricing"},
+      {"name": "Supplement Analysis Report", "detail": "with line-by-line variance"},
+      {"name": "HailTrace Weather Verification", "detail": "confirming storm at property location"}
+    ],
+    "cc_recipients_OPTIONAL": ["State Department of Financial Services"]
+  },
+
+  "cover_email": {
+    "to_email": "claims@carrier.com",
+    "cc_email_OPTIONAL": "",
+    "subject_line_OPTIONAL": "",
+    "summary_paragraphs": [
+      "Brief paragraph summarizing the claim and what's being submitted"
+    ],
+    "highlight_paragraphs_OPTIONAL": [
+      "Key point to emphasize (rendered in highlight box)"
+    ]
+  },
+
+  "photo_integrity_OPTIONAL": {
+    "_note": "Auto-populated by fraud_detection module. Do not edit manually.",
+    "last_checked": "",
+    "checker_version": "1.0.0",
+    "overall_status": "clean",
+    "photos_checked": 0,
+    "photos_passed": 0,
+    "photos_flagged": 0,
+    "tier_summary": {
+      "tier_1": 0,
+      "tier_2": 0,
+      "tier_3": 0
+    },
+    "flags": [],
+    "property_coordinates": {
+      "latitude": 0.0,
+      "longitude": 0.0,
+      "source": "config"
+    }
+  }
+}

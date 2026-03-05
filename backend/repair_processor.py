@@ -49,15 +49,20 @@ PLATFORM_DIR = os.path.expanduser("~/USARM-Claims-Platform")
 # ===================================================================
 
 REFERENCE_FILES = [
-    "references/leak-repair-guide.md",  # Primary — focused on leak diagnosis
+    "references/leak-repair-guide.md",
+    "references/repair-diagnostic-standard.md",
 ]
+
+_LOCAL_REF_DIR = os.path.dirname(os.path.abspath(__file__))
 
 
 def load_reference_context() -> str:
-    """Load the leak repair guide as context. Only the most relevant file to keep request small."""
+    """Load repair reference files as context. Checks local backend copy first, then CLI."""
     parts = []
     for ref_file in REFERENCE_FILES:
-        path = os.path.join(PLATFORM_DIR, ref_file)
+        local_path = os.path.join(_LOCAL_REF_DIR, ref_file)
+        cli_path = os.path.join(PLATFORM_DIR, ref_file)
+        path = local_path if os.path.exists(local_path) else cli_path
         if os.path.exists(path):
             with open(path, "r") as f:
                 content = f.read()
