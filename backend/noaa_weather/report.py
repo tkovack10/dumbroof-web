@@ -95,10 +95,10 @@ def save_config(config: dict, config_path: str):
 def _format_event_source(evt) -> str:
     """Format a human-readable source string for a storm event."""
     parts = []
-    if evt.source == "SWDI_PLSR":
+    if evt.source == "STORM_EVENTS_DB":
+        parts.append("NOAA Storm Events Database")
+    elif evt.source == "SWDI_PLSR":
         parts.append("NOAA NWS Local Storm Report")
-    elif evt.source == "SWDI_NX3HAIL":
-        parts.append("NOAA NEXRAD Radar")
     elif evt.source == "SPC_DAILY":
         parts.append("NOAA SPC Storm Report")
     if evt.source_detail:
@@ -108,8 +108,36 @@ def _format_event_source(evt) -> str:
 
 def _build_storm_description(storm_data: NOAAStormData) -> str:
     """Auto-generate a storm description paragraph from NOAA events."""
-    parts = []
+    # Use episode narrative if available (authoritative NWS description)
+    if storm_data.episode_narrative:
+        desc = storm_data.episode_narrative
+        # Add local hail/wind specifics
+        specifics = []
+        if storm_data.max_hail_inches > 0:
+            specifics.append(f'{storm_data.max_hail_inches}" hail reported {storm_data.max_hail_distance_miles:.1f} mi from property')
+        if storm_data.max_wind_mph > 0:
+            specifics.append(f"wind gusts of {storm_data.max_wind_mph} mph")
+        if specifics:
+            desc += f" Near the subject property: {', '.join(specifics)}."
 
+        # Add surrounding town reports for storm significance
+        locations = {}
+        for e in storm_data.events:
+            if e.magnitude_type == "hail_inches":
+                loc = e.source_detail.replace("NOAA Storm Events — ", "").strip()
+                if loc and loc not in locations:
+                    locations[loc] = e.magnitude
+                elif loc and e.magnitude > locations.get(loc, 0):
+                    locations[loc] = e.magnitude
+        if locations:
+            town_reports = [f'{loc} ({size}")' for loc, size in
+                          sorted(locations.items(), key=lambda x: x[1], reverse=True)[:8]]
+            desc += f" Hail reports in surrounding area: {', '.join(town_reports)}."
+
+        return desc
+
+    # Fallback: build from event data
+    parts = []
     if storm_data.max_hail_inches > 0:
         parts.append(f'severe hail producing {storm_data.max_hail_inches}" diameter hailstones')
     if storm_data.max_wind_mph > 0:
@@ -120,20 +148,18 @@ def _build_storm_description(storm_data: NOAAStormData) -> str:
 
     desc = f"Severe thunderstorm with {' and '.join(parts)}"
 
-    # Add source details
     sources = set()
     for evt in storm_data.events:
-        if evt.source == "SWDI_PLSR":
+        if evt.source == "STORM_EVENTS_DB":
+            sources.add("NOAA Storm Events Database")
+        elif evt.source == "SWDI_PLSR":
             sources.add("NWS Local Storm Reports")
-        elif evt.source == "SWDI_NX3HAIL":
-            sources.add("NEXRAD radar")
         elif evt.source == "SPC_DAILY":
             sources.add("SPC storm reports")
 
     if sources:
         desc += f" as confirmed by {', '.join(sorted(sources))}"
 
-    # Add narratives from events
     narratives = [e.narrative for e in storm_data.events if e.narrative and len(e.narrative) > 10]
     if narratives:
         desc += f". {narratives[0]}"
