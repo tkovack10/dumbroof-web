@@ -178,6 +178,31 @@ export function AdminDashboard() {
     }
   };
 
+  const [invitingInspector, setInvitingInspector] = useState<number | null>(null);
+
+  const sendInspectorInvite = async (id: number) => {
+    setInvitingInspector(id);
+    try {
+      const res = await fetch("/api/inspector-invite", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        alert(data.error || "Failed to send invite");
+        return;
+      }
+      setInspectors(prev =>
+        prev.map(a => a.id === id ? { ...a, status: "invited" } : a)
+      );
+    } catch {
+      alert("Failed to send invite");
+    } finally {
+      setInvitingInspector(null);
+    }
+  };
+
   const betaStatusColors: Record<string, string> = {
     pending: "bg-amber-100 text-amber-700",
     approved: "bg-green-100 text-green-700",
@@ -205,6 +230,8 @@ export function AdminDashboard() {
   const inspectorStatusColors: Record<string, string> = {
     pending: "bg-amber-100 text-amber-700",
     approved: "bg-green-100 text-green-700",
+    invited: "bg-blue-100 text-blue-700",
+    active: "bg-emerald-100 text-emerald-700",
     rejected: "bg-red-100 text-red-700",
   };
 
@@ -579,18 +606,27 @@ export function AdminDashboard() {
                           )}
                           {app.status === "approved" && (
                             <button
-                              onClick={() => updateInspectorStatus(app.id, "pending")}
-                              className="px-3 py-1 bg-gray-50 hover:bg-gray-100 text-gray-600 text-xs font-semibold rounded-lg transition-colors"
+                              onClick={() => sendInspectorInvite(app.id)}
+                              disabled={invitingInspector === app.id}
+                              className="px-3 py-1 bg-blue-50 hover:bg-blue-100 disabled:opacity-50 text-blue-700 text-xs font-semibold rounded-lg transition-colors"
                             >
-                              Undo
+                              {invitingInspector === app.id ? "Sending..." : "Send Invite"}
                             </button>
                           )}
-                          {app.status === "rejected" && (
+                          {app.status === "invited" && (
+                            <button
+                              onClick={() => updateInspectorStatus(app.id, "active")}
+                              className="px-3 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-xs font-semibold rounded-lg transition-colors"
+                            >
+                              Mark Active
+                            </button>
+                          )}
+                          {(app.status === "approved" || app.status === "invited" || app.status === "active" || app.status === "rejected") && (
                             <button
                               onClick={() => updateInspectorStatus(app.id, "pending")}
                               className="px-3 py-1 bg-gray-50 hover:bg-gray-100 text-gray-600 text-xs font-semibold rounded-lg transition-colors"
                             >
-                              Reconsider
+                              Undo
                             </button>
                           )}
                         </div>
