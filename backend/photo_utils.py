@@ -171,7 +171,8 @@ def resize_photo(path: str, max_dim: int = 1024, quality: int = 70,
             return resized
     except Exception as e:
         print(f"[PHOTO_UTILS] Pillow resize failed: {e}")
-    return path
+    print(f"[PHOTO_UTILS] Resize failed, skipping: {os.path.basename(path)}")
+    return ""
 
 
 def prepare_photo_for_api(path: str, max_dim: int = 512, quality: int = 50) -> str:
@@ -219,7 +220,8 @@ def prepare_photo_for_api(path: str, max_dim: int = 512, quality: int = 50) -> s
             return api_path
     except Exception as e:
         print(f"[PHOTO_UTILS] Pillow resize failed for API: {e}")
-    return path
+    print(f"[PHOTO_UTILS] API resize failed, skipping: {os.path.basename(path)}")
+    return ""
 
 
 def prepare_photo_for_pdf(path: str, max_dim: int = 1200, quality: int = 75) -> str:
@@ -266,7 +268,8 @@ def prepare_photo_for_pdf(path: str, max_dim: int = 1200, quality: int = 75) -> 
             return pdf_path
     except Exception as e:
         print(f"[PHOTO_UTILS] Pillow resize failed for PDF: {e}")
-    return path
+    print(f"[PHOTO_UTILS] PDF resize failed, skipping: {os.path.basename(path)}")
+    return ""
 
 
 # ===================================================================

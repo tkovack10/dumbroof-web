@@ -351,6 +351,26 @@ async def process_repair(repair_id: str):
             if prepared:
                 api_photos.append(prepared)
 
+        # Size gate — reject oversized photos (resize must have failed)
+        MAX_PHOTO_BYTES = 300_000  # 300KB per photo
+        MAX_PAYLOAD_BYTES = 15_000_000  # 15MB total base64
+        sized_photos = []
+        total_size = 0
+        for p in api_photos:
+            fsize = os.path.getsize(p)
+            b64_est = (fsize * 4) // 3
+            if fsize > MAX_PHOTO_BYTES:
+                print(f"[REPAIR] Skipping oversized API photo ({fsize:,}B): {os.path.basename(p)}")
+                continue
+            if total_size + b64_est > MAX_PAYLOAD_BYTES:
+                print(f"[REPAIR] Payload cap reached at {len(sized_photos)} photos")
+                break
+            sized_photos.append(p)
+            total_size += b64_est
+        if len(sized_photos) < len(api_photos):
+            print(f"[REPAIR] Size gate: {len(sized_photos)} of {len(api_photos)} photos passed")
+        api_photos = sized_photos
+
         if len(all_pdf_photos) > MAX_API_PHOTOS:
             print(f"[REPAIR] Sending {MAX_API_PHOTOS} of {len(all_pdf_photos)} photos to AI (all {len(all_pdf_photos)} embedded in PDFs)")
 
