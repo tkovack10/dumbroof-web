@@ -148,6 +148,7 @@ def resize_photo(path: str, max_dim: int = 1024, quality: int = 70,
 
     base = path.rsplit(".", 1)[0]
     resized = f"{base}{suffix}.jpg"
+    # Try sips first (macOS)
     try:
         subprocess.run(
             ["sips", "-Z", str(max_dim), "-s", "format", "jpeg",
@@ -158,6 +159,18 @@ def resize_photo(path: str, max_dim: int = 1024, quality: int = 70,
             return resized
     except Exception:
         pass
+    # Pillow fallback (Linux/Railway)
+    try:
+        from PIL import Image
+        with Image.open(path) as img:
+            if img.mode not in ("RGB", "L"):
+                img = img.convert("RGB")
+            img.thumbnail((max_dim, max_dim), Image.LANCZOS)
+            img.save(resized, "JPEG", quality=quality)
+        if os.path.exists(resized) and os.path.getsize(resized) > 0:
+            return resized
+    except Exception as e:
+        print(f"[PHOTO_UTILS] Pillow resize failed: {e}")
     return path
 
 
@@ -183,6 +196,7 @@ def prepare_photo_for_api(path: str, max_dim: int = 512, quality: int = 50) -> s
 
     base = path.rsplit(".", 1)[0]
     api_path = f"{base}_api.jpg"
+    # Try sips first (macOS)
     try:
         subprocess.run(
             ["sips", "-Z", str(max_dim), "-s", "format", "jpeg",
@@ -193,6 +207,18 @@ def prepare_photo_for_api(path: str, max_dim: int = 512, quality: int = 50) -> s
             return api_path
     except Exception:
         pass
+    # Pillow fallback (Linux/Railway)
+    try:
+        from PIL import Image
+        with Image.open(path) as img:
+            if img.mode not in ("RGB", "L"):
+                img = img.convert("RGB")
+            img.thumbnail((max_dim, max_dim), Image.LANCZOS)
+            img.save(api_path, "JPEG", quality=quality)
+        if os.path.exists(api_path) and os.path.getsize(api_path) > 0:
+            return api_path
+    except Exception as e:
+        print(f"[PHOTO_UTILS] Pillow resize failed for API: {e}")
     return path
 
 
@@ -217,6 +243,7 @@ def prepare_photo_for_pdf(path: str, max_dim: int = 1200, quality: int = 75) -> 
 
     base = path.rsplit(".", 1)[0]
     pdf_path = f"{base}_pdf.jpg"
+    # Try sips first (macOS)
     try:
         subprocess.run(
             ["sips", "-Z", str(max_dim), "-s", "format", "jpeg",
@@ -227,6 +254,18 @@ def prepare_photo_for_pdf(path: str, max_dim: int = 1200, quality: int = 75) -> 
             return pdf_path
     except Exception:
         pass
+    # Pillow fallback (Linux/Railway)
+    try:
+        from PIL import Image
+        with Image.open(path) as img:
+            if img.mode not in ("RGB", "L"):
+                img = img.convert("RGB")
+            img.thumbnail((max_dim, max_dim), Image.LANCZOS)
+            img.save(pdf_path, "JPEG", quality=quality)
+        if os.path.exists(pdf_path) and os.path.getsize(pdf_path) > 0:
+            return pdf_path
+    except Exception as e:
+        print(f"[PHOTO_UTILS] Pillow resize failed for PDF: {e}")
     return path
 
 
@@ -329,16 +368,28 @@ def extract_images_from_pdf(pdf_path: str, output_dir: str) -> List[str]:
             # Convert PPM to JPEG if needed
             if img_path.endswith(".ppm"):
                 jpg_path = img_path.rsplit(".", 1)[0] + ".jpg"
+                converted = False
                 try:
                     subprocess.run(
                         ["sips", "-s", "format", "jpeg", img_path, "--out", jpg_path],
                         capture_output=True, timeout=15
                     )
                     if os.path.exists(jpg_path) and os.path.getsize(jpg_path) > 0:
-                        os.remove(img_path)
-                        img_path = jpg_path
+                        converted = True
                 except Exception:
                     pass
+                if not converted:
+                    try:
+                        from PIL import Image as _Im
+                        with _Im.open(img_path) as _ppm:
+                            _ppm.convert("RGB").save(jpg_path, "JPEG", quality=85)
+                        if os.path.exists(jpg_path) and os.path.getsize(jpg_path) > 0:
+                            converted = True
+                    except Exception:
+                        pass
+                if converted:
+                    os.remove(img_path)
+                    img_path = jpg_path
             # Skip small images (icons, logos, UI elements) — real photos are 50KB+
             if os.path.getsize(img_path) > 50_000:
                 # Check dimensions — real photos are 400x300+
