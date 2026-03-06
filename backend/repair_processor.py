@@ -37,7 +37,9 @@ from photo_utils import (
     get_media_type,
 )
 
-# Path to the USARM Claims Platform (where repair_generator.py lives)
+# Backend directory (where repair_generator.py + references live)
+BACKEND_DIR = os.path.dirname(os.path.abspath(__file__))
+# Optional: CLI platform for repair stats (not required on Railway)
 PLATFORM_DIR = os.path.expanduser("~/USARM-Claims-Platform")
 
 
@@ -585,14 +587,14 @@ async def process_repair(repair_id: str):
         # Photos are already in photos_dir, and config._paths will be set by the generator
 
         print(f"[REPAIR] Generating PDFs...")
-        generator_path = os.path.join(PLATFORM_DIR, "repair_generator.py")
+        generator_path = os.path.join(BACKEND_DIR, "repair_generator.py")
 
         result = subprocess.run(
             ["python3", generator_path, config_path],
             capture_output=True,
             text=True,
             timeout=120,
-            cwd=PLATFORM_DIR,
+            cwd=BACKEND_DIR,
         )
 
         if result.returncode != 0:
