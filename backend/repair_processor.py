@@ -342,6 +342,7 @@ async def process_repair(repair_id: str):
 
         # Prepare subset for Claude API (512px, 50% quality, max 15)
         MAX_API_PHOTOS = 15
+        BATCH_SIZE = 5  # Match claims pipeline — 5 photos per API call
         api_photos = []
         for p in all_pdf_photos[:MAX_API_PHOTOS]:
             prepared = prepare_photo_for_api(p, max_dim=512, quality=50)
@@ -353,9 +354,6 @@ async def process_repair(repair_id: str):
 
         # 4. Build photo keys and encode
         # photo_map includes ALL photos (for PDF embedding)
-        # photo_content includes only API photos (for Claude diagnosis)
-        photo_keys = []
-        photo_content = []
         photo_map = {}
 
         # Map ALL photos for PDF embedding
@@ -363,23 +361,13 @@ async def process_repair(repair_id: str):
             key = f"p{i:02d}"
             photo_map[key] = os.path.basename(path)
 
-        # Encode only API photos for Claude
-        for i, path in enumerate(api_photos, 1):
-            key = f"p{i:02d}"
-            photo_keys.append(key)
+        # Build photo keys for all API photos
+        photo_keys = [f"p{i:02d}" for i in range(1, len(api_photos) + 1)]
 
-            b64 = file_to_base64(path)
-            photo_content.append({
-                "type": "image",
-                "source": {"type": "base64", "media_type": "image/jpeg", "data": b64},
-            })
-
-        # 5. Build prompt and call Claude API
+        # 5. Build prompt and call Claude API (in batches of 5)
         leak_notes = repair.get("leak_description", "") or "No description provided"
         skill_level = repair.get("skill_level", "journeyman")
         language = repair.get("preferred_language", "en")
-
-        prompt = build_diagnostic_prompt(photo_keys, leak_notes, skill_level, language)
 
         # Load reference context
         ref_context = load_reference_context()
@@ -391,19 +379,90 @@ async def process_repair(repair_id: str):
 {history_context}
 """
 
-        # Build messages — photos + text prompt
-        user_content = photo_content + [{"type": "text", "text": prompt}]
+        # Process photos in batches, collect all annotations, then do final diagnosis
+        all_batch_annotations = {}
+        total_batches = (len(api_photos) + BATCH_SIZE - 1) // BATCH_SIZE
 
-        print(f"[REPAIR] Calling Claude API for diagnosis...")
-        response = _call_claude_with_retry(
-            claude,
-            model="claude-sonnet-4-6",
-            max_tokens=8192,
-            system=system_prompt,
-            messages=[{"role": "user", "content": user_content}],
-        )
+        for batch_idx in range(0, len(api_photos), BATCH_SIZE):
+            batch = api_photos[batch_idx:batch_idx + BATCH_SIZE]
+            batch_num = batch_idx // BATCH_SIZE + 1
+            start_num = batch_idx + 1
 
-        response_text = response.content[0].text.strip()
+            print(f"[REPAIR] Photo batch {batch_num}/{total_batches} ({len(batch)} photos)")
+
+            batch_content = []
+            batch_keys = []
+            for i, path in enumerate(batch, start_num):
+                key = f"p{i:02d}"
+                batch_keys.append(key)
+                b64 = file_to_base64(path)
+                batch_content.append({
+                    "type": "image",
+                    "source": {"type": "base64", "media_type": "image/jpeg", "data": b64},
+                })
+
+            # For single batch, do full diagnosis; for multi-batch, collect annotations first
+            if total_batches == 1:
+                prompt = build_diagnostic_prompt(batch_keys, leak_notes, skill_level, language)
+                user_content = batch_content + [{"type": "text", "text": prompt}]
+
+                print(f"[REPAIR] Calling Claude API for diagnosis...")
+                response = _call_claude_with_retry(
+                    claude,
+                    model="claude-sonnet-4-6",
+                    max_tokens=8192,
+                    system=system_prompt,
+                    messages=[{"role": "user", "content": user_content}],
+                )
+                response_text = response.content[0].text.strip()
+            else:
+                # Batch annotation pass — describe photos for later synthesis
+                batch_content.append({
+                    "type": "text",
+                    "text": f"Describe each photo ({', '.join(batch_keys)}) for a leak diagnosis. "
+                            f"Context from roofer: {leak_notes}\n"
+                            f"Return JSON: {{\"photo_annotations\": {{\"pNN\": \"description\"}}}}",
+                })
+
+                batch_response = _call_claude_with_retry(
+                    claude,
+                    model="claude-sonnet-4-6",
+                    max_tokens=2048,
+                    system=system_prompt,
+                    messages=[{"role": "user", "content": batch_content}],
+                )
+                batch_text = batch_response.content[0].text.strip()
+                if batch_text.startswith("```"):
+                    lines = batch_text.split("\n")
+                    if lines[0].startswith("```"):
+                        lines = lines[1:]
+                    if lines and lines[-1].strip() == "```":
+                        lines = lines[:-1]
+                    batch_text = "\n".join(lines)
+                try:
+                    batch_data = json.loads(batch_text)
+                    all_batch_annotations.update(batch_data.get("photo_annotations", {}))
+                except json.JSONDecodeError:
+                    print(f"[REPAIR] Warning: batch {batch_num} annotation parse failed, continuing")
+
+        # For multi-batch: final synthesis call with all annotations (no photos)
+        if total_batches > 1:
+            annotations_summary = "\n".join(f"  {k}: {v}" for k, v in all_batch_annotations.items())
+            prompt = build_diagnostic_prompt(photo_keys, leak_notes, skill_level, language)
+            synthesis_prompt = (
+                f"Based on photo annotations from inspection:\n{annotations_summary}\n\n"
+                f"{prompt}"
+            )
+
+            print(f"[REPAIR] Calling Claude API for final diagnosis synthesis...")
+            response = _call_claude_with_retry(
+                claude,
+                model="claude-sonnet-4-6",
+                max_tokens=8192,
+                system=system_prompt,
+                messages=[{"role": "user", "content": synthesis_prompt}],
+            )
+            response_text = response.content[0].text.strip()
 
         # 6. Parse diagnosis response
         if response_text.startswith("```"):
