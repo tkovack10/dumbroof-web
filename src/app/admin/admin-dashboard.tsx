@@ -30,6 +30,19 @@ interface InspectorApplication {
   created_at: string;
 }
 
+interface BetaSignup {
+  id: number;
+  name: string;
+  email: string;
+  phone: string | null;
+  company_name: string | null;
+  role: string;
+  products: string[];
+  status: string;
+  notes: string | null;
+  created_at: string;
+}
+
 interface Stats {
   total: number;
   uploaded: number;
@@ -39,15 +52,17 @@ interface Stats {
   uniqueUsers: number;
 }
 
-type Tab = "claims" | "inspectors";
+type Tab = "claims" | "inspectors" | "beta";
 
 export function AdminDashboard() {
   const supabase = createClient();
   const [activeTab, setActiveTab] = useState<Tab>("claims");
   const [claims, setClaims] = useState<Claim[]>([]);
   const [inspectors, setInspectors] = useState<InspectorApplication[]>([]);
+  const [betaSignups, setBetaSignups] = useState<BetaSignup[]>([]);
   const [loading, setLoading] = useState(true);
   const [inspectorsLoading, setInspectorsLoading] = useState(true);
+  const [betaLoading, setBetaLoading] = useState(true);
   const [stats, setStats] = useState<Stats>({
     total: 0, uploaded: 0, processing: 0, ready: 0, error: 0, uniqueUsers: 0
   });
@@ -85,6 +100,17 @@ export function AdminDashboard() {
     setInspectorsLoading(false);
   }, [supabase]);
 
+  const fetchBetaSignups = useCallback(async () => {
+    setBetaLoading(true);
+    const { data } = await supabase
+      .from("beta_signups")
+      .select("*")
+      .order("created_at", { ascending: false });
+
+    setBetaSignups(data || []);
+    setBetaLoading(false);
+  }, [supabase]);
+
   useEffect(() => {
     fetchClaims();
     const interval = setInterval(fetchClaims, 10000);
@@ -95,7 +121,10 @@ export function AdminDashboard() {
     if (activeTab === "inspectors") {
       fetchInspectors();
     }
-  }, [activeTab, fetchInspectors]);
+    if (activeTab === "beta") {
+      fetchBetaSignups();
+    }
+  }, [activeTab, fetchInspectors, fetchBetaSignups]);
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();
@@ -111,6 +140,34 @@ export function AdminDashboard() {
     setInspectors(prev =>
       prev.map(app => app.id === id ? { ...app, status: newStatus } : app)
     );
+  };
+
+  const updateBetaStatus = async (id: number, newStatus: string) => {
+    await supabase
+      .from("beta_signups")
+      .update({ status: newStatus })
+      .eq("id", id);
+
+    setBetaSignups(prev =>
+      prev.map(s => s.id === id ? { ...s, status: newStatus } : s)
+    );
+  };
+
+  const betaStatusColors: Record<string, string> = {
+    pending: "bg-amber-100 text-amber-700",
+    approved: "bg-green-100 text-green-700",
+    invited: "bg-blue-100 text-blue-700",
+    active: "bg-emerald-100 text-emerald-700",
+    rejected: "bg-red-100 text-red-700",
+  };
+
+  const roleLabels: Record<string, string> = {
+    sales_rep: "Sales Rep",
+    public_adjuster: "Public Adjuster",
+    attorney: "Attorney",
+    appraiser: "Appraiser",
+    contractor: "Contractor",
+    owner: "Owner",
   };
 
   const statusColors: Record<string, string> = {
@@ -141,6 +198,7 @@ export function AdminDashboard() {
   };
 
   const pendingCount = inspectors.filter(i => i.status === "pending").length;
+  const betaPendingCount = betaSignups.filter(s => s.status === "pending").length;
 
   return (
     <main className="min-h-screen bg-gray-50">
@@ -188,6 +246,21 @@ export function AdminDashboard() {
             {pendingCount > 0 && (
               <span className="bg-amber-500 text-white text-xs font-bold w-5 h-5 rounded-full flex items-center justify-center">
                 {pendingCount}
+              </span>
+            )}
+          </button>
+          <button
+            onClick={() => setActiveTab("beta")}
+            className={`px-5 py-2 rounded-lg text-sm font-semibold transition-colors flex items-center gap-2 ${
+              activeTab === "beta"
+                ? "bg-white text-[var(--navy)] shadow-sm"
+                : "text-gray-500 hover:text-gray-700"
+            }`}
+          >
+            Beta Signups
+            {betaPendingCount > 0 && (
+              <span className="bg-amber-500 text-white text-xs font-bold w-5 h-5 rounded-full flex items-center justify-center">
+                {betaPendingCount}
               </span>
             )}
           </button>
@@ -254,6 +327,133 @@ export function AdminDashboard() {
                         </div>
                         <div className="col-span-2 text-gray-400 text-xs">
                           {new Date(claim.created_at).toLocaleString()}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </>
+        )}
+
+        {activeTab === "beta" && (
+          <>
+            {/* Beta Signup Stats */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+              {[
+                { label: "Total Signups", value: betaSignups.length, color: "text-[var(--navy)]" },
+                { label: "Pending", value: betaSignups.filter(s => s.status === "pending").length, color: "text-amber-600" },
+                { label: "Approved", value: betaSignups.filter(s => s.status === "approved").length, color: "text-green-600" },
+                { label: "Active", value: betaSignups.filter(s => s.status === "active").length, color: "text-emerald-600" },
+              ].map(({ label, value, color }) => (
+                <div key={label} className="bg-white rounded-xl border border-gray-200 p-4 text-center">
+                  <p className={`text-2xl font-bold ${color}`}>{value}</p>
+                  <p className="text-xs text-gray-500 mt-1">{label}</p>
+                </div>
+              ))}
+            </div>
+
+            {/* Beta Signups Table */}
+            <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+              {betaLoading ? (
+                <div className="text-center py-16">
+                  <p className="text-gray-400 text-sm">Loading signups...</p>
+                </div>
+              ) : betaSignups.length === 0 ? (
+                <div className="text-center py-16">
+                  <p className="text-gray-400 text-sm">No beta signups yet.</p>
+                </div>
+              ) : (
+                <div>
+                  <div className="px-6 py-3 bg-gray-50 grid grid-cols-12 gap-4 text-xs font-semibold text-gray-400 uppercase tracking-wider border-b border-gray-100">
+                    <div className="col-span-2">Name</div>
+                    <div className="col-span-2">Contact</div>
+                    <div className="col-span-2">Company</div>
+                    <div className="col-span-1">Role</div>
+                    <div className="col-span-2">Products</div>
+                    <div className="col-span-1">Status</div>
+                    <div className="col-span-2">Actions</div>
+                  </div>
+                  <div className="divide-y divide-gray-50">
+                    {betaSignups.map((signup) => (
+                      <div key={signup.id} className="px-6 py-4 grid grid-cols-12 gap-4 items-center hover:bg-gray-50 transition-colors text-sm">
+                        <div className="col-span-2">
+                          <p className="font-medium text-[var(--navy)]">{signup.name}</p>
+                          <p className="text-xs text-gray-400 mt-0.5">
+                            {new Date(signup.created_at).toLocaleDateString()}
+                          </p>
+                        </div>
+                        <div className="col-span-2">
+                          <p className="text-gray-700 truncate">{signup.email}</p>
+                          {signup.phone && <p className="text-xs text-gray-400">{signup.phone}</p>}
+                        </div>
+                        <div className="col-span-2">
+                          <p className="text-gray-700 truncate">{signup.company_name || "-"}</p>
+                        </div>
+                        <div className="col-span-1">
+                          <span className="text-xs text-gray-600 font-medium">
+                            {roleLabels[signup.role] || signup.role}
+                          </span>
+                        </div>
+                        <div className="col-span-2">
+                          <div className="flex flex-wrap gap-1">
+                            {(signup.products || []).map((p) => (
+                              <span key={p} className="inline-block px-2 py-0.5 rounded-full text-xs font-medium bg-[var(--navy)]/10 text-[var(--navy)]">
+                                {p === "claims_ai" ? "Claims" : p === "repair_ai" ? "Repair" : p}
+                              </span>
+                            ))}
+                            {(!signup.products || signup.products.length === 0) && (
+                              <span className="text-xs text-gray-400">-</span>
+                            )}
+                          </div>
+                        </div>
+                        <div className="col-span-1">
+                          <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${betaStatusColors[signup.status] || "bg-gray-100 text-gray-600"}`}>
+                            {signup.status.charAt(0).toUpperCase() + signup.status.slice(1)}
+                          </span>
+                        </div>
+                        <div className="col-span-2 flex gap-2">
+                          {signup.status === "pending" && (
+                            <>
+                              <button
+                                onClick={() => updateBetaStatus(signup.id, "approved")}
+                                className="px-3 py-1 bg-green-50 hover:bg-green-100 text-green-700 text-xs font-semibold rounded-lg transition-colors"
+                              >
+                                Approve
+                              </button>
+                              <button
+                                onClick={() => updateBetaStatus(signup.id, "rejected")}
+                                className="px-3 py-1 bg-red-50 hover:bg-red-100 text-red-700 text-xs font-semibold rounded-lg transition-colors"
+                              >
+                                Reject
+                              </button>
+                            </>
+                          )}
+                          {signup.status === "approved" && (
+                            <button
+                              onClick={() => updateBetaStatus(signup.id, "invited")}
+                              className="px-3 py-1 bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-semibold rounded-lg transition-colors"
+                            >
+                              Send Invite
+                            </button>
+                          )}
+                          {signup.status === "invited" && (
+                            <button
+                              onClick={() => updateBetaStatus(signup.id, "active")}
+                              className="px-3 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-xs font-semibold rounded-lg transition-colors"
+                            >
+                              Mark Active
+                            </button>
+                          )}
+                          {(signup.status === "approved" || signup.status === "invited" || signup.status === "active" || signup.status === "rejected") && (
+                            <button
+                              onClick={() => updateBetaStatus(signup.id, "pending")}
+                              className="px-3 py-1 bg-gray-50 hover:bg-gray-100 text-gray-600 text-xs font-semibold rounded-lg transition-colors"
+                            >
+                              Undo
+                            </button>
+                          )}
                         </div>
                       </div>
                     ))}

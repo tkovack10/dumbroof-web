@@ -3,8 +3,62 @@
 import { useState } from "react";
 
 export default function Home() {
-  const [email, setEmail] = useState("");
-  const [submitted, setSubmitted] = useState(false);
+  // Beta signup form
+  const [betaForm, setBetaForm] = useState({
+    name: "",
+    email: "",
+    phone: "",
+    companyName: "",
+    role: "",
+    products: [] as string[],
+  });
+  const [betaSubmitted, setBetaSubmitted] = useState(false);
+  const [betaSubmitting, setBetaSubmitting] = useState(false);
+  const [betaError, setBetaError] = useState("");
+
+  const handleBetaSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setBetaSubmitting(true);
+    setBetaError("");
+
+    try {
+      const res = await fetch("/api/beta-signup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: betaForm.name,
+          email: betaForm.email,
+          phone: betaForm.phone || null,
+          company_name: betaForm.companyName || null,
+          role: betaForm.role,
+          products: betaForm.products,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Submission failed");
+      setBetaSubmitted(true);
+    } catch (err) {
+      setBetaError(
+        err instanceof Error ? err.message : "Submission failed. Please try again."
+      );
+    } finally {
+      setBetaSubmitting(false);
+    }
+  };
+
+  const updateBeta = (field: string, value: string | string[]) => {
+    setBetaForm((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const toggleProduct = (product: string) => {
+    setBetaForm((prev) => ({
+      ...prev,
+      products: prev.products.includes(product)
+        ? prev.products.filter((p) => p !== product)
+        : [...prev.products, product],
+    }));
+  };
 
   // Inspector application form
   const [inspectorForm, setInspectorForm] = useState({
@@ -21,11 +75,6 @@ export default function Home() {
   const [inspectorSubmitted, setInspectorSubmitted] = useState(false);
   const [inspectorSubmitting, setInspectorSubmitting] = useState(false);
   const [inspectorError, setInspectorError] = useState("");
-
-  const handleWaitlist = (e: React.FormEvent) => {
-    e.preventDefault();
-    setSubmitted(true);
-  };
 
   const handleInspectorSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -746,41 +795,161 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Waitlist */}
+      {/* Beta Signup */}
       <section id="waitlist" className="py-20 px-6 bg-[var(--navy)] scroll-mt-20">
-        <div className="max-w-xl mx-auto text-center">
-          <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">
-            Get Early Access
-          </h2>
-          <p className="text-gray-400 mb-10">
-            We&apos;re onboarding contractors for private beta. A world-class insurance
-            claims system, directly integrated into your company.
-          </p>
+        <div className="max-w-xl mx-auto">
+          <div className="text-center mb-10">
+            <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">
+              Get Early Access
+            </h2>
+            <p className="text-gray-400">
+              We&apos;re onboarding contractors for private beta. A world-class insurance
+              claims system, directly integrated into your company.
+            </p>
+          </div>
 
-          {!submitted ? (
-            <form
-              onSubmit={handleWaitlist}
-              className="flex flex-col sm:flex-row gap-3 max-w-md mx-auto"
-            >
-              <input
-                type="email"
+          {!betaSubmitted ? (
+            <form onSubmit={handleBetaSubmit} className="space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <input
+                  type="text"
+                  required
+                  value={betaForm.name}
+                  onChange={(e) => updateBeta("name", e.target.value)}
+                  placeholder="Full Name *"
+                  className="px-5 py-3.5 rounded-xl bg-white/10 border border-white/20 text-white placeholder-gray-500 focus:outline-none focus:border-[var(--red)] transition-colors"
+                />
+                <input
+                  type="email"
+                  required
+                  value={betaForm.email}
+                  onChange={(e) => updateBeta("email", e.target.value)}
+                  placeholder="Email *"
+                  className="px-5 py-3.5 rounded-xl bg-white/10 border border-white/20 text-white placeholder-gray-500 focus:outline-none focus:border-[var(--red)] transition-colors"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <input
+                  type="tel"
+                  value={betaForm.phone}
+                  onChange={(e) => updateBeta("phone", e.target.value)}
+                  placeholder="Phone (optional)"
+                  className="px-5 py-3.5 rounded-xl bg-white/10 border border-white/20 text-white placeholder-gray-500 focus:outline-none focus:border-[var(--red)] transition-colors"
+                />
+                <input
+                  type="text"
+                  value={betaForm.companyName}
+                  onChange={(e) => updateBeta("companyName", e.target.value)}
+                  placeholder="Company Name (optional)"
+                  className="px-5 py-3.5 rounded-xl bg-white/10 border border-white/20 text-white placeholder-gray-500 focus:outline-none focus:border-[var(--red)] transition-colors"
+                />
+              </div>
+
+              <select
                 required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="you@yourcompany.com"
-                className="flex-1 px-5 py-3.5 rounded-xl bg-white/10 border border-white/20 text-white placeholder-gray-500 focus:outline-none focus:border-[var(--red)] transition-colors"
-              />
+                value={betaForm.role}
+                onChange={(e) => updateBeta("role", e.target.value)}
+                className="w-full px-5 py-3.5 rounded-xl bg-white/10 border border-white/20 text-white focus:outline-none focus:border-[var(--red)] transition-colors appearance-none"
+                style={{ colorScheme: "dark" }}
+              >
+                <option value="" disabled className="bg-[#0d2137]">Select your role *</option>
+                <option value="sales_rep" className="bg-[#0d2137]">Sales Rep</option>
+                <option value="public_adjuster" className="bg-[#0d2137]">Public Adjuster</option>
+                <option value="attorney" className="bg-[#0d2137]">Attorney</option>
+                <option value="appraiser" className="bg-[#0d2137]">Appraiser</option>
+                <option value="contractor" className="bg-[#0d2137]">Contractor</option>
+                <option value="owner" className="bg-[#0d2137]">Owner</option>
+              </select>
+
+              <div>
+                <p className="text-gray-400 text-sm mb-3">Which products interest you?</p>
+                <div className="flex flex-col sm:flex-row gap-3">
+                  <label
+                    className={`flex-1 flex items-center gap-3 px-5 py-3.5 rounded-xl border cursor-pointer transition-colors ${
+                      betaForm.products.includes("claims_ai")
+                        ? "bg-[var(--red)]/20 border-[var(--red)]"
+                        : "bg-white/5 border-white/20 hover:border-white/40"
+                    }`}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={betaForm.products.includes("claims_ai")}
+                      onChange={() => toggleProduct("claims_ai")}
+                      className="sr-only"
+                    />
+                    <div className={`w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 ${
+                      betaForm.products.includes("claims_ai")
+                        ? "bg-[var(--red)] border-[var(--red)]"
+                        : "border-white/40"
+                    }`}>
+                      {betaForm.products.includes("claims_ai") && (
+                        <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                        </svg>
+                      )}
+                    </div>
+                    <div>
+                      <p className="text-white text-sm font-semibold">Claims AI</p>
+                      <p className="text-gray-400 text-xs">Storm damage appeal packages</p>
+                    </div>
+                  </label>
+                  <label
+                    className={`flex-1 flex items-center gap-3 px-5 py-3.5 rounded-xl border cursor-pointer transition-colors ${
+                      betaForm.products.includes("repair_ai")
+                        ? "bg-[var(--red)]/20 border-[var(--red)]"
+                        : "bg-white/5 border-white/20 hover:border-white/40"
+                    }`}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={betaForm.products.includes("repair_ai")}
+                      onChange={() => toggleProduct("repair_ai")}
+                      className="sr-only"
+                    />
+                    <div className={`w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 ${
+                      betaForm.products.includes("repair_ai")
+                        ? "bg-[var(--red)] border-[var(--red)]"
+                        : "border-white/40"
+                    }`}>
+                      {betaForm.products.includes("repair_ai") && (
+                        <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                        </svg>
+                      )}
+                    </div>
+                    <div>
+                      <p className="text-white text-sm font-semibold">Repair AI</p>
+                      <p className="text-gray-400 text-xs">Leak diagnosis &amp; repair documents</p>
+                    </div>
+                  </label>
+                </div>
+              </div>
+
+              {betaError && (
+                <p className="text-red-400 text-sm text-center">{betaError}</p>
+              )}
+
               <button
                 type="submit"
-                className="bg-[var(--red)] hover:bg-[var(--red-dark)] text-white px-8 py-3.5 rounded-xl font-semibold transition-colors whitespace-nowrap"
+                disabled={betaSubmitting}
+                className="w-full bg-[var(--red)] hover:bg-[var(--red-dark)] disabled:opacity-50 text-white px-8 py-4 rounded-xl text-lg font-semibold transition-colors"
               >
-                Join Beta
+                {betaSubmitting ? "Submitting..." : "Request Beta Access"}
               </button>
             </form>
           ) : (
-            <div className="bg-white/10 border border-white/20 rounded-xl p-6">
-              <p className="text-white font-semibold text-lg">You&apos;re on the list.</p>
-              <p className="text-gray-400 mt-1">We&apos;ll reach out when your spot opens up.</p>
+            <div className="bg-white/10 border border-white/20 rounded-xl p-8 text-center">
+              <div className="w-16 h-16 bg-green-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                <svg className="w-8 h-8 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                </svg>
+              </div>
+              <p className="text-white font-semibold text-lg">You&apos;re on the list!</p>
+              <p className="text-gray-400 mt-2">
+                Welcome to the beta, {betaForm.name.split(" ")[0] || "friend"}.
+                We&apos;ll reach out when your spot opens up.
+              </p>
             </div>
           )}
         </div>
