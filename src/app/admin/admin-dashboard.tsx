@@ -153,6 +153,31 @@ export function AdminDashboard() {
     );
   };
 
+  const [inviting, setInviting] = useState<number | null>(null);
+
+  const sendBetaInvite = async (id: number) => {
+    setInviting(id);
+    try {
+      const res = await fetch("/api/beta-invite", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        alert(data.error || "Failed to send invite");
+        return;
+      }
+      setBetaSignups(prev =>
+        prev.map(s => s.id === id ? { ...s, status: "invited" } : s)
+      );
+    } catch {
+      alert("Failed to send invite");
+    } finally {
+      setInviting(null);
+    }
+  };
+
   const betaStatusColors: Record<string, string> = {
     pending: "bg-amber-100 text-amber-700",
     approved: "bg-green-100 text-green-700",
@@ -432,10 +457,11 @@ export function AdminDashboard() {
                           )}
                           {signup.status === "approved" && (
                             <button
-                              onClick={() => updateBetaStatus(signup.id, "invited")}
-                              className="px-3 py-1 bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-semibold rounded-lg transition-colors"
+                              onClick={() => sendBetaInvite(signup.id)}
+                              disabled={inviting === signup.id}
+                              className="px-3 py-1 bg-blue-50 hover:bg-blue-100 disabled:opacity-50 text-blue-700 text-xs font-semibold rounded-lg transition-colors"
                             >
-                              Send Invite
+                              {inviting === signup.id ? "Sending..." : "Send Invite"}
                             </button>
                           )}
                           {signup.status === "invited" && (
