@@ -62,6 +62,7 @@ class NOAAStormData:
     date_of_loss: str
     events: List[NOAAStormEvent] = field(default_factory=list)
     max_hail_inches: float = 0.0
+    max_hail_distance_miles: float = 0.0
     max_wind_mph: float = 0.0
     event_count: int = 0
     search_radius_miles: float = 10.0
@@ -74,6 +75,7 @@ class NOAAStormData:
             "search_radius_miles": self.search_radius_miles,
             "query_urls": self.query_urls,
             "max_hail_inches": self.max_hail_inches,
+            "max_hail_distance_miles": self.max_hail_distance_miles,
             "max_wind_mph": self.max_wind_mph,
             "event_count": self.event_count,
             "events": [e.to_dict() for e in self.events],
@@ -87,7 +89,7 @@ class NOAAStormData:
             f"Events found: {self.event_count}",
         ]
         if self.max_hail_inches > 0:
-            lines.append(f'Max hail: {self.max_hail_inches}" diameter')
+            lines.append(f'Max hail: {self.max_hail_inches}" diameter ({self.max_hail_distance_miles:.1f} mi from property)')
         if self.max_wind_mph > 0:
             lines.append(f"Max wind: {self.max_wind_mph} mph")
         if self.events:
@@ -133,10 +135,10 @@ class NOAAClient:
     SWDI_BASE = "https://www.ncei.noaa.gov/swdiws"
     SPC_BASE = "https://www.spc.noaa.gov/climo/reports"
 
-    def __init__(self, search_radius_deg: float = 0.15):
+    def __init__(self, search_radius_deg: float = 0.05):
         """
         Args:
-            search_radius_deg: Search radius in degrees (~0.15° ≈ 10 miles at mid-latitudes)
+            search_radius_deg: Search radius in degrees (~0.05° ≈ 3.5 miles at mid-latitudes)
         """
         self.search_radius_deg = search_radius_deg
         self.search_radius_miles = search_radius_deg * 69.0  # Approximate
@@ -186,7 +188,10 @@ class NOAAClient:
         # Calculate maximums
         hail_events_only = [e for e in filtered if e.magnitude_type == "hail_inches"]
         wind_events_only = [e for e in filtered if e.magnitude_type == "wind_mph"]
-        storm_data.max_hail_inches = max((e.magnitude for e in hail_events_only), default=0.0)
+        if hail_events_only:
+            max_hail_event = max(hail_events_only, key=lambda e: e.magnitude)
+            storm_data.max_hail_inches = max_hail_event.magnitude
+            storm_data.max_hail_distance_miles = max_hail_event.distance_miles
         storm_data.max_wind_mph = max((e.magnitude for e in wind_events_only), default=0.0)
 
         return storm_data

@@ -78,6 +78,8 @@ def convert_to_jpeg(path: str) -> str:
         return ""
 
     jpeg_path = path.rsplit(".", 1)[0] + ".jpg"
+
+    # Try sips first (macOS)
     try:
         result = subprocess.run(
             ["sips", "-s", "format", "jpeg", path, "--out", jpeg_path],
@@ -85,15 +87,33 @@ def convert_to_jpeg(path: str) -> str:
         )
         if os.path.exists(jpeg_path) and os.path.getsize(jpeg_path) > 0:
             return jpeg_path
-        else:
-            print(f"[PHOTO_UTILS] Conversion failed for {os.path.basename(path)} ({ext})")
-            return ""
-    except subprocess.TimeoutExpired:
-        print(f"[PHOTO_UTILS] Conversion timed out for {os.path.basename(path)}")
-        return ""
+    except (subprocess.TimeoutExpired, FileNotFoundError, Exception):
+        pass  # sips not available (Linux) — fall through to Pillow
+
+    # Pillow fallback (cross-platform)
+    try:
+        # Register HEIC/HEIF support if available
+        if ext in ("heic", "heif"):
+            try:
+                from pillow_heif import register_heif_opener
+                register_heif_opener()
+            except ImportError:
+                print(f"[PHOTO_UTILS] pillow-heif not installed — cannot convert {ext}")
+                return ""
+        from PIL import Image
+        with Image.open(path) as img:
+            if img.mode in ("RGBA", "P", "LA"):
+                img = img.convert("RGB")
+            elif img.mode != "RGB":
+                img = img.convert("RGB")
+            img.save(jpeg_path, "JPEG", quality=85)
+        if os.path.exists(jpeg_path) and os.path.getsize(jpeg_path) > 0:
+            return jpeg_path
     except Exception as e:
-        print(f"[PHOTO_UTILS] Conversion error ({ext}): {e}")
-        return ""
+        print(f"[PHOTO_UTILS] Pillow conversion error ({ext}): {e}")
+
+    print(f"[PHOTO_UTILS] Conversion failed for {os.path.basename(path)} ({ext})")
+    return ""
 
 
 def resize_photo(path: str, max_dim: int = 1024, quality: int = 70,
@@ -339,56 +359,94 @@ def extract_images_from_pdf(pdf_path: str, output_dir: str) -> List[str]:
 
         if extracted:
             print(f"[PHOTO_UTILS] Extracted {len(extracted)} images from PDF via pdfimages: {os.path.basename(pdf_path)}")
-            return extracted
+            # Don't return yet — check if flattened pages were missed (page rendering fallback below)
     except FileNotFoundError:
         pass  # pdfimages not installed, try PyMuPDF
     except Exception as e:
         print(f"[PHOTO_UTILS] pdfimages failed: {e}")
 
-    # Fallback: PyMuPDF (fitz)
+    # PyMuPDF: embedded image extraction + page-rendering fallback for flattened PDFs
     try:
         import fitz
         doc = fitz.open(pdf_path)
-        img_idx = 0
         skipped = 0
-        seen_xrefs = set()
 
-        for page_num in range(len(doc)):
-            page = doc[page_num]
-            for img in page.get_images(full=True):
-                xref = img[0]
+        # Only do embedded extraction if pdfimages didn't already find images
+        if not extracted:
+            img_idx = 0
+            seen_xrefs = set()
 
-                if xref in seen_xrefs:
-                    continue
-                seen_xrefs.add(xref)
+            for page_num in range(len(doc)):
+                page = doc[page_num]
+                for img in page.get_images(full=True):
+                    xref = img[0]
 
-                pix = fitz.Pixmap(doc, xref)
-                if pix.n >= 5:  # CMYK — convert to RGB
-                    pix = fitz.Pixmap(fitz.csRGB, pix)
+                    if xref in seen_xrefs:
+                        continue
+                    seen_xrefs.add(xref)
 
-                # Skip small images — real photos are 400x300+
-                if pix.width < 400 or pix.height < 300:
+                    pix = fitz.Pixmap(doc, xref)
+                    if pix.n >= 5:  # CMYK — convert to RGB
+                        pix = fitz.Pixmap(fitz.csRGB, pix)
+
+                    # Skip small images — real photos are 400x300+
+                    if pix.width < 400 or pix.height < 300:
+                        pix = None
+                        skipped += 1
+                        continue
+
+                    # Skip extreme aspect ratios (banners/headers)
+                    aspect = max(pix.width, pix.height) / max(min(pix.width, pix.height), 1)
+                    if aspect > 3.0:
+                        pix = None
+                        skipped += 1
+                        continue
+
+                    img_path = f"{prefix}p{page_num:02d}_{img_idx:03d}.jpg"
+                    pix.save(img_path)
                     pix = None
-                    skipped += 1
-                    continue
 
+                    if os.path.getsize(img_path) < 50_000:
+                        os.remove(img_path)
+                        skipped += 1
+                    else:
+                        extracted.append(img_path)
+                    img_idx += 1
+
+        # Page-rendering fallback for flattened/printed PDFs (AccuLynx exports, CompanyCam galleries)
+        # When photos are rendered as page content (not embedded image objects), get_images() finds nothing.
+        # Render each page as an image to capture the visual content.
+        embedded_count = len(extracted)
+        if embedded_count < max(len(doc) // 2, 1):  # Less than half the pages yielded images (min 1)
+            rendered = 0
+            for page_num in range(len(doc)):
+                page = doc[page_num]
+                # Skip pages that already yielded embedded images
+                page_had_image = any(f"p{page_num:02d}_" in os.path.basename(p) for p in extracted)
+                if page_had_image:
+                    continue
+                # Render page at 150 DPI (good quality, reasonable file size)
+                mat = fitz.Matrix(150/72, 150/72)
+                pix = page.get_pixmap(matrix=mat)
+                if pix.width < 400 or pix.height < 400:
+                    pix = None
+                    continue
                 # Skip extreme aspect ratios (banners/headers)
                 aspect = max(pix.width, pix.height) / max(min(pix.width, pix.height), 1)
                 if aspect > 3.0:
                     pix = None
-                    skipped += 1
                     continue
-
-                img_path = f"{prefix}p{page_num:02d}_{img_idx:03d}.jpg"
+                img_path = f"{prefix}p{page_num:02d}_page.jpg"
                 pix.save(img_path)
                 pix = None
-
-                if os.path.getsize(img_path) < 50_000:
-                    os.remove(img_path)
-                    skipped += 1
-                else:
+                if os.path.getsize(img_path) > 50_000:
                     extracted.append(img_path)
-                img_idx += 1
+                    rendered += 1
+                else:
+                    os.remove(img_path)
+            if rendered:
+                print(f"[PHOTO_UTILS] Page rendering extracted {rendered} additional images from flattened PDF: {basename}")
+
         doc.close()
         if skipped:
             print(f"[PHOTO_UTILS] Skipped {skipped} non-photo images (logos, icons, headers)")

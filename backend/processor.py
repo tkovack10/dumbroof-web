@@ -1294,8 +1294,8 @@ def build_claim_config(
             "report_date": datetime.now().strftime("%B %d, %Y"),
         },
         "inspectors": {
-            "usarm_inspector": "Dumb Roof AI Analysis",
-            "usarm_title": "Automated Forensic Assessment",
+            "usarm_inspector": (company_profile or {}).get("contact_name", "Tom Kovack Jr."),
+            "usarm_title": (company_profile or {}).get("contact_title", "CEO"),
         },
         "scope": {
             "trades": trades,
@@ -1420,8 +1420,12 @@ def _cross_reference_line_items(config: dict) -> None:
     """Populate usarm_desc, usarm_amount, and note on each carrier line item by matching against USARM line items."""
     carrier_items = config.get("carrier", {}).get("carrier_line_items", [])
     line_items = config.get("line_items", [])
-    if not carrier_items or not line_items:
+    if not line_items:
         return
+    if not carrier_items:
+        # Empty carrier scope (denial or missing) — fall through to append all USARM items as "NOT INCLUDED"
+        carrier_items = []
+        config.setdefault("carrier", {})["carrier_line_items"] = carrier_items
 
     stop_words = {'the', 'a', 'an', 'for', 'of', 'and', 'or', 'w/', 'w/out', '-', 'to', 'per', 'sq', 'lf'}
 
@@ -1775,6 +1779,11 @@ def build_line_items(measurements: dict, photo_analysis: dict, state: str, user_
     else:
         felt_sq = area_sq  # No I&W = felt covers entire deck
 
+    # ===================== WASTE FACTOR =====================
+    # Remove = exact area (0% waste). Install = area + waste (10% gable, 15% hip).
+    waste_factor = 1.15 if "hip" in style.lower() else 1.10
+    install_sq = round(area_sq * waste_factor, 2)
+
     # ===================== PRIMARY ROOFING MATERIAL =====================
     # Pricing loaded from backend/pricing/nybi26.json — PRICING.get(key, fallback)
     if material == "slate":
@@ -1788,20 +1797,20 @@ def build_line_items(measurements: dict, photo_analysis: dict, state: str, user_
         items.append({"category": "ROOFING", "description": "Scaffold/staging setup & removal", "qty": 1, "unit": "EA", "unit_price": PRICING.get("scaffold_staging", 1405.00)})
     elif material == "tile":
         items.append({"category": "ROOFING", "description": "Remove concrete/clay tile roofing", "qty": area_sq, "unit": "SQ", "unit_price": PRICING.get("tile_remove", 200.00)})
-        items.append({"category": "ROOFING", "description": "Concrete/clay tile roofing", "qty": area_sq, "unit": "SQ", "unit_price": PRICING.get("tile_install", 900.00)})
+        items.append({"category": "ROOFING", "description": "Concrete/clay tile roofing", "qty": install_sq, "unit": "SQ", "unit_price": PRICING.get("tile_install", 900.00)})
         items.append({"category": "ROOFING", "description": "Underlayment - felt 30# (deck area not covered by I&W)", "qty": felt_sq, "unit": "SQ", "unit_price": PRICING.get("tile_underlayment", 22.00)})
     elif material == "metal_standing_seam":
         items.append({"category": "ROOFING", "description": "Remove metal roofing - standing seam", "qty": area_sq, "unit": "SQ", "unit_price": PRICING.get("metal_remove", 150.00)})
-        items.append({"category": "ROOFING", "description": "Metal roofing - standing seam", "qty": area_sq, "unit": "SQ", "unit_price": PRICING.get("metal_install", 850.00)})
-        items.append({"category": "ROOFING", "description": "Synthetic underlayment (deck area not covered by I&W)", "qty": felt_sq, "unit": "SQ", "unit_price": PRICING.get("metal_underlayment", 32.00)})
+        items.append({"category": "ROOFING", "description": "Metal roofing - standing seam", "qty": install_sq, "unit": "SQ", "unit_price": PRICING.get("metal_install", 850.00)})
+        items.append({"category": "ROOFING", "description": "Underlayment - felt 15# (deck area not covered by I&W)", "qty": felt_sq, "unit": "SQ", "unit_price": PRICING.get("metal_underlayment", 32.00)})
     elif material == "laminated":
         items.append({"category": "ROOFING", "description": "Remove laminated comp shingle roofing", "qty": area_sq, "unit": "SQ", "unit_price": PRICING.get("laminated_remove", 74.00)})
-        items.append({"category": "ROOFING", "description": "Laminated comp shingle roofing - w/out felt", "qty": area_sq, "unit": "SQ", "unit_price": PRICING.get("laminated_install", 320.00)})
-        items.append({"category": "ROOFING", "description": "Synthetic underlayment (deck area not covered by I&W)", "qty": felt_sq, "unit": "SQ", "unit_price": PRICING.get("laminated_underlayment", 32.00)})
+        items.append({"category": "ROOFING", "description": "Laminated comp shingle roofing - w/out felt", "qty": install_sq, "unit": "SQ", "unit_price": PRICING.get("laminated_install", 320.00)})
+        items.append({"category": "ROOFING", "description": "Underlayment - felt 15# (deck area not covered by I&W)", "qty": felt_sq, "unit": "SQ", "unit_price": PRICING.get("laminated_underlayment", 32.00)})
     else:  # 3tab
         items.append({"category": "ROOFING", "description": "Remove 3-tab 25yr comp shingle roofing", "qty": area_sq, "unit": "SQ", "unit_price": PRICING.get("3tab_remove", 73.14)})
-        items.append({"category": "ROOFING", "description": "3-tab 25yr comp shingle roofing - w/out felt", "qty": area_sq, "unit": "SQ", "unit_price": PRICING.get("3tab_install", 312.92)})
-        items.append({"category": "ROOFING", "description": "Synthetic underlayment (deck area not covered by I&W)", "qty": felt_sq, "unit": "SQ", "unit_price": PRICING.get("3tab_underlayment", 32.00)})
+        items.append({"category": "ROOFING", "description": "3-tab 25yr comp shingle roofing - w/out felt", "qty": install_sq, "unit": "SQ", "unit_price": PRICING.get("3tab_install", 312.92)})
+        items.append({"category": "ROOFING", "description": "Underlayment - felt 15# (deck area not covered by I&W)", "qty": felt_sq, "unit": "SQ", "unit_price": PRICING.get("3tab_underlayment", 32.00)})
 
     # ===================== ICE & WATER BARRIER =====================
     if iw_sf > 0:
@@ -2074,9 +2083,21 @@ def build_line_items(measurements: dict, photo_analysis: dict, state: str, user_
 # PDF GENERATION
 # ===================================================================
 
-CHROME = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
-GENERATOR_PATH = os.path.expanduser("~/USARM-Claims-Platform/usarm_pdf_generator.py")
 BACKEND_DIR = os.path.dirname(os.path.abspath(__file__))
+# Cross-platform Chrome path: local macOS first, then Docker/Linux chromium
+_CHROME_CANDIDATES = [
+    "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+    "/usr/bin/chromium",
+    "/usr/bin/chromium-browser",
+    "/usr/bin/google-chrome",
+]
+CHROME = next((c for c in _CHROME_CANDIDATES if os.path.exists(c)), _CHROME_CANDIDATES[0])
+# Generator: bundled local copy first, then CLI platform directory
+_GENERATOR_CANDIDATES = [
+    os.path.join(BACKEND_DIR, "usarm_pdf_generator.py"),
+    os.path.expanduser("~/USARM-Claims-Platform/usarm_pdf_generator.py"),
+]
+GENERATOR_PATH = next((g for g in _GENERATOR_CANDIDATES if os.path.exists(g)), _GENERATOR_CANDIDATES[-1])
 
 
 def load_carrier_playbook(carrier_name: str) -> str:
@@ -2257,6 +2278,19 @@ async def process_claim(claim_id: str):
             print(f"[PROCESS] Using company branding: {company_profile.get('company_name', 'N/A')}")
     except Exception:
         pass  # No profile set — use defaults
+    if not company_profile:
+        company_profile = {
+            "company_name": "USA ROOF MASTERS",
+            "address": "3070 Bristol Pike, Building 1, Suite 122",
+            "city_state_zip": "Bensalem, PA 19020",
+            "contact_name": "Tom Kovack Jr.",
+            "contact_title": "CEO",
+            "email": "TKovack@USARoofMasters.com",
+            "phone": "267-679-1504",
+            "website": "www.USARoofMasters.com",
+            "user_role": "contractor",
+        }
+        print("[PROCESS] No company profile — using USARM defaults")
 
     # 2. Create temp work directory
     with tempfile.TemporaryDirectory(prefix="dumbroof_") as work_dir:
@@ -2278,15 +2312,50 @@ async def process_claim(claim_id: str):
             except Exception as e:
                 print(f"[PROCESS] Could not download logo: {e}")
 
-        # Fallback: Copy USARM logo if no user logo
-        logo_src = os.path.expanduser(
-            "~/Library/Mobile Documents/com~apple~CloudDocs/logo-version-2-2 2.JPG"
-        )
-        if os.path.exists(logo_src):
+        # Fallback: Copy logo if no user logo downloaded
+        logo_dest = os.path.join(photos_dir, "usarm_logo.jpg")
+        if not os.path.exists(logo_dest):
             import shutil
-            shutil.copy2(logo_src, os.path.join(photos_dir, "usarm_logo.jpg"))
+            # Try iCloud (macOS local dev)
+            icloud_logo = os.path.expanduser(
+                "~/Library/Mobile Documents/com~apple~CloudDocs/logo-version-2-2 2.JPG"
+            )
+            # Try bundled USARM default (cloud)
+            bundled_logo = os.path.join(BACKEND_DIR, "assets", "usarm_logo.jpg")
+            for src in [icloud_logo, bundled_logo]:
+                if os.path.exists(src):
+                    shutil.copy2(src, logo_dest)
+                    print(f"[PROCESS] Logo copied from {os.path.basename(os.path.dirname(src))}")
+                    break
 
         file_path = claim["file_path"]  # e.g. "user-id/123-main-st"
+
+        # 2b. Reconcile storage vs DB — if files exist in storage but DB arrays are empty, fix DB
+        reconcile_map = {
+            "measurements": "measurement_files",
+            "photos": "photo_files",
+            "scope": "scope_files",
+            "weather": "weather_files",
+        }
+        db_updates = {}
+        for folder, db_field in reconcile_map.items():
+            db_files = claim.get(db_field) or []
+            if not db_files:
+                try:
+                    storage_list = sb.storage.from_("claim-documents").list(f"{file_path}/{folder}")
+                    real_files = [f["name"] for f in (storage_list or []) if f.get("name") and f["name"] != ".emptyFolderPlaceholder"]
+                    if real_files:
+                        print(f"[RECONCILE] {db_field} was empty but storage has {len(real_files)} file(s): {real_files} — fixing DB")
+                        db_updates[db_field] = real_files
+                        claim[db_field] = real_files
+                except Exception as e:
+                    print(f"[RECONCILE] Could not list {folder}: {e}")
+        if db_updates:
+            try:
+                sb.table("claims").update(db_updates).eq("id", claim_id).execute()
+                print(f"[RECONCILE] DB updated with {len(db_updates)} field(s)")
+            except Exception as e:
+                print(f"[RECONCILE] DB update failed (non-fatal): {e}")
 
         # 3. Download measurement files
         measurement_paths = []
@@ -2404,6 +2473,54 @@ async def process_claim(claim_id: str):
         if corroborating_reports:
             config["weather"]["corroborating_reports"] = corroborating_reports
 
+        # 9a. NOAA Weather + Damage Thresholds (auto-populate if address + storm date available)
+        try:
+            from noaa_weather.api import NOAAClient
+            from noaa_weather.geocode import geocode_address, build_address_from_config
+            from noaa_weather.analyzer import ThresholdAnalyzer
+            from noaa_weather.report import apply_to_config as noaa_apply_to_config
+
+            address_str = build_address_from_config(config)
+            storm_date = config.get("weather", {}).get("storm_date", "") or \
+                         config.get("dates", {}).get("date_of_loss", "")
+            if address_str and storm_date:
+                geo = geocode_address(address_str)
+                if geo:
+                    noaa_client = NOAAClient()
+                    storm_data = noaa_client.query(geo.latitude, geo.longitude, storm_date, address=address_str)
+                    if storm_data and storm_data.event_count > 0:
+                        analyzer = ThresholdAnalyzer()
+                        analysis = analyzer.analyze(config, storm_data)
+                        noaa_apply_to_config(config, storm_data, analysis)
+                        print(f"[NOAA] Found {storm_data.event_count} storm events, "
+                              f"max hail: {storm_data.max_hail_inches}\"")
+                    else:
+                        print(f"[NOAA] No storm events found for {address_str} on {storm_date}")
+                else:
+                    print(f"[NOAA] Could not geocode address: {address_str}")
+        except Exception as e:
+            print(f"[NOAA] Weather query failed (non-fatal): {e}")
+
+        # 9a2. Inject carrier intelligence from data warehouse
+        try:
+            carrier_name = config.get("carrier", {}).get("name", "")
+            if carrier_name and sb:
+                tactics = sb.table("carrier_tactics").select("*").eq("carrier_name", carrier_name).execute()
+                outcomes = sb.table("claim_outcomes").select("*").eq("carrier", carrier_name).execute()
+                if (tactics.data or outcomes.data):
+                    wins = [o for o in (outcomes.data or []) if o.get("outcome") == "won"]
+                    config["carrier_intelligence"] = {
+                        "win_rate": round(len(wins) / len(outcomes.data), 2) if outcomes.data else 0,
+                        "avg_movement": round(sum(o.get("carrier_movement", 0) for o in wins) / len(wins), 2) if wins else 0,
+                        "total_claims": len(outcomes.data or []),
+                        "suggested_arguments": [t["tactic_description"] for t in (tactics.data or [])
+                                                if t.get("effective")][:5],
+                    }
+                    print(f"[INTEL] Carrier intelligence: {len(outcomes.data or [])} claims, "
+                          f"{len(wins)} wins, {len(tactics.data or [])} tactics")
+        except Exception as e:
+            print(f"[INTEL] Carrier intelligence injection failed (non-fatal): {e}")
+
         # 9b. Synthesize structured executive summary + conclusion (replaces run-on paragraphs)
         material = config.get("structures", [{}])[0].get("shingle_type", "roofing material")
         try:
@@ -2506,12 +2623,23 @@ async def process_claim(claim_id: str):
                 continue
             try:
                 original_size = os.path.getsize(fpath)
-                result = subprocess.run(
-                    ["sips", "-Z", "1024", "--setProperty", "formatOptions", "50",
-                     fpath, "--out", fpath],
-                    capture_output=True, timeout=15
-                )
-                if result.returncode == 0:
+                # Cross-platform resize: Pillow first, sips (macOS) fallback
+                resized = False
+                try:
+                    from PIL import Image
+                    with Image.open(fpath) as img:
+                        img.thumbnail((1024, 1024), Image.LANCZOS)
+                        img.save(fpath, "JPEG", quality=50)
+                    resized = True
+                except ImportError:
+                    # Pillow not available — try macOS sips
+                    result = subprocess.run(
+                        ["sips", "-Z", "1024", "--setProperty", "formatOptions", "50",
+                         fpath, "--out", fpath],
+                        capture_output=True, timeout=15
+                    )
+                    resized = result.returncode == 0
+                if resized:
                     new_size = os.path.getsize(fpath)
                     resized_count += 1
                     print(f"[PHOTOS] Resized {fname}: {original_size/1024:.0f}KB → {new_size/1024:.0f}KB")
@@ -2594,7 +2722,7 @@ async def process_claim(claim_id: str):
 
         # 13. Sync to GitHub dashboard + carrier playbooks (pass PDFs for local copy)
         try:
-            sync_to_github_dashboard(config, claim, photo_analysis, carrier_data, pdfs)
+            sync_to_github_dashboard(config, claim, photo_analysis, carrier_data, pdfs, sb=sb)
         except Exception as e:
             print(f"[SYNC] GitHub sync failed (non-fatal): {e}")
 
@@ -2700,7 +2828,7 @@ def compute_financials(config: dict) -> dict:
     }
 
 
-def sync_to_github_dashboard(config: dict, claim: dict, photo_analysis: dict, carrier_data: Optional[dict], pdfs: Optional[list] = None):
+def sync_to_github_dashboard(config: dict, claim: dict, photo_analysis: dict, carrier_data: Optional[dict], pdfs: Optional[list] = None, sb=None):
     """Sync processed claim to USARM GitHub dashboard + carrier playbooks."""
     if not os.path.exists(PLATFORM_DIR):
         print("[SYNC] USARM-Claims-Platform not found — skipping GitHub sync")
@@ -2762,6 +2890,13 @@ def sync_to_github_dashboard(config: dict, claim: dict, photo_analysis: dict, ca
     # Update carrier playbook
     update_carrier_playbook(carrier_name, claim, config, financials, photo_analysis, carrier_data)
 
+    # Update carrier playbook JSON from Supabase data
+    try:
+        from sync_playbooks import update_playbook_json
+        update_playbook_json(carrier_name, sb, PLATFORM_DIR)
+    except Exception as e:
+        print(f"[SYNC] Playbook JSON update failed (non-fatal): {e}")
+
     # Run dashboard sync
     if os.path.exists(SYNC_SCRIPT):
         result = subprocess.run(
@@ -2777,7 +2912,10 @@ def sync_to_github_dashboard(config: dict, claim: dict, photo_analysis: dict, ca
     # Update memory files
     update_memory_files(claim, config, financials, carrier_name)
 
-    # Git commit and push
+    # Git commit and push (skip in cloud mode)
+    if os.environ.get("APP_ENV") in ("cloud", "docker", "staging"):
+        print(f"[SYNC] Cloud mode — skipping git operations")
+        return
     try:
         subprocess.run(
             ["git", "add", f"claims/{slug}/", "docs/index.html"],

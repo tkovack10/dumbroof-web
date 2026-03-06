@@ -50,6 +50,10 @@ load_dotenv()
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Start background pollers on startup."""
+    required = ["SUPABASE_URL", "SUPABASE_SERVICE_KEY", "ANTHROPIC_API_KEY"]
+    missing = [v for v in required if not os.environ.get(v)]
+    if missing:
+        raise RuntimeError(f"Missing required env vars: {', '.join(missing)}")
     claims_task = asyncio.create_task(poll_for_claims())
     repairs_task = asyncio.create_task(poll_for_repairs())
     sb = get_supabase_client()
@@ -66,13 +70,17 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+cors_origins = [
+    "https://dumbroof.ai",
+    "https://www.dumbroof.ai",
+    "http://localhost:3000",
+]
+if os.environ.get("CORS_EXTRA_ORIGINS"):
+    cors_origins.extend(os.environ["CORS_EXTRA_ORIGINS"].split(","))
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "https://dumbroof.ai",
-        "https://www.dumbroof.ai",
-        "http://localhost:3000",
-    ],
+    allow_origins=cors_origins,
     allow_methods=["*"],
     allow_headers=["*"],
 )

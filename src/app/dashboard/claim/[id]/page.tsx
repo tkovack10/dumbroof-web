@@ -251,27 +251,44 @@ export default function ClaimDetailPage() {
       const folder = selectedCategory === "other" ? "other" : selectedCategory;
       const uploadedNames: string[] = [];
 
+      // Upload via server-signed URLs (bypasses RLS, sanitizes filenames server-side)
       for (const file of newFiles) {
-        const filePath = `${claim.file_path}/${folder}/${file.name}`;
+        const res = await fetch("/api/storage/sign-upload", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ folder, fileName: file.name, claimPath: claim.file_path }),
+        });
+        const urlData = await res.json();
+        if (!res.ok) throw new Error(`Failed to upload ${file.name}: ${urlData.error}`);
+
         const { error } = await supabase.storage
           .from("claim-documents")
-          .upload(filePath, file, { upsert: true });
+          .uploadToSignedUrl(urlData.path, urlData.token, file);
         if (error) throw new Error(`Failed to upload ${file.name}: ${error.message}`);
-        uploadedNames.push(file.name);
+        uploadedNames.push(urlData.safeName);
       }
 
-      // Update the claim record with new file names
+      // Update the claim record with new file names via server API (bypasses RLS)
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const existingFiles: string[] =
         (claim as unknown as Record<string, unknown>)[catConfig.dbField] as string[] || [];
       const updatedFiles = [...existingFiles, ...uploadedNames];
 
-      const { error: updateError } = await supabase
-        .from("claims")
-        .update({ [catConfig.dbField]: updatedFiles })
-        .eq("id", claim.id);
+      const updates: Record<string, unknown> = { [catConfig.dbField]: updatedFiles };
+      // Auto-upgrade phase when scope is uploaded to a pre-scope claim
+      if (selectedCategory === "scope" && claim.phase === "pre-scope") {
+        updates.phase = "post-scope";
+      }
 
-      if (updateError) throw new Error(`Failed to update claim: ${updateError.message}`);
+      const updateRes = await fetch("/api/claims/update", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ claimId: claim.id, updates }),
+      });
+      if (!updateRes.ok) {
+        const errData = await updateRes.json();
+        throw new Error(`Failed to update claim: ${errData.error}`);
+      }
 
       setUploadSuccess(
         `${uploadedNames.length} file${uploadedNames.length > 1 ? "s" : ""} uploaded successfully`
@@ -290,13 +307,13 @@ export default function ClaimDetailPage() {
     setReprocessing(true);
     setUploadError("");
     try {
-      const { error: reprocessError } = await supabase
-        .from("claims")
-        .update({ status: "uploaded" })
-        .eq("id", claim.id);
-
-      if (reprocessError) throw new Error(`Reprocess failed: ${reprocessError.message}`);
-      // Status set to "uploaded" — local backend poller picks it up automatically
+      // Call backend reprocess endpoint directly — uses service_role (bypasses RLS),
+      // sets status to "processing", and starts processing immediately (no poller delay)
+      const res = await fetch(`${BACKEND_URL}/api/reprocess/${claim.id}`, { method: "POST" });
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({ detail: "Unknown error" }));
+        throw new Error(`Reprocess failed: ${errData.detail || errData.error}`);
+      }
       fetchClaim();
     } catch (err) {
       setUploadError(err instanceof Error ? err.message : "Reprocess failed");
