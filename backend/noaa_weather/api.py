@@ -235,23 +235,20 @@ class NOAAClient:
         state_fips, county_fips, county_name = _lookup_county_fips(lat, lon)
         storm_events = []
         if state_fips and county_fips:
+            print(f"[NOAA] County lookup: {county_name} (state={state_fips}, county={county_fips})")
             storm_events = self._query_storm_events_db(
                 lat, lon, dol, state_fips, county_fips, county_name, storm_data
             )
+        else:
+            print(f"[NOAA] County FIPS lookup failed for ({lat}, {lon})")
 
         # 2. If Storm Events DB returned nothing, try SPC daily (recent events)
         spc_events = []
         if not storm_events:
+            print("[NOAA] Storm Events DB returned nothing — trying SPC daily")
             spc_events = self._query_spc_daily(lat, lon, dol, storm_data)
 
-        # 3. If still nothing, try SWDI PLSR as last resort (with bounding box)
-        plsr_events = []
-        if not storm_events and not spc_events:
-            start = (dol - timedelta(days=1)).strftime("%Y%m%d")
-            end = (dol + timedelta(days=1)).strftime("%Y%m%d")
-            plsr_events = self._query_swdi_plsr(lat, lon, start, end, storm_data)
-
-        all_events = storm_events + spc_events + plsr_events
+        all_events = storm_events + spc_events
 
         # Keep ALL county-level events (surrounding towns show storm significance)
         # but sort by distance so nearest events are first
@@ -309,7 +306,7 @@ class NOAAClient:
             "endDate_mm": f"{end.month:02d}",
             "endDate_dd": f"{end.day:02d}",
             "endDate_yyyy": str(end.year),
-            "county": f"{county_name}:{county_fips}",
+            "county": f"{county_name.replace(' COUNTY', '').replace(' PARISH', '')}:{county_fips.lstrip('0') or '0'}",
             "hailfilter": "0.00",
             "tornfilter": "0",
             "windfilter": "000",
@@ -330,7 +327,8 @@ class NOAAClient:
 
             try:
                 content = _fetch_url(url)
-                if not content or "EVENT_ID" not in content[:200]:
+                if not content or "EVENT_ID" not in content[:500]:
+                    print(f"[NOAA] Storm Events response not CSV for {evt_type}: {content[:100] if content else 'empty'}")
                     continue
 
                 reader = csv.DictReader(io.StringIO(content))
