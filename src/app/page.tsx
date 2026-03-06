@@ -140,6 +140,9 @@ export default function Home() {
             <a href="#inspectors" className="text-gray-300 hover:text-white text-sm transition-colors hidden sm:block">
               Inspectors
             </a>
+            <a href="/login" className="text-gray-300 hover:text-white text-sm font-medium transition-colors">
+              Sign In
+            </a>
             <a
               href="#waitlist"
               className="bg-[var(--red)] hover:bg-[var(--red-dark)] text-white px-5 py-2 rounded-lg text-sm font-semibold transition-colors"
@@ -962,13 +965,18 @@ export default function Home() {
             <div className="w-8 h-8 rounded-lg bg-[var(--red)] flex items-center justify-center font-bold text-white text-sm">DR</div>
             <span className="text-gray-400 text-sm">Dumb Roof Technologies™</span>
           </div>
-          <div className="text-center sm:text-right">
-            <p className="text-gray-500 text-sm">
-              &copy; {new Date().getFullYear()} Dumb Roof Technologies. All rights reserved.
-            </p>
-            <p className="text-gray-600 text-xs mt-1">
-              Patent Pending
-            </p>
+          <div className="flex items-center gap-6">
+            <a href="/login" className="text-gray-500 hover:text-gray-300 text-sm transition-colors">
+              Sign In
+            </a>
+            <div className="text-center sm:text-right">
+              <p className="text-gray-500 text-sm">
+                &copy; {new Date().getFullYear()} Dumb Roof Technologies. All rights reserved.
+              </p>
+              <p className="text-gray-600 text-xs mt-1">
+                Patent Pending
+              </p>
+            </div>
           </div>
         </div>
       </footer>
