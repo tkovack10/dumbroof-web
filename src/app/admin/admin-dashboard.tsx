@@ -10,7 +10,9 @@ interface Claim {
   carrier: string;
   phase: string;
   status: string;
+  file_path: string;
   output_files: string[] | null;
+  error_message: string | null;
   created_at: string;
   user_email?: string;
 }
@@ -82,9 +84,29 @@ export function AdminDashboard() {
   const [inspectorsLoading, setInspectorsLoading] = useState(true);
   const [betaLoading, setBetaLoading] = useState(true);
   const [reprocessing, setReprocessing] = useState<string | null>(null);
+  const [expandedRow, setExpandedRow] = useState<string | null>(null);
+  const [downloading, setDownloading] = useState<string | null>(null);
   const [stats, setStats] = useState<Stats>({
     total: 0, uploaded: 0, processing: 0, ready: 0, error: 0, uniqueUsers: 0
   });
+
+  const [userMap, setUserMap] = useState<Record<string, { name: string; email: string }>>({});
+
+  const fetchUserProfiles = useCallback(async () => {
+    const { data } = await supabase
+      .from("company_profiles")
+      .select("user_id, company_name, contact_name, email");
+    if (data) {
+      const map: Record<string, { name: string; email: string }> = {};
+      for (const p of data) {
+        map[p.user_id] = {
+          name: p.company_name || p.contact_name || "Unknown",
+          email: p.email || "",
+        };
+      }
+      setUserMap(map);
+    }
+  }, [supabase]);
 
   const fetchClaims = useCallback(async () => {
     const { data } = await supabase
@@ -142,10 +164,11 @@ export function AdminDashboard() {
   }, [supabase]);
 
   useEffect(() => {
+    fetchUserProfiles();
     fetchClaims();
     const interval = setInterval(fetchClaims, 10000);
     return () => clearInterval(interval);
-  }, [fetchClaims]);
+  }, [fetchUserProfiles, fetchClaims]);
 
   useEffect(() => {
     if (activeTab === "repairs") {
@@ -251,6 +274,45 @@ export function AdminDashboard() {
     } finally {
       setReprocessing(null);
     }
+  };
+
+  const reprocessClaim = async (id: string) => {
+    setReprocessing(id);
+    try {
+      await supabase
+        .from("claims")
+        .update({ status: "uploaded", error_message: null })
+        .eq("id", id);
+      setClaims(prev =>
+        prev.map(c => c.id === id ? { ...c, status: "uploaded", error_message: null } : c)
+      );
+    } catch {
+      alert("Failed to reprocess claim");
+    } finally {
+      setReprocessing(null);
+    }
+  };
+
+  const handleDownload = async (filePath: string, outputFile: string) => {
+    const key = `${filePath}/${outputFile}`;
+    setDownloading(key);
+    try {
+      const path = `${filePath}/output/${outputFile}`;
+      const { data, error } = await supabase.storage
+        .from("claim-documents")
+        .download(path);
+      if (error) throw error;
+      const url = URL.createObjectURL(data);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = outputFile;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error("Download failed:", err);
+      alert("Download failed");
+    }
+    setDownloading(null);
   };
 
   const betaStatusColors: Record<string, string> = {
@@ -422,30 +484,77 @@ export function AdminDashboard() {
                     <div className="col-span-2">User</div>
                     <div className="col-span-1">Phase</div>
                     <div className="col-span-1">Status</div>
-                    <div className="col-span-2">Date</div>
+                    <div className="col-span-2">Date / Actions</div>
                   </div>
                   <div className="divide-y divide-gray-50">
                     {claims.map((claim, i) => (
-                      <div key={claim.id} className="px-6 py-3 grid grid-cols-12 gap-4 items-center hover:bg-gray-50 transition-colors text-sm">
-                        <div className="col-span-1 text-gray-400 text-xs">{claims.length - i}</div>
-                        <div className="col-span-3">
-                          <p className="font-medium text-[var(--navy)] truncate">{claim.address}</p>
+                      <div key={claim.id}>
+                        <div
+                          onClick={() => setExpandedRow(expandedRow === claim.id ? null : claim.id)}
+                          className="px-6 py-3 grid grid-cols-12 gap-4 items-center hover:bg-gray-50 transition-colors text-sm cursor-pointer"
+                        >
+                          <div className="col-span-1 text-gray-400 text-xs">{claims.length - i}</div>
+                          <div className="col-span-3">
+                            <p className="font-medium text-[var(--navy)] truncate">{claim.address}</p>
+                          </div>
+                          <div className="col-span-2 text-gray-600 truncate">{claim.carrier}</div>
+                          <div className="col-span-2 truncate">
+                            <p className="text-gray-700 text-xs font-medium">{userMap[claim.user_id]?.name || "—"}</p>
+                            <p className="text-gray-400 text-xs truncate">{userMap[claim.user_id]?.email || claim.user_id.slice(0, 8)}</p>
+                          </div>
+                          <div className="col-span-1">
+                            <span className="text-xs text-gray-500">
+                              {claim.phase === "pre-scope" ? "Pre" : "Post"}
+                            </span>
+                          </div>
+                          <div className="col-span-1">
+                            <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${statusColors[claim.status] || "bg-gray-100 text-gray-600"}`}>
+                              {claim.status.charAt(0).toUpperCase() + claim.status.slice(1)}
+                            </span>
+                          </div>
+                          <div className="col-span-2 flex items-center gap-2">
+                            <span className="text-xs text-gray-400">
+                              {new Date(claim.created_at).toLocaleDateString()}
+                            </span>
+                            {(claim.status === "error" || claim.status === "processing") && (
+                              <button
+                                onClick={(e) => { e.stopPropagation(); reprocessClaim(claim.id); }}
+                                disabled={reprocessing === claim.id}
+                                className="px-2 py-1 bg-blue-50 hover:bg-blue-100 disabled:opacity-50 text-blue-700 text-xs font-semibold rounded-lg transition-colors"
+                              >
+                                {reprocessing === claim.id ? "..." : "Reprocess"}
+                              </button>
+                            )}
+                          </div>
                         </div>
-                        <div className="col-span-2 text-gray-600 truncate">{claim.carrier}</div>
-                        <div className="col-span-2 text-gray-400 text-xs truncate">{claim.user_id.slice(0, 8)}...</div>
-                        <div className="col-span-1">
-                          <span className="text-xs text-gray-500">
-                            {claim.phase === "pre-scope" ? "Pre" : "Post"}
-                          </span>
-                        </div>
-                        <div className="col-span-1">
-                          <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${statusColors[claim.status] || "bg-gray-100 text-gray-600"}`}>
-                            {claim.status.charAt(0).toUpperCase() + claim.status.slice(1)}
-                          </span>
-                        </div>
-                        <div className="col-span-2 text-gray-400 text-xs">
-                          {new Date(claim.created_at).toLocaleString()}
-                        </div>
+                        {expandedRow === claim.id && (
+                          <div className="px-6 pb-4 bg-gray-50/50 border-t border-gray-100">
+                            {claim.error_message && (
+                              <p className="text-xs text-red-600 bg-red-50 rounded px-3 py-2 mt-2 mb-2 font-mono">
+                                {claim.error_message}
+                              </p>
+                            )}
+                            {claim.output_files && claim.output_files.length > 0 ? (
+                              <div className="flex flex-wrap gap-2 mt-2">
+                                {claim.output_files.map((file) => (
+                                  <button
+                                    key={file}
+                                    onClick={() => handleDownload(claim.file_path, file)}
+                                    disabled={downloading === `${claim.file_path}/${file}`}
+                                    className="flex items-center gap-1.5 px-3 py-1.5 bg-green-50 hover:bg-green-100 disabled:opacity-50 text-green-700 text-xs font-semibold rounded-lg transition-colors border border-green-200"
+                                  >
+                                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3M6 20h12a2 2 0 002-2V8l-6-6H6a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                                    </svg>
+                                    {downloading === `${claim.file_path}/${file}` ? "..." : file.replace(/_/g, " ").replace(".pdf", "")}
+                                  </button>
+                                ))}
+                              </div>
+                            ) : (
+                              <p className="text-xs text-gray-400 mt-2">No output files yet.</p>
+                            )}
+                          </div>
+                        )}
                       </div>
                     ))}
                   </div>
@@ -496,46 +605,79 @@ export function AdminDashboard() {
                   </div>
                   <div className="divide-y divide-gray-50">
                     {repairs.map((repair) => (
-                      <div key={repair.id} className="px-6 py-3 grid grid-cols-12 gap-4 items-center hover:bg-gray-50 transition-colors text-sm">
-                        <div className="col-span-3">
-                          <p className="font-medium text-[var(--navy)] truncate">{repair.address}</p>
-                          <p className="text-xs text-gray-400 truncate">{repair.user_id.slice(0, 8)}...</p>
+                      <div key={repair.id}>
+                        <div
+                          onClick={() => setExpandedRow(expandedRow === repair.id ? null : repair.id)}
+                          className="px-6 py-3 grid grid-cols-12 gap-4 items-center hover:bg-gray-50 transition-colors text-sm cursor-pointer"
+                        >
+                          <div className="col-span-3">
+                            <p className="font-medium text-[var(--navy)] truncate">{repair.address}</p>
+                            <p className="text-xs text-gray-400 truncate">{userMap[repair.user_id]?.name || repair.user_id.slice(0, 8)}</p>
+                          </div>
+                          <div className="col-span-2 text-gray-600 truncate">{repair.homeowner_name}</div>
+                          <div className="col-span-1 text-gray-500 text-xs">
+                            {repair.photo_files?.length || 0}
+                          </div>
+                          <div className="col-span-1">
+                            <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${statusColors[repair.status] || "bg-gray-100 text-gray-600"}`}>
+                              {repair.status.charAt(0).toUpperCase() + repair.status.slice(1)}
+                            </span>
+                          </div>
+                          <div className="col-span-2">
+                            {repair.error_message ? (
+                              <p className="text-xs text-red-600 truncate" title={repair.error_message}>
+                                {repair.error_message.slice(0, 80)}
+                              </p>
+                            ) : (
+                              <span className="text-xs text-gray-300">—</span>
+                            )}
+                          </div>
+                          <div className="col-span-1 text-gray-700 text-sm font-medium">
+                            {repair.total_price ? `$${repair.total_price.toLocaleString()}` : "—"}
+                          </div>
+                          <div className="col-span-2 flex items-center gap-2">
+                            <span className="text-xs text-gray-400">
+                              {new Date(repair.created_at).toLocaleDateString()}
+                            </span>
+                            {(repair.status === "error" || repair.status === "processing") && (
+                              <button
+                                onClick={(e) => { e.stopPropagation(); reprocessRepair(repair.id); }}
+                                disabled={reprocessing === repair.id}
+                                className="px-2 py-1 bg-blue-50 hover:bg-blue-100 disabled:opacity-50 text-blue-700 text-xs font-semibold rounded-lg transition-colors"
+                              >
+                                {reprocessing === repair.id ? "..." : "Reprocess"}
+                              </button>
+                            )}
+                          </div>
                         </div>
-                        <div className="col-span-2 text-gray-600 truncate">{repair.homeowner_name}</div>
-                        <div className="col-span-1 text-gray-500 text-xs">
-                          {repair.photo_files?.length || 0}
-                        </div>
-                        <div className="col-span-1">
-                          <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${statusColors[repair.status] || "bg-gray-100 text-gray-600"}`}>
-                            {repair.status.charAt(0).toUpperCase() + repair.status.slice(1)}
-                          </span>
-                        </div>
-                        <div className="col-span-2">
-                          {repair.error_message ? (
-                            <p className="text-xs text-red-600 truncate" title={repair.error_message}>
-                              {repair.error_message.slice(0, 80)}
-                            </p>
-                          ) : (
-                            <span className="text-xs text-gray-300">—</span>
-                          )}
-                        </div>
-                        <div className="col-span-1 text-gray-700 text-sm font-medium">
-                          {repair.total_price ? `$${repair.total_price.toLocaleString()}` : "—"}
-                        </div>
-                        <div className="col-span-2 flex items-center gap-2">
-                          <span className="text-xs text-gray-400">
-                            {new Date(repair.created_at).toLocaleDateString()}
-                          </span>
-                          {repair.status === "error" && (
-                            <button
-                              onClick={() => reprocessRepair(repair.id)}
-                              disabled={reprocessing === repair.id}
-                              className="px-2 py-1 bg-blue-50 hover:bg-blue-100 disabled:opacity-50 text-blue-700 text-xs font-semibold rounded-lg transition-colors"
-                            >
-                              {reprocessing === repair.id ? "..." : "Reprocess"}
-                            </button>
-                          )}
-                        </div>
+                        {expandedRow === repair.id && (
+                          <div className="px-6 pb-4 bg-gray-50/50 border-t border-gray-100">
+                            {repair.error_message && (
+                              <p className="text-xs text-red-600 bg-red-50 rounded px-3 py-2 mt-2 mb-2 font-mono">
+                                {repair.error_message}
+                              </p>
+                            )}
+                            {repair.output_files && repair.output_files.length > 0 ? (
+                              <div className="flex flex-wrap gap-2 mt-2">
+                                {repair.output_files.map((file) => (
+                                  <button
+                                    key={file}
+                                    onClick={() => handleDownload(repair.file_path, file)}
+                                    disabled={downloading === `${repair.file_path}/${file}`}
+                                    className="flex items-center gap-1.5 px-3 py-1.5 bg-green-50 hover:bg-green-100 disabled:opacity-50 text-green-700 text-xs font-semibold rounded-lg transition-colors border border-green-200"
+                                  >
+                                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3M6 20h12a2 2 0 002-2V8l-6-6H6a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                                    </svg>
+                                    {downloading === `${repair.file_path}/${file}` ? "..." : file.replace(/_/g, " ").replace(".pdf", "")}
+                                  </button>
+                                ))}
+                              </div>
+                            ) : (
+                              <p className="text-xs text-gray-400 mt-2">No output files yet.</p>
+                            )}
+                          </div>
+                        )}
                       </div>
                     ))}
                   </div>
