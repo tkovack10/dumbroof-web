@@ -369,7 +369,7 @@ def match_to_claim(
     sb: Client, user_id: str,
     in_reply_to: str, claim_number: Optional[str],
     address: Optional[str], carrier_name: Optional[str],
-    subject: str,
+    subject: str, forwarder_role: Optional[str] = None,
 ) -> dict:
     """Run claim matching algorithm. Returns match result dict."""
 
@@ -388,10 +388,14 @@ def match_to_claim(
                 "address": address,
             }
 
-    # Get all user's claims
-    claims_result = sb.table("claims").select(
-        "id, address, carrier"
-    ).eq("user_id", user_id).execute()
+    # Get claims — admins can match ANY claim, regular users only their own
+    if forwarder_role == "office_admin":
+        claims_result = sb.table("claims").select("id, address, carrier").execute()
+        print(f"[GMAIL POLLER] Admin override: searching all {len(claims_result.data or [])} claims", flush=True)
+    else:
+        claims_result = sb.table("claims").select(
+            "id, address, carrier"
+        ).eq("user_id", user_id).execute()
     user_claims = claims_result.data or []
 
     if not user_claims:
@@ -462,17 +466,18 @@ def match_to_claim(
 # USER RESOLUTION
 # ===================================================================
 
-def resolve_user_id(sb: Client, forwarder_email: str) -> Optional[str]:
-    """Map forwarder email to a user_id."""
+def resolve_user_id(sb: Client, forwarder_email: str) -> tuple:
+    """Map forwarder email to (user_id, role). Role is used for admin claim matching."""
     email_lower = forwarder_email.lower()
 
     # 1. Check authorized_forwarders table
     try:
-        result = sb.table("authorized_forwarders").select("user_id").eq(
+        result = sb.table("authorized_forwarders").select("user_id, role").eq(
             "email", email_lower
         ).execute()
         if result.data and len(result.data) > 0:
-            return result.data[0]["user_id"]
+            row = result.data[0]
+            return (row["user_id"], row.get("role", "team_member"))
     except Exception:
         pass
 
@@ -481,7 +486,7 @@ def resolve_user_id(sb: Client, forwarder_email: str) -> Optional[str]:
         users = sb.auth.admin.list_users()
         for u in users:
             if hasattr(u, 'email') and u.email and u.email.lower() == email_lower:
-                return u.id
+                return (u.id, "team_member")
     except Exception:
         pass
 
@@ -502,13 +507,14 @@ def resolve_user_id(sb: Client, forwarder_email: str) -> Optional[str]:
                     "email": email_lower,
                     "user_id": admin_id,
                     "name": forwarder_email.split("@")[0].replace(".", " ").title(),
+                    "role": "office_admin",
                 }).execute()
                 print(f"[GMAIL POLLER] Auto-registered team forwarder: {forwarder_email}", flush=True)
-                return admin_id
+                return (admin_id, "office_admin")
         except Exception as e:
             print(f"[GMAIL POLLER] Failed to auto-register {forwarder_email}: {e}", flush=True)
 
-    return None
+    return (None, None)
 
 
 # ===================================================================
@@ -568,12 +574,17 @@ async def analyze_edit_request(text: str, subject: str, attachments: list) -> di
 Subject: {subject}
 Body: {text}{attachment_summary}
 
+If the email includes PDF attachments and mentions replacing, correcting, or updating measurements,
+EagleView, photos, scope, or weather data — classify as "replace_document" and set "document_type"
+to one of: measurements, photos, scope, weather.
+
 Extract structured changes. Respond with JSON only:
 {{
   "changes": [
     {{"action": "add|remove|update|replace", "item": "short item name", "details": "what to do"}}
   ],
-  "request_type": "add_items|update_photos|carrier_scope|remove_items|other",
+  "request_type": "add_items|update_photos|carrier_scope|remove_items|replace_document|other",
+  "document_type": "measurements|photos|scope|weather (only if replace_document)",
   "confidence": 0-100
 }}"""
 
@@ -665,7 +676,7 @@ async def _poll_once(service, sb: Client, backend_url: str):
                     continue
 
             # Resolve who forwarded it
-            user_id = resolve_user_id(sb, parsed["from_email"])
+            user_id, forwarder_role = resolve_user_id(sb, parsed["from_email"])
             if not user_id:
                 # Log unrecognized sender so nothing gets lost
                 try:
@@ -701,6 +712,7 @@ async def _poll_once(service, sb: Client, backend_url: str):
                 address=address_parsed,
                 carrier_name=carrier_name,
                 subject=parsed.get("original_subject") or parsed["subject"],
+                forwarder_role=forwarder_role,
             )
 
             # Upload attachments to Supabase Storage
@@ -770,6 +782,69 @@ async def _poll_once(service, sb: Client, backend_url: str):
                     sb.table("claims").update({
                         "pending_edits": current_count + 1
                     }).eq("id", match["claim_id"]).execute()
+
+                # ---- AUTO-REPLACE DOCUMENT FLOW ----
+                if (ai_result.get("request_type") == "replace_document"
+                        and match["claim_id"] and attachment_paths):
+
+                    doc_type = ai_result.get("document_type", "measurements")
+                    doc_map = {
+                        "measurements": ("measurement_files", "measurements"),
+                        "photos": ("photo_files", "photos"),
+                        "scope": ("scope_files", "scope"),
+                        "weather": ("weather_files", "weather"),
+                    }
+
+                    if doc_type in doc_map:
+                        db_field, storage_folder = doc_map[doc_type]
+
+                        claim_detail = sb.table("claims").select(
+                            "file_path, " + db_field
+                        ).eq("id", match["claim_id"]).single().execute()
+
+                        if claim_detail.data:
+                            claim_file_path = claim_detail.data["file_path"]
+                            existing_files = claim_detail.data.get(db_field) or []
+                            new_files = list(existing_files)
+
+                            for att_path in attachment_paths:
+                                filename = att_path.split("/")[-1]
+                                clean_name = re.sub(r"^\d+_", "", filename)
+                                target_path = f"{claim_file_path}/{storage_folder}/{clean_name}"
+
+                                try:
+                                    file_data = sb.storage.from_("claim-documents").download(att_path)
+                                    sb.storage.from_("claim-documents").upload(
+                                        target_path, file_data,
+                                        {"content-type": "application/pdf", "upsert": "true"}
+                                    )
+                                    if clean_name not in new_files:
+                                        new_files.append(clean_name)
+                                    print(f"[GMAIL POLLER] Copied {att_path} -> {target_path}", flush=True)
+                                except Exception as copy_err:
+                                    print(f"[GMAIL POLLER] Copy failed: {copy_err}", flush=True)
+
+                            sb.table("claims").update({
+                                db_field: new_files,
+                            }).eq("id", match["claim_id"]).execute()
+
+                            # Auto-trigger reprocessing
+                            try:
+                                sb.table("claims").update({
+                                    "status": "processing"
+                                }).eq("id", match["claim_id"]).execute()
+
+                                from processor import process_claim
+                                asyncio.create_task(process_claim(match["claim_id"]))
+                                print(f"[GMAIL POLLER] Auto-reprocessing claim {match['claim_id']} after document replacement", flush=True)
+                            except Exception as reprocess_err:
+                                print(f"[GMAIL POLLER] Auto-reprocess failed: {reprocess_err}", flush=True)
+
+                            # Mark edit request as auto-applied
+                            if inserted.data:
+                                sb.table("edit_requests").update({
+                                    "status": "auto_applied"
+                                }).eq("id", inserted.data[0]["id"]).execute()
 
                 _mark_as_read(service, msg_id)
                 continue

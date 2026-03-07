@@ -93,19 +93,40 @@ export function AdminDashboard() {
   const [userMap, setUserMap] = useState<Record<string, { name: string; email: string }>>({});
 
   const fetchUserProfiles = useCallback(async () => {
+    const map: Record<string, { name: string; email: string }> = {};
+
+    // 1. Company profiles (preferred — has company name)
     const { data } = await supabase
       .from("company_profiles")
       .select("user_id, company_name, contact_name, email");
     if (data) {
-      const map: Record<string, { name: string; email: string }> = {};
       for (const p of data) {
         map[p.user_id] = {
           name: p.company_name || p.contact_name || "Unknown",
           email: p.email || "",
         };
       }
-      setUserMap(map);
     }
+
+    // 2. Auth users fallback — fills in users without company profiles
+    try {
+      const res = await fetch("/api/admin/users");
+      if (res.ok) {
+        const authUsers: { id: string; email: string }[] = await res.json();
+        for (const u of authUsers) {
+          if (!map[u.id] && u.email) {
+            map[u.id] = {
+              name: u.email.split("@")[0].replace(/[._]/g, " ").replace(/\b\w/g, c => c.toUpperCase()),
+              email: u.email,
+            };
+          }
+        }
+      }
+    } catch {
+      // Non-critical — company_profiles map still works
+    }
+
+    setUserMap(map);
   }, [supabase]);
 
   const fetchClaims = useCallback(async () => {
