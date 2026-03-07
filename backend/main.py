@@ -19,8 +19,9 @@ from contextlib import asynccontextmanager
 from typing import Optional
 
 from dotenv import load_dotenv
-from fastapi import FastAPI, BackgroundTasks, HTTPException, Body
+from fastapi import FastAPI, BackgroundTasks, HTTPException, Body, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
 from processor import process_claim, get_supabase_client
@@ -224,6 +225,103 @@ def intelligence_suggest(carrier_name: str, trades: str, state: str = ""):
     sb = get_supabase_client()
     trade_list = [t.strip() for t in trades.split(",") if t.strip()]
     return suggest_arguments(sb, carrier_name, trade_list, state)
+
+
+# ===================================================================
+# NOAA STORM SCAN
+# ===================================================================
+
+@app.post("/api/noaa-scan")
+async def noaa_scan(request: Request):
+    """Scan NOAA for recent storm events near an address.
+
+    Used by the upload form's "Scan for storms" button to help users
+    identify the Date of Loss when they don't have a weather report.
+    Queries the last 18 months of hail + thunderstorm wind events
+    in the property's county.
+    """
+    body = await request.json()
+    address = body.get("address", "")
+    if not address:
+        return JSONResponse({"storms": [], "error": "No address provided"})
+
+    try:
+        from noaa_weather.geocode import geocode_address
+        from noaa_weather.api import NOAAClient, _lookup_county_fips
+        from datetime import datetime, timedelta
+        import csv, io, urllib.parse
+
+        geo = geocode_address(address)
+        if not geo:
+            return JSONResponse({"storms": [], "error": "Could not geocode address"})
+
+        state_fips, county_fips, county_name = _lookup_county_fips(geo.latitude, geo.longitude)
+        if not state_fips or not county_fips:
+            return JSONResponse({"storms": [], "error": "Could not determine county"})
+
+        # Query last 18 months
+        end = datetime.now()
+        start = end - timedelta(days=548)
+
+        from noaa_weather.api import _STATE_NAMES, _fetch_url
+        state_name = _STATE_NAMES.get(state_fips, "")
+        county_clean = county_name.replace(" COUNTY", "").replace(" PARISH", "")
+        county_fips_short = county_fips.lstrip("0") or "0"
+
+        base_params = {
+            "beginDate_mm": f"{start.month:02d}",
+            "beginDate_dd": f"{start.day:02d}",
+            "beginDate_yyyy": str(start.year),
+            "endDate_mm": f"{end.month:02d}",
+            "endDate_dd": f"{end.day:02d}",
+            "endDate_yyyy": str(end.year),
+            "county": f"{county_clean}:{county_fips_short}",
+            "hailfilter": "0.00",
+            "tornfilter": "0",
+            "windfilter": "000",
+            "sort": "DT",
+            "submitbutton": "Search",
+            "statefips": f"{state_fips},{state_name.replace(' ', '+')}",
+        }
+        query_parts = []
+        for k, v in base_params.items():
+            query_parts.append(f"{k}={urllib.parse.quote(str(v), safe='+:')}")
+        for evt_type in ["(C) Hail", "(C) Thunderstorm Wind"]:
+            query_parts.append(f"eventType={urllib.parse.quote(evt_type, safe='+')}")
+
+        url = f"https://www.ncei.noaa.gov/stormevents/csv?{'&'.join(query_parts)}"
+        print(f"[NOAA-SCAN] Querying: {url}")
+
+        content = _fetch_url(url)
+        if not content or "EVENT_ID" not in content.split("\n")[0]:
+            return JSONResponse({"storms": [], "note": "No NOAA data available for this area"})
+
+        reader = csv.DictReader(io.StringIO(content))
+        storms = []
+        seen_dates = set()
+        for row in reader:
+            begin_date = row.get("BEGIN_DATE_TIME", "")[:10]
+            if not begin_date or begin_date in seen_dates:
+                continue
+            seen_dates.add(begin_date)
+            evt_type = row.get("EVENT_TYPE", "")
+            magnitude = row.get("MAGNITUDE", "")
+            mag_type = row.get("MAGNITUDE_TYPE", "")
+            detail = f"{magnitude} {mag_type}".strip() if magnitude else evt_type
+            storms.append({
+                "date": begin_date,
+                "type": evt_type,
+                "details": detail,
+            })
+
+        # Sort by date descending (most recent first)
+        storms.sort(key=lambda s: s["date"], reverse=True)
+        return JSONResponse({"storms": storms[:15]})
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        print(f"[NOAA-SCAN] Error: {e}")
+        return JSONResponse({"storms": [], "error": str(e)})
 
 
 # ===================================================================

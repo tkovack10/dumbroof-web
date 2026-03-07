@@ -15,10 +15,17 @@ export default function NewClaimPage() {
   const [scopeFiles, setScopeFiles] = useState<File[]>([]);
   const [weatherFiles, setWeatherFiles] = useState<File[]>([]);
   const [userNotes, setUserNotes] = useState("");
+  const [dateOfLoss, setDateOfLoss] = useState("");
+  const [scanningStorms, setScanningStorms] = useState(false);
+  const [stormResults, setStormResults] = useState<
+    Array<{ date: string; type: string; details: string }> | null
+  >(null);
   const [status, setStatus] = useState<UploadStatus>("idle");
   const [errorMsg, setErrorMsg] = useState("");
 
   const supabase = createClient();
+  const BACKEND_URL =
+    process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000";
 
   const hasScope = scopeFiles.length > 0;
   const phase = hasScope ? "post-scope" : "pre-scope";
@@ -26,6 +33,25 @@ export default function NewClaimPage() {
     propertyAddress.trim() !== "" &&
     measurementFiles.length > 0 &&
     photoFiles.length > 0;
+
+  const scanForStorms = async () => {
+    setScanningStorms(true);
+    setStormResults(null);
+    try {
+      const res = await fetch(`${BACKEND_URL}/api/noaa-scan`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ address: propertyAddress }),
+      });
+      const data = await res.json();
+      setStormResults(data.storms || []);
+    } catch (err) {
+      console.error("Storm scan failed:", err);
+      setStormResults([]);
+    } finally {
+      setScanningStorms(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -109,6 +135,7 @@ export default function NewClaimPage() {
         scope_files: uploadedNames.scope,
         weather_files: uploadedNames.weather,
         ...(userNotes.trim() ? { user_notes: userNotes.trim() } : {}),
+        ...(dateOfLoss ? { date_of_loss: dateOfLoss } : {}),
       });
 
       if (dbError) throw new Error(dbError.message);
@@ -250,6 +277,89 @@ export default function NewClaimPage() {
                   : "Leave blank if you don't know yet — you can add it later."}
               </p>
             </div>
+          </div>
+
+          {/* Date of Loss */}
+          <div>
+            <div className="flex items-baseline gap-2 mb-1">
+              <label className="block text-sm font-semibold text-[var(--navy)]">
+                Date of Loss
+              </label>
+              <span className="text-xs text-gray-400 font-medium">Optional</span>
+            </div>
+            <div className="flex gap-2">
+              <input
+                type="date"
+                value={dateOfLoss}
+                onChange={(e) => setDateOfLoss(e.target.value)}
+                className="flex-1 px-4 py-3 rounded-lg border border-gray-200 focus:border-[var(--navy)] focus:ring-1 focus:ring-[var(--navy)] outline-none transition-colors text-sm"
+              />
+              <button
+                type="button"
+                onClick={scanForStorms}
+                disabled={!propertyAddress.trim() || scanningStorms}
+                className="px-4 py-3 text-sm bg-blue-50 text-blue-700 border border-blue-200 rounded-lg hover:bg-blue-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors whitespace-nowrap"
+              >
+                {scanningStorms ? (
+                  <span className="flex items-center gap-2">
+                    <svg
+                      className="animate-spin w-4 h-4"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                    >
+                      <circle
+                        className="opacity-25"
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        strokeWidth="4"
+                      />
+                      <path
+                        className="opacity-75"
+                        fill="currentColor"
+                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                      />
+                    </svg>
+                    Scanning...
+                  </span>
+                ) : (
+                  "Scan for storms"
+                )}
+              </button>
+            </div>
+            <p className="text-xs text-gray-400 mt-1">
+              Enter the storm date, or click &quot;Scan for storms&quot; to find recent events near this address.
+            </p>
+            {stormResults !== null && stormResults.length === 0 && !scanningStorms && (
+              <p className="text-xs text-gray-500 mt-2 bg-gray-50 rounded-lg px-3 py-2">
+                No recent storm events found in NOAA records for this area.
+              </p>
+            )}
+            {stormResults && stormResults.length > 0 && (
+              <div className="mt-2 space-y-1">
+                <p className="text-xs text-gray-500">
+                  Recent storm events near this address (click to select):
+                </p>
+                {stormResults.map((storm, i) => (
+                  <button
+                    key={i}
+                    type="button"
+                    onClick={() => {
+                      setDateOfLoss(storm.date);
+                      setStormResults(null);
+                    }}
+                    className="block w-full text-left text-xs px-3 py-2 bg-amber-50 border border-amber-200 rounded-lg hover:bg-amber-100 transition-colors"
+                  >
+                    <span className="font-semibold text-amber-800">{storm.date}</span>
+                    <span className="text-amber-600 ml-2">
+                      {storm.type}
+                      {storm.details ? ` — ${storm.details}` : ""}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Documents */}

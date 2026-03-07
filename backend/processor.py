@@ -347,7 +347,50 @@ If this report includes wall/siding measurements (EagleView Walls report or simi
             ]
         }]
     )
-    return _parse_json_response(response.content[0].text)
+    result = _parse_json_response(response.content[0].text)
+
+    # Validate extraction succeeded — retry once if no roof area found
+    structs = result.get("structures", [{}])
+    struct = structs[0] if structs else {}
+    area_sf = struct.get("roof_area_sf", result.get("total_roof_area_sf", 0))
+
+    if not area_sf:
+        print("[WARN] Measurement extraction returned no roof area — retrying with explicit prompt...")
+        retry_response = _call_claude_with_retry(client,
+            _step_name="extract_measurements_retry",
+            model="claude-sonnet-4-6",
+            max_tokens=4096,
+            messages=[{
+                "role": "user",
+                "content": [
+                    {
+                        "type": "document",
+                        "source": {"type": "base64", "media_type": "application/pdf", "data": pdf_b64},
+                    },
+                    {
+                        "type": "text",
+                        "text": (
+                            "Extract measurements from this roof measurement report. "
+                            "You MUST return roof_area_sf (total roof area in square feet) and "
+                            "roof_area_sq (in roofing squares = sf/100). Also extract linear "
+                            "measurements (ridge, hip, valley, rake, eave in linear feet). "
+                            "Return ONLY valid JSON with 'structures' array and 'measurements' object."
+                        ),
+                    },
+                ]
+            }]
+        )
+        retry_result = _parse_json_response(retry_response.content[0].text)
+        retry_structs = retry_result.get("structures", [{}])
+        retry_struct = retry_structs[0] if retry_structs else {}
+        retry_area = retry_struct.get("roof_area_sf", retry_result.get("total_roof_area_sf", 0))
+        if retry_area:
+            print(f"[INFO] Measurement retry succeeded — roof_area_sf={retry_area}")
+            result = retry_result
+        else:
+            print("[WARN] Measurement retry also failed — quantities will default to 0")
+
+    return result
 
 
 def analyze_photos(client: anthropic.Anthropic, photo_paths: list[str], user_notes: Optional[str] = None) -> dict:
@@ -734,7 +777,7 @@ def extract_carrier_scope(client: anthropic.Anthropic, pdf_path: str) -> dict:
   "price_list": "price list name if visible (e.g. NYBI26)",
   "carrier_line_items": [
     {
-      "item": "Line item category/code",
+      "item": "Xactimate-style line item name (e.g., 'Comp shingle roofing' not 'Dwelling Roof - Item 1')",
       "carrier_desc": "Description from carrier scope",
       "carrier_amount": 0.00,
       "qty": 0,
@@ -1289,7 +1332,7 @@ def build_claim_config(
             "carrier_arguments": carrier_data.get("carrier_arguments", []) if carrier_data else [],
         },
         "dates": {
-            "date_of_loss": (weather_data or {}).get("storm_date", "") or (carrier_data or {}).get("date_of_loss", "") or "",
+            "date_of_loss": claim.get("date_of_loss", "") or (weather_data or {}).get("storm_date", "") or (carrier_data or {}).get("date_of_loss", "") or "",
             "usarm_inspection_date": "",
             "report_date": datetime.now().strftime("%B %d, %Y"),
         },
@@ -1430,12 +1473,14 @@ def _cross_reference_line_items(config: dict) -> None:
     stop_words = {'the', 'a', 'an', 'for', 'of', 'and', 'or', 'w/', 'w/out', '-', 'to', 'per', 'sq', 'lf'}
 
     def _clean_carrier(name: str) -> str:
-        """Strip structure prefixes from carrier item names."""
-        return re.sub(
+        """Strip structure prefixes and trailing item numbers from carrier item names."""
+        cleaned = re.sub(
             r'^(shed|dwelling\s*roof|front\s*elevation|rear\s*elevation|'
             r'left\s*elevation|right\s*elevation|debris\s*removal|'
             r'interior|garage|porch)\s*[-–—]\s*', '', name.lower().strip()
         ).strip()
+        cleaned = re.sub(r'\s*[-–—]?\s*item\s*\d+\s*$', '', cleaned).strip()
+        return cleaned
 
     def _clean_usarm(desc: str) -> str:
         """Strip R&R prefix from USARM descriptions."""
@@ -1443,12 +1488,14 @@ def _cross_reference_line_items(config: dict) -> None:
 
     # --- Two-pass matching to prevent duplicate USARM assignments ---
 
-    # Pass 1: Score all potential carrier↔USARM matches
+    # Pass 1: Score all potential carrier↔USARM matches (match on BOTH item and carrier_desc)
     potential_matches = []  # (score, ci_idx, li_idx, amt, desc)
     for ci_idx, ci in enumerate(carrier_items):
         item_name = ci.get("item", "")
         item_clean = _clean_carrier(item_name)
-        if not item_clean:
+        desc_raw = ci.get("carrier_desc", "")
+        desc_clean = _clean_carrier(desc_raw)
+        if not item_clean and not desc_clean:
             continue
 
         for li_idx, li in enumerate(line_items):
@@ -1456,16 +1503,22 @@ def _cross_reference_line_items(config: dict) -> None:
             li_clean = _clean_usarm(li_desc)
             score = 0
 
-            # Substring match (both directions) — score by match length
-            if item_clean in li_clean or li_clean in item_clean:
-                score = max(len(item_clean), len(li_clean))
-            # Keyword overlap
-            elif len(item_clean.split()) >= 3:
-                item_words = set(item_clean.split()) - stop_words
-                li_words = set(li_clean.split()) - stop_words
-                overlap = item_words & li_words
-                if len(overlap) >= 3 or (len(overlap) >= 2 and len(item_words) <= 4):
-                    score = len(overlap)
+            # Try matching on both item and carrier_desc, take the best score
+            for candidate in [item_clean, desc_clean]:
+                if not candidate:
+                    continue
+                s = 0
+                # Substring match (both directions) — score by match length
+                if candidate in li_clean or li_clean in candidate:
+                    s = max(len(candidate), len(li_clean))
+                # Keyword overlap
+                elif len(candidate.split()) >= 3:
+                    cand_words = set(candidate.split()) - stop_words
+                    li_words = set(li_clean.split()) - stop_words
+                    overlap = cand_words & li_words
+                    if len(overlap) >= 3 or (len(overlap) >= 2 and len(cand_words) <= 4):
+                        s = len(overlap)
+                score = max(score, s)
 
             if score > 0:
                 amt = round(li["qty"] * li["unit_price"], 2)
@@ -1725,6 +1778,10 @@ def build_line_items(measurements: dict, photo_analysis: dict, state: str, user_
     struct = structs[0] if structs else {}
     area_sq = struct.get("roof_area_sq", measurements.get("total_roof_area_sq", 0))
     area_sf = struct.get("roof_area_sf", measurements.get("total_roof_area_sf", 0))
+
+    if not area_sq and not area_sf:
+        print("[WARN] No roof measurements extracted — all line item quantities will be 0")
+
     penetrations = measurements.get("penetrations", {})
     facets = struct.get("facets", 0)
     style = struct.get("style", "combination")
@@ -2469,6 +2526,14 @@ async def process_claim(claim_id: str):
             photo_integrity=photo_integrity,
         )
 
+        # Flag measurement extraction failures for downstream warning
+        meas_structs = measurements.get("structures", [{}])
+        meas_struct = meas_structs[0] if meas_structs else {}
+        meas_area = meas_struct.get("roof_area_sf", measurements.get("total_roof_area_sf", 0))
+        if not meas_area:
+            config.setdefault("warnings", []).append("MEASUREMENT_EXTRACTION_FAILED")
+            print("[WARN] Flagged config with MEASUREMENT_EXTRACTION_FAILED warning")
+
         # Add corroborating weather reports to config
         if corroborating_reports:
             config["weather"]["corroborating_reports"] = corroborating_reports
@@ -2679,6 +2744,11 @@ async def process_claim(claim_id: str):
                 "flagged": photo_integrity["flagged"],
                 "score": photo_integrity["score"],
             }
+
+        # Add processing warnings if any
+        config_warnings = config.get("warnings", [])
+        if config_warnings:
+            update_data["processing_warnings"] = config_warnings
 
         # Core update (status + output_files + photo_integrity — always works)
         sb.table("claims").update(update_data).eq("id", claim_id).execute()
