@@ -228,12 +228,14 @@ async def process_repair(repair_id: str):
         system_prompt = f"""You are DumbRoof Repair AI. Use the following reference knowledge to inform your diagnosis.
 Follow the decision tree STRICTLY.
 
-CRITICAL OUTPUT CONSTRAINT: Your ENTIRE JSON response must be under 6000 tokens (~24,000 characters).
-- leak_source: max 2 sentences (under 200 chars)
-- photo_annotations: max 1 sentence each (under 100 chars each)
-- repair step instructions: max 3 sentences each (under 300 chars each)
-- what_we_found / what_we_recommend: max 2 sentences each (under 200 chars each)
-- Do NOT repeat information across fields. Be concise but accurate.
+CRITICAL OUTPUT CONSTRAINT: Your ENTIRE JSON response MUST be under 5000 tokens.
+- ENGLISH ONLY — do NOT include title_es, instructions_es, or safety_note_es fields. Set them to null.
+- leak_source: max 2 sentences
+- photo_annotations: max 1 sentence each
+- repair step instructions: max 2 sentences each
+- what_we_found / what_we_recommend: max 2 sentences each
+- Max 5 repair steps. Combine related steps.
+- Do NOT repeat information across fields.
 
 {ref_context}
 """
