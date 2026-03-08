@@ -259,7 +259,7 @@ and closeout verification requirements.
                 response = _call_claude_with_retry(
                     claude,
                     model="claude-sonnet-4-6",
-                    max_tokens=8192,
+                    max_tokens=16384,
                     system=system_prompt,
                     messages=[{"role": "user", "content": user_content}],
                 )
@@ -303,7 +303,7 @@ and closeout verification requirements.
             response = _call_claude_with_retry(
                 claude,
                 model="claude-sonnet-4-6",
-                max_tokens=8192,
+                max_tokens=16384,
                 system=system_prompt,
                 messages=[{"role": "user", "content": synthesis_prompt}],
             )
