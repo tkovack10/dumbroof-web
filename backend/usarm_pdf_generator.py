@@ -2363,7 +2363,7 @@ body {{ margin: 0; padding: 0; }}
 <table>
     <tr><th>Item</th><th class="amt">Amount</th></tr>
     <tr><td>Line Item Total</td><td class="amt">{fmt_money(fin['line_total'])}</td></tr>
-    <tr><td>Tax ({fin['tax_rate']*100:.0f}%)</td><td class="amt">{fmt_money(fin['tax'])}</td></tr>
+    <tr><td>Tax ({fin['tax_rate']*100:g}%)</td><td class="amt">{fmt_money(fin['tax'])}</td></tr>
     {"<tr><td>Overhead & Profit (10% + 10%)</td><td class='amt'>" + fmt_money(fin['o_and_p_amount']) + "</td></tr>" if fin['o_and_p'] else ""}
     <tr class="grand-total">
         <td><strong>TOTAL RCV</strong></td>
@@ -3415,7 +3415,7 @@ if __name__ == "__main__":
     fin = compute_financials(config)
     print(f"\nFinancials:")
     print(f"  Line Total: {fmt_money(fin['line_total'])}")
-    print(f"  Tax ({fin['tax_rate']*100:.0f}%): {fmt_money(fin['tax'])}")
+    print(f"  Tax ({fin['tax_rate']*100:g}%): {fmt_money(fin['tax'])}")
     if fin['o_and_p']:
         print(f"  O&P: {fmt_money(fin['o_and_p_amount'])}")
     print(f"  Total RCV: {fmt_money(fin['total_with_op'])}")

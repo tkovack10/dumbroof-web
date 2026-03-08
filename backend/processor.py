@@ -1851,10 +1851,23 @@ def _has_trade(trades: list, keyword: str) -> bool:
     return any(kw in t.lower() for t in trades)
 
 
-def _detect_siding_material(photo_analysis: dict, user_notes: str = "") -> str:
+def _detect_siding_material(photo_analysis: dict, user_notes: str = "", estimate_request: dict = None) -> str:
     """Detect siding material from photo analysis and user notes.
     Returns: aluminum, vinyl, vinyl_high, vinyl_insulated, cedar, fiber_cement, metal
     Default: aluminum (safer to price higher)."""
+    # estimate_request override is DEFINITIVE (user-selected from dropdown)
+    if estimate_request and estimate_request.get("siding"):
+        siding_map = {
+            "Vinyl Siding": "vinyl",
+            "Vinyl w/ Insulation": "vinyl_insulated",
+            "Aluminum": "aluminum",
+            "Cedar": "cedar",
+            "Specialty": "fiber_cement",
+        }
+        mapped = siding_map.get(estimate_request["siding"])
+        if mapped:
+            print(f"[SIDING] Using estimate request override: {estimate_request['siding']} → {mapped}")
+            return mapped
     siding_type = photo_analysis.get("siding_type", "").lower()
     notes = (user_notes or "").lower()
 
@@ -2188,8 +2201,15 @@ def build_line_items(measurements: dict, photo_analysis: dict, state: str, user_
         walls = measurements.get("walls", {})
         wall_area = walls.get("total_wall_area_sf", 0)
 
+        # Estimate wall area from roof perimeter if EagleView walls data not available
+        if wall_area == 0 and (eave > 0 or rake > 0):
+            _perimeter = (eave + rake) * 2
+            _wall_height = max(1, stories) * 9  # ~9 ft per story
+            wall_area = round(_perimeter * _wall_height)
+            print(f"[LINE ITEMS] Estimated wall area: {_perimeter} LF perimeter × {_wall_height} ft height = {wall_area} SF")
+
         if wall_area > 0:
-            siding_mat = _detect_siding_material(photo_analysis, user_notes)
+            siding_mat = _detect_siding_material(photo_analysis, user_notes, estimate_request=estimate_request)
             print(f"[LINE ITEMS] Siding trade detected — {siding_mat}, {wall_area} SF")
 
             # Siding material pricing map
