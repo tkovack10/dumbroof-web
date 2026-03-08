@@ -525,6 +525,7 @@ ANALYSIS PRIORITIES:
 - Keep annotations concise — 1-2 sentences per photo focusing on the storm damage evidence visible
 - For chalk test photos: describe what the chalk test reveals (number of gaps = hail impacts), not the chalk itself
 - For test square photos: report the counts (H=hits, W=wind) and what they prove
+- CRITICAL: This is a SINGLE property at ONE address. Multiple structures (main dwelling, garage, shed, porch, outbuilding) are all part of ONE property. NEVER say "two properties", "both properties", or "multiple properties." Say "multiple structures" or "the property" instead.
 
 IMPORTANT: If an image is NOT a roofing/damage inspection photo (e.g., company logos,
 certification seals, report headers/footers, diagrams, tables, text pages), identify it as:
@@ -654,12 +655,12 @@ Number the photos starting at {start_num}. Return ONLY valid JSON:
         "shingle_type": shingle_type,
         "shingle_condition": shingle_condition,
         "siding_type": siding_type,
-        "trades_identified": sorted(trades_set),
+        "trades_identified": sorted(t.replace("_", " ") for t in trades_set),
         "key_findings": all_findings,
         "code_violations": all_violations,
         "damage_type": damage_type,
         "severity": severity,
-        "photo_count": len(all_annotations) if all_annotations else len(image_paths),
+        "photo_count": len(all_annotations),  # Filtered annotation count (excludes non-inspection images)
         "chalk_test_results": chalk_test_results,
         "test_square_results": test_square_results,
         "exposure_inches": exposure_inches,
@@ -798,7 +799,9 @@ def extract_carrier_scope(client: anthropic.Anthropic, pdf_path: str) -> dict:
     "adjuster_email": "email if found",
     "inspection_date": "Date if found",
     "inspector_company": "FieldAssist/Accurence/etc if found",
-    "inspector_name": "Name if found"
+    "inspector_name": "Name if found",
+    "insured_name": "Homeowner/insured name if found",
+    "date_of_loss": "Date of loss if found"
   },
   "carrier_rcv": 0.00,
   "carrier_depreciation": 0.00,
@@ -1132,6 +1135,7 @@ RULES:
 - Build toward the conclusion logically
 - Do NOT pad with filler or repeat minor wear details
 - CRITICAL UPPA COMPLIANCE: This is written for a CONTRACTOR. NEVER use "on behalf of," "demand," "appeal," cite 11 NYCRR, § 2601, or any advocacy language. Use factual documentation language — "our analysis identifies," "the documented damage requires," NOT "we demand" or "the carrier must."
+- CRITICAL: This is a SINGLE property at ONE address. Multiple structures (main dwelling, garage, shed, porch) are all part of ONE property. NEVER say "two properties", "both properties", or "multiple properties."
 
 Return ONLY a JSON array of paragraph strings: ["paragraph 1...", "paragraph 2...", ...]"""
 
@@ -1382,10 +1386,10 @@ def build_claim_config(
             "year_built_OPTIONAL": prop.get("year_built", None),
         },
         "insured": {
-            "name": (carrier_data or {}).get("carrier", {}).get("insured_name", "") or
+            "name": claim.get("homeowner_name", "") or
+                    (carrier_data or {}).get("carrier", {}).get("insured_name", "") or
                     (carrier_data or {}).get("insured_name", "") or
-                    claim.get("homeowner_name", "") or
-                    "Property Owner",
+                    "Insured",  # Generic fallback — set homeowner_name in DB for real name
             "type": "homeowner"
         },
         "carrier": {

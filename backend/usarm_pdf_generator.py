@@ -1236,7 +1236,14 @@ def _build_noaa_citation(weather):
     if noaa.get("max_wind_mph", 0) > 0:
         html += f'<tr><td><strong>Maximum Wind Speed</strong></td><td>{noaa["max_wind_mph"]} mph</td></tr>\n'
     html += f'<tr><td><strong>Events Found</strong></td><td>{noaa.get("event_count", 0)} storm events within {noaa.get("search_radius_miles", 10)} miles</td></tr>\n'
-    html += f'<tr><td><strong>Data Retrieved</strong></td><td>{noaa.get("query_date", "")}</td></tr>\n'
+    _raw_qdate = noaa.get("query_date", "")
+    try:
+        from datetime import datetime as _dt
+        _qdt = _dt.strptime(_raw_qdate, "%Y-%m-%d")
+        _query_date_display = _qdt.strftime("%B %d, %Y").replace(" 0", " ")
+    except (ValueError, TypeError):
+        _query_date_display = _raw_qdate
+    html += f'<tr><td><strong>Data Retrieved</strong></td><td>{_query_date_display}</td></tr>\n'
     html += '</table>\n'
 
     # Individual events
