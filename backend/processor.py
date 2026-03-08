@@ -2201,12 +2201,17 @@ def build_line_items(measurements: dict, photo_analysis: dict, state: str, user_
         walls = measurements.get("walls", {})
         wall_area = walls.get("total_wall_area_sf", 0)
 
-        # Estimate wall area from roof perimeter if EagleView walls data not available
-        if wall_area == 0 and (eave > 0 or rake > 0):
-            _perimeter = (eave + rake) * 2
+        # Estimate wall area from roof footprint if EagleView walls data not available
+        # NOTE: Do NOT use eave LF — eave includes ALL roof edges (dormers, valleys, etc.)
+        # which hugely overestimates building perimeter. Use roof footprint instead.
+        if wall_area == 0 and area_sf > 0:
+            import math
+            _footprint = area_sf / max(1, stories)  # Approximate per-floor area
+            _side_length = math.sqrt(_footprint)
+            _perimeter = round(_side_length * 4)  # Square building approximation
             _wall_height = max(1, stories) * 9  # ~9 ft per story
             wall_area = round(_perimeter * _wall_height)
-            print(f"[LINE ITEMS] Estimated wall area: {_perimeter} LF perimeter × {_wall_height} ft height = {wall_area} SF")
+            print(f"[LINE ITEMS] Estimated wall area from footprint: {_footprint:.0f} SF floor → {_perimeter} LF perimeter × {_wall_height} ft = {wall_area} SF")
 
         if wall_area > 0:
             siding_mat = _detect_siding_material(photo_analysis, user_notes, estimate_request=estimate_request)
