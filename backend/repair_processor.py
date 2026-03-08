@@ -263,7 +263,7 @@ Follow the decision tree STRICTLY.
                 response = _call_claude_with_retry(
                     claude,
                     model="claude-opus-4-6",
-                    max_tokens=16384,
+                    max_tokens=32768,
                     system=system_prompt,
                     messages=[{"role": "user", "content": user_content}],
                 )

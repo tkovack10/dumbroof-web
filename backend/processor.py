@@ -84,7 +84,10 @@ def get_supabase_client() -> Client:
     )
 
 def get_anthropic_client() -> anthropic.Anthropic:
-    return anthropic.Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
+    return anthropic.Anthropic(
+        api_key=os.environ["ANTHROPIC_API_KEY"],
+        timeout=600.0,  # 10 min — Opus repair diagnosis can be slow
+    )
 
 
 # ===================================================================
