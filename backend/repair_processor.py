@@ -326,6 +326,8 @@ CRITICAL OUTPUT CONSTRAINT: Your ENTIRE JSON response MUST be under 5000 tokens.
                     print(f"[REPAIR] Warning: batch {batch_num} annotation parse failed, continuing")
 
         # For multi-batch: final synthesis call with all annotations (no photos)
+        # Use a MINIMAL system prompt — no reference files. The annotations + diagnostic
+        # prompt already contain everything. This keeps input small and maximizes output room.
         if total_batches > 1:
             annotations_summary = "\n".join(f"  {k}: {v}" for k, v in all_batch_annotations.items())
             prompt = build_diagnostic_prompt(photo_keys, leak_notes, skill_level, language)
@@ -334,35 +336,42 @@ CRITICAL OUTPUT CONSTRAINT: Your ENTIRE JSON response MUST be under 5000 tokens.
                 f"{prompt}"
             )
 
+            synthesis_system = (
+                "You are DumbRoof Repair AI. Synthesize the photo annotations into a diagnosis.\n\n"
+                "CRITICAL: Your ENTIRE JSON response MUST be under 5000 tokens.\n"
+                "- ENGLISH ONLY — set title_es, instructions_es, safety_note_es to null.\n"
+                "- Max 1 sentence per text field. Max 5 repair steps.\n"
+                "- Be concise but accurate.\n"
+            )
+
             _log_payload_size([], synthesis_prompt)
-            print(f"[REPAIR] Calling Claude API for final diagnosis synthesis...")
+            print(f"[REPAIR] Calling Claude API for final diagnosis synthesis (minimal system prompt)...")
             response = _call_claude_with_retry(
                 claude,
                 model="claude-opus-4-6",
-                max_tokens=32768,
-                system=system_prompt,
+                max_tokens=8192,
+                system=synthesis_system,
                 messages=[{"role": "user", "content": synthesis_prompt}],
             )
             response_text = response.content[0].text.strip()
             print(f"[REPAIR] Response: {len(response_text):,} chars, stop_reason={response.stop_reason}, "
                   f"input_tokens={response.usage.input_tokens}, output_tokens={response.usage.output_tokens}")
             if response.stop_reason == "max_tokens":
-                print(f"[REPAIR] WARNING: Synthesis truncated — retrying concise")
-                concise_msg = (
-                    "Your previous response was truncated. Return the SAME diagnosis but MUCH shorter. "
-                    "Max 1 sentence per field. Max 3 repair steps. No Spanish translations. "
-                    "Total response under 4000 tokens."
-                )
+                print(f"[REPAIR] WARNING: Synthesis truncated — retrying ultra-concise")
                 retry_msgs = [
                     {"role": "user", "content": synthesis_prompt},
                     {"role": "assistant", "content": response_text},
-                    {"role": "user", "content": concise_msg},
+                    {"role": "user", "content": (
+                        "TRUNCATED. Return ONLY the JSON with: diagnosis (1 primary_code, 1-sentence leak_source), "
+                        "photo_annotations (skip), 3 repair steps (English only, 1 sentence each), "
+                        "materials_list, pricing, homeowner_ticket (1 sentence each). Under 3000 tokens total."
+                    )},
                 ]
                 response = _call_claude_with_retry(
                     claude,
                     model="claude-opus-4-6",
                     max_tokens=8192,
-                    system=system_prompt,
+                    system=synthesis_system,
                     messages=retry_msgs,
                 )
                 response_text = response.content[0].text.strip()
