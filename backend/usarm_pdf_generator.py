@@ -3144,6 +3144,7 @@ def build_cover_letter(config):
     cover = config.get("cover_letter", config.get("cover_email", {}))
 
     fin = compute_financials(config)
+    _price_list = config.get("financials", {}).get("price_list", "NYBI26")
 
     # Compute total_photos with fallback
     _total_photos = findings.get("total_photos", 0)
@@ -3165,7 +3166,7 @@ def build_cover_letter(config):
     enclosed_html = ""
     enclosed_docs = cover.get("enclosed_documents", [
         "Forensic Causation Report with photo-annotated damage analysis",
-        "Xactimate-format repair estimate (NYBI26 pricing)",
+        f"Xactimate-format repair estimate ({_price_list} pricing)",
         "HailTrace Weather Verification Report",
         "EagleView Property Measurement Report"
     ])
@@ -3215,7 +3216,7 @@ body {{ font-size: 11pt; line-height: 1.7; max-width: 600pt; margin: 0 auto; }}
 
 <p>We are submitting our forensic inspection documentation and detailed repair estimate in advance of the carrier's adjuster inspection. Our documentation confirms {storm_summary}.</p>
 
-<p>Our certified inspection identified storm damage across <strong>{trades_text}</strong>, supported by {_total_photos_str} inspection photographs with forensic annotations. The enclosed Xactimate-format estimate totals <strong>{fmt_money(fin['total_with_op'])} RCV</strong> based on EagleView-verified measurements and current NYBI26 regional pricing.</p>
+<p>Our certified inspection identified storm damage across <strong>{trades_text}</strong>, supported by {_total_photos_str} inspection photographs with forensic annotations. The enclosed Xactimate-format estimate totals <strong>{fmt_money(fin['total_with_op'])} RCV</strong> based on EagleView-verified measurements and current {_price_list} regional pricing.</p>
 
 <p>The enclosed documentation includes:</p>
 <ol>

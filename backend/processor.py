@@ -659,7 +659,7 @@ Number the photos starting at {start_num}. Return ONLY valid JSON:
         "code_violations": all_violations,
         "damage_type": damage_type,
         "severity": severity,
-        "photo_count": len(image_paths),
+        "photo_count": len(all_annotations) if all_annotations else len(image_paths),
         "chalk_test_results": chalk_test_results,
         "test_square_results": test_square_results,
         "exposure_inches": exposure_inches,
@@ -1308,8 +1308,19 @@ def build_claim_config(
     trades = photo_analysis.get("trades_identified", ["roofing"])
     o_and_p = len(trades) >= 3
 
-    # Determine state for tax rate
-    state = prop.get("state", "NY").upper()
+    # Determine state for tax rate — try measurements first, then parse from claim address
+    state = prop.get("state", "").upper()
+    if not state or len(state) != 2:
+        # Parse state from claim address (e.g., "2 Alford Dr, Saddle River, NJ 07458, USA")
+        claim_addr = claim.get("address", "")
+        import re as _re
+        _state_match = _re.search(r'\b([A-Z]{2})\s+\d{5}', claim_addr.upper())
+        if _state_match:
+            state = _state_match.group(1)
+            print(f"[CONFIG] Parsed state '{state}' from claim address: {claim_addr}")
+        else:
+            state = "NY"
+            print(f"[CONFIG] WARNING: Could not determine state — defaulting to NY")
     _tax_rates = {"NY": 0.08, "PA": 0.0, "NJ": 0.06625}
     tax_rate = _tax_rates.get(state, 0.08)
     if state not in _tax_rates:
@@ -1402,7 +1413,7 @@ def build_claim_config(
         },
         "financials": {
             "tax_rate": tax_rate,
-            "price_list": carrier_data.get("price_list", "PAPI26" if state == "PA" else "NYBI26") if carrier_data else ("PAPI26" if state == "PA" else "NYBI26"),
+            "price_list": carrier_data.get("price_list", {"NY": "NYBI26", "PA": "PAPI26", "NJ": "NJBI26"}.get(state, "NYBI26")) if carrier_data else {"NY": "NYBI26", "PA": "PAPI26", "NJ": "NJBI26"}.get(state, "NYBI26"),
             "deductible": carrier_data.get("carrier_deductible", 0) if carrier_data else 0,
         },
         "structures": structs,  # shingle_type populated below from photo analysis
