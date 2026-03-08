@@ -228,6 +228,13 @@ async def process_repair(repair_id: str):
         system_prompt = f"""You are DumbRoof Repair AI. Use the following reference knowledge to inform your diagnosis.
 Follow the decision tree STRICTLY.
 
+CRITICAL OUTPUT CONSTRAINT: Your ENTIRE JSON response must be under 6000 tokens (~24,000 characters).
+- leak_source: max 2 sentences (under 200 chars)
+- photo_annotations: max 1 sentence each (under 100 chars each)
+- repair step instructions: max 3 sentences each (under 300 chars each)
+- what_we_found / what_we_recommend: max 2 sentences each (under 200 chars each)
+- Do NOT repeat information across fields. Be concise but accurate.
+
 {ref_context}
 """
         print(f"[REPAIR] System prompt size: {len(system_prompt):,} chars (~{len(system_prompt)//4:,} tokens)")
@@ -271,7 +278,26 @@ Follow the decision tree STRICTLY.
                 print(f"[REPAIR] Response: {len(response_text):,} chars, stop_reason={response.stop_reason}, "
                       f"input_tokens={response.usage.input_tokens}, output_tokens={response.usage.output_tokens}")
                 if response.stop_reason == "max_tokens":
-                    print(f"[REPAIR] WARNING: Response truncated at max_tokens!")
+                    print(f"[REPAIR] WARNING: Response truncated — retrying with concise instruction")
+                    concise_msg = (
+                        "Your previous response was truncated. Return the SAME diagnosis but MUCH shorter. "
+                        "Max 1 sentence per field. Max 3 repair steps. No Spanish translations. "
+                        "Total response under 4000 tokens."
+                    )
+                    retry_msgs = [
+                        {"role": "user", "content": user_content},
+                        {"role": "assistant", "content": response_text},
+                        {"role": "user", "content": concise_msg},
+                    ]
+                    response = _call_claude_with_retry(
+                        claude,
+                        model="claude-opus-4-6",
+                        max_tokens=8192,
+                        system=system_prompt,
+                        messages=retry_msgs,
+                    )
+                    response_text = response.content[0].text.strip()
+                    print(f"[REPAIR] Retry response: {len(response_text):,} chars, stop_reason={response.stop_reason}")
             else:
                 batch_text_prompt = (
                     f"Describe each photo ({', '.join(batch_keys)}) for a leak diagnosis. "
@@ -311,13 +337,34 @@ Follow the decision tree STRICTLY.
             response = _call_claude_with_retry(
                 claude,
                 model="claude-opus-4-6",
-                max_tokens=16384,
+                max_tokens=32768,
                 system=system_prompt,
                 messages=[{"role": "user", "content": synthesis_prompt}],
             )
             response_text = response.content[0].text.strip()
             print(f"[REPAIR] Response: {len(response_text):,} chars, stop_reason={response.stop_reason}, "
                   f"input_tokens={response.usage.input_tokens}, output_tokens={response.usage.output_tokens}")
+            if response.stop_reason == "max_tokens":
+                print(f"[REPAIR] WARNING: Synthesis truncated — retrying concise")
+                concise_msg = (
+                    "Your previous response was truncated. Return the SAME diagnosis but MUCH shorter. "
+                    "Max 1 sentence per field. Max 3 repair steps. No Spanish translations. "
+                    "Total response under 4000 tokens."
+                )
+                retry_msgs = [
+                    {"role": "user", "content": synthesis_prompt},
+                    {"role": "assistant", "content": response_text},
+                    {"role": "user", "content": concise_msg},
+                ]
+                response = _call_claude_with_retry(
+                    claude,
+                    model="claude-opus-4-6",
+                    max_tokens=8192,
+                    system=system_prompt,
+                    messages=retry_msgs,
+                )
+                response_text = response.content[0].text.strip()
+                print(f"[REPAIR] Retry response: {len(response_text):,} chars, stop_reason={response.stop_reason}")
 
         # 6. Parse diagnosis response (handles markdown fencing + validation)
         diagnosis_data = parse_diagnosis_response(response_text)
