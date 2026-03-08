@@ -326,23 +326,26 @@ CRITICAL OUTPUT CONSTRAINT: Your ENTIRE JSON response MUST be under 5000 tokens.
                     print(f"[REPAIR] Warning: batch {batch_num} annotation parse failed, continuing")
 
         # For multi-batch: final synthesis call with all annotations (no photos)
-        # Use a MINIMAL system prompt — no reference files. The annotations + diagnostic
-        # prompt already contain everything. This keeps input small and maximizes output room.
+        # Use a COMPACT prompt — the full build_diagnostic_prompt is too verbose and
+        # produces responses that exceed the 8K output token limit.
         if total_batches > 1:
             annotations_summary = "\n".join(f"  {k}: {v}" for k, v in all_batch_annotations.items())
-            prompt = build_diagnostic_prompt(photo_keys, leak_notes, skill_level, language)
-            synthesis_prompt = (
-                f"Based on photo annotations from inspection:\n{annotations_summary}\n\n"
-                f"{prompt}"
-            )
 
-            synthesis_system = (
-                "You are DumbRoof Repair AI. Synthesize the photo annotations into a diagnosis.\n\n"
-                "CRITICAL: Your ENTIRE JSON response MUST be under 5000 tokens.\n"
-                "- ENGLISH ONLY — set title_es, instructions_es, safety_note_es to null.\n"
-                "- Max 1 sentence per text field. Max 5 repair steps.\n"
-                "- Be concise but accurate.\n"
-            )
+            repair_codes = ", ".join(REPAIR_TYPES.keys())
+            synthesis_prompt = f"""Based on these photo annotations from a roof leak inspection:
+{annotations_summary}
+
+Roofer notes: {leak_notes}
+Skill level: {skill_level}
+
+Diagnose the leak and return a CONCISE JSON response. Use one of these repair codes: {repair_codes}
+
+Return ONLY valid JSON (no markdown fencing):
+{{"diagnosis":{{"primary_code":"CODE","family":"family_name","leak_source":"1 sentence","severity":"minor|moderate|major|critical|emergency","confidence":0.85,"decision_path":"S1>S2>...","is_temporary":false}},"photo_annotations":{{"p01":"brief desc"}},"repair":{{"summary":"1 sentence","steps":[{{"step":1,"category":"protection|removal|inspection|installation|cleanup","title_en":"title","title_es":null,"instructions_en":"2 sentences max","instructions_es":null,"materials":["item"],"time_minutes":10,"safety_note_en":null,"safety_note_es":null,"photo_reference":null}}],"materials_list":[{{"item":"name","qty":1,"unit":"EA","cost":10.00}}],"labor_hours":4,"materials_cost":0,"labor_cost":0,"total_price":0}},"homeowner_ticket":{{"what_we_found":"1 sentence","what_we_recommend":"1 sentence","time_estimate":"X hours","urgency":"severity","warranty":"2-year workmanship warranty"}}}}
+
+RULES: Max 5 steps. English only. Each field max 1-2 sentences. Total response under 4000 tokens. Labor rate: $85/hr. Min charge: $450."""
+
+            synthesis_system = "You are DumbRoof Repair AI. Return concise JSON only."
 
             _log_payload_size([], synthesis_prompt)
             print(f"[REPAIR] Calling Claude API for final diagnosis synthesis (minimal system prompt)...")
