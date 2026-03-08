@@ -325,60 +325,76 @@ CRITICAL OUTPUT CONSTRAINT: Your ENTIRE JSON response MUST be under 5000 tokens.
                 except json.JSONDecodeError:
                     print(f"[REPAIR] Warning: batch {batch_num} annotation parse failed, continuing")
 
-        # For multi-batch: final synthesis call with all annotations (no photos)
-        # Use a COMPACT prompt — the full build_diagnostic_prompt is too verbose and
-        # produces responses that exceed the 8K output token limit.
+        # For multi-batch: split synthesis into TWO calls to stay under 8K output token limit
+        # Call 1: Diagnosis + photo annotations (~2K tokens)
+        # Call 2: Repair plan (steps, materials, pricing, ticket) (~4K tokens)
         if total_batches > 1:
             annotations_summary = "\n".join(f"  {k}: {v}" for k, v in all_batch_annotations.items())
-
             repair_codes = ", ".join(REPAIR_TYPES.keys())
-            synthesis_prompt = f"""Based on these photo annotations from a roof leak inspection:
+            synthesis_system = "You are DumbRoof Repair AI. Return ONLY valid JSON, no markdown fencing."
+
+            # --- Call 1: Diagnosis ---
+            diag_prompt = f"""Photo annotations from roof leak inspection:
 {annotations_summary}
 
 Roofer notes: {leak_notes}
+
+Diagnose the PRIMARY leak source. Use one repair code from: {repair_codes}
+
+Return JSON: {{"diagnosis":{{"primary_code":"CODE","family":"family_name","leak_source":"1-2 sentences max","severity":"minor|moderate|major|critical|emergency","confidence":0.85,"decision_path":"S1>S2>...","is_temporary":false}},"photo_annotations":{{"p01":"1 sentence max"}}}}"""
+
+            print(f"[REPAIR] Synthesis call 1/2: diagnosis...")
+            resp1 = _call_claude_with_retry(
+                claude, model="claude-opus-4-6", max_tokens=4096,
+                system=synthesis_system,
+                messages=[{"role": "user", "content": diag_prompt}],
+            )
+            diag_text = resp1.content[0].text.strip()
+            print(f"[REPAIR] Diag response: {len(diag_text):,} chars, stop={resp1.stop_reason}")
+
+            # Parse diagnosis
+            diag_json = json.loads(
+                diag_text.strip().removeprefix("```json").removeprefix("```").removesuffix("```").strip()
+            )
+
+            diag_result = diag_json.get("diagnosis", {})
+            primary_code_val = diag_result.get("primary_code", "FIELD-SHINGLE")
+            leak_source = diag_result.get("leak_source", "")
+
+            # --- Call 2: Repair plan ---
+            repair_prompt = f"""Diagnosis: {primary_code_val} — {leak_source}
+Severity: {diag_result.get('severity', 'moderate')}
 Skill level: {skill_level}
 
-Diagnose the leak and return a CONCISE JSON response. Use one of these repair codes: {repair_codes}
+Generate a repair plan. Labor rate: $85/hr. Min charge: $450. Material costs use 2x retail.
+Max 5 steps. English only (set _es fields to null). Max 2 sentences per instruction.
 
-Return ONLY valid JSON (no markdown fencing):
-{{"diagnosis":{{"primary_code":"CODE","family":"family_name","leak_source":"1 sentence","severity":"minor|moderate|major|critical|emergency","confidence":0.85,"decision_path":"S1>S2>...","is_temporary":false}},"photo_annotations":{{"p01":"brief desc"}},"repair":{{"summary":"1 sentence","steps":[{{"step":1,"category":"protection|removal|inspection|installation|cleanup","title_en":"title","title_es":null,"instructions_en":"2 sentences max","instructions_es":null,"materials":["item"],"time_minutes":10,"safety_note_en":null,"safety_note_es":null,"photo_reference":null}}],"materials_list":[{{"item":"name","qty":1,"unit":"EA","cost":10.00}}],"labor_hours":4,"materials_cost":0,"labor_cost":0,"total_price":0}},"homeowner_ticket":{{"what_we_found":"1 sentence","what_we_recommend":"1 sentence","time_estimate":"X hours","urgency":"severity","warranty":"2-year workmanship warranty"}}}}
+Return JSON: {{"repair":{{"summary":"1 sentence","steps":[{{"step":1,"category":"protection|removal|inspection|installation|cleanup","title_en":"title","title_es":null,"instructions_en":"instructions","instructions_es":null,"materials":["item"],"time_minutes":10,"safety_note_en":null,"safety_note_es":null,"photo_reference":null}}],"materials_list":[{{"item":"name","qty":1,"unit":"EA","cost":10.00}}],"labor_hours":4,"materials_cost":0,"labor_cost":0,"total_price":0}},"homeowner_ticket":{{"what_we_found":"1 sentence for homeowner","what_we_recommend":"1 sentence","time_estimate":"X hours","urgency":"{diag_result.get('severity', 'moderate')}","warranty":"2-year workmanship warranty"}}}}"""
 
-RULES: Max 5 steps. English only. Each field max 1-2 sentences. Total response under 4000 tokens. Labor rate: $85/hr. Min charge: $450."""
-
-            synthesis_system = "You are DumbRoof Repair AI. Return concise JSON only."
-
-            _log_payload_size([], synthesis_prompt)
-            print(f"[REPAIR] Calling Claude API for final diagnosis synthesis (minimal system prompt)...")
-            response = _call_claude_with_retry(
-                claude,
-                model="claude-opus-4-6",
-                max_tokens=8192,
+            print(f"[REPAIR] Synthesis call 2/2: repair plan...")
+            resp2 = _call_claude_with_retry(
+                claude, model="claude-opus-4-6", max_tokens=8192,
                 system=synthesis_system,
-                messages=[{"role": "user", "content": synthesis_prompt}],
+                messages=[{"role": "user", "content": repair_prompt}],
             )
-            response_text = response.content[0].text.strip()
-            print(f"[REPAIR] Response: {len(response_text):,} chars, stop_reason={response.stop_reason}, "
-                  f"input_tokens={response.usage.input_tokens}, output_tokens={response.usage.output_tokens}")
-            if response.stop_reason == "max_tokens":
-                print(f"[REPAIR] WARNING: Synthesis truncated — retrying ultra-concise")
-                retry_msgs = [
-                    {"role": "user", "content": synthesis_prompt},
-                    {"role": "assistant", "content": response_text},
-                    {"role": "user", "content": (
-                        "TRUNCATED. Return ONLY the JSON with: diagnosis (1 primary_code, 1-sentence leak_source), "
-                        "photo_annotations (skip), 3 repair steps (English only, 1 sentence each), "
-                        "materials_list, pricing, homeowner_ticket (1 sentence each). Under 3000 tokens total."
-                    )},
-                ]
-                response = _call_claude_with_retry(
-                    claude,
-                    model="claude-opus-4-6",
-                    max_tokens=8192,
-                    system=synthesis_system,
-                    messages=retry_msgs,
-                )
-                response_text = response.content[0].text.strip()
-                print(f"[REPAIR] Retry response: {len(response_text):,} chars, stop_reason={response.stop_reason}")
+            repair_text = resp2.content[0].text.strip()
+            print(f"[REPAIR] Repair response: {len(repair_text):,} chars, stop={resp2.stop_reason}")
+
+            repair_json = json.loads(
+                repair_text.strip().removeprefix("```json").removeprefix("```").removesuffix("```").strip()
+            )
+
+            # Merge the two responses
+            response_text = json.dumps({
+                **diag_json,
+                **repair_json,
+            })
+
+            # Ensure diagnosis has repair_type for backward compat
+            merged = json.loads(response_text)
+            if "repair_type" not in merged.get("diagnosis", {}):
+                merged["diagnosis"]["repair_type"] = merged["diagnosis"].get("primary_code", "")
+            response_text = json.dumps(merged)
 
         # 6. Parse diagnosis response (handles markdown fencing + validation)
         diagnosis_data = parse_diagnosis_response(response_text)
