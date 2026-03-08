@@ -52,6 +52,17 @@ from photo_utils import (
 _TELEMETRY_SB = None    # Set by process_claim() for per-request telemetry
 _TELEMETRY_CLAIM_ID = None
 
+
+def _format_date(date_str: str) -> str:
+    """Convert ISO date (2021-07-08) to readable format (July 8, 2021)."""
+    if not date_str:
+        return ""
+    try:
+        dt = datetime.strptime(date_str, "%Y-%m-%d")
+        return dt.strftime("%B %d, %Y").replace(" 0", " ")  # Remove leading zero from day
+    except ValueError:
+        return date_str  # Already formatted or unparseable
+
 def _call_claude_with_retry(client, max_retries=3, _step_name="unknown", _metadata=None, **kwargs):
     """Call Claude API with retry on rate limits + optional telemetry logging."""
     # If telemetry is enabled, use the logged version
@@ -607,6 +618,23 @@ Number the photos starting at {start_num}. Return ONLY valid JSON:
         if batch_result.get("photo_tags"):
             all_photo_tags.update(batch_result["photo_tags"])
 
+    # Filter out non-inspection images (blank pages, certificates, marketing materials)
+    filtered_annotations = {}
+    filtered_photo_tags = {}
+    non_photo_count = 0
+    for key, tag in all_photo_tags.items():
+        if tag.get("material") == "non_photo" or tag.get("damage_type") == "none":
+            non_photo_count += 1
+            continue
+        filtered_photo_tags[key] = tag
+        if key in all_annotations:
+            filtered_annotations[key] = all_annotations[key]
+
+    if non_photo_count > 0:
+        print(f"[PHOTOS] Filtered out {non_photo_count} non-inspection images (certificates, blank pages, marketing)")
+        all_annotations = filtered_annotations if filtered_annotations else all_annotations
+        all_photo_tags = filtered_photo_tags if filtered_photo_tags else all_photo_tags
+
     # Resolve shingle_type by majority vote across batches
     if shingle_votes:
         shingle_type = _majority_vote_material(shingle_votes)
@@ -992,54 +1020,8 @@ Use empty strings for values not found."""
 
 
 def search_weather_corroboration(city: str, state: str, storm_date: str) -> list[dict]:
-    """Search web for corroborating weather reports — NOAA, local news, social media."""
-    results = []
-    try:
-        from duckduckgo_search import DDGS
-    except ImportError:
-        print("[WEATHER] duckduckgo_search not installed — skipping corroboration search")
-        return results
-
-    queries = [
-        f"{city} {state} hail storm {storm_date}",
-        f"{city} {state} severe weather damage {storm_date}",
-        f"NOAA storm report {city} {state} {storm_date} hail",
-    ]
-
-    seen_urls = set()
-    for query in queries:
-        try:
-            with DDGS() as ddgs:
-                for r in ddgs.text(query, max_results=5):
-                    url = r.get("href", "")
-                    if url in seen_urls:
-                        continue
-                    seen_urls.add(url)
-
-                    # Classify the source type
-                    source_lower = (r.get("title", "") + " " + url).lower()
-                    if any(k in source_lower for k in ["noaa", "nws", "weather.gov", "ncdc"]):
-                        source_type = "NOAA / National Weather Service"
-                    elif any(k in source_lower for k in ["facebook", "twitter", "x.com", "reddit", "nextdoor"]):
-                        source_type = "Social Media"
-                    elif any(k in source_lower for k in ["news", "patch", "herald", "tribune", "times", "post", "abc", "nbc", "cbs", "fox", "wfmz", "wnep", "wpvi"]):
-                        source_type = "Local News"
-                    else:
-                        source_type = "Web Report"
-
-                    results.append({
-                        "title": r.get("title", ""),
-                        "url": url,
-                        "snippet": r.get("body", "")[:200],
-                        "source_type": source_type,
-                    })
-        except Exception as e:
-            print(f"[WEATHER] Search error for '{query}': {e}")
-            continue
-
-    # Deduplicate and limit to top 8
-    print(f"[WEATHER] Found {len(results)} corroborating weather reports")
-    return results[:8]
+    """Disabled — NOAA Storm Events data is used instead. Web search returned unreliable results."""
+    return []
 
 
 def synthesize_executive_summary(
@@ -1091,6 +1073,8 @@ RULES:
 - Weave evidence together gracefully — build the case paragraph by paragraph
 - Reference specific evidence (chalk testing, fracture patterns, code requirements) without being exhaustive
 - CRITICAL UPPA COMPLIANCE: This is written for a CONTRACTOR (not a public adjuster or attorney). NEVER use "on behalf of," "demand," "appeal," cite 11 NYCRR, § 2601, or any advocacy/regulatory language. Contractors document and recommend — they do NOT advocate or negotiate.
+- CRITICAL: This is a SINGLE property at a single address. Multiple structures (main dwelling, garage, shed, porch) are all part of ONE property. NEVER reference "two properties", "both properties", or "multiple properties."
+- The inspection documented exactly {photo_count} photographs. Do NOT fabricate photo counts. If you reference photo counts, use exactly {photo_count}.
 
 Return ONLY a JSON array of paragraph strings: ["paragraph 1...", "paragraph 2...", ...]"""
 
@@ -1243,6 +1227,66 @@ def _estimate_roof_age(config: dict, photo_analysis: dict) -> tuple:
     return estimated_age, reasoning
 
 
+def _build_code_violations(state: str, line_items: list, trades: list) -> list:
+    """Build code violations deterministically from state + scope items.
+    NY uses RCNYS codes, others use IRC."""
+    violations = []
+    state = state.upper()
+    is_ny = state == "NY"
+    code_prefix = "RCNYS" if is_ny else "IRC"
+
+    # Check what line items are present
+    items_text = " ".join(item.get("description", "").lower() for item in line_items)
+    has_roofing = any("roofing" in item.get("category", "").lower() for item in line_items)
+    has_siding = any("siding" in item.get("category", "").lower() for item in line_items)
+    has_drip_edge = "drip edge" in items_text
+    has_underlayment = "underlayment" in items_text or "felt" in items_text
+    has_flashing = "flashing" in items_text
+    has_ice_water = "ice" in items_text and "water" in items_text
+    has_house_wrap = "house wrap" in items_text or "tyvek" in items_text
+
+    if has_roofing:
+        if has_drip_edge:
+            violations.append({
+                "code": f"{code_prefix} R905.2.8.5",
+                "requirement": "Drip edge required at eaves and rake edges of shingle roofs",
+                "status": "Required — included in scope",
+            })
+        if has_underlayment:
+            violations.append({
+                "code": f"{code_prefix} R905.1.1",
+                "requirement": "Underlayment required beneath roof covering",
+                "status": "Required — included in scope",
+            })
+        if has_ice_water:
+            violations.append({
+                "code": f"{code_prefix} R905.2.7.1",
+                "requirement": "Ice barrier required in areas where annual mean temperature is 40°F or less",
+                "status": "Required — included in scope",
+            })
+        if has_flashing:
+            violations.append({
+                "code": f"{code_prefix} R903.2.1",
+                "requirement": "Flashings shall be installed at wall and roof intersections",
+                "status": "Required — included in scope",
+            })
+
+    if has_siding:
+        if has_house_wrap:
+            violations.append({
+                "code": f"{code_prefix} R703.1",
+                "requirement": "Exterior walls shall provide weather protection with continuous weather-resistant barrier",
+                "status": "Required — included in scope",
+            })
+            violations.append({
+                "code": f"{code_prefix} R703.2",
+                "requirement": "Weather-resistant exterior wall envelope required behind exterior cladding",
+                "status": "Required — house wrap must wrap continuously around outside corners",
+            })
+
+    return violations
+
+
 def build_claim_config(
     claim: dict,
     measurements: dict,
@@ -1272,7 +1316,11 @@ def build_claim_config(
         print(f"[CONFIG] WARNING: No tax rate configured for state '{state}' — defaulting to 8%. Verify with Tom.")
 
     # Build line items based on measurements and analysis
-    line_items = build_line_items(measurements, photo_analysis, state, user_notes=user_notes or "")
+    line_items = build_line_items(measurements, photo_analysis, state, user_notes=user_notes or "",
+                                  estimate_request=claim.get("estimate_request"))
+
+    # Build deterministic code violations based on state + scope
+    deterministic_violations = _build_code_violations(state, line_items, trades)
 
     # Build photo annotations mapping
     photo_annotations = {}
@@ -1307,7 +1355,7 @@ def build_claim_config(
             "ceo_title": (company_profile or {}).get("contact_title", ""),
             "email": (company_profile or {}).get("email", ""),
             "cell_phone": (company_profile or {}).get("phone", ""),
-            "office_phone": "",
+            "office_phone": (company_profile or {}).get("office_phone", "267-332-0197"),
             "website": (company_profile or {}).get("website", ""),
         },
         "property": {
@@ -1318,7 +1366,10 @@ def build_claim_config(
             "year_built_OPTIONAL": prop.get("year_built", None),
         },
         "insured": {
-            "name": "Property Owner",
+            "name": (carrier_data or {}).get("carrier", {}).get("insured_name", "") or
+                    (carrier_data or {}).get("insured_name", "") or
+                    claim.get("homeowner_name", "") or
+                    "Property Owner",
             "type": "homeowner"
         },
         "carrier": {
@@ -1335,8 +1386,10 @@ def build_claim_config(
             "carrier_arguments": carrier_data.get("carrier_arguments", []) if carrier_data else [],
         },
         "dates": {
-            "date_of_loss": claim.get("date_of_loss", "") or (weather_data or {}).get("storm_date", "") or (carrier_data or {}).get("date_of_loss", "") or "",
-            "usarm_inspection_date": "",
+            "date_of_loss": _format_date(
+                claim.get("date_of_loss", "") or (weather_data or {}).get("storm_date", "") or (carrier_data or {}).get("date_of_loss", "") or ""
+            ),
+            "usarm_inspection_date": datetime.now().strftime("%B %d, %Y"),
             "report_date": datetime.now().strftime("%B %d, %Y"),
         },
         "inspectors": {
@@ -1365,7 +1418,7 @@ def build_claim_config(
         "photo_sections": photo_sections,
         "forensic_findings": {
             "damage_summary": photo_analysis.get("damage_summary", ""),
-            "code_violations": [
+            "code_violations": deterministic_violations if deterministic_violations else [
                 {
                     "code": cv.get("code", ""),
                     "requirement": cv.get("requirement", cv.get("description", "")),
@@ -1374,6 +1427,7 @@ def build_claim_config(
                 for cv in photo_analysis.get("code_violations", [])
             ],
             "key_arguments": photo_analysis.get("key_findings", []),
+            "total_photos": photo_analysis.get("photo_count", len(photo_filenames)),
         },
         "appeal_letter": {
             "demand_items": [],
@@ -1381,10 +1435,26 @@ def build_claim_config(
                 "Forensic Causation Report with annotated photography",
                 "Xactimate-format estimate at current pricing",
             ],
+            "requested_actions": [
+                "Review the enclosed forensic documentation and revised scope of loss",
+                "Issue revised payment reflecting the full scope of storm-related damage",
+                "Schedule a re-inspection if additional verification is needed",
+            ],
         },
         "cover_email": {
+            "to": (carrier_data or {}).get("carrier", {}).get("adjuster_name", "") or
+                  (f"{claim.get('carrier', '')} Claims Department" if claim.get('carrier') else "Claims Department"),
             "to_email": carrier_data["carrier"].get("adjuster_email", "") if carrier_data else "",
             "summary_paragraphs": [],
+            "enclosed_documents": [
+                "Forensic Causation Report with annotated photography",
+                "Xactimate-format replacement cost estimate",
+            ] + ([
+                "Supplement report with line-by-line variance analysis",
+                "Formal scope clarification letter",
+            ] if carrier_data else []) + [
+                "Cover correspondence",
+            ],
         },
     }
 
@@ -1393,6 +1463,15 @@ def build_claim_config(
             "Supplement report with line-by-line variance analysis",
             "Formal appeal letter",
         ])
+
+    # Set correct price list for state if not from carrier
+    if not config["financials"].get("price_list"):
+        _pl_map = {"NY": "NYBI26", "PA": "PAPI26", "NJ": "NJBI26"}
+        config["financials"]["price_list"] = _pl_map.get(state, "NYBI26")
+
+    # Clean trade names: underscores → spaces for display
+    trades = [t.replace("_", " ").title() for t in trades]
+    config["scope"]["trades"] = trades
 
     # Photo integrity stamp
     if photo_integrity and photo_integrity.get("total", 0) > 0:
@@ -1419,7 +1498,8 @@ def build_claim_config(
 
     # Propagate detected roof material into structures[0].shingle_type
     # Photo analysis identifies the material visually; this ensures it's in the config
-    detected_material = _detect_roof_material(photo_analysis, user_notes or "", config.get("carrier"))
+    detected_material = _detect_roof_material(photo_analysis, user_notes or "", config.get("carrier"),
+                                               estimate_request=claim.get("estimate_request"))
     material_labels = {
         "laminated": "Architectural Laminated Comp Shingle",
         "3tab": "3-Tab 25yr Comp Shingle",
@@ -1430,6 +1510,11 @@ def build_claim_config(
     }
     if config.get("structures") and len(config["structures"]) > 0:
         config["structures"][0]["shingle_type"] = material_labels.get(detected_material, detected_material)
+
+    # Clean structure names: underscores → spaces
+    for struct in config.get("structures", []):
+        if struct.get("name"):
+            struct["name"] = struct["name"].replace("_", " ")
 
     # Shingle exposure detection — 5" = unrepairable with current products
     exposure = photo_analysis.get("exposure_inches")
@@ -1643,17 +1728,34 @@ def _majority_vote_material(votes: list) -> str:
 
 
 def _detect_roof_material(photo_analysis: dict, user_notes: str = "",
-                          carrier_scope: dict = None) -> str:
+                          carrier_scope: dict = None, estimate_request: dict = None) -> str:
     """Detect roofing material type using triple verification with weighted voting.
 
     Three independent signals:
     - Photo analysis (weight 1.0): What the AI saw in photos
     - User notes (weight 3.0): What the human explicitly stated
     - Carrier scope line items (weight 2.0): What official documentation says
+    - Estimate request override (definitive): Frontend user selection
 
     Returns one of: 'slate', 'tile', 'metal_standing_seam', 'copper',
     'laminated', '3tab', or defaults to 'laminated'.
     """
+    # Definitive override from frontend estimate request
+    if estimate_request and estimate_request.get("roof_material"):
+        material_map = {
+            "3-Tab": "3tab",
+            "Laminate Comp Shingle": "laminated",
+            "Premium Grade Laminate Comp Shingle": "laminated",
+            "Slate": "slate",
+            "Standing Seam Metal": "metal_standing_seam",
+            "Tile": "tile",
+            "Cedar": "laminated",  # Cedar shake uses laminated pricing as closest
+        }
+        mapped = material_map.get(estimate_request["roof_material"])
+        if mapped:
+            print(f"[MATERIAL] Using estimate request override: {estimate_request['roof_material']} → {mapped}")
+            return mapped
+
     votes = {}  # material -> weighted score
 
     # Source 1: Photo analysis (weight 1.0)
@@ -1671,12 +1773,16 @@ def _detect_roof_material(photo_analysis: dict, user_notes: str = "",
 
     # Source 3: Carrier scope line items (weight 2.0 — official documentation)
     if carrier_scope and carrier_scope.get("carrier_line_items"):
-        items_text = " ".join(
-            str(item.get("item", "")) + " " + str(item.get("carrier_desc", ""))
-            for item in carrier_scope["carrier_line_items"]
-        )
-        carrier_material = _classify_from_text(items_text)
-        if carrier_material:
+        # Parse each line item individually to avoid cross-contamination
+        carrier_material_votes = {}
+        for item in carrier_scope["carrier_line_items"]:
+            item_text = str(item.get("item", "")) + " " + str(item.get("carrier_desc", ""))
+            mat = _classify_from_text(item_text)
+            if mat:
+                carrier_material_votes[mat] = carrier_material_votes.get(mat, 0) + 1
+        # Use the most common material across individual line items
+        if carrier_material_votes:
+            carrier_material = max(carrier_material_votes, key=carrier_material_votes.get)
             votes[carrier_material] = votes.get(carrier_material, 0) + 2.0
 
     if votes:
@@ -1771,7 +1877,7 @@ def _detect_siding_material(photo_analysis: dict, user_notes: str = "") -> str:
     return "aluminum"
 
 
-def build_line_items(measurements: dict, photo_analysis: dict, state: str, user_notes: str = "") -> list:
+def build_line_items(measurements: dict, photo_analysis: dict, state: str, user_notes: str = "", estimate_request: dict = None) -> list:
     """Build Xactimate line items from measurements, analysis, and user context."""
     # Use state-specific pricing (PA=PAPI26, NY=NYBI26, etc.)
     PRICING = get_pricing_for_state(state)
@@ -1789,7 +1895,7 @@ def build_line_items(measurements: dict, photo_analysis: dict, state: str, user_
     facets = struct.get("facets", 0)
     style = struct.get("style", "combination")
 
-    material = _detect_roof_material(photo_analysis, user_notes)
+    material = _detect_roof_material(photo_analysis, user_notes, estimate_request=estimate_request)
 
     # Pitch correction: pre-pitch EagleView reports give 2D (flat) area at 0/12.
     # Apply pitch factor to get true area. Slate/tile roofs are typically 8/12+.
@@ -2347,6 +2453,7 @@ async def process_claim(claim_id: str):
             "contact_title": "CEO",
             "email": "TKovack@USARoofMasters.com",
             "phone": "267-679-1504",
+            "office_phone": "267-332-0197",
             "website": "www.USARoofMasters.com",
             "user_role": "contractor",
         }
@@ -2616,9 +2723,31 @@ async def process_claim(claim_id: str):
                 material,
                 carrier_data,
             )
+            # Post-process: substitute bracket placeholders that Claude sometimes returns literally
+            address = config.get("property", {}).get("address", "the property")
+            storm_date_str = config.get("dates", {}).get("date_of_loss", "") or config.get("weather", {}).get("storm_date", "the reported storm event")
+            finding_count = len(photo_analysis.get("key_findings", []))
+            conclusion_paragraphs = [
+                p.replace("[address]", address)
+                 .replace("[storm event]", storm_date_str)
+                 .replace("[N]", str(finding_count))
+                for p in conclusion_paragraphs
+            ]
             config["forensic_findings"]["conclusion_paragraphs"] = conclusion_paragraphs
         except Exception as e:
             print(f"[PROCESS] Conclusion synthesis failed (non-fatal): {e}")
+
+        # Deduplicate and renumber findings across all sources
+        all_key_args = config.get("forensic_findings", {}).get("key_arguments", [])
+        seen = set()
+        deduped = []
+        for arg in all_key_args:
+            # Normalize for comparison
+            clean = re.sub(r'^(Finding\s+\d+[:\.]?\s*)', '', arg).strip()
+            if clean.lower() not in seen:
+                seen.add(clean.lower())
+                deduped.append(clean)
+        config["forensic_findings"]["key_arguments"] = deduped
 
         # Set paths for the generator
         config["_paths"] = {

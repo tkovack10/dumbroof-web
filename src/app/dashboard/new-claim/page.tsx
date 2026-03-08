@@ -16,6 +16,11 @@ export default function NewClaimPage() {
   const [weatherFiles, setWeatherFiles] = useState<File[]>([]);
   const [userNotes, setUserNotes] = useState("");
   const [dateOfLoss, setDateOfLoss] = useState("");
+  const [roofMaterial, setRoofMaterial] = useState("");
+  const [includeGutters, setIncludeGutters] = useState(false);
+  const [gutterType, setGutterType] = useState("");
+  const [includeSiding, setIncludeSiding] = useState(false);
+  const [sidingType, setSidingType] = useState("");
   const [scanningStorms, setScanningStorms] = useState(false);
   const [stormResults, setStormResults] = useState<
     Array<{ date: string; type: string; details: string }> | null
@@ -32,7 +37,8 @@ export default function NewClaimPage() {
   const canSubmit =
     propertyAddress.trim() !== "" &&
     measurementFiles.length > 0 &&
-    photoFiles.length > 0;
+    photoFiles.length > 0 &&
+    roofMaterial !== "";
 
   const scanForStorms = async () => {
     setScanningStorms(true);
@@ -136,6 +142,13 @@ export default function NewClaimPage() {
         weather_files: uploadedNames.weather,
         ...(userNotes.trim() ? { user_notes: userNotes.trim() } : {}),
         ...(dateOfLoss ? { date_of_loss: dateOfLoss } : {}),
+        ...(roofMaterial ? {
+          estimate_request: {
+            roof_material: roofMaterial,
+            ...(includeGutters && gutterType ? { gutters: gutterType } : {}),
+            ...(includeSiding && sidingType ? { siding: sidingType } : {}),
+          }
+        } : {}),
       });
 
       if (dbError) throw new Error(dbError.message);
@@ -407,6 +420,115 @@ export default function NewClaimPage() {
             />
           </div>
 
+          {/* Estimate Request */}
+          <div className="space-y-4">
+            <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider">
+              Estimate Request
+            </h3>
+
+            {/* Roof Material */}
+            <div>
+              <label className="block text-sm font-semibold text-[var(--navy)] mb-1">
+                Roof Material
+              </label>
+              <select
+                required
+                value={roofMaterial}
+                onChange={(e) => setRoofMaterial(e.target.value)}
+                className="w-full px-4 py-3 rounded-lg border border-gray-200 focus:border-[var(--navy)] focus:ring-1 focus:ring-[var(--navy)] outline-none transition-colors text-sm"
+              >
+                <option value="">Select roof material...</option>
+                <option value="3-Tab">3-Tab</option>
+                <option value="Laminate Comp Shingle">Laminate Comp Shingle</option>
+                <option value="Premium Grade Laminate Comp Shingle">Premium Grade Laminate Comp Shingle</option>
+                <option value="Slate">Slate</option>
+                <option value="Standing Seam Metal">Standing Seam Metal</option>
+                <option value="Tile">Tile</option>
+                <option value="Cedar">Cedar</option>
+              </select>
+            </div>
+
+            {/* Gutters Toggle */}
+            <div>
+              <label className="flex items-center gap-3 cursor-pointer group">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIncludeGutters(!includeGutters);
+                    if (includeGutters) setGutterType("");
+                  }}
+                  className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors ${
+                    includeGutters
+                      ? "border-[var(--navy)] bg-[var(--navy)]"
+                      : "border-gray-300 bg-white group-hover:border-gray-400"
+                  }`}
+                >
+                  {includeGutters && (
+                    <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                    </svg>
+                  )}
+                </button>
+                <span className="text-sm font-semibold text-[var(--navy)]">Include Gutters</span>
+              </label>
+              {includeGutters && (
+                <div className="mt-2 ml-8">
+                  <select
+                    value={gutterType}
+                    onChange={(e) => setGutterType(e.target.value)}
+                    className="w-full px-4 py-3 rounded-lg border border-gray-200 focus:border-[var(--navy)] focus:ring-1 focus:ring-[var(--navy)] outline-none transition-colors text-sm"
+                  >
+                    <option value="">Select gutter type...</option>
+                    <option value="5K Gutters and Downspouts">5K Gutters and Downspouts</option>
+                    <option value="6K Gutters and Downspouts">6K Gutters and Downspouts</option>
+                    <option value="Copper Half Round">Copper Half Round</option>
+                  </select>
+                </div>
+              )}
+            </div>
+
+            {/* Siding Toggle */}
+            <div>
+              <label className="flex items-center gap-3 cursor-pointer group">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIncludeSiding(!includeSiding);
+                    if (includeSiding) setSidingType("");
+                  }}
+                  className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors ${
+                    includeSiding
+                      ? "border-[var(--navy)] bg-[var(--navy)]"
+                      : "border-gray-300 bg-white group-hover:border-gray-400"
+                  }`}
+                >
+                  {includeSiding && (
+                    <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                    </svg>
+                  )}
+                </button>
+                <span className="text-sm font-semibold text-[var(--navy)]">Include Siding</span>
+              </label>
+              {includeSiding && (
+                <div className="mt-2 ml-8">
+                  <select
+                    value={sidingType}
+                    onChange={(e) => setSidingType(e.target.value)}
+                    className="w-full px-4 py-3 rounded-lg border border-gray-200 focus:border-[var(--navy)] focus:ring-1 focus:ring-[var(--navy)] outline-none transition-colors text-sm"
+                  >
+                    <option value="">Select siding type...</option>
+                    <option value="Vinyl Siding">Vinyl Siding</option>
+                    <option value="Vinyl w/ Insulation">Vinyl w/ Insulation</option>
+                    <option value="Aluminum">Aluminum</option>
+                    <option value="Cedar">Cedar</option>
+                    <option value="Specialty">Specialty</option>
+                  </select>
+                </div>
+              )}
+            </div>
+          </div>
+
           {/* Additional Context */}
           <div className="space-y-2">
             <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider">
@@ -520,6 +642,7 @@ export default function NewClaimPage() {
                 !propertyAddress.trim() && "property address",
                 measurementFiles.length === 0 && "measurements",
                 photoFiles.length === 0 && "inspection photos",
+                !roofMaterial && "roof material",
               ]
                 .filter(Boolean)
                 .join(", ")}

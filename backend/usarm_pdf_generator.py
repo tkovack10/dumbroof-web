@@ -219,7 +219,7 @@ def compute_financials(config):
         "deductible": deductible,
         "net_claim": net_claim,
         "carrier_rcv": carrier_rcv,
-        "carrier_net": config.get("carrier", {}).get("carrier_net", 0),
+        "carrier_net": round(carrier_rcv - deductible, 2) if carrier_rcv else config.get("carrier", {}).get("carrier_net", 0),
         "variance": variance,
     }
 
@@ -342,6 +342,34 @@ def get_language(config):
         return LANG_CONTRACTOR
     else:
         return LANG_CONTRACTOR_AOB
+
+
+def _photo_intro_text(config):
+    """Return the photo intro sentence with proper count handling."""
+    findings = config.get("forensic_findings", {})
+    total_photos = findings.get("total_photos", 0)
+    if not total_photos:
+        total_photos = len(config.get("photo_annotations", {}))
+    if total_photos:
+        return f"{total_photos} photographs were taken during the USARM inspection(s)."
+    else:
+        return "Photographs were taken during the USARM inspection(s)."
+
+
+def _get_code_reference(config):
+    """Return the appropriate building code reference based on property state."""
+    state = config.get("property", {}).get("state", "").upper()
+    if state == "NY":
+        return "Residential Code of New York State (RCNYS)"
+    else:
+        return "International Residential Code (IRC)"
+
+
+def _get_code_intro(config):
+    """Return the code_intro text with state-appropriate code reference."""
+    lang = get_language(config)
+    code_ref = _get_code_reference(config)
+    return lang["code_intro"].replace("International Residential Code (IRC)", code_ref)
 
 
 def _build_contractor_cert(config):
@@ -1866,7 +1894,7 @@ def build_forensic_report(config):
 <!-- PHOTO SECTIONS -->
 <div class="page-break"></div>
 <h2>{photo_sec_num}. Damage Findings &amp; Photo Analysis</h2>
-<p>{findings.get('total_photos', '')} photographs were taken during the USARM inspection(s). Below is the complete photographic documentation organized by damage category.</p>
+<p>{_photo_intro_text(config)} Below is the complete photographic documentation organized by damage category.</p>
 
 {photo_sections_html}
 
@@ -1882,7 +1910,7 @@ def build_forensic_report(config):
 <!-- CODE COMPLIANCE -->
 <div style="margin-top:24pt;"></div>
 <h2>{code_sec_num}. Code Compliance Requirements</h2>
-<p>{lang['code_intro']}</p>
+<p>{_get_code_intro(config)}</p>
 <table>
     <tr><th>Code Section</th><th>Requirement</th><th>Status in Carrier Scope</th></tr>
     {code_rows}
@@ -2731,6 +2759,12 @@ def build_appeal_letter(config):
 
     fin = compute_financials(config)
 
+    # Compute total_photos with fallback
+    _total_photos = findings.get("total_photos", 0)
+    if not _total_photos:
+        _total_photos = len(config.get("photo_annotations", {}))
+    _total_photos_str = str(_total_photos) if _total_photos else "multiple"
+
     # Code violations table
     code_rows = ""
     for cv in findings.get("code_violations", []):
@@ -2747,9 +2781,12 @@ def build_appeal_letter(config):
             demand_text = demand_text.replace("demand", "request").replace("Demand", "Request")
         demand_html += f"<li><strong>{demand_text}</strong></li>\n"
 
-    # Enclosed documents (handle both string and {name, detail} formats)
+    # Enclosed documents (handle string-with-newlines, list-of-strings, and {name, detail} formats)
+    enclosed = appeal.get("enclosed_documents", [])
+    if isinstance(enclosed, str):
+        enclosed = [line.strip() for line in enclosed.replace("\\n", "\n").split("\n") if line.strip()]
     enclosed_html = ""
-    for doc in appeal.get("enclosed_documents", []):
+    for doc in enclosed:
         if isinstance(doc, dict):
             enclosed_html += f"<li><strong>{doc['name']}</strong> — {doc.get('detail', '')}</li>\n"
         else:
@@ -2828,9 +2865,9 @@ def build_appeal_letter(config):
         sections.append(("THE EXISTING PRODUCT CANNOT BE REPAIRED", repair_html))
 
     # 6. Always: Documentation evidence
-    photo_html = f"""<p>Our inspection documentation ({findings.get('total_photos','')} photos) documents: circular shingle indentations with granule displacement and mat fracture, meeting HAAG Engineering criteria for functional damage requiring replacement.</p>
+    photo_html = f"""<p>Our inspection documentation ({_total_photos_str} photos) documents: circular shingle indentations with granule displacement and mat fracture, meeting HAAG Engineering criteria for functional damage requiring replacement.</p>
 """
-    sections.append((f"THE DAMAGE IS DOCUMENTED WITH {findings.get('total_photos','')} INSPECTION PHOTOS", photo_html))
+    sections.append((f"THE DAMAGE IS DOCUMENTED WITH {_total_photos_str.upper()} INSPECTION PHOTOS", photo_html))
 
     # 7. Conditional: Spot repair inadequacy
     if fa or carrier.get("carrier_acknowledged_items"):
@@ -2982,10 +3019,22 @@ def build_cover_email(config):
 
     fin = compute_financials(config)
 
-    # Enclosed documents
+    # Compute total_photos with fallback for cover email
+    _total_photos = findings.get("total_photos", 0)
+    if not _total_photos:
+        _total_photos = len(config.get("photo_annotations", {}))
+    _total_photos_str = str(_total_photos) if _total_photos else "multiple"
+
+    # Enclosed documents (handle both list and string-with-newlines formats)
+    enclosed = cover.get("enclosed_documents", [])
+    if isinstance(enclosed, str):
+        enclosed = [line.strip() for line in enclosed.replace("\\n", "\n").split("\n") if line.strip()]
     enclosed_html = ""
-    for doc in cover.get("enclosed_documents", []):
-        enclosed_html += f"<li><strong>{doc}</strong></li>\n"
+    for doc in enclosed:
+        if isinstance(doc, dict):
+            enclosed_html += f"<li><strong>{doc['name']}</strong> — {doc.get('detail', '')}</li>\n"
+        else:
+            enclosed_html += f"<li><strong>{doc}</strong></li>\n"
 
     # Build the summary paragraph
     summary_para = f"""The current scope of {fmt_money(fin['carrier_rcv'])} RCV"""
@@ -3002,7 +3051,7 @@ def build_cover_email(config):
         nws_sizes = [r["size"] for r in weather["hail_size_nws_reports"][:1]]
         summary_para += f""", NWS Local Storm Reports documenting {nws_sizes[0]} hail"""
 
-    summary_para += f""", {findings.get('total_photos','')} inspection photos, and EagleView aerial measurements — we have determined that the full scope of storm damage requires <strong>{fmt_money(fin['total_with_op'])} RCV</strong> in repairs."""
+    summary_para += f""", {_total_photos_str} inspection photos, and EagleView aerial measurements — we have determined that the full scope of storm damage requires <strong>{fmt_money(fin['total_with_op'])} RCV</strong> in repairs."""
 
     # Key highlight paragraph
     highlight = ""
@@ -3096,6 +3145,12 @@ def build_cover_letter(config):
 
     fin = compute_financials(config)
 
+    # Compute total_photos with fallback
+    _total_photos = findings.get("total_photos", 0)
+    if not _total_photos:
+        _total_photos = len(config.get("photo_annotations", {}))
+    _total_photos_str = str(_total_photos) if _total_photos else "multiple"
+
     # Storm summary
     storm_summary = f"""a confirmed severe weather event on {dates['date_of_loss']}"""
     if weather.get("hail_size_algorithm"):
@@ -3106,7 +3161,7 @@ def build_cover_letter(config):
     if weather.get("duration"):
         storm_summary += f""" over a {weather['duration']} exposure window"""
 
-    # Enclosed documents for Phase 1
+    # Enclosed documents for Phase 1 (handle both list and string-with-newlines formats)
     enclosed_html = ""
     enclosed_docs = cover.get("enclosed_documents", [
         "Forensic Causation Report with photo-annotated damage analysis",
@@ -3114,8 +3169,13 @@ def build_cover_letter(config):
         "HailTrace Weather Verification Report",
         "EagleView Property Measurement Report"
     ])
+    if isinstance(enclosed_docs, str):
+        enclosed_docs = [line.strip() for line in enclosed_docs.replace("\\n", "\n").split("\n") if line.strip()]
     for doc in enclosed_docs:
-        enclosed_html += f"<li><strong>{doc}</strong></li>\\n"
+        if isinstance(doc, dict):
+            enclosed_html += f"<li><strong>{doc['name']}</strong> — {doc.get('detail', '')}</li>\n"
+        else:
+            enclosed_html += f"<li><strong>{doc}</strong></li>\n"
 
     # Trades summary
     trades = config.get("scope", {}).get("trades", [])
@@ -3155,7 +3215,7 @@ body {{ font-size: 11pt; line-height: 1.7; max-width: 600pt; margin: 0 auto; }}
 
 <p>We are submitting our forensic inspection documentation and detailed repair estimate in advance of the carrier's adjuster inspection. Our documentation confirms {storm_summary}.</p>
 
-<p>Our certified inspection identified storm damage across <strong>{trades_text}</strong>, supported by {findings.get('total_photos', 'multiple')} inspection photographs with forensic annotations. The enclosed Xactimate-format estimate totals <strong>{fmt_money(fin['total_with_op'])} RCV</strong> based on EagleView-verified measurements and current NYBI26 regional pricing.</p>
+<p>Our certified inspection identified storm damage across <strong>{trades_text}</strong>, supported by {_total_photos_str} inspection photographs with forensic annotations. The enclosed Xactimate-format estimate totals <strong>{fmt_money(fin['total_with_op'])} RCV</strong> based on EagleView-verified measurements and current NYBI26 regional pricing.</p>
 
 <p>The enclosed documentation includes:</p>
 <ol>
