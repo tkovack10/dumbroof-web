@@ -9,6 +9,7 @@ type UploadStatus = "idle" | "uploading" | "success" | "error";
 
 export default function NewClaimPage() {
   const [propertyAddress, setPropertyAddress] = useState("");
+  const [homeownerName, setHomeownerName] = useState("");
   const [insuranceCarrier, setInsuranceCarrier] = useState("");
   const [measurementFiles, setMeasurementFiles] = useState<File[]>([]);
   const [photoFiles, setPhotoFiles] = useState<File[]>([]);
@@ -131,6 +132,7 @@ export default function NewClaimPage() {
       const { error: dbError } = await supabase.from("claims").insert({
         user_id: user.id,
         address: propertyAddress,
+        ...(homeownerName.trim() ? { homeowner_name: homeownerName.trim() } : {}),
         carrier: insuranceCarrier,
         slug,
         phase,
@@ -267,6 +269,21 @@ export default function NewClaimPage() {
                 value={propertyAddress}
                 onChange={setPropertyAddress}
                 placeholder="123 Main St, Binghamton, NY 13901"
+                className="w-full px-4 py-3 rounded-lg border border-gray-200 focus:border-[var(--navy)] focus:ring-1 focus:ring-[var(--navy)] outline-none transition-colors text-sm"
+              />
+            </div>
+            <div>
+              <div className="flex items-baseline gap-2 mb-1">
+                <label className="block text-sm font-semibold text-[var(--navy)]">
+                  Homeowner Name
+                </label>
+                <span className="text-xs text-gray-400 font-medium">Optional</span>
+              </div>
+              <input
+                type="text"
+                value={homeownerName}
+                onChange={(e) => setHomeownerName(e.target.value)}
+                placeholder="e.g. John Smith"
                 className="w-full px-4 py-3 rounded-lg border border-gray-200 focus:border-[var(--navy)] focus:ring-1 focus:ring-[var(--navy)] outline-none transition-colors text-sm"
               />
             </div>

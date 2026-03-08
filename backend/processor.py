@@ -1413,7 +1413,7 @@ def build_claim_config(
         },
         "financials": {
             "tax_rate": tax_rate,
-            "price_list": carrier_data.get("price_list", {"NY": "NYBI26", "PA": "PAPI26", "NJ": "NJBI26"}.get(state, "NYBI26")) if carrier_data else {"NY": "NYBI26", "PA": "PAPI26", "NJ": "NJBI26"}.get(state, "NYBI26"),
+            "price_list": {"NY": "NYBI26", "PA": "PAPI26", "NJ": "NJBI26"}.get(state, "NYBI26"),
             "deductible": carrier_data.get("carrier_deductible", 0) if carrier_data else 0,
         },
         "structures": structs,  # shingle_type populated below from photo analysis
