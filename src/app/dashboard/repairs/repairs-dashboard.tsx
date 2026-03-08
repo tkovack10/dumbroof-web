@@ -22,6 +22,30 @@ interface Repair {
 }
 
 const REPAIR_TYPE_LABELS: Record<string, string> = {
+  // 22-code system
+  "CHM-FRONT": "Chimney Apron",
+  "CHM-SIDE": "Chimney Step/Counter Flash",
+  "CHM-BACK": "Chimney Back Pan/Cricket",
+  "CHM-MASONRY": "Chimney Masonry",
+  "WALL-STEP": "Sidewall Step Flashing",
+  "WALL-KICKOUT": "Kickout Diverter",
+  "HEADWALL": "Headwall/Dormer Flashing",
+  "STUCCO-ABOVE-ROOF": "Wall Drainage Failure",
+  "VENT-BOOT": "Vent Boot/Collar",
+  "VENT-METAL": "Metal Vent/Roof Jack",
+  "SKYLIGHT-FLASH": "Skylight Flashing",
+  "SKYLIGHT-UNIT": "Skylight Unit/Curb",
+  "VALLEY-OPEN-METAL": "Open Metal Valley",
+  "VALLEY-CLOSED-CUT": "Closed-Cut Valley",
+  "VALLEY-DEBRIS-ICE": "Valley Debris/Ice",
+  "EAVE-ICE-DAM": "Ice Dam",
+  "EAVE-DRIP-EDGE": "Drip Edge/Edge Failure",
+  "GUTTER-BACKUP": "Gutter Overflow",
+  "FIELD-SHINGLE": "Field Shingle Damage",
+  "NAIL-POP": "Fastener Failure",
+  "CONDENSATION": "Attic Condensation",
+  "LOW-CONFIDENCE-VERIFY": "Needs Verification",
+  // Legacy codes (backward compat)
   pipe_boot: "Pipe Boot",
   step_flashing: "Step Flashing",
   chimney_flashing: "Chimney Flashing",

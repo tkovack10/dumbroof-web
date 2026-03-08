@@ -670,10 +670,21 @@ async def poll_for_claims():
 
 
 async def poll_for_repairs():
-    """Background poller — checks for new repairs every 10 seconds."""
+    """Background poller — checks for new repairs every 10 seconds.
+    Also recovers stuck repairs (processing > 15 min)."""
     while True:
         try:
             sb = get_supabase_client()
+
+            # Recover stuck repairs — reset "processing" repairs older than 15 minutes
+            from datetime import datetime, timedelta, timezone
+            cutoff = (datetime.now(timezone.utc) - timedelta(minutes=15)).isoformat()
+            stuck = sb.table("repairs").select("id").eq("status", "processing").lt("updated_at", cutoff).execute()
+            for repair in (stuck.data or []):
+                print(f"[REPAIR POLLER] Recovering stuck repair: {repair['id']} (processing > 15min)")
+                sb.table("repairs").update({"status": "uploaded"}).eq("id", repair["id"]).execute()
+
+            # Pick up new repairs
             result = sb.table("repairs").select("id").eq("status", "uploaded").execute()
             for repair in result.data:
                 print(f"[REPAIR POLLER] Found new repair: {repair['id']}")
