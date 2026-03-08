@@ -1304,8 +1304,13 @@ def build_claim_config(
     meas = measurements.get("measurements", {})
     phase = "post-scope" if carrier_data else "pre-scope"
 
-    # Determine trades and O&P
-    trades = photo_analysis.get("trades_identified", ["roofing"])
+    # Determine trades and O&P — siding/gutters are opt-in via estimate_request ONLY
+    _est_req = claim.get("estimate_request") or {}
+    trades = ["roofing"]  # Always included
+    if _est_req.get("siding"):
+        trades.append("siding")
+    if _est_req.get("gutters"):
+        trades.append("gutters")
     o_and_p = len(trades) >= 3
 
     # Determine state for tax rate — try measurements first, then parse from claim address
@@ -2185,19 +2190,19 @@ def build_line_items(measurements: dict, photo_analysis: dict, state: str, user_
             if copper_sf > 0:
                 items.append({"category": "ROOFING", "description": "R&R Flat seam copper roofing", "qty": copper_sf, "unit": "SF", "unit_price": PRICING.get("flat_seam_copper", 28.00)})
 
-    # ===================== GUTTERS (standard — if in trades and not already added) =====================
-    trades = photo_analysis.get("trades_identified", [])
+    # ===================== GUTTERS (opt-in via estimate_request only) =====================
+    _est_req = estimate_request or {}
     has_gutter_line = any("gutter" in item["description"].lower() for item in items)
-    if _has_trade(trades, "gutter") and not has_gutter_line:
+    if _est_req.get("gutters") and not has_gutter_line:
         gutter_lf = round(eave * 1.6) if eave > 0 else 0
         if gutter_lf > 0:
             items.append({"category": "GUTTERS", "description": "R&R Seamless aluminum gutter & downspout", "qty": gutter_lf, "unit": "LF", "unit_price": PRICING.get("gutter_aluminum", 10.50)})
 
-    # ===================== SIDING =====================
-    # Triggered when photos identify siding damage. ALWAYS includes house wrap
+    # ===================== SIDING (opt-in via estimate_request only) =====================
+    # ALWAYS includes house wrap when siding is scoped
     # (RCNYS R703.2 — continuous weather-resistant exterior wall envelope required).
     # House wrap corner rule forces full replacement when carrier approves partial.
-    if _has_trade(trades, "siding"):
+    if _est_req.get("siding"):
         walls = measurements.get("walls", {})
         wall_area = walls.get("total_wall_area_sf", 0)
 
@@ -2249,7 +2254,7 @@ def build_line_items(measurements: dict, photo_analysis: dict, state: str, user_
 
     # ===================== WINDOW WRAPS =====================
     # Included when siding is in scope — windows need re-wrapping after siding replacement
-    if _has_trade(trades, "siding") or _has_trade(trades, "window"):
+    if _est_req.get("siding"):
         walls = measurements.get("walls", {})
         window_count = walls.get("window_count", 0)
         _ww_wall_area = walls.get("total_wall_area_sf", 0)
@@ -2269,7 +2274,7 @@ def build_line_items(measurements: dict, photo_analysis: dict, state: str, user_
             items.append({"category": "SIDING", "description": "R&R Window wrap - aluminum coil stock", "qty": window_count, "unit": "EA", "unit_price": PRICING.get("window_wrap_small", 256.48)})
 
     # ===================== DOOR WRAPS =====================
-    if _has_trade(trades, "siding"):
+    if _est_req.get("siding"):
         walls = measurements.get("walls", {})
         door_count = walls.get("door_count", 0)
         garage_door_count = walls.get("garage_door_count", 0)
