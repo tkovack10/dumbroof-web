@@ -141,10 +141,12 @@ async def run_repair_processing(repair_id: str):
         traceback.print_exc()
         sys.stdout.flush()
         sys.stderr.flush()
+        from datetime import datetime
         sb = get_supabase_client()
         sb.table("repairs").update({
             "status": "error",
             "error_message": str(e)[:500],
+            "updated_at": datetime.now().isoformat(),
         }).eq("id", repair_id).execute()
 
 
@@ -153,6 +155,18 @@ async def trigger_repair_processing(repair_id: str, background_tasks: Background
     """Manually trigger processing for a specific repair."""
     background_tasks.add_task(run_repair_processing, repair_id)
     return {"status": "processing", "repair_id": repair_id}
+
+
+@app.post("/api/reprocess-repair/{repair_id}")
+async def reprocess_repair(repair_id: str, background_tasks: BackgroundTasks):
+    """Re-process a failed or stuck repair."""
+    sb = get_supabase_client()
+    result = sb.table("repairs").select("id, status, address").eq("id", repair_id).single().execute()
+    if not result.data:
+        raise HTTPException(status_code=404, detail="Repair not found")
+    sb.table("repairs").update({"status": "processing", "error_message": None}).eq("id", repair_id).execute()
+    background_tasks.add_task(run_repair_processing, repair_id)
+    return {"status": "reprocessing", "repair_id": repair_id, "address": result.data.get("address")}
 
 
 # ===================================================================

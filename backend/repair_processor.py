@@ -106,7 +106,7 @@ async def process_repair(repair_id: str):
     print(f"[REPAIR] Starting: {repair['address']} (skill: {repair.get('skill_level', 'journeyman')})")
 
     # Update status to processing
-    sb.table("repairs").update({"status": "processing"}).eq("id", repair_id).execute()
+    sb.table("repairs").update({"status": "processing", "updated_at": datetime.now().isoformat()}).eq("id", repair_id).execute()
 
     # Get company profile for branding
     company_profile = None
@@ -506,6 +506,7 @@ Return JSON: {{"repair":{{"summary":"1 sentence","steps":[{{"step":1,"category":
             "repair_type": repair_type,
             "severity": severity,
             "total_price": total_price,
+            "updated_at": datetime.now().isoformat(),
         }).eq("id", repair_id).execute()
 
         print(f"[REPAIR] COMPLETE — {repair['address']} — {repair_type} — ${total_price:.2f}")
