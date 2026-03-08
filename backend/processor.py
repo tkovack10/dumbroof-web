@@ -2252,12 +2252,18 @@ def build_line_items(measurements: dict, photo_analysis: dict, state: str, user_
     if _has_trade(trades, "siding") or _has_trade(trades, "window"):
         walls = measurements.get("walls", {})
         window_count = walls.get("window_count", 0)
-        wall_area = walls.get("total_wall_area_sf", 0)
+        _ww_wall_area = walls.get("total_wall_area_sf", 0)
+
+        # Fallback: estimate wall area from roof footprint (same as siding section)
+        if _ww_wall_area == 0 and area_sf > 0:
+            import math
+            _ww_footprint = area_sf / max(1, stories)
+            _ww_wall_area = round(math.sqrt(_ww_footprint) * 4 * max(1, stories) * 9)
 
         # If no explicit window count, estimate from wall area (1 window per 150 SF)
-        if window_count == 0 and wall_area > 0:
-            window_count = max(1, round(wall_area / 150))
-            print(f"[LINE ITEMS] Estimated {window_count} windows from {wall_area} SF wall area")
+        if window_count == 0 and _ww_wall_area > 0:
+            window_count = max(1, round(_ww_wall_area / 150))
+            print(f"[LINE ITEMS] Estimated {window_count} windows from {_ww_wall_area} SF wall area")
 
         if window_count > 0:
             items.append({"category": "SIDING", "description": "R&R Window wrap - aluminum coil stock", "qty": window_count, "unit": "EA", "unit_price": PRICING.get("window_wrap_small", 256.48)})
@@ -2267,6 +2273,12 @@ def build_line_items(measurements: dict, photo_analysis: dict, state: str, user_
         walls = measurements.get("walls", {})
         door_count = walls.get("door_count", 0)
         garage_door_count = walls.get("garage_door_count", 0)
+
+        # Estimate doors if no wall data (assume 2 entry + 1 garage for residential)
+        if door_count == 0 and not walls.get("total_wall_area_sf"):
+            door_count = 2
+            garage_door_count = 1
+            print(f"[LINE ITEMS] Estimated doors: {door_count} entry + {garage_door_count} garage")
 
         if door_count > 0:
             # Standard door perimeter ~17 LF
