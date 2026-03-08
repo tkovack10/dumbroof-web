@@ -1,26 +1,57 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
 export default function LoginPage() {
+  const searchParams = useSearchParams();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isSignUp, setIsSignUp] = useState(false);
+  const [isForgotPassword, setIsForgotPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
 
+  useEffect(() => {
+    const urlError = searchParams.get("error");
+    if (urlError) {
+      setError(urlError);
+    }
+  }, [searchParams]);
+
   const supabase = createClient();
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleForgotPassword = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError("");
     setMessage("");
 
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/auth/callback?type=recovery`,
+    });
+
+    if (error) {
+      setError(error.message);
+    } else {
+      setMessage("Check your email for a password reset link.");
+    }
+    setLoading(false);
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (isForgotPassword) {
+      return handleForgotPassword(e);
+    }
+    setLoading(true);
+    setError("");
+    setMessage("");
+
     if (isSignUp) {
-      const { error } = await supabase.auth.signUp({
+      const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
@@ -29,8 +60,15 @@ export default function LoginPage() {
       });
       if (error) {
         setError(error.message);
+      } else if (data.user && data.user.identities && data.user.identities.length === 0) {
+        // Supabase returns a fake user with no identities when email already exists
+        // This happens when admin already invited this user
+        setError("An account with this email already exists. Try signing in instead, or use the link from your invite email.");
+      } else if (data.session) {
+        // Auto-confirmed (email confirmation disabled) — go straight to dashboard
+        window.location.href = "/dashboard";
       } else {
-        setMessage("Check your email for a confirmation link.");
+        setMessage("Account created! Check your email for a confirmation link, then come back and sign in.");
       }
     } else {
       const { error } = await supabase.auth.signInWithPassword({
@@ -38,7 +76,11 @@ export default function LoginPage() {
         password,
       });
       if (error) {
-        setError(error.message);
+        if (error.message === "Invalid login credentials") {
+          setError("Invalid email or password. If you signed up via an invite link, you may need to set your password first — check your invite email or click 'Forgot password' below.");
+        } else {
+          setError(error.message);
+        }
       } else {
         window.location.href = "/dashboard";
       }
@@ -65,12 +107,18 @@ export default function LoginPage() {
         {/* Card */}
         <div className="bg-white rounded-2xl p-8 shadow-xl">
           <h2 className="text-xl font-bold text-[var(--navy)] mb-1">
-            {isSignUp ? "Create your account" : "Welcome back"}
+            {isForgotPassword
+              ? "Reset your password"
+              : isSignUp
+                ? "Create your account"
+                : "Welcome back"}
           </h2>
           <p className="text-gray-500 text-sm mb-6">
-            {isSignUp
-              ? "Start generating claim packages today."
-              : "Sign in to your dashboard."}
+            {isForgotPassword
+              ? "Enter your email and we'll send a reset link."
+              : isSignUp
+                ? "Start generating claim packages today."
+                : "Sign in to your dashboard."}
           </p>
 
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -88,20 +136,22 @@ export default function LoginPage() {
               />
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Password
-              </label>
-              <input
-                type="password"
-                required
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="w-full px-4 py-3 rounded-lg border border-gray-200 focus:border-[var(--navy)] focus:ring-1 focus:ring-[var(--navy)] outline-none transition-colors text-sm"
-                placeholder="••••••••"
-                minLength={6}
-              />
-            </div>
+            {!isForgotPassword && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Password
+                </label>
+                <input
+                  type="password"
+                  required
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="w-full px-4 py-3 rounded-lg border border-gray-200 focus:border-[var(--navy)] focus:ring-1 focus:ring-[var(--navy)] outline-none transition-colors text-sm"
+                  placeholder="••••••••"
+                  minLength={6}
+                />
+              </div>
+            )}
 
             {error && (
               <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3">
@@ -122,24 +172,44 @@ export default function LoginPage() {
             >
               {loading
                 ? "..."
-                : isSignUp
-                  ? "Create Account"
-                  : "Sign In"}
+                : isForgotPassword
+                  ? "Send Reset Link"
+                  : isSignUp
+                    ? "Create Account"
+                    : "Sign In"}
             </button>
           </form>
 
-          <div className="mt-6 text-center">
+          <div className="mt-6 text-center space-y-2">
+            {!isForgotPassword && !isSignUp && (
+              <button
+                onClick={() => {
+                  setIsForgotPassword(true);
+                  setError("");
+                  setMessage("");
+                }}
+                className="block w-full text-sm text-gray-400 hover:text-[var(--red)] transition-colors"
+              >
+                Forgot your password?
+              </button>
+            )}
             <button
               onClick={() => {
-                setIsSignUp(!isSignUp);
+                if (isForgotPassword) {
+                  setIsForgotPassword(false);
+                } else {
+                  setIsSignUp(!isSignUp);
+                }
                 setError("");
                 setMessage("");
               }}
               className="text-sm text-gray-500 hover:text-[var(--navy)] transition-colors"
             >
-              {isSignUp
-                ? "Already have an account? Sign in"
-                : "Need an account? Sign up"}
+              {isForgotPassword
+                ? "Back to sign in"
+                : isSignUp
+                  ? "Already have an account? Sign in"
+                  : "Need an account? Sign up"}
             </button>
           </div>
         </div>

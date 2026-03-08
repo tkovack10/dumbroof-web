@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
+import { useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
 interface Forwarder {
@@ -13,6 +14,9 @@ interface Forwarder {
 
 export default function SettingsPage() {
   const supabase = createClient();
+  const searchParams = useSearchParams();
+  const isPasswordReset = searchParams.get("reset") === "true";
+  const passwordRef = useRef<HTMLDivElement>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -24,6 +28,11 @@ export default function SettingsPage() {
   const [newForwarderRole, setNewForwarderRole] = useState("sales_rep");
   const [addingForwarder, setAddingForwarder] = useState(false);
   const [forwarderError, setForwarderError] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [passwordSaving, setPasswordSaving] = useState(false);
+  const [passwordMessage, setPasswordMessage] = useState("");
+  const [passwordError, setPasswordError] = useState("");
   const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000";
   const [form, setForm] = useState({
     company_name: "",
@@ -35,6 +44,38 @@ export default function SettingsPage() {
     phone: "",
     website: "",
   });
+
+  useEffect(() => {
+    if (isPasswordReset && !loading && passwordRef.current) {
+      passwordRef.current.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [isPasswordReset, loading]);
+
+  const handlePasswordUpdate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setPasswordError("");
+    setPasswordMessage("");
+
+    if (newPassword.length < 6) {
+      setPasswordError("Password must be at least 6 characters.");
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setPasswordError("Passwords do not match.");
+      return;
+    }
+
+    setPasswordSaving(true);
+    const { error } = await supabase.auth.updateUser({ password: newPassword });
+    if (error) {
+      setPasswordError(error.message);
+    } else {
+      setPasswordMessage("Password updated successfully!");
+      setNewPassword("");
+      setConfirmPassword("");
+    }
+    setPasswordSaving(false);
+  };
 
   useEffect(() => {
     async function loadProfile() {
@@ -353,6 +394,64 @@ export default function SettingsPage() {
               {addingForwarder ? "Adding..." : "Add Forwarder"}
             </button>
           </div>
+        </div>
+
+        {/* Password */}
+        <div ref={passwordRef} className="mt-12 pt-8 border-t border-gray-200">
+          <h2 className="text-xl font-bold text-[var(--navy)] mb-1">
+            {isPasswordReset ? "Set Your Password" : "Change Password"}
+          </h2>
+          <p className="text-gray-500 text-sm mb-6">
+            {isPasswordReset
+              ? "Welcome! Set a password to finish setting up your account."
+              : "Update your account password."}
+          </p>
+
+          <form onSubmit={handlePasswordUpdate} className="space-y-4 max-w-sm">
+            <div>
+              <label className="block text-sm font-semibold text-[var(--navy)] mb-1">New Password</label>
+              <input
+                type="password"
+                required
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                placeholder="Enter new password"
+                minLength={6}
+                className="w-full px-4 py-3 rounded-lg border border-gray-200 focus:border-[var(--navy)] focus:ring-1 focus:ring-[var(--navy)] outline-none transition-colors text-sm"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-[var(--navy)] mb-1">Confirm Password</label>
+              <input
+                type="password"
+                required
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                placeholder="Confirm new password"
+                minLength={6}
+                className="w-full px-4 py-3 rounded-lg border border-gray-200 focus:border-[var(--navy)] focus:ring-1 focus:ring-[var(--navy)] outline-none transition-colors text-sm"
+              />
+            </div>
+
+            {passwordError && (
+              <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3">
+                {passwordError}
+              </div>
+            )}
+            {passwordMessage && (
+              <div className="bg-green-50 border border-green-200 text-green-700 text-sm rounded-lg px-4 py-3">
+                {passwordMessage}
+              </div>
+            )}
+
+            <button
+              type="submit"
+              disabled={passwordSaving}
+              className="bg-[var(--red)] hover:bg-[var(--red-dark)] disabled:opacity-50 text-white px-8 py-3 rounded-xl font-semibold transition-colors text-sm"
+            >
+              {passwordSaving ? "Updating..." : "Update Password"}
+            </button>
+          </form>
         </div>
       </div>
     </main>
