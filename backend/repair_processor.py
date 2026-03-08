@@ -209,24 +209,28 @@ async def process_repair(repair_id: str):
         skill_level = repair.get("skill_level", "journeyman")
         language = repair.get("preferred_language", "en")
 
-        # Load reference context (all 5 reference files + decision tree + history)
-        ref_context = _load_ref_context()
-        history_context = load_repair_history_context()
-        dt_context = load_decision_tree()
-        sl_context = load_scope_library()
-
-        dt_section = f"\n=== DECISION TREE (CSV) ===\n{dt_context}\n" if dt_context else ""
-        sl_section = f"\n=== SCOPE LIBRARY (CSV) ===\n{sl_context}\n" if sl_context else ""
+        # Load reference context — only repair-essential files (not claims-focused ones)
+        # repair-diagnostic-standard.md (32KB) + leak-repair-guide.md (17KB) = ~49KB
+        # Skip: damage-identification.md (56KB, claims), installation-techniques.md,
+        #        products-and-materials.md (redundant with config.DEFAULT_MATERIAL_COSTS)
+        _REPAIR_REF_FILES = [
+            "references/repair-diagnostic-standard.md",
+            "references/leak-repair-guide.md",
+        ]
+        ref_parts = []
+        for ref_file in _REPAIR_REF_FILES:
+            path = os.path.join(BACKEND_DIR, ref_file)
+            if os.path.exists(path):
+                with open(path, "r") as f:
+                    ref_parts.append(f"=== {ref_file} ===\n{f.read()}\n")
+        ref_context = "\n".join(ref_parts)
 
         system_prompt = f"""You are DumbRoof Repair AI. Use the following reference knowledge to inform your diagnosis.
-Follow the decision tree STRICTLY. Use the scope library for standard scope text, homeowner summaries,
-and closeout verification requirements.
+Follow the decision tree STRICTLY.
 
 {ref_context}
-{dt_section}
-{sl_section}
-{history_context}
 """
+        print(f"[REPAIR] System prompt size: {len(system_prompt):,} chars (~{len(system_prompt)//4:,} tokens)")
 
         # Process photos in batches, collect all annotations, then do final diagnosis
         all_batch_annotations = {}
@@ -258,12 +262,16 @@ and closeout verification requirements.
                 print(f"[REPAIR] Calling Claude API for diagnosis...")
                 response = _call_claude_with_retry(
                     claude,
-                    model="claude-sonnet-4-6",
+                    model="claude-opus-4-6",
                     max_tokens=16384,
                     system=system_prompt,
                     messages=[{"role": "user", "content": user_content}],
                 )
                 response_text = response.content[0].text.strip()
+                print(f"[REPAIR] Response: {len(response_text):,} chars, stop_reason={response.stop_reason}, "
+                      f"input_tokens={response.usage.input_tokens}, output_tokens={response.usage.output_tokens}")
+                if response.stop_reason == "max_tokens":
+                    print(f"[REPAIR] WARNING: Response truncated at max_tokens!")
             else:
                 batch_text_prompt = (
                     f"Describe each photo ({', '.join(batch_keys)}) for a leak diagnosis. "
@@ -275,7 +283,7 @@ and closeout verification requirements.
                 _log_payload_size(batch_content, batch_text_prompt)
                 batch_response = _call_claude_with_retry(
                     claude,
-                    model="claude-sonnet-4-6",
+                    model="claude-opus-4-6",
                     max_tokens=2048,
                     system=system_prompt,
                     messages=[{"role": "user", "content": batch_content}],
@@ -302,12 +310,14 @@ and closeout verification requirements.
             print(f"[REPAIR] Calling Claude API for final diagnosis synthesis...")
             response = _call_claude_with_retry(
                 claude,
-                model="claude-sonnet-4-6",
+                model="claude-opus-4-6",
                 max_tokens=16384,
                 system=system_prompt,
                 messages=[{"role": "user", "content": synthesis_prompt}],
             )
             response_text = response.content[0].text.strip()
+            print(f"[REPAIR] Response: {len(response_text):,} chars, stop_reason={response.stop_reason}, "
+                  f"input_tokens={response.usage.input_tokens}, output_tokens={response.usage.output_tokens}")
 
         # 6. Parse diagnosis response (handles markdown fencing + validation)
         diagnosis_data = parse_diagnosis_response(response_text)
