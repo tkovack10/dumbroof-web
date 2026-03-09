@@ -51,7 +51,7 @@ export default function AuthCallbackPage() {
             return;
           }
 
-          if (type === "recovery") {
+          if (type === "recovery" || type === "invite") {
             setMode("recovery");
             return;
           }
@@ -71,7 +71,7 @@ export default function AuthCallbackPage() {
         }
 
         const type = params.get("type");
-        if (type === "recovery") {
+        if (type === "recovery" || type === "invite") {
           setMode("recovery");
           return;
         }
