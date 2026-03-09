@@ -3093,6 +3093,16 @@ async def process_claim(claim_id: str):
             )
             print(f"[PHOTOS] Resized {resized_count} photos — total photos dir: {total_size/1024/1024:.1f}MB")
 
+        # DEBUG: Save config JSON to storage for inspection
+        try:
+            _debug_config_path = os.path.join(work_dir, "_debug_config.json")
+            with open(_debug_config_path, "w") as f:
+                json.dump(config, f, indent=2)
+            upload_file(sb, "claim-documents", f"{file_path}/output/_debug_config.json", _debug_config_path)
+            print(f"[DEBUG] Uploaded config JSON for inspection")
+        except Exception as e:
+            print(f"[DEBUG] Config upload failed: {e}")
+
         # 10. Generate PDFs
         print(f"[PROCESS] Generating PDFs...")
         pdfs = generate_pdfs(config, work_dir)
