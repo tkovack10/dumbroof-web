@@ -1,50 +1,80 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { createClient } from "@/lib/supabase/client";
+import { createBrowserClient } from "@supabase/ssr";
 
 export default function AuthCallbackPage() {
   const handled = useRef(false);
-  const supabase = createClient();
 
   useEffect(() => {
     if (handled.current) return;
     handled.current = true;
 
-    // Listen for auth state changes — Supabase auto-processes hash fragments
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        if (event === "PASSWORD_RECOVERY") {
-          // Recovery flow — send to settings to set password
-          window.location.href = "/dashboard/settings?reset=true";
-        } else if (event === "SIGNED_IN" && session) {
+    const handleAuth = async () => {
+      // 1. Capture hash BEFORE Supabase client can consume it
+      const hash = window.location.hash;
+      const params = new URLSearchParams(window.location.search);
+      const code = params.get("code");
+
+      // 2. Create client with detectSessionInUrl OFF to prevent race condition
+      const supabase = createBrowserClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+        { auth: { detectSessionInUrl: false } }
+      );
+
+      // 3. Handle implicit flow (hash fragment from recovery/invite emails)
+      if (hash) {
+        const hashParams = new URLSearchParams(hash.substring(1));
+        const accessToken = hashParams.get("access_token");
+        const refreshToken = hashParams.get("refresh_token");
+        const type = hashParams.get("type");
+
+        if (accessToken && refreshToken) {
+          const { error } = await supabase.auth.setSession({
+            access_token: accessToken,
+            refresh_token: refreshToken,
+          });
+
+          if (error) {
+            window.location.href = `/login?error=${encodeURIComponent(error.message)}`;
+            return;
+          }
+
+          if (type === "recovery") {
+            window.location.href = "/dashboard/settings?reset=true";
+            return;
+          }
+
           window.location.href = "/dashboard";
+          return;
         }
       }
-    );
 
-    // Also handle PKCE code flow (query param from OAuth/invite)
-    const params = new URLSearchParams(window.location.search);
-    const code = params.get("code");
-    if (code) {
-      supabase.auth.exchangeCodeForSession(code).then(({ error }) => {
+      // 4. Handle PKCE code flow (query param from OAuth/invite)
+      if (code) {
+        const { error } = await supabase.auth.exchangeCodeForSession(code);
         if (error) {
           window.location.href = `/login?error=${encodeURIComponent(error.message)}`;
+          return;
         }
-        // onAuthStateChange will handle the redirect on success
-      });
-    }
 
-    // Fallback: if nothing fires within 5 seconds, redirect to dashboard
-    const timeout = setTimeout(() => {
-      window.location.href = "/dashboard";
-    }, 5000);
+        const type = params.get("type");
+        if (type === "recovery") {
+          window.location.href = "/dashboard/settings?reset=true";
+          return;
+        }
 
-    return () => {
-      subscription.unsubscribe();
-      clearTimeout(timeout);
+        window.location.href = "/dashboard";
+        return;
+      }
+
+      // 5. No hash, no code — invalid callback
+      window.location.href = `/login?error=${encodeURIComponent("Invalid or expired link. Please try again.")}`;
     };
-  }, [supabase]);
+
+    handleAuth();
+  }, []);
 
   return (
     <main className="min-h-screen bg-[var(--navy)] flex items-center justify-center">
