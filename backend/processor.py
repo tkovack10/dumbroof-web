@@ -2461,6 +2461,9 @@ def generate_pdfs(config: dict, work_dir: str) -> list[str]:
     """
     # Write config to work directory
     config_path = os.path.join(work_dir, "claim_config.json")
+    # DEBUG: trace demand_items before writing JSON
+    _di = config.get("appeal_letter", {}).get("demand_items", [])
+    print(f"[DEBUG] demand_items before JSON write: {len(_di)} items = {_di[:2]}", flush=True)
     with open(config_path, "w") as f:
         json.dump(config, f, indent=2)
 
