@@ -384,6 +384,9 @@ def _build_contractor_cert(config):
     # Guard: never let AI/bot names appear on certification
     if any(w in name.lower() for w in ["dumb roof", "ai analysis", "automated", "bot"]):
         name = company["ceo_name"]
+    # Ultimate fallback — if ceo_name also has bad words, use company name
+    if not name or any(w in name.lower() for w in ["dumb roof", "ai analysis", "automated", "bot"]):
+        name = company.get("name", "Contractor")
     license_num = compliance.get("license_number", "")
     license_text = f" ({license_num})" if license_num else ""
     return f'''
@@ -1892,7 +1895,7 @@ def build_forensic_report(config):
 <!-- DAMAGE THRESHOLD ANALYSIS -->
 <div style="margin-top:24pt;"></div>
 <h2>{threshold_sec_num}. Damage Threshold Analysis</h2>
-{thresholds_html if thresholds_html else '<p>Damage thresholds will be populated after NOAA weather data is applied. Run: <code>python3 -m noaa_weather apply</code></p>'}
+{thresholds_html if thresholds_html else '<p>Damage threshold analysis pending weather verification data.</p>'}
 {threshold_aging_chart_html}
 {age_reasoning_html}
 

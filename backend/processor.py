@@ -1365,13 +1365,19 @@ def build_claim_config(
             key = f"p{(i // 3 + 3):02d}_{(i % 3 + 1):02d}"
             photo_map[key] = filename
 
+    # Sanitize contact_name — reject AI/bot names so USARM defaults apply
+    _contact_name = (company_profile or {}).get("contact_name", "")
+    _bad_name_words = ["dumb roof", "ai analysis", "automated", "bot", "ai agent"]
+    if any(w in _contact_name.lower() for w in _bad_name_words):
+        _contact_name = ""
+
     config = {
         "phase": phase,
         "company": {
             "name": (company_profile or {}).get("company_name", ""),
             "address": (company_profile or {}).get("address", ""),
             "city_state_zip": (company_profile or {}).get("city_state_zip", ""),
-            "ceo_name": (company_profile or {}).get("contact_name", ""),
+            "ceo_name": _contact_name,
             "ceo_title": (company_profile or {}).get("contact_title", ""),
             "email": (company_profile or {}).get("email", ""),
             "cell_phone": (company_profile or {}).get("phone", ""),
@@ -1389,13 +1395,14 @@ def build_claim_config(
             "name": claim.get("homeowner_name", "") or
                     (carrier_data or {}).get("carrier", {}).get("insured_name", "") or
                     (carrier_data or {}).get("insured_name", "") or
-                    "Insured",  # Generic fallback — set homeowner_name in DB for real name
+                    "Property Owner",  # Generic fallback — set homeowner_name in DB for real name
             "type": "homeowner"
         },
         "carrier": {
             "name": carrier_data["carrier"]["name"] if carrier_data else claim.get("carrier", ""),
             "claim_number": carrier_data["carrier"].get("claim_number", "Pending") if carrier_data else "Pending",
             "policy_number": carrier_data["carrier"].get("policy_number", "") if carrier_data else "",
+            "adjuster_name": carrier_data["carrier"].get("adjuster_name", "") if carrier_data else "",
             "adjuster_email": carrier_data["carrier"].get("adjuster_email", "") if carrier_data else "",
             "carrier_rcv": carrier_data.get("carrier_rcv", 0) if carrier_data else 0,
             "deductible": carrier_data.get("carrier_deductible", 0) if carrier_data else 0,
@@ -1413,7 +1420,7 @@ def build_claim_config(
             "report_date": datetime.now().strftime("%B %d, %Y"),
         },
         "inspectors": {
-            "usarm_inspector": (company_profile or {}).get("contact_name", "Tom Kovack Jr."),
+            "usarm_inspector": _contact_name or "Tom Kovack Jr.",
             "usarm_title": (company_profile or {}).get("contact_title", "CEO"),
         },
         "scope": {
@@ -1483,6 +1490,30 @@ def build_claim_config(
             "Supplement report with line-by-line variance analysis",
             "Formal appeal letter",
         ])
+
+        # Dynamic requested_actions based on actual claim variance
+        carrier_name = config["carrier"]["name"] or "the carrier"
+        variance = config["financials"].get("total", 0) - config["carrier"].get("carrier_rcv", 0)
+        dynamic_actions = []
+        if variance > 0:
+            dynamic_actions.append(
+                f"Review the enclosed forensic documentation and revised scope of loss identifying ${variance:,.2f} in underpayment"
+            )
+        else:
+            dynamic_actions.append(
+                "Review the enclosed forensic documentation and revised scope of loss"
+            )
+        dynamic_actions.append(
+            "Issue revised payment reflecting the full scope of documented storm-related damage"
+        )
+        if config["carrier"].get("carrier_line_items"):
+            dynamic_actions.append(
+                "Address the line-by-line variance analysis identifying specific underpaid and omitted items"
+            )
+        dynamic_actions.append(
+            "Schedule a re-inspection if additional verification is needed"
+        )
+        config["appeal_letter"]["requested_actions"] = dynamic_actions
 
     # Set correct price list for state if not from carrier
     if not config["financials"].get("price_list"):
@@ -1567,6 +1598,55 @@ def build_claim_config(
     return config
 
 
+def _get_line_item_justification(desc: str, trade: str) -> str:
+    """Return trade-specific forensic justification for a scope comparison line item."""
+    d = desc.lower()
+    # Roofing components
+    if any(kw in d for kw in ["shingle", "roofing", "comp roof"]):
+        return "Storm-damaged shingles require full R&R per manufacturer warranty requirements"
+    if any(kw in d for kw in ["ice", "water", "i&w", "ice & water"]):
+        return "Code-required ice & water shield at eaves, valleys, and penetrations"
+    if any(kw in d for kw in ["underlayment", "felt", "synthetic"]):
+        return "Code-required underlayment must be replaced with full roof R&R"
+    if any(kw in d for kw in ["drip edge", "drip-edge"]):
+        return "Code-required drip edge at eaves and rakes per IRC R905.2.8.5"
+    if any(kw in d for kw in ["ridge", "hip cap"]):
+        return "Ridge/hip cap damaged by hail impact — R&R required with roof system"
+    if any(kw in d for kw in ["starter", "strip"]):
+        return "Starter strip required per manufacturer installation specifications"
+    if any(kw in d for kw in ["flashing", "step flash", "counter flash"]):
+        return "Flashing must be replaced when removing adjacent roofing materials"
+    if any(kw in d for kw in ["vent", "ridge vent", "pipe boot", "pipe jack"]):
+        return "Roof penetration components damaged by storm impact — R&R required"
+    if any(kw in d for kw in ["skylight"]):
+        return "Skylight flashing disturbed during roof R&R — must be resealed"
+    # Gutters
+    if any(kw in d for kw in ["gutter", "downspout"]):
+        return "Gutter system dented/damaged by hail impact — R&R required"
+    # Siding
+    if any(kw in d for kw in ["siding", "vinyl", "aluminum sid"]):
+        return "Storm-damaged siding requires R&R — matching requirement per NAIC MDL-902"
+    if any(kw in d for kw in ["house wrap", "housewrap", "weather barrier"]):
+        return "Code-required WRB must be replaced per IRC R703.1 when siding is removed"
+    if any(kw in d for kw in ["window wrap", "j-channel", "trim"]):
+        return "Required component for proper siding installation"
+    # General
+    if any(kw in d for kw in ["labor", "tear off", "tear-off", "removal"]):
+        return "Labor required for proper removal and disposal of damaged materials"
+    if any(kw in d for kw in ["dumpster", "haul", "debris"]):
+        return "Debris removal required for full scope of work"
+    if any(kw in d for kw in ["permit"]):
+        return "Building permit required per local jurisdiction"
+    # Trade-based fallback
+    if trade == "roofing":
+        return "Required component of complete roofing system R&R"
+    if trade == "gutters":
+        return "Storm-damaged gutter component — R&R required"
+    if trade == "siding":
+        return "Required for code-compliant siding installation"
+    return ""
+
+
 def _cross_reference_line_items(config: dict) -> None:
     """Populate usarm_desc, usarm_amount, and note on each carrier line item by matching against USARM line items."""
     carrier_items = config.get("carrier", {}).get("carrier_line_items", [])
@@ -1641,7 +1721,7 @@ def _cross_reference_line_items(config: dict) -> None:
         if li_idx in claimed_usarm:
             continue
         claimed_usarm.add(li_idx)
-        carrier_matches.setdefault(ci_idx, []).append((amt, desc))
+        carrier_matches.setdefault(ci_idx, []).append((amt, desc, li_idx))
 
     # Apply results to carrier items
     for ci_idx, ci in enumerate(carrier_items):
@@ -1651,20 +1731,29 @@ def _cross_reference_line_items(config: dict) -> None:
             best_desc = max(matches, key=lambda m: m[0])[1]
             ci["usarm_amount"] = round(total_amt, 2)
             ci["usarm_desc"] = best_desc
-            # Generate variance note
+            # Generate variance note with justification
             carrier_amt = 0
             try:
                 carrier_amt = float(ci.get("carrier_amount", 0))
             except (ValueError, TypeError):
                 pass
+            variance_text = ""
             if carrier_amt > 0 and total_amt > carrier_amt:
-                ci["note"] = f"Carrier underpaid by {round(total_amt - carrier_amt, 2):.2f}"
+                diff = round(total_amt - carrier_amt, 2)
+                variance_text = f"Underpaid ${diff:,.2f}"
             elif carrier_amt > 0 and total_amt < carrier_amt:
-                ci["note"] = f"Carrier overpaid by {round(carrier_amt - total_amt, 2):.2f}"
+                diff = round(carrier_amt - total_amt, 2)
+                variance_text = f"Overpaid ${diff:,.2f}"
             elif carrier_amt > 0:
-                ci["note"] = "Amounts match"
+                variance_text = "Amounts match"
             else:
-                ci["note"] = "Not in carrier scope"
+                variance_text = "Not in carrier scope"
+            # Add trade-specific justification
+            best_li_idx = max(matches, key=lambda m: m[0])[2]
+            matched_li = line_items[best_li_idx] if best_li_idx < len(line_items) else {}
+            trade = (matched_li.get("trade", "") or "").lower()
+            justification = _get_line_item_justification(best_desc, trade)
+            ci["note"] = f"{variance_text}. {justification}" if justification else variance_text
         else:
             ci["usarm_amount"] = 0
             ci["usarm_desc"] = ""
@@ -2501,20 +2590,26 @@ async def process_claim(claim_id: str):
             print(f"[PROCESS] Using company branding: {company_profile.get('company_name', 'N/A')}")
     except Exception:
         pass  # No profile set — use defaults
+    _usarm_defaults = {
+        "company_name": "USA ROOF MASTERS",
+        "address": "3070 Bristol Pike, Building 1, Suite 122",
+        "city_state_zip": "Bensalem, PA 19020",
+        "contact_name": "Tom Kovack Jr.",
+        "contact_title": "CEO",
+        "email": "TKovack@USARoofMasters.com",
+        "phone": "267-679-1504",
+        "office_phone": "267-332-0197",
+        "website": "www.USARoofMasters.com",
+        "user_role": "contractor",
+    }
     if not company_profile:
-        company_profile = {
-            "company_name": "USA ROOF MASTERS",
-            "address": "3070 Bristol Pike, Building 1, Suite 122",
-            "city_state_zip": "Bensalem, PA 19020",
-            "contact_name": "Tom Kovack Jr.",
-            "contact_title": "CEO",
-            "email": "TKovack@USARoofMasters.com",
-            "phone": "267-679-1504",
-            "office_phone": "267-332-0197",
-            "website": "www.USARoofMasters.com",
-            "user_role": "contractor",
-        }
+        company_profile = dict(_usarm_defaults)
         print("[PROCESS] No company profile — using USARM defaults")
+    else:
+        # Fill in any empty fields with USARM defaults (users may leave fields blank)
+        for key, default_val in _usarm_defaults.items():
+            if not company_profile.get(key):
+                company_profile[key] = default_val
 
     # 2. Create temp work directory
     with tempfile.TemporaryDirectory(prefix="dumbroof_") as work_dir:
@@ -2701,9 +2796,18 @@ async def process_claim(claim_id: str):
             config.setdefault("warnings", []).append("MEASUREMENT_EXTRACTION_FAILED")
             print("[WARN] Flagged config with MEASUREMENT_EXTRACTION_FAILED warning")
 
-        # Add corroborating weather reports to config
+        # Add corroborating weather reports to config (sanitized)
         if corroborating_reports:
-            config["weather"]["corroborating_reports"] = corroborating_reports
+            sanitized_reports = []
+            for rpt in corroborating_reports:
+                if isinstance(rpt, dict):
+                    text = rpt.get("text", "") or rpt.get("summary", "")
+                    # Reject junk data: HTML, KeePass, Google search URLs
+                    if any(junk in text.lower() for junk in ["<html", "keepass", "google.com/search", "<script", "<!doctype"]):
+                        continue
+                    sanitized_reports.append(rpt)
+            if sanitized_reports:
+                config["weather"]["corroborating_reports"] = sanitized_reports
 
         # 9a. NOAA Weather + Damage Thresholds (auto-populate if address + storm date available)
         try:
@@ -2781,18 +2885,95 @@ async def process_claim(claim_id: str):
                 carrier_data,
             )
             # Post-process: substitute bracket placeholders that Claude sometimes returns literally
-            address = config.get("property", {}).get("address", "the property")
-            storm_date_str = config.get("dates", {}).get("date_of_loss", "") or config.get("weather", {}).get("storm_date", "the reported storm event")
-            finding_count = len(photo_analysis.get("key_findings", []))
-            conclusion_paragraphs = [
-                p.replace("[address]", address)
-                 .replace("[storm event]", storm_date_str)
-                 .replace("[N]", str(finding_count))
-                for p in conclusion_paragraphs
-            ]
-            config["forensic_findings"]["conclusion_paragraphs"] = conclusion_paragraphs
+            if conclusion_paragraphs and isinstance(conclusion_paragraphs, list):
+                address = config.get("property", {}).get("address", "the property")
+                storm_date_str = config.get("dates", {}).get("date_of_loss", "") or config.get("weather", {}).get("storm_date", "the reported storm event")
+                finding_count = len(photo_analysis.get("key_findings", []))
+                conclusion_paragraphs = [
+                    p.replace("[address]", address)
+                     .replace("[storm event]", storm_date_str)
+                     .replace("[N]", str(finding_count))
+                    for p in conclusion_paragraphs if isinstance(p, str)
+                ]
+                config["forensic_findings"]["conclusion_paragraphs"] = conclusion_paragraphs
+            else:
+                print(f"[PROCESS] Conclusion synthesis returned {type(conclusion_paragraphs)} — skipping placeholder replacement")
         except Exception as e:
-            print(f"[PROCESS] Conclusion synthesis failed (non-fatal): {e}")
+            print(f"[PROCESS] Conclusion synthesis failed (non-fatal): {e}", flush=True)
+
+        # 9d. Cover email summary paragraphs
+        try:
+            address = config.get("property", {}).get("address", "the property")
+            company_name = config.get("company", {}).get("name", "our company")
+            carrier_name = config.get("carrier", {}).get("name", "")
+            usarm_total = config.get("financials", {}).get("total", 0)
+            carrier_rcv = config.get("carrier", {}).get("carrier_rcv", 0)
+            phase = config.get("phase", "pre_scope")
+            trades = config.get("scope", {}).get("trades", [])
+            trade_str = ", ".join(trades) if trades else "roofing"
+
+            if phase == "post_scope" and carrier_rcv > 0:
+                variance = usarm_total - carrier_rcv
+                config["cover_email"]["summary_paragraphs"] = [
+                    f"Please find enclosed the complete forensic documentation package for the property at {address}. "
+                    f"Our independent inspection has identified a scope variance of ${variance:,.2f} between "
+                    f"our documented findings and the current carrier approval.",
+                    f"The enclosed reports include annotated photography of all storm-related damage, "
+                    f"an Xactimate-format estimate at current {config.get('financials', {}).get('price_list', 'regional')} pricing, "
+                    f"and a line-by-line variance analysis documenting specific underpaid and omitted items.",
+                    f"We respectfully request a timely review of these materials and issuance of revised payment "
+                    f"reflecting the full scope of documented damage. Please do not hesitate to contact us "
+                    f"should you require any additional information or wish to schedule a re-inspection.",
+                ]
+            else:
+                config["cover_email"]["summary_paragraphs"] = [
+                    f"Please find enclosed the complete forensic documentation package for the property at {address}. "
+                    f"Our independent inspection has documented storm-related damage to the {trade_str}.",
+                    f"The enclosed reports include annotated photography of all identified damage, "
+                    f"an Xactimate-format replacement cost estimate, and a forensic causation analysis "
+                    f"establishing the relationship between documented weather events and observed damage.",
+                    f"Please do not hesitate to contact us should you require any additional information "
+                    f"or wish to schedule a joint inspection.",
+                ]
+        except Exception as e:
+            print(f"[PROCESS] Cover email summary generation failed (non-fatal): {e}", flush=True)
+
+        # 9e. Differentiation table — generate if not already present
+        if not config.get("forensic_findings", {}).get("differentiation_table"):
+            diff_table = []
+            damage_summary = (photo_analysis.get("damage_summary", "") or "").lower()
+            has_noaa = bool(config.get("weather", {}).get("noaa_events"))
+            max_hail = config.get("weather", {}).get("max_hail_inches", 0)
+
+            if "hail" in damage_summary or max_hail:
+                diff_table.append({
+                    "cause": "Hail Impact",
+                    "characteristics": "Circular/oval depressions with granule displacement, mat fracture, soft metal denting",
+                    "observed": "Yes — multiple impact marks with granule loss documented in photo analysis",
+                    "conclusion": "CONSISTENT",
+                })
+            if "wind" in damage_summary:
+                diff_table.append({
+                    "cause": "Wind Damage",
+                    "characteristics": "Lifted, creased, or missing shingles; exposed nail heads; broken seals",
+                    "observed": "Yes — wind-lifted and creased shingles documented across roof surface",
+                    "conclusion": "CONSISTENT",
+                })
+            # Always include wear/aging as NOT CONSISTENT
+            diff_table.append({
+                "cause": "Normal Wear / Aging",
+                "characteristics": "Uniform granule loss, curling at edges, consistent deterioration pattern",
+                "observed": "No — damage pattern is random/localized, inconsistent with uniform aging",
+                "conclusion": "NOT CONSISTENT",
+            })
+            diff_table.append({
+                "cause": "Manufacturing Defect",
+                "characteristics": "Systematic pattern across same production batch, uniform failure mode",
+                "observed": "No — damage is random and impact-related, not systematic",
+                "conclusion": "NOT CONSISTENT",
+            })
+            if diff_table:
+                config["forensic_findings"]["differentiation_table"] = diff_table
 
         # Deduplicate and renumber findings across all sources
         all_key_args = config.get("forensic_findings", {}).get("key_arguments", [])
