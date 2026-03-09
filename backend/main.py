@@ -89,7 +89,7 @@ app.add_middleware(
 
 @app.get("/health")
 def health():
-    return {"status": "ok"}
+    return {"status": "ok", "version": "2026-03-09-v3"}
 
 
 @app.post("/api/reprocess/{claim_id}")
