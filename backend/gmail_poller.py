@@ -574,9 +574,14 @@ async def analyze_edit_request(text: str, subject: str, attachments: list) -> di
 Subject: {subject}
 Body: {text}{attachment_summary}
 
-If the email includes PDF attachments and mentions replacing, correcting, or updating measurements,
-EagleView, photos, scope, or weather data — classify as "replace_document" and set "document_type"
-to one of: measurements, photos, scope, weather.
+If the email includes PDF attachments that replace or update documents, classify EACH attachment
+by its document type. Look at filenames and email context to determine type.
+
+Common patterns:
+- "EagleView", "measurements", "aerial", "roof report" → measurements
+- "scope", "estimate", "insurance", "carrier", "Xactimate", "loss" → scope
+- "photos", "inspection", "CompanyCam" → photos
+- "weather", "NOAA", "HailTrace", "storm" → weather
 
 Extract structured changes. Respond with JSON only:
 {{
@@ -584,9 +589,13 @@ Extract structured changes. Respond with JSON only:
     {{"action": "add|remove|update|replace", "item": "short item name", "details": "what to do"}}
   ],
   "request_type": "add_items|update_photos|carrier_scope|remove_items|replace_document|other",
-  "document_type": "measurements|photos|scope|weather (only if replace_document)",
+  "document_type": "measurements|photos|scope|weather (only if replace_document AND all attachments are same type)",
+  "per_file": {{"filename1.pdf": "measurements", "filename2.pdf": "scope"}},
   "confidence": 0-100
-}}"""
+}}
+
+IMPORTANT: If multiple attachments have DIFFERENT document types, you MUST include "per_file"
+mapping each filename to its type. Use exact filenames from the Attachments list above."""
 
     try:
         client = anthropic.Anthropic()
@@ -796,21 +805,28 @@ async def _poll_once(service, sb: Client, backend_url: str):
                     }
 
                     if doc_type in doc_map:
-                        db_field, storage_folder = doc_map[doc_type]
-
+                        # Fetch ALL document fields so per-file routing can update any of them
                         claim_detail = sb.table("claims").select(
-                            "file_path, " + db_field
+                            "file_path, measurement_files, photo_files, scope_files, weather_files"
                         ).eq("id", match["claim_id"]).single().execute()
 
                         if claim_detail.data:
                             claim_file_path = claim_detail.data["file_path"]
-                            existing_files = claim_detail.data.get(db_field) or []
-                            new_files = list(existing_files)
+                            per_file = ai_result.get("per_file", {})
+                            # Track which DB fields were updated
+                            updated_fields = {}
 
                             for att_path in attachment_paths:
                                 filename = att_path.split("/")[-1]
                                 clean_name = re.sub(r"^\d+_", "", filename)
-                                target_path = f"{claim_file_path}/{storage_folder}/{clean_name}"
+
+                                # Per-file classification — fall back to single doc_type
+                                file_doc_type = per_file.get(clean_name, doc_type)
+                                if file_doc_type not in doc_map:
+                                    file_doc_type = doc_type
+
+                                file_db_field, file_storage_folder = doc_map[file_doc_type]
+                                target_path = f"{claim_file_path}/{file_storage_folder}/{clean_name}"
 
                                 try:
                                     file_data = sb.storage.from_("claim-documents").download(att_path)
@@ -818,15 +834,22 @@ async def _poll_once(service, sb: Client, backend_url: str):
                                         target_path, file_data,
                                         {"content-type": "application/pdf", "upsert": "true"}
                                     )
-                                    if clean_name not in new_files:
-                                        new_files.append(clean_name)
-                                    print(f"[GMAIL POLLER] Copied {att_path} -> {target_path}", flush=True)
+                                    # Build per-field file lists
+                                    if file_db_field not in updated_fields:
+                                        updated_fields[file_db_field] = list(
+                                            claim_detail.data.get(file_db_field) or []
+                                        )
+                                    if clean_name not in updated_fields[file_db_field]:
+                                        updated_fields[file_db_field].append(clean_name)
+                                    print(f"[GMAIL POLLER] Copied {att_path} -> {target_path} (type: {file_doc_type})", flush=True)
                                 except Exception as copy_err:
                                     print(f"[GMAIL POLLER] Copy failed: {copy_err}", flush=True)
 
-                            sb.table("claims").update({
-                                db_field: new_files,
-                            }).eq("id", match["claim_id"]).execute()
+                            # Update all affected DB fields in one call
+                            if updated_fields:
+                                sb.table("claims").update(
+                                    updated_fields
+                                ).eq("id", match["claim_id"]).execute()
 
                             # Auto-trigger reprocessing
                             try:
