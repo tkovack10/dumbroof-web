@@ -1,63 +1,54 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
 
 export default function AuthCallbackPage() {
-  const [status, setStatus] = useState("Processing...");
+  const handled = useRef(false);
   const supabase = createClient();
 
   useEffect(() => {
-    const handleAuth = async () => {
-      // Check for PKCE code flow (query param)
-      const params = new URLSearchParams(window.location.search);
-      const code = params.get("code");
+    if (handled.current) return;
+    handled.current = true;
 
-      if (code) {
-        const { error } = await supabase.auth.exchangeCodeForSession(code);
+    // Listen for auth state changes — Supabase auto-processes hash fragments
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        if (event === "PASSWORD_RECOVERY") {
+          // Recovery flow — send to settings to set password
+          window.location.href = "/dashboard/settings?reset=true";
+        } else if (event === "SIGNED_IN" && session) {
+          window.location.href = "/dashboard";
+        }
+      }
+    );
+
+    // Also handle PKCE code flow (query param from OAuth/invite)
+    const params = new URLSearchParams(window.location.search);
+    const code = params.get("code");
+    if (code) {
+      supabase.auth.exchangeCodeForSession(code).then(({ error }) => {
         if (error) {
           window.location.href = `/login?error=${encodeURIComponent(error.message)}`;
-          return;
         }
-      }
+        // onAuthStateChange will handle the redirect on success
+      });
+    }
 
-      // Check for hash fragment (implicit flow — used by recovery emails)
-      const hash = window.location.hash;
-      if (hash) {
-        const hashParams = new URLSearchParams(hash.substring(1));
-        const accessToken = hashParams.get("access_token");
-        const refreshToken = hashParams.get("refresh_token");
-        const type = hashParams.get("type");
-
-        if (accessToken && refreshToken) {
-          const { error } = await supabase.auth.setSession({
-            access_token: accessToken,
-            refresh_token: refreshToken,
-          });
-
-          if (error) {
-            window.location.href = `/login?error=${encodeURIComponent(error.message)}`;
-            return;
-          }
-
-          // Password recovery — go to settings to set new password
-          if (type === "recovery") {
-            window.location.href = "/dashboard/settings?reset=true";
-            return;
-          }
-        }
-      }
-
-      // Default: go to dashboard
+    // Fallback: if nothing fires within 5 seconds, redirect to dashboard
+    const timeout = setTimeout(() => {
       window.location.href = "/dashboard";
-    };
+    }, 5000);
 
-    handleAuth();
+    return () => {
+      subscription.unsubscribe();
+      clearTimeout(timeout);
+    };
   }, [supabase]);
 
   return (
     <main className="min-h-screen bg-[var(--navy)] flex items-center justify-center">
-      <p className="text-white text-lg">{status}</p>
+      <p className="text-white text-lg">Processing...</p>
     </main>
   );
 }
