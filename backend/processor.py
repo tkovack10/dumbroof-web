@@ -3134,6 +3134,10 @@ async def process_claim(claim_id: str):
         if config_warnings:
             update_data["processing_warnings"] = config_warnings
 
+        # DEBUG: stash demand_items in processing_warnings for inspection
+        _di_debug = config.get("appeal_letter", {}).get("demand_items", [])
+        update_data["processing_warnings"] = (config.get("warnings", []) or []) + [f"DEBUG_DEMAND_ITEMS:{json.dumps(_di_debug)}"]
+
         # Core update (status + output_files + photo_integrity — always works)
         sb.table("claims").update(update_data).eq("id", claim_id).execute()
 
