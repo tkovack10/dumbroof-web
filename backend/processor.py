@@ -3001,7 +3001,7 @@ def _send_completion_notification(claim_id: str):
     import urllib.request
     import urllib.error
 
-    url = "https://dumbroof.ai/api/notify-complete"
+    url = "https://www.dumbroof.ai/api/notify-complete"
     payload = json.dumps({"claim_id": claim_id}).encode("utf-8")
     req = urllib.request.Request(url, data=payload,
                                 headers={"Content-Type": "application/json"})
