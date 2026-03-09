@@ -2985,9 +2985,35 @@ async def process_claim(claim_id: str):
         except Exception as e:
             print(f"[SYNC] GitHub sync failed (non-fatal): {e}")
 
+        # 14. Send completion email notification (non-fatal)
+        try:
+            _send_completion_notification(claim_id)
+        except Exception as e:
+            print(f"[NOTIFY] Email notification failed (non-fatal): {e}")
+
     # Reset telemetry globals
     _TELEMETRY_SB = None
     _TELEMETRY_CLAIM_ID = None
+
+
+def _send_completion_notification(claim_id: str):
+    """POST to Vercel endpoint to email PDFs to user. Non-fatal."""
+    import urllib.request
+    import urllib.error
+
+    url = "https://dumbroof.ai/api/notify-complete"
+    payload = json.dumps({"claim_id": claim_id}).encode("utf-8")
+    req = urllib.request.Request(url, data=payload,
+                                headers={"Content-Type": "application/json"})
+
+    with urllib.request.urlopen(req, timeout=30) as resp:
+        result = json.loads(resp.read().decode())
+
+    if result.get("success"):
+        email = result.get("email", "unknown")
+        print(f"[NOTIFY] Completion email sent to {email}")
+    else:
+        print(f"[NOTIFY] Notification returned: {result}")
 
 
 # ===================================================================
