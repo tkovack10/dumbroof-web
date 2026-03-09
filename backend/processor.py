@@ -1514,6 +1514,7 @@ def build_claim_config(
             "Schedule a re-inspection if additional verification is needed"
         )
         config["appeal_letter"]["requested_actions"] = dynamic_actions
+        config["appeal_letter"]["demand_items"] = dynamic_actions
 
     # Set correct price list for state if not from carrier
     if not config["financials"].get("price_list"):
