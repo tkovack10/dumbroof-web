@@ -33,9 +33,10 @@ export async function POST(request: Request) {
     const fullPath = `${claimPath}/${folder}/${safeName}`;
 
     // Create signed upload URL using admin client (bypasses RLS)
+    // Use upsert to allow re-uploading the same file without "already exists" errors
     const { data, error } = await supabaseAdmin.storage
       .from("claim-documents")
-      .createSignedUploadUrl(fullPath);
+      .createSignedUploadUrl(fullPath, { upsert: true });
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });

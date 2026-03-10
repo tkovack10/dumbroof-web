@@ -51,6 +51,9 @@ export function FileUploadZone({
     onFilesChange(files.filter((_, i) => i !== index));
   };
 
+  const FILE_SIZE_WARNING_MB = 45;
+  const largeFiles = files.filter((f) => f.size > FILE_SIZE_WARNING_MB * 1024 * 1024);
+
   return (
     <div className="space-y-2">
       <div className="flex items-baseline gap-2">
@@ -64,6 +67,17 @@ export function FileUploadZone({
         )}
       </div>
       <p className="text-xs text-gray-500 mb-2">{description}</p>
+
+      {largeFiles.length > 0 && (
+        <div className="bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+          <p className="text-xs text-amber-700 font-medium">
+            {largeFiles.length === 1
+              ? `"${largeFiles[0].name}" is ${(largeFiles[0].size / 1024 / 1024).toFixed(0)}MB.`
+              : `${largeFiles.length} files exceed ${FILE_SIZE_WARNING_MB}MB.`}{" "}
+            ZIP files will be automatically extracted — individual photos upload faster and more reliably.
+          </p>
+        </div>
+      )}
 
       <div
         onDragOver={(e) => {

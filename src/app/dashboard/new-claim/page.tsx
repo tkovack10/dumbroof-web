@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import JSZip from "jszip";
 import { createClient } from "@/lib/supabase/client";
 import { FileUploadZone } from "@/components/file-upload-zone";
 import { AddressAutocomplete } from "@/components/address-autocomplete";
@@ -97,7 +98,10 @@ export default function NewClaimPage() {
         const { error } = await supabase.storage
           .from("claim-documents")
           .uploadToSignedUrl(urlData.path, urlData.token, file);
-        if (error) throw new Error(`Failed to upload ${file.name}: ${error.message}`);
+        // Treat "already exists" as success — file is already uploaded
+        if (error && !error.message.includes("already exists") && !error.message.includes("Duplicate")) {
+          throw new Error(`Failed to upload ${file.name}: ${error.message}`);
+        }
         return urlData.safeName;
       };
 
@@ -113,9 +117,28 @@ export default function NewClaimPage() {
         uploadedNames.measurements.push(await uploadFile(file, "measurements"));
       }
 
-      // Upload photos
+      // Upload photos (extract ZIPs client-side first)
       for (const file of photoFiles) {
-        uploadedNames.photos.push(await uploadFile(file, "photos"));
+        if (file.name.toLowerCase().endsWith(".zip")) {
+          const zip = await JSZip.loadAsync(file);
+          const imageExts = ["jpg", "jpeg", "png", "heic", "heif", "webp", "tiff", "tif", "bmp"];
+
+          for (const [path, entry] of Object.entries(zip.files)) {
+            if (entry.dir) continue;
+            if (path.includes("__MACOSX") || path.startsWith(".")) continue;
+            const ext = path.split(".").pop()?.toLowerCase();
+            if (!ext || !imageExts.includes(ext)) continue;
+
+            const blob = await entry.async("blob");
+            if (blob.size < 10240) continue; // Skip thumbnails < 10KB
+
+            const name = path.split("/").pop() || path;
+            const photo = new File([blob], name, { type: `image/${ext === "jpg" ? "jpeg" : ext}` });
+            uploadedNames.photos.push(await uploadFile(photo, "photos"));
+          }
+        } else {
+          uploadedNames.photos.push(await uploadFile(file, "photos"));
+        }
       }
 
       // Upload scope (if provided)
