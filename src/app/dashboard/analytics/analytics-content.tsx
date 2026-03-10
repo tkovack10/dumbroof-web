@@ -111,7 +111,7 @@ export function AnalyticsContent({ user }: { user: User }) {
               .select("*")
               .order("avg_dollar_impact", { ascending: false })
               .limit(15),
-            supabase.from("claim_outcomes").select("*"),
+            supabase.from("claim_outcomes").select("*").not("claim_id", "is", null),
           ]);
 
         if (carrierRes.error) throw carrierRes.error;

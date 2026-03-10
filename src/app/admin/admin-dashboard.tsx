@@ -457,15 +457,22 @@ export function AdminDashboard() {
         {activeTab === "claims" && (
           <>
             {/* Stats Cards */}
-            <div className="grid grid-cols-2 md:grid-cols-6 gap-4 mb-8">
-              {[
-                { label: "Total Claims", value: stats.total, color: "text-[var(--navy)]" },
-                { label: "Users", value: stats.uniqueUsers, color: "text-[var(--navy)]" },
-                { label: "Uploaded", value: stats.uploaded, color: "text-blue-600" },
-                { label: "Processing", value: stats.processing, color: "text-amber-600" },
-                { label: "Ready", value: stats.ready, color: "text-green-600" },
-                { label: "Errors", value: stats.error, color: "text-red-600" },
-              ].map(({ label, value, color }) => (
+            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-4 mb-8">
+              {(() => {
+                const wonClaims = claims.filter(c => c.claim_outcome === "won");
+                const totalCarrierRcv = claims.reduce((s, c) => s + (c.original_carrier_rcv ?? 0), 0);
+                const totalSettlement = wonClaims.reduce((s, c) => s + (c.settlement_amount ?? 0), 0);
+                return [
+                  { label: "Total Claims", value: String(stats.total), color: "text-[var(--navy)]" },
+                  { label: "Users", value: String(stats.uniqueUsers), color: "text-[var(--navy)]" },
+                  { label: "Ready", value: String(stats.ready), color: "text-green-600" },
+                  { label: "Processing", value: String(stats.processing), color: "text-amber-600" },
+                  { label: "Errors", value: String(stats.error), color: "text-red-600" },
+                  { label: "Wins", value: String(wonClaims.length), color: "text-green-600" },
+                  { label: "Carrier RCV", value: totalCarrierRcv >= 1000 ? `$${(totalCarrierRcv / 1000).toFixed(0)}K` : `$${totalCarrierRcv.toFixed(0)}`, color: "text-[var(--navy)]" },
+                  { label: "Won $", value: totalSettlement >= 1000 ? `$${(totalSettlement / 1000).toFixed(0)}K` : `$${totalSettlement.toFixed(0)}`, color: "text-green-600" },
+                ];
+              })().map(({ label, value, color }) => (
                 <div key={label} className="bg-white rounded-xl border border-gray-200 p-4 text-center">
                   <p className={`text-2xl font-bold ${color}`}>{value}</p>
                   <p className="text-xs text-gray-500 mt-1">{label}</p>
@@ -473,7 +480,7 @@ export function AdminDashboard() {
               ))}
             </div>
 
-            {/* Claims Table */}
+            {/* Claims Table — Google Sheet style */}
             <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
               {loading ? (
                 <div className="text-center py-16">
@@ -484,52 +491,60 @@ export function AdminDashboard() {
                   <p className="text-gray-400 text-sm">No claims processed yet.</p>
                 </div>
               ) : (
-                <div>
-                  <div className="px-6 py-3 bg-gray-50 grid grid-cols-[2rem_1fr_1fr_1fr_3.5rem_3rem_3.5rem_8rem] gap-4 text-xs font-semibold text-gray-400 uppercase tracking-wider border-b border-gray-100">
-                    <div>#</div>
-                    <div>Property</div>
-                    <div>Carrier</div>
-                    <div>User</div>
-                    <div>Files</div>
-                    <div>Phase</div>
-                    <div>Status</div>
-                    <div>Date / Actions</div>
-                  </div>
-                  <div className="divide-y divide-gray-50">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="bg-gray-50 text-left border-b border-gray-100">
+                        <th className="px-3 py-3 text-[10px] font-semibold text-gray-400 uppercase w-8">#</th>
+                        <th className="px-3 py-3 text-[10px] font-semibold text-gray-400 uppercase">Property</th>
+                        <th className="px-3 py-3 text-[10px] font-semibold text-gray-400 uppercase">Carrier</th>
+                        <th className="px-3 py-3 text-[10px] font-semibold text-gray-400 uppercase">User</th>
+                        <th className="px-3 py-3 text-[10px] font-semibold text-gray-400 uppercase text-right">Carrier RCV</th>
+                        <th className="px-3 py-3 text-[10px] font-semibold text-gray-400 uppercase text-right">Settlement</th>
+                        <th className="px-3 py-3 text-[10px] font-semibold text-gray-400 uppercase text-center">Phase</th>
+                        <th className="px-3 py-3 text-[10px] font-semibold text-gray-400 uppercase text-center">Status</th>
+                        <th className="px-3 py-3 text-[10px] font-semibold text-gray-400 uppercase">Date</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-50">
                     {claims.map((claim, i) => (
-                      <div key={claim.id}>
-                        <div
-                          onClick={() => setExpandedRow(expandedRow === claim.id ? null : claim.id)}
-                          className="px-6 py-3 grid grid-cols-[2rem_1fr_1fr_1fr_3.5rem_3rem_3.5rem_8rem] gap-4 items-center hover:bg-gray-50 transition-colors text-sm cursor-pointer"
-                        >
-                          <div className="text-gray-400 text-xs">{claims.length - i}</div>
-                          <div>
-                            <p className="font-medium text-[var(--navy)] truncate">{claim.address}</p>
-                          </div>
-                          <div className="text-gray-600 truncate">{claim.carrier}</div>
-                          <div className="truncate">
-                            <p className="text-gray-700 text-xs font-medium">{userMap[claim.user_id]?.name || "—"}</p>
-                            <p className="text-gray-400 text-xs truncate">{userMap[claim.user_id]?.email || claim.user_id.slice(0, 8)}</p>
-                          </div>
-                          <div>
-                            <span className="text-xs font-medium text-gray-600">
-                              {(claim.photo_files?.length ?? 0) + (claim.measurement_files?.length ?? 0) + (claim.scope_files?.length ?? 0) + (claim.weather_files?.length ?? 0) + (claim.other_files?.length ?? 0)}
-                            </span>
-                          </div>
-                          <div>
-                            <span className="text-xs text-gray-500">
-                              {claim.phase === "pre-scope" ? "Pre" : "Post"}
-                            </span>
-                          </div>
-                          <div>
+                      <tr
+                        key={claim.id}
+                        onClick={() => setExpandedRow(expandedRow === claim.id ? null : claim.id)}
+                        className={`hover:bg-gray-50 transition-colors cursor-pointer ${claim.claim_outcome === "won" ? "bg-green-50/40" : ""}`}
+                      >
+                        <td className="px-3 py-2.5 text-gray-400 text-xs">{claims.length - i}</td>
+                        <td className="px-3 py-2.5">
+                          <p className="font-medium text-[var(--navy)] truncate max-w-[200px]">{claim.address}</p>
+                        </td>
+                        <td className="px-3 py-2.5 text-gray-600 truncate max-w-[150px]">{claim.carrier || "—"}</td>
+                        <td className="px-3 py-2.5 truncate max-w-[150px]">
+                          <p className="text-gray-700 text-xs font-medium">{userMap[claim.user_id]?.name || "—"}</p>
+                          <p className="text-gray-400 text-[10px] truncate">{userMap[claim.user_id]?.email || ""}</p>
+                        </td>
+                        <td className="px-3 py-2.5 text-right text-xs text-gray-600 tabular-nums">
+                          {claim.original_carrier_rcv ? `$${claim.original_carrier_rcv.toLocaleString()}` : "—"}
+                        </td>
+                        <td className="px-3 py-2.5 text-right text-xs tabular-nums">
+                          {claim.settlement_amount && claim.settlement_amount > 0 ? (
+                            <span className="text-green-700 font-medium">${claim.settlement_amount.toLocaleString()}</span>
+                          ) : "—"}
+                        </td>
+                        <td className="px-3 py-2.5 text-center">
+                          <span className="text-xs text-gray-500">{claim.phase === "pre-scope" ? "Pre" : "Post"}</span>
+                        </td>
+                        <td className="px-3 py-2.5 text-center">
+                          {claim.claim_outcome === "won" ? (
+                            <span className="inline-block px-2 py-0.5 rounded-full text-xs font-bold bg-green-100 text-green-700">Won</span>
+                          ) : (
                             <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${statusColors[claim.status] || "bg-gray-100 text-gray-600"}`}>
                               {claim.status.charAt(0).toUpperCase() + claim.status.slice(1)}
                             </span>
-                          </div>
+                          )}
+                        </td>
+                        <td className="px-3 py-2.5">
                           <div className="flex items-center gap-2">
-                            <span className="text-xs text-gray-400">
-                              {new Date(claim.created_at).toLocaleDateString()}
-                            </span>
+                            <span className="text-xs text-gray-400">{new Date(claim.created_at).toLocaleDateString()}</span>
                             {(claim.status === "error" || claim.status === "processing") && (
                               <button
                                 onClick={(e) => { e.stopPropagation(); reprocessClaim(claim.id); }}
@@ -540,76 +555,66 @@ export function AdminDashboard() {
                               </button>
                             )}
                           </div>
-                        </div>
-                        {expandedRow === claim.id && (
-                          <div className="px-6 pb-4 bg-gray-50/50 border-t border-gray-100">
-                            {claim.error_message && (
-                              <p className="text-xs text-red-600 bg-red-50 rounded px-3 py-2 mt-2 mb-2 font-mono">
-                                {claim.error_message}
-                              </p>
-                            )}
-                            {/* Source Files */}
-                            <div className="grid grid-cols-5 gap-2 mt-3 mb-3">
-                              {[
-                                { label: "Measurements", files: claim.measurement_files, color: "bg-blue-50 text-blue-700 border-blue-200" },
-                                { label: "Photos", files: claim.photo_files, color: "bg-purple-50 text-purple-700 border-purple-200" },
-                                { label: "Scope", files: claim.scope_files, color: "bg-amber-50 text-amber-700 border-amber-200" },
-                                { label: "Weather", files: claim.weather_files, color: "bg-teal-50 text-teal-700 border-teal-200" },
-                                { label: "Other", files: claim.other_files, color: "bg-gray-100 text-gray-600 border-gray-200" },
-                              ].map(({ label, files, color }) => (
-                                <div key={label} className={`rounded-lg px-3 py-2 border ${color}`}>
-                                  <p className="text-xs font-bold">{files?.length ?? 0}</p>
-                                  <p className="text-[10px] font-medium opacity-70">{label}</p>
-                                  {files && files.length > 0 && (
-                                    <div className="mt-1 space-y-0.5">
-                                      {files.slice(0, 3).map(f => (
-                                        <p key={f} className="text-[10px] truncate opacity-60">{f}</p>
-                                      ))}
-                                      {files.length > 3 && <p className="text-[10px] opacity-40">+{files.length - 3} more</p>}
-                                    </div>
-                                  )}
+                        </td>
+                      </tr>
+                    ))}
+                    </tbody>
+                  </table>
+                  {/* Expanded row detail panel */}
+                  {claims.map((claim) => (
+                    expandedRow === claim.id ? (
+                      <div key={`exp-${claim.id}`} className="px-6 pb-4 bg-gray-50/50 border-t border-gray-200">
+                        {claim.error_message && (
+                          <p className="text-xs text-red-600 bg-red-50 rounded px-3 py-2 mt-2 mb-2 font-mono">
+                            {claim.error_message}
+                          </p>
+                        )}
+                        {/* Source Files */}
+                        <div className="grid grid-cols-5 gap-2 mt-3 mb-3">
+                          {[
+                            { label: "Measurements", files: claim.measurement_files, color: "bg-blue-50 text-blue-700 border-blue-200" },
+                            { label: "Photos", files: claim.photo_files, color: "bg-purple-50 text-purple-700 border-purple-200" },
+                            { label: "Scope", files: claim.scope_files, color: "bg-amber-50 text-amber-700 border-amber-200" },
+                            { label: "Weather", files: claim.weather_files, color: "bg-teal-50 text-teal-700 border-teal-200" },
+                            { label: "Other", files: claim.other_files, color: "bg-gray-100 text-gray-600 border-gray-200" },
+                          ].map(({ label, files, color }) => (
+                            <div key={label} className={`rounded-lg px-3 py-2 border ${color}`}>
+                              <p className="text-xs font-bold">{files?.length ?? 0}</p>
+                              <p className="text-[10px] font-medium opacity-70">{label}</p>
+                              {files && files.length > 0 && (
+                                <div className="mt-1 space-y-0.5">
+                                  {files.slice(0, 3).map(f => (
+                                    <p key={f} className="text-[10px] truncate opacity-60">{f}</p>
+                                  ))}
+                                  {files.length > 3 && <p className="text-[10px] opacity-40">+{files.length - 3} more</p>}
                                 </div>
-                              ))}
+                              )}
                             </div>
-                            {/* Financial data */}
-                            {claim.original_carrier_rcv != null && claim.original_carrier_rcv > 0 && (
-                              <div className="flex gap-4 text-xs mb-3 text-gray-600">
-                                <span>Carrier: <strong className="text-gray-800">${claim.original_carrier_rcv.toLocaleString()}</strong></span>
-                                {claim.settlement_amount != null && claim.settlement_amount > 0 && (
-                                  <span>Settlement: <strong className="text-green-700">${claim.settlement_amount.toLocaleString()}</strong></span>
-                                )}
-                                {claim.claim_outcome && (
-                                  <span className={`font-bold ${claim.claim_outcome === "won" ? "text-green-600" : "text-gray-500"}`}>
-                                    {claim.claim_outcome.toUpperCase()}
-                                  </span>
-                                )}
-                              </div>
-                            )}
-                            {/* Output Files */}
-                            {claim.output_files && claim.output_files.length > 0 ? (
-                              <div className="flex flex-wrap gap-2">
-                                {claim.output_files.map((file) => (
-                                  <button
-                                    key={file}
-                                    onClick={() => handleDownload(claim.file_path, file)}
-                                    disabled={downloading === `${claim.file_path}/${file}`}
-                                    className="flex items-center gap-1.5 px-3 py-1.5 bg-green-50 hover:bg-green-100 disabled:opacity-50 text-green-700 text-xs font-semibold rounded-lg transition-colors border border-green-200"
-                                  >
-                                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3M6 20h12a2 2 0 002-2V8l-6-6H6a2 2 0 00-2 2v14a2 2 0 002 2z" />
-                                    </svg>
-                                    {downloading === `${claim.file_path}/${file}` ? "..." : file.replace(/_/g, " ").replace(".pdf", "")}
-                                  </button>
-                                ))}
-                              </div>
-                            ) : (
-                              <p className="text-xs text-gray-400">No output files yet.</p>
-                            )}
+                          ))}
+                        </div>
+                        {/* Output Files */}
+                        {claim.output_files && claim.output_files.length > 0 ? (
+                          <div className="flex flex-wrap gap-2">
+                            {claim.output_files.map((file) => (
+                              <button
+                                key={file}
+                                onClick={() => handleDownload(claim.file_path, file)}
+                                disabled={downloading === `${claim.file_path}/${file}`}
+                                className="flex items-center gap-1.5 px-3 py-1.5 bg-green-50 hover:bg-green-100 disabled:opacity-50 text-green-700 text-xs font-semibold rounded-lg transition-colors border border-green-200"
+                              >
+                                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3M6 20h12a2 2 0 002-2V8l-6-6H6a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                                </svg>
+                                {downloading === `${claim.file_path}/${file}` ? "..." : file.replace(/_/g, " ").replace(".pdf", "")}
+                              </button>
+                            ))}
                           </div>
+                        ) : (
+                          <p className="text-xs text-gray-400">No output files yet.</p>
                         )}
                       </div>
-                    ))}
-                  </div>
+                    ) : null
+                  ))}
                 </div>
               )}
             </div>
