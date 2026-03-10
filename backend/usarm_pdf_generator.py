@@ -2781,9 +2781,6 @@ def build_appeal_letter(config):
         code_rows += f'<tr><td>{cv["code"]}</td><td>{cv["requirement"]}</td><td style="color:#c8102e;font-weight:700;">{cv["status"]}</td></tr>\n'
 
     # Demand items (filter regulatory citations for contractor roles)
-    # DEBUG: trace demand_items in generator
-    print(f"[DEBUG-GEN] appeal_letter keys: {list(appeal.keys())}", flush=True)
-    print(f"[DEBUG-GEN] demand_items: {appeal.get('demand_items', [])}", flush=True)
     regulatory_terms = ["NYCRR", "§ 2601", "§2601", "Department of Financial Services", "DFS"]
     demand_html = ""
     for di in appeal.get("demand_items", []):

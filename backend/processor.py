@@ -2461,9 +2461,6 @@ def generate_pdfs(config: dict, work_dir: str) -> list[str]:
     """
     # Write config to work directory
     config_path = os.path.join(work_dir, "claim_config.json")
-    # DEBUG: trace demand_items before writing JSON
-    _di = config.get("appeal_letter", {}).get("demand_items", [])
-    print(f"[DEBUG] demand_items before JSON write: {len(_di)} items = {_di[:2]}", flush=True)
     with open(config_path, "w") as f:
         json.dump(config, f, indent=2)
 
@@ -3093,15 +3090,28 @@ async def process_claim(claim_id: str):
             )
             print(f"[PHOTOS] Resized {resized_count} photos — total photos dir: {total_size/1024/1024:.1f}MB")
 
-        # DEBUG: Save config JSON to storage for inspection
-        try:
-            _debug_config_path = os.path.join(work_dir, "_debug_config.json")
-            with open(_debug_config_path, "w") as f:
-                json.dump(config, f, indent=2)
-            upload_file(sb, "claim-documents", f"{file_path}/output/_debug_config.json", _debug_config_path)
-            print(f"[DEBUG] Uploaded config JSON for inspection")
-        except Exception as e:
-            print(f"[DEBUG] Config upload failed: {e}")
+        # 9f. Recompute demand_items with actual financial totals
+        # (financials.total isn't available in build_claim_config, so we compute here)
+        if config.get("carrier", {}).get("carrier_rcv", 0) > 0:
+            _li = config.get("line_items", [])
+            _li_total = sum(float(i.get("qty", 0)) * float(i.get("unit_price", 0)) for i in _li)
+            _tax = _li_total * config.get("financials", {}).get("tax_rate", 0)
+            _rcv = _li_total + _tax
+            _op = _li_total * 0.20 if config.get("scope", {}).get("o_and_p") else 0
+            _total = _rcv + _op
+            _variance = _total - config["carrier"]["carrier_rcv"]
+            _carrier_name = config.get("carrier", {}).get("name", "the carrier")
+            _actions = []
+            if _variance > 0:
+                _actions.append(f"Review the enclosed forensic documentation and revised scope of loss identifying ${_variance:,.2f} in underpayment")
+            else:
+                _actions.append("Review the enclosed forensic documentation and revised scope of loss")
+            _actions.append("Issue revised payment reflecting the full scope of documented storm-related damage")
+            if config.get("carrier", {}).get("carrier_line_items"):
+                _actions.append("Address the line-by-line variance analysis identifying specific underpaid and omitted items")
+            _actions.append("Schedule a re-inspection if additional verification is needed")
+            config["appeal_letter"]["demand_items"] = _actions
+            config["appeal_letter"]["requested_actions"] = _actions
 
         # 10. Generate PDFs
         print(f"[PROCESS] Generating PDFs...")
@@ -3133,10 +3143,6 @@ async def process_claim(claim_id: str):
         config_warnings = config.get("warnings", [])
         if config_warnings:
             update_data["processing_warnings"] = config_warnings
-
-        # DEBUG: stash demand_items in processing_warnings for inspection
-        _di_debug = config.get("appeal_letter", {}).get("demand_items", [])
-        update_data["processing_warnings"] = (config.get("warnings", []) or []) + [f"DEBUG_DEMAND_ITEMS:{json.dumps(_di_debug)}"]
 
         # Core update (status + output_files + photo_integrity — always works)
         sb.table("claims").update(update_data).eq("id", claim_id).execute()
