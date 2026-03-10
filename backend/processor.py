@@ -369,6 +369,19 @@ If this report includes wall/siding measurements (EagleView Walls report or simi
     area_sf = struct.get("roof_area_sf", result.get("total_roof_area_sf", 0))
 
     if not area_sf:
+        # Check if this is a Property Owner report (images only, no measurement tables)
+        response_text = response.content[0].text.lower() if response.content else ""
+        filename_lower = os.path.basename(pdf_path).lower()
+        _no_meas_phrases = [
+            "property owner", "images only", "no measurement", "does not include",
+            "not include the actual measurement", "cover page, images",
+            "notes diagram", "no numerical", "no roof area",
+        ]
+        if any(phrase in response_text for phrase in _no_meas_phrases) or "propertyowner" in filename_lower:
+            print(f"[WARN] This appears to be an EagleView Property Owner Report (images only, no measurements)")
+            result["_property_owner_report"] = True
+            return result
+
         print("[WARN] Measurement extraction returned no roof area — retrying with explicit prompt...")
         retry_response = _call_claude_with_retry(client,
             _step_name="extract_measurements_retry",
@@ -1342,6 +1355,22 @@ def build_claim_config(
     # Build deterministic code violations based on state + scope
     deterministic_violations = _build_code_violations(state, line_items, trades)
 
+    # Filter photo_filenames to match filtered annotations (fix off-by-one when stock images removed)
+    # photo_tags is ALREADY FILTERED by analyze_photos() — missing keys = removed non-inspection images
+    # photo_tags keys are "photo_01", "photo_02", etc. (1-indexed); photo_filenames is 0-indexed
+    photo_tags = photo_analysis.get("photo_tags", {})
+    if photo_tags:
+        filtered_filenames = []
+        for idx, fname in enumerate(photo_filenames):
+            tag_key = f"photo_{idx + 1:02d}"
+            if tag_key in photo_tags:
+                filtered_filenames.append(fname)
+            else:
+                print(f"[PHOTOS] Filtering out filename {fname} (tag {tag_key} was removed as non-inspection)")
+        if filtered_filenames:
+            print(f"[PHOTOS] Filenames: {len(photo_filenames)} → {len(filtered_filenames)} after filtering")
+            photo_filenames = filtered_filenames
+
     # Build photo annotations mapping
     photo_annotations = {}
     photo_sections = []
@@ -1358,7 +1387,7 @@ def build_claim_config(
             "photos": photo_entries
         })
 
-    # Photo map — map keys to actual filenames
+    # Photo map — map keys to actual filenames (now aligned with filtered annotations)
     photo_map = {}
     for i, filename in enumerate(photo_filenames):
         if get_media_type(filename).startswith("image/"):
@@ -1941,6 +1970,102 @@ def _estimate_linear_measurements(area_sf: float, facets: int, style: str = "com
         "step_flashing": step_flashing, "flashing": flashing,
         "drip_edge": eave + rake,
         "_estimated": True,
+    }
+
+
+def _reconstruct_measurements_from_carrier(carrier_line_items: list) -> dict:
+    """Reconstruct measurements from carrier line items when EagleView extraction fails.
+    Deterministic — no AI call needed. Returns a measurements dict matching extract_measurements format."""
+    roof_area_sf = 0
+    drip_edge = 0
+    ridge_hip = 0
+    eave = 0
+    rake = 0
+    valley = 0
+    gutter_lf = 0
+    starter_lf = 0
+    ridge_vent_lf = 0
+
+    for item in carrier_line_items:
+        desc = (item.get("description") or item.get("carrier_desc") or "").lower()
+        qty = float(item.get("quantity") or item.get("qty") or 0)
+        unit = (item.get("unit") or "").upper()
+
+        # Roof area from shingle install/tearoff (SQ → SF)
+        if any(kw in desc for kw in ["shingle", "roofing", "comp roof", "laminate"]):
+            if any(kw in desc for kw in ["install", "apply", "re-roof", "reroof", "tear", "remove"]):
+                if unit == "SQ" or qty < 200:  # SQ values are typically < 200
+                    roof_area_sf = max(roof_area_sf, qty * 100)
+                else:
+                    roof_area_sf = max(roof_area_sf, qty)  # Already in SF
+
+        # Drip edge
+        if "drip edge" in desc or "drip-edge" in desc:
+            drip_edge = max(drip_edge, qty)
+
+        # Ridge/hip cap
+        if "ridge" in desc and ("cap" in desc or "hip" in desc):
+            ridge_hip = max(ridge_hip, qty)
+
+        # Gutters → infer eave (gutter LF ÷ 1.6)
+        if "gutter" in desc and "down" not in desc:
+            gutter_lf = max(gutter_lf, qty)
+
+        # Starter strip
+        if "starter" in desc:
+            starter_lf = max(starter_lf, qty)
+
+        # Ridge vent
+        if "ridge vent" in desc or "ridge-vent" in desc:
+            ridge_vent_lf = max(ridge_vent_lf, qty)
+
+        # Valley
+        if "valley" in desc:
+            valley = max(valley, qty)
+
+    # Infer eave from gutter LF or starter strip
+    if gutter_lf:
+        eave = round(gutter_lf / 1.6)
+    elif starter_lf:
+        eave = round(starter_lf)
+
+    # Infer rake from drip edge - eave (drip edge covers eave + rake)
+    if drip_edge and eave:
+        rake = max(0, round(drip_edge - eave))
+
+    # Infer ridge from ridge/hip cap or ridge vent
+    ridge = ridge_vent_lf if ridge_vent_lf else round(ridge_hip * 0.6) if ridge_hip else 0
+    hip = round(ridge_hip - ridge) if ridge_hip > ridge else 0
+
+    if not roof_area_sf:
+        return {"structures": [{}], "measurements": {}, "_carrier_fallback": True}
+
+    roof_area_sq = round(roof_area_sf / 100, 2)
+    print(f"[FALLBACK] Reconstructed: {roof_area_sf} SF, drip={drip_edge} LF, "
+          f"eave={eave} LF, rake={rake} LF, ridge={ridge} LF, hip={hip} LF")
+
+    return {
+        "structures": [{
+            "name": "Main Roof",
+            "roof_area_sf": roof_area_sf,
+            "roof_area_sq": roof_area_sq,
+            "waste_factor": 1.10,
+            "predominant_pitch": "6/12",  # Conservative default
+            "facets": 0,
+            "style": "combination",
+        }],
+        "measurements": {
+            "ridge": ridge,
+            "hip": hip,
+            "valley": valley,
+            "rake": rake,
+            "eave": eave,
+            "drip_edge": drip_edge,
+            "flashing": 0,
+            "step_flashing": 0,
+        },
+        "property": {},
+        "_carrier_fallback": True,
     }
 
 
@@ -2781,6 +2906,24 @@ async def process_claim(claim_id: str):
             except Exception as e:
                 print(f"[WEATHER] Corroboration search failed (non-fatal): {e}")
 
+        # 8d. Fallback: if measurement extraction failed, reconstruct from carrier scope
+        meas_check = measurements.get("structures", [{}])
+        meas_area_check = (meas_check[0] if meas_check else {}).get("roof_area_sf", measurements.get("total_roof_area_sf", 0))
+        if not meas_area_check and carrier_data and carrier_data.get("carrier_line_items"):
+            print("[FALLBACK] EagleView extraction failed — reconstructing from carrier line items...")
+            fallback_meas = _reconstruct_measurements_from_carrier(carrier_data["carrier_line_items"])
+            fallback_area = (fallback_meas.get("structures", [{}])[0] or {}).get("roof_area_sf", 0)
+            if fallback_area:
+                # Preserve property info from original measurements if present
+                if measurements.get("property"):
+                    fallback_meas["property"] = measurements["property"]
+                measurements = fallback_meas
+                print(f"[FALLBACK] Success: {fallback_area} SF from carrier scope")
+            else:
+                print("[FALLBACK] Carrier line items did not contain usable roof area")
+            if measurements.get("_property_owner_report"):
+                print("[WARN] Property Owner Report detected — request full EagleView with measurements")
+
         # 9. Build claim config
         print(f"[PROCESS] Building claim config...")
         config = build_claim_config(
@@ -2796,6 +2939,12 @@ async def process_claim(claim_id: str):
         if not meas_area:
             config.setdefault("warnings", []).append("MEASUREMENT_EXTRACTION_FAILED")
             print("[WARN] Flagged config with MEASUREMENT_EXTRACTION_FAILED warning")
+        elif measurements.get("_carrier_fallback"):
+            config.setdefault("warnings", []).append("MEASUREMENTS_FROM_CARRIER_FALLBACK")
+            print("[WARN] Measurements reconstructed from carrier scope — reprocess with real EagleView")
+        if measurements.get("_property_owner_report"):
+            config.setdefault("warnings", []).append("PROPERTY_OWNER_REPORT_NO_MEASUREMENTS")
+            print("[WARN] Property Owner Report detected — no measurement tables available")
 
         # Add corroborating weather reports to config (sanitized)
         if corroborating_reports:
