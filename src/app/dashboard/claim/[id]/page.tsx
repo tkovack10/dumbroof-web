@@ -282,6 +282,7 @@ export default function ClaimDetailPage() {
 
       // Update the claim record with new file names via server API (bypasses RLS)
       const fileFieldMap: Record<string, keyof Claim> = {
+        measurement_files: "measurement_files",
         photo_files: "photo_files",
         scope_files: "scope_files",
         weather_files: "weather_files",
