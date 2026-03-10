@@ -35,7 +35,7 @@ export async function POST(request: Request) {
           role: signup.role,
           source: "beta_signup",
         },
-        redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || "https://dumbroof.ai"}/auth/callback`,
+        redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || "https://www.dumbroof.ai"}/auth/callback`,
       }
     );
 

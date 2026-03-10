@@ -32,7 +32,7 @@ export async function POST(request: Request) {
           role: "inspector",
           source: "inspector_application",
         },
-        redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || "https://dumbroof.ai"}/auth/callback`,
+        redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || "https://www.dumbroof.ai"}/auth/callback`,
       }
     );
 

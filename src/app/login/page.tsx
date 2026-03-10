@@ -27,6 +27,10 @@ function LoginPageContent() {
     if (urlError) {
       setError(urlError);
     }
+    const mode = searchParams.get("mode");
+    if (mode === "signup") {
+      setIsSignUp(true);
+    }
   }, [searchParams]);
 
   const supabase = createClient();
