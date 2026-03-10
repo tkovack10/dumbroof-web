@@ -2,20 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
-
-interface Claim {
-  id: string;
-  user_id: string;
-  address: string;
-  carrier: string;
-  phase: string;
-  status: string;
-  file_path: string;
-  output_files: string[] | null;
-  error_message: string | null;
-  created_at: string;
-  user_email?: string;
-}
+import type { Claim } from "@/types/claim";
 
 interface InspectorApplication {
   id: number;
@@ -498,42 +485,48 @@ export function AdminDashboard() {
                 </div>
               ) : (
                 <div>
-                  <div className="px-6 py-3 bg-gray-50 grid grid-cols-12 gap-4 text-xs font-semibold text-gray-400 uppercase tracking-wider border-b border-gray-100">
-                    <div className="col-span-1">#</div>
-                    <div className="col-span-3">Property</div>
-                    <div className="col-span-2">Carrier</div>
-                    <div className="col-span-2">User</div>
-                    <div className="col-span-1">Phase</div>
-                    <div className="col-span-1">Status</div>
-                    <div className="col-span-2">Date / Actions</div>
+                  <div className="px-6 py-3 bg-gray-50 grid grid-cols-[2rem_1fr_1fr_1fr_3.5rem_3rem_3.5rem_8rem] gap-4 text-xs font-semibold text-gray-400 uppercase tracking-wider border-b border-gray-100">
+                    <div>#</div>
+                    <div>Property</div>
+                    <div>Carrier</div>
+                    <div>User</div>
+                    <div>Files</div>
+                    <div>Phase</div>
+                    <div>Status</div>
+                    <div>Date / Actions</div>
                   </div>
                   <div className="divide-y divide-gray-50">
                     {claims.map((claim, i) => (
                       <div key={claim.id}>
                         <div
                           onClick={() => setExpandedRow(expandedRow === claim.id ? null : claim.id)}
-                          className="px-6 py-3 grid grid-cols-12 gap-4 items-center hover:bg-gray-50 transition-colors text-sm cursor-pointer"
+                          className="px-6 py-3 grid grid-cols-[2rem_1fr_1fr_1fr_3.5rem_3rem_3.5rem_8rem] gap-4 items-center hover:bg-gray-50 transition-colors text-sm cursor-pointer"
                         >
-                          <div className="col-span-1 text-gray-400 text-xs">{claims.length - i}</div>
-                          <div className="col-span-3">
+                          <div className="text-gray-400 text-xs">{claims.length - i}</div>
+                          <div>
                             <p className="font-medium text-[var(--navy)] truncate">{claim.address}</p>
                           </div>
-                          <div className="col-span-2 text-gray-600 truncate">{claim.carrier}</div>
-                          <div className="col-span-2 truncate">
+                          <div className="text-gray-600 truncate">{claim.carrier}</div>
+                          <div className="truncate">
                             <p className="text-gray-700 text-xs font-medium">{userMap[claim.user_id]?.name || "—"}</p>
                             <p className="text-gray-400 text-xs truncate">{userMap[claim.user_id]?.email || claim.user_id.slice(0, 8)}</p>
                           </div>
-                          <div className="col-span-1">
+                          <div>
+                            <span className="text-xs font-medium text-gray-600">
+                              {(claim.photo_files?.length ?? 0) + (claim.measurement_files?.length ?? 0) + (claim.scope_files?.length ?? 0) + (claim.weather_files?.length ?? 0) + (claim.other_files?.length ?? 0)}
+                            </span>
+                          </div>
+                          <div>
                             <span className="text-xs text-gray-500">
                               {claim.phase === "pre-scope" ? "Pre" : "Post"}
                             </span>
                           </div>
-                          <div className="col-span-1">
+                          <div>
                             <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${statusColors[claim.status] || "bg-gray-100 text-gray-600"}`}>
                               {claim.status.charAt(0).toUpperCase() + claim.status.slice(1)}
                             </span>
                           </div>
-                          <div className="col-span-2 flex items-center gap-2">
+                          <div className="flex items-center gap-2">
                             <span className="text-xs text-gray-400">
                               {new Date(claim.created_at).toLocaleDateString()}
                             </span>
@@ -555,8 +548,46 @@ export function AdminDashboard() {
                                 {claim.error_message}
                               </p>
                             )}
+                            {/* Source Files */}
+                            <div className="grid grid-cols-5 gap-2 mt-3 mb-3">
+                              {[
+                                { label: "Measurements", files: claim.measurement_files, color: "bg-blue-50 text-blue-700 border-blue-200" },
+                                { label: "Photos", files: claim.photo_files, color: "bg-purple-50 text-purple-700 border-purple-200" },
+                                { label: "Scope", files: claim.scope_files, color: "bg-amber-50 text-amber-700 border-amber-200" },
+                                { label: "Weather", files: claim.weather_files, color: "bg-teal-50 text-teal-700 border-teal-200" },
+                                { label: "Other", files: claim.other_files, color: "bg-gray-100 text-gray-600 border-gray-200" },
+                              ].map(({ label, files, color }) => (
+                                <div key={label} className={`rounded-lg px-3 py-2 border ${color}`}>
+                                  <p className="text-xs font-bold">{files?.length ?? 0}</p>
+                                  <p className="text-[10px] font-medium opacity-70">{label}</p>
+                                  {files && files.length > 0 && (
+                                    <div className="mt-1 space-y-0.5">
+                                      {files.slice(0, 3).map(f => (
+                                        <p key={f} className="text-[10px] truncate opacity-60">{f}</p>
+                                      ))}
+                                      {files.length > 3 && <p className="text-[10px] opacity-40">+{files.length - 3} more</p>}
+                                    </div>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                            {/* Financial data */}
+                            {claim.original_carrier_rcv != null && claim.original_carrier_rcv > 0 && (
+                              <div className="flex gap-4 text-xs mb-3 text-gray-600">
+                                <span>Carrier: <strong className="text-gray-800">${claim.original_carrier_rcv.toLocaleString()}</strong></span>
+                                {claim.settlement_amount != null && claim.settlement_amount > 0 && (
+                                  <span>Settlement: <strong className="text-green-700">${claim.settlement_amount.toLocaleString()}</strong></span>
+                                )}
+                                {claim.claim_outcome && (
+                                  <span className={`font-bold ${claim.claim_outcome === "won" ? "text-green-600" : "text-gray-500"}`}>
+                                    {claim.claim_outcome.toUpperCase()}
+                                  </span>
+                                )}
+                              </div>
+                            )}
+                            {/* Output Files */}
                             {claim.output_files && claim.output_files.length > 0 ? (
-                              <div className="flex flex-wrap gap-2 mt-2">
+                              <div className="flex flex-wrap gap-2">
                                 {claim.output_files.map((file) => (
                                   <button
                                     key={file}
@@ -572,7 +603,7 @@ export function AdminDashboard() {
                                 ))}
                               </div>
                             ) : (
-                              <p className="text-xs text-gray-400 mt-2">No output files yet.</p>
+                              <p className="text-xs text-gray-400">No output files yet.</p>
                             )}
                           </div>
                         )}

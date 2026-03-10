@@ -3,27 +3,16 @@
 import { useEffect, useState, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
 import type { User } from "@supabase/supabase-js";
+import type { Claim } from "@/types/claim";
 
-interface Claim {
-  id: string;
-  address: string;
-  carrier: string;
-  phase: string;
-  status: string;
-  file_path: string;
-  output_files: string[] | null;
-  created_at: string;
-  pending_drafts?: number;
-  pending_edits?: number;
-  correspondence_count?: number;
-  latest_carrier_position?: string;
-}
+type StatusFilter = "all" | "processing" | "ready" | "attention";
 
 export function DashboardContent({ user }: { user: User }) {
   const supabase = createClient();
   const [claims, setClaims] = useState<Claim[]>([]);
   const [loading, setLoading] = useState(true);
   const [downloading, setDownloading] = useState<string | null>(null);
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
 
   const fetchClaims = useCallback(async () => {
     const { data } = await supabase
@@ -83,6 +72,30 @@ export function DashboardContent({ user }: { user: User }) {
     error: { color: "bg-red-100 text-red-700", label: "Error", icon: "x" },
   };
 
+  // KPI calculations
+  const readyCount = claims.filter(c => c.status === "ready").length;
+  const processingCount = claims.filter(c => c.status === "processing" || c.status === "uploaded").length;
+  const wonClaims = claims.filter(c => c.claim_outcome === "won");
+  const totalMovement = wonClaims.reduce((sum, c) => sum + (c.settlement_amount ?? 0), 0);
+
+  // Filter logic
+  const filteredClaims = claims.filter(c => {
+    if (statusFilter === "all") return true;
+    if (statusFilter === "processing") return c.status === "processing" || c.status === "uploaded";
+    if (statusFilter === "ready") return c.status === "ready";
+    if (statusFilter === "attention") return c.status === "error" || (c.pending_edits ?? 0) > 0;
+    return true;
+  });
+
+  const attentionCount = claims.filter(c => c.status === "error" || (c.pending_edits ?? 0) > 0).length;
+
+  const filterTabs: { key: StatusFilter; label: string; count?: number }[] = [
+    { key: "all", label: "All", count: claims.length },
+    { key: "processing", label: "Processing", count: processingCount },
+    { key: "ready", label: "Ready", count: readyCount },
+    { key: "attention", label: "Needs Attention", count: attentionCount },
+  ];
+
   return (
     <main className="min-h-screen bg-gray-50">
       {/* Top Bar */}
@@ -93,7 +106,7 @@ export function DashboardContent({ user }: { user: User }) {
               DR
             </div>
             <span className="text-white font-bold text-lg tracking-tight">
-              dumb roof<sup className="text-[9px] font-medium align-super ml-0.5">™</sup>
+              dumb roof<sup className="text-[9px] font-medium align-super ml-0.5">&trade;</sup>
             </span>
           </div>
           <div className="flex items-center gap-4">
@@ -153,6 +166,72 @@ export function DashboardContent({ user }: { user: User }) {
           </div>
         </div>
 
+        {/* KPI Stats Bar */}
+        {!loading && claims.length > 0 && (
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+            <div className="bg-white rounded-xl border border-gray-200 px-5 py-4">
+              <p className="text-2xl font-bold text-[var(--navy)]">{claims.length}</p>
+              <p className="text-xs font-medium text-gray-500 mt-0.5">Total Claims</p>
+            </div>
+            <div className="bg-white rounded-xl border border-gray-200 px-5 py-4">
+              <p className="text-2xl font-bold text-green-600">{readyCount}</p>
+              <p className="text-xs font-medium text-gray-500 mt-0.5">Ready</p>
+            </div>
+            <div className="bg-white rounded-xl border border-gray-200 px-5 py-4">
+              <p className="text-2xl font-bold text-amber-600">{processingCount}</p>
+              <p className="text-xs font-medium text-gray-500 mt-0.5">Processing</p>
+            </div>
+            {wonClaims.length > 0 && (
+              <div className="bg-white rounded-xl border border-green-200 px-5 py-4">
+                <p className="text-2xl font-bold text-green-600">{wonClaims.length}</p>
+                <p className="text-xs font-medium text-green-600 mt-0.5">Wins</p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Win Summary Banner */}
+        {!loading && wonClaims.length > 0 && (
+          <div className="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-xl p-5 mb-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-semibold text-green-800">
+                  {wonClaims.length} Claim{wonClaims.length > 1 ? "s" : ""} Won
+                </p>
+                {totalMovement > 0 && (
+                  <p className="text-xs text-green-600 mt-0.5">
+                    ${totalMovement.toLocaleString()} recovered from carriers
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Filter Tabs */}
+        {!loading && claims.length > 0 && (
+          <div className="flex gap-2 mb-6">
+            {filterTabs.map(tab => (
+              <button
+                key={tab.key}
+                onClick={() => setStatusFilter(tab.key)}
+                className={`px-4 py-2 rounded-full text-xs font-semibold transition-colors ${
+                  statusFilter === tab.key
+                    ? "bg-[var(--navy)] text-white"
+                    : "bg-white text-gray-600 border border-gray-200 hover:bg-gray-50"
+                }`}
+              >
+                {tab.label}
+                {tab.count != null && tab.count > 0 && (
+                  <span className={`ml-1.5 ${statusFilter === tab.key ? "text-white/70" : "text-gray-400"}`}>
+                    {tab.count}
+                  </span>
+                )}
+              </button>
+            ))}
+          </div>
+        )}
+
         {/* Claims List */}
         {loading ? (
           <div className="bg-white rounded-2xl border border-gray-200 text-center py-16">
@@ -175,26 +254,69 @@ export function DashboardContent({ user }: { user: User }) {
           </div>
         ) : (
           <div className="space-y-4">
-            {claims.map((claim) => {
+            {filteredClaims.map((claim) => {
               const sc = statusConfig[claim.status] || statusConfig.uploaded;
               const isReady = claim.status === "ready" && claim.output_files?.length;
               const isProcessing = claim.status === "processing";
+              const fileCount = (claim.photo_files?.length ?? 0) + (claim.measurement_files?.length ?? 0) +
+                (claim.scope_files?.length ?? 0) + (claim.weather_files?.length ?? 0) + (claim.other_files?.length ?? 0);
 
               return (
                 <div key={claim.id} className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
                   {/* Claim Header */}
                   <div className="px-6 py-4 flex items-center justify-between">
-                    <a href={`/dashboard/claim/${claim.id}`} className="flex items-center gap-4 hover:opacity-80 transition-opacity">
-                      <div>
-                        <h3 className="text-sm font-semibold text-[var(--navy)]">
-                          {claim.address}
-                        </h3>
+                    <a href={`/dashboard/claim/${claim.id}`} className="flex items-center gap-4 hover:opacity-80 transition-opacity min-w-0">
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <h3 className="text-sm font-semibold text-[var(--navy)] truncate">
+                            {claim.address}
+                          </h3>
+                          {claim.claim_outcome === "won" && (
+                            <span className="text-xs font-semibold text-green-600 bg-green-50 px-2 py-0.5 rounded-full shrink-0">
+                              WON
+                            </span>
+                          )}
+                        </div>
                         <p className="text-xs text-gray-400 mt-0.5">
                           {claim.carrier} &middot; {claim.phase === "pre-scope" ? "Pre-Scope" : "Supplement"} &middot; {new Date(claim.created_at).toLocaleDateString()}
                         </p>
+                        {/* File counts row */}
+                        {fileCount > 0 && (
+                          <div className="flex flex-wrap gap-3 mt-1.5">
+                            {(claim.photo_files?.length ?? 0) > 0 && (
+                              <span className="text-xs text-gray-500">
+                                <span className="font-medium text-gray-600">{claim.photo_files!.length}</span> photos
+                              </span>
+                            )}
+                            {(claim.measurement_files?.length ?? 0) > 0 && (
+                              <span className="text-xs text-gray-500">
+                                <span className="font-medium text-gray-600">{claim.measurement_files!.length}</span> measurements
+                              </span>
+                            )}
+                            {(claim.scope_files?.length ?? 0) > 0 && (
+                              <span className="text-xs text-gray-500">
+                                <span className="font-medium text-gray-600">{claim.scope_files!.length}</span> scope
+                              </span>
+                            )}
+                            {(claim.weather_files?.length ?? 0) > 0 && (
+                              <span className="text-xs text-gray-500">
+                                <span className="font-medium text-gray-600">{claim.weather_files!.length}</span> weather
+                              </span>
+                            )}
+                          </div>
+                        )}
+                        {/* Financial summary */}
+                        {claim.original_carrier_rcv != null && claim.original_carrier_rcv > 0 && (
+                          <p className="text-xs text-gray-500 mt-1">
+                            Carrier: ${claim.original_carrier_rcv.toLocaleString()}
+                            {claim.settlement_amount != null && claim.settlement_amount > 0 && (
+                              <span className="ml-2">Settlement: <span className="text-green-700 font-medium">${claim.settlement_amount.toLocaleString()}</span></span>
+                            )}
+                          </p>
+                        )}
                       </div>
                     </a>
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-3 shrink-0">
                       {(claim.pending_edits || 0) > 0 && (
                         <a
                           href={`/dashboard/claim/${claim.id}`}

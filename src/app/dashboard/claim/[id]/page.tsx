@@ -6,23 +6,7 @@ import { createClient } from "@/lib/supabase/client";
 import { useParams, useRouter } from "next/navigation";
 import { FileUploadZone } from "@/components/file-upload-zone";
 
-interface Claim {
-  id: string;
-  address: string;
-  carrier: string;
-  phase: string;
-  status: string;
-  file_path: string;
-  output_files: string[] | null;
-  created_at: string;
-  user_notes?: string | null;
-  photo_integrity?: { total: number; flagged: number; score: string } | null;
-  error_message?: string | null;
-  correspondence_count?: number;
-  pending_drafts?: number;
-  pending_edits?: number;
-  latest_carrier_position?: string;
-}
+import type { Claim } from "@/types/claim";
 
 interface EditRequest {
   id: string;
@@ -97,7 +81,7 @@ const CATEGORY_CONFIG: Record<
     label: "Carrier Scope / Insurance Documents",
     description: "Insurance company's estimate, adjuster report, or revised scope",
     accept: ".pdf",
-    multiple: false,
+    multiple: true,
     dbField: "scope_files",
   },
   weather: {
@@ -297,9 +281,14 @@ export default function ClaimDetailPage() {
       }
 
       // Update the claim record with new file names via server API (bypasses RLS)
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const existingFiles: string[] =
-        (claim as unknown as Record<string, unknown>)[catConfig.dbField] as string[] || [];
+      const fileFieldMap: Record<string, keyof Claim> = {
+        photo_files: "photo_files",
+        scope_files: "scope_files",
+        weather_files: "weather_files",
+        other_files: "other_files",
+      };
+      const fieldKey = fileFieldMap[catConfig.dbField];
+      const existingFiles: string[] = (fieldKey && claim[fieldKey] as string[] | null) ?? [];
       const updatedFiles = [...existingFiles, ...uploadedNames];
 
       const updates: Record<string, unknown> = { [catConfig.dbField]: updatedFiles };
