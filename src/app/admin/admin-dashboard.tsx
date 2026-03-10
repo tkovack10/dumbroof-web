@@ -460,17 +460,20 @@ export function AdminDashboard() {
             <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-4 mb-8">
               {(() => {
                 const wonClaims = claims.filter(c => c.claim_outcome === "won");
+                const totalContractorRcv = claims.reduce((s, c) => s + (c.contractor_rcv ?? 0), 0);
                 const totalCarrierRcv = claims.reduce((s, c) => s + (c.original_carrier_rcv ?? 0), 0);
-                const totalSettlement = wonClaims.reduce((s, c) => s + (c.settlement_amount ?? 0), 0);
+                const totalVariance = totalContractorRcv - totalCarrierRcv;
+                const totalWon = wonClaims.reduce((s, c) => s + (c.settlement_amount ?? 0), 0);
+                const fmt = (v: number) => v >= 1000 ? `$${(v / 1000).toFixed(0)}K` : `$${v.toFixed(0)}`;
                 return [
                   { label: "Total Claims", value: String(stats.total), color: "text-[var(--navy)]" },
                   { label: "Users", value: String(stats.uniqueUsers), color: "text-[var(--navy)]" },
                   { label: "Ready", value: String(stats.ready), color: "text-green-600" },
                   { label: "Processing", value: String(stats.processing), color: "text-amber-600" },
-                  { label: "Errors", value: String(stats.error), color: "text-red-600" },
+                  { label: "Contractor RCV", value: fmt(totalContractorRcv), color: "text-[var(--navy)]" },
+                  { label: "Carrier RCV", value: fmt(totalCarrierRcv), color: "text-[var(--navy)]" },
+                  { label: "Variance", value: fmt(totalVariance), color: totalVariance > 0 ? "text-green-600" : "text-red-600" },
                   { label: "Wins", value: String(wonClaims.length), color: "text-green-600" },
-                  { label: "Carrier RCV", value: totalCarrierRcv >= 1000 ? `$${(totalCarrierRcv / 1000).toFixed(0)}K` : `$${totalCarrierRcv.toFixed(0)}`, color: "text-[var(--navy)]" },
-                  { label: "Won $", value: totalSettlement >= 1000 ? `$${(totalSettlement / 1000).toFixed(0)}K` : `$${totalSettlement.toFixed(0)}`, color: "text-green-600" },
                 ];
               })().map(({ label, value, color }) => (
                 <div key={label} className="bg-white rounded-xl border border-gray-200 p-4 text-center">
@@ -499,8 +502,9 @@ export function AdminDashboard() {
                         <th className="px-3 py-3 text-[10px] font-semibold text-gray-400 uppercase">Property</th>
                         <th className="px-3 py-3 text-[10px] font-semibold text-gray-400 uppercase">Carrier</th>
                         <th className="px-3 py-3 text-[10px] font-semibold text-gray-400 uppercase">User</th>
+                        <th className="px-3 py-3 text-[10px] font-semibold text-gray-400 uppercase text-right">Contractor RCV</th>
                         <th className="px-3 py-3 text-[10px] font-semibold text-gray-400 uppercase text-right">Carrier RCV</th>
-                        <th className="px-3 py-3 text-[10px] font-semibold text-gray-400 uppercase text-right">Settlement</th>
+                        <th className="px-3 py-3 text-[10px] font-semibold text-gray-400 uppercase text-right">Variance</th>
                         <th className="px-3 py-3 text-[10px] font-semibold text-gray-400 uppercase text-center">Phase</th>
                         <th className="px-3 py-3 text-[10px] font-semibold text-gray-400 uppercase text-center">Status</th>
                         <th className="px-3 py-3 text-[10px] font-semibold text-gray-400 uppercase">Date</th>
@@ -523,12 +527,19 @@ export function AdminDashboard() {
                           <p className="text-gray-400 text-[10px] truncate">{userMap[claim.user_id]?.email || ""}</p>
                         </td>
                         <td className="px-3 py-2.5 text-right text-xs text-gray-600 tabular-nums">
+                          {claim.contractor_rcv ? `$${claim.contractor_rcv.toLocaleString()}` : "—"}
+                        </td>
+                        <td className="px-3 py-2.5 text-right text-xs text-gray-600 tabular-nums">
                           {claim.original_carrier_rcv ? `$${claim.original_carrier_rcv.toLocaleString()}` : "—"}
                         </td>
                         <td className="px-3 py-2.5 text-right text-xs tabular-nums">
-                          {claim.settlement_amount && claim.settlement_amount > 0 ? (
-                            <span className="text-green-700 font-medium">${claim.settlement_amount.toLocaleString()}</span>
-                          ) : "—"}
+                          {(() => {
+                            const cRcv = claim.contractor_rcv ?? 0;
+                            const iRcv = claim.original_carrier_rcv ?? 0;
+                            if (!cRcv && !iRcv) return "—";
+                            const v = cRcv - iRcv;
+                            return <span className={v > 0 ? "text-green-700 font-medium" : v < 0 ? "text-red-600 font-medium" : "text-gray-500"}>{v > 0 ? "+" : ""}${v.toLocaleString()}</span>;
+                          })()}
                         </td>
                         <td className="px-3 py-2.5 text-center">
                           <span className="text-xs text-gray-500">{claim.phase === "pre-scope" ? "Pre" : "Post"}</span>

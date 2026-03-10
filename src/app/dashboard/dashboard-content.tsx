@@ -7,12 +7,19 @@ import type { Claim } from "@/types/claim";
 
 type StatusFilter = "all" | "processing" | "ready" | "attention";
 
+function fmtMoney(val: number): string {
+  if (val >= 1_000_000) return `$${(val / 1_000_000).toFixed(2)}M`;
+  if (val >= 1_000) return `$${(val / 1_000).toFixed(0)}K`;
+  return `$${val.toFixed(0)}`;
+}
+
 export function DashboardContent({ user }: { user: User }) {
   const supabase = createClient();
   const [claims, setClaims] = useState<Claim[]>([]);
   const [loading, setLoading] = useState(true);
   const [downloading, setDownloading] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+  const [expandedRow, setExpandedRow] = useState<string | null>(null);
 
   const fetchClaims = useCallback(async () => {
     const { data } = await supabase
@@ -26,7 +33,6 @@ export function DashboardContent({ user }: { user: User }) {
 
   useEffect(() => {
     fetchClaims();
-    // Poll every 5 seconds for status updates
     const interval = setInterval(fetchClaims, 5000);
     return () => clearInterval(interval);
   }, [fetchClaims]);
@@ -60,16 +66,15 @@ export function DashboardContent({ user }: { user: User }) {
     if (!claim.output_files) return;
     for (const file of claim.output_files) {
       await handleDownload(claim, file);
-      // Small delay between downloads
       await new Promise((r) => setTimeout(r, 500));
     }
   };
 
-  const statusConfig: Record<string, { color: string; label: string; icon: string }> = {
-    uploaded: { color: "bg-blue-100 text-blue-700", label: "Uploaded", icon: "cloud" },
-    processing: { color: "bg-amber-100 text-amber-700", label: "Processing", icon: "spinner" },
-    ready: { color: "bg-green-100 text-green-700", label: "Ready", icon: "check" },
-    error: { color: "bg-red-100 text-red-700", label: "Error", icon: "x" },
+  const statusColors: Record<string, string> = {
+    uploaded: "bg-blue-100 text-blue-700",
+    processing: "bg-amber-100 text-amber-700",
+    ready: "bg-green-100 text-green-700",
+    error: "bg-red-100 text-red-700",
   };
 
   // KPI calculations
@@ -77,6 +82,9 @@ export function DashboardContent({ user }: { user: User }) {
   const processingCount = claims.filter(c => c.status === "processing" || c.status === "uploaded").length;
   const wonClaims = claims.filter(c => c.claim_outcome === "won");
   const totalMovement = wonClaims.reduce((sum, c) => sum + (c.settlement_amount ?? 0), 0);
+  const totalContractorRcv = claims.reduce((s, c) => s + (c.contractor_rcv ?? 0), 0);
+  const totalCarrierRcv = claims.reduce((s, c) => s + (c.original_carrier_rcv ?? 0), 0);
+  const attentionCount = claims.filter(c => c.status === "error" || (c.pending_edits ?? 0) > 0).length;
 
   // Filter logic
   const filteredClaims = claims.filter(c => {
@@ -86,8 +94,6 @@ export function DashboardContent({ user }: { user: User }) {
     if (statusFilter === "attention") return c.status === "error" || (c.pending_edits ?? 0) > 0;
     return true;
   });
-
-  const attentionCount = claims.filter(c => c.status === "error" || (c.pending_edits ?? 0) > 0).length;
 
   const filterTabs: { key: StatusFilter; label: string; count?: number }[] = [
     { key: "all", label: "All", count: claims.length },
@@ -100,7 +106,7 @@ export function DashboardContent({ user }: { user: User }) {
     <main className="min-h-screen bg-gray-50">
       {/* Top Bar */}
       <nav className="bg-[var(--navy)] border-b border-white/10">
-        <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
+        <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-lg bg-[var(--red)] flex items-center justify-center font-bold text-white">
               DR
@@ -142,7 +148,7 @@ export function DashboardContent({ user }: { user: User }) {
       </nav>
 
       {/* Dashboard */}
-      <div className="max-w-6xl mx-auto px-6 py-10">
+      <div className="max-w-7xl mx-auto px-6 py-10">
         <div className="flex items-center justify-between mb-8">
           <div>
             <h1 className="text-2xl font-bold text-[var(--navy)]">Claims Dashboard</h1>
@@ -168,23 +174,41 @@ export function DashboardContent({ user }: { user: User }) {
 
         {/* KPI Stats Bar */}
         {!loading && claims.length > 0 && (
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-            <div className="bg-white rounded-xl border border-gray-200 px-5 py-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-4 mb-6">
+            <div className="bg-white rounded-xl border border-gray-200 p-4 text-center">
               <p className="text-2xl font-bold text-[var(--navy)]">{claims.length}</p>
-              <p className="text-xs font-medium text-gray-500 mt-0.5">Total Claims</p>
+              <p className="text-xs text-gray-500 mt-1">Total Claims</p>
             </div>
-            <div className="bg-white rounded-xl border border-gray-200 px-5 py-4">
+            <div className="bg-white rounded-xl border border-gray-200 p-4 text-center">
               <p className="text-2xl font-bold text-green-600">{readyCount}</p>
-              <p className="text-xs font-medium text-gray-500 mt-0.5">Ready</p>
+              <p className="text-xs text-gray-500 mt-1">Ready</p>
             </div>
-            <div className="bg-white rounded-xl border border-gray-200 px-5 py-4">
+            <div className="bg-white rounded-xl border border-gray-200 p-4 text-center">
               <p className="text-2xl font-bold text-amber-600">{processingCount}</p>
-              <p className="text-xs font-medium text-gray-500 mt-0.5">Processing</p>
+              <p className="text-xs text-gray-500 mt-1">Processing</p>
             </div>
-            {wonClaims.length > 0 && (
-              <div className="bg-white rounded-xl border border-green-200 px-5 py-4">
-                <p className="text-2xl font-bold text-green-600">{wonClaims.length}</p>
-                <p className="text-xs font-medium text-green-600 mt-0.5">Wins</p>
+            <div className="bg-white rounded-xl border border-gray-200 p-4 text-center">
+              <p className="text-2xl font-bold text-green-600">{wonClaims.length}</p>
+              <p className="text-xs text-gray-500 mt-1">Wins</p>
+            </div>
+            <div className="bg-white rounded-xl border border-gray-200 p-4 text-center">
+              <p className="text-2xl font-bold text-[var(--navy)]">{fmtMoney(totalContractorRcv)}</p>
+              <p className="text-xs text-gray-500 mt-1">Contractor RCV</p>
+            </div>
+            <div className="bg-white rounded-xl border border-gray-200 p-4 text-center">
+              <p className="text-2xl font-bold text-[var(--navy)]">{fmtMoney(totalCarrierRcv)}</p>
+              <p className="text-xs text-gray-500 mt-1">Carrier RCV</p>
+            </div>
+            <div className="bg-white rounded-xl border border-gray-200 p-4 text-center">
+              <p className={`text-2xl font-bold ${totalContractorRcv - totalCarrierRcv > 0 ? "text-green-600" : "text-gray-600"}`}>
+                {fmtMoney(Math.abs(totalContractorRcv - totalCarrierRcv))}
+              </p>
+              <p className="text-xs text-gray-500 mt-1">Variance</p>
+            </div>
+            {totalMovement > 0 && (
+              <div className="bg-white rounded-xl border border-green-200 p-4 text-center">
+                <p className="text-2xl font-bold text-green-600">{fmtMoney(totalMovement)}</p>
+                <p className="text-xs text-green-600 mt-1">Won $</p>
               </div>
             )}
           </div>
@@ -232,7 +256,7 @@ export function DashboardContent({ user }: { user: User }) {
           </div>
         )}
 
-        {/* Claims List */}
+        {/* Claims Table */}
         {loading ? (
           <div className="bg-white rounded-2xl border border-gray-200 text-center py-16">
             <p className="text-gray-400 text-sm">Loading claims...</p>
@@ -253,171 +277,151 @@ export function DashboardContent({ user }: { user: User }) {
             </a>
           </div>
         ) : (
-          <div className="space-y-4">
-            {filteredClaims.map((claim) => {
-              const sc = statusConfig[claim.status] || statusConfig.uploaded;
-              const isReady = claim.status === "ready" && claim.output_files?.length;
-              const isProcessing = claim.status === "processing";
-              const fileCount = (claim.photo_files?.length ?? 0) + (claim.measurement_files?.length ?? 0) +
-                (claim.scope_files?.length ?? 0) + (claim.weather_files?.length ?? 0) + (claim.other_files?.length ?? 0);
+          <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="bg-gray-50 text-left border-b border-gray-100">
+                    <th className="px-3 py-3 text-[10px] font-semibold text-gray-400 uppercase">Property</th>
+                    <th className="px-3 py-3 text-[10px] font-semibold text-gray-400 uppercase">Carrier</th>
+                    <th className="px-3 py-3 text-[10px] font-semibold text-gray-400 uppercase text-right">Contractor RCV</th>
+                    <th className="px-3 py-3 text-[10px] font-semibold text-gray-400 uppercase text-right">Carrier RCV</th>
+                    <th className="px-3 py-3 text-[10px] font-semibold text-gray-400 uppercase text-right">Variance</th>
+                    <th className="px-3 py-3 text-[10px] font-semibold text-gray-400 uppercase text-center">Phase</th>
+                    <th className="px-3 py-3 text-[10px] font-semibold text-gray-400 uppercase text-center">Status</th>
+                    <th className="px-3 py-3 text-[10px] font-semibold text-gray-400 uppercase">Date</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-50">
+                  {filteredClaims.map((claim) => {
+                    const cRcv = claim.contractor_rcv ?? 0;
+                    const iRcv = claim.original_carrier_rcv ?? 0;
+                    const variance = cRcv - iRcv;
+                    const isProcessing = claim.status === "processing";
 
-              return (
-                <div key={claim.id} className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
-                  {/* Claim Header */}
-                  <div className="px-6 py-4 flex items-center justify-between">
-                    <a href={`/dashboard/claim/${claim.id}`} className="flex items-center gap-4 hover:opacity-80 transition-opacity min-w-0">
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-2">
-                          <h3 className="text-sm font-semibold text-[var(--navy)] truncate">
-                            {claim.address}
-                          </h3>
-                          {claim.claim_outcome === "won" && (
-                            <span className="text-xs font-semibold text-green-600 bg-green-50 px-2 py-0.5 rounded-full shrink-0">
-                              WON
+                    return (
+                      <tr
+                        key={claim.id}
+                        onClick={() => setExpandedRow(expandedRow === claim.id ? null : claim.id)}
+                        className={`hover:bg-gray-50 transition-colors cursor-pointer ${claim.claim_outcome === "won" ? "bg-green-50/40" : ""}`}
+                      >
+                        <td className="px-3 py-2.5">
+                          <a href={`/dashboard/claim/${claim.id}`} className="hover:underline" onClick={e => e.stopPropagation()}>
+                            <p className="font-medium text-[var(--navy)] truncate max-w-[220px]">{claim.address}</p>
+                          </a>
+                          <p className="text-[10px] text-gray-400 mt-0.5">{new Date(claim.created_at).toLocaleDateString()}</p>
+                        </td>
+                        <td className="px-3 py-2.5 text-gray-600 truncate max-w-[140px]">{claim.carrier || "—"}</td>
+                        <td className="px-3 py-2.5 text-right text-xs tabular-nums font-medium text-[var(--navy)]">
+                          {cRcv > 0 ? `$${cRcv.toLocaleString()}` : "—"}
+                        </td>
+                        <td className="px-3 py-2.5 text-right text-xs tabular-nums text-gray-600">
+                          {iRcv > 0 ? `$${iRcv.toLocaleString()}` : "—"}
+                        </td>
+                        <td className="px-3 py-2.5 text-right text-xs tabular-nums">
+                          {cRcv > 0 && iRcv > 0 ? (
+                            <span className={variance > 0 ? "text-green-600 font-medium" : variance < 0 ? "text-red-600" : "text-gray-500"}>
+                              {variance > 0 ? "+" : ""}{`$${variance.toLocaleString()}`}
                             </span>
-                          )}
-                        </div>
-                        <p className="text-xs text-gray-400 mt-0.5">
-                          {claim.carrier} &middot; {claim.phase === "pre-scope" ? "Pre-Scope" : "Supplement"} &middot; {new Date(claim.created_at).toLocaleDateString()}
-                        </p>
-                        {/* File counts row */}
-                        {fileCount > 0 && (
-                          <div className="flex flex-wrap gap-3 mt-1.5">
-                            {(claim.photo_files?.length ?? 0) > 0 && (
-                              <span className="text-xs text-gray-500">
-                                <span className="font-medium text-gray-600">{claim.photo_files!.length}</span> photos
+                          ) : "—"}
+                        </td>
+                        <td className="px-3 py-2.5 text-center">
+                          <span className="text-xs text-gray-500">{claim.phase === "pre-scope" ? "Pre" : "Post"}</span>
+                        </td>
+                        <td className="px-3 py-2.5 text-center">
+                          <div className="flex flex-col items-center gap-1">
+                            {claim.claim_outcome === "won" ? (
+                              <span className="inline-block px-2 py-0.5 rounded-full text-xs font-bold bg-green-100 text-green-700">Won</span>
+                            ) : (
+                              <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${statusColors[claim.status] || "bg-gray-100 text-gray-600"}`}>
+                                {isProcessing && (
+                                  <svg className="animate-spin w-3 h-3" fill="none" viewBox="0 0 24 24">
+                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                                  </svg>
+                                )}
+                                {claim.status.charAt(0).toUpperCase() + claim.status.slice(1)}
                               </span>
                             )}
-                            {(claim.measurement_files?.length ?? 0) > 0 && (
-                              <span className="text-xs text-gray-500">
-                                <span className="font-medium text-gray-600">{claim.measurement_files!.length}</span> measurements
-                              </span>
-                            )}
-                            {(claim.scope_files?.length ?? 0) > 0 && (
-                              <span className="text-xs text-gray-500">
-                                <span className="font-medium text-gray-600">{claim.scope_files!.length}</span> scope
-                              </span>
-                            )}
-                            {(claim.weather_files?.length ?? 0) > 0 && (
-                              <span className="text-xs text-gray-500">
-                                <span className="font-medium text-gray-600">{claim.weather_files!.length}</span> weather
-                              </span>
+                            {(claim.pending_edits ?? 0) > 0 && (
+                              <span className="text-[10px] text-amber-600 font-medium">{claim.pending_edits} edit{(claim.pending_edits ?? 0) > 1 ? "s" : ""}</span>
                             )}
                           </div>
-                        )}
-                        {/* Financial summary */}
-                        {claim.original_carrier_rcv != null && claim.original_carrier_rcv > 0 && (
-                          <p className="text-xs text-gray-500 mt-1">
-                            Carrier: ${claim.original_carrier_rcv.toLocaleString()}
-                            {claim.settlement_amount != null && claim.settlement_amount > 0 && (
-                              <span className="ml-2">Settlement: <span className="text-green-700 font-medium">${claim.settlement_amount.toLocaleString()}</span></span>
-                            )}
-                          </p>
-                        )}
+                        </td>
+                        <td className="px-3 py-2.5">
+                          <span className="text-xs text-gray-400">{new Date(claim.created_at).toLocaleDateString()}</span>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Expanded row detail panels */}
+            {filteredClaims.map((claim) => (
+              expandedRow === claim.id ? (
+                <div key={`exp-${claim.id}`} className="px-6 pb-4 bg-gray-50/50 border-t border-gray-200">
+                  {/* Source Files */}
+                  <div className="grid grid-cols-5 gap-2 mt-3 mb-3">
+                    {[
+                      { label: "Measurements", files: claim.measurement_files, color: "bg-blue-50 text-blue-700 border-blue-200" },
+                      { label: "Photos", files: claim.photo_files, color: "bg-purple-50 text-purple-700 border-purple-200" },
+                      { label: "Scope", files: claim.scope_files, color: "bg-amber-50 text-amber-700 border-amber-200" },
+                      { label: "Weather", files: claim.weather_files, color: "bg-teal-50 text-teal-700 border-teal-200" },
+                      { label: "Other", files: claim.other_files, color: "bg-gray-100 text-gray-600 border-gray-200" },
+                    ].map(({ label, files, color }) => (
+                      <div key={label} className={`rounded-lg px-3 py-2 border ${color}`}>
+                        <p className="text-xs font-bold">{files?.length ?? 0}</p>
+                        <p className="text-[10px] font-medium opacity-70">{label}</p>
                       </div>
-                    </a>
-                    <div className="flex items-center gap-3 shrink-0">
-                      {(claim.pending_edits || 0) > 0 && (
-                        <a
-                          href={`/dashboard/claim/${claim.id}`}
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-700 animate-pulse"
-                        >
-                          <span className="w-1.5 h-1.5 bg-amber-500 rounded-full" />
-                          {claim.pending_edits} edit{(claim.pending_edits ?? 0) > 1 ? "s" : ""} pending
-                        </a>
-                      )}
-                      {(claim.pending_drafts || 0) > 0 && (
-                        <a
-                          href={`/dashboard/claim/${claim.id}`}
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-red-100 text-red-700 animate-pulse"
-                        >
-                          <span className="w-1.5 h-1.5 bg-red-500 rounded-full" />
-                          {claim.pending_drafts} response{(claim.pending_drafts ?? 0) > 1 ? "s" : ""} pending
-                        </a>
-                      )}
-                      <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium ${sc.color}`}>
-                        {isProcessing && (
-                          <svg className="animate-spin w-3 h-3" fill="none" viewBox="0 0 24 24">
-                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                          </svg>
-                        )}
-                        {sc.label}
-                      </span>
-                      {isReady && (
+                    ))}
+                  </div>
+
+                  {/* Output Files */}
+                  {claim.output_files && claim.output_files.length > 0 ? (
+                    <div>
+                      <div className="flex items-center gap-2 mb-2">
+                        <p className="text-xs font-semibold text-green-800">Your claim package is ready</p>
                         <button
                           onClick={() => handleDownloadAll(claim)}
-                          className="bg-[var(--navy)] hover:bg-[var(--navy-light)] text-white px-4 py-1.5 rounded-lg text-xs font-medium transition-colors"
+                          className="bg-[var(--navy)] hover:bg-[var(--navy-light)] text-white px-3 py-1 rounded-lg text-[10px] font-medium transition-colors"
                         >
                           Download All
                         </button>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Output Files (when ready) */}
-                  {isReady && (
-                    <div className="px-6 pb-4">
-                      <div className="bg-green-50 border border-green-100 rounded-xl p-4">
-                        <p className="text-xs font-semibold text-green-800 mb-3">
-                          Your claim package is ready
-                        </p>
-                        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-2">
-                          {claim.output_files!.map((file) => (
-                            <button
-                              key={file}
-                              onClick={() => handleDownload(claim, file)}
-                              disabled={downloading === file}
-                              className="flex items-center gap-2 bg-white border border-green-200 rounded-lg px-3 py-2 text-left hover:bg-green-50 transition-colors disabled:opacity-50"
-                            >
-                              <svg className="w-4 h-4 text-green-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                              </svg>
-                              <span className="text-xs text-gray-700 truncate">
-                                {file.replace(/_/g, " ").replace(".pdf", "")}
-                              </span>
-                            </button>
-                          ))}
-                        </div>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {claim.output_files.map((file) => (
+                          <button
+                            key={file}
+                            onClick={() => handleDownload(claim, file)}
+                            disabled={downloading === file}
+                            className="flex items-center gap-1.5 px-3 py-1.5 bg-green-50 hover:bg-green-100 disabled:opacity-50 text-green-700 text-xs font-semibold rounded-lg transition-colors border border-green-200"
+                          >
+                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3M6 20h12a2 2 0 002-2V8l-6-6H6a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                            </svg>
+                            {file.replace(/_/g, " ").replace(".pdf", "")}
+                          </button>
+                        ))}
                       </div>
                     </div>
-                  )}
-
-                  {/* Processing indicator */}
-                  {isProcessing && (
-                    <div className="px-6 pb-4">
-                      <div className="bg-amber-50 border border-amber-100 rounded-xl p-4">
-                        <div className="flex items-center gap-3">
-                          <svg className="animate-spin w-5 h-5 text-amber-600" fill="none" viewBox="0 0 24 24">
-                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                          </svg>
-                          <div>
-                            <p className="text-sm font-medium text-amber-800">
-                              Analyzing documents and generating your claim package...
-                            </p>
-                            <p className="text-xs text-amber-600 mt-0.5">
-                              This typically takes 2-5 minutes
-                            </p>
-                          </div>
-                        </div>
-                      </div>
+                  ) : claim.status === "processing" ? (
+                    <div className="flex items-center gap-3 py-2">
+                      <svg className="animate-spin w-4 h-4 text-amber-600" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                      </svg>
+                      <p className="text-xs text-amber-700">Analyzing documents... typically 2-5 minutes</p>
                     </div>
-                  )}
-
-                  {/* Error state */}
-                  {claim.status === "error" && (
-                    <div className="px-6 pb-4">
-                      <div className="bg-red-50 border border-red-100 rounded-xl p-4">
-                        <p className="text-sm text-red-700">
-                          Processing failed. Our team has been notified and will look into it.
-                        </p>
-                      </div>
-                    </div>
+                  ) : claim.status === "error" ? (
+                    <p className="text-xs text-red-600 py-2">Processing failed. Our team has been notified.</p>
+                  ) : (
+                    <p className="text-xs text-gray-400 py-2">No output files yet.</p>
                   )}
                 </div>
-              );
-            })}
+              ) : null
+            ))}
           </div>
         )}
       </div>

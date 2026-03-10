@@ -20,6 +20,7 @@ export interface Claim {
   weather_files?: string[] | null;
   other_files?: string[] | null;
   // Financial (populated by backend processor)
+  contractor_rcv?: number | null;
   original_carrier_rcv?: number | null;
   settlement_amount?: number | null;
   claim_outcome?: string | null; // pending | won | lost
