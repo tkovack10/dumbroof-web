@@ -356,6 +356,7 @@ def extract_measurements(client: anthropic.Anthropic, pdf_path: str) -> dict:
 }
 
 Use 0 for any values not found. Calculate SQ = SF / 100. Include waste_factor if stated (default 1.10 = 10% waste).
+If this report covers multiple structures (e.g., main building + detached garage), create a separate entry in the structures array for each. Include per-structure linear measurements (ridge, eave, valley, hip, rake) nested inside each structure's object as a "measurements" field.
 If this report includes wall/siding measurements (EagleView Walls report or similar), extract wall areas per elevation, window count, and door count into the walls section. Use 0 for any wall values not found."""
                 }
             ]
@@ -483,12 +484,14 @@ def analyze_photos(client: anthropic.Anthropic, photo_paths: list[str], user_not
 CRITICAL — CHALK TESTING (you MUST understand this):
 Inspectors use chalk testing to document hail damage. This is standard industry practice, NOT sealant, paint, caulk, or repair material.
 
-ON FLAT SOFT METALS (gutters, flashing, pipe collars, vents, standing seam, power fan covers):
-- Inspector runs chalk SIDEWAYS (flat, wide edge) across the metal surface
+ON FLAT SOFT METALS (gutters, downspouts, flashing, pipe collars, vents, standing seam, power fan covers, skylight frames, HVAC units):
+- Inspector runs chalk SIDEWAYS (flat, wide edge) horizontally across the metal surface
 - A surface WITHOUT hail damage shows one solid continuous chalk line
 - A surface WITH hail damage shows CIRCULAR GAPS in the chalk line — the gaps are hail impact dents/indentations where chalk cannot reach because the metal is pushed inward
 - The circular unmarked areas within the chalk line = CONFIRMED HAIL IMPACTS
 - More gaps = more hail hits = more severe damage
+- On SKYLIGHT FRAMES: chalk is run horizontally across aluminum/steel mullions and frame members. Gaps in the chalk line on skylight frames = hail dents on the frame, NOT glazing damage, sealant, or paint. This is the same chalk test used on all soft metals.
+- On DOWNSPOUTS: chalk is run vertically or horizontally across the flat face. Gaps = hail dents on the downspout body.
 
 ON SHINGLES (test square methodology):
 - Inspector draws a chalk circle or box on the shingle to mark a test square
@@ -536,7 +539,7 @@ ANALYSIS PRIORITIES:
 - FOCUS ON STORM DAMAGE — hail impacts, wind displacement, fractures from the storm event. This is 90% of the report.
 - Do NOT catalog every minor wear detail (lichen, moss, minor surface weathering, faded paint). Only mention pre-existing condition ONCE, briefly, if it makes spot repair infeasible.
 - Keep annotations concise — 1-2 sentences per photo focusing on the storm damage evidence visible
-- For chalk test photos: describe what the chalk test reveals (number of gaps = hail impacts), not the chalk itself
+- For chalk test photos: describe what the chalk test reveals (number of gaps = hail impacts), not the chalk itself. NEVER call chalk marks "sealant", "paint", "caulk", "adhesive", "coating", "glazing", or "residue" — it is ALWAYS inspector chalk used for hail damage documentation.
 - For test square photos: report the counts (H=hits, W=wind) and what they prove
 - CRITICAL: This is a SINGLE property at ONE address. Multiple structures (main dwelling, garage, shed, porch, outbuilding) are all part of ONE property. NEVER say "two properties", "both properties", or "multiple properties." Say "multiple structures" or "the property" instead.
 
@@ -1348,9 +1351,9 @@ def build_claim_config(
     if state not in _tax_rates:
         print(f"[CONFIG] WARNING: No tax rate configured for state '{state}' — defaulting to 8%. Verify with Tom.")
 
-    # Build line items based on measurements and analysis
-    line_items = build_line_items(measurements, photo_analysis, state, user_notes=user_notes or "",
-                                  estimate_request=claim.get("estimate_request"))
+    # Build line items based on measurements and analysis (multi-structure aware)
+    line_items = build_multi_structure_line_items(measurements, photo_analysis, state, user_notes=user_notes or "",
+                                                  estimate_request=claim.get("estimate_request"))
 
     # Build deterministic code violations based on state + scope
     deterministic_violations = _build_code_violations(state, line_items, trades)
@@ -1588,9 +1591,19 @@ def build_claim_config(
         "tile": "Clay/Concrete Tile",
         "metal_standing_seam": "Standing Seam Metal",
         "copper": "Copper",
+        "flat": "Modified Bitumen / Flat Roof",
     }
-    if config.get("structures") and len(config["structures"]) > 0:
-        config["structures"][0]["shingle_type"] = material_labels.get(detected_material, detected_material)
+    if config.get("structures"):
+        if len(config["structures"]) > 1:
+            # Multi-structure: preserve per-structure shingle_type from extraction,
+            # only fill in claim-wide default where struct has no classifiable material
+            default_label = material_labels.get(detected_material, detected_material)
+            for s in config["structures"]:
+                existing = s.get("shingle_type", "")
+                if not existing or not _classify_from_text(existing):
+                    s["shingle_type"] = default_label
+        else:
+            config["structures"][0]["shingle_type"] = material_labels.get(detected_material, detected_material)
 
     # Clean structure names: underscores → spaces
     for struct in config.get("structures", []):
@@ -1808,7 +1821,7 @@ def _cross_reference_line_items(config: dict) -> None:
 def _classify_from_text(text: str) -> Optional[str]:
     """Classify roofing material from a text string.
 
-    Returns one of: 'slate', 'tile', 'metal_standing_seam', 'copper',
+    Returns one of: 'slate', 'tile', 'flat', 'metal_standing_seam', 'copper',
     'laminated', '3tab', or None if no material detected.
     """
     if not text:
@@ -1821,6 +1834,9 @@ def _classify_from_text(text: str) -> Optional[str]:
         return "tile"
     if "tile" in text and any(kw in text for kw in ["roof tile", "tile roof", "clay", "concrete"]):
         return "tile"
+    if any(kw in text for kw in ["modified bitumen", "mod bit", "flat roof", "tpo",
+                                  "epdm", "built-up", "bur", "rubber roof", "torch down"]):
+        return "flat"
     if any(phrase in text for phrase in ["standing seam", "metal roof", "metal roofing", "metal panel roof"]):
         return "metal_standing_seam"
     if "copper roof" in text:
@@ -1844,7 +1860,7 @@ def _majority_vote_material(votes: list) -> str:
 
     # Normalize votes to material categories
     categories = {}
-    priority = ["slate", "tile", "metal_standing_seam", "copper", "3tab", "laminated"]
+    priority = ["slate", "tile", "flat", "metal_standing_seam", "copper", "3tab", "laminated"]
 
     for vote in votes:
         material = _classify_from_text(vote)
@@ -1876,7 +1892,7 @@ def _detect_roof_material(photo_analysis: dict, user_notes: str = "",
     - Carrier scope line items (weight 2.0): What official documentation says
     - Estimate request override (definitive): Frontend user selection
 
-    Returns one of: 'slate', 'tile', 'metal_standing_seam', 'copper',
+    Returns one of: 'slate', 'tile', 'flat', 'metal_standing_seam', 'copper',
     'laminated', '3tab', or defaults to 'laminated'.
     """
     # Definitive override from frontend estimate request
@@ -1888,6 +1904,10 @@ def _detect_roof_material(photo_analysis: dict, user_notes: str = "",
             "Slate": "slate",
             "Standing Seam Metal": "metal_standing_seam",
             "Tile": "tile",
+            "Flat Roof": "flat",
+            "Modified Bitumen": "flat",
+            "TPO": "flat",
+            "EPDM": "flat",
             "Cedar": "laminated",  # Cedar shake uses laminated pricing as closest
         }
         mapped = material_map.get(estimate_request["roof_material"])
@@ -2125,6 +2145,65 @@ def _detect_siding_material(photo_analysis: dict, user_notes: str = "", estimate
     return "aluminum"
 
 
+def build_multi_structure_line_items(measurements: dict, photo_analysis: dict, state: str,
+                                      user_notes: str = "", estimate_request: dict = None) -> list:
+    """Build complete line item sections per structure. Never combines structures.
+
+    For single-structure claims (most claims), passes through to build_line_items().
+    For multi-structure claims, calls build_line_items() once per structure and labels
+    each item with the structure name prefix.
+    """
+    structs = measurements.get("structures", [{}])
+
+    if len(structs) <= 1:
+        return build_line_items(measurements, photo_analysis, state, user_notes, estimate_request)
+
+    all_items = []
+    for i, struct in enumerate(structs):
+        struct_name = struct.get("name", f"Structure {i+1}")
+
+        struct_measurements = {
+            "measurements": struct.get("measurements", measurements.get("measurements", {})),
+            "structures": [struct],
+            "penetrations": struct.get("penetrations", measurements.get("penetrations", {})),
+            "stories": struct.get("stories", measurements.get("stories", 1)),
+            "total_roof_area_sf": struct.get("roof_area_sf", 0),
+            "total_roof_area_sq": struct.get("roof_area_sq", 0),
+            "walls": struct.get("walls", measurements.get("walls", {})),
+        }
+
+        # Per-structure material via shingle_type → user_notes (weight 3.0 in detector)
+        struct_note = struct.get("shingle_type", "")
+        combined_notes = f"{struct_note}. {user_notes}" if struct_note else user_notes
+
+        # Per-structure material override hierarchy:
+        # 1. estimate_request.structures[i].roof_material (explicit per-structure override from frontend)
+        # 2. struct.shingle_type classifiable → suppress claim-wide override, let weighted voting decide
+        # 3. Claim-wide estimate_request.roof_material as fallback default
+        struct_er = estimate_request  # default: claim-wide
+        if estimate_request:
+            er_structs = estimate_request.get("structures") or []
+            if i < len(er_structs) and (er_structs[i] or {}).get("roof_material"):
+                struct_er = {"roof_material": er_structs[i]["roof_material"]}
+            elif struct_note and _classify_from_text(struct_note):
+                # Structure has its own classifiable material — let weighted voting decide
+                struct_er = None
+
+        items = build_line_items(struct_measurements, photo_analysis, state, combined_notes, struct_er)
+
+        for item in items:
+            item["description"] = f"[{struct_name}] {item['description']}"
+
+        all_items.extend(items)
+        mat_source = ('per-struct override' if struct_er and struct_er is not estimate_request
+                      else 'weighted voting' if struct_er is None
+                      else 'claim-wide override')
+        print(f"[LINE ITEMS] {struct_name}: {len(items)} items, {struct.get('roof_area_sq', 0)} SQ, material source = {mat_source}")
+
+    print(f"[LINE ITEMS] Total across {len(structs)} structures: {len(all_items)} items")
+    return all_items
+
+
 def build_line_items(measurements: dict, photo_analysis: dict, state: str, user_notes: str = "", estimate_request: dict = None) -> list:
     """Build Xactimate line items from measurements, analysis, and user context."""
     # Use state-specific pricing (PA=PAPI26, NY=NYBI26, etc.)
@@ -2213,6 +2292,10 @@ def build_line_items(measurements: dict, photo_analysis: dict, state: str, user_
         items.append({"category": "ROOFING", "description": "Remove concrete/clay tile roofing", "qty": area_sq, "unit": "SQ", "unit_price": PRICING.get("tile_remove", 200.00)})
         items.append({"category": "ROOFING", "description": "Concrete/clay tile roofing", "qty": install_sq, "unit": "SQ", "unit_price": PRICING.get("tile_install", 900.00)})
         items.append({"category": "ROOFING", "description": "Underlayment - felt 30# (deck area not covered by I&W)", "qty": felt_sq, "unit": "SQ", "unit_price": PRICING.get("tile_underlayment", 22.00)})
+    elif material == "flat":
+        items.append({"category": "ROOFING", "description": "Remove modified bitumen/flat roofing", "qty": area_sq, "unit": "SQ", "unit_price": PRICING.get("flat_remove", 95.00)})
+        items.append({"category": "ROOFING", "description": "Modified bitumen roofing - 2 ply torch applied", "qty": install_sq, "unit": "SQ", "unit_price": PRICING.get("flat_install", 425.00)})
+        items.append({"category": "ROOFING", "description": "Underlayment - base sheet (flat roof)", "qty": area_sq, "unit": "SQ", "unit_price": PRICING.get("flat_underlayment", 38.00)})
     elif material == "metal_standing_seam":
         items.append({"category": "ROOFING", "description": "Remove metal roofing - standing seam", "qty": area_sq, "unit": "SQ", "unit_price": PRICING.get("metal_remove", 150.00)})
         items.append({"category": "ROOFING", "description": "Metal roofing - standing seam", "qty": install_sq, "unit": "SQ", "unit_price": PRICING.get("metal_install", 850.00)})
@@ -2849,9 +2932,38 @@ async def process_claim(claim_id: str):
         async def _get_measurements():
             if not measurement_paths:
                 return {}
-            resolved = resolve_eml_to_document(measurement_paths[0], source_dir)
-            print("[PROCESS] Extracting measurements...")
-            return await asyncio.to_thread(extract_measurements, claude, resolved)
+            if len(measurement_paths) == 1:
+                resolved = resolve_eml_to_document(measurement_paths[0], source_dir)
+                print("[PROCESS] Extracting measurements...")
+                return await asyncio.to_thread(extract_measurements, claude, resolved)
+
+            # Multiple measurement files — extract each, merge structures
+            all_structures = []
+            merged = {}
+            for i, mpath in enumerate(measurement_paths):
+                resolved = resolve_eml_to_document(mpath, source_dir)
+                print(f"[PROCESS] Extracting measurements from file {i+1}/{len(measurement_paths)}...")
+                result = await asyncio.to_thread(extract_measurements, claude, resolved)
+                if not merged:
+                    merged = dict(result)  # First file sets property, penetrations, etc.
+                # Collect structures from each file
+                file_structs = result.get("structures", [])
+                for s in file_structs:
+                    if not s.get("name") or s["name"] == "Main Roof":
+                        s["name"] = f"Structure {len(all_structures) + 1}"
+                    # Nest per-structure measurements if global measurements present
+                    if not s.get("measurements") and result.get("measurements"):
+                        s["measurements"] = result["measurements"]
+                    if not s.get("penetrations") and result.get("penetrations"):
+                        s["penetrations"] = result["penetrations"]
+                    all_structures.append(s)
+
+            merged["structures"] = all_structures
+            # Sum total areas
+            merged["total_roof_area_sf"] = sum(s.get("roof_area_sf", 0) for s in all_structures)
+            merged["total_roof_area_sq"] = sum(s.get("roof_area_sq", 0) for s in all_structures)
+            print(f"[PROCESS] Merged {len(all_structures)} structures from {len(measurement_paths)} files")
+            return merged
 
         async def _get_photo_analysis():
             if not photo_paths:
