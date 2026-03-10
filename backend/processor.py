@@ -3294,7 +3294,8 @@ async def process_claim(claim_id: str):
             update_data["processing_warnings"] = config_warnings
 
         # Store contractor RCV (our scope total) for dashboard display
-        contractor_rcv = financials.get("total", 0)
+        _financials = compute_financials(config)
+        contractor_rcv = _financials.get("total", 0)
         if contractor_rcv:
             update_data["contractor_rcv"] = round(contractor_rcv, 2)
 
