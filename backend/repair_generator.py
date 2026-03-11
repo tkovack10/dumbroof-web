@@ -946,7 +946,11 @@ def main():
     pdf1_path = os.path.join(output_dir, "01_REPAIR_INSTRUCTIONS.pdf")
     with open(html1_path, "w") as f:
         f.write(html1)
-    html_to_pdf(html1_path, pdf1_path)
+    try:
+        html_to_pdf(html1_path, pdf1_path)
+    except Exception as e:
+        print(f"[REPAIR] PDF generation failed for {pdf1_path}: {e}")
+        raise RuntimeError(f"PDF generation failed: {e}")
 
     # Document 2: Repair Ticket
     print("Generating: 02_REPAIR_TICKET...")
@@ -955,7 +959,11 @@ def main():
     pdf2_path = os.path.join(output_dir, "02_REPAIR_TICKET.pdf")
     with open(html2_path, "w") as f:
         f.write(html2)
-    html_to_pdf(html2_path, pdf2_path)
+    try:
+        html_to_pdf(html2_path, pdf2_path)
+    except Exception as e:
+        print(f"[REPAIR] PDF generation failed for {pdf2_path}: {e}")
+        raise RuntimeError(f"PDF generation failed: {e}")
 
     # Document 3: Completion Receipt (only if repair is complete)
     completion = config.get("completion", {})
@@ -967,7 +975,11 @@ def main():
             pdf3_path = os.path.join(output_dir, "03_COMPLETION_RECEIPT.pdf")
             with open(html3_path, "w") as f:
                 f.write(html3)
-            html_to_pdf(html3_path, pdf3_path)
+            try:
+                html_to_pdf(html3_path, pdf3_path)
+            except Exception as e:
+                print(f"[REPAIR] PDF generation failed for {pdf3_path}: {e}")
+                raise RuntimeError(f"PDF generation failed: {e}")
     else:
         print("Skipping: 03_COMPLETION_RECEIPT (repair not yet completed)")
 

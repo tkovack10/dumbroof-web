@@ -24,7 +24,7 @@ const MATERIALS = ["asphalt_shingle", "metal", "vinyl_siding", "wood", "slate", 
 const ELEVATIONS = ["roof", "front", "rear", "left", "right", "interior", "ground"];
 const SEVERITIES = ["minor", "moderate", "severe", "catastrophic"];
 
-export function PhotoReviewContent({ userId }: { userId: string }) {
+export function PhotoReviewContent() {
   const searchParams = useSearchParams();
   const claimId = searchParams.get("claim");
 
@@ -36,7 +36,7 @@ export function PhotoReviewContent({ userId }: { userId: string }) {
   const [showEditor, setShowEditor] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [stampType, setStampType] = useState<"APPROVE" | "REJECT" | null>(null);
-  const [regenerating, setRegenereating] = useState(false);
+  const [regenerating, setRegenerating] = useState(false);
 
   // Session stats
   const [sessionStats, setSessionStats] = useState({ approved: 0, corrected: 0, rejected: 0 });
@@ -54,6 +54,11 @@ export function PhotoReviewContent({ userId }: { userId: string }) {
     if (claimId) params.set("claim_id", claimId);
 
     const res = await fetch(`/api/photo-review?${params}`);
+    if (!res.ok) {
+      console.error("Failed to fetch photos:", res.status);
+      setLoading(false);
+      return;
+    }
     const data = await res.json();
     // Filter out already-reviewed in global mode
     const unreviewed = data.photos.filter((p: PhotoForReview) => !p.feedback_status);
@@ -90,7 +95,8 @@ export function PhotoReviewContent({ userId }: { userId: string }) {
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showEditor, currentIndex, photos, submitting]);
 
   const currentPhoto = photos[currentIndex];
 
@@ -128,11 +134,12 @@ export function PhotoReviewContent({ userId }: { userId: string }) {
       feedback.notes = editNotes || undefined;
     }
 
-    await fetch("/api/photo-review", {
+    const res = await fetch("/api/photo-review", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(feedback),
     });
+    if (!res.ok) console.error("Failed to submit feedback:", res.status);
 
     setSessionStats((s) => ({ ...s, [status]: s[status as keyof typeof s] + 1 }));
     setReviewed((r) => r + 1);
@@ -148,14 +155,15 @@ export function PhotoReviewContent({ userId }: { userId: string }) {
 
   const handleRegenerate = async () => {
     if (!claimId || regenerating) return;
-    setRegenereating(true);
+    setRegenerating(true);
     try {
       const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "https://dumbroof-backend-production.up.railway.app";
-      await fetch(`${backendUrl}/api/reprocess/${claimId}`, { method: "POST" });
+      const res = await fetch(`${backendUrl}/api/reprocess/${claimId}`, { method: "POST" });
+      if (!res.ok) console.error("Reprocess failed:", res.status);
     } catch (err) {
       console.error("Reprocess failed:", err);
     }
-    setRegenereating(false);
+    setRegenerating(false);
   };
 
   if (loading) {

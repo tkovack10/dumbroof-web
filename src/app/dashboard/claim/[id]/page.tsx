@@ -1,12 +1,13 @@
 "use client";
 
 import { useEffect, useState, useCallback, useRef } from "react";
-import JSZip from "jszip";
 import { createClient } from "@/lib/supabase/client";
 import { useParams, useRouter } from "next/navigation";
 import { FileUploadZone } from "@/components/file-upload-zone";
 
 import type { Claim } from "@/types/claim";
+import { CATEGORY_CONFIG, CLAIM_STATUS_CONFIG, type UploadCategory } from "@/lib/claim-constants";
+import { uploadClaimDocuments } from "@/lib/upload-utils";
 
 interface EditRequest {
   id: string;
@@ -63,42 +64,6 @@ interface EmailDraft {
   generation_cost: number;
   created_at: string;
 }
-
-type UploadCategory = "photos" | "scope" | "weather" | "other";
-
-const CATEGORY_CONFIG: Record<
-  UploadCategory,
-  { label: string; description: string; accept: string; multiple: boolean; dbField: string }
-> = {
-  photos: {
-    label: "Additional Photos",
-    description: "More inspection photos, construction photos, or damage close-ups. ZIP archives and PDFs with photos also supported.",
-    accept: ".jpg,.jpeg,.png,.heic,.heif,.webp,.tiff,.tif,.bmp,.pdf,.zip",
-    multiple: true,
-    dbField: "photo_files",
-  },
-  scope: {
-    label: "Carrier Scope / Insurance Documents",
-    description: "Insurance company's estimate, adjuster report, or revised scope",
-    accept: ".pdf",
-    multiple: true,
-    dbField: "scope_files",
-  },
-  weather: {
-    label: "Weather Data",
-    description: "HailTrace report, NOAA data, or storm documentation",
-    accept: ".pdf,.jpg,.jpeg,.png,.heic,.heif,.webp,.tiff,.tif,.bmp,.zip",
-    multiple: true,
-    dbField: "weather_files",
-  },
-  other: {
-    label: "Other Documents",
-    description: "Email screenshots, adjuster correspondence, change orders, or any other supporting documents",
-    accept: ".pdf,.jpg,.jpeg,.png,.heic,.heif,.webp,.tiff,.tif,.bmp,.doc,.docx,.zip",
-    multiple: true,
-    dbField: "other_files",
-  },
-};
 
 export default function ClaimDetailPage() {
   const params = useParams();
@@ -233,67 +198,19 @@ export default function ClaimDetailPage() {
       if (!user) throw new Error("Not authenticated");
 
       const catConfig = CATEGORY_CONFIG[selectedCategory];
-      const folder = selectedCategory === "other" ? "other" : selectedCategory;
-      const uploadedNames: string[] = [];
 
-      // Helper: upload a single file with signed URL, handle duplicates gracefully
-      const uploadSingle = async (file: File, uploadFolder: string): Promise<string> => {
-        const res = await fetch("/api/storage/sign-upload", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ folder: uploadFolder, fileName: file.name, claimPath: claim.file_path }),
-        });
-        const urlData = await res.json();
-        if (!res.ok) throw new Error(`Failed to upload ${file.name}: ${urlData.error}`);
+      const uploadedNames = await uploadClaimDocuments(
+        supabase,
+        newFiles,
+        selectedCategory,
+        claim
+      );
 
-        const { error } = await supabase.storage
-          .from("claim-documents")
-          .uploadToSignedUrl(urlData.path, urlData.token, file);
-        // Treat "already exists" as success — file is already uploaded
-        if (error && !error.message.includes("already exists") && !error.message.includes("Duplicate")) {
-          throw new Error(`Failed to upload ${file.name}: ${error.message}`);
-        }
-        return urlData.safeName;
-      };
-
-      // Upload files (extract ZIPs client-side for photo category)
-      for (const file of newFiles) {
-        if (folder === "photos" && file.name.toLowerCase().endsWith(".zip")) {
-          const zip = await JSZip.loadAsync(file);
-          const imageExts = ["jpg", "jpeg", "png", "heic", "heif", "webp", "tiff", "tif", "bmp"];
-
-          for (const [path, entry] of Object.entries(zip.files)) {
-            if (entry.dir) continue;
-            if (path.includes("__MACOSX") || path.startsWith(".")) continue;
-            const ext = path.split(".").pop()?.toLowerCase();
-            if (!ext || !imageExts.includes(ext)) continue;
-
-            const blob = await entry.async("blob");
-            if (blob.size < 10240) continue; // Skip thumbnails < 10KB
-
-            const name = path.split("/").pop() || path;
-            const photo = new File([blob], name, { type: `image/${ext === "jpg" ? "jpeg" : ext}` });
-            uploadedNames.push(await uploadSingle(photo, "photos"));
-          }
-        } else {
-          uploadedNames.push(await uploadSingle(file, folder));
-        }
-      }
-
-      // Update the claim record with new file names via server API (bypasses RLS)
-      const fileFieldMap: Record<string, keyof Claim> = {
-        measurement_files: "measurement_files",
-        photo_files: "photo_files",
-        scope_files: "scope_files",
-        weather_files: "weather_files",
-        other_files: "other_files",
-      };
-      const fieldKey = fileFieldMap[catConfig.dbField];
-      const existingFiles: string[] = (fieldKey && claim[fieldKey] as string[] | null) ?? [];
+      const fieldKey = catConfig.dbField as keyof Claim;
+      const existingFiles: string[] = (claim[fieldKey] as string[] | null) ?? [];
       const updatedFiles = [...existingFiles, ...uploadedNames];
 
       const updates: Record<string, unknown> = { [catConfig.dbField]: updatedFiles };
-      // Auto-upgrade phase when scope is uploaded to a pre-scope claim
       if (selectedCategory === "scope" && claim.phase === "pre-scope") {
         updates.phase = "post-scope";
       }
@@ -478,14 +395,6 @@ export default function ClaimDetailPage() {
     return <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${c.bg} ${c.text}`}>{c.label}</span>;
   };
 
-  const statusConfig: Record<string, { color: string; label: string; bg: string }> = {
-    uploaded: { color: "text-blue-700", label: "Uploaded", bg: "bg-blue-100" },
-    processing: { color: "text-amber-700", label: "Processing", bg: "bg-amber-100" },
-    ready: { color: "text-green-700", label: "Ready", bg: "bg-green-100" },
-    needs_improvement: { color: "text-orange-700", label: "Needs Improvement", bg: "bg-orange-100" },
-    error: { color: "text-red-700", label: "Error", bg: "bg-red-100" },
-  };
-
   if (loading) {
     return (
       <main className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -507,7 +416,7 @@ export default function ClaimDetailPage() {
     );
   }
 
-  const sc = statusConfig[claim.status] || statusConfig.uploaded;
+  const sc = CLAIM_STATUS_CONFIG[claim.status] || CLAIM_STATUS_CONFIG.uploaded;
   const isReady = claim.status === "ready" && claim.output_files?.length;
   const isProcessing = claim.status === "processing";
   const isUploaded = claim.status === "uploaded";

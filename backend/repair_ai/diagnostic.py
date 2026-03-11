@@ -419,6 +419,20 @@ def parse_diagnosis_response(response_json: str) -> Dict[str, Any]:
         # New format — also set repair_type for backward compat
         diag["repair_type"] = diag["primary_code"]
 
+    # Validate critical fields
+    if diag.get("severity") not in SEVERITY_LEVELS:
+        diag["severity"] = "moderate"  # safe default
+
+    conf = diag.get("confidence", 0.5)
+    if not isinstance(conf, (int, float)) or conf < 0 or conf > 1:
+        diag["confidence"] = 0.5
+
+    valid_codes = set(REPAIR_TYPES.keys()) | {"CONDENSATION", "LOW-CONFIDENCE-VERIFY"}
+    if diag.get("primary_code") and diag["primary_code"] not in valid_codes:
+        print(f"[REPAIR] WARNING: Unknown repair code '{diag['primary_code']}', defaulting to FIELD-SHINGLE")
+        diag["primary_code"] = "FIELD-SHINGLE"
+        diag["repair_type"] = "FIELD-SHINGLE"
+
     return data
 
 
@@ -456,6 +470,12 @@ def assemble_repair_job(
 
     # Support both old "repair_type" and new "primary_code"
     primary_code = diag.get("primary_code", diag.get("repair_type", ""))
+
+    # Enforce minimum job charge
+    total_price = repair.get("total_price", 0)
+    if total_price < MINIMUM_JOB_CHARGE:
+        total_price = MINIMUM_JOB_CHARGE
+        repair["total_price"] = total_price
 
     config = {
         "job": {
@@ -578,7 +598,7 @@ def rebuild_repair_stats() -> Dict[str, Any]:
     # Compute stats by repair type
     by_type = {}
     for e in entries:
-        rt = e.get("repair_type", "unknown")
+        rt = e.get("primary_code") or e.get("repair_type", "unknown")
         if rt not in by_type:
             by_type[rt] = {
                 "count": 0,
@@ -604,7 +624,7 @@ def rebuild_repair_stats() -> Dict[str, Any]:
         if region not in by_region:
             by_region[region] = {"count": 0, "types": {}}
         by_region[region]["count"] += 1
-        rt = e.get("repair_type", "unknown")
+        rt = e.get("primary_code") or e.get("repair_type", "unknown")
         by_region[region]["types"][rt] = by_region[region]["types"].get(rt, 0) + 1
 
     stats = {

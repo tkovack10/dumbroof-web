@@ -702,7 +702,7 @@ async def poll_for_repairs():
             result = sb.table("repairs").select("id").eq("status", "uploaded").execute()
             for repair in result.data:
                 print(f"[REPAIR POLLER] Found new repair: {repair['id']}")
-                await run_repair_processing(repair["id"])
+                asyncio.create_task(run_repair_processing(repair["id"]))
         except Exception as e:
             print(f"[REPAIR POLLER] Error: {e}")
         await asyncio.sleep(10)

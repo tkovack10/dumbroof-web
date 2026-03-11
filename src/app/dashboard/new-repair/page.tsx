@@ -78,6 +78,7 @@ export default function NewRepairPage() {
         roofer_name: rooferName.trim(),
         skill_level: skillLevel,
         preferred_language: language,
+        updated_at: new Date().toISOString(),
       });
 
       if (dbError) throw new Error(dbError.message);

@@ -1,74 +1,19 @@
 "use client";
 
 import { useState, useRef, useCallback, useEffect } from "react";
-import JSZip from "jszip";
 import { createClient } from "@/lib/supabase/client";
 import type { Claim } from "@/types/claim";
 import { FileUploadZone } from "@/components/file-upload-zone";
+import { CATEGORY_CONFIG, FILE_CATEGORIES, CLAIM_STATUS_CONFIG, type UploadCategory } from "@/lib/claim-constants";
+import { uploadClaimDocuments } from "@/lib/upload-utils";
 
 interface Props {
   claim: Claim;
   userInfo?: { company_name: string | null; contact_email: string | null };
 }
 
-type UploadCategory = "photos" | "measurements" | "scope" | "weather" | "other";
-
-const CATEGORY_CONFIG: Record<
-  UploadCategory,
-  { label: string; description: string; accept: string; multiple: boolean; dbField: string; folder: string }
-> = {
-  photos: {
-    label: "Photos",
-    description: "Inspection photos, construction photos, damage close-ups. ZIP/PDF also supported.",
-    accept: ".jpg,.jpeg,.png,.heic,.heif,.webp,.tiff,.tif,.bmp,.pdf,.zip",
-    multiple: true,
-    dbField: "photo_files",
-    folder: "photos",
-  },
-  measurements: {
-    label: "Measurements",
-    description: "EagleView report, roof measurements, or satellite measurement PDF",
-    accept: ".pdf,.jpg,.jpeg,.png,.zip",
-    multiple: true,
-    dbField: "measurement_files",
-    folder: "measurements",
-  },
-  scope: {
-    label: "Carrier Scope",
-    description: "Insurance company estimate, adjuster report, or revised scope",
-    accept: ".pdf",
-    multiple: true,
-    dbField: "scope_files",
-    folder: "scope",
-  },
-  weather: {
-    label: "Weather Data",
-    description: "HailTrace report, NOAA data, or storm documentation",
-    accept: ".pdf,.jpg,.jpeg,.png,.heic,.heif,.webp,.tiff,.tif,.bmp,.zip",
-    multiple: true,
-    dbField: "weather_files",
-    folder: "weather",
-  },
-  other: {
-    label: "Other",
-    description: "Email screenshots, adjuster correspondence, change orders, etc.",
-    accept: ".pdf,.jpg,.jpeg,.png,.heic,.heif,.webp,.tiff,.tif,.bmp,.doc,.docx,.zip",
-    multiple: true,
-    dbField: "other_files",
-    folder: "other",
-  },
-};
-
-const FILE_CATEGORIES = [
-  { key: "measurement_files" as const, label: "Measurements", folder: "measurements", color: "bg-blue-50 text-blue-700 border-blue-200" },
-  { key: "photo_files" as const, label: "Photos", folder: "photos", color: "bg-purple-50 text-purple-700 border-purple-200" },
-  { key: "scope_files" as const, label: "Scope", folder: "scope", color: "bg-amber-50 text-amber-700 border-amber-200" },
-  { key: "weather_files" as const, label: "Weather", folder: "weather", color: "bg-teal-50 text-teal-700 border-teal-200" },
-  { key: "other_files" as const, label: "Other", folder: "other", color: "bg-gray-100 text-gray-600 border-gray-200" },
-];
-
 export function AdminClaimDetail({ claim: initialClaim, userInfo }: Props) {
-  const supabase = createClient();
+  const supabaseRef = useRef(createClient());
   const [claim, setClaim] = useState<Claim>(initialClaim);
   const [downloading, setDownloading] = useState<string | null>(null);
   const [showUpload, setShowUpload] = useState(false);
@@ -78,18 +23,26 @@ export function AdminClaimDetail({ claim: initialClaim, userInfo }: Props) {
   const [uploadSuccess, setUploadSuccess] = useState("");
   const [uploadError, setUploadError] = useState("");
   const [reprocessing, setReprocessing] = useState(false);
+  const [deleting, setDeleting] = useState<string | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState<{ folder: string; fileName: string; dbField: string } | null>(null);
   const formRef = useRef<HTMLDivElement>(null);
 
   const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "https://dumbroof-backend-production.up.railway.app";
 
   const fetchClaim = useCallback(async () => {
-    const { data } = await supabase
+    const { data } = await supabaseRef.current
       .from("claims")
       .select("*")
       .eq("id", claim.id)
       .single();
-    if (data) setClaim(data);
-  }, [claim.id, supabase]);
+    if (data) {
+      // Avoid no-op re-renders — compare serialized snapshots
+      if (JSON.stringify(data) !== JSON.stringify(claim)) {
+        setClaim(data);
+      }
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [claim.id]);
 
   // Poll when processing
   useEffect(() => {
@@ -102,7 +55,7 @@ export function AdminClaimDetail({ claim: initialClaim, userInfo }: Props) {
     setDownloading(filename);
     try {
       const path = `${claim.file_path}/output/${filename}`;
-      const { data, error } = await supabase.storage
+      const { data, error } = await supabaseRef.current.storage
         .from("claim-documents")
         .download(path);
       if (error) throw error;
@@ -123,7 +76,7 @@ export function AdminClaimDetail({ claim: initialClaim, userInfo }: Props) {
     setDownloading(key);
     try {
       const path = `${claim.file_path}/${folder}/${filename}`;
-      const { data, error } = await supabase.storage
+      const { data, error } = await supabaseRef.current.storage
         .from("claim-documents")
         .download(path);
       if (error) throw error;
@@ -147,46 +100,15 @@ export function AdminClaimDetail({ claim: initialClaim, userInfo }: Props) {
 
     try {
       const catConfig = CATEGORY_CONFIG[selectedCategory];
-      const folder = catConfig.folder;
-      const uploadedNames: string[] = [];
 
-      const uploadSingle = async (file: File, uploadFolder: string): Promise<string> => {
-        const res = await fetch("/api/storage/sign-upload", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ folder: uploadFolder, fileName: file.name, claimPath: claim.file_path }),
-        });
-        const urlData = await res.json();
-        if (!res.ok) throw new Error(`Failed to upload ${file.name}: ${urlData.error}`);
-
-        const { error } = await supabase.storage
-          .from("claim-documents")
-          .uploadToSignedUrl(urlData.path, urlData.token, file);
-        if (error && !error.message.includes("already exists") && !error.message.includes("Duplicate")) {
-          throw new Error(`Failed to upload ${file.name}: ${error.message}`);
-        }
-        return urlData.safeName;
-      };
-
-      for (const file of newFiles) {
-        if (folder === "photos" && file.name.toLowerCase().endsWith(".zip")) {
-          const zip = await JSZip.loadAsync(file);
-          const imageExts = ["jpg", "jpeg", "png", "heic", "heif", "webp", "tiff", "tif", "bmp"];
-          for (const [path, entry] of Object.entries(zip.files)) {
-            if (entry.dir) continue;
-            if (path.includes("__MACOSX") || path.startsWith(".")) continue;
-            const ext = path.split(".").pop()?.toLowerCase();
-            if (!ext || !imageExts.includes(ext)) continue;
-            const blob = await entry.async("blob");
-            if (blob.size < 10240) continue;
-            const name = path.split("/").pop() || path;
-            const photo = new File([blob], name, { type: `image/${ext === "jpg" ? "jpeg" : ext}` });
-            uploadedNames.push(await uploadSingle(photo, "photos"));
-          }
-        } else {
-          uploadedNames.push(await uploadSingle(file, folder));
-        }
-      }
+      // Use admin endpoints
+      const uploadedNames = await uploadClaimDocuments(
+        supabaseRef.current,
+        newFiles,
+        selectedCategory,
+        claim,
+        "/api/admin/sign-upload"
+      );
 
       const fieldKey = catConfig.dbField as keyof Claim;
       const existingFiles: string[] = (claim[fieldKey] as string[] | null) ?? [];
@@ -197,7 +119,7 @@ export function AdminClaimDetail({ claim: initialClaim, userInfo }: Props) {
         updates.phase = "post-scope";
       }
 
-      const updateRes = await fetch("/api/claims/update", {
+      const updateRes = await fetch("/api/admin/claims-update", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ claimId: claim.id, updates }),
@@ -217,6 +139,34 @@ export function AdminClaimDetail({ claim: initialClaim, userInfo }: Props) {
     setUploading(false);
   };
 
+  const handleDeleteFile = async (folder: string, fileName: string) => {
+    const key = `${folder}/${fileName}`;
+    setDeleting(key);
+    setDeleteConfirm(null);
+
+    try {
+      const res = await fetch("/api/admin/delete-file", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ claimId: claim.id, folder, fileName }),
+      });
+      if (!res.ok) {
+        const errData = await res.json();
+        throw new Error(errData.error || "Delete failed");
+      }
+      // Refresh claim data to reflect the deletion
+      const { data } = await supabaseRef.current
+        .from("claims")
+        .select("*")
+        .eq("id", claim.id)
+        .single();
+      if (data) setClaim(data);
+    } catch (err) {
+      setUploadError(err instanceof Error ? err.message : "Delete failed");
+    }
+    setDeleting(null);
+  };
+
   const handleReprocess = async () => {
     setReprocessing(true);
     setUploadError("");
@@ -233,15 +183,7 @@ export function AdminClaimDetail({ claim: initialClaim, userInfo }: Props) {
     setReprocessing(false);
   };
 
-  const statusConfig: Record<string, { color: string; label: string; bg: string }> = {
-    uploaded: { color: "text-blue-700", label: "Uploaded", bg: "bg-blue-100" },
-    processing: { color: "text-amber-700", label: "Processing", bg: "bg-amber-100" },
-    ready: { color: "text-green-700", label: "Ready", bg: "bg-green-100" },
-    needs_improvement: { color: "text-orange-700", label: "Needs Improvement", bg: "bg-orange-100" },
-    error: { color: "text-red-700", label: "Error", bg: "bg-red-100" },
-  };
-
-  const sc = statusConfig[claim.status] || statusConfig.uploaded;
+  const sc = CLAIM_STATUS_CONFIG[claim.status] || CLAIM_STATUS_CONFIG.uploaded;
   const isReady = claim.status === "ready" && claim.output_files?.length;
   const isProcessing = claim.status === "processing";
   const isUploaded = claim.status === "uploaded";
@@ -325,13 +267,13 @@ export function AdminClaimDetail({ claim: initialClaim, userInfo }: Props) {
               <div className="bg-gray-50 rounded-lg px-3 py-2">
                 <p className="text-xs text-gray-400">Contractor RCV</p>
                 <p className="text-sm font-bold text-[var(--navy)]">
-                  {claim.contractor_rcv ? `$${claim.contractor_rcv.toLocaleString()}` : "—"}
+                  {claim.contractor_rcv ? `$${claim.contractor_rcv.toLocaleString()}` : "\u2014"}
                 </p>
               </div>
               <div className="bg-gray-50 rounded-lg px-3 py-2">
                 <p className="text-xs text-gray-400">Carrier RCV</p>
                 <p className="text-sm font-bold text-[var(--navy)]">
-                  {claim.original_carrier_rcv ? `$${claim.original_carrier_rcv.toLocaleString()}` : "—"}
+                  {claim.original_carrier_rcv ? `$${claim.original_carrier_rcv.toLocaleString()}` : "\u2014"}
                 </p>
               </div>
               <div className="bg-gray-50 rounded-lg px-3 py-2">
@@ -431,7 +373,7 @@ export function AdminClaimDetail({ claim: initialClaim, userInfo }: Props) {
               </svg>
               <div>
                 <p className="text-sm font-medium text-amber-800">
-                  {isUploaded ? "Claim queued — waiting for processing..." : "Analyzing documents and generating claim package..."}
+                  {isUploaded ? "Claim queued \u2014 waiting for processing..." : "Analyzing documents and generating claim package..."}
                 </p>
                 <p className="text-xs text-amber-600 mt-0.5">This typically takes 2-5 minutes</p>
               </div>
@@ -449,7 +391,7 @@ export function AdminClaimDetail({ claim: initialClaim, userInfo }: Props) {
                 </svg>
               </div>
               <div>
-                <h2 className="text-base font-bold text-orange-900">Quality Gate — More Documentation Needed</h2>
+                <h2 className="text-base font-bold text-orange-900">Quality Gate \u2014 More Documentation Needed</h2>
                 <p className="text-sm text-orange-800 mt-1">{claim.improvement_guidance.summary}</p>
               </div>
             </div>
@@ -654,21 +596,70 @@ export function AdminClaimDetail({ claim: initialClaim, userInfo }: Props) {
                       <span className="text-xs text-gray-400">{files.length} file{files.length !== 1 ? "s" : ""}</span>
                     </div>
                     <div className="grid sm:grid-cols-2 gap-2">
-                      {files.map((filename) => (
-                        <button
-                          key={filename}
-                          onClick={() => handleDownloadSource(folder, filename)}
-                          disabled={downloading === `${folder}/${filename}`}
-                          className="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-left hover:bg-gray-100 transition-colors disabled:opacity-50 group"
-                        >
-                          <svg className="w-4 h-4 text-gray-400 group-hover:text-gray-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3M6 20h12a2 2 0 002-2V8l-6-6H6a2 2 0 00-2 2v14a2 2 0 002 2z" />
-                          </svg>
-                          <span className="text-xs text-gray-600 truncate">
-                            {downloading === `${folder}/${filename}` ? "Downloading..." : filename}
-                          </span>
-                        </button>
-                      ))}
+                      {files.map((filename) => {
+                        const fileKey = `${folder}/${filename}`;
+                        const isDeleting = deleting === fileKey;
+                        const isConfirming = deleteConfirm?.folder === folder && deleteConfirm?.fileName === filename;
+
+                        return (
+                          <div
+                            key={filename}
+                            className="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 group relative"
+                          >
+                            {/* Download button */}
+                            <button
+                              onClick={() => handleDownloadSource(folder, filename)}
+                              disabled={downloading === fileKey || isDeleting}
+                              className="flex items-center gap-2 flex-1 min-w-0 text-left hover:bg-gray-100 rounded transition-colors disabled:opacity-50"
+                            >
+                              <svg className="w-4 h-4 text-gray-400 group-hover:text-gray-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3M6 20h12a2 2 0 002-2V8l-6-6H6a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                              </svg>
+                              <span className="text-xs text-gray-600 truncate">
+                                {downloading === fileKey ? "Downloading..." : isDeleting ? "Deleting..." : filename}
+                              </span>
+                            </button>
+
+                            {/* Delete confirmation inline */}
+                            {isConfirming ? (
+                              <div className="flex items-center gap-1 shrink-0">
+                                <span className="text-xs text-red-600 mr-1">Delete?</span>
+                                <button
+                                  onClick={() => handleDeleteFile(folder, filename)}
+                                  className="text-xs bg-red-600 text-white px-2 py-0.5 rounded hover:bg-red-700 transition-colors"
+                                >
+                                  Yes
+                                </button>
+                                <button
+                                  onClick={() => setDeleteConfirm(null)}
+                                  className="text-xs bg-gray-200 text-gray-600 px-2 py-0.5 rounded hover:bg-gray-300 transition-colors"
+                                >
+                                  No
+                                </button>
+                              </div>
+                            ) : (
+                              /* Trash icon — visible on hover */
+                              <button
+                                onClick={() => setDeleteConfirm({ folder, fileName: filename, dbField: key })}
+                                disabled={isDeleting}
+                                className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-red-500 transition-all shrink-0 disabled:opacity-50"
+                                title="Delete file"
+                              >
+                                {isDeleting ? (
+                                  <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                                  </svg>
+                                ) : (
+                                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                  </svg>
+                                )}
+                              </button>
+                            )}
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
                 );

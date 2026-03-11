@@ -10,5 +10,5 @@ export default async function PhotoReviewPage() {
 
   if (!user) redirect("/login");
 
-  return <PhotoReviewContent userId={user.id} />;
+  return <PhotoReviewContent />;
 }

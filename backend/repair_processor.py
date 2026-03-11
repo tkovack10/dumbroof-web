@@ -243,6 +243,7 @@ CRITICAL OUTPUT CONSTRAINT: Your ENTIRE JSON response MUST be under 5000 tokens.
 
         # Process photos in batches, collect all annotations, then do final diagnosis
         all_batch_annotations = {}
+        failed_batches = []
         total_batches = (len(api_photos) + BATCH_SIZE - 1) // BATCH_SIZE
 
         for batch_idx in range(0, len(api_photos), BATCH_SIZE):
@@ -324,6 +325,10 @@ CRITICAL OUTPUT CONSTRAINT: Your ENTIRE JSON response MUST be under 5000 tokens.
                     all_batch_annotations.update(batch_data.get("photo_annotations", {}))
                 except json.JSONDecodeError:
                     print(f"[REPAIR] Warning: batch {batch_num} annotation parse failed, continuing")
+                    failed_batches.append(batch_num)
+
+        if failed_batches:
+            print(f"[REPAIR] WARNING: {len(failed_batches)}/{total_batches} annotation batches failed — diagnosis may be incomplete")
 
         # For multi-batch: split synthesis into TWO calls to stay under 8K output token limit
         # Call 1: Diagnosis + photo annotations (~2K tokens)
@@ -394,6 +399,14 @@ Return JSON: {{"repair":{{"summary":"1 sentence","steps":[{{"step":1,"category":
             merged = json.loads(response_text)
             if "repair_type" not in merged.get("diagnosis", {}):
                 merged["diagnosis"]["repair_type"] = merged["diagnosis"].get("primary_code", "")
+
+            # Validate merged diagnosis has a repair code
+            m_diag = merged.get("diagnosis", {})
+            if not m_diag.get("primary_code") and not m_diag.get("repair_type"):
+                print("[REPAIR] WARNING: No repair code in merged response, defaulting to FIELD-SHINGLE")
+                merged["diagnosis"]["primary_code"] = "FIELD-SHINGLE"
+                merged["diagnosis"]["repair_type"] = "FIELD-SHINGLE"
+
             response_text = json.dumps(merged)
 
         # 6. Parse diagnosis response (handles markdown fencing + validation)
