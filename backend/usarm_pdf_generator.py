@@ -2259,6 +2259,8 @@ def build_xactimate_estimate(config):
     scope = config.get("scope", {})
     measurements = config.get("measurements", {})
     items = config.get("line_items", [])
+    # Filter out zero-quantity line items (from failed measurement extraction)
+    items = [item for item in items if item.get("qty", 0) > 0]
 
     fin = compute_financials(config)
 

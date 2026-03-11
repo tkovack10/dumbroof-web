@@ -594,6 +594,37 @@ export default function ClaimDetailPage() {
             </div>
           )}
 
+          {/* Measurement Warning Banner */}
+          {claim.processing_warnings?.some(w =>
+            w === "MEASUREMENT_EXTRACTION_FAILED" ||
+            w === "PROPERTY_OWNER_REPORT_NO_MEASUREMENTS" ||
+            w === "MEASUREMENTS_FROM_CARRIER_FALLBACK"
+          ) && (
+            <div className="mt-4 bg-amber-50 border border-amber-300 rounded-lg px-4 py-3">
+              <div className="flex items-start gap-3">
+                <svg className="w-5 h-5 text-amber-600 mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                </svg>
+                <div>
+                  <p className="text-sm font-semibold text-amber-800">
+                    {claim.processing_warnings!.includes("PROPERTY_OWNER_REPORT_NO_MEASUREMENTS")
+                      ? "Property Owner Report Detected — No Measurements"
+                      : claim.processing_warnings!.includes("MEASUREMENTS_FROM_CARRIER_FALLBACK")
+                      ? "Measurements Estimated from Carrier Scope"
+                      : "Measurement Extraction Failed"}
+                  </p>
+                  <p className="text-xs text-amber-700 mt-1">
+                    {claim.processing_warnings!.includes("PROPERTY_OWNER_REPORT_NO_MEASUREMENTS")
+                      ? "The uploaded EagleView file is a Property Owner Report (images only). Upload a Premium EagleView report with roof measurements, then reprocess for accurate quantities."
+                      : claim.processing_warnings!.includes("MEASUREMENTS_FROM_CARRIER_FALLBACK")
+                      ? "Measurements were estimated from the carrier scope. For more accurate quantities, upload an EagleView Premium report and reprocess."
+                      : "Could not extract roof measurements from the uploaded documents. Upload an EagleView Premium report with measurement tables, then reprocess."}
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
           {claim.user_notes && (
             <div className="mt-4 bg-gray-50 rounded-lg px-4 py-3">
               <p className="text-xs font-semibold text-gray-400 uppercase mb-1">
