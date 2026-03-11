@@ -577,6 +577,54 @@ export default function ClaimDetailPage() {
             </span>
           </div>
 
+          {/* Damage Scores */}
+          {claim.damage_score != null && (
+            <div className="mt-4 grid grid-cols-2 gap-3">
+              {[
+                { label: "Damage Score", value: claim.damage_score, max: 100, unit: "/100", grade: claim.damage_grade },
+                { label: "Approval Score", value: claim.approval_score ?? 0, max: 100, unit: "%", grade: claim.approval_grade },
+              ].map(({ label, value, unit, grade }) => {
+                const gradeColors: Record<string, string> = {
+                  A: "bg-green-100 text-green-800 border-green-300",
+                  B: "bg-blue-100 text-blue-800 border-blue-300",
+                  "C+": "bg-amber-100 text-amber-800 border-amber-300",
+                  C: "bg-amber-100 text-amber-800 border-amber-300",
+                  "C-": "bg-orange-100 text-orange-800 border-orange-300",
+                  D: "bg-orange-100 text-orange-800 border-orange-300",
+                  "D-": "bg-red-100 text-red-700 border-red-300",
+                  F: "bg-red-100 text-red-700 border-red-300",
+                };
+                const ringColors: Record<string, string> = {
+                  A: "text-green-500", B: "text-blue-500", "C+": "text-amber-500",
+                  C: "text-amber-500", "C-": "text-orange-500", D: "text-orange-500",
+                  "D-": "text-red-500", F: "text-red-500",
+                };
+                const pct = Math.round((value / 100) * 100);
+                const g = grade || "F";
+                return (
+                  <div key={label} className="bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 flex items-center gap-3">
+                    <div className="relative w-11 h-11 shrink-0">
+                      <svg className="w-11 h-11 -rotate-90" viewBox="0 0 36 36">
+                        <circle cx="18" cy="18" r="15.5" fill="none" className="stroke-gray-200" strokeWidth="3" />
+                        <circle cx="18" cy="18" r="15.5" fill="none" className={`${ringColors[g] || "text-gray-400"} stroke-current`} strokeWidth="3" strokeDasharray={`${pct} ${100 - pct}`} strokeLinecap="round" />
+                      </svg>
+                      <span className="absolute inset-0 flex items-center justify-center text-xs font-bold text-[var(--navy)]">{value}</span>
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-xs text-gray-500">{label}</p>
+                      <div className="flex items-center gap-1.5 mt-0.5">
+                        <span className="text-sm font-bold text-[var(--navy)]">{value}{unit}</span>
+                        <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold border ${gradeColors[g] || "bg-gray-100 text-gray-600 border-gray-300"}`}>
+                          {g}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
           {/* Photo Integrity Badge */}
           {integrity && (
             <div className="mt-4 inline-flex items-center gap-2 bg-emerald-50 border border-emerald-200 rounded-lg px-4 py-2">

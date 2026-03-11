@@ -32,6 +32,11 @@ export interface Claim {
   // Analysis
   photo_integrity?: { total: number; flagged: number; score: string } | null;
   processing_warnings?: string[] | null;
+  // Damage Scoring
+  damage_score?: number | null;
+  damage_grade?: string | null;
+  approval_score?: number | null;
+  approval_grade?: string | null;
   // Admin enrichment
   user_email?: string;
 }

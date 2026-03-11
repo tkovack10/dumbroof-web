@@ -3411,6 +3411,19 @@ async def process_claim(claim_id: str):
         if contractor_rcv:
             update_data["contractor_rcv"] = round(contractor_rcv, 2)
 
+        # Compute Damage Score + Technical Approval Score
+        try:
+            from damage_scoring import compute_damage_score, compute_approval_score
+            ds = compute_damage_score(config, hail_analysis=config.get("hail_analysis"))
+            tas = compute_approval_score(config, ds)
+            update_data["damage_score"] = ds.score
+            update_data["damage_grade"] = ds.grade
+            update_data["approval_score"] = tas.score
+            update_data["approval_grade"] = tas.grade
+            print(f"[PROCESS] Damage Score: {ds.score}/100 ({ds.grade}) | TAS: {tas.score}% ({tas.grade})")
+        except Exception as e:
+            print(f"[PROCESS] Damage scoring failed (non-fatal): {e}")
+
         # Core update (status + output_files + photo_integrity — always works)
         sb.table("claims").update(update_data).eq("id", claim_id).execute()
 
