@@ -1,13 +1,63 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
+import JSZip from "jszip";
 import { createClient } from "@/lib/supabase/client";
 import type { Claim } from "@/types/claim";
+import { FileUploadZone } from "@/components/file-upload-zone";
 
 interface Props {
   claim: Claim;
   userInfo?: { company_name: string | null; contact_email: string | null };
 }
+
+type UploadCategory = "photos" | "measurements" | "scope" | "weather" | "other";
+
+const CATEGORY_CONFIG: Record<
+  UploadCategory,
+  { label: string; description: string; accept: string; multiple: boolean; dbField: string; folder: string }
+> = {
+  photos: {
+    label: "Photos",
+    description: "Inspection photos, construction photos, damage close-ups. ZIP/PDF also supported.",
+    accept: ".jpg,.jpeg,.png,.heic,.heif,.webp,.tiff,.tif,.bmp,.pdf,.zip",
+    multiple: true,
+    dbField: "photo_files",
+    folder: "photos",
+  },
+  measurements: {
+    label: "Measurements",
+    description: "EagleView report, roof measurements, or satellite measurement PDF",
+    accept: ".pdf,.jpg,.jpeg,.png,.zip",
+    multiple: true,
+    dbField: "measurement_files",
+    folder: "measurements",
+  },
+  scope: {
+    label: "Carrier Scope",
+    description: "Insurance company estimate, adjuster report, or revised scope",
+    accept: ".pdf",
+    multiple: true,
+    dbField: "scope_files",
+    folder: "scope",
+  },
+  weather: {
+    label: "Weather Data",
+    description: "HailTrace report, NOAA data, or storm documentation",
+    accept: ".pdf,.jpg,.jpeg,.png,.heic,.heif,.webp,.tiff,.tif,.bmp,.zip",
+    multiple: true,
+    dbField: "weather_files",
+    folder: "weather",
+  },
+  other: {
+    label: "Other",
+    description: "Email screenshots, adjuster correspondence, change orders, etc.",
+    accept: ".pdf,.jpg,.jpeg,.png,.heic,.heif,.webp,.tiff,.tif,.bmp,.doc,.docx,.zip",
+    multiple: true,
+    dbField: "other_files",
+    folder: "other",
+  },
+};
 
 const FILE_CATEGORIES = [
   { key: "measurement_files" as const, label: "Measurements", folder: "measurements", color: "bg-blue-50 text-blue-700 border-blue-200" },
@@ -17,9 +67,36 @@ const FILE_CATEGORIES = [
   { key: "other_files" as const, label: "Other", folder: "other", color: "bg-gray-100 text-gray-600 border-gray-200" },
 ];
 
-export function AdminClaimDetail({ claim, userInfo }: Props) {
+export function AdminClaimDetail({ claim: initialClaim, userInfo }: Props) {
   const supabase = createClient();
+  const [claim, setClaim] = useState<Claim>(initialClaim);
   const [downloading, setDownloading] = useState<string | null>(null);
+  const [showUpload, setShowUpload] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState<UploadCategory>("photos");
+  const [newFiles, setNewFiles] = useState<File[]>([]);
+  const [uploading, setUploading] = useState(false);
+  const [uploadSuccess, setUploadSuccess] = useState("");
+  const [uploadError, setUploadError] = useState("");
+  const [reprocessing, setReprocessing] = useState(false);
+  const formRef = useRef<HTMLDivElement>(null);
+
+  const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "https://dumbroof-backend-production.up.railway.app";
+
+  const fetchClaim = useCallback(async () => {
+    const { data } = await supabase
+      .from("claims")
+      .select("*")
+      .eq("id", claim.id)
+      .single();
+    if (data) setClaim(data);
+  }, [claim.id, supabase]);
+
+  // Poll when processing
+  useEffect(() => {
+    if (claim.status !== "uploaded" && claim.status !== "processing") return;
+    const interval = setInterval(fetchClaim, 5000);
+    return () => clearInterval(interval);
+  }, [claim.status, fetchClaim]);
 
   const handleDownloadOutput = async (filename: string) => {
     setDownloading(filename);
@@ -60,6 +137,100 @@ export function AdminClaimDetail({ claim, userInfo }: Props) {
       console.error("Download failed:", err);
     }
     setDownloading(null);
+  };
+
+  const handleUploadDocuments = async () => {
+    if (!claim || newFiles.length === 0) return;
+    setUploading(true);
+    setUploadError("");
+    setUploadSuccess("");
+
+    try {
+      const catConfig = CATEGORY_CONFIG[selectedCategory];
+      const folder = catConfig.folder;
+      const uploadedNames: string[] = [];
+
+      const uploadSingle = async (file: File, uploadFolder: string): Promise<string> => {
+        const res = await fetch("/api/storage/sign-upload", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ folder: uploadFolder, fileName: file.name, claimPath: claim.file_path }),
+        });
+        const urlData = await res.json();
+        if (!res.ok) throw new Error(`Failed to upload ${file.name}: ${urlData.error}`);
+
+        const { error } = await supabase.storage
+          .from("claim-documents")
+          .uploadToSignedUrl(urlData.path, urlData.token, file);
+        if (error && !error.message.includes("already exists") && !error.message.includes("Duplicate")) {
+          throw new Error(`Failed to upload ${file.name}: ${error.message}`);
+        }
+        return urlData.safeName;
+      };
+
+      for (const file of newFiles) {
+        if (folder === "photos" && file.name.toLowerCase().endsWith(".zip")) {
+          const zip = await JSZip.loadAsync(file);
+          const imageExts = ["jpg", "jpeg", "png", "heic", "heif", "webp", "tiff", "tif", "bmp"];
+          for (const [path, entry] of Object.entries(zip.files)) {
+            if (entry.dir) continue;
+            if (path.includes("__MACOSX") || path.startsWith(".")) continue;
+            const ext = path.split(".").pop()?.toLowerCase();
+            if (!ext || !imageExts.includes(ext)) continue;
+            const blob = await entry.async("blob");
+            if (blob.size < 10240) continue;
+            const name = path.split("/").pop() || path;
+            const photo = new File([blob], name, { type: `image/${ext === "jpg" ? "jpeg" : ext}` });
+            uploadedNames.push(await uploadSingle(photo, "photos"));
+          }
+        } else {
+          uploadedNames.push(await uploadSingle(file, folder));
+        }
+      }
+
+      const fieldKey = catConfig.dbField as keyof Claim;
+      const existingFiles: string[] = (claim[fieldKey] as string[] | null) ?? [];
+      const updatedFiles = [...existingFiles, ...uploadedNames];
+
+      const updates: Record<string, unknown> = { [catConfig.dbField]: updatedFiles };
+      if (selectedCategory === "scope" && claim.phase === "pre-scope") {
+        updates.phase = "post-scope";
+      }
+
+      const updateRes = await fetch("/api/claims/update", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ claimId: claim.id, updates }),
+      });
+      if (!updateRes.ok) {
+        const errData = await updateRes.json();
+        throw new Error(`Failed to update claim: ${errData.error}`);
+      }
+
+      setUploadSuccess(`${uploadedNames.length} file${uploadedNames.length > 1 ? "s" : ""} uploaded`);
+      setNewFiles([]);
+      setShowUpload(false);
+      fetchClaim();
+    } catch (err) {
+      setUploadError(err instanceof Error ? err.message : "Upload failed");
+    }
+    setUploading(false);
+  };
+
+  const handleReprocess = async () => {
+    setReprocessing(true);
+    setUploadError("");
+    try {
+      const res = await fetch(`${BACKEND_URL}/api/reprocess/${claim.id}`, { method: "POST" });
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({ detail: "Unknown error" }));
+        throw new Error(`Reprocess failed: ${errData.detail || errData.error}`);
+      }
+      fetchClaim();
+    } catch (err) {
+      setUploadError(err instanceof Error ? err.message : "Reprocess failed");
+    }
+    setReprocessing(false);
   };
 
   const statusConfig: Record<string, { color: string; label: string; bg: string }> = {
@@ -120,7 +291,6 @@ export function AdminClaimDetail({ claim, userInfo }: Props) {
                 {claim.phase === "pre-scope" ? "Pre-Scope" : "Supplement"} &middot;{" "}
                 {new Date(claim.created_at).toLocaleDateString()}
               </p>
-              {/* User info */}
               {userInfo && (
                 <p className="text-xs text-gray-400 mt-1">
                   User: {userInfo.company_name || userInfo.contact_email || claim.user_id.slice(0, 8)}
@@ -182,8 +352,8 @@ export function AdminClaimDetail({ claim, userInfo }: Props) {
           {claim.damage_score != null && (
             <div className="mt-4 grid grid-cols-2 gap-3">
               {[
-                { label: "Damage Score", value: claim.damage_score, max: 100, unit: "/100", grade: claim.damage_grade },
-                { label: "Approval Score", value: claim.approval_score ?? 0, max: 100, unit: "%", grade: claim.approval_grade },
+                { label: "Damage Score", value: claim.damage_score, unit: "/100", grade: claim.damage_grade },
+                { label: "Approval Score", value: claim.approval_score ?? 0, unit: "%", grade: claim.approval_grade },
               ].map(({ label, value, unit, grade }) => {
                 const gradeColors: Record<string, string> = {
                   A: "bg-green-100 text-green-800 border-green-300",
@@ -243,42 +413,9 @@ export function AdminClaimDetail({ claim, userInfo }: Props) {
             </div>
           )}
 
-          {/* Measurement Warning Banner */}
-          {claim.processing_warnings?.some(w =>
-            w === "MEASUREMENT_EXTRACTION_FAILED" ||
-            w === "PROPERTY_OWNER_REPORT_NO_MEASUREMENTS" ||
-            w === "MEASUREMENTS_FROM_CARRIER_FALLBACK"
-          ) && (
-            <div className="mt-4 bg-amber-50 border border-amber-300 rounded-lg px-4 py-3">
-              <div className="flex items-start gap-3">
-                <svg className="w-5 h-5 text-amber-600 mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
-                </svg>
-                <div>
-                  <p className="text-sm font-semibold text-amber-800">
-                    {claim.processing_warnings!.includes("PROPERTY_OWNER_REPORT_NO_MEASUREMENTS")
-                      ? "Property Owner Report Detected — No Measurements"
-                      : claim.processing_warnings!.includes("MEASUREMENTS_FROM_CARRIER_FALLBACK")
-                      ? "Measurements Estimated from Carrier Scope"
-                      : "Measurement Extraction Failed"}
-                  </p>
-                  <p className="text-xs text-amber-700 mt-1">
-                    {claim.processing_warnings!.includes("PROPERTY_OWNER_REPORT_NO_MEASUREMENTS")
-                      ? "The uploaded EagleView file is a Property Owner Report (images only)."
-                      : claim.processing_warnings!.includes("MEASUREMENTS_FROM_CARRIER_FALLBACK")
-                      ? "Measurements were estimated from the carrier scope."
-                      : "Could not extract roof measurements from the uploaded documents."}
-                  </p>
-                </div>
-              </div>
-            </div>
-          )}
-
           {claim.user_notes && (
             <div className="mt-4 bg-gray-50 rounded-lg px-4 py-3">
-              <p className="text-xs font-semibold text-gray-400 uppercase mb-1">
-                User Notes
-              </p>
+              <p className="text-xs font-semibold text-gray-400 uppercase mb-1">User Notes</p>
               <p className="text-sm text-gray-700">{claim.user_notes}</p>
             </div>
           )}
@@ -294,15 +431,9 @@ export function AdminClaimDetail({ claim, userInfo }: Props) {
               </svg>
               <div>
                 <p className="text-sm font-medium text-amber-800">
-                  {isUploaded
-                    ? "Claim queued — waiting for processing to begin..."
-                    : "Analyzing documents and generating claim package..."}
+                  {isUploaded ? "Claim queued — waiting for processing..." : "Analyzing documents and generating claim package..."}
                 </p>
-                <p className="text-xs text-amber-600 mt-0.5">
-                  {isUploaded
-                    ? "The system will pick this up shortly"
-                    : "This typically takes 2-5 minutes"}
-                </p>
+                <p className="text-xs text-amber-600 mt-0.5">This typically takes 2-5 minutes</p>
               </div>
             </div>
           </div>
@@ -318,16 +449,12 @@ export function AdminClaimDetail({ claim, userInfo }: Props) {
                 </svg>
               </div>
               <div>
-                <h2 className="text-base font-bold text-orange-900">
-                  Quality Gate — More Documentation Needed
-                </h2>
-                <p className="text-sm text-orange-800 mt-1">
-                  {claim.improvement_guidance.summary}
-                </p>
+                <h2 className="text-base font-bold text-orange-900">Quality Gate — More Documentation Needed</h2>
+                <p className="text-sm text-orange-800 mt-1">{claim.improvement_guidance.summary}</p>
               </div>
             </div>
             <div className="grid gap-3">
-              {claim.improvement_guidance.tips.map((tip, i) => (
+              {claim.improvement_guidance.tips.map((tip: { category: string; title: string; detail: string }, i: number) => (
                 <div key={i} className="bg-white border border-orange-100 rounded-xl px-4 py-3">
                   <div className="flex items-center gap-2 mb-1">
                     <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-orange-100 text-orange-700 border border-orange-200">
@@ -345,9 +472,7 @@ export function AdminClaimDetail({ claim, userInfo }: Props) {
         {/* Output Files */}
         {isReady && (
           <div className="bg-white rounded-2xl border border-gray-200 p-6">
-            <h2 className="text-sm font-semibold text-[var(--navy)] mb-4">
-              Generated Documents
-            </h2>
+            <h2 className="text-sm font-semibold text-[var(--navy)] mb-4">Generated Documents</h2>
             <div className="grid sm:grid-cols-2 gap-3">
               {claim.output_files!.map((file) => (
                 <button
@@ -377,12 +502,135 @@ export function AdminClaimDetail({ claim, userInfo }: Props) {
                 {claim.error_message}
               </p>
             ) : (
-              <p className="text-sm text-red-600">
-                No error message recorded.
-              </p>
+              <p className="text-sm text-red-600">No error message recorded.</p>
             )}
           </div>
         )}
+
+        {/* Admin Actions: Upload + Reprocess + Photo Review */}
+        <div className="bg-white rounded-2xl border border-gray-200 p-6">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h2 className="text-sm font-semibold text-[var(--navy)]">Admin Actions</h2>
+              <p className="text-xs text-gray-500 mt-0.5">Upload documents, review photos, or reprocess this claim</p>
+            </div>
+            {!showUpload && (
+              <button
+                onClick={() => {
+                  setShowUpload(true);
+                  setTimeout(() => formRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }), 100);
+                }}
+                className="bg-[var(--navy)] hover:bg-[var(--navy-light)] text-white px-5 py-2 rounded-lg text-sm font-medium transition-colors"
+              >
+                + Upload Files
+              </button>
+            )}
+          </div>
+
+          {/* Photo Review link */}
+          {(claim.photo_files?.length ?? 0) > 0 && (
+            <div className="bg-purple-50 border border-purple-200 rounded-lg px-4 py-3 mb-4 flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-purple-800">Review photo annotations</p>
+                <p className="text-xs text-purple-600 mt-0.5">
+                  Approve, correct, or reject AI-generated annotations.
+                  {(claim.excluded_photos?.length ?? 0) > 0 && (
+                    <span className="ml-1 font-semibold">({claim.excluded_photos!.length} excluded)</span>
+                  )}
+                </p>
+              </div>
+              <a
+                href={`/dashboard/photo-review?claim=${claim.id}`}
+                className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ml-4"
+              >
+                Review Photos
+              </a>
+            </div>
+          )}
+
+          {/* Reprocess button */}
+          {(isReady || claim.status === "needs_improvement" || claim.status === "error") && !showUpload && !isReprocessingState && (
+            <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-3 mb-4 flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-blue-800">Reprocess this claim</p>
+                <p className="text-xs text-blue-600 mt-0.5">Re-analyze all documents and regenerate the claim package</p>
+              </div>
+              <button
+                onClick={handleReprocess}
+                disabled={reprocessing}
+                className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ml-4"
+              >
+                {reprocessing ? "Starting..." : "Reprocess Claim"}
+              </button>
+            </div>
+          )}
+
+          {/* Success/Error messages */}
+          {uploadSuccess && (
+            <div className="bg-green-50 border border-green-200 text-green-700 text-sm rounded-lg px-4 py-3 mb-4">
+              {uploadSuccess}
+            </div>
+          )}
+          {uploadError && (
+            <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3 mb-4">
+              {uploadError}
+            </div>
+          )}
+
+          {/* Upload form */}
+          {showUpload && (
+            <div ref={formRef} className="space-y-5">
+              <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+                {(Object.entries(CATEGORY_CONFIG) as [UploadCategory, (typeof CATEGORY_CONFIG)[UploadCategory]][]).map(
+                  ([key, config]) => (
+                    <button
+                      key={key}
+                      onClick={() => {
+                        setSelectedCategory(key);
+                        setNewFiles([]);
+                      }}
+                      className={`px-3 py-2 rounded-lg text-xs font-medium transition-colors border ${
+                        selectedCategory === key
+                          ? "bg-[var(--navy)] text-white border-[var(--navy)]"
+                          : "bg-white text-gray-600 border-gray-200 hover:bg-gray-50"
+                      }`}
+                    >
+                      {config.label}
+                    </button>
+                  )
+                )}
+              </div>
+
+              <FileUploadZone
+                label={CATEGORY_CONFIG[selectedCategory].label}
+                description={CATEGORY_CONFIG[selectedCategory].description}
+                accept={CATEGORY_CONFIG[selectedCategory].accept}
+                multiple={CATEGORY_CONFIG[selectedCategory].multiple}
+                files={newFiles}
+                onFilesChange={setNewFiles}
+              />
+
+              <div className="flex gap-3">
+                <button
+                  onClick={() => {
+                    setShowUpload(false);
+                    setNewFiles([]);
+                  }}
+                  className="px-4 py-2 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-100 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleUploadDocuments}
+                  disabled={uploading || newFiles.length === 0}
+                  className="bg-[var(--red)] hover:bg-[var(--red-dark)] disabled:opacity-50 text-white px-6 py-2 rounded-lg text-sm font-semibold transition-colors"
+                >
+                  {uploading ? "Uploading..." : `Upload ${newFiles.length} File${newFiles.length !== 1 ? "s" : ""}`}
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
 
         {/* Uploaded Source Documents */}
         {totalSourceFiles > 0 && (
