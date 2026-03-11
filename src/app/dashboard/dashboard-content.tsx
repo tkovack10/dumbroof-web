@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
 import type { User } from "@supabase/supabase-js";
 import type { Claim } from "@/types/claim";
+import { useBillingQuota } from "@/hooks/use-billing-quota";
 
 import { ClaimsMap } from "@/components/claims-map";
 
@@ -24,6 +25,7 @@ export function DashboardContent({ user }: { user: User }) {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>("table");
+  const billing = useBillingQuota();
 
   const fetchClaims = useCallback(async () => {
     const { data } = await supabase
@@ -144,6 +146,11 @@ export function DashboardContent({ user }: { user: User }) {
             </a>
             <span className="text-gray-400 text-sm hidden sm:block">
               {user.email}
+              {billing?.planName && (
+                <span className="ml-2 px-1.5 py-0.5 rounded text-[10px] font-bold bg-white/10 text-gray-300">
+                  {billing.planName}
+                </span>
+              )}
             </span>
             <button
               onClick={handleSignOut}

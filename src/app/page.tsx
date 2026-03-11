@@ -83,6 +83,9 @@ export default function Home() {
             <a href="#inspectors" className="text-gray-300 hover:text-white text-sm transition-colors hidden sm:block">
               Inspectors
             </a>
+            <a href="/pricing" className="text-gray-300 hover:text-white text-sm transition-colors hidden sm:block">
+              Pricing
+            </a>
             <a href="/login" className="text-gray-300 hover:text-white text-sm font-medium transition-colors">
               Sign In
             </a>

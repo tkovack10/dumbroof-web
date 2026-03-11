@@ -1,0 +1,62 @@
+import { NextRequest, NextResponse } from "next/server";
+import { createClient } from "@/lib/supabase/server";
+import { getStripe } from "@/lib/stripe";
+import { PLANS, type PlanId } from "@/lib/stripe-config";
+import { supabaseAdmin } from "@/lib/supabase/admin";
+
+export async function POST(req: NextRequest) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const { planId } = (await req.json()) as { planId: PlanId };
+  const plan = PLANS[planId];
+  if (!plan || !plan.stripePriceId) {
+    return NextResponse.json({ error: "Invalid plan" }, { status: 400 });
+  }
+
+  // Check if user already has a Stripe customer ID
+  const { data: sub } = await supabaseAdmin
+    .from("subscriptions")
+    .select("stripe_customer_id")
+    .eq("user_id", user.id)
+    .single();
+
+  let customerId = sub?.stripe_customer_id;
+
+  if (!customerId) {
+    const customer = await getStripe().customers.create({
+      email: user.email,
+      metadata: { user_id: user.id },
+    });
+    customerId = customer.id;
+
+    // Ensure subscription row exists
+    await supabaseAdmin.from("subscriptions").upsert(
+      {
+        user_id: user.id,
+        stripe_customer_id: customerId,
+        plan_id: "starter",
+        status: "active",
+      },
+      { onConflict: "user_id" }
+    );
+  }
+
+  const origin = req.headers.get("origin") || "https://www.dumbroof.ai";
+
+  const session = await getStripe().checkout.sessions.create({
+    customer: customerId,
+    mode: "subscription",
+    line_items: [{ price: plan.stripePriceId, quantity: 1 }],
+    success_url: `${origin}/dashboard/settings?billing=success`,
+    cancel_url: `${origin}/pricing`,
+    metadata: { user_id: user.id },
+  });
+
+  return NextResponse.json({ url: session.url });
+}

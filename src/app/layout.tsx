@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
+import { PLANS } from "@/lib/stripe-config";
 import "./globals.css";
 
 const inter = Inter({
@@ -118,7 +119,7 @@ const softwareJsonLd = {
     "@type": "AggregateOffer",
     priceCurrency: "USD",
     lowPrice: "0",
-    highPrice: "1499",
+    highPrice: String(PLANS.enterprise.price),
     offerCount: "5",
   },
   creator: {

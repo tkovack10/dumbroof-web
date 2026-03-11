@@ -3,6 +3,7 @@
 import { Suspense, useEffect, useState, useRef } from "react";
 import { useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { useBillingQuota } from "@/hooks/use-billing-quota";
 
 interface Forwarder {
   id: string;
@@ -24,8 +25,11 @@ function SettingsPageContent() {
   const supabase = createClient();
   const searchParams = useSearchParams();
   const isPasswordReset = searchParams.get("reset") === "true";
+  const billingSuccess = searchParams.get("billing") === "success";
   const passwordRef = useRef<HTMLDivElement>(null);
   const [loading, setLoading] = useState(true);
+  const billing = useBillingQuota();
+  const [portalLoading, setPortalLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [logoFile, setLogoFile] = useState<File | null>(null);
@@ -328,6 +332,104 @@ function SettingsPageContent() {
             )}
           </div>
         </form>
+
+        {/* Billing */}
+        <div className="mt-12 pt-8 border-t border-gray-200">
+          <h2 className="text-xl font-bold text-[var(--navy)] mb-1">Billing & Subscription</h2>
+          <p className="text-gray-500 text-sm mb-6">
+            Manage your plan and claim quota.
+          </p>
+
+          {billingSuccess && (
+            <div className="bg-green-50 border border-green-200 text-green-700 text-sm rounded-lg px-4 py-3 mb-4">
+              Subscription activated! Your plan has been upgraded.
+            </div>
+          )}
+
+          {billing && (
+            <div className="bg-white border border-gray-200 rounded-xl p-6 space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-semibold text-[var(--navy)]">
+                    {billing.planName} Plan
+                  </p>
+                  <p className="text-xs text-gray-500 mt-0.5">
+                    {billing.planId === "starter"
+                      ? `${billing.lifetimeUsed} of ${billing.limit} lifetime claims used`
+                      : `${billing.periodUsed} of ${billing.limit} claims used this month`}
+                  </p>
+                </div>
+                <span
+                  className={`px-2.5 py-1 rounded-full text-xs font-bold ${
+                    billing.status === "active"
+                      ? "bg-green-100 text-green-700"
+                      : billing.status === "past_due"
+                      ? "bg-amber-100 text-amber-700"
+                      : "bg-gray-100 text-gray-600"
+                  }`}
+                >
+                  {billing.status === "active" ? "Active" : billing.status === "past_due" ? "Past Due" : "Canceled"}
+                </span>
+              </div>
+
+              {/* Usage bar */}
+              <div className="w-full bg-gray-100 rounded-full h-2">
+                <div
+                  className="bg-[var(--navy)] h-2 rounded-full transition-all"
+                  style={{
+                    width: `${Math.min(
+                      100,
+                      ((billing.planId === "starter"
+                        ? billing.lifetimeUsed
+                        : billing.periodUsed) /
+                        (billing.limit || 1)) *
+                        100
+                    )}%`,
+                  }}
+                />
+              </div>
+
+              <div className="flex gap-3">
+                {billing.planId === "starter" ? (
+                  <a
+                    href="/pricing"
+                    className="bg-[var(--red)] hover:bg-[var(--red-dark)] text-white px-5 py-2.5 rounded-lg text-sm font-medium transition-colors"
+                  >
+                    Upgrade Plan
+                  </a>
+                ) : (
+                  <>
+                    <a
+                      href="/pricing"
+                      className="bg-[var(--navy)] hover:bg-[var(--navy-light)] text-white px-5 py-2.5 rounded-lg text-sm font-medium transition-colors"
+                    >
+                      Change Plan
+                    </a>
+                    <button
+                      onClick={async () => {
+                        setPortalLoading(true);
+                        try {
+                          const res = await fetch("/api/billing/create-portal", {
+                            method: "POST",
+                          });
+                          const data = await res.json();
+                          if (data.url) window.location.href = data.url;
+                        } catch {
+                          // fall through
+                        }
+                        setPortalLoading(false);
+                      }}
+                      disabled={portalLoading}
+                      className="bg-white border border-gray-200 hover:border-gray-300 text-gray-700 px-5 py-2.5 rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
+                    >
+                      {portalLoading ? "Loading..." : "Manage Billing"}
+                    </button>
+                  </>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
 
         {/* Authorized Forwarders */}
         <div className="mt-12 pt-8 border-t border-gray-200">

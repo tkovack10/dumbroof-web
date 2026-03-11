@@ -5,11 +5,13 @@ import JSZip from "jszip";
 import { createClient } from "@/lib/supabase/client";
 import { FileUploadZone } from "@/components/file-upload-zone";
 import { AddressAutocomplete } from "@/components/address-autocomplete";
+import { useBillingQuota } from "@/hooks/use-billing-quota";
 
 type UploadStatus = "idle" | "uploading" | "success" | "error";
 
 export default function NewClaimPage() {
   const [propertyAddress, setPropertyAddress] = useState("");
+  const quota = useBillingQuota();
   const [homeownerName, setHomeownerName] = useState("");
   const [insuranceCarrier, setInsuranceCarrier] = useState("");
   const [measurementFiles, setMeasurementFiles] = useState<File[]>([]);
@@ -40,7 +42,8 @@ export default function NewClaimPage() {
     propertyAddress.trim() !== "" &&
     measurementFiles.length > 0 &&
     photoFiles.length > 0 &&
-    roofMaterial !== "";
+    roofMaterial !== "" &&
+    (quota === null || quota.allowed);
 
   const scanForStorms = async () => {
     setScanningStorms(true);
@@ -178,6 +181,9 @@ export default function NewClaimPage() {
 
       if (dbError) throw new Error(dbError.message);
 
+      // Increment claim usage counter
+      await fetch("/api/billing/check-quota", { method: "POST" });
+
       setStatus("success");
     } catch (err) {
       setStatus("error");
@@ -276,6 +282,36 @@ export default function NewClaimPage() {
             Upload your documents and we&apos;ll generate your appeal package.
           </p>
         </div>
+
+        {/* Quota Gate */}
+        {quota && !quota.allowed && (
+          <div className="mb-8 bg-red-50 border border-red-200 rounded-xl p-6 text-center">
+            <h3 className="text-lg font-bold text-red-800 mb-2">
+              Claim Limit Reached
+            </h3>
+            <p className="text-sm text-red-700 mb-4">
+              You&apos;ve used all {quota.limit} claims on your {quota.planName} plan.
+              Upgrade to continue submitting claims.
+            </p>
+            <a
+              href="/pricing"
+              className="inline-block bg-[var(--red)] hover:bg-[var(--red-dark)] text-white px-6 py-3 rounded-xl font-semibold transition-colors text-sm"
+            >
+              View Plans
+            </a>
+          </div>
+        )}
+
+        {quota && quota.allowed && (
+          <div className="mb-6 flex items-center justify-between bg-gray-50 rounded-lg px-4 py-2.5 border border-gray-200">
+            <span className="text-xs text-gray-500">
+              <span className="font-semibold text-[var(--navy)]">{quota.planName}</span> plan
+            </span>
+            <span className="text-xs text-gray-500">
+              <span className="font-semibold text-[var(--navy)]">{quota.remaining}</span> claim{quota.remaining !== 1 ? "s" : ""} remaining
+            </span>
+          </div>
+        )}
 
         <form onSubmit={handleSubmit} className="space-y-8">
           {/* Property Info */}
