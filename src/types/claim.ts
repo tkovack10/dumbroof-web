@@ -37,6 +37,15 @@ export interface Claim {
   damage_grade?: string | null;
   approval_score?: number | null;
   approval_grade?: string | null;
+  improvement_guidance?: {
+    summary: string;
+    tips: { category: string; icon: string; title: string; detail: string }[];
+  } | null;
+  // Geo
+  latitude?: number | null;
+  longitude?: number | null;
+  // Photo corrections
+  excluded_photos?: string[] | null;
   // Admin enrichment
   user_email?: string;
 }

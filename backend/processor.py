@@ -2904,6 +2904,16 @@ async def process_claim(claim_id: str):
 
         # Ingest all downloaded files — extracts ZIPs, PDFs, converts HEIC/TIFF/etc.
         photo_paths = ingest_photos(downloaded_paths, photos_dir)
+
+        # Filter out excluded photos (rejected via Photo Review UI)
+        excluded_keys = claim.get("excluded_photos") or []
+        if excluded_keys:
+            before_count = len(photo_paths)
+            photo_paths = [p for p in photo_paths if os.path.basename(p) not in excluded_keys]
+            excluded_count = before_count - len(photo_paths)
+            if excluded_count > 0:
+                print(f"[PROCESS] Excluded {excluded_count} photos via photo review (keys: {excluded_keys})")
+
         photo_filenames = [os.path.basename(p) for p in photo_paths]
 
         if not photo_paths:
@@ -3374,7 +3384,49 @@ async def process_claim(claim_id: str):
             config["appeal_letter"]["demand_items"] = _actions
             config["appeal_letter"]["requested_actions"] = _actions
 
-        # 10. Generate PDFs
+        # 10. Compute Damage Score + Technical Approval Score (BEFORE PDF generation — quality gate)
+        ds = None
+        tas = None
+        try:
+            from damage_scoring import compute_damage_score, compute_approval_score
+            ds = compute_damage_score(config, hail_analysis=config.get("hail_analysis"))
+            tas = compute_approval_score(config, ds)
+            print(f"[PROCESS] Damage Score: {ds.score}/100 ({ds.grade}) | TAS: {tas.score}% ({tas.grade})")
+        except Exception as e:
+            print(f"[PROCESS] Damage scoring failed (non-fatal): {e}")
+
+        # 10a. Quality Gate — reject if BOTH scores fail (protects rep credibility)
+        DS_FAIL_THRESHOLD = 35   # D- or F
+        TAS_FAIL_THRESHOLD = 50  # D or F
+        if ds and tas and ds.score < DS_FAIL_THRESHOLD and tas.score < TAS_FAIL_THRESHOLD:
+            print(f"[QUALITY] Claim rejected — DS {ds.score} < {DS_FAIL_THRESHOLD} AND TAS {tas.score} < {TAS_FAIL_THRESHOLD}")
+            guidance = _build_improvement_guidance(ds, tas)
+            reject_data: dict = {
+                "status": "needs_improvement",
+                "damage_score": ds.score,
+                "damage_grade": ds.grade,
+                "approval_score": tas.score,
+                "approval_grade": tas.grade,
+                "improvement_guidance": guidance,
+            }
+            if photo_integrity and photo_integrity.get("total", 0) > 0:
+                reject_data["photo_integrity"] = {
+                    "total": photo_integrity["total"],
+                    "flagged": photo_integrity["flagged"],
+                    "score": photo_integrity["score"],
+                }
+            config_warnings = config.get("warnings", [])
+            if config_warnings:
+                reject_data["processing_warnings"] = config_warnings
+            _financials = compute_financials(config)
+            contractor_rcv = _financials.get("total", 0)
+            if contractor_rcv:
+                reject_data["contractor_rcv"] = round(contractor_rcv, 2)
+            sb.table("claims").update(reject_data).eq("id", claim_id).execute()
+            print(f"[QUALITY] Saved {len(guidance.get('tips', []))} improvement tips — claim needs better documentation")
+            return
+
+        # 10b. Generate PDFs (quality gate passed)
         print(f"[PROCESS] Generating PDFs...")
         pdfs = generate_pdfs(config, work_dir)
         print(f"[PROCESS] Generated {len(pdfs)} PDFs")
@@ -3392,6 +3444,7 @@ async def process_claim(claim_id: str):
         update_data: dict = {
             "status": "ready",
             "output_files": uploaded_pdfs,
+            "improvement_guidance": None,  # Clear any previous rejection guidance
         }
         if photo_integrity and photo_integrity.get("total", 0) > 0:
             update_data["photo_integrity"] = {
@@ -3411,18 +3464,25 @@ async def process_claim(claim_id: str):
         if contractor_rcv:
             update_data["contractor_rcv"] = round(contractor_rcv, 2)
 
-        # Compute Damage Score + Technical Approval Score
-        try:
-            from damage_scoring import compute_damage_score, compute_approval_score
-            ds = compute_damage_score(config, hail_analysis=config.get("hail_analysis"))
-            tas = compute_approval_score(config, ds)
+        # Save scores (already computed above)
+        if ds and tas:
             update_data["damage_score"] = ds.score
             update_data["damage_grade"] = ds.grade
             update_data["approval_score"] = tas.score
             update_data["approval_grade"] = tas.grade
-            print(f"[PROCESS] Damage Score: {ds.score}/100 ({ds.grade}) | TAS: {tas.score}% ({tas.grade})")
+
+        # Geocode claim address for map display (non-fatal, cached)
+        try:
+            from noaa_weather.geocode import geocode_address, build_address_from_config
+            geo_address = build_address_from_config(config)
+            if geo_address:
+                geo = geocode_address(geo_address)
+                if geo and geo.latitude and geo.longitude:
+                    update_data["latitude"] = geo.latitude
+                    update_data["longitude"] = geo.longitude
+                    print(f"[GEO] Geocoded to ({geo.latitude}, {geo.longitude})")
         except Exception as e:
-            print(f"[PROCESS] Damage scoring failed (non-fatal): {e}")
+            print(f"[GEO] Geocoding failed (non-fatal): {e}")
 
         # Core update (status + output_files + photo_integrity — always works)
         sb.table("claims").update(update_data).eq("id", claim_id).execute()
@@ -3499,6 +3559,131 @@ def _send_completion_notification(claim_id: str):
         print(f"[NOTIFY] Completion email sent to {email}")
     else:
         print(f"[NOTIFY] Notification returned: {result}")
+
+
+# ===================================================================
+# QUALITY GATE — IMPROVEMENT GUIDANCE
+# ===================================================================
+
+def _build_improvement_guidance(ds, tas) -> dict:
+    """Build actionable improvement tips based on lowest-scoring components."""
+    tips = []
+
+    # --- Damage Score components ---
+    rs = ds.roof_surface
+    ec = ds.evidence_cascade
+    sm = ds.soft_metal
+    dq = ds.documentation
+
+    # A. Roof Surface Damage (0-40)
+    if rs.damage_confirmation < 5:
+        tips.append({
+            "category": "Damage Evidence",
+            "icon": "target",
+            "title": "Document specific damage locations",
+            "detail": "Take close-up photos of individual hail hits or wind damage. Note the number of impacts found — the more you document, the stronger the case. Use phrases like 'hail damage confirmed at 12 locations on south slope.'"
+        })
+    if rs.severity_spectrum < 5:
+        tips.append({
+            "category": "Damage Evidence",
+            "icon": "alert-triangle",
+            "title": "Show functional damage, not just cosmetic",
+            "detail": "Look for the worst damage on the roof. Is any shingle cracked through the mat? Is there granule loss exposing fiberglass? Carriers dismiss 'cosmetic' damage — document that waterproofing is compromised."
+        })
+    if rs.hit_density < 5:
+        tips.append({
+            "category": "Damage Evidence",
+            "icon": "grid",
+            "title": "Count and document hit density",
+            "detail": "Mark a 10x10 foot test square on the roof and count every impact mark inside it. Do this on 2-3 different slopes. Example: '14 impacts per test square on the south face.' Higher density = stronger claim."
+        })
+
+    # B. Evidence Cascade (0-25)
+    if ec.chalk_protocol < 3:
+        tips.append({
+            "category": "Inspection Technique",
+            "icon": "edit-3",
+            "title": "Use chalk to circle damage",
+            "detail": "Chalk-circle every hail hit and soft metal dent before photographing. This is standard forensic inspection protocol. Take the close-up photo AFTER marking. Adjusters do this — your documentation should too."
+        })
+    if ec.soft_metal_documentation < 4:
+        tips.append({
+            "category": "Soft Metal Evidence",
+            "icon": "shield",
+            "title": "Photograph all soft metal components",
+            "detail": "Inspect and photograph every metal component: gutters, downspouts, vent pipes, chimney flashing, drip edge, fascia, AC condenser, and mailbox. Hail dents on soft metals corroborate roof damage — this is the #1 evidence carriers can't dispute."
+        })
+    if ec.directional_pattern < 3:
+        tips.append({
+            "category": "Inspection Technique",
+            "icon": "compass",
+            "title": "Document all four building elevations",
+            "detail": "Inspect and photograph damage on the north, south, east, and west sides separately. Note which side shows the most damage (windward side will have more). This directional pattern proves storm causation."
+        })
+    if ec.environmental_evidence < 3:
+        tips.append({
+            "category": "Evidence Cascade",
+            "icon": "cloud-rain",
+            "title": "Check for ground-level storm evidence",
+            "detail": "Look for dented gutters at ground level, damaged plants, granule wash in flower beds or at downspout discharge points, and vehicle dents. Ground-level evidence proves the storm hit the entire property, not just the roof."
+        })
+    if ec.roof_test_areas < 2:
+        tips.append({
+            "category": "Inspection Technique",
+            "icon": "scissors",
+            "title": "Document roof test squares",
+            "detail": "With permission, lift or cut a shingle to inspect the underlayment and mat condition. Photograph the exposed area showing granule loss pattern, mat fractures, or moisture intrusion. Do this on at least 2-3 slopes."
+        })
+
+    # C. Soft Metal Corroboration (0-20)
+    if sm.component_diversity < 4:
+        tips.append({
+            "category": "Soft Metal Evidence",
+            "icon": "layers",
+            "title": "Inspect more metal component types",
+            "detail": "Walk the entire property perimeter. Check gutters, downspouts, vent pipes, pipe boots, chimney flashing, drip edge, fascia, soffit, AC condenser, and mailbox. Each damaged component type strengthens the case — aim for 5+ types."
+        })
+    if sm.dent_volume < 3:
+        tips.append({
+            "category": "Soft Metal Evidence",
+            "icon": "hash",
+            "title": "Count dents on each metal component",
+            "detail": "Count dents precisely: 'Gutters: 28 dents, Downspouts: 12, Vent pipes: 8 = 48 total.' Use a coin for scale reference in photos (quarter = 0.95 inch diameter). Higher dent counts make the case undeniable."
+        })
+
+    # D. Documentation Quality (0-15)
+    if dq.photo_count < 3:
+        tips.append({
+            "category": "Photo Quality",
+            "icon": "camera",
+            "title": "Take more photos",
+            "detail": "Aim for 40+ photos: overview of each roof plane, close-ups of individual damage spots, every metal component, elevation comparisons, and interior damage if present. 6-15 photos is not enough for a competitive claim."
+        })
+    if dq.technique < 2:
+        tips.append({
+            "category": "Photo Quality",
+            "icon": "sun",
+            "title": "Improve photo technique",
+            "detail": "Use chalk circles to mark damage, place a coin or ruler in frame for scale, photograph in good lighting (morning or afternoon, avoid shadows), and shoot from directly above the damage — not at an angle."
+        })
+
+    # Build summary based on most impactful gaps
+    if rs.total < 15:
+        summary = "We couldn't verify enough storm damage from your documentation. The photos and evidence don't yet support a strong claim — but this is fixable with better inspection technique."
+    elif ec.total < 10:
+        summary = "The roof shows some damage, but the supporting evidence cascade is incomplete. Carriers need to see damage corroborated across multiple property components to approve full replacement."
+    elif sm.total < 8:
+        summary = "Soft metal evidence is the #1 factor carriers use to verify hail. Your claim is missing critical corroborating damage on gutters, vents, and other metal components."
+    elif dq.total < 6:
+        summary = "Your documentation quality needs improvement. More photos with better technique (chalk circles, scale references, test squares) will dramatically strengthen this claim."
+    else:
+        summary = "Your claim documentation needs improvement in several areas before we can generate a competitive appeal package. Follow the tips below and resubmit."
+
+    # Cap at 6 most impactful tips
+    return {
+        "summary": summary,
+        "tips": tips[:6],
+    }
 
 
 # ===================================================================

@@ -5,7 +5,10 @@ import { createClient } from "@/lib/supabase/client";
 import type { User } from "@supabase/supabase-js";
 import type { Claim } from "@/types/claim";
 
+import { ClaimsMap } from "@/components/claims-map";
+
 type StatusFilter = "all" | "processing" | "ready" | "attention";
+type ViewMode = "table" | "map";
 
 function fmtMoney(val: number): string {
   if (val >= 1_000_000) return `$${(val / 1_000_000).toFixed(2)}M`;
@@ -20,6 +23,7 @@ export function DashboardContent({ user }: { user: User }) {
   const [downloading, setDownloading] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
+  const [viewMode, setViewMode] = useState<ViewMode>("table");
 
   const fetchClaims = useCallback(async () => {
     const { data } = await supabase
@@ -74,6 +78,7 @@ export function DashboardContent({ user }: { user: User }) {
     uploaded: "bg-blue-100 text-blue-700",
     processing: "bg-amber-100 text-amber-700",
     ready: "bg-green-100 text-green-700",
+    needs_improvement: "bg-orange-100 text-orange-700",
     error: "bg-red-100 text-red-700",
   };
 
@@ -84,14 +89,14 @@ export function DashboardContent({ user }: { user: User }) {
   const totalMovement = wonClaims.reduce((sum, c) => sum + (c.settlement_amount ?? 0), 0);
   const totalContractorRcv = claims.reduce((s, c) => s + (c.contractor_rcv ?? 0), 0);
   const totalCarrierRcv = claims.reduce((s, c) => s + (c.original_carrier_rcv ?? 0), 0);
-  const attentionCount = claims.filter(c => c.status === "error" || (c.pending_edits ?? 0) > 0).length;
+  const attentionCount = claims.filter(c => c.status === "error" || c.status === "needs_improvement" || (c.pending_edits ?? 0) > 0).length;
 
   // Filter logic
   const filteredClaims = claims.filter(c => {
     if (statusFilter === "all") return true;
     if (statusFilter === "processing") return c.status === "processing" || c.status === "uploaded";
     if (statusFilter === "ready") return c.status === "ready";
-    if (statusFilter === "attention") return c.status === "error" || (c.pending_edits ?? 0) > 0;
+    if (statusFilter === "attention") return c.status === "error" || c.status === "needs_improvement" || (c.pending_edits ?? 0) > 0;
     return true;
   });
 
@@ -127,6 +132,9 @@ export function DashboardContent({ user }: { user: User }) {
               {claims.some((c) => (c.pending_edits || 0) > 0) && (
                 <span className="absolute -top-1 -right-6 w-2 h-2 bg-amber-500 rounded-full animate-pulse" />
               )}
+            </a>
+            <a href="/dashboard/photo-review" className="text-gray-400 hover:text-white text-sm transition-colors hidden sm:block">
+              Photo Review
             </a>
             <a href="/dashboard/analytics" className="text-gray-400 hover:text-white text-sm transition-colors hidden sm:block">
               Analytics
@@ -232,7 +240,33 @@ export function DashboardContent({ user }: { user: User }) {
           </div>
         )}
 
-        {/* Filter Tabs */}
+        {/* View Toggle + Filter Tabs */}
+        {!loading && claims.length > 0 && (
+          <div className="flex items-center justify-between mb-6">
+          <div className="flex gap-2">
+            <button
+              onClick={() => setViewMode("table")}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+                viewMode === "table"
+                  ? "bg-[var(--navy)] text-white"
+                  : "bg-white text-gray-600 border border-gray-200 hover:bg-gray-50"
+              }`}
+            >
+              Table
+            </button>
+            <button
+              onClick={() => setViewMode("map")}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+                viewMode === "map"
+                  ? "bg-[var(--navy)] text-white"
+                  : "bg-white text-gray-600 border border-gray-200 hover:bg-gray-50"
+              }`}
+            >
+              Map
+            </button>
+          </div>
+          </div>
+        )}
         {!loading && claims.length > 0 && (
           <div className="flex gap-2 mb-6">
             {filterTabs.map(tab => (
@@ -253,6 +287,13 @@ export function DashboardContent({ user }: { user: User }) {
                 )}
               </button>
             ))}
+          </div>
+        )}
+
+        {/* Map View */}
+        {!loading && viewMode === "map" && claims.length > 0 && (
+          <div className="mb-6">
+            <ClaimsMap claims={filteredClaims} height="450px" />
           </div>
         )}
 
@@ -340,7 +381,7 @@ export function DashboardContent({ user }: { user: User }) {
                                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                                   </svg>
                                 )}
-                                {claim.status.charAt(0).toUpperCase() + claim.status.slice(1)}
+                                {claim.status === "needs_improvement" ? "Needs Improvement" : claim.status.charAt(0).toUpperCase() + claim.status.slice(1)}
                               </span>
                             )}
                             {(claim.pending_edits ?? 0) > 0 && (

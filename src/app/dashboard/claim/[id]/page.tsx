@@ -482,6 +482,7 @@ export default function ClaimDetailPage() {
     uploaded: { color: "text-blue-700", label: "Uploaded", bg: "bg-blue-100" },
     processing: { color: "text-amber-700", label: "Processing", bg: "bg-amber-100" },
     ready: { color: "text-green-700", label: "Ready", bg: "bg-green-100" },
+    needs_improvement: { color: "text-orange-700", label: "Needs Improvement", bg: "bg-orange-100" },
     error: { color: "text-red-700", label: "Error", bg: "bg-red-100" },
   };
 
@@ -722,6 +723,45 @@ export default function ClaimDetailPage() {
           </div>
         )}
 
+        {/* Needs Improvement — Coaching Card */}
+        {claim.status === "needs_improvement" && claim.improvement_guidance && (
+          <div className="bg-orange-50 border border-orange-200 rounded-2xl p-6">
+            <div className="flex items-start gap-3 mb-4">
+              <div className="w-10 h-10 rounded-full bg-orange-100 flex items-center justify-center shrink-0">
+                <svg className="w-5 h-5 text-orange-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                </svg>
+              </div>
+              <div>
+                <h2 className="text-base font-bold text-orange-900">
+                  More Documentation Needed
+                </h2>
+                <p className="text-sm text-orange-800 mt-1">
+                  {claim.improvement_guidance.summary}
+                </p>
+              </div>
+            </div>
+            <div className="grid gap-3">
+              {claim.improvement_guidance.tips.map((tip, i) => (
+                <div key={i} className="bg-white border border-orange-100 rounded-xl px-4 py-3">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-orange-100 text-orange-700 border border-orange-200">
+                      {tip.category}
+                    </span>
+                    <span className="text-sm font-semibold text-[var(--navy)]">{tip.title}</span>
+                  </div>
+                  <p className="text-xs text-gray-600 leading-relaxed">{tip.detail}</p>
+                </div>
+              ))}
+            </div>
+            <div className="mt-4 bg-orange-100/50 rounded-lg px-4 py-3">
+              <p className="text-xs text-orange-800">
+                <strong>What to do:</strong> Upload additional photos following the tips above, then click &ldquo;Reprocess&rdquo; to re-analyze your claim. Better documentation can turn a weak claim into a winning one.
+              </p>
+            </div>
+          </div>
+        )}
+
         {/* Output Files */}
         {isReady && (
           <div className="bg-white rounded-2xl border border-gray-200 p-6">
@@ -807,15 +847,42 @@ export default function ClaimDetailPage() {
             )}
           </div>
 
-          {/* Reprocess button — visible when claim is ready and user may have uploaded new docs */}
-          {isReady && !showUpload && !isReprocessingState && (
-            <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-3 mb-4 flex items-center justify-between">
+          {/* Review Photos button — visible when claim has photos and is ready */}
+          {isReady && (claim.photo_files?.length ?? 0) > 0 && (
+            <div className="bg-purple-50 border border-purple-200 rounded-lg px-4 py-3 mb-4 flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-blue-800">
-                  Updated documents? Reprocess to generate new reports.
+                <p className="text-sm font-medium text-purple-800">
+                  Review photo annotations for this claim
                 </p>
-                <p className="text-xs text-blue-600 mt-0.5">
-                  If you uploaded a revised scope or appraisal award, reprocess to compare and record changes.
+                <p className="text-xs text-purple-600 mt-0.5">
+                  Approve, correct, or reject AI-generated annotations. Rejected photos are excluded on reprocess.
+                  {(claim.excluded_photos?.length ?? 0) > 0 && (
+                    <span className="ml-1 font-semibold">({claim.excluded_photos!.length} photo{claim.excluded_photos!.length > 1 ? "s" : ""} excluded)</span>
+                  )}
+                </p>
+              </div>
+              <a
+                href={`/dashboard/photo-review?claim=${claim.id}`}
+                className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ml-4"
+              >
+                Review Photos
+              </a>
+            </div>
+          )}
+
+          {/* Reprocess button — visible when claim is ready/needs_improvement and user may have uploaded new docs */}
+          {(isReady || claim.status === "needs_improvement") && !showUpload && !isReprocessingState && (
+            <div className={`${claim.status === "needs_improvement" ? "bg-orange-50 border-orange-200" : "bg-blue-50 border-blue-200"} border rounded-lg px-4 py-3 mb-4 flex items-center justify-between`}>
+              <div>
+                <p className={`text-sm font-medium ${claim.status === "needs_improvement" ? "text-orange-800" : "text-blue-800"}`}>
+                  {claim.status === "needs_improvement"
+                    ? "Uploaded better documentation? Reprocess to re-score your claim."
+                    : "Updated documents? Reprocess to generate new reports."}
+                </p>
+                <p className={`text-xs ${claim.status === "needs_improvement" ? "text-orange-600" : "text-blue-600"} mt-0.5`}>
+                  {claim.status === "needs_improvement"
+                    ? "Follow the tips above, upload more photos or evidence, then reprocess."
+                    : "If you uploaded a revised scope or appraisal award, reprocess to compare and record changes."}
                 </p>
               </div>
               <button

@@ -66,6 +66,7 @@ export function AdminClaimDetail({ claim, userInfo }: Props) {
     uploaded: { color: "text-blue-700", label: "Uploaded", bg: "bg-blue-100" },
     processing: { color: "text-amber-700", label: "Processing", bg: "bg-amber-100" },
     ready: { color: "text-green-700", label: "Ready", bg: "bg-green-100" },
+    needs_improvement: { color: "text-orange-700", label: "Needs Improvement", bg: "bg-orange-100" },
     error: { color: "text-red-700", label: "Error", bg: "bg-red-100" },
   };
 
@@ -303,6 +304,40 @@ export function AdminClaimDetail({ claim, userInfo }: Props) {
                     : "This typically takes 2-5 minutes"}
                 </p>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* Needs Improvement — Coaching Card */}
+        {claim.status === "needs_improvement" && claim.improvement_guidance && (
+          <div className="bg-orange-50 border border-orange-200 rounded-2xl p-6">
+            <div className="flex items-start gap-3 mb-4">
+              <div className="w-10 h-10 rounded-full bg-orange-100 flex items-center justify-center shrink-0">
+                <svg className="w-5 h-5 text-orange-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                </svg>
+              </div>
+              <div>
+                <h2 className="text-base font-bold text-orange-900">
+                  Quality Gate — More Documentation Needed
+                </h2>
+                <p className="text-sm text-orange-800 mt-1">
+                  {claim.improvement_guidance.summary}
+                </p>
+              </div>
+            </div>
+            <div className="grid gap-3">
+              {claim.improvement_guidance.tips.map((tip, i) => (
+                <div key={i} className="bg-white border border-orange-100 rounded-xl px-4 py-3">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-orange-100 text-orange-700 border border-orange-200">
+                      {tip.category}
+                    </span>
+                    <span className="text-sm font-semibold text-[var(--navy)]">{tip.title}</span>
+                  </div>
+                  <p className="text-xs text-gray-600 leading-relaxed">{tip.detail}</p>
+                </div>
+              ))}
             </div>
           </div>
         )}

@@ -57,7 +57,9 @@ interface Stats {
   uniqueUsers: number;
 }
 
-type Tab = "claims" | "repairs" | "inspectors" | "beta";
+import { ClaimsMap } from "@/components/claims-map";
+
+type Tab = "claims" | "repairs" | "inspectors" | "beta" | "map";
 
 export function AdminDashboard() {
   const supabase = createClient();
@@ -344,6 +346,7 @@ export function AdminDashboard() {
     uploaded: "bg-blue-100 text-blue-700",
     processing: "bg-amber-100 text-amber-700",
     ready: "bg-green-100 text-green-700",
+    needs_improvement: "bg-orange-100 text-orange-700",
     error: "bg-red-100 text-red-700",
   };
 
@@ -452,6 +455,16 @@ export function AdminDashboard() {
               </span>
             )}
           </button>
+          <button
+            onClick={() => setActiveTab("map")}
+            className={`px-5 py-2 rounded-lg text-sm font-semibold transition-colors ${
+              activeTab === "map"
+                ? "bg-white text-[var(--navy)] shadow-sm"
+                : "text-gray-500 hover:text-gray-700"
+            }`}
+          >
+            Map
+          </button>
         </div>
 
         {activeTab === "claims" && (
@@ -508,13 +521,14 @@ export function AdminDashboard() {
                         <th className="px-3 py-3 text-[10px] font-semibold text-gray-400 uppercase text-center">Phase</th>
                         <th className="px-3 py-3 text-[10px] font-semibold text-gray-400 uppercase text-center">Status</th>
                         <th className="px-3 py-3 text-[10px] font-semibold text-gray-400 uppercase">Date</th>
+                        <th className="px-3 py-3 w-8"></th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-50">
                     {claims.map((claim, i) => (
                       <tr
                         key={claim.id}
-                        onClick={() => setExpandedRow(expandedRow === claim.id ? null : claim.id)}
+                        onClick={() => { window.location.href = `/admin/claim/${claim.id}`; }}
                         className={`hover:bg-gray-50 transition-colors cursor-pointer ${claim.claim_outcome === "won" ? "bg-green-50/40" : ""}`}
                       >
                         <td className="px-3 py-2.5 text-gray-400 text-xs">{claims.length - i}</td>
@@ -566,6 +580,17 @@ export function AdminDashboard() {
                               </button>
                             )}
                           </div>
+                        </td>
+                        <td className="px-2 py-2.5">
+                          <button
+                            onClick={(e) => { e.stopPropagation(); setExpandedRow(expandedRow === claim.id ? null : claim.id); }}
+                            className="p-1 rounded hover:bg-gray-200 transition-colors"
+                            title="Quick preview"
+                          >
+                            <svg className={`w-4 h-4 text-gray-400 transition-transform ${expandedRow === claim.id ? "rotate-180" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                            </svg>
+                          </button>
                         </td>
                       </tr>
                     ))}
@@ -1003,6 +1028,13 @@ export function AdminDashboard() {
               )}
             </div>
           </>
+        )}
+
+        {activeTab === "map" && (
+          <div className="bg-white rounded-2xl border border-gray-200 p-6">
+            <h2 className="text-lg font-bold text-[var(--navy)] mb-4">All Claims Map</h2>
+            <ClaimsMap claims={claims} height="600px" showUserEmail />
+          </div>
         )}
       </div>
     </main>
