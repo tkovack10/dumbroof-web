@@ -10,6 +10,8 @@ type UploadStatus = "idle" | "uploading" | "success" | "error";
 export default function NewRepairPage() {
   const [propertyAddress, setPropertyAddress] = useState("");
   const [homeownerName, setHomeownerName] = useState("");
+  const [homeownerPhone, setHomeownerPhone] = useState("");
+  const [homeownerEmail, setHomeownerEmail] = useState("");
   const [rooferName, setRooferName] = useState("");
   const [skillLevel, setSkillLevel] = useState("journeyman");
   const [language, setLanguage] = useState("en");
@@ -70,6 +72,8 @@ export default function NewRepairPage() {
         user_id: user.id,
         address: propertyAddress,
         homeowner_name: homeownerName,
+        homeowner_phone: homeownerPhone.trim() || null,
+        homeowner_email: homeownerEmail.trim() || null,
         slug,
         status: "uploaded",
         file_path: filePath,
@@ -192,6 +196,41 @@ export default function NewRepairPage() {
                 placeholder="John Smith"
                 className="w-full px-4 py-3 rounded-lg border border-gray-200 focus:border-[var(--navy)] focus:ring-1 focus:ring-[var(--navy)] outline-none transition-colors text-sm"
               />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <div className="flex items-baseline gap-2 mb-1">
+                  <label className="block text-sm font-semibold text-[var(--navy)]">
+                    Phone
+                  </label>
+                  <span className="text-xs text-gray-400 font-medium">Optional</span>
+                </div>
+                <input
+                  type="tel"
+                  value={homeownerPhone}
+                  onChange={(e) => setHomeownerPhone(e.target.value)}
+                  placeholder="267-555-0100"
+                  className="w-full px-4 py-3 rounded-lg border border-gray-200 focus:border-[var(--navy)] focus:ring-1 focus:ring-[var(--navy)] outline-none transition-colors text-sm"
+                />
+              </div>
+              <div>
+                <div className="flex items-baseline gap-2 mb-1">
+                  <label className="block text-sm font-semibold text-[var(--navy)]">
+                    Email
+                  </label>
+                  <span className="text-xs text-gray-400 font-medium">Optional</span>
+                </div>
+                <input
+                  type="email"
+                  value={homeownerEmail}
+                  onChange={(e) => setHomeownerEmail(e.target.value)}
+                  placeholder="john@email.com"
+                  className="w-full px-4 py-3 rounded-lg border border-gray-200 focus:border-[var(--navy)] focus:ring-1 focus:ring-[var(--navy)] outline-none transition-colors text-sm"
+                />
+                <p className="text-[11px] text-gray-400 mt-1">
+                  Adding email sends the homeowner their repair quote automatically.
+                </p>
+              </div>
             </div>
           </div>
 

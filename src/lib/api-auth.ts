@@ -54,6 +54,21 @@ export async function canAccessClaim(userId: string, claimId: string): Promise<b
   return isAdmin(userId);
 }
 
+/**
+ * Verify user owns the repair OR is an admin. Returns true if authorized.
+ */
+export async function canAccessRepair(userId: string, repairId: string): Promise<boolean> {
+  const { data: repair } = await supabaseAdmin
+    .from("repairs")
+    .select("user_id")
+    .eq("id", repairId)
+    .single();
+
+  if (repair?.user_id === userId) return true;
+
+  return isAdmin(userId);
+}
+
 /** Type guard: is this an auth error? */
 export function isAuthError(result: AuthResult | AuthError): result is AuthError {
   return "response" in result;

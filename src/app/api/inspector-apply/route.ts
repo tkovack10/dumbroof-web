@@ -2,10 +2,12 @@ import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import nodemailer from "nodemailer";
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_KEY!
-);
+function getSb() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_KEY!
+  );
+}
 
 export async function POST(request: Request) {
   try {
@@ -29,7 +31,7 @@ export async function POST(request: Request) {
     }
 
     // Insert into Supabase
-    const { error: dbError } = await supabase
+    const { error: dbError } = await getSb()
       .from("inspector_applications")
       .insert({
         name,

@@ -192,11 +192,6 @@ export function AdminDashboard() {
     }
   }, [activeTab, fetchRepairs, fetchInspectors, fetchBetaSignups]);
 
-  const handleSignOut = async () => {
-    await supabase.auth.signOut();
-    window.location.href = "/";
-  };
-
   const updateInspectorStatus = async (id: number, newStatus: string) => {
     await supabase
       .from("inspector_applications")
@@ -378,20 +373,6 @@ export function AdminDashboard() {
 
   return (
     <main className="min-h-screen bg-gray-50">
-      <nav className="bg-[var(--navy)] border-b border-white/10">
-        <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-lg bg-[var(--red)] flex items-center justify-center font-bold text-white">DR</div>
-            <span className="text-white font-bold text-lg tracking-tight">dumb roof<sup className="text-[9px] font-medium align-super ml-0.5">™</sup></span>
-            <span className="bg-amber-500/20 text-amber-400 text-xs font-semibold px-2 py-0.5 rounded-full ml-2">ADMIN</span>
-          </div>
-          <div className="flex items-center gap-4">
-            <a href="/dashboard" className="text-gray-400 hover:text-white text-sm transition-colors">My Dashboard</a>
-            <button onClick={handleSignOut} className="text-gray-400 hover:text-white text-sm transition-colors">Sign Out</button>
-          </div>
-        </div>
-      </nav>
-
       <div className="max-w-7xl mx-auto px-6 py-10">
         <div className="mb-8">
           <h1 className="text-2xl font-bold text-[var(--navy)]">Admin Dashboard</h1>

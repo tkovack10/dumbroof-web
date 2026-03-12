@@ -198,29 +198,6 @@ export function AdminClaimDetail({ claim: initialClaim, userInfo }: Props) {
 
   return (
     <main className="min-h-screen bg-gray-50">
-      {/* Top Bar */}
-      <nav className="bg-[var(--navy)] border-b border-white/10">
-        <div className="max-w-4xl mx-auto px-6 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-lg bg-[var(--red)] flex items-center justify-center font-bold text-white">
-              DR
-            </div>
-            <span className="text-white font-bold text-lg tracking-tight">
-              dumb roof<sup className="text-[9px] font-medium align-super ml-0.5">&trade;</sup>
-            </span>
-            <span className="bg-amber-500/20 text-amber-400 text-xs font-semibold px-2 py-0.5 rounded-full ml-2">
-              ADMIN VIEW
-            </span>
-          </div>
-          <a
-            href="/admin"
-            className="text-gray-400 hover:text-white text-sm transition-colors"
-          >
-            Back to Admin
-          </a>
-        </div>
-      </nav>
-
       <div className="max-w-4xl mx-auto px-6 py-10 space-y-6">
         {/* Claim Header */}
         <div className="bg-white rounded-2xl border border-gray-200 p-6">

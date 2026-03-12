@@ -45,6 +45,15 @@ function SettingsPageContent() {
   const [passwordSaving, setPasswordSaving] = useState(false);
   const [passwordMessage, setPasswordMessage] = useState("");
   const [passwordError, setPasswordError] = useState("");
+  // Repair pricing state
+  const [repairPricing, setRepairPricing] = useState({
+    diagnostic_fee: "250.00",
+    labor_rate_per_hour: "85.00",
+    markup_percent: "20",
+    minimum_job_charge: "450.00",
+  });
+  const [pricingSaving, setPricingSaving] = useState(false);
+  const [pricingSaved, setPricingSaved] = useState(false);
   const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000";
   const [form, setForm] = useState({
     company_name: "",
@@ -126,15 +135,25 @@ function SettingsPageContent() {
       }
       setLoading(false);
 
-      // Load authorized forwarders
-      try {
-        const res = await fetch(`${BACKEND_URL}/api/forwarders?user_id=${user.id}`);
-        if (res.ok) {
-          const fwdData = await res.json();
-          setForwarders(fwdData.forwarders || []);
-        }
-      } catch (err) {
-        console.error("Failed to load forwarders:", err);
+      // Load forwarders + repair pricing in parallel
+      const [fwdRes, pricingRes] = await Promise.all([
+        fetch(`${BACKEND_URL}/api/forwarders?user_id=${user.id}`).catch(() => null),
+        supabase.from("repair_pricing").select("*").eq("user_id", user.id).single(),
+      ]);
+
+      if (fwdRes?.ok) {
+        const fwdData = await fwdRes.json();
+        setForwarders(fwdData.forwarders || []);
+      }
+
+      if (pricingRes.data) {
+        const p = pricingRes.data;
+        setRepairPricing({
+          diagnostic_fee: String(p.diagnostic_fee ?? "250.00"),
+          labor_rate_per_hour: String(p.labor_rate_per_hour ?? "85.00"),
+          markup_percent: String(Math.round((p.markup_percent ?? 0.20) * 100)),
+          minimum_job_charge: String(p.minimum_job_charge ?? "450.00"),
+        });
       }
     }
     loadProfile();
@@ -503,6 +522,97 @@ function SettingsPageContent() {
             >
               {addingForwarder ? "Adding..." : "Add Forwarder"}
             </button>
+          </div>
+        </div>
+
+        {/* Repair Pricing */}
+        <div className="mt-12 pt-8 border-t border-gray-200">
+          <h2 className="text-xl font-bold text-[var(--navy)] mb-1">Repair Pricing</h2>
+          <p className="text-gray-500 text-sm mb-6">
+            Set your default pricing for repair jobs. These values are used when AI generates repair quotes.
+          </p>
+
+          <div className="bg-white border border-gray-200 rounded-xl p-6 space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-semibold text-[var(--navy)] mb-1">Diagnostic Fee ($)</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={repairPricing.diagnostic_fee}
+                  onChange={(e) => setRepairPricing({ ...repairPricing, diagnostic_fee: e.target.value })}
+                  className="w-full px-4 py-3 rounded-lg border border-gray-200 focus:border-[var(--navy)] focus:ring-1 focus:ring-[var(--navy)] outline-none transition-colors text-sm"
+                />
+                <p className="text-[11px] text-gray-400 mt-1">Flat fee included in every repair</p>
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-[var(--navy)] mb-1">Labor Rate ($/hr)</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={repairPricing.labor_rate_per_hour}
+                  onChange={(e) => setRepairPricing({ ...repairPricing, labor_rate_per_hour: e.target.value })}
+                  className="w-full px-4 py-3 rounded-lg border border-gray-200 focus:border-[var(--navy)] focus:ring-1 focus:ring-[var(--navy)] outline-none transition-colors text-sm"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-[var(--navy)] mb-1">Material Markup (%)</label>
+                <input
+                  type="number"
+                  step="1"
+                  min="0"
+                  max="200"
+                  value={repairPricing.markup_percent}
+                  onChange={(e) => setRepairPricing({ ...repairPricing, markup_percent: e.target.value })}
+                  className="w-full px-4 py-3 rounded-lg border border-gray-200 focus:border-[var(--navy)] focus:ring-1 focus:ring-[var(--navy)] outline-none transition-colors text-sm"
+                />
+                <p className="text-[11px] text-gray-400 mt-1">Applied on top of material cost (20 = 20% markup)</p>
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-[var(--navy)] mb-1">Minimum Job Charge ($)</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={repairPricing.minimum_job_charge}
+                  onChange={(e) => setRepairPricing({ ...repairPricing, minimum_job_charge: e.target.value })}
+                  className="w-full px-4 py-3 rounded-lg border border-gray-200 focus:border-[var(--navy)] focus:ring-1 focus:ring-[var(--navy)] outline-none transition-colors text-sm"
+                />
+                <p className="text-[11px] text-gray-400 mt-1">Floor price — no repair goes below this</p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-4 pt-2">
+              <button
+                onClick={async () => {
+                  setPricingSaving(true);
+                  setPricingSaved(false);
+                  const { data: { user } } = await supabase.auth.getUser();
+                  if (!user) return;
+                  const payload = {
+                    user_id: user.id,
+                    diagnostic_fee: parseFloat(repairPricing.diagnostic_fee) || 250,
+                    labor_rate_per_hour: parseFloat(repairPricing.labor_rate_per_hour) || 85,
+                    markup_percent: (parseFloat(repairPricing.markup_percent) || 20) / 100,
+                    minimum_job_charge: parseFloat(repairPricing.minimum_job_charge) || 450,
+                    updated_at: new Date().toISOString(),
+                  };
+                  await supabase.from("repair_pricing").upsert(payload, { onConflict: "user_id" });
+                  setPricingSaving(false);
+                  setPricingSaved(true);
+                  setTimeout(() => setPricingSaved(false), 3000);
+                }}
+                disabled={pricingSaving}
+                className="bg-[var(--navy)] hover:bg-[var(--navy-light)] disabled:opacity-50 text-white px-6 py-2.5 rounded-lg text-sm font-medium transition-colors"
+              >
+                {pricingSaving ? "Saving..." : "Save Pricing"}
+              </button>
+              {pricingSaved && (
+                <span className="text-green-600 text-sm font-medium">Saved successfully</span>
+              )}
+            </div>
           </div>
         </div>
 

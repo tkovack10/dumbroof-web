@@ -77,3 +77,58 @@ export const FOLDER_TO_DB_FIELD: Record<string, string> = {
   weather: "weather_files",
   other: "other_files",
 };
+
+// ========== Repair Constants ==========
+
+export const REPAIR_TYPE_LABELS: Record<string, string> = {
+  // 22-code system
+  "CHM-FRONT": "Chimney Apron",
+  "CHM-SIDE": "Chimney Step/Counter Flash",
+  "CHM-BACK": "Chimney Back Pan/Cricket",
+  "CHM-MASONRY": "Chimney Masonry",
+  "WALL-STEP": "Sidewall Step Flashing",
+  "WALL-KICKOUT": "Kickout Diverter",
+  "HEADWALL": "Headwall/Dormer Flashing",
+  "STUCCO-ABOVE-ROOF": "Wall Drainage Failure",
+  "VENT-BOOT": "Vent Boot/Collar",
+  "VENT-METAL": "Metal Vent/Roof Jack",
+  "SKYLIGHT-FLASH": "Skylight Flashing",
+  "SKYLIGHT-UNIT": "Skylight Unit/Curb",
+  "VALLEY-OPEN-METAL": "Open Metal Valley",
+  "VALLEY-CLOSED-CUT": "Closed-Cut Valley",
+  "VALLEY-DEBRIS-ICE": "Valley Debris/Ice",
+  "EAVE-ICE-DAM": "Ice Dam",
+  "EAVE-DRIP-EDGE": "Drip Edge/Edge Failure",
+  "GUTTER-BACKUP": "Gutter Overflow",
+  "FIELD-SHINGLE": "Field Shingle Damage",
+  "NAIL-POP": "Fastener Failure",
+  "CONDENSATION": "Attic Condensation",
+  "LOW-CONFIDENCE-VERIFY": "Needs Verification",
+  // Legacy codes (backward compat)
+  pipe_boot: "Pipe Boot",
+  step_flashing: "Step Flashing",
+  chimney_flashing: "Chimney Flashing",
+  exposed_nails: "Exposed Nails",
+  missing_shingles: "Missing Shingles",
+  valley_leak: "Valley Leak",
+  vent_boot: "Vent Boot",
+  skylight_flashing: "Skylight Flashing",
+  ridge_cap: "Ridge Cap",
+  ice_dam: "Ice Dam",
+  temporary_tarp: "Temp Tarp",
+};
+
+export const REPAIR_SEVERITY_COLORS: Record<string, string> = {
+  minor: "bg-green-100 text-green-700",
+  moderate: "bg-amber-100 text-amber-700",
+  major: "bg-orange-100 text-orange-700",
+  critical: "bg-red-100 text-red-700",
+  emergency: "bg-red-200 text-red-800",
+};
+
+export const REPAIR_STATUS_CONFIG: Record<string, { color: string; label: string }> = {
+  uploaded: { color: "bg-blue-100 text-blue-700", label: "Queued" },
+  processing: { color: "bg-amber-100 text-amber-700", label: "Diagnosing" },
+  ready: { color: "bg-green-100 text-green-700", label: "Ready" },
+  error: { color: "bg-red-100 text-red-700", label: "Error" },
+};

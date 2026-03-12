@@ -125,12 +125,20 @@ def build_diagnostic_prompt(
     language: str,
     contractor_info: Optional[Dict] = None,
     labor_rate: float = DEFAULT_LABOR_RATE_PER_HOUR,
+    pricing: Optional[Dict] = None,
 ) -> str:
     """Build the system prompt for the diagnostic Claude API call.
 
     Uses the 22-code scope library and decision tree for evidence-based diagnosis.
     Output format: 14-field AI payload per roof_leak_ai_handbook spec.
     """
+
+    # Merge custom pricing with defaults
+    p = pricing or {}
+    diag_fee = p.get("diagnostic_fee", DIAGNOSTIC_FEE)
+    eff_labor_rate = p.get("labor_rate_per_hour", labor_rate)
+    markup_pct = p.get("markup_percent", DEFAULT_MARKUP_PERCENT)
+    min_charge = p.get("minimum_job_charge", MINIMUM_JOB_CHARGE)
 
     skill_desc = SKILL_LEVELS.get(skill_level, SKILL_LEVELS["journeyman"])
     lang_name = LANGUAGES.get(language, "English")
@@ -209,14 +217,14 @@ Use Mexican/Central American construction Spanish — field-crew terminology, no
 ## MATERIAL COSTS (use for pricing)
 {material_costs_ref}
 
-## LABOR RATE: ${labor_rate:.2f}/hour
+## LABOR RATE: ${eff_labor_rate:.2f}/hour
 
 ## PRICING RULES
-- Diagnostic fee: ${DIAGNOSTIC_FEE:.2f} flat (ALWAYS included — covers the visit)
-- Materials cost = sum of (qty x unit cost x 1.{int(DEFAULT_MARKUP_PERCENT * 100)} markup)
-- Labor cost = estimated hours x ${labor_rate:.2f}
+- Diagnostic fee: ${diag_fee:.2f} flat (ALWAYS included — covers the visit)
+- Materials cost = sum of (qty x unit cost x 1.{int(markup_pct * 100)} markup)
+- Labor cost = estimated hours x ${eff_labor_rate:.2f}
 - Total price = diagnostic fee + materials cost + labor cost
-- Minimum job charge: ${MINIMUM_JOB_CHARGE:.2f}
+- Minimum job charge: ${min_charge:.2f}
 - Round total to nearest $5
 - NOTE: Material costs already include service-call premium (2x retail). This is standard
   for on-demand repair service — the value is showing up and fixing it TODAY.
@@ -448,6 +456,7 @@ def assemble_repair_job(
     contractor: Dict[str, Any],
     property_info: Dict[str, Any],
     homeowner: Dict[str, Any],
+    custom_pricing: Optional[Dict] = None,
 ) -> Dict[str, Any]:
     """
     Assemble a complete repair_job_config.json from diagnosis results.
@@ -471,10 +480,12 @@ def assemble_repair_job(
     # Support both old "repair_type" and new "primary_code"
     primary_code = diag.get("primary_code", diag.get("repair_type", ""))
 
-    # Enforce minimum job charge
+    # Enforce minimum job charge (respect custom pricing)
+    cp = custom_pricing or {}
+    min_charge = cp.get("minimum_job_charge", MINIMUM_JOB_CHARGE)
     total_price = repair.get("total_price", 0)
-    if total_price < MINIMUM_JOB_CHARGE:
-        total_price = MINIMUM_JOB_CHARGE
+    if total_price < min_charge:
+        total_price = min_charge
         repair["total_price"] = total_price
 
     config = {

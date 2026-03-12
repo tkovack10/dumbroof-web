@@ -108,13 +108,21 @@ async def process_repair(repair_id: str):
     # Update status to processing
     sb.table("repairs").update({"status": "processing", "updated_at": datetime.now().isoformat()}).eq("id", repair_id).execute()
 
-    # Get company profile for branding
+    # Get company profile + custom pricing in parallel
     company_profile = None
+    custom_pricing = None
     try:
         profile_result = sb.table("company_profiles").select("*").eq("user_id", repair["user_id"]).single().execute()
         company_profile = profile_result.data
         if company_profile:
             print(f"[REPAIR] Using company branding: {company_profile.get('company_name', 'N/A')}")
+    except Exception:
+        pass
+    try:
+        pricing_result = sb.table("repair_pricing").select("*").eq("user_id", repair["user_id"]).single().execute()
+        if pricing_result.data:
+            custom_pricing = pricing_result.data
+            print(f"[REPAIR] Custom pricing loaded: diag=${custom_pricing.get('diagnostic_fee')}, labor=${custom_pricing.get('labor_rate_per_hour')}/hr")
     except Exception:
         pass
 
@@ -265,7 +273,7 @@ CRITICAL OUTPUT CONSTRAINT: Your ENTIRE JSON response MUST be under 5000 tokens.
                 })
 
             if total_batches == 1:
-                prompt = build_diagnostic_prompt(batch_keys, leak_notes, skill_level, language)
+                prompt = build_diagnostic_prompt(batch_keys, leak_notes, skill_level, language, pricing=custom_pricing)
                 user_content = batch_content + [{"type": "text", "text": prompt}]
 
                 _log_payload_size(batch_content, prompt)
@@ -376,7 +384,7 @@ Return JSON: {{"diagnosis":{{"primary_code":"CODE","family":"family_name","leak_
 Severity: {diag_result.get('severity', 'moderate')}
 Skill level: {skill_level}
 
-Generate a repair plan. Labor rate: $85/hr. Min charge: $450. Material costs use 2x retail.
+Generate a repair plan. Labor rate: ${(custom_pricing or {}).get('labor_rate_per_hour', 85)}/hr. Min charge: ${(custom_pricing or {}).get('minimum_job_charge', 450)}. Diagnostic fee: ${(custom_pricing or {}).get('diagnostic_fee', 250)}. Material costs use {int((custom_pricing or {}).get('markup_percent', 0.20) * 100 + 100)}% of retail.
 Max 5 steps. English only (set _es fields to null). Max 2 sentences per instruction.
 
 Return JSON: {{"repair":{{"summary":"1 sentence","steps":[{{"step":1,"category":"protection|removal|inspection|installation|cleanup","title_en":"title","title_es":null,"instructions_en":"instructions","instructions_es":null,"materials":["item"],"time_minutes":10,"safety_note_en":null,"safety_note_es":null,"photo_reference":null}}],"materials_list":[{{"item":"name","qty":1,"unit":"EA","cost":10.00}}],"labor_hours":4,"materials_cost":0,"labor_cost":0,"total_price":0}},"homeowner_ticket":{{"what_we_found":"1 sentence for homeowner","what_we_recommend":"1 sentence","time_estimate":"X hours","urgency":"{diag_result.get('severity', 'moderate')}","warranty":"2-year workmanship warranty"}}}}"""
@@ -475,6 +483,7 @@ Return JSON: {{"repair":{{"summary":"1 sentence","steps":[{{"step":1,"category":
             homeowner={
                 "name": repair.get("homeowner_name", ""),
             },
+            custom_pricing=custom_pricing,
         )
         config["job"]["created"] = now.isoformat()
 
@@ -528,6 +537,23 @@ Return JSON: {{"repair":{{"summary":"1 sentence","steps":[{{"step":1,"category":
             "total_price": total_price,
             "updated_at": datetime.now().isoformat(),
         }).eq("id", repair_id).execute()
+
+        # 12. Notify via Vercel API route (email user + homeowner)
+        try:
+            import urllib.request
+            notify_url = "https://www.dumbroof.ai/api/notify-repair-complete"
+            notify_payload = json.dumps({"repair_id": repair_id}).encode("utf-8")
+            req = urllib.request.Request(
+                notify_url,
+                data=notify_payload,
+                headers={"Content-Type": "application/json"},
+                method="POST",
+            )
+            with urllib.request.urlopen(req, timeout=30) as resp:
+                notify_result = json.loads(resp.read().decode())
+                print(f"[REPAIR] Email notification: {notify_result}")
+        except Exception as e:
+            print(f"[REPAIR] Email notification failed (non-fatal): {e}")
 
         print(f"[REPAIR] COMPLETE — {repair['address']} — {repair_type} — ${total_price:.2f}")
         print(f"[REPAIR] {len(output_files)} PDFs uploaded: {', '.join(output_files)}")

@@ -3,62 +3,8 @@
 import { useEffect, useState, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useParams, useRouter } from "next/navigation";
-
-interface Repair {
-  id: string;
-  address: string;
-  homeowner_name: string;
-  status: string;
-  file_path: string;
-  output_files: string[] | null;
-  created_at: string;
-  leak_description?: string | null;
-  roofer_name?: string | null;
-  skill_level?: string | null;
-  preferred_language?: string | null;
-  repair_type?: string | null;
-  severity?: string | null;
-  total_price?: number | null;
-  error_message?: string | null;
-}
-
-const REPAIR_TYPE_LABELS: Record<string, string> = {
-  // 22-code system
-  "CHM-FRONT": "Chimney Apron",
-  "CHM-SIDE": "Chimney Step/Counter Flash",
-  "CHM-BACK": "Chimney Back Pan/Cricket",
-  "CHM-MASONRY": "Chimney Masonry",
-  "WALL-STEP": "Sidewall Step Flashing",
-  "WALL-KICKOUT": "Kickout Diverter",
-  "HEADWALL": "Headwall/Dormer Flashing",
-  "STUCCO-ABOVE-ROOF": "Wall Drainage Failure",
-  "VENT-BOOT": "Vent Boot / Collar",
-  "VENT-METAL": "Metal Vent / Roof Jack",
-  "SKYLIGHT-FLASH": "Skylight Flashing",
-  "SKYLIGHT-UNIT": "Skylight Unit / Curb",
-  "VALLEY-OPEN-METAL": "Open Metal Valley",
-  "VALLEY-CLOSED-CUT": "Closed-Cut Valley",
-  "VALLEY-DEBRIS-ICE": "Valley Debris / Ice",
-  "EAVE-ICE-DAM": "Ice Dam",
-  "EAVE-DRIP-EDGE": "Drip Edge / Edge Failure",
-  "GUTTER-BACKUP": "Gutter Overflow",
-  "FIELD-SHINGLE": "Field Shingle Damage",
-  "NAIL-POP": "Fastener Failure",
-  "CONDENSATION": "Attic Condensation",
-  "LOW-CONFIDENCE-VERIFY": "Needs Verification",
-  // Legacy codes (backward compat)
-  pipe_boot: "Pipe Boot / Collar",
-  step_flashing: "Step Flashing",
-  chimney_flashing: "Chimney Flashing",
-  exposed_nails: "Exposed Nails",
-  missing_shingles: "Missing Shingles",
-  valley_leak: "Valley Leak",
-  vent_boot: "Vent Boot",
-  skylight_flashing: "Skylight Flashing",
-  ridge_cap: "Ridge Cap",
-  ice_dam: "Ice Dam",
-  temporary_tarp: "Temporary Tarp",
-};
+import type { Repair } from "@/types/repair";
+import { REPAIR_TYPE_LABELS, REPAIR_SEVERITY_COLORS } from "@/lib/claim-constants";
 
 const SEVERITY_CONFIG: Record<string, { color: string; label: string }> = {
   minor: { color: "bg-green-100 text-green-700", label: "Minor" },
