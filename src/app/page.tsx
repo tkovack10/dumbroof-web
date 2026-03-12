@@ -23,6 +23,9 @@ export default function Home() {
             <a href="#how-it-works" className="text-gray-300 hover:text-white text-sm transition-colors hidden sm:block">
               How It Works
             </a>
+            <a href="#repair" className="text-gray-300 hover:text-white text-sm transition-colors hidden sm:block">
+              Repair
+            </a>
             <a href="#results" className="text-gray-300 hover:text-white text-sm transition-colors hidden sm:block">
               Results
             </a>
@@ -87,7 +90,7 @@ export default function Home() {
               { number: "$1.2M+", label: "Carrier Movement" },
               { number: "115%", label: "Avg. Claim Increase" },
               { number: "15 min", label: "Per Claim Package" },
-              { number: "~$10", label: "Cost Per Claim" },
+              { number: "Instant · Scalable · Standardized", label: "Solutions to Complex Workflows" },
             ].map((stat) => (
               <div key={stat.label} className="text-center">
                 <div className="text-2xl sm:text-3xl font-bold text-white">
@@ -464,6 +467,115 @@ export default function Home() {
                   ))}
                 </tbody>
               </table>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Dumb Roof Repair */}
+      <section id="repair" className="py-20 px-6 bg-white scroll-mt-20">
+        <div className="max-w-5xl mx-auto">
+          <div className="text-center mb-14">
+            <div className="inline-block mb-4 px-4 py-1.5 rounded-full bg-[var(--red)]/10 border border-[var(--red)]/20">
+              <span className="text-[var(--red)] text-sm font-semibold">
+                Patent Pending
+              </span>
+            </div>
+            <h2 className="text-3xl sm:text-4xl font-bold text-[var(--navy)] mb-4">
+              Dumb Roof Repair
+            </h2>
+            <p className="text-gray-500 max-w-3xl mx-auto leading-relaxed">
+              Patent pending technology trained on over 140,000 real before, during, and after
+              roof inspection photos. One visit. Diagnose, present, close, collect, repair. On to the next.
+            </p>
+          </div>
+
+          {/* Stats row */}
+          <div className="bg-gradient-to-br from-[var(--navy)] to-[var(--navy-light)] rounded-2xl p-10 text-center mb-10">
+            <div className="grid sm:grid-cols-3 gap-8 items-center">
+              <div>
+                <div className="text-5xl sm:text-6xl font-bold text-white mb-2">98%</div>
+                <p className="text-gray-400 text-sm">Diagnostic Accuracy</p>
+              </div>
+              <div>
+                <div className="text-5xl sm:text-6xl font-bold text-[var(--gold)] mb-2">140K+</div>
+                <p className="text-gray-400 text-sm">Training Photos</p>
+              </div>
+              <div>
+                <div className="text-5xl sm:text-6xl font-bold text-[var(--red)] mb-2">2%</div>
+                <p className="text-gray-400 text-sm">Caught by Built-In Checkpoints</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Pain / Solution columns */}
+          <div className="grid md:grid-cols-2 gap-8 mb-10">
+            <div className="bg-[var(--gray-50)] rounded-2xl p-8 border border-gray-100">
+              <h3 className="text-lg font-bold text-[var(--navy)] mb-4">The Problem Nobody Has Solved</h3>
+              <div className="space-y-4">
+                <div className="flex items-start gap-3">
+                  <span className="text-[var(--red)] mt-0.5 shrink-0">&#x2715;</span>
+                  <p className="text-sm text-gray-600">Service departments live and die by 1&ndash;2 techs who can diagnose a leak. Everyone else waits for instructions</p>
+                </div>
+                <div className="flex items-start gap-3">
+                  <span className="text-[var(--red)] mt-0.5 shrink-0">&#x2715;</span>
+                  <p className="text-sm text-gray-600">Those techs quit, and your revenue stream stops. Key man risk in its purest form &mdash; and it happens every 16 months</p>
+                </div>
+                <div className="flex items-start gap-3">
+                  <span className="text-[var(--red)] mt-0.5 shrink-0">&#x2715;</span>
+                  <p className="text-sm text-gray-600">You have 10x more tradesmen who can execute a repair perfectly when told what to do. The bottleneck was never labor &mdash; it&apos;s diagnosis</p>
+                </div>
+                <div className="flex items-start gap-3">
+                  <span className="text-[var(--red)] mt-0.5 shrink-0">&#x2715;</span>
+                  <p className="text-sm text-gray-600">Your best roofers can often find the problem but can&apos;t present it to a homeowner in fluent English. The language barrier doesn&apos;t just limit hiring &mdash; it kills the close</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-[var(--gray-50)] rounded-2xl p-8 border border-[var(--navy)]/20">
+              <h3 className="text-lg font-bold text-[var(--navy)] mb-4">What Dumb Roof Repair Does</h3>
+              <div className="space-y-4">
+                <div className="flex items-start gap-3">
+                  <span className="text-green-600 mt-0.5 shrink-0">&#x2713;</span>
+                  <p className="text-sm text-gray-600">Tech uploads photos and answers 3 questions. AI diagnoses the root cause, builds the repair scope, and generates a professional branded ticket &mdash; in minutes</p>
+                </div>
+                <div className="flex items-start gap-3">
+                  <span className="text-green-600 mt-0.5 shrink-0">&#x2713;</span>
+                  <p className="text-sm text-gray-600">Wraps the diagnosis, the sale presentation, the financial transaction, and the repair instructions into a single visit</p>
+                </div>
+                <div className="flex items-start gap-3">
+                  <span className="text-green-600 mt-0.5 shrink-0">&#x2713;</span>
+                  <p className="text-sm text-gray-600">Homeowner receives clear before-and-after documentation, clicks to approve, and payment processes automatically &mdash; contactless, professional, done</p>
+                </div>
+                <div className="flex items-start gap-3">
+                  <span className="text-green-600 mt-0.5 shrink-0">&#x2713;</span>
+                  <p className="text-sm text-gray-600">Built-in checkpoints flag the 2% of edge cases for human review. Nothing gets through that shouldn&apos;t</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Why nothing like this exists */}
+          <div className="bg-[var(--navy)] rounded-2xl p-8 text-white">
+            <h3 className="text-xl font-bold mb-4">Why Nothing Like This Exists</h3>
+            <p className="text-gray-300 mb-6 leading-relaxed">
+              Every service department runs the same play: diagnose, quote, follow up, schedule, return,
+              repair, collect. That&apos;s 3&ndash;5 touchpoints and weeks of delay. Dumb Roof Repair compresses
+              it into one. Diagnose, present, close, collect, repair &mdash; one visit, one tech, one call.
+              No software has done this because no one had the training data. We do. 140,000 real inspection
+              photos and patent pending AI that turns any tradesman into a revenue-generating expert.
+            </p>
+            <div className="grid sm:grid-cols-3 gap-4">
+              {[
+                { label: "Plug and Play", value: "Instantly scalable. No training. No onboarding curve. New tech produces expert-level diagnostics on day one. Key man risk and turnover headaches disappear overnight." },
+                { label: "Break the Language Barrier", value: "Your best roofers can find the leak but can\u2019t always present it in English. They don\u2019t need to anymore. AI generates clear, professional documentation that speaks for itself \u2014 and homeowners prefer the contactless experience anyway." },
+                { label: "The Contactless Close", value: "Diagnosis, repair instructions, and branded ticket generate simultaneously. Homeowner approves and pays from inside their house while your tech is on the roof. One call close. Service and collect. On to the next." },
+              ].map((item) => (
+                <div key={item.label} className="bg-white/10 rounded-xl p-4 border border-white/10">
+                  <p className="text-xs text-[var(--gold)] font-semibold uppercase tracking-wider">{item.label}</p>
+                  <p className="text-sm text-gray-200 mt-2 leading-relaxed">{item.value}</p>
+                </div>
+              ))}
             </div>
           </div>
         </div>
