@@ -90,7 +90,7 @@ export default function Home() {
               { number: "$1.2M+", label: "Carrier Movement" },
               { number: "115%", label: "Avg. Claim Increase" },
               { number: "15 min", label: "Per Claim Package" },
-              { number: "Instant · Scalable · Standardized", label: "Solutions to Complex Workflows" },
+              { number: "140K+", label: "Training Photos" },
             ].map((stat) => (
               <div key={stat.label} className="text-center">
                 <div className="text-2xl sm:text-3xl font-bold text-white">
@@ -215,6 +215,11 @@ export default function Home() {
       {/* The Solution */}
       <section className="py-20 px-6 bg-white">
         <div className="max-w-5xl mx-auto">
+          <div className="text-center">
+            <div className="inline-block mb-4 px-4 py-1.5 rounded-full bg-[var(--red)]/10 border border-[var(--red)]/20">
+              <span className="text-[var(--red)] text-sm font-semibold">Patent Pending</span>
+            </div>
+          </div>
           <h2 className="text-3xl sm:text-4xl font-bold text-[var(--navy)] text-center mb-4">
             Don&apos;t Tell. Prove.
           </h2>
