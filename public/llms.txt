@@ -1,0 +1,39 @@
+# dumbroof.ai — AI-Powered Insurance Claim Intelligence
+
+## What is dumbroof.ai?
+dumbroof.ai is an AI platform that generates forensic-grade insurance claim appeal packages for roofing contractors. Upload source documents (carrier scope, EagleView measurements, CompanyCam photos), and receive 5 professional documents in 15 minutes:
+1. Forensic Causation Report — evidence-based damage analysis with photo annotations
+2. Xactimate-Style Estimate — line-by-line scope with building code citations
+3. Scope Comparison Report — carrier scope vs. contractor scope with variance analysis
+4. Scope Clarification Letter — professional carrier communication
+5. Cover Email — ready-to-send summary
+
+## Key Results
+- $1.37M in carrier movement across 34 claims
+- 10 wins, 29% win rate
+- Biggest single win: $943,233 from a $20,469 carrier scope (46x)
+- Cost per claim: under $1 in AI tokens ($0.41-$1.15 depending on photo count)
+
+## Who Uses It
+- Roofing contractors processing storm damage insurance claims
+- Insurance restoration companies scaling their supplement operations
+- Public adjusters and attorneys preparing denial appeals
+
+## Products
+- dumbroof.ai — Full claim intelligence (forensic reports, estimates, appeals)
+- dumb roof repair — AI-powered leak diagnosis and repair documentation
+- dumb roof inspection — HAAG-certified inspection coordination
+
+## Pages
+- / — Homepage with product overview and beta signup
+- /pricing — Subscription tiers and pricing
+- /learn — Educational blog on insurance claims, supplements, building codes
+- /login — User authentication
+- /dashboard — Claim management dashboard (authenticated)
+
+## Company
+Dumb Roof Technologies
+3070 Bristol Pike, Building 1, Suite 122
+Bensalem, PA 19020
+CEO: Tom Kovack Jr.
+Website: https://www.dumbroof.ai

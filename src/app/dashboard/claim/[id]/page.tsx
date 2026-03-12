@@ -779,6 +779,29 @@ export default function ClaimDetailPage() {
             </div>
           )}
 
+          {/* Review Scope button — visible when claim is ready and has contractor_rcv */}
+          {isReady && (claim.contractor_rcv ?? 0) > 0 && (
+            <div className="bg-teal-50 border border-teal-200 rounded-lg px-4 py-3 mb-4 flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-teal-800">
+                  Review AI-generated line items
+                </p>
+                <p className="text-xs text-teal-600 mt-0.5">
+                  Approve, correct, remove, or add line items. Changes update your contractor RCV.
+                  {(claim.excluded_line_items?.length ?? 0) > 0 && (
+                    <span className="ml-1 font-semibold">({claim.excluded_line_items!.length} item{claim.excluded_line_items!.length > 1 ? "s" : ""} excluded)</span>
+                  )}
+                </p>
+              </div>
+              <a
+                href={`/dashboard/scope-review?claim=${claim.id}`}
+                className="bg-teal-600 hover:bg-teal-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ml-4"
+              >
+                Review Scope
+              </a>
+            </div>
+          )}
+
           {/* Reprocess button — visible when claim is ready/needs_improvement and user may have uploaded new docs */}
           {(isReady || claim.status === "needs_improvement") && !showUpload && !isReprocessingState && (
             <div className={`${claim.status === "needs_improvement" ? "bg-orange-50 border-orange-200" : "bg-blue-50 border-blue-200"} border rounded-lg px-4 py-3 mb-4 flex items-center justify-between`}>

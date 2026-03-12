@@ -46,6 +46,8 @@ export interface Claim {
   longitude?: number | null;
   // Photo corrections
   excluded_photos?: string[] | null;
+  // Line item corrections
+  excluded_line_items?: string[] | null;
   // Admin enrichment
   user_email?: string;
 }

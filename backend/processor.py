@@ -3520,7 +3520,7 @@ async def process_claim(claim_id: str):
         # 12b. Write to data warehouse tables (non-blocking — failures don't affect claim)
         try:
             _write_to_warehouse(sb, claim_id, config, photo_analysis, photo_integrity,
-                                carrier_data, revision_data)
+                                carrier_data, revision_data, photo_filenames=photo_filenames)
         except Exception as e:
             print(f"[WAREHOUSE] Data warehouse write failed (non-fatal): {e}")
 
@@ -3691,7 +3691,8 @@ def _build_improvement_guidance(ds, tas) -> dict:
 # ===================================================================
 
 def _write_to_warehouse(sb, claim_id: str, config: dict, photo_analysis: dict,
-                        photo_integrity: dict, carrier_data: dict, revision_data: dict):
+                        photo_integrity: dict, carrier_data: dict, revision_data: dict,
+                        photo_filenames: list = None):
     """Write processed claim data to all warehouse tables. Non-fatal on any failure."""
     financials = compute_financials(config)
     carrier = config.get("carrier", {}).get("name", "")
@@ -3700,8 +3701,17 @@ def _write_to_warehouse(sb, claim_id: str, config: dict, photo_analysis: dict,
     city = config.get("property", {}).get("city", "")
     region = f"{city}, {state}".strip(", ")
 
+    # 0. Clean up previous warehouse data (prevent duplicates on reprocess)
+    try:
+        sb.table("line_items").delete().eq("claim_id", claim_id).in_("source", ["usarm", "carrier", "user_added"]).execute()
+        sb.table("line_item_feedback").delete().eq("claim_id", claim_id).execute()
+        sb.table("photos").delete().eq("claim_id", claim_id).execute()
+        print(f"[WAREHOUSE] Cleaned previous data for {claim_id}")
+    except Exception as e:
+        print(f"[WAREHOUSE] Cleanup failed (non-fatal, may have duplicates): {e}")
+
     # 1. Photos — write photo annotations + structured tags
-    photo_count = write_photos(sb, claim_id, photo_analysis, photo_integrity)
+    photo_count = write_photos(sb, claim_id, photo_analysis, photo_integrity, photo_filenames=photo_filenames)
     print(f"[WAREHOUSE] Wrote {photo_count} photos")
 
     # 2. USARM line items

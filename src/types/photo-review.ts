@@ -1,3 +1,5 @@
+export type FeedbackStatus = "approved" | "corrected" | "rejected";
+
 export interface PhotoForReview {
   id: string; // photos table row id
   claim_id: string;
@@ -10,13 +12,13 @@ export interface PhotoForReview {
   elevation: string | null;
   severity: string | null;
   signed_url: string;
-  feedback_status: "approved" | "corrected" | "rejected" | null;
+  feedback_status: FeedbackStatus | null;
 }
 
 export interface PhotoFeedback {
   photo_id: string;
   claim_id?: string;
-  status: "approved" | "corrected" | "rejected";
+  status: FeedbackStatus;
   corrected_annotation?: string;
   corrected_tags?: {
     damage_type?: string;

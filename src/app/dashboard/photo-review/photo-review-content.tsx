@@ -2,7 +2,9 @@
 
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useSearchParams } from "next/navigation";
-import type { PhotoForReview, PhotoFeedback } from "@/types/photo-review";
+import type { PhotoForReview, PhotoFeedback, FeedbackStatus } from "@/types/photo-review";
+import { SEVERITY_COLORS } from "@/lib/claim-constants";
+import { getBackendUrl } from "@/lib/backend-config";
 
 const TAG_COLORS: Record<string, string> = {
   damage_type: "bg-red-100 text-red-700",
@@ -11,12 +13,13 @@ const TAG_COLORS: Record<string, string> = {
   elevation: "bg-cyan-100 text-cyan-700",
 };
 
-const SEVERITY_COLORS: Record<string, string> = {
-  minor: "bg-yellow-100 text-yellow-700",
-  moderate: "bg-orange-100 text-orange-700",
-  severe: "bg-red-100 text-red-800",
-  catastrophic: "bg-red-200 text-red-900",
-};
+const TAG_CONFIG: { key: string; color: string }[] = [
+  { key: "damage_type", color: "damage_type" },
+  { key: "trade", color: "trade" },
+  { key: "severity", color: "" },
+  { key: "material", color: "material" },
+  { key: "elevation", color: "elevation" },
+];
 
 const DAMAGE_TYPES = ["hail", "wind", "water", "impact", "wear", "mechanical", "unknown"];
 const TRADES = ["roofing", "siding", "gutters", "windows", "interior", "other"];
@@ -37,6 +40,7 @@ export function PhotoReviewContent() {
   const [submitting, setSubmitting] = useState(false);
   const [stampType, setStampType] = useState<"APPROVE" | "REJECT" | null>(null);
   const [regenerating, setRegenerating] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   // Session stats
   const [sessionStats, setSessionStats] = useState({ approved: 0, corrected: 0, rejected: 0 });
@@ -55,7 +59,7 @@ export function PhotoReviewContent() {
 
     const res = await fetch(`/api/photo-review?${params}`);
     if (!res.ok) {
-      console.error("Failed to fetch photos:", res.status);
+      setError("Failed to load photos. Please refresh.");
       setLoading(false);
       return;
     }
@@ -75,55 +79,47 @@ export function PhotoReviewContent() {
 
   // Preload next 2 images
   useEffect(() => {
+    imgRefs.current = [];
     for (let i = 1; i <= 2; i++) {
       const next = photos[currentIndex + i];
       if (next?.signed_url) {
         const img = new Image();
         img.src = next.signed_url;
-        imgRefs.current[i] = img;
+        imgRefs.current.push(img);
       }
     }
+    return () => {
+      imgRefs.current = [];
+    };
   }, [currentIndex, photos]);
 
-  // Keyboard shortcuts
-  useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      if (showEditor) return;
-      if (e.key === "a" || e.key === "A") handleAction("approved");
-      if (e.key === "r" || e.key === "R") handleAction("rejected");
-      if (e.key === "e" || e.key === "E") openEditor();
-    };
-    window.addEventListener("keydown", handler);
-    return () => window.removeEventListener("keydown", handler);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [showEditor, currentIndex, photos, submitting]);
-
-  const currentPhoto = photos[currentIndex];
-
-  const openEditor = () => {
-    if (!currentPhoto) return;
-    setEditAnnotation(currentPhoto.annotation_text || "");
+  const openEditor = useCallback(() => {
+    const photo = photos[currentIndex];
+    if (!photo) return;
+    setEditAnnotation(photo.annotation_text || "");
     setEditTags({
-      damage_type: currentPhoto.damage_type || "",
-      material: currentPhoto.material || "",
-      trade: currentPhoto.trade || "",
-      elevation: currentPhoto.elevation || "",
-      severity: currentPhoto.severity || "",
+      damage_type: photo.damage_type || "",
+      material: photo.material || "",
+      trade: photo.trade || "",
+      elevation: photo.elevation || "",
+      severity: photo.severity || "",
     });
     setEditNotes("");
     setShowEditor(true);
-  };
+  }, [photos, currentIndex]);
 
-  const handleAction = async (status: "approved" | "corrected" | "rejected") => {
-    if (!currentPhoto || submitting) return;
+  const handleAction = useCallback(async (status: FeedbackStatus) => {
+    const photo = photos[currentIndex];
+    if (!photo || submitting) return;
     setSubmitting(true);
+    setError(null);
 
     // Show stamp animation
     if (status === "approved") setStampType("APPROVE");
     else if (status === "rejected") setStampType("REJECT");
 
     const feedback: PhotoFeedback = {
-      photo_id: currentPhoto.id,
+      photo_id: photo.id,
       claim_id: claimId || undefined,
       status,
     };
@@ -139,7 +135,14 @@ export function PhotoReviewContent() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(feedback),
     });
-    if (!res.ok) console.error("Failed to submit feedback:", res.status);
+
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({ error: "Unknown error" }));
+      setError(`Failed to save: ${errData.error || res.statusText}`);
+      setStampType(null);
+      setSubmitting(false);
+      return;
+    }
 
     setSessionStats((s) => ({ ...s, [status]: s[status as keyof typeof s] + 1 }));
     setReviewed((r) => r + 1);
@@ -151,20 +154,67 @@ export function PhotoReviewContent() {
       setCurrentIndex((i) => i + 1);
       setSubmitting(false);
     }, 400);
-  };
+  }, [photos, currentIndex, submitting, claimId, editAnnotation, editTags, editNotes]);
 
   const handleRegenerate = async () => {
     if (!claimId || regenerating) return;
     setRegenerating(true);
+    setError(null);
     try {
-      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "https://dumbroof-backend-production.up.railway.app";
-      const res = await fetch(`${backendUrl}/api/reprocess/${claimId}`, { method: "POST" });
-      if (!res.ok) console.error("Reprocess failed:", res.status);
+      const res = await fetch(`${getBackendUrl()}/api/reprocess/${claimId}`, { method: "POST" });
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({ detail: "Unknown error" }));
+        setError(`Reprocess failed: ${errData.detail || errData.error || res.statusText}`);
+      }
     } catch (err) {
-      console.error("Reprocess failed:", err);
+      setError(`Reprocess failed: ${err instanceof Error ? err.message : "Network error"}`);
     }
     setRegenerating(false);
   };
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (showEditor) return;
+      if (e.key === "a" || e.key === "A") handleAction("approved");
+      if (e.key === "r" || e.key === "R") handleAction("rejected");
+      if (e.key === "e" || e.key === "E") openEditor();
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [showEditor, handleAction, openEditor]);
+
+  const currentPhoto = photos[currentIndex];
+
+  // Shared nav bar
+  const navBar = (
+    <nav className="bg-[var(--navy)] border-b border-white/10">
+      <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
+        <a href="/dashboard" className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-lg bg-[var(--red)] flex items-center justify-center font-bold text-white">DR</div>
+          <span className="text-white font-bold text-lg tracking-tight">Photo Review</span>
+        </a>
+        {currentPhoto && (
+          <div className="flex items-center gap-4 text-sm text-gray-400">
+            <span>{currentIndex + 1} of {photos.length}</span>
+            <span className="text-green-400">{sessionStats.approved} approved</span>
+            <span className="text-blue-400">{sessionStats.corrected} corrected</span>
+            <span className="text-red-400">{sessionStats.rejected} rejected</span>
+          </div>
+        )}
+      </div>
+    </nav>
+  );
+
+  // Error banner
+  const errorBanner = error && (
+    <div className="max-w-2xl mx-auto px-4 mt-4">
+      <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3 flex items-center justify-between">
+        <span>{error}</span>
+        <button onClick={() => setError(null)} className="text-red-400 hover:text-red-600 ml-3">&times;</button>
+      </div>
+    </div>
+  );
 
   if (loading) {
     return (
@@ -178,14 +228,8 @@ export function PhotoReviewContent() {
   if (!currentPhoto || currentIndex >= photos.length) {
     return (
       <main className="min-h-screen bg-gray-50">
-        <nav className="bg-[var(--navy)] border-b border-white/10">
-          <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
-            <a href="/dashboard" className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-lg bg-[var(--red)] flex items-center justify-center font-bold text-white">DR</div>
-              <span className="text-white font-bold text-lg tracking-tight">Photo Review</span>
-            </a>
-          </div>
-        </nav>
+        {navBar}
+        {errorBanner}
         <div className="max-w-lg mx-auto mt-20 text-center">
           <div className="text-5xl mb-4">&#10003;</div>
           <h2 className="text-2xl font-bold text-[var(--navy)] mb-2">All caught up!</h2>
@@ -225,26 +269,14 @@ export function PhotoReviewContent() {
 
   return (
     <main className="min-h-screen bg-gray-50">
-      {/* Nav */}
-      <nav className="bg-[var(--navy)] border-b border-white/10">
-        <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
-          <a href="/dashboard" className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-lg bg-[var(--red)] flex items-center justify-center font-bold text-white">DR</div>
-            <span className="text-white font-bold text-lg tracking-tight">Photo Review</span>
-          </a>
-          <div className="flex items-center gap-4 text-sm text-gray-400">
-            <span>{currentIndex + 1} of {photos.length}</span>
-            <span className="text-green-400">{sessionStats.approved} approved</span>
-            <span className="text-blue-400">{sessionStats.corrected} corrected</span>
-            <span className="text-red-400">{sessionStats.rejected} rejected</span>
-          </div>
-        </div>
-      </nav>
+      {navBar}
 
       {/* Progress bar */}
       <div className="h-1 bg-gray-200">
         <div className="h-1 bg-[var(--red)] transition-all duration-300" style={{ width: `${progress}%` }} />
       </div>
+
+      {errorBanner}
 
       {/* Card */}
       <div className="max-w-2xl mx-auto px-4 py-8">
@@ -285,31 +317,18 @@ export function PhotoReviewContent() {
           <div className="px-5 py-4">
             <p className="text-sm text-gray-700 mb-3">{currentPhoto.annotation_text || "No annotation"}</p>
             <div className="flex flex-wrap gap-2">
-              {currentPhoto.damage_type && (
-                <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${TAG_COLORS.damage_type}`}>
-                  {currentPhoto.damage_type}
-                </span>
-              )}
-              {currentPhoto.trade && (
-                <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${TAG_COLORS.trade}`}>
-                  {currentPhoto.trade}
-                </span>
-              )}
-              {currentPhoto.severity && (
-                <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${SEVERITY_COLORS[currentPhoto.severity] || "bg-gray-100 text-gray-600"}`}>
-                  {currentPhoto.severity}
-                </span>
-              )}
-              {currentPhoto.material && (
-                <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${TAG_COLORS.material}`}>
-                  {currentPhoto.material}
-                </span>
-              )}
-              {currentPhoto.elevation && (
-                <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${TAG_COLORS.elevation}`}>
-                  {currentPhoto.elevation}
-                </span>
-              )}
+              {TAG_CONFIG.map(({ key, color }) => {
+                const value = currentPhoto[key as keyof PhotoForReview] as string | null;
+                if (!value) return null;
+                const colorClass = key === "severity"
+                  ? (SEVERITY_COLORS[value] || "bg-gray-100 text-gray-600")
+                  : TAG_COLORS[color];
+                return (
+                  <span key={key} className={`px-2 py-0.5 rounded-full text-xs font-medium ${colorClass}`}>
+                    {value}
+                  </span>
+                );
+              })}
             </div>
           </div>
 

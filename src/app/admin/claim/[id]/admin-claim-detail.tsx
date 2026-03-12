@@ -490,6 +490,27 @@ export function AdminClaimDetail({ claim: initialClaim, userInfo }: Props) {
             </div>
           )}
 
+          {/* Scope Review link */}
+          {(claim.contractor_rcv ?? 0) > 0 && (
+            <div className="bg-teal-50 border border-teal-200 rounded-lg px-4 py-3 mb-4 flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-teal-800">Review AI-generated line items</p>
+                <p className="text-xs text-teal-600 mt-0.5">
+                  Approve, correct, remove, or add line items. Changes update contractor RCV.
+                  {(claim.excluded_line_items?.length ?? 0) > 0 && (
+                    <span className="ml-1 font-semibold">({claim.excluded_line_items!.length} excluded)</span>
+                  )}
+                </p>
+              </div>
+              <a
+                href={`/dashboard/scope-review?claim=${claim.id}`}
+                className="bg-teal-600 hover:bg-teal-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ml-4"
+              >
+                Review Scope
+              </a>
+            </div>
+          )}
+
           {/* Reprocess button */}
           {(isReady || claim.status === "needs_improvement" || claim.status === "error") && !showUpload && !isReprocessingState && (
             <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-3 mb-4 flex items-center justify-between">

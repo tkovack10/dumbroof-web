@@ -127,7 +127,8 @@ def _json_serial(obj):
     raise TypeError(f"Type {type(obj)} not serializable")
 
 
-def write_photos(sb, claim_id: str, photo_analysis: dict, photo_integrity: dict = None):
+def write_photos(sb, claim_id: str, photo_analysis: dict, photo_integrity: dict = None,
+                  photo_filenames: list = None):
     """Write photo records to the photos table from analyze_photos() output."""
     if not sb or not claim_id:
         return 0
@@ -145,6 +146,12 @@ def write_photos(sb, claim_id: str, photo_analysis: dict, photo_integrity: dict 
     rows = []
     for key, annotation in annotations.items():
         tags = photo_tags.get(key, {})
+        # Map annotation key (photo_01) to actual filename from photo_filenames list
+        fname = None
+        if photo_filenames:
+            idx = int(key.replace("photo_", "")) - 1
+            if 0 <= idx < len(photo_filenames):
+                fname = photo_filenames[idx]
         row = {
             "claim_id": claim_id,
             "file_path": tags.get("file_path", key),
@@ -155,6 +162,7 @@ def write_photos(sb, claim_id: str, photo_analysis: dict, photo_integrity: dict 
             "trade": tags.get("trade"),
             "elevation": tags.get("elevation"),
             "severity": tags.get("severity"),
+            "filename": fname,
         }
 
         # Add integrity data if available

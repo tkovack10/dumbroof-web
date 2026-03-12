@@ -1,14 +1,49 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
+import { requireAuth, isAuthError, canAccessClaim } from "@/lib/api-auth";
+
+/**
+ * Resolve the actual filename for a photo from its annotation_key.
+ * Uses photo.filename (populated by write_photos) with fallback to
+ * positional mapping from claim.photo_files for old photos.
+ */
+function resolveFilename(
+  photo: { filename?: string; annotation_key?: string },
+  claim: { photo_files?: string[] }
+): string {
+  if (photo.filename) return photo.filename;
+  const photoFiles: string[] = claim.photo_files || [];
+  const photoNum = parseInt(photo.annotation_key?.replace("photo_", "") || "", 10);
+  if (!isNaN(photoNum) && photoNum >= 1 && photoNum <= photoFiles.length) {
+    return photoFiles[photoNum - 1];
+  }
+  return photo.annotation_key || "unknown";
+}
+
+/**
+ * Fallback for excluded_photos management when RPC functions don't exist.
+ * Stores actual filenames (not annotation_keys) so processor can match on basename.
+ */
+async function fallbackExcludedPhotos(claimId: string, key: string, action: "add" | "remove") {
+  const { data: claim } = await supabaseAdmin
+    .from("claims")
+    .select("excluded_photos")
+    .eq("id", claimId)
+    .single();
+  const excluded: string[] = (claim?.excluded_photos as string[]) || [];
+  if (action === "add" && !excluded.includes(key)) {
+    excluded.push(key);
+  }
+  if (action === "remove") {
+    const i = excluded.indexOf(key);
+    if (i !== -1) excluded.splice(i, 1);
+  }
+  await supabaseAdmin.from("claims").update({ excluded_photos: excluded }).eq("id", claimId);
+}
 
 export async function GET(req: NextRequest) {
-  // Auth check
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) {
-    return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
-  }
+  const auth = await requireAuth();
+  if (isAuthError(auth)) return auth.response;
 
   const { searchParams } = new URL(req.url);
   const claimId = searchParams.get("claim_id");
@@ -18,7 +53,10 @@ export async function GET(req: NextRequest) {
   // Build query for photos with optional claim filter
   let query = supabaseAdmin
     .from("photos")
-    .select("id, claim_id, annotation_key, annotation_text, damage_type, material, trade, elevation, severity, filename", { count: "exact" });
+    .select(
+      "id, claim_id, annotation_key, annotation_text, damage_type, material, trade, elevation, severity, filename",
+      { count: "exact" }
+    );
 
   if (claimId) {
     query = query.eq("claim_id", claimId);
@@ -33,39 +71,43 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ photos: [], total: count || 0, reviewed: 0 });
   }
 
-  // Get claim info for addresses + file paths
+  // Parallelize claims + feedback queries
   const claimIds = [...new Set(photos.map((p) => p.claim_id).filter(Boolean))];
-  const { data: claims } = await supabaseAdmin
-    .from("claims")
-    .select("id, address, file_path, photo_files")
-    .in("id", claimIds);
-  const claimMap = new Map((claims || []).map((c) => [c.id, c]));
-
-  // Get existing feedback
   const photoIds = photos.map((p) => p.id);
-  const { data: feedback } = await supabaseAdmin
-    .from("annotation_feedback")
-    .select("photo_id, status")
-    .in("photo_id", photoIds);
-  const feedbackMap = new Map((feedback || []).map((f) => [f.photo_id, f.status]));
 
-  // Count total reviewed
-  let reviewedQuery = supabaseAdmin.from("annotation_feedback").select("id", { count: "exact", head: true });
+  const [{ data: claims }, { data: feedback, error: fbErr }] = await Promise.all([
+    supabaseAdmin.from("claims").select("id, address, file_path, photo_files").in("id", claimIds),
+    supabaseAdmin.from("annotation_feedback").select("photo_id, status").in("photo_id", photoIds),
+  ]);
+  if (fbErr) console.error("[photo-review] feedback query failed:", fbErr.message);
+
+  const claimMap = new Map((claims || []).map((c) => [c.id, c]));
+  const feedbackMap = new Map((feedback || []).map((f: { photo_id: string; status: string }) => [f.photo_id, f.status]));
+
+  // Count total reviewed (for the claim or globally)
+  let reviewedCount = 0;
   if (claimId) {
-    reviewedQuery = reviewedQuery.eq("claim_id", claimId);
+    const { count: rc, error: rcErr } = await supabaseAdmin
+      .from("annotation_feedback")
+      .select("id", { count: "exact", head: true })
+      .eq("claim_id", claimId);
+    if (rcErr) console.error("[photo-review] reviewed count failed:", rcErr.message);
+    reviewedCount = rc || 0;
+  } else {
+    reviewedCount = feedback?.length || 0;
   }
-  const { count: reviewedCount } = await reviewedQuery;
 
-  // Batch sign URLs — group photos by claim for efficient signing
+  // Batch sign URLs — build path-to-index map for reliable mapping
   const pathsToSign: string[] = [];
-  const photoPathMap: Map<string, number> = new Map();
+  const pathToPhotoIdx: Map<number, number> = new Map();
 
   photos.forEach((photo, idx) => {
     const claim = claimMap.get(photo.claim_id);
     if (!claim) return;
-    const storagePath = `${claim.file_path}/photos/${photo.filename || photo.annotation_key}`;
+    const fname = resolveFilename(photo, claim);
+    const storagePath = `${claim.file_path}/photos/${fname}`;
+    pathToPhotoIdx.set(pathsToSign.length, idx);
     pathsToSign.push(storagePath);
-    photoPathMap.set(storagePath, idx);
   });
 
   // Batch create signed URLs (single API call instead of N individual calls)
@@ -78,7 +120,10 @@ export async function GET(req: NextRequest) {
     if (signedData) {
       signedData.forEach((item, i) => {
         if (item.signedUrl) {
-          signedUrlMap.set(i, item.signedUrl);
+          const photoIdx = pathToPhotoIdx.get(i);
+          if (photoIdx !== undefined) {
+            signedUrlMap.set(photoIdx, item.signedUrl);
+          }
         }
       });
     }
@@ -107,37 +152,58 @@ export async function GET(req: NextRequest) {
   return NextResponse.json({
     photos: result.filter(Boolean),
     total: count || 0,
-    reviewed: reviewedCount || 0,
+    reviewed: reviewedCount,
   });
 }
 
 export async function POST(req: NextRequest) {
-  // Auth check
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) {
-    return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
-  }
+  const auth = await requireAuth();
+  if (isAuthError(auth)) return auth.response;
+  const userId = auth.user.id;
 
   const body = await req.json();
-  const { photo_id, claim_id, status, corrected_annotation, corrected_tags, notes } = body;
+  const { photo_id, status, corrected_annotation, corrected_tags, notes } = body;
 
   if (!photo_id || !status) {
     return NextResponse.json({ error: "photo_id and status required" }, { status: 400 });
   }
 
-  // Get original photo data
-  const { data: photo } = await supabaseAdmin.from("photos").select("annotation_text, damage_type, material, trade, elevation, severity, annotation_key, claim_id").eq("id", photo_id).single();
+  // Get original photo data + claim's photo_files for filename resolution
+  const { data: photo, error: photoErr } = await supabaseAdmin
+    .from("photos")
+    .select("annotation_text, damage_type, material, trade, elevation, severity, annotation_key, claim_id, filename")
+    .eq("id", photo_id)
+    .single();
+
+  if (photoErr || !photo) {
+    return NextResponse.json({ error: "Photo not found" }, { status: 404 });
+  }
+
+  const claimId = photo.claim_id;
+
+  // Verify user owns this claim OR is admin
+  if (claimId) {
+    const authorized = await canAccessClaim(userId, claimId);
+    if (!authorized) {
+      return NextResponse.json({ error: "Not authorized for this claim" }, { status: 403 });
+    }
+  }
 
   // Upsert feedback
   const { error } = await supabaseAdmin.from("annotation_feedback").upsert(
     {
       photo_id,
-      claim_id: claim_id || photo?.claim_id,
+      claim_id: claimId,
       status,
-      original_annotation: photo?.annotation_text || "",
+      original_annotation: photo.annotation_text || "",
       corrected_annotation: corrected_annotation || null,
-      original_tags: photo ? { damage_type: photo.damage_type, material: photo.material, trade: photo.trade, elevation: photo.elevation, severity: photo.severity } : null,
+      original_tags: {
+        damage_type: photo.damage_type,
+        material: photo.material,
+        trade: photo.trade,
+        elevation: photo.elevation,
+        severity: photo.severity,
+      },
       corrected_tags: corrected_tags || null,
       notes: notes || null,
     },
@@ -146,15 +212,33 @@ export async function POST(req: NextRequest) {
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-  // If rejected and claim_id, add to excluded_photos atomically
-  if (status === "rejected" && (claim_id || photo?.claim_id)) {
-    const targetClaimId = claim_id || photo?.claim_id;
-    const { data: claim } = await supabaseAdmin.from("claims").select("excluded_photos").eq("id", targetClaimId).single();
-    const excluded: string[] = (claim?.excluded_photos as string[]) || [];
-    const key = photo?.annotation_key;
-    if (key && !excluded.includes(key)) {
-      excluded.push(key);
-      await supabaseAdmin.from("claims").update({ excluded_photos: excluded }).eq("id", targetClaimId);
+  // Resolve actual filename for excluded_photos (processor matches on basename, not annotation_key)
+  if (claimId && photo.annotation_key) {
+    // Get claim's photo_files for filename resolution
+    const { data: claimData } = await supabaseAdmin
+      .from("claims")
+      .select("photo_files")
+      .eq("id", claimId)
+      .single();
+    const excludeKey = resolveFilename(photo, claimData || {});
+
+    if (status === "rejected") {
+      const { error: rpcErr } = await supabaseAdmin.rpc("append_excluded_photo", {
+        claim_id_param: claimId,
+        photo_key: excludeKey,
+      });
+      if (rpcErr?.message?.includes("function") && rpcErr?.message?.includes("does not exist")) {
+        await fallbackExcludedPhotos(claimId, excludeKey, "add");
+      }
+    } else {
+      // Un-reject: remove from excluded_photos if previously rejected
+      const { error: rpcErr } = await supabaseAdmin.rpc("remove_excluded_photo", {
+        claim_id_param: claimId,
+        photo_key: excludeKey,
+      });
+      if (rpcErr?.message?.includes("function") && rpcErr?.message?.includes("does not exist")) {
+        await fallbackExcludedPhotos(claimId, excludeKey, "remove");
+      }
     }
   }
 

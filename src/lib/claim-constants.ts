@@ -62,6 +62,13 @@ export const CLAIM_STATUS_CONFIG: Record<string, { color: string; label: string;
   error: { color: "text-red-700", label: "Error", bg: "bg-red-100" },
 };
 
+export const SEVERITY_COLORS: Record<string, string> = {
+  minor: "bg-yellow-100 text-yellow-700",
+  moderate: "bg-orange-100 text-orange-700",
+  severe: "bg-red-100 text-red-800",
+  catastrophic: "bg-red-200 text-red-900",
+};
+
 // Map folder name → DB field name
 export const FOLDER_TO_DB_FIELD: Record<string, string> = {
   photos: "photo_files",
