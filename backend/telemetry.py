@@ -15,20 +15,34 @@ from typing import Optional
 
 import anthropic
 
-# Cost per 1M tokens (as of March 2026)
+# Cost per 1M tokens (as of March 2026 — verified against anthropic.com/pricing)
 MODEL_COSTS = {
-    "claude-opus-4-6":   {"input": 15.00, "output": 75.00},
+    "claude-opus-4-6":   {"input": 5.00, "output": 25.00},
     "claude-sonnet-4-6": {"input": 3.00,  "output": 15.00},
-    "claude-haiku-4-5-20251001": {"input": 0.80, "output": 4.00},
+    "claude-haiku-4-5-20251001": {"input": 1.00, "output": 5.00},
+    # Legacy models (hail_detection, damage_scoring CLI)
+    "claude-sonnet-4-20250514": {"input": 3.00, "output": 15.00},
 }
+
+# Cache token pricing multipliers (relative to input price)
+CACHE_WRITE_MULTIPLIER = 1.25  # cache_creation_input_tokens cost 1.25x input
+CACHE_READ_MULTIPLIER = 0.10   # cache_read_input_tokens cost 0.1x input
 
 # Fallback for unknown models
 DEFAULT_COST = {"input": 3.00, "output": 15.00}
 
 
-def _estimate_cost(model: str, prompt_tokens: int, completion_tokens: int) -> float:
+def _estimate_cost(model: str, prompt_tokens: int, completion_tokens: int,
+                    cache_creation_tokens: int = 0, cache_read_tokens: int = 0) -> float:
+    """Estimate cost including cached token pricing."""
     costs = MODEL_COSTS.get(model, DEFAULT_COST)
-    return (prompt_tokens * costs["input"] + completion_tokens * costs["output"]) / 1_000_000
+    input_price = costs["input"]
+    base_cost = (prompt_tokens * input_price + completion_tokens * costs["output"]) / 1_000_000
+    cache_cost = (
+        cache_creation_tokens * input_price * CACHE_WRITE_MULTIPLIER +
+        cache_read_tokens * input_price * CACHE_READ_MULTIPLIER
+    ) / 1_000_000
+    return base_cost + cache_cost
 
 
 def call_claude_logged(
@@ -49,24 +63,39 @@ def call_claude_logged(
     last_error = None
 
     for attempt in range(max_retries):
+        attempt_start = time.time() * 1000
         try:
             response = client.messages.create(**kwargs)
 
-            # Extract token counts from response
+            # Extract token counts from response (including cache tokens)
             usage = response.usage
             prompt_tokens = usage.input_tokens
             completion_tokens = usage.output_tokens
+            cache_creation = getattr(usage, "cache_creation_input_tokens", 0) or 0
+            cache_read = getattr(usage, "cache_read_input_tokens", 0) or 0
             duration_ms = int(time.time() * 1000 - start_ms)
-            cost = _estimate_cost(model, prompt_tokens, completion_tokens)
+            cost = _estimate_cost(model, prompt_tokens, completion_tokens,
+                                  cache_creation, cache_read)
 
-            # Log success
+            # Log success (include cache info in metadata)
+            log_meta = dict(metadata or {})
+            if cache_creation or cache_read:
+                log_meta["cache_creation_tokens"] = cache_creation
+                log_meta["cache_read_tokens"] = cache_read
+            if attempt > 0:
+                log_meta["retry_attempt"] = attempt
+
             _log_to_db(sb, claim_id, step_name, model, prompt_tokens,
-                       completion_tokens, cost, duration_ms, True, None, metadata)
+                       completion_tokens, cost, duration_ms, True, None, log_meta)
 
             return response
 
         except anthropic.RateLimitError as e:
             last_error = str(e)
+            # Log the failed attempt so consumed tokens aren't lost
+            attempt_duration = int(time.time() * 1000 - attempt_start)
+            _log_to_db(sb, claim_id, f"{step_name}_retry_{attempt}", model, 0, 0, 0,
+                       attempt_duration, False, f"rate_limit (attempt {attempt + 1})", metadata)
             if attempt < max_retries - 1:
                 wait = 60 * (attempt + 1)
                 print(f"[RATE LIMIT] Waiting {wait}s before retry {attempt + 2}/{max_retries}...")

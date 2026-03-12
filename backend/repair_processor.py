@@ -28,8 +28,8 @@ from processor import (
     download_file,
     upload_file,
     file_to_base64,
-    _call_claude_with_retry,
 )
+from telemetry import call_claude_logged
 from photo_utils import (
     ingest_photos,
     prepare_photo_for_api,
@@ -270,8 +270,9 @@ CRITICAL OUTPUT CONSTRAINT: Your ENTIRE JSON response MUST be under 5000 tokens.
 
                 _log_payload_size(batch_content, prompt)
                 print(f"[REPAIR] Calling Claude API for diagnosis...")
-                response = _call_claude_with_retry(
-                    claude,
+                response = call_claude_logged(
+                    claude, sb, repair_id,
+                    step_name="repair_diagnosis",
                     model="claude-opus-4-6",
                     max_tokens=32768,
                     system=system_prompt,
@@ -292,8 +293,9 @@ CRITICAL OUTPUT CONSTRAINT: Your ENTIRE JSON response MUST be under 5000 tokens.
                         {"role": "assistant", "content": response_text},
                         {"role": "user", "content": concise_msg},
                     ]
-                    response = _call_claude_with_retry(
-                        claude,
+                    response = call_claude_logged(
+                        claude, sb, repair_id,
+                        step_name="repair_diagnosis_retry",
                         model="claude-opus-4-6",
                         max_tokens=8192,
                         system=system_prompt,
@@ -310,8 +312,9 @@ CRITICAL OUTPUT CONSTRAINT: Your ENTIRE JSON response MUST be under 5000 tokens.
                 batch_content.append({"type": "text", "text": batch_text_prompt})
 
                 _log_payload_size(batch_content, batch_text_prompt)
-                batch_response = _call_claude_with_retry(
-                    claude,
+                batch_response = call_claude_logged(
+                    claude, sb, repair_id,
+                    step_name=f"repair_photo_batch_{batch_num}",
                     model="claude-opus-4-6",
                     max_tokens=2048,
                     system=system_prompt,
@@ -349,8 +352,10 @@ Diagnose the PRIMARY leak source. Use one repair code from: {repair_codes}
 Return JSON: {{"diagnosis":{{"primary_code":"CODE","family":"family_name","leak_source":"1-2 sentences max","severity":"minor|moderate|major|critical|emergency","confidence":0.85,"decision_path":"S1>S2>...","is_temporary":false}},"photo_annotations":{{"p01":"1 sentence max"}}}}"""
 
             print(f"[REPAIR] Synthesis call 1/2: diagnosis...")
-            resp1 = _call_claude_with_retry(
-                claude, model="claude-opus-4-6", max_tokens=4096,
+            resp1 = call_claude_logged(
+                claude, sb, repair_id,
+                step_name="repair_synthesis_diagnosis",
+                model="claude-opus-4-6", max_tokens=4096,
                 system=synthesis_system,
                 messages=[{"role": "user", "content": diag_prompt}],
             )
@@ -377,8 +382,10 @@ Max 5 steps. English only (set _es fields to null). Max 2 sentences per instruct
 Return JSON: {{"repair":{{"summary":"1 sentence","steps":[{{"step":1,"category":"protection|removal|inspection|installation|cleanup","title_en":"title","title_es":null,"instructions_en":"instructions","instructions_es":null,"materials":["item"],"time_minutes":10,"safety_note_en":null,"safety_note_es":null,"photo_reference":null}}],"materials_list":[{{"item":"name","qty":1,"unit":"EA","cost":10.00}}],"labor_hours":4,"materials_cost":0,"labor_cost":0,"total_price":0}},"homeowner_ticket":{{"what_we_found":"1 sentence for homeowner","what_we_recommend":"1 sentence","time_estimate":"X hours","urgency":"{diag_result.get('severity', 'moderate')}","warranty":"2-year workmanship warranty"}}}}"""
 
             print(f"[REPAIR] Synthesis call 2/2: repair plan...")
-            resp2 = _call_claude_with_retry(
-                claude, model="claude-opus-4-6", max_tokens=8192,
+            resp2 = call_claude_logged(
+                claude, sb, repair_id,
+                step_name="repair_synthesis_plan",
+                model="claude-opus-4-6", max_tokens=8192,
                 system=synthesis_system,
                 messages=[{"role": "user", "content": repair_prompt}],
             )

@@ -23,6 +23,9 @@ import anthropic
 import traceback
 from supabase import create_client, Client
 
+from carrier_intelligence import suggest_arguments
+from analytics import predict_settlement, detect_price_deviations
+
 from telemetry import (
     call_claude_logged,
     write_photos,
@@ -119,11 +122,13 @@ def _load_pricing(price_list: str = "nybi26") -> dict:
 PRICING = _load_pricing()  # Default NYBI26
 _PRICING_CACHE = {"nybi26": PRICING}
 
+# Canonical state → price list mapping (used everywhere pricing is resolved)
+STATE_PRICE_LIST = {"NY": "NYBI26", "PA": "PAPI26", "NJ": "NJBI26"}
+
 
 def get_pricing_for_state(state: str) -> dict:
     """Get pricing for a given state. NY=NYBI26, PA=PAPI26, others=NYBI26."""
-    price_map = {"PA": "papi26", "NJ": "njbi26"}
-    price_list = price_map.get(state.upper(), "nybi26")
+    price_list = STATE_PRICE_LIST.get(state.upper(), "NYBI26").lower()
     if price_list not in _PRICING_CACHE:
         loaded = _load_pricing(price_list)
         if loaded and "_meta" in loaded:
@@ -292,7 +297,7 @@ def extract_measurements(client: anthropic.Anthropic, pdf_path: str) -> dict:
 
     response = _call_claude_with_retry(client,
         _step_name="extract_measurements",
-        model="claude-sonnet-4-6",
+        model="claude-opus-4-6",
         max_tokens=4096,
         messages=[{
             "role": "user",
@@ -386,7 +391,7 @@ If this report includes wall/siding measurements (EagleView Walls report or simi
         print("[WARN] Measurement extraction returned no roof area — retrying with explicit prompt...")
         retry_response = _call_claude_with_retry(client,
             _step_name="extract_measurements_retry",
-            model="claude-sonnet-4-6",
+            model="claude-opus-4-6",
             max_tokens=4096,
             messages=[{
                 "role": "user",
@@ -421,7 +426,7 @@ If this report includes wall/siding measurements (EagleView Walls report or simi
     return result
 
 
-def analyze_photos(client: anthropic.Anthropic, photo_paths: list[str], user_notes: Optional[str] = None) -> dict:
+def analyze_photos(client: anthropic.Anthropic, photo_paths: list[str], user_notes: Optional[str] = None, corrections: list = None) -> dict:
     """Send inspection photos to Claude for forensic analysis, in batches."""
     BATCH_SIZE = 5  # 5 resized photos per batch to stay well under API limits
 
@@ -477,9 +482,24 @@ def analyze_photos(client: anthropic.Anthropic, photo_paths: list[str], user_not
         if batch_idx == 0 and user_notes:
             notes_ctx = f"\n\nCONTEXT FROM CONTRACTOR: {user_notes}\nUse this context to inform your analysis — identify specific materials mentioned, note any adjuster claims to address, and focus on items the contractor highlighted.\n"
 
+        corrections_ctx = ""
+        if batch_idx == 0 and corrections:
+            changes_lines = []
+            for c in corrections[:5]:
+                orig = c.get("original_tags") or {}
+                fixed = c.get("corrected_tags") or {}
+                changes = []
+                for field in ["material", "damage_type", "severity", "trade"]:
+                    if orig.get(field) != fixed.get(field) and fixed.get(field):
+                        changes.append(f"{field}: {orig.get(field)} -> {fixed.get(field)}")
+                if changes:
+                    changes_lines.append(f"- {', '.join(changes)}")
+            if changes_lines:
+                corrections_ctx = "\n\nHUMAN CORRECTIONS (learn from these):\n" + "\n".join(changes_lines) + "\nApply these corrections to similar photos.\n"
+
         content.append({
             "type": "text",
-            "text": f"""You are a forensic roofing damage analyst specializing in storm damage assessment. Analyze these inspection photos ({start_num}-{start_num + len(batch) - 1}) and document all visible damage with clinical, professional observations.{notes_ctx}
+            "text": f"""You are a forensic roofing damage analyst specializing in storm damage assessment. Analyze these inspection photos ({start_num}-{start_num + len(batch) - 1}) and document all visible damage with clinical, professional observations.{notes_ctx}{corrections_ctx}
 
 CRITICAL — CHALK TESTING (you MUST understand this):
 Inspectors use chalk testing to document hail damage. This is standard industry practice, NOT sealant, paint, caulk, or repair material.
@@ -796,7 +816,7 @@ def extract_carrier_scope(client: anthropic.Anthropic, pdf_path: str) -> dict:
 
     response = _call_claude_with_retry(client,
         _step_name="extract_carrier_scope",
-        model="claude-sonnet-4-6",
+        model="claude-opus-4-6",
         max_tokens=8192,
         messages=[{
             "role": "user",
@@ -1031,7 +1051,7 @@ Use empty strings for values not found."""
 
     response = _call_claude_with_retry(client,
         _step_name="extract_weather",
-        model="claude-sonnet-4-6",
+        model="claude-opus-4-6",
         max_tokens=2048,
         messages=[{"role": "user", "content": content}]
     )
@@ -1043,6 +1063,39 @@ def search_weather_corroboration(city: str, state: str, storm_date: str) -> list
     return []
 
 
+def _build_intel_section(intel_context: dict) -> str:
+    """Build carrier intelligence context string for synthesis prompts. Max ~400 tokens."""
+    if not intel_context:
+        return ""
+    carrier_intel = intel_context.get("carrier_intelligence", {})
+    settlement = intel_context.get("settlement_prediction", {})
+    score = carrier_intel.get("carrier_score", {})
+    args = carrier_intel.get("general_effective_arguments", [])
+    denials = carrier_intel.get("anticipated_denials", [])
+
+    lines = []
+    if score.get("total_claims"):
+        lines.append(f"HISTORICAL DATA: {score.get('win_rate_pct', 0)}% win rate across {score['total_claims']} claims. "
+                     f"Avg underpayment: {score.get('avg_underpayment_pct', 0)}%.")
+    if args:
+        arg_strs = [f"{a['argument']} (${a.get('dollar_impact', 0):,.0f} impact)"
+                    for a in args[:3] if a.get("argument")]
+        if arg_strs:
+            lines.append("Top arguments: " + "; ".join(arg_strs))
+    if denials:
+        denial_strs = [f"{d['tactic_type']} ({d['count']}x)" for d in denials[:3] if isinstance(d, dict) and d.get("tactic_type")]
+        if denial_strs:
+            lines.append("Common denials: " + ", ".join(denial_strs))
+    if settlement.get("data_points", 0) >= 2:
+        rng = settlement.get("predicted_settlement_range", {})
+        if rng and rng.get("low") is not None:
+            lines.append(f"Settlement prediction: ${rng.get('low', 0):,.0f}-${rng.get('high', 0):,.0f} "
+                        f"({settlement['confidence']} confidence)")
+    if not lines:
+        return ""
+    return "\n\n" + "\n".join(lines) + "\nWeave relevant patterns where evidence supports them.\n"
+
+
 def synthesize_executive_summary(
     client: anthropic.Anthropic,
     damage_summary: str,
@@ -1051,6 +1104,7 @@ def synthesize_executive_summary(
     material: str,
     key_findings: list,
     photo_count: int,
+    intel_context: dict = None,
 ) -> list[str]:
     """Use Claude to synthesize raw damage data into a structured executive summary.
     Returns a list of paragraph strings (3-5 paragraphs)."""
@@ -1063,6 +1117,8 @@ def synthesize_executive_summary(
     if playbook_ctx:
         playbook_section = f"\n\nCARRIER INTELLIGENCE ({carrier_name}):\n{playbook_ctx[:1500]}\nUse this intelligence to inform your language — reference known carrier tactics and effective counter-arguments.\n"
 
+    intel_section = _build_intel_section(intel_context)
+
     prompt = f"""You are writing the Executive Summary for a forensic causation report on a storm-damaged property.
 The roofing material is: {material}
 
@@ -1073,7 +1129,7 @@ Weather data: Storm date {weather_data.get('storm_date', 'N/A')}, hail size {wea
 Carrier RCV: ${carrier_rcv:,.2f}
 Photo count: {photo_count}
 Key findings count: {len(key_findings)}
-{playbook_section}
+{playbook_section}{intel_section}
 
 Write 3-5 SHORT paragraphs (2-4 sentences each) that build evidence gracefully:
 
@@ -1116,11 +1172,13 @@ def synthesize_conclusion(
     code_violations: list,
     material: str,
     carrier_data: Optional[dict],
+    intel_context: dict = None,
 ) -> list[str]:
     """Use Claude to synthesize a structured conclusion. Returns list of paragraph strings."""
     carrier_rcv = carrier_data.get("carrier_rcv", 0) if carrier_data else 0
     findings_text = "\n".join(f"- {f}" for f in key_findings[:15])
     violations_text = "\n".join(f"- {v.get('code','')}: {v.get('requirement', v.get('description',''))}" for v in code_violations[:10])
+    intel_section = _build_intel_section(intel_context)
 
     prompt = f"""You are writing the Conclusion & Scope Determination section for a forensic causation report.
 Roofing material: {material}
@@ -1132,7 +1190,7 @@ Code violations documented:
 {violations_text}
 
 Carrier RCV: ${carrier_rcv:,.2f}
-Damage summary context: {damage_summary[:1500]}
+Damage summary context: {damage_summary[:1500]}{intel_section}
 
 Write 3-4 SHORT paragraphs (2-4 sentences each) that tie everything together:
 
@@ -1353,7 +1411,8 @@ def build_claim_config(
 
     # Build line items based on measurements and analysis (multi-structure aware)
     line_items = build_multi_structure_line_items(measurements, photo_analysis, state, user_notes=user_notes or "",
-                                                  estimate_request=claim.get("estimate_request"))
+                                                  estimate_request=claim.get("estimate_request"),
+                                                  roof_sections=claim.get("roof_sections"))
 
     # Build deterministic code violations based on state + scope
     deterministic_violations = _build_code_violations(state, line_items, trades)
@@ -1461,7 +1520,7 @@ def build_claim_config(
         },
         "financials": {
             "tax_rate": tax_rate,
-            "price_list": {"NY": "NYBI26", "PA": "PAPI26", "NJ": "NJBI26"}.get(state, "NYBI26"),
+            "price_list": STATE_PRICE_LIST.get(state, "NYBI26"),
             "deductible": carrier_data.get("carrier_deductible", 0) if carrier_data else 0,
         },
         "structures": structs,  # shingle_type populated below from photo analysis
@@ -1550,8 +1609,7 @@ def build_claim_config(
 
     # Set correct price list for state if not from carrier
     if not config["financials"].get("price_list"):
-        _pl_map = {"NY": "NYBI26", "PA": "PAPI26", "NJ": "NJBI26"}
-        config["financials"]["price_list"] = _pl_map.get(state, "NYBI26")
+        config["financials"]["price_list"] = STATE_PRICE_LIST.get(state, "NYBI26")
 
     # Clean trade names: underscores → spaces for display
     trades = [t.replace("_", " ").title() for t in trades]
@@ -2145,60 +2203,193 @@ def _detect_siding_material(photo_analysis: dict, user_notes: str = "", estimate
     return "aluminum"
 
 
+def build_roof_sections(measurements: dict, photo_analysis: dict = None, provider: str = "unknown") -> dict:
+    """Build per-slope breakdown for the UI slope editor.
+
+    Reads structures[].pitches[] from extracted measurements and returns a
+    flat list of sections suitable for the frontend RoofSectionsEditor.
+    Provider-agnostic: works with EagleView, HOVER, GAF QuickMeasure, etc.
+    """
+    structures = measurements.get("structures", [])
+    sections = []
+    total_sf = 0
+
+    for si, struct in enumerate(structures):
+        struct_name = struct.get("name", f"Structure {si + 1}")
+        pitches = struct.get("pitches", [])
+        if not pitches:
+            # Single-pitch structure — create one section for the whole roof
+            area_sf = struct.get("roof_area_sf", 0)
+            area_sq = struct.get("roof_area_sq", area_sf / 100 if area_sf else 0)
+            pitch = struct.get("predominant_pitch", "")
+            sections.append({
+                "structure_index": si,
+                "structure_name": struct_name,
+                "pitch": pitch,
+                "area_sf": round(area_sf, 1),
+                "area_sq": round(area_sq, 2),
+                "percent": 100,
+                "detected_material": _classify_from_text(struct.get("shingle_type", "")) or "asphalt_shingle",
+                "user_material_override": None,
+            })
+            total_sf += area_sf
+        else:
+            for pitch_entry in pitches:
+                area_sf = pitch_entry.get("area_sf", 0)
+                area_sq = area_sf / 100 if area_sf else 0
+                sections.append({
+                    "structure_index": si,
+                    "structure_name": struct_name,
+                    "pitch": pitch_entry.get("pitch", ""),
+                    "area_sf": round(area_sf, 1),
+                    "area_sq": round(area_sq, 2),
+                    "percent": pitch_entry.get("percent", 0),
+                    "detected_material": _classify_from_text(struct.get("shingle_type", "")) or "asphalt_shingle",
+                    "user_material_override": None,
+                })
+                total_sf += area_sf
+
+    if not sections:
+        return None
+
+    return {
+        "provider": provider,
+        "sections": sections,
+        "total_area_sf": round(total_sf, 1),
+        "total_area_sq": round(total_sf / 100, 2),
+    }
+
+
 def build_multi_structure_line_items(measurements: dict, photo_analysis: dict, state: str,
-                                      user_notes: str = "", estimate_request: dict = None) -> list:
+                                      user_notes: str = "", estimate_request: dict = None,
+                                      roof_sections: dict = None) -> list:
     """Build complete line item sections per structure. Never combines structures.
 
     For single-structure claims (most claims), passes through to build_line_items().
     For multi-structure claims, calls build_line_items() once per structure and labels
     each item with the structure name prefix.
+
+    If roof_sections contains user_material_override entries, splits structures into
+    sub-groups by material and generates separate line items per material.
     """
     structs = measurements.get("structures", [{}])
 
-    if len(structs) <= 1:
+    # Collect per-slope material overrides from roof_sections
+    slope_overrides = {}  # {structure_index: {pitch: material}}
+    if roof_sections and roof_sections.get("sections"):
+        for section in roof_sections["sections"]:
+            if section.get("user_material_override"):
+                si = section.get("structure_index", 0)
+                slope_overrides.setdefault(si, {})[section.get("pitch", "")] = section["user_material_override"]
+
+    if len(structs) <= 1 and not slope_overrides:
         return build_line_items(measurements, photo_analysis, state, user_notes, estimate_request)
+
+    # For single-structure claims with slope overrides, treat as multi-structure
+    if len(structs) <= 1 and slope_overrides:
+        structs = measurements.get("structures", [{}])
+        if not structs:
+            structs = [{}]
 
     all_items = []
     for i, struct in enumerate(structs):
         struct_name = struct.get("name", f"Structure {i+1}")
+        overrides_for_struct = slope_overrides.get(i, {})
 
-        struct_measurements = {
-            "measurements": struct.get("measurements", measurements.get("measurements", {})),
-            "structures": [struct],
-            "penetrations": struct.get("penetrations", measurements.get("penetrations", {})),
-            "stories": struct.get("stories", measurements.get("stories", 1)),
-            "total_roof_area_sf": struct.get("roof_area_sf", 0),
-            "total_roof_area_sq": struct.get("roof_area_sq", 0),
-            "walls": struct.get("walls", measurements.get("walls", {})),
-        }
+        # If this structure has per-slope material overrides, split by material
+        if overrides_for_struct:
+            # Group slopes by effective material
+            material_groups = {}  # {material: total_area_sf}
+            base_material = _classify_from_text(struct.get("shingle_type", "")) or "laminated"
+            pitches = struct.get("pitches", [])
 
-        # Per-structure material via shingle_type → user_notes (weight 3.0 in detector)
-        struct_note = struct.get("shingle_type", "")
-        combined_notes = f"{struct_note}. {user_notes}" if struct_note else user_notes
+            if pitches:
+                for pitch_entry in pitches:
+                    pitch = pitch_entry.get("pitch", "")
+                    area_sf = pitch_entry.get("area_sf", 0)
+                    mat = overrides_for_struct.get(pitch, base_material)
+                    material_groups.setdefault(mat, 0)
+                    material_groups[mat] += area_sf
+            else:
+                # No pitch breakdown — check if all overrides are the same material
+                total_sf = struct.get("roof_area_sf", 0)
+                if overrides_for_struct:
+                    # Apply overrides to the percentage of the roof they represent
+                    sections_for_struct = [s for s in (roof_sections or {}).get("sections", [])
+                                           if s.get("structure_index") == i]
+                    for sec in sections_for_struct:
+                        mat = sec.get("user_material_override") or base_material
+                        area_sf = sec.get("area_sf", 0)
+                        material_groups.setdefault(mat, 0)
+                        material_groups[mat] += area_sf
+                if not material_groups:
+                    material_groups[base_material] = total_sf
 
-        # Per-structure material override hierarchy:
-        # 1. estimate_request.structures[i].roof_material (explicit per-structure override from frontend)
-        # 2. struct.shingle_type classifiable → suppress claim-wide override, let weighted voting decide
-        # 3. Claim-wide estimate_request.roof_material as fallback default
-        struct_er = estimate_request  # default: claim-wide
-        if estimate_request:
-            er_structs = estimate_request.get("structures") or []
-            if i < len(er_structs) and (er_structs[i] or {}).get("roof_material"):
-                struct_er = {"roof_material": er_structs[i]["roof_material"]}
-            elif struct_note and _classify_from_text(struct_note):
-                # Structure has its own classifiable material — let weighted voting decide
-                struct_er = None
+            # Generate line items for each material sub-group
+            for mat, area_sf in material_groups.items():
+                if area_sf <= 0:
+                    continue
+                area_sq = area_sf / 100.0
+                sub_meas = {
+                    "measurements": struct.get("measurements", measurements.get("measurements", {})),
+                    "structures": [{**struct, "roof_area_sf": area_sf, "roof_area_sq": area_sq}],
+                    "penetrations": struct.get("penetrations", measurements.get("penetrations", {})),
+                    "stories": struct.get("stories", measurements.get("stories", 1)),
+                    "total_roof_area_sf": area_sf,
+                    "total_roof_area_sq": area_sq,
+                    "walls": struct.get("walls", measurements.get("walls", {})),
+                }
 
-        items = build_line_items(struct_measurements, photo_analysis, state, combined_notes, struct_er)
+                # Map UI material names to estimate_request format
+                mat_er = {"roof_material": mat}
+                sub_notes = f"{mat}. {user_notes}" if user_notes else mat
 
-        for item in items:
-            item["description"] = f"[{struct_name}] {item['description']}"
+                items = build_line_items(sub_meas, photo_analysis, state, sub_notes, mat_er)
+                label = f"[{struct_name}]" if len(structs) > 1 else ""
+                for item in items:
+                    if label:
+                        item["description"] = f"{label} {item['description']}"
+                all_items.extend(items)
+                print(f"[LINE ITEMS] {struct_name} ({mat}): {len(items)} items, {area_sq:.1f} SQ, material = slope override")
+        else:
+            # No overrides — standard processing
+            struct_measurements = {
+                "measurements": struct.get("measurements", measurements.get("measurements", {})),
+                "structures": [struct],
+                "penetrations": struct.get("penetrations", measurements.get("penetrations", {})),
+                "stories": struct.get("stories", measurements.get("stories", 1)),
+                "total_roof_area_sf": struct.get("roof_area_sf", 0),
+                "total_roof_area_sq": struct.get("roof_area_sq", 0),
+                "walls": struct.get("walls", measurements.get("walls", {})),
+            }
 
-        all_items.extend(items)
-        mat_source = ('per-struct override' if struct_er and struct_er is not estimate_request
-                      else 'weighted voting' if struct_er is None
-                      else 'claim-wide override')
-        print(f"[LINE ITEMS] {struct_name}: {len(items)} items, {struct.get('roof_area_sq', 0)} SQ, material source = {mat_source}")
+            # Per-structure material via shingle_type → user_notes (weight 3.0 in detector)
+            struct_note = struct.get("shingle_type", "")
+            combined_notes = f"{struct_note}. {user_notes}" if struct_note else user_notes
+
+            # Per-structure material override hierarchy:
+            # 1. estimate_request.structures[i].roof_material (explicit per-structure override from frontend)
+            # 2. struct.shingle_type classifiable → suppress claim-wide override, let weighted voting decide
+            # 3. Claim-wide estimate_request.roof_material as fallback default
+            struct_er = estimate_request  # default: claim-wide
+            if estimate_request:
+                er_structs = estimate_request.get("structures") or []
+                if i < len(er_structs) and (er_structs[i] or {}).get("roof_material"):
+                    struct_er = {"roof_material": er_structs[i]["roof_material"]}
+                elif struct_note and _classify_from_text(struct_note):
+                    struct_er = None
+
+            items = build_line_items(struct_measurements, photo_analysis, state, combined_notes, struct_er)
+
+            if len(structs) > 1:
+                for item in items:
+                    item["description"] = f"[{struct_name}] {item['description']}"
+
+            all_items.extend(items)
+            mat_source = ('per-struct override' if struct_er and struct_er is not estimate_request
+                          else 'weighted voting' if struct_er is None
+                          else 'claim-wide override')
+            print(f"[LINE ITEMS] {struct_name}: {len(items)} items, {struct.get('roof_area_sq', 0)} SQ, material source = {mat_source}")
 
     print(f"[LINE ITEMS] Total across {len(structs)} structures: {len(all_items)} items")
     return all_items
@@ -3003,8 +3194,27 @@ async def process_claim(claim_id: str):
         async def _get_photo_analysis():
             if not photo_paths:
                 return _default_photo
+            # Load photo correction examples for few-shot learning (runs in parallel with other extractions)
+            few_shot_corrections = []
+            if sb:
+                try:
+                    fb = sb.table("annotation_feedback") \
+                        .select("original_annotation, corrected_annotation, original_tags, corrected_tags") \
+                        .eq("status", "corrected") \
+                        .order("created_at", desc=True) \
+                        .limit(5) \
+                        .execute()
+                    few_shot_corrections = fb.data or []
+                    if few_shot_corrections:
+                        print(f"[INTEL] Loaded {len(few_shot_corrections)} photo corrections for few-shot learning")
+                except Exception as e:
+                    print(f"[INTEL] Photo corrections query failed (non-fatal): {e}")
             print(f"[PROCESS] Analyzing {len(photo_paths)} photos...")
-            return await asyncio.to_thread(analyze_photos, claude, photo_paths, user_notes=claim.get("user_notes"))
+            return await asyncio.to_thread(
+                analyze_photos, claude, photo_paths,
+                user_notes=claim.get("user_notes"),
+                corrections=few_shot_corrections,
+            )
 
         async def _get_photo_integrity():
             if not photo_paths:
@@ -3093,6 +3303,40 @@ async def process_claim(claim_id: str):
             config.setdefault("warnings", []).append("PROPERTY_OWNER_REPORT_NO_MEASUREMENTS")
             print("[WARN] Property Owner Report detected — no measurement tables available")
 
+        # Build roof sections for slope editor UI
+        try:
+            meas_provider = "eagleview"  # default; could detect from filename
+            for mp in measurement_paths:
+                mp_lower = mp.lower()
+                if "hover" in mp_lower:
+                    meas_provider = "hover"
+                elif "gaf" in mp_lower or "quickmeasure" in mp_lower:
+                    meas_provider = "gaf_quickmeasure"
+            roof_sections = build_roof_sections(measurements, photo_analysis, provider=meas_provider)
+            if roof_sections and sb:
+                # Check for existing user overrides and preserve them
+                try:
+                    existing = sb.table("claims").select("roof_sections").eq("id", claim_id).single().execute()
+                    existing_sections = (existing.data or {}).get("roof_sections")
+                    if existing_sections and existing_sections.get("sections"):
+                        # Preserve user_material_override from previous run
+                        old_by_key = {}
+                        for s in existing_sections["sections"]:
+                            key = f"{s.get('structure_index')}_{s.get('pitch')}"
+                            if s.get("user_material_override"):
+                                old_by_key[key] = s["user_material_override"]
+                        if old_by_key:
+                            for s in roof_sections["sections"]:
+                                key = f"{s['structure_index']}_{s['pitch']}"
+                                if key in old_by_key:
+                                    s["user_material_override"] = old_by_key[key]
+                except Exception:
+                    pass  # First run or column doesn't exist yet
+                sb.table("claims").update({"roof_sections": roof_sections}).eq("id", claim_id).execute()
+                print(f"[PROCESS] Built {len(roof_sections['sections'])} roof sections for slope editor")
+        except Exception as e:
+            print(f"[PROCESS] Roof sections build failed (non-fatal): {e}")
+
         # Add corroborating weather reports to config (sanitized)
         if corroborating_reports:
             sanitized_reports = []
@@ -3134,25 +3378,59 @@ async def process_claim(claim_id: str):
         except Exception as e:
             print(f"[NOAA] Weather query failed (non-fatal): {e}")
 
-        # 9a2. Inject carrier intelligence from data warehouse
-        try:
-            carrier_name = config.get("carrier", {}).get("name", "")
-            if carrier_name and sb:
-                tactics = sb.table("carrier_tactics").select("*").eq("carrier_name", carrier_name).execute()
-                outcomes = sb.table("claim_outcomes").select("*").eq("carrier", carrier_name).execute()
-                if (tactics.data or outcomes.data):
-                    wins = [o for o in (outcomes.data or []) if o.get("outcome") == "won"]
-                    config["carrier_intelligence"] = {
-                        "win_rate": round(len(wins) / len(outcomes.data), 2) if outcomes.data else 0,
-                        "avg_movement": round(sum(o.get("carrier_movement", 0) for o in wins) / len(wins), 2) if wins else 0,
-                        "total_claims": len(outcomes.data or []),
-                        "suggested_arguments": [t["tactic_description"] for t in (tactics.data or [])
-                                                if t.get("effective")][:5],
-                    }
-                    print(f"[INTEL] Carrier intelligence: {len(outcomes.data or [])} claims, "
-                          f"{len(wins)} wins, {len(tactics.data or [])} tactics")
-        except Exception as e:
-            print(f"[INTEL] Carrier intelligence injection failed (non-fatal): {e}")
+        # 9a2. Inject carrier intelligence from data warehouse (parallelized)
+        carrier_name = config.get("carrier", {}).get("name", "")
+        trades = config.get("scope", {}).get("trades", [])
+        state = config.get("property", {}).get("state", "")
+        intel_context = {}
+
+        carrier_intel = {}
+        settlement_pred = {}
+        deviations = []
+
+        # Run all three intelligence queries in parallel (zero dependencies between them)
+        intel_tasks = []
+        if carrier_name and sb:
+            carrier_rcv_val = config.get("carrier", {}).get("carrier_rcv", 0)
+            intel_tasks.append(("suggest", asyncio.to_thread(suggest_arguments, sb, carrier_name, trades, state)))
+            intel_tasks.append(("predict", asyncio.to_thread(predict_settlement, sb, carrier_name, trades, state, carrier_rcv=carrier_rcv_val)))
+        if carrier_data and sb:
+            carrier_items = carrier_data.get("carrier_line_items", [])
+            price_list_name = STATE_PRICE_LIST.get(state.upper(), "NYBI26") if state else "NYBI26"
+            intel_tasks.append(("deviations", asyncio.to_thread(detect_price_deviations, sb, carrier_items, price_list_name)))
+
+        if intel_tasks:
+            try:
+                results = await asyncio.gather(*[t[1] for t in intel_tasks], return_exceptions=True)
+                task_names = [t[0] for t in intel_tasks]
+                for name, result in zip(task_names, results):
+                    if isinstance(result, Exception):
+                        print(f"[INTEL] {name} failed (non-fatal): {result}")
+                        continue
+                    if name == "suggest":
+                        carrier_intel = result
+                    elif name == "predict":
+                        settlement_pred = result
+                    elif name == "deviations":
+                        deviations = result
+            except Exception as e:
+                print(f"[INTEL] Carrier intelligence gather failed (non-fatal): {e}")
+
+        if carrier_intel:
+            intel_context = {
+                "carrier_intelligence": carrier_intel,
+                "settlement_prediction": settlement_pred,
+            }
+            config["carrier_intelligence"] = carrier_intel
+            config["settlement_prediction"] = settlement_pred
+            score = carrier_intel.get("carrier_score", {})
+            print(f"[INTEL] {carrier_name}: {score.get('win_rate_pct', 0)}% win rate, "
+                  f"{score.get('total_claims', 0)} claims, "
+                  f"{len(carrier_intel.get('general_effective_arguments', []))} effective args")
+
+        if deviations and not (len(deviations) == 1 and deviations[0].get("error")):
+            config["price_deviations"] = deviations
+            print(f"[INTEL] Found {len(deviations)} carrier pricing deviations")
 
         # 9b. Synthesize structured executive summary + conclusion (replaces run-on paragraphs)
         material = config.get("structures", [{}])[0].get("shingle_type", "roofing material")
@@ -3166,6 +3444,7 @@ async def process_claim(claim_id: str):
                 material,
                 photo_analysis.get("key_findings", []),
                 photo_analysis.get("photo_count", 0),
+                intel_context=intel_context,
             )
             config["forensic_findings"]["executive_summary"] = exec_paragraphs
         except Exception as e:
@@ -3180,6 +3459,7 @@ async def process_claim(claim_id: str):
                 photo_analysis.get("code_violations", []),
                 material,
                 carrier_data,
+                intel_context=intel_context,
             )
             # Post-process: substitute bracket placeholders that Claude sometimes returns literally
             if conclusion_paragraphs and isinstance(conclusion_paragraphs, list):
@@ -3466,10 +3746,12 @@ async def process_claim(claim_id: str):
             print(f"[PROCESS] Uploaded: {pdf_name}")
 
         # 12. Update claim status to ready
+        from datetime import datetime, timezone
         update_data: dict = {
             "status": "ready",
             "output_files": uploaded_pdfs,
             "improvement_guidance": None,  # Clear any previous rejection guidance
+            "last_processed_at": datetime.now(timezone.utc).isoformat(),
         }
         if photo_integrity and photo_integrity.get("total", 0) > 0:
             update_data["photo_integrity"] = {

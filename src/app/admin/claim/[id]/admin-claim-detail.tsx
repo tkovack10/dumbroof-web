@@ -4,6 +4,7 @@ import { useState, useRef, useCallback, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
 import type { Claim } from "@/types/claim";
 import { FileUploadZone } from "@/components/file-upload-zone";
+import { PendingChangesBanner } from "@/components/pending-changes-banner";
 import { CATEGORY_CONFIG, FILE_CATEGORIES, CLAIM_STATUS_CONFIG, type UploadCategory } from "@/lib/claim-constants";
 import { uploadClaimDocuments } from "@/lib/upload-utils";
 
@@ -362,6 +363,9 @@ export function AdminClaimDetail({ claim: initialClaim, userInfo }: Props) {
             </div>
           )}
         </div>
+
+        {/* Pending Changes Banner */}
+        {!isReprocessingState && <PendingChangesBanner claimId={claim.id} />}
 
         {/* Processing indicator */}
         {isReprocessingState && (

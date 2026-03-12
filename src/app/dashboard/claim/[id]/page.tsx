@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback, useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useParams, useRouter } from "next/navigation";
 import { FileUploadZone } from "@/components/file-upload-zone";
+import { PendingChangesBanner } from "@/components/pending-changes-banner";
 
 import type { Claim } from "@/types/claim";
 import { CATEGORY_CONFIG, CLAIM_STATUS_CONFIG, type UploadCategory } from "@/lib/claim-constants";
@@ -631,6 +632,9 @@ export default function ClaimDetailPage() {
             </div>
           </div>
         )}
+
+        {/* Pending Changes Banner */}
+        {!isReprocessingState && <PendingChangesBanner claimId={claimId} />}
 
         {/* Needs Improvement — Coaching Card */}
         {claim.status === "needs_improvement" && claim.improvement_guidance && (

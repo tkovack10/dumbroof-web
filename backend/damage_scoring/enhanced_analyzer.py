@@ -67,6 +67,7 @@ def _call_vision(
     prompt: str,
     images: List[Tuple[str, str]],
     model: str = MODEL,
+    sb=None, claim_id: str = None, step_name: str = "damage_scoring_vision",
 ) -> dict:
     """Call Claude Vision with one or more images."""
     content = []
@@ -77,11 +78,17 @@ def _call_vision(
         })
     content.append({"type": "text", "text": prompt})
 
-    response = client.messages.create(
-        model=model,
-        max_tokens=MAX_TOKENS,
-        messages=[{"role": "user", "content": content}],
-    )
+    kwargs = dict(model=model, max_tokens=MAX_TOKENS,
+                  messages=[{"role": "user", "content": content}])
+    # Use telemetry if Supabase client available
+    if sb:
+        try:
+            from telemetry import call_claude_logged
+            response = call_claude_logged(client, sb, claim_id, step_name=step_name, **kwargs)
+            return _parse_json_response(response.content[0].text)
+        except ImportError:
+            pass
+    response = client.messages.create(**kwargs)
     return _parse_json_response(response.content[0].text)
 
 

@@ -68,10 +68,11 @@ def _parse_json_response(text: str) -> dict:
         return {}
 
 
-def _call_vision(client: anthropic.Anthropic, image_path: str, prompt: str) -> dict:
+def _call_vision(client: anthropic.Anthropic, image_path: str, prompt: str,
+                  sb=None, claim_id: str = None, step_name: str = "hail_vision") -> dict:
     """Send an image to Claude Vision and parse JSON response."""
     img_data, media_type = _encode_image(image_path)
-    response = client.messages.create(
+    kwargs = dict(
         model=MODEL,
         max_tokens=MAX_TOKENS,
         messages=[
@@ -91,6 +92,15 @@ def _call_vision(client: anthropic.Anthropic, image_path: str, prompt: str) -> d
             }
         ],
     )
+    # Use telemetry if Supabase client available
+    if sb:
+        try:
+            from telemetry import call_claude_logged
+            response = call_claude_logged(client, sb, claim_id, step_name=step_name, **kwargs)
+            return _parse_json_response(response.content[0].text)
+        except ImportError:
+            pass
+    response = client.messages.create(**kwargs)
     return _parse_json_response(response.content[0].text)
 
 

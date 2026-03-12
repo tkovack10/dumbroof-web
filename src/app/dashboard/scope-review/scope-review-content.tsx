@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
 import type { LineItemForReview, ScopeReviewResponse } from "@/types/scope-review";
 import { getBackendUrl } from "@/lib/backend-config";
+import { RoofSectionsEditor } from "@/components/roof-sections-editor";
 
 const CATEGORY_COLORS: Record<string, string> = {
   ROOFING: "bg-red-50 text-red-700 border-red-200",
@@ -246,6 +247,9 @@ export function ScopeReviewContent() {
       )}
 
       <div className="max-w-5xl mx-auto px-6 py-8 space-y-6">
+        {/* Roof Sections Editor */}
+        {claimId && <RoofSectionsEditor claimId={claimId} />}
+
         {/* Financial summary */}
         <div className="bg-white rounded-2xl border border-gray-200 p-6">
           <div className="grid grid-cols-3 gap-4">
@@ -495,14 +499,22 @@ export function ScopeReviewContent() {
           );
         })}
 
-        {/* Regenerate Report */}
-        <div className="flex justify-center pt-4">
+        {/* Action buttons */}
+        <div className="flex flex-col items-center gap-3 pt-4">
+          {claimId && (
+            <a
+              href={`/dashboard/claim/${claimId}`}
+              className="bg-[var(--red)] hover:bg-[var(--red-dark)] text-white px-8 py-3 rounded-xl font-semibold transition-colors inline-block"
+            >
+              Review All Changes
+            </a>
+          )}
           <button
             onClick={handleRegenerate}
             disabled={regenerating}
-            className="bg-[var(--red)] hover:bg-[var(--red-dark)] text-white px-8 py-3 rounded-xl font-semibold transition-colors disabled:opacity-50"
+            className="text-sm text-gray-500 hover:text-[var(--navy)] font-medium transition-colors disabled:opacity-50"
           >
-            {regenerating ? "Regenerating..." : "Regenerate Report"}
+            {regenerating ? "Resubmitting..." : "Resubmit Now"}
           </button>
         </div>
 

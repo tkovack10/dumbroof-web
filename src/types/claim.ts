@@ -1,3 +1,5 @@
+import type { RoofSectionsData } from "./roof-sections";
+
 export interface Claim {
   id: string;
   user_id: string;
@@ -44,6 +46,10 @@ export interface Claim {
   // Geo
   latitude?: number | null;
   longitude?: number | null;
+  // Roof sections (slope editor)
+  roof_sections?: RoofSectionsData | null;
+  // Processing timestamp (for pending changes tracking)
+  last_processed_at?: string | null;
   // Photo corrections
   excluded_photos?: string[] | null;
   // Line item corrections

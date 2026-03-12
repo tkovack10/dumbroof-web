@@ -551,7 +551,8 @@ def classify_email(parsed: dict, carrier_name: str | None) -> str:
     return "edit_request"
 
 
-async def analyze_edit_request(text: str, subject: str, attachments: list) -> dict:
+async def analyze_edit_request(text: str, subject: str, attachments: list,
+                               sb: Client = None, claim_id: str = None) -> dict:
     """
     Use Sonnet to parse an edit request email into structured changes.
 
@@ -563,6 +564,7 @@ async def analyze_edit_request(text: str, subject: str, attachments: list) -> di
         }
     """
     import anthropic
+    from telemetry import call_claude_logged
 
     attachment_summary = ""
     if attachments:
@@ -599,8 +601,10 @@ mapping each filename to its type. Use exact filenames from the Attachments list
 
     try:
         client = anthropic.Anthropic()
-        response = client.messages.create(
-            model="claude-sonnet-4-6",
+        response = call_claude_logged(
+            client, sb, claim_id,
+            step_name="gmail_edit_request_analysis",
+            model="claude-opus-4-6",
             max_tokens=500,
             messages=[{"role": "user", "content": prompt}],
         )
@@ -764,7 +768,10 @@ async def _poll_once(service, sb: Client, backend_url: str):
                 # Analyze with AI
                 body_text = parsed.get("original_body") or parsed["text_body"] or ""
                 subject_text = parsed.get("original_subject") or parsed["subject"] or ""
-                ai_result = await analyze_edit_request(body_text, subject_text, parsed["attachments"])
+                ai_result = await analyze_edit_request(
+                    body_text, subject_text, parsed["attachments"],
+                    sb=sb, claim_id=match.get("claim_id"),
+                )
 
                 edit_record = {
                     "claim_id": match["claim_id"],

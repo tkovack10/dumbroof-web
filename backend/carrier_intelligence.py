@@ -124,29 +124,51 @@ def get_common_denials(sb, carrier: str, trade: Optional[str] = None) -> list:
         return [{"error": str(e)}]
 
 
+def get_effective_arguments_batch(sb, carrier: str, trades: list, limit_per_trade: int = 5) -> dict:
+    """Get effective arguments for multiple trades in a single query."""
+    try:
+        results = (
+            sb.table("carrier_tactics")
+            .select("counter_argument, tactic_type, settlement_impact, trade, description")
+            .eq("carrier", carrier)
+            .eq("effective", True)
+            .order("settlement_impact", desc=True)
+            .execute()
+            .data
+        )
+        by_trade = {}
+        general = []
+        for r in (results or []):
+            entry = {
+                "argument": r.get("counter_argument"),
+                "tactic_countered": r.get("tactic_type"),
+                "dollar_impact": r.get("settlement_impact", 0),
+                "trade": r.get("trade"),
+                "description": r.get("description"),
+            }
+            t = r.get("trade")
+            if t and t in trades:
+                by_trade.setdefault(t, [])
+                if len(by_trade[t]) < limit_per_trade:
+                    by_trade[t].append(entry)
+            if len(general) < limit_per_trade:
+                general.append(entry)
+        return {"by_trade": by_trade, "general": general}
+    except Exception as e:
+        return {"by_trade": {}, "general": [], "error": str(e)}
+
+
 def suggest_arguments(sb, carrier: str, trades: list, state: str = None) -> dict:
     """Pre-claim intelligence: suggest arguments based on historical effectiveness."""
     try:
-        # Get carrier score
         score = get_carrier_score(sb, carrier)
-
-        # Get effective arguments for each trade
-        trade_arguments = {}
-        for trade in trades:
-            args = get_effective_arguments(sb, carrier, trade=trade, limit=5)
-            if args and not args[0].get("error"):
-                trade_arguments[trade] = args
-
-        # Get general effective arguments (not trade-specific)
-        general_args = get_effective_arguments(sb, carrier, limit=5)
-
-        # Get common denials to anticipate
+        args = get_effective_arguments_batch(sb, carrier, trades)
         denials = get_common_denials(sb, carrier)
 
         return {
             "carrier_score": score,
-            "recommended_arguments_by_trade": trade_arguments,
-            "general_effective_arguments": general_args if not general_args or not general_args[0].get("error") else [],
+            "recommended_arguments_by_trade": args["by_trade"],
+            "general_effective_arguments": args["general"],
             "anticipated_denials": denials if not denials or not denials[0].get("error") else [],
             "prediction": _predict_outcome(score, trades),
         }
