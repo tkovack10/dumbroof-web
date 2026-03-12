@@ -2905,6 +2905,31 @@ async def process_claim(claim_id: str):
         # Ingest all downloaded files — extracts ZIPs, PDFs, converts HEIC/TIFF/etc.
         photo_paths = ingest_photos(downloaded_paths, photos_dir)
 
+        # Upload extracted photos back to storage so Photo Review can serve them individually
+        # Only needed when containers (ZIP/PDF) produced new files not already in storage
+        original_fnames = set(claim.get("photo_files", []))
+        extracted_fnames = [os.path.basename(p) for p in photo_paths]
+        new_photos = [p for p in photo_paths if os.path.basename(p) not in original_fnames]
+        if new_photos:
+            print(f"[PHOTOS] Uploading {len(new_photos)} extracted photos back to storage")
+            for p in new_photos:
+                fname = os.path.basename(p)
+                mime = get_media_type(fname)
+                try:
+                    with open(p, "rb") as f:
+                        sb.storage.from_("claim-documents").upload(
+                            f"{file_path}/photos/{fname}", f.read(),
+                            file_options={"content-type": mime, "upsert": "true"}
+                        )
+                except Exception as e:
+                    print(f"[PHOTOS] Upload failed for {fname} (non-fatal): {e}")
+            # Update photo_files on claim to include individual filenames
+            try:
+                sb.table("claims").update({"photo_files": extracted_fnames}).eq("id", claim_id).execute()
+                print(f"[PHOTOS] Updated photo_files: {len(original_fnames)} → {len(extracted_fnames)}")
+            except Exception as e:
+                print(f"[PHOTOS] photo_files update failed (non-fatal): {e}")
+
         # Filter out excluded photos (rejected via Photo Review UI)
         excluded_keys = claim.get("excluded_photos") or []
         if excluded_keys:
