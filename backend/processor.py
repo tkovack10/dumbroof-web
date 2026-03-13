@@ -36,7 +36,6 @@ from telemetry import (
 )
 
 from photo_utils import (
-    convert_to_jpeg,
     resize_photo as _shared_resize_photo,
     prepare_photo_for_api,
     prepare_photo_for_pdf,
@@ -271,21 +270,6 @@ def resolve_eml_to_document(path: str, work_dir: str) -> str:
     return path
 
 
-def resize_photo(path: str, max_dim: int = 1024) -> str:
-    """Resize a photo — handles HEIC, TIFF, BMP, RAW, and all standard formats.
-    Delegates to shared photo_utils for format conversion + resize."""
-    ext = path.lower().rsplit(".", 1)[-1] if "." in path else ""
-
-    # Convert non-native formats to JPEG first
-    if ext in NEEDS_CONVERSION:
-        converted = convert_to_jpeg(path)
-        if not converted:
-            print(f"[PHOTOS] Could not convert {os.path.basename(path)} ({ext}) — skipping")
-            return ""
-        path = converted
-
-    return _shared_resize_photo(path, max_dim=max_dim, quality=60, suffix="_resized")
-
 
 # ===================================================================
 # CLAUDE API — DOCUMENT ANALYSIS
@@ -436,7 +420,10 @@ def analyze_photos(client: anthropic.Anthropic, photo_paths: list[str], user_not
     for path in photo_paths[:100]:
         media_type = get_media_type(path)
         if media_type.startswith("image/"):
-            resized = resize_photo(path)
+            resized = _shared_resize_photo(path, max_dim=1024, quality=60, suffix="_resized")
+            if not resized:
+                print(f"[PHOTO] Skipping {os.path.basename(path)} — resize/convert failed")
+                continue
             image_paths.append(resized)
             sz = os.path.getsize(resized) / 1024
             print(f"[PHOTO] {os.path.basename(path)} -> {sz:.0f}KB")
@@ -720,7 +707,9 @@ def analyze_photo_integrity(client: anthropic.Anthropic, photo_paths: list[str])
     sample_paths = []
     for path in photo_paths[:20]:
         if get_media_type(path).startswith("image/"):
-            resized = resize_photo(path)
+            resized = _shared_resize_photo(path, max_dim=1024, quality=60, suffix="_resized")
+            if not resized:
+                continue
             sample_paths.append(resized)
 
     if not sample_paths:
