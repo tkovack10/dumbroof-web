@@ -272,9 +272,9 @@ export function AdminClaimDetail({ claim: initialClaim, userInfo }: Props) {
           {claim.damage_score != null && (
             <div className="mt-4 grid grid-cols-2 gap-3">
               {[
-                { label: "Damage Score", value: claim.damage_score, unit: "/100", grade: claim.damage_grade },
-                { label: "Approval Score", value: claim.approval_score ?? 0, unit: "%", grade: claim.approval_grade },
-              ].map(({ label, value, unit, grade }) => {
+                { label: "Damage Score", subtitle: "Storm damage severity", value: claim.damage_score, unit: "/100", grade: claim.damage_grade },
+                { label: "Technical Score", subtitle: "Discontinued products, code compliance & O&L triggers", value: claim.approval_score ?? 0, unit: "%", grade: claim.approval_grade },
+              ].map(({ label, subtitle, value, unit, grade }) => {
                 const gradeColors: Record<string, string> = {
                   A: "bg-green-100 text-green-800 border-green-300",
                   B: "bg-blue-100 text-blue-800 border-blue-300",
@@ -309,6 +309,7 @@ export function AdminClaimDetail({ claim: initialClaim, userInfo }: Props) {
                           {g}
                         </span>
                       </div>
+                      {subtitle && <p className="text-[10px] text-gray-400 mt-0.5 leading-tight">{subtitle}</p>}
                     </div>
                   </div>
                 );
