@@ -106,228 +106,395 @@ CSS_REPAIR = """
 body {
     font-family: -apple-system, 'Helvetica Neue', Arial, sans-serif;
     font-size: 10pt;
-    line-height: 1.5;
-    color: #1a1a1a;
+    line-height: 1.55;
+    color: #1e293b;
+    background: #fff;
 }
 .content {
-    padding: 0 0.75in 0.65in 0.75in;
+    padding: 0 0.7in 0.6in 0.7in;
 }
 h1 {
     font-size: 20pt;
     font-weight: 800;
     color: #0d2137;
     margin: 14pt 0 8pt 0;
+    letter-spacing: -0.3pt;
 }
 h2 {
-    font-size: 13pt;
+    font-size: 12pt;
     font-weight: 700;
     color: #0d2137;
-    border-bottom: 2pt solid #2196F3;
-    padding-bottom: 3pt;
-    margin: 18pt 0 8pt 0;
+    margin: 20pt 0 8pt 0;
+    padding-bottom: 4pt;
+    border-bottom: 1.5pt solid #e2e8f0;
+    display: flex;
+    align-items: center;
+    gap: 6pt;
+}
+h2 .section-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20pt;
+    height: 20pt;
+    border-radius: 4pt;
+    font-size: 10pt;
+    flex-shrink: 0;
 }
 h3 {
-    font-size: 11pt;
+    font-size: 10.5pt;
     font-weight: 700;
     color: #0d2137;
-    margin: 12pt 0 5pt 0;
+    margin: 10pt 0 4pt 0;
 }
-p { margin: 5pt 0; }
-ul, ol { margin: 5pt 0 5pt 20pt; }
-li { margin: 3pt 0; }
+p { margin: 4pt 0; }
+ul, ol { margin: 4pt 0 4pt 18pt; }
+li { margin: 2pt 0; }
 
-/* Header */
+/* ── Header ── */
 .header-bar {
-    background: #0d2137;
+    background: linear-gradient(135deg, #0d2137 0%, #162d4a 100%);
     color: #fff;
-    padding: 18pt 0.75in;
-    margin: 0 0 16pt 0;
+    padding: 20pt 0.7in 16pt 0.7in;
+    margin: 0;
     width: 100%;
     display: flex;
     align-items: center;
     gap: 14pt;
+    position: relative;
 }
-.header-bar .logo-img { height: 44pt; width: auto; }
+.header-bar::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 3pt;
+    background: linear-gradient(90deg, #dc2626, #ef4444, #dc2626);
+}
+.header-bar .logo-img { height: 40pt; width: auto; }
 .header-bar .header-text { flex: 1; }
 .header-bar .company {
-    font-size: 10pt;
+    font-size: 9pt;
     font-weight: 700;
-    color: #64b5f6;
-    letter-spacing: 1.5pt;
+    color: #94a3b8;
+    letter-spacing: 2pt;
+    text-transform: uppercase;
     margin-bottom: 2pt;
 }
 .header-bar h1 {
     color: #fff;
-    font-size: 18pt;
+    font-size: 17pt;
     margin: 0;
     line-height: 1.2;
+    letter-spacing: -0.3pt;
 }
 .header-bar .subtitle {
-    font-size: 8.5pt;
-    color: #aabdd4;
-    margin-top: 2pt;
+    font-size: 8pt;
+    color: #64748b;
+    margin-top: 3pt;
+    letter-spacing: 0.3pt;
+}
+.header-badge {
+    background: rgba(255,255,255,0.12);
+    border: 1px solid rgba(255,255,255,0.2);
+    padding: 6pt 10pt;
+    border-radius: 6pt;
+    text-align: center;
+    font-size: 8pt;
+    color: #94a3b8;
+    line-height: 1.3;
+}
+.header-badge .badge-value {
+    font-size: 14pt;
+    font-weight: 800;
+    color: #fff;
+    display: block;
 }
 
-/* Info grid */
+/* ── Summary Panel ── */
+.summary-panel {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr 1fr;
+    gap: 8pt;
+    margin: 14pt 0;
+    padding: 12pt;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 6pt;
+}
+.summary-item {
+    text-align: center;
+    padding: 6pt 4pt;
+}
+.summary-item .summary-label {
+    font-size: 7pt;
+    font-weight: 600;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 0.5pt;
+    margin-bottom: 2pt;
+}
+.summary-item .summary-value {
+    font-size: 12pt;
+    font-weight: 800;
+    color: #0d2137;
+}
+.summary-item .summary-value.red { color: #dc2626; }
+.summary-item .summary-value.green { color: #16a34a; }
+.summary-item .summary-value.orange { color: #ea580c; }
+
+/* ── Info Grid ── */
 .info-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 8pt;
+    gap: 6pt 12pt;
     margin: 12pt 0;
-    font-size: 9.5pt;
+    font-size: 9pt;
 }
-.info-grid .label {
+.info-item {
+    display: flex;
+    align-items: baseline;
+    gap: 6pt;
+    padding: 4pt 0;
+    border-bottom: 1px solid #f1f5f9;
+}
+.info-item .label {
     font-weight: 600;
-    color: #666;
+    color: #64748b;
+    font-size: 8pt;
+    text-transform: uppercase;
+    letter-spacing: 0.3pt;
+    white-space: nowrap;
 }
-.info-grid .value {
-    color: #1a1a1a;
+.info-item .value {
+    color: #1e293b;
+    font-weight: 500;
 }
 
-/* Severity badges */
+/* ── Severity Badges ── */
 .severity-badge {
     display: inline-block;
     padding: 3pt 10pt;
-    border-radius: 3pt;
+    border-radius: 10pt;
     font-weight: 700;
-    font-size: 9pt;
+    font-size: 8pt;
     color: #fff;
     text-transform: uppercase;
+    letter-spacing: 0.5pt;
 }
-.severity-minor { background: #4caf50; }
-.severity-moderate { background: #ff9800; }
-.severity-major { background: #f44336; }
-.severity-critical { background: #b71c1c; }
-.severity-emergency { background: #880e4f; }
+.severity-minor { background: #16a34a; }
+.severity-moderate { background: #ea580c; }
+.severity-major { background: #dc2626; }
+.severity-critical { background: #991b1b; }
+.severity-emergency { background: #7f1d1d; }
 
-/* Callout boxes */
+/* ── Callout Boxes ── */
 .diagnosis-box {
-    background: #e3f2fd;
-    border-left: 4pt solid #1976d2;
-    padding: 10pt 14pt;
+    background: #f0f9ff;
+    border: 1px solid #bae6fd;
+    border-left: 4pt solid #0284c7;
+    padding: 12pt 14pt;
     margin: 10pt 0;
-    border-radius: 2pt;
-    font-size: 10pt;
-}
-.warning-box {
-    background: #fff8e1;
-    border-left: 4pt solid #f9a825;
-    padding: 10pt 14pt;
-    margin: 10pt 0;
-    border-radius: 2pt;
+    border-radius: 0 6pt 6pt 0;
     font-size: 9.5pt;
 }
+.diagnosis-box p:first-child { font-weight: 500; }
+.warning-box {
+    background: #fffbeb;
+    border: 1px solid #fde68a;
+    border-left: 4pt solid #f59e0b;
+    padding: 10pt 14pt;
+    margin: 10pt 0;
+    border-radius: 0 6pt 6pt 0;
+    font-size: 9pt;
+}
 .price-box {
-    background: #0d2137;
-    padding: 14pt 18pt;
+    background: linear-gradient(135deg, #0d2137 0%, #1e3a5f 100%);
+    padding: 16pt 20pt;
     margin: 14pt 0;
-    border-radius: 4pt;
+    border-radius: 8pt;
     text-align: center;
+    position: relative;
+    overflow: hidden;
+}
+.price-box::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3pt;
+    background: linear-gradient(90deg, #dc2626, #ef4444);
 }
 .price-box .price {
-    font-size: 28pt;
+    font-size: 30pt;
     font-weight: 800;
     color: #fff;
+    letter-spacing: -0.5pt;
 }
 .price-box .label {
-    font-size: 9pt;
-    color: #aabdd4;
-    margin-top: 4pt;
+    font-size: 8pt;
+    color: #94a3b8;
+    margin-top: 3pt;
+    text-transform: uppercase;
+    letter-spacing: 1pt;
 }
 
-/* Steps */
+/* ── Category Colors ── */
+.cat-protection { background: #3b82f6; }
+.cat-removal { background: #f97316; }
+.cat-inspection { background: #8b5cf6; }
+.cat-installation { background: #16a34a; }
+.cat-cleanup { background: #64748b; }
+.cat-default { background: #0d2137; }
+
+/* ── Step Cards ── */
 .step-card {
     break-inside: avoid;
     page-break-inside: avoid;
-    border: 1px solid #e0e0e0;
-    border-radius: 4pt;
+    border: 1px solid #e2e8f0;
+    border-radius: 8pt;
     margin: 8pt 0;
-    padding: 10pt 12pt;
+    padding: 0;
+    overflow: hidden;
+    background: #fff;
 }
 .step-card .step-header {
     display: flex;
     align-items: center;
-    gap: 8pt;
-    margin-bottom: 6pt;
+    gap: 0;
+    padding: 8pt 12pt;
+    background: #f8fafc;
+    border-bottom: 1px solid #e2e8f0;
 }
 .step-number {
-    background: #0d2137;
     color: #fff;
-    width: 24pt;
-    height: 24pt;
-    border-radius: 50%;
+    width: 22pt;
+    height: 22pt;
+    border-radius: 6pt;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-weight: 700;
-    font-size: 10pt;
+    font-weight: 800;
+    font-size: 9pt;
     flex-shrink: 0;
+    margin-right: 8pt;
 }
 .step-title {
     font-weight: 700;
-    font-size: 10.5pt;
+    font-size: 10pt;
     color: #0d2137;
+    flex: 1;
+}
+.step-category-label {
+    font-size: 7pt;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5pt;
+    padding: 2pt 6pt;
+    border-radius: 3pt;
+    color: #fff;
+}
+.step-body {
+    padding: 10pt 12pt 10pt 42pt;
 }
 .step-instructions {
     font-size: 9.5pt;
-    line-height: 1.5;
-    margin: 4pt 0;
-    padding-left: 32pt;
+    line-height: 1.55;
+    margin: 0;
+    color: #334155;
 }
 .step-meta {
     font-size: 8pt;
-    color: #888;
-    padding-left: 32pt;
-    margin-top: 4pt;
+    color: #94a3b8;
+    margin-top: 6pt;
+    display: flex;
+    gap: 10pt;
+    flex-wrap: wrap;
+}
+.step-meta-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 3pt;
 }
 .safety-note {
-    background: #fff3e0;
-    border-left: 3pt solid #ff9800;
-    padding: 4pt 8pt;
-    margin: 4pt 0 0 32pt;
+    background: #fef3c7;
+    border: 1px solid #fde68a;
+    border-radius: 4pt;
+    padding: 6pt 8pt;
+    margin: 6pt 0 0 0;
     font-size: 8.5pt;
-    color: #e65100;
+    color: #92400e;
+    display: flex;
+    align-items: flex-start;
+    gap: 5pt;
+}
+.safety-icon {
+    font-weight: 800;
+    flex-shrink: 0;
 }
 .alt-lang {
     font-size: 8.5pt;
-    color: #555;
+    color: #64748b;
     font-style: italic;
-    padding-left: 32pt;
-    margin-top: 2pt;
-    border-top: 1px dashed #e0e0e0;
-    padding-top: 3pt;
+    margin-top: 6pt;
+    padding-top: 6pt;
+    border-top: 1px dashed #e2e8f0;
 }
 .alt-lang-label {
-    font-weight: 600;
+    font-weight: 700;
     font-style: normal;
-    color: #888;
+    color: #94a3b8;
     font-size: 7pt;
     text-transform: uppercase;
     letter-spacing: 0.5pt;
+    margin-right: 4pt;
 }
 
-/* Materials table */
+/* ── Materials Table ── */
 table {
     width: 100%;
-    border-collapse: collapse;
+    border-collapse: separate;
+    border-spacing: 0;
     margin: 8pt 0;
     font-size: 9pt;
+    border: 1px solid #e2e8f0;
+    border-radius: 6pt;
+    overflow: hidden;
 }
 th {
     background: #0d2137;
     color: #fff;
-    padding: 5pt 8pt;
+    padding: 7pt 10pt;
     text-align: left;
     font-weight: 600;
+    font-size: 8pt;
+    text-transform: uppercase;
+    letter-spacing: 0.5pt;
 }
 td {
-    padding: 4pt 8pt;
-    border-bottom: 1px solid #e0e0e0;
+    padding: 6pt 10pt;
+    border-bottom: 1px solid #f1f5f9;
+    color: #334155;
 }
-tr:nth-child(even) td { background: #f8f9fa; }
-.amt { text-align: right; font-family: 'Courier New', monospace; }
+tr:last-child td { border-bottom: none; }
+tr:nth-child(even) td { background: #f8fafc; }
+.amt { text-align: right; font-family: 'Courier New', monospace; font-weight: 600; }
+.total-row td {
+    background: #0d2137 !important;
+    color: #fff !important;
+    font-weight: 700;
+    font-size: 10pt;
+    padding: 8pt 10pt;
+}
+.subtotal-row td {
+    background: #e2e8f0 !important;
+    font-weight: 600;
+    color: #0d2137;
+}
 
-/* Photo grid */
+/* ── Photo Grid ── */
 .photo-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -337,9 +504,10 @@ tr:nth-child(even) td { background: #f8f9fa; }
 .photo-card {
     break-inside: avoid;
     page-break-inside: avoid;
-    border: 1px solid #ddd;
-    border-radius: 4pt;
+    border: 1px solid #e2e8f0;
+    border-radius: 6pt;
     overflow: hidden;
+    background: #fff;
 }
 .photo-card img {
     width: 100%;
@@ -347,51 +515,109 @@ tr:nth-child(even) td { background: #f8f9fa; }
     display: block;
 }
 .photo-card .caption {
-    padding: 4pt 6pt;
+    padding: 5pt 8pt;
     font-size: 7.5pt;
-    color: #333;
-    background: #f9f9f9;
-    line-height: 1.3;
+    color: #475569;
+    background: #f8fafc;
+    line-height: 1.35;
+    border-top: 1px solid #e2e8f0;
 }
+.photo-label {
+    display: inline-block;
+    font-size: 7pt;
+    font-weight: 700;
+    color: #fff;
+    padding: 1pt 5pt;
+    border-radius: 3pt;
+    margin-right: 4pt;
+    text-transform: uppercase;
+}
+.photo-label.before { background: #f97316; }
+.photo-label.after { background: #16a34a; }
 
-/* Approval section */
+/* ── Approval Section ── */
 .approval-section {
-    border: 2pt solid #0d2137;
-    padding: 14pt;
+    border: 1.5pt solid #0d2137;
+    padding: 16pt;
     margin: 16pt 0;
-    border-radius: 4pt;
+    border-radius: 8pt;
+    background: #fafbfc;
 }
 .approval-section h3 {
     margin-top: 0;
+    font-size: 11pt;
+    color: #0d2137;
 }
+.sig-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20pt;
+    margin-top: 12pt;
+}
+.sig-block {}
 .signature-line {
-    border-bottom: 1pt solid #333;
-    height: 30pt;
-    margin: 12pt 0 4pt 0;
+    border-bottom: 1pt solid #1e293b;
+    height: 28pt;
+    margin: 0 0 3pt 0;
 }
 .signature-label {
-    font-size: 8pt;
-    color: #666;
+    font-size: 7.5pt;
+    color: #64748b;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.3pt;
 }
 
-/* Warranty section */
+/* ── Warranty Section ── */
 .warranty-section {
-    background: #f5f5f5;
-    border: 1px solid #ddd;
-    padding: 10pt 14pt;
-    margin: 12pt 0;
-    border-radius: 4pt;
+    background: linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%);
+    border: 1px solid #bbf7d0;
+    padding: 14pt 16pt;
+    margin: 14pt 0;
+    border-radius: 8pt;
     font-size: 9pt;
 }
+.warranty-section h3 {
+    color: #166534;
+    margin-top: 0;
+    display: flex;
+    align-items: center;
+    gap: 6pt;
+}
+.warranty-badge {
+    display: inline-block;
+    background: #16a34a;
+    color: #fff;
+    padding: 2pt 8pt;
+    border-radius: 10pt;
+    font-size: 7pt;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5pt;
+}
 
-/* Footer */
+/* ── Footer ── */
 .footer {
     margin-top: 20pt;
-    padding-top: 8pt;
-    border-top: 1px solid #ddd;
+    padding-top: 10pt;
+    border-top: 1.5pt solid #e2e8f0;
     font-size: 7.5pt;
-    color: #999;
+    color: #94a3b8;
     text-align: center;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+.footer-left { text-align: left; }
+.footer-right { text-align: right; }
+.footer-center {
+    font-size: 7pt;
+    color: #cbd5e1;
+}
+.powered-by {
+    font-size: 6.5pt;
+    color: #cbd5e1;
+    letter-spacing: 0.3pt;
 }
 """
 
@@ -420,8 +646,8 @@ def build_repair_instructions(config):
             "subtitle": "Leak Repair Work Order",
             "diagnosis": "Diagnosis",
             "steps": "Repair Steps",
-            "materials": "Materials Needed",
-            "item": "Item", "qty": "Qty", "unit": "Unit",
+            "materials": "Materials Required",
+            "item": "Item", "qty": "Qty", "unit": "Unit", "cost": "Cost",
             "safety": "Safety",
             "time": "Est. Time",
             "total_time": "Total Estimated Time",
@@ -433,7 +659,7 @@ def build_repair_instructions(config):
             "diagnosis": "Diagnostico",
             "steps": "Pasos de Reparacion",
             "materials": "Materiales Necesarios",
-            "item": "Articulo", "qty": "Cant.", "unit": "Unidad",
+            "item": "Articulo", "qty": "Cant.", "unit": "Unidad", "cost": "Costo",
             "safety": "Seguridad",
             "time": "Tiempo Est.",
             "total_time": "Tiempo Total Estimado",
@@ -456,9 +682,35 @@ def build_repair_instructions(config):
     logo_b64 = get_contractor_logo_b64(config)
     company_name = contractor.get("company_name", "DumbRoof Repair")
 
+    # Category color mapping
+    cat_colors = {
+        "protection": "cat-protection",
+        "removal": "cat-removal",
+        "inspection": "cat-inspection",
+        "installation": "cat-installation",
+        "cleanup": "cat-cleanup",
+    }
+    cat_labels = {
+        "protection": "PREP",
+        "removal": "REMOVE",
+        "inspection": "INSPECT",
+        "installation": "INSTALL",
+        "cleanup": "CLEANUP",
+    }
+
+    # Pre-compute totals for summary panel
+    total_minutes = sum(s.get("time_minutes", 0) for s in repair.get("steps", []))
+    hours = total_minutes // 60
+    mins = total_minutes % 60
+    time_display = f"{hours}h {mins}m" if hours else f"{mins} min"
+    num_steps = len(repair.get("steps", []))
+    num_materials = len(repair.get("materials_list", []))
+
+    severity = diagnosis.get("severity", "moderate")
+    severity_class = f"severity-{severity}"
+
     # Build steps HTML — both languages, primary first
     steps_html = ""
-    total_minutes = 0
     for step in repair.get("steps", []):
         step_num = step.get("step", "")
         title = step.get(title_key, step.get("title_en", ""))
@@ -466,42 +718,49 @@ def build_repair_instructions(config):
         alt_title = step.get(alt_title_key, "")
         alt_instructions = step.get(alt_instr_key, "")
         time_min = step.get("time_minutes", 0)
-        total_minutes += time_min
         safety = step.get(safety_key, step.get("safety_note_en"))
         photo_ref = step.get("photo_reference")
         materials = step.get("materials", [])
+        category = step.get("category", "")
+
+        cat_class = cat_colors.get(category, "cat-default")
+        cat_label = cat_labels.get(category, category.upper() if category else "")
 
         safety_html = ""
         if safety:
-            safety_label = L["safety"]
-            safety_html = f'<div class="safety-note"><strong>{safety_label}:</strong> {safety}</div>'
+            safety_html = f'<div class="safety-note"><span class="safety-icon">&#9888;</span> {safety}</div>'
 
         # Secondary language block
         alt_lang_html = ""
         if alt_instructions:
             alt_lang_html = f"""<div class="alt-lang">
-                <span class="alt-lang-label">{alt_lang_label}:</span> <strong>{alt_title}</strong> — {alt_instructions}
+                <span class="alt-lang-label">{alt_lang_label}:</span> <strong>{alt_title}</strong> &mdash; {alt_instructions}
             </div>"""
 
-        meta_parts = []
+        meta_items = []
         if time_min:
-            meta_parts.append(f"{L['time']}: {time_min} min")
+            meta_items.append(f'<span class="step-meta-item">&#9201; {time_min} min</span>')
         if materials:
-            meta_parts.append(f"Materials: {', '.join(materials)}")
+            meta_items.append(f'<span class="step-meta-item">&#9881; {", ".join(materials)}</span>')
         if photo_ref and photo_ref in photo_map:
-            meta_parts.append(f"See photo {photo_ref}")
-        meta_html = " | ".join(meta_parts)
+            meta_items.append(f'<span class="step-meta-item">&#128247; See {photo_ref}</span>')
+        meta_html = "".join(meta_items)
+
+        cat_badge = f'<span class="step-category-label {cat_class}">{cat_label}</span>' if cat_label else ""
 
         steps_html += f"""
         <div class="step-card">
             <div class="step-header">
-                <div class="step-number">{step_num}</div>
+                <div class="step-number {cat_class}">{step_num}</div>
                 <div class="step-title">{title}</div>
+                {cat_badge}
             </div>
-            <div class="step-instructions">{instructions}</div>
-            {alt_lang_html}
-            {safety_html}
-            <div class="step-meta">{meta_html}</div>
+            <div class="step-body">
+                <div class="step-instructions">{instructions}</div>
+                {alt_lang_html}
+                {safety_html}
+                <div class="step-meta">{meta_html}</div>
+            </div>
         </div>
         """
 
@@ -510,17 +769,20 @@ def build_repair_instructions(config):
     if repair.get("materials_list"):
         rows = ""
         for mat in repair["materials_list"]:
+            cost = mat.get("cost", 0)
+            cost_display = fmt_money(cost) if cost else ""
             rows += f"""
             <tr>
                 <td>{mat.get('item', '')}</td>
                 <td class="amt">{mat.get('qty', 0)}</td>
                 <td>{mat.get('unit', '')}</td>
+                <td class="amt">{cost_display}</td>
             </tr>
             """
         materials_html = f"""
         <h2>{L['materials']}</h2>
         <table>
-            <tr><th>{L['item']}</th><th style="text-align:right">{L['qty']}</th><th>{L['unit']}</th></tr>
+            <tr><th>{L['item']}</th><th style="text-align:right">{L['qty']}</th><th>{L['unit']}</th><th style="text-align:right">{L['cost']}</th></tr>
             {rows}
         </table>
         """
@@ -549,13 +811,10 @@ def build_repair_instructions(config):
             <div class="photo-grid">{photo_cards}</div>
             """
 
-    # Total time display
-    hours = total_minutes // 60
-    mins = total_minutes % 60
-    time_display = f"{hours}h {mins}m" if hours else f"{mins} min"
-
-    severity = diagnosis.get("severity", "moderate")
-    severity_class = f"severity-{severity}"
+    address_line = f"{prop.get('address', '')} {prop.get('city', '')}, {prop.get('state', '')} {prop.get('zip', '')}".strip()
+    job_date = config.get('job', {}).get('created', '')[:10]
+    job_id = config.get('job', {}).get('job_id', '')
+    technician = submission.get('submitted_by', '')
 
     html = f"""<!DOCTYPE html>
 <html><head><meta charset="UTF-8"><style>{CSS_REPAIR}</style></head>
@@ -566,27 +825,49 @@ def build_repair_instructions(config):
     <div class="header-text">
         <div class="company">{company_name.upper()}</div>
         <h1>{L['title']}</h1>
-        <div class="subtitle">{L['subtitle']}</div>
+        <div class="subtitle">{L['subtitle']} &mdash; {address_line}</div>
+    </div>
+    <div class="header-badge">
+        <span class="badge-value">{num_steps}</span>
+        STEPS
     </div>
 </div>
 
 <div class="content">
 
+<div class="summary-panel">
+    <div class="summary-item">
+        <div class="summary-label">Severity</div>
+        <div class="summary-value"><span class="severity-badge {severity_class}">{severity.upper()}</span></div>
+    </div>
+    <div class="summary-item">
+        <div class="summary-label">Est. Time</div>
+        <div class="summary-value">{time_display}</div>
+    </div>
+    <div class="summary-item">
+        <div class="summary-label">Materials</div>
+        <div class="summary-value">{num_materials}</div>
+    </div>
+    <div class="summary-item">
+        <div class="summary-label">Total Cost</div>
+        <div class="summary-value red">{fmt_money(repair.get('total_price', 0))}</div>
+    </div>
+</div>
+
 <div class="info-grid">
-    <div><span class="label">Property:</span> <span class="value">{prop.get('address', '')} {prop.get('city', '')}, {prop.get('state', '')} {prop.get('zip', '')}</span></div>
-    <div><span class="label">Date:</span> <span class="value">{config.get('job', {}).get('created', '')[:10]}</span></div>
-    <div><span class="label">Technician:</span> <span class="value">{submission.get('submitted_by', '')}</span></div>
-    <div><span class="label">Job ID:</span> <span class="value">{config.get('job', {}).get('job_id', '')}</span></div>
+    <div class="info-item"><span class="label">Property</span> <span class="value">{address_line}</span></div>
+    <div class="info-item"><span class="label">Date</span> <span class="value">{job_date}</span></div>
+    <div class="info-item"><span class="label">Technician</span> <span class="value">{technician}</span></div>
+    <div class="info-item"><span class="label">Job ID</span> <span class="value">{job_id}</span></div>
 </div>
 
 <h2>{L['diagnosis']}</h2>
 <div class="diagnosis-box">
-    <p><strong>{diagnosis.get('leak_source', '')}</strong></p>
-    <p><span class="severity-badge {severity_class}">{severity.upper()}</span></p>
+    <p>{diagnosis.get('leak_source', '')}</p>
+    <p style="margin-top:6pt;"><span class="severity-badge {severity_class}">{severity.upper()}</span></p>
 </div>
 
 <h2>{L['steps']}</h2>
-<p style="font-size:9pt; color:#666;">{L['total_time']}: <strong>{time_display}</strong></p>
 {steps_html}
 
 {materials_html}
@@ -594,7 +875,9 @@ def build_repair_instructions(config):
 {photos_html}
 
 <div class="footer">
-    Generated by DumbRoof Repair AI | {company_name} | {contractor.get('phone', '')}
+    <div class="footer-left">{company_name} &middot; {contractor.get('phone', '')}</div>
+    <div class="footer-center"><span class="powered-by">POWERED BY DUMB ROOF REPAIR AI</span></div>
+    <div class="footer-right">{job_id} &middot; {job_date}</div>
 </div>
 
 </div><!-- .content -->
@@ -634,10 +917,17 @@ def build_repair_ticket(config):
     }
     urgency_display = urgency_text.get(ticket.get("urgency", severity), "")
 
-    # Key photos (show first 3)
+    price = ticket.get("price", repair.get("total_price", 0))
+    time_est = ticket.get("time_estimate", "")
+    address_line = f"{prop.get('address', '')} {prop.get('city', '')}, {prop.get('state', '')} {prop.get('zip', '')}".strip()
+    job_date = config.get('job', {}).get('created', '')[:10]
+    job_id = config.get('job', {}).get('job_id', '')
+    homeowner_name = homeowner.get('name', '')
+
+    # Key photos (show first 4, embedded in "What We Found" section)
     photos_html = ""
     photo_keys = [k for k in sorted(photo_map.keys()) if not k.startswith("_")]
-    show_photos = photo_keys[:3]
+    show_photos = photo_keys[:4]
     if show_photos:
         photo_cards = ""
         for key in show_photos:
@@ -645,9 +935,7 @@ def build_repair_ticket(config):
             img_data = b64_img(config, filename)
             if not img_data:
                 continue
-            # Simplified captions for homeowners
             annotation = annotations.get(key, "")
-            # Truncate long technical annotations
             if len(annotation) > 120:
                 annotation = annotation[:117] + "..."
             photo_cards += f"""
@@ -657,10 +945,7 @@ def build_repair_ticket(config):
             </div>
             """
         if photo_cards:
-            photos_html = f"""
-            <h2>What We Found — Photos</h2>
-            <div class="photo-grid">{photo_cards}</div>
-            """
+            photos_html = f"""<div class="photo-grid">{photo_cards}</div>"""
 
     # Materials table for transparency
     materials_html = ""
@@ -686,7 +971,7 @@ def build_repair_ticket(config):
         <table>
             <tr><th>Item</th><th style="text-align:right">Qty</th><th>Unit</th><th style="text-align:right">Amount</th></tr>
             {rows}
-            <tr style="background:#e8edf2;font-weight:bold;">
+            <tr class="subtotal-row">
                 <td colspan="3">Materials Subtotal</td>
                 <td class="amt">{fmt_money(materials_cost)}</td>
             </tr>
@@ -694,15 +979,12 @@ def build_repair_ticket(config):
                 <td colspan="3">Labor ({labor_hours} hours)</td>
                 <td class="amt">{fmt_money(labor_cost)}</td>
             </tr>
-            <tr style="background:#0d2137;font-weight:bold;">
-                <td colspan="3" style="color:#fff;">TOTAL</td>
-                <td class="amt" style="color:#fff;">{fmt_money(total)}</td>
+            <tr class="total-row">
+                <td colspan="3">TOTAL</td>
+                <td class="amt">{fmt_money(total)}</td>
             </tr>
         </table>
         """
-
-    price = ticket.get("price", repair.get("total_price", 0))
-    time_est = ticket.get("time_estimate", "")
 
     html = f"""<!DOCTYPE html>
 <html><head><meta charset="UTF-8"><style>{CSS_REPAIR}</style></head>
@@ -715,52 +997,87 @@ def build_repair_ticket(config):
         <h1>REPAIR TICKET</h1>
         <div class="subtitle">Professional Roof Leak Assessment &amp; Repair Recommendation</div>
     </div>
+    <div class="header-badge">
+        <span class="badge-value">{fmt_money(price)}</span>
+        TOTAL COST
+    </div>
 </div>
 
 <div class="content">
 
+<div class="summary-panel">
+    <div class="summary-item">
+        <div class="summary-label">Urgency</div>
+        <div class="summary-value"><span class="severity-badge {severity_class}">{severity.upper()}</span></div>
+    </div>
+    <div class="summary-item">
+        <div class="summary-label">Est. Time</div>
+        <div class="summary-value">{time_est or "TBD"}</div>
+    </div>
+    <div class="summary-item">
+        <div class="summary-label">Warranty</div>
+        <div class="summary-value green">2 Year</div>
+    </div>
+    <div class="summary-item">
+        <div class="summary-label">Total Cost</div>
+        <div class="summary-value red">{fmt_money(price)}</div>
+    </div>
+</div>
+
 <div class="info-grid">
-    <div><span class="label">Property:</span> <span class="value">{prop.get('address', '')} {prop.get('city', '')}, {prop.get('state', '')} {prop.get('zip', '')}</span></div>
-    <div><span class="label">Homeowner:</span> <span class="value">{homeowner.get('name', '')}</span></div>
-    <div><span class="label">Date:</span> <span class="value">{config.get('job', {}).get('created', '')[:10]}</span></div>
-    <div><span class="label">Ticket #:</span> <span class="value">{config.get('job', {}).get('job_id', '')}</span></div>
+    <div class="info-item"><span class="label">Property</span> <span class="value">{address_line}</span></div>
+    <div class="info-item"><span class="label">Homeowner</span> <span class="value">{homeowner_name}</span></div>
+    <div class="info-item"><span class="label">Date</span> <span class="value">{job_date}</span></div>
+    <div class="info-item"><span class="label">Ticket #</span> <span class="value">{job_id}</span></div>
 </div>
 
 <h2>What We Found</h2>
 <div class="diagnosis-box">
     <p>{ticket.get('what_we_found', '')}</p>
-    <p style="margin-top:6pt;"><span class="severity-badge {severity_class}">Urgency: {severity.upper()}</span></p>
-    <p style="font-size:9pt; color:#666; margin-top:4pt;">{urgency_display}</p>
+    <p style="margin-top:8pt;"><span class="severity-badge {severity_class}">Urgency: {severity.upper()}</span></p>
+    <p style="font-size:9pt; color:#475569; margin-top:4pt;">{urgency_display}</p>
 </div>
 
 {photos_html}
 
 <h2>What We Recommend</h2>
 <p>{ticket.get('what_we_recommend', '')}</p>
-<p style="font-size:9pt; color:#666;">Estimated time: <strong>{time_est}</strong></p>
 
 <div class="price-box">
     <div class="price">{fmt_money(price)}</div>
-    <div class="label">Total repair cost (materials + labor)</div>
+    <div class="label">Total Repair Cost &middot; Materials + Labor</div>
 </div>
 
 {materials_html}
 
 <div class="warranty-section">
-    <h3>Warranty</h3>
-    <p>{ticket.get('warranty', '2-year workmanship warranty')}</p>
+    <h3><span class="warranty-badge">INCLUDED</span> Workmanship Warranty</h3>
+    <p style="margin-top:6pt;">{ticket.get('warranty', '2-year workmanship warranty')}</p>
 </div>
 
 <div class="approval-section">
-    <h3>Authorization to Proceed</h3>
-    <p style="font-size:9pt;">I authorize {company_name} to perform the repair described above at the stated price.</p>
-    <div class="signature-line"></div>
-    <div class="signature-label">Homeowner Signature &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Date</div>
+    <h3>Ready to Repair</h3>
+    <p style="font-size:9.5pt; color:#334155; line-height:1.6;">
+        We can perform this repair right now &mdash; we just need your digital signature below.
+        Upon completion of the repair we will provide a quality control summary and charge your preferred payment method.
+    </p>
+    <p style="font-size:9pt; color:#475569; margin-top:8pt;">I authorize {company_name} to perform the repair described above at the stated price of <strong>{fmt_money(price)}</strong>.</p>
+    <div class="sig-grid">
+        <div class="sig-block">
+            <div class="signature-line"></div>
+            <div class="signature-label">Homeowner Signature</div>
+        </div>
+        <div class="sig-block">
+            <div class="signature-line"></div>
+            <div class="signature-label">Date</div>
+        </div>
+    </div>
 </div>
 
 <div class="footer">
-    {company_name} | {contractor.get('phone', '')} | {contractor.get('email', '')}<br>
-    Generated by DumbRoof Repair AI
+    <div class="footer-left">{company_name} &middot; {contractor.get('phone', '')} &middot; {contractor.get('email', '')}</div>
+    <div class="footer-center"><span class="powered-by">POWERED BY DUMB ROOF REPAIR AI</span></div>
+    <div class="footer-right">{job_id}</div>
 </div>
 
 </div><!-- .content -->
@@ -792,6 +1109,11 @@ def build_completion_receipt(config):
     if not completed_date:
         return None  # Don't generate until repair is complete
 
+    address_line = f"{prop.get('address', '')} {prop.get('city', '')}, {prop.get('state', '')} {prop.get('zip', '')}".strip()
+    job_id = config.get('job', {}).get('job_id', '')
+    homeowner_name = homeowner.get('name', '')
+    price = ticket.get("price", repair.get("total_price", 0))
+
     # Before/after photos
     photos_html = ""
     completion_photos = completion.get("completion_photos", [])
@@ -799,7 +1121,6 @@ def build_completion_receipt(config):
 
     if before_keys or completion_photos:
         cards = ""
-        # Before photos
         for key in before_keys:
             filename = photo_map.get(key, "")
             if not filename:
@@ -809,10 +1130,9 @@ def build_completion_receipt(config):
                 cards += f"""
                 <div class="photo-card">
                     <img src="{img_data}" alt="Before">
-                    <div class="caption"><strong>BEFORE:</strong> {key}</div>
+                    <div class="caption"><span class="photo-label before">BEFORE</span> {key}</div>
                 </div>
                 """
-        # After photos
         for photo_file in completion_photos[:2]:
             qa_path = os.path.join(config["_paths"]["qa_photos"], photo_file)
             if os.path.exists(qa_path):
@@ -821,7 +1141,7 @@ def build_completion_receipt(config):
                     cards += f"""
                     <div class="photo-card">
                         <img src="{img_data}" alt="After">
-                        <div class="caption"><strong>AFTER:</strong> {photo_file}</div>
+                        <div class="caption"><span class="photo-label after">AFTER</span> {photo_file}</div>
                     </div>
                     """
         if cards:
@@ -829,8 +1149,6 @@ def build_completion_receipt(config):
             <h2>Before &amp; After</h2>
             <div class="photo-grid">{cards}</div>
             """
-
-    price = ticket.get("price", repair.get("total_price", 0))
 
     html = f"""<!DOCTYPE html>
 <html><head><meta charset="UTF-8"><style>{CSS_REPAIR}</style></head>
@@ -840,18 +1158,41 @@ def build_completion_receipt(config):
     {'<img class="logo-img" src="' + logo_b64 + '">' if logo_b64 else ''}
     <div class="header-text">
         <div class="company">{company_name.upper()}</div>
-        <h1>REPAIR COMPLETION RECEIPT</h1>
-        <div class="subtitle">Warranty Documentation</div>
+        <h1>COMPLETION RECEIPT</h1>
+        <div class="subtitle">Repair Completed &amp; Warranty Documentation</div>
+    </div>
+    <div class="header-badge">
+        <span class="badge-value">&#10003;</span>
+        COMPLETE
     </div>
 </div>
 
 <div class="content">
 
+<div class="summary-panel">
+    <div class="summary-item">
+        <div class="summary-label">Property</div>
+        <div class="summary-value" style="font-size:9pt;">{prop.get('address', '')}</div>
+    </div>
+    <div class="summary-item">
+        <div class="summary-label">Completed</div>
+        <div class="summary-value green">{completed_date}</div>
+    </div>
+    <div class="summary-item">
+        <div class="summary-label">Warranty</div>
+        <div class="summary-value green">2 Year</div>
+    </div>
+    <div class="summary-item">
+        <div class="summary-label">Amount</div>
+        <div class="summary-value">{fmt_money(price)}</div>
+    </div>
+</div>
+
 <div class="info-grid">
-    <div><span class="label">Property:</span> <span class="value">{prop.get('address', '')} {prop.get('city', '')}, {prop.get('state', '')} {prop.get('zip', '')}</span></div>
-    <div><span class="label">Homeowner:</span> <span class="value">{homeowner.get('name', '')}</span></div>
-    <div><span class="label">Completed:</span> <span class="value">{completed_date}</span></div>
-    <div><span class="label">Ticket #:</span> <span class="value">{config.get('job', {}).get('job_id', '')}</span></div>
+    <div class="info-item"><span class="label">Property</span> <span class="value">{address_line}</span></div>
+    <div class="info-item"><span class="label">Homeowner</span> <span class="value">{homeowner_name}</span></div>
+    <div class="info-item"><span class="label">Completed</span> <span class="value">{completed_date}</span></div>
+    <div class="info-item"><span class="label">Ticket #</span> <span class="value">{job_id}</span></div>
 </div>
 
 <h2>Work Performed</h2>
@@ -864,18 +1205,19 @@ def build_completion_receipt(config):
 
 <div class="price-box">
     <div class="price">{fmt_money(price)}</div>
-    <div class="label">Total charged</div>
+    <div class="label">Total Charged</div>
 </div>
 
 <div class="warranty-section">
-    <h3>Workmanship Warranty</h3>
-    <p>{ticket.get('warranty', '2-year workmanship warranty')}</p>
-    <p style="margin-top:6pt; font-size:9pt;">
-        <strong>Warranty start date:</strong> {completed_date}<br>
-        <strong>Contractor:</strong> {company_name}<br>
-        <strong>Contact:</strong> {contractor.get('phone', '')} | {contractor.get('email', '')}
-    </p>
-    <p style="margin-top:6pt; font-size:8pt; color:#666;">
+    <h3><span class="warranty-badge">2 YEAR</span> Workmanship Warranty</h3>
+    <p style="margin-top:8pt;">{ticket.get('warranty', '2-year workmanship warranty')}</p>
+    <div class="info-grid" style="margin-top:8pt;">
+        <div class="info-item"><span class="label">Warranty Start</span> <span class="value">{completed_date}</span></div>
+        <div class="info-item"><span class="label">Contractor</span> <span class="value">{company_name}</span></div>
+        <div class="info-item"><span class="label">Phone</span> <span class="value">{contractor.get('phone', '')}</span></div>
+        <div class="info-item"><span class="label">Email</span> <span class="value">{contractor.get('email', '')}</span></div>
+    </div>
+    <p style="margin-top:8pt; font-size:8pt; color:#475569;">
         This warranty covers workmanship defects in the repair described above.
         It does not cover damage from subsequent storms, acts of nature, or
         unrelated structural issues. Contact us immediately if the repaired
@@ -883,21 +1225,37 @@ def build_completion_receipt(config):
     </p>
 </div>
 
-{f'<h2>Notes</h2><p>{completion.get("notes", "")}</p>' if completion.get("notes") else ''}
+{f'<h2>Notes</h2><p style="font-size:9.5pt; color:#475569;">{completion.get("notes", "")}</p>' if completion.get("notes") else ''}
 
 <div class="approval-section">
     <h3>Acknowledgment of Completion</h3>
-    <p style="font-size:9pt;">I acknowledge that the repair described above has been completed to my satisfaction.</p>
-    <div class="signature-line"></div>
-    <div class="signature-label">Homeowner Signature &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Date</div>
-    <br>
-    <div class="signature-line"></div>
-    <div class="signature-label">Contractor Signature &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Date</div>
+    <p style="font-size:9pt; color:#475569;">I acknowledge that the repair described above has been completed to my satisfaction.</p>
+    <div class="sig-grid">
+        <div class="sig-block">
+            <div class="signature-line"></div>
+            <div class="signature-label">Homeowner Signature</div>
+        </div>
+        <div class="sig-block">
+            <div class="signature-line"></div>
+            <div class="signature-label">Date</div>
+        </div>
+    </div>
+    <div class="sig-grid" style="margin-top:8pt;">
+        <div class="sig-block">
+            <div class="signature-line"></div>
+            <div class="signature-label">Contractor Signature</div>
+        </div>
+        <div class="sig-block">
+            <div class="signature-line"></div>
+            <div class="signature-label">Date</div>
+        </div>
+    </div>
 </div>
 
 <div class="footer">
-    {company_name} | {contractor.get('phone', '')} | {contractor.get('email', '')}<br>
-    Generated by DumbRoof Repair AI
+    <div class="footer-left">{company_name} &middot; {contractor.get('phone', '')} &middot; {contractor.get('email', '')}</div>
+    <div class="footer-center"><span class="powered-by">POWERED BY DUMB ROOF REPAIR AI</span></div>
+    <div class="footer-right">{job_id} &middot; {completed_date}</div>
 </div>
 
 </div><!-- .content -->
