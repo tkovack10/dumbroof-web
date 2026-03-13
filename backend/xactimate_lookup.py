@@ -702,6 +702,7 @@ class XactRegistry:
                 base_desc = _clean_desc(desc)
                 combined_amount = float(ci.get("carrier_amount", 0) or 0)
                 combined_parts = [ci]
+                consumed = set()  # track indices consumed by aggregation
                 j = i + 1
                 while j < len(carrier_line_items) and j <= i + 3:
                     next_ci = carrier_line_items[j]
@@ -713,9 +714,9 @@ class XactRegistry:
                         if any(kw in next_desc for kw in ["install", "supply", "material only", "replace -"]):
                             combined_amount += float(next_ci.get("carrier_amount", 0) or 0)
                             combined_parts.append(next_ci)
+                            consumed.add(j)
                             is_split = True
-                    else:
-                        break
+                    # Don't break on non-matching items — keep scanning within the window
                     j += 1
 
                 if is_split and len(combined_parts) >= 2:
@@ -730,6 +731,10 @@ class XactRegistry:
                             combined["xact_code"] = part["xact_code"]
                             break
                     aggregated.append(combined)
+                    # Append any items in the window that weren't consumed
+                    for k in range(i + 1, j):
+                        if k not in consumed:
+                            aggregated.append(carrier_line_items[k])
                     i = j
                     continue
 
@@ -773,10 +778,11 @@ class XactRegistry:
 
             matched = False
 
+            carrier_is_remove = "remove" in carrier_desc.lower() or "tear" in carrier_desc.lower()
+
             if carrier_code:
                 # Try exact code match — prefer action-matching candidate
                 candidates = usarm_by_code.get(carrier_code, [])
-                carrier_is_remove = "remove" in carrier_desc.lower() or "tear" in carrier_desc.lower()
                 # Sort candidates: action-matching ones first
                 sorted_candidates = sorted(candidates, key=lambda c: (
                     0 if (carrier_is_remove == ("remove" in c[1].get("description", "").lower())) else 1

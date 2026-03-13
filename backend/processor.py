@@ -1433,18 +1433,23 @@ def build_claim_config(
         for li in line_items:
             reg_item = registry.lookup_price(li.get("description", ""))
             if reg_item:
-                # Add Xactimate metadata
-                li["code"] = reg_item.get("xact_code", "")
-                li["supplement_argument"] = reg_item.get("supplement_argument", "")
-                li["irc_code"] = reg_item.get("irc_code", "")
-                li["trade"] = li.get("trade") or reg_item.get("trade", "")
-                enriched_count += 1
-                # Override price from registry if registry price is higher (maximize legitimate estimate)
-                reg_price = reg_item.get("unit_price", 0)
-                current_price = li.get("unit_price", 0)
-                if reg_price > 0 and reg_price > current_price * 1.05:  # >5% higher = use registry price
-                    li["unit_price"] = reg_price
-                    price_corrected += 1
+                # Validate trade compatibility before enriching (prevent siding-roofing cross-contamination)
+                reg_trade = (reg_item.get("trade") or "").lower()
+                li_trade = (li.get("trade") or li.get("category", "").lower() or "")
+                trade_compatible = not reg_trade or not li_trade or reg_trade in li_trade.lower() or li_trade.lower() in reg_trade
+                if trade_compatible:
+                    # Add Xactimate metadata
+                    li["code"] = reg_item.get("xact_code", "")
+                    li["supplement_argument"] = reg_item.get("supplement_argument", "")
+                    li["irc_code"] = reg_item.get("irc_code", "")
+                    li["trade"] = li.get("trade") or reg_item.get("trade", "")
+                    enriched_count += 1
+                    # Override price from registry if registry price is higher (maximize legitimate estimate)
+                    reg_price = reg_item.get("unit_price", 0)
+                    current_price = li.get("unit_price", 0)
+                    if reg_price > 0 and reg_price > current_price * 1.05:  # >5% higher = use registry price
+                        li["unit_price"] = reg_price
+                        price_corrected += 1
             else:
                 li.setdefault("code", "")
                 li.setdefault("supplement_argument", "")
@@ -1750,24 +1755,46 @@ def build_claim_config(
             print(f"[SCOPE MATCH] code={code_matches} inferred={inferred} fuzzy={fuzzy_matches} missing={missing} total={len(matched)}")
 
             # Find IRC-required items the carrier completely omitted
+            # Note: config["measurements"] is the INNER dict (ridge, eave, etc. at top level)
+            # Penetrations and stories come from the original measurements param still in scope
             try:
+                _meas = config.get("measurements", {})
+                _pens = measurements.get("penetrations", {}) if measurements else {}
                 meas_for_missing = {
                     "remove_sq": sum(s.get("roof_area_sq", 0) for s in config.get("structures", [{}])),
                     "install_sq": sum(s.get("roof_area_sq", 0) for s in config.get("structures", [{}])),
-                    "ridge_lf": config.get("measurements", {}).get("measurements", {}).get("ridge", 0),
-                    "eave_lf": config.get("measurements", {}).get("measurements", {}).get("eave", 0),
-                    "rake_lf": config.get("measurements", {}).get("measurements", {}).get("rake", 0),
-                    "valley_lf": config.get("measurements", {}).get("measurements", {}).get("valley", 0),
-                    "step_lf": config.get("measurements", {}).get("measurements", {}).get("step_flashing", 0),
-                    "penetrations": config.get("measurements", {}).get("penetrations", {}).get("pipes", 0),
-                    "chimneys": config.get("measurements", {}).get("penetrations", {}).get("chimneys", 0),
+                    "ridge_lf": _meas.get("ridge", 0),
+                    "eave_lf": _meas.get("eave", 0),
+                    "rake_lf": _meas.get("rake", 0),
+                    "valley_lf": _meas.get("valley", 0),
+                    "step_lf": _meas.get("step_flashing", 0),
+                    "penetrations": _pens.get("pipes", 0),
+                    "chimneys": _pens.get("chimneys", 0),
                     "pitch": 4,
-                    "stories": config.get("measurements", {}).get("stories", 1),
+                    "stories": measurements.get("stories", 1) if measurements else 1,
                 }
                 missing_items = registry.find_missing_items(carrier_items, meas_for_missing)
                 if missing_items:
-                    print(f"[SCOPE MATCH] Found {len(missing_items)} IRC-required items carrier omitted")
-                    # These are already appended by pre_match_scope_comparison as NOT INCLUDED rows
+                    # Append missing IRC items that pre_match didn't already flag
+                    from xactimate_lookup import _clean_desc
+                    existing_descs = {_clean_desc(r.get("usarm_desc", "")) for r in matched if r.get("matched_by") == "missing"}
+                    new_missing = 0
+                    for mi in missing_items:
+                        if _clean_desc(mi["description"]) not in existing_descs:
+                            matched.append({
+                                "item": mi["description"],
+                                "carrier_desc": "NOT INCLUDED",
+                                "carrier_amount": 0,
+                                "usarm_desc": mi["description"],
+                                "usarm_amount": mi["estimated_amount"],
+                                "matched_by": "missing_irc",
+                                "supplement_argument": mi.get("supplement_argument", ""),
+                                "note": f"NOT INCLUDED — required per IRC {mi['irc_code']}. {mi.get('supplement_argument', '')}" if mi.get("irc_code") else f"NOT INCLUDED — IRC required. {mi.get('supplement_argument', '')}",
+                            })
+                            new_missing += 1
+                    if new_missing:
+                        config["carrier"]["carrier_line_items"] = matched
+                        print(f"[SCOPE MATCH] Added {new_missing} IRC-required items carrier omitted (total missing: {new_missing + sum(1 for m in matched if m.get('matched_by') == 'missing')})")
             except Exception as e2:
                 print(f"[SCOPE MATCH] find_missing_items failed (non-fatal): {e2}")
 
