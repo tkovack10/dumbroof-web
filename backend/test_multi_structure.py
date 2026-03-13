@@ -33,6 +33,7 @@ from processor import (
     build_line_items,
     _classify_from_text,
     _detect_roof_material,
+    _merge_measurement_extractions,
     compute_financials,
     get_anthropic_client,
 )
@@ -203,32 +204,19 @@ async def test_eagleview_extraction():
             return None
 
     claude = get_anthropic_client()
-    all_structures = []
-    merged = {}
+    results = []
 
     for i, path in enumerate(EV_FILES):
         print(f"  Extracting {i+1}/3: {os.path.basename(path)}...")
         result = await asyncio.to_thread(extract_measurements, claude, path)
-
-        if not merged:
-            merged = dict(result)
+        results.append(result)
 
         file_structs = result.get("structures", [])
-        for s in file_structs:
-            if not s.get("name") or s["name"] == "Main Roof":
-                s["name"] = f"Structure {len(all_structures) + 1}"
-            if not s.get("measurements") and result.get("measurements"):
-                s["measurements"] = result["measurements"]
-            if not s.get("penetrations") and result.get("penetrations"):
-                s["penetrations"] = result["penetrations"]
-            all_structures.append(s)
-
         area = file_structs[0].get("roof_area_sf", 0) if file_structs else 0
         print(f"    → {file_structs[0].get('name', '?') if file_structs else '?'}: {area} SF")
 
-    merged["structures"] = all_structures
-    merged["total_roof_area_sf"] = sum(s.get("roof_area_sf", 0) for s in all_structures)
-    merged["total_roof_area_sq"] = sum(s.get("roof_area_sq", 0) for s in all_structures)
+    merged = _merge_measurement_extractions(results)
+    all_structures = merged.get("structures", [])
 
     print(f"\n  Merged: {len(all_structures)} structures, {merged['total_roof_area_sf']} SF total")
     for s in all_structures:
@@ -441,6 +429,127 @@ def test_no_shingle_type_fallback():
     return ok
 
 
+def test_complementary_merge():
+    """Test that roof EV + walls EV merge into 1 structure with walls preserved."""
+    print("\n=== TEST: Complementary merge (roof + walls → 1 structure) ===")
+
+    roof_extraction = {
+        "structures": [{"name": "Main Roof", "roof_area_sf": 2400, "roof_area_sq": 24.0,
+                         "predominant_pitch": "6/12", "facets": 8, "style": "hip"}],
+        "measurements": {"ridge": 45, "hip": 30, "valley": 20, "rake": 80, "eave": 120},
+        "penetrations": {"pipes": 3, "vents": 2, "skylights": 0, "chimneys": 1},
+        "total_roof_area_sf": 2400,
+        "total_roof_area_sq": 24.0,
+        "stories": 2,
+    }
+    walls_extraction = {
+        "structures": [{"name": "Main Roof", "roof_area_sf": 2350, "roof_area_sq": 23.5,
+                         "predominant_pitch": "6/12", "facets": 8, "style": "hip"}],
+        "measurements": {"ridge": 0, "hip": 0, "valley": 0, "rake": 0, "eave": 0},
+        "penetrations": {},
+        "walls": {"total_wall_area_sf": 3200, "siding_type": "vinyl",
+                  "wall_sections": [{"name": "Front", "area_sf": 800},
+                                     {"name": "Rear", "area_sf": 900}]},
+        "total_roof_area_sf": 2350,
+        "total_roof_area_sq": 23.5,
+        "stories": 2,
+    }
+
+    merged = _merge_measurement_extractions([roof_extraction, walls_extraction])
+
+    # Should be 1 structure (not 2)
+    num_structs = len(merged.get("structures", []))
+    has_walls = merged.get("walls", {}).get("total_wall_area_sf", 0) > 0
+    roof_area = merged.get("structures", [{}])[0].get("roof_area_sf", 0)
+    has_real_linears = merged.get("measurements", {}).get("eave", 0) > 0
+
+    print(f"  Structures: {num_structs} (should be 1)")
+    print(f"  Roof area: {roof_area} SF (should be 2400)")
+    print(f"  Walls preserved: {has_walls}")
+    print(f"  Top-level measurements have real linears: {has_real_linears}")
+
+    ok = num_structs == 1 and has_walls and roof_area == 2400 and has_real_linears
+    print(f"  Result: {'PASS' if ok else 'FAIL'}")
+    return ok
+
+
+def test_complementary_merge_reverse_order():
+    """Test that walls EV first, roof EV second → same correct result."""
+    print("\n=== TEST: Complementary merge reverse order (walls first) ===")
+
+    roof_extraction = {
+        "structures": [{"name": "Main Roof", "roof_area_sf": 2400, "roof_area_sq": 24.0,
+                         "predominant_pitch": "6/12", "facets": 8, "style": "hip"}],
+        "measurements": {"ridge": 45, "hip": 30, "valley": 20, "rake": 80, "eave": 120},
+        "penetrations": {"pipes": 3, "vents": 2, "skylights": 0, "chimneys": 1},
+        "total_roof_area_sf": 2400,
+        "total_roof_area_sq": 24.0,
+        "stories": 2,
+    }
+    walls_extraction = {
+        "structures": [{"name": "Main Roof", "roof_area_sf": 2350, "roof_area_sq": 23.5,
+                         "predominant_pitch": "6/12", "facets": 8, "style": "hip"}],
+        "measurements": {"ridge": 0, "hip": 0, "valley": 0, "rake": 0, "eave": 0},
+        "penetrations": {},
+        "walls": {"total_wall_area_sf": 3200, "siding_type": "vinyl",
+                  "wall_sections": [{"name": "Front", "area_sf": 800}]},
+        "total_roof_area_sf": 2350,
+        "total_roof_area_sq": 23.5,
+        "stories": 2,
+    }
+
+    # Reverse order: walls first
+    merged = _merge_measurement_extractions([walls_extraction, roof_extraction])
+
+    num_structs = len(merged.get("structures", []))
+    has_walls = merged.get("walls", {}).get("total_wall_area_sf", 0) > 0
+    roof_area = merged.get("structures", [{}])[0].get("roof_area_sf", 0)
+    has_real_linears = merged.get("measurements", {}).get("eave", 0) > 0
+
+    print(f"  Structures: {num_structs} (should be 1)")
+    print(f"  Roof area: {roof_area} SF (should be 2400)")
+    print(f"  Walls preserved: {has_walls}")
+    print(f"  Top-level measurements have real linears: {has_real_linears}")
+
+    ok = num_structs == 1 and has_walls and roof_area == 2400 and has_real_linears
+    print(f"  Result: {'PASS' if ok else 'FAIL'}")
+    return ok
+
+
+def test_different_buildings_not_merged():
+    """Test that 2 roof-only EVs (house + garage) stay as 2 structures."""
+    print("\n=== TEST: Different buildings NOT merged (2 roof-only EVs) ===")
+
+    house_extraction = {
+        "structures": [{"name": "Main Roof", "roof_area_sf": 2400, "roof_area_sq": 24.0,
+                         "predominant_pitch": "6/12", "facets": 8, "style": "hip"}],
+        "measurements": {"ridge": 45, "hip": 30, "valley": 20, "rake": 80, "eave": 120},
+        "penetrations": {"pipes": 3, "vents": 2, "skylights": 0, "chimneys": 1},
+        "total_roof_area_sf": 2400,
+        "total_roof_area_sq": 24.0,
+    }
+    garage_extraction = {
+        "structures": [{"name": "Main Roof", "roof_area_sf": 600, "roof_area_sq": 6.0,
+                         "predominant_pitch": "4/12", "facets": 4, "style": "gable"}],
+        "measurements": {"ridge": 20, "hip": 0, "valley": 0, "rake": 30, "eave": 40},
+        "penetrations": {"pipes": 0, "vents": 1, "skylights": 0, "chimneys": 0},
+        "total_roof_area_sf": 600,
+        "total_roof_area_sq": 6.0,
+    }
+
+    merged = _merge_measurement_extractions([house_extraction, garage_extraction])
+
+    num_structs = len(merged.get("structures", []))
+    total_area = merged.get("total_roof_area_sf", 0)
+
+    print(f"  Structures: {num_structs} (should be 2)")
+    print(f"  Total area: {total_area} SF (should be 3000)")
+
+    ok = num_structs == 2 and total_area == 3000
+    print(f"  Result: {'PASS' if ok else 'FAIL'}")
+    return ok
+
+
 def main():
     skip_api = "--skip-api" in sys.argv
 
@@ -453,6 +562,9 @@ def main():
     results["override_conflict"] = test_override_conflict()
     results["per_structure_override"] = test_per_structure_override()
     results["no_shingle_type_fallback"] = test_no_shingle_type_fallback()
+    results["complementary_merge"] = test_complementary_merge()
+    results["complementary_merge_reverse"] = test_complementary_merge_reverse_order()
+    results["different_buildings_not_merged"] = test_different_buildings_not_merged()
 
     # API tests (requires ANTHROPIC_API_KEY)
     if not skip_api:

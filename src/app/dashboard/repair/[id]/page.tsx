@@ -1,10 +1,15 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useParams, useRouter } from "next/navigation";
-import type { Repair } from "@/types/repair";
-import { REPAIR_TYPE_LABELS, REPAIR_SEVERITY_COLORS } from "@/lib/claim-constants";
+import type { Repair, RepairCheckpoint } from "@/types/repair";
+import {
+  REPAIR_TYPE_LABELS,
+  REPAIR_SEVERITY_COLORS,
+  getRepairDisplayState,
+} from "@/lib/claim-constants";
+import { FileUploadZone } from "@/components/file-upload-zone";
 
 const SEVERITY_CONFIG: Record<string, { color: string; label: string }> = {
   minor: { color: "bg-green-100 text-green-700", label: "Minor" },
@@ -14,6 +19,10 @@ const SEVERITY_CONFIG: Record<string, { color: string; label: string }> = {
   emergency: { color: "bg-red-200 text-red-800", label: "Emergency" },
 };
 
+const BACKEND_URL =
+  process.env.NEXT_PUBLIC_BACKEND_URL ||
+  "https://dumbroof-backend-production.up.railway.app";
+
 export default function RepairDetailPage() {
   const params = useParams();
   const router = useRouter();
@@ -21,8 +30,12 @@ export default function RepairDetailPage() {
   const repairId = params.id as string;
 
   const [repair, setRepair] = useState<Repair | null>(null);
+  const [checkpoints, setCheckpoints] = useState<RepairCheckpoint[]>([]);
   const [loading, setLoading] = useState(true);
   const [downloading, setDownloading] = useState<string | null>(null);
+  const [uploadFiles, setUploadFiles] = useState<File[]>([]);
+  const [uploading, setUploading] = useState(false);
+  const [rooferNotes, setRooferNotes] = useState("");
 
   const fetchRepair = useCallback(async () => {
     const {
@@ -44,16 +57,49 @@ export default function RepairDetailPage() {
     setLoading(false);
   }, [repairId, router, supabase]);
 
+  const fetchCheckpoints = useCallback(async () => {
+    const { data } = await supabase
+      .from("repair_checkpoints")
+      .select("*")
+      .eq("repair_id", repairId)
+      .order("checkpoint_number");
+    setCheckpoints(data || []);
+  }, [repairId, supabase]);
+
   useEffect(() => {
     fetchRepair();
-  }, [fetchRepair]);
+    fetchCheckpoints();
+  }, [fetchRepair, fetchCheckpoints]);
 
-  // Poll for status changes when processing
+  // Adaptive polling based on display state
   useEffect(() => {
-    if (!repair || (repair.status !== "uploaded" && repair.status !== "processing")) return;
-    const interval = setInterval(fetchRepair, 5000);
+    if (!repair) return;
+    const activeCheckpoint = checkpoints.find(
+      (cp) => cp.id === repair.current_checkpoint_id
+    );
+    const displayState = getRepairDisplayState(repair, activeCheckpoint);
+
+    if (!displayState.polling) return;
+
+    // Fast polling when AI is analyzing (3s), slow otherwise (10s)
+    const interval = setInterval(
+      () => {
+        fetchRepair();
+        fetchCheckpoints();
+      },
+      activeCheckpoint?.status === "analyzing" ||
+        activeCheckpoint?.status === "photos_uploaded"
+        ? 3000
+        : 10000
+    );
     return () => clearInterval(interval);
-  }, [repair?.status, fetchRepair]);
+  }, [
+    repair?.status,
+    repair?.current_checkpoint_id,
+    checkpoints,
+    fetchRepair,
+    fetchCheckpoints,
+  ]);
 
   const handleDownload = async (filename: string) => {
     if (!repair) return;
@@ -76,11 +122,62 @@ export default function RepairDetailPage() {
     setDownloading(null);
   };
 
-  const statusConfig: Record<string, { color: string; label: string; bg: string }> = {
-    uploaded: { color: "text-blue-700", label: "Queued", bg: "bg-blue-100" },
-    processing: { color: "text-amber-700", label: "Diagnosing", bg: "bg-amber-100" },
-    ready: { color: "text-green-700", label: "Ready", bg: "bg-green-100" },
-    error: { color: "text-red-700", label: "Error", bg: "bg-red-100" },
+  const handleCheckpointUpload = async (checkpoint: RepairCheckpoint) => {
+    if (!repair || uploadFiles.length === 0) return;
+    setUploading(true);
+
+    try {
+      // Upload each file via signed URL
+      const uploadedNames: string[] = [];
+      for (const file of uploadFiles) {
+        const res = await fetch("/api/repair-checkpoint", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            fileName: file.name,
+            repairPath: repair.file_path,
+            checkpointNumber: checkpoint.checkpoint_number,
+          }),
+        });
+        const urlData = await res.json();
+        if (!res.ok) throw new Error(urlData.error);
+
+        const { error } = await supabase.storage
+          .from("claim-documents")
+          .uploadToSignedUrl(urlData.path, urlData.token, file);
+        if (
+          error &&
+          !error.message.includes("already exists") &&
+          !error.message.includes("Duplicate")
+        ) {
+          throw new Error(`Upload failed: ${error.message}`);
+        }
+        uploadedNames.push(urlData.safeName);
+      }
+
+      // Submit checkpoint via backend API
+      await fetch(
+        `${BACKEND_URL}/api/repair/${repair.id}/checkpoint/${checkpoint.id}/submit`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            photo_files: uploadedNames,
+            roofer_notes: rooferNotes || null,
+          }),
+        }
+      );
+
+      // Reset upload state and refresh
+      setUploadFiles([]);
+      setRooferNotes("");
+      await fetchRepair();
+      await fetchCheckpoints();
+    } catch (err) {
+      console.error("Checkpoint upload failed:", err);
+      alert("Upload failed. Please try again.");
+    }
+    setUploading(false);
   };
 
   if (loading) {
@@ -104,10 +201,16 @@ export default function RepairDetailPage() {
     );
   }
 
-  const sc = statusConfig[repair.status] || statusConfig.uploaded;
+  const activeCheckpoint = checkpoints.find(
+    (cp) => cp.id === repair.current_checkpoint_id
+  );
+  const displayState = getRepairDisplayState(repair, activeCheckpoint);
   const isReady = repair.status === "ready" && repair.output_files?.length;
-  const isProcessing = repair.status === "processing" || repair.status === "uploaded";
+  const isProcessing =
+    repair.status === "processing" || repair.status === "uploaded";
+  const isActive = repair.status === "active";
   const severity = repair.severity ? SEVERITY_CONFIG[repair.severity] : null;
+  const hasCheckpoints = checkpoints.length > 0;
 
   return (
     <main className="min-h-screen bg-gray-50">
@@ -119,7 +222,10 @@ export default function RepairDetailPage() {
               DR
             </div>
             <span className="text-white font-bold text-lg tracking-tight">
-              dumb roof<sup className="text-[9px] font-medium align-super ml-0.5">™</sup>
+              dumb roof
+              <sup className="text-[9px] font-medium align-super ml-0.5">
+                ™
+              </sup>
             </span>
           </div>
           <a
@@ -141,30 +247,55 @@ export default function RepairDetailPage() {
                   REPAIR
                 </span>
                 {severity && (
-                  <span className={`text-xs font-medium px-2 py-0.5 rounded ${severity.color}`}>
+                  <span
+                    className={`text-xs font-medium px-2 py-0.5 rounded ${severity.color}`}
+                  >
                     {severity.label}
                   </span>
                 )}
+                {repair.pivot_count ? (
+                  <span className="text-xs font-medium px-2 py-0.5 rounded bg-purple-100 text-purple-700">
+                    {repair.pivot_count} pivot
+                    {repair.pivot_count > 1 ? "s" : ""}
+                  </span>
+                ) : null}
               </div>
               <h1 className="text-xl font-bold text-[var(--navy)]">
                 {repair.address}
               </h1>
               <p className="text-sm text-gray-500 mt-1">
                 {repair.homeowner_name} &middot;{" "}
-                {repair.repair_type ? REPAIR_TYPE_LABELS[repair.repair_type] || repair.repair_type : "Pending diagnosis"} &middot;{" "}
-                {new Date(repair.created_at).toLocaleDateString()}
+                {repair.repair_type
+                  ? REPAIR_TYPE_LABELS[repair.repair_type] || repair.repair_type
+                  : "Pending diagnosis"}{" "}
+                &middot; {new Date(repair.created_at).toLocaleDateString()}
               </p>
             </div>
             <span
-              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium ${sc.bg} ${sc.color}`}
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium ${displayState.color}`}
             >
-              {isProcessing && (
-                <svg className="animate-spin w-3 h-3" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+              {displayState.polling && (
+                <svg
+                  className="animate-spin w-3 h-3"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                >
+                  <circle
+                    className="opacity-25"
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    strokeWidth="4"
+                  />
+                  <path
+                    className="opacity-75"
+                    fill="currentColor"
+                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                  />
                 </svg>
               )}
-              {sc.label}
+              {displayState.label}
             </span>
           </div>
 
@@ -174,7 +305,10 @@ export default function RepairDetailPage() {
               <div className="bg-[var(--navy)] rounded-lg px-4 py-3 text-center">
                 <p className="text-xs text-gray-400">Price</p>
                 <p className="text-lg font-bold text-white">
-                  ${repair.total_price.toLocaleString("en-US", { minimumFractionDigits: 2 })}
+                  $
+                  {repair.total_price.toLocaleString("en-US", {
+                    minimumFractionDigits: 2,
+                  })}
                 </p>
               </div>
             ) : null}
@@ -210,42 +344,271 @@ export default function RepairDetailPage() {
           )}
         </div>
 
-        {/* Processing indicator */}
-        {isProcessing && (
+        {/* Processing indicator (initial diagnosis) */}
+        {isProcessing && !hasCheckpoints && (
           <div className="bg-amber-50 border border-amber-100 rounded-2xl p-5">
             <div className="flex items-center gap-3">
-              <svg className="animate-spin w-5 h-5 text-amber-600" fill="none" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+              <svg
+                className="animate-spin w-5 h-5 text-amber-600"
+                fill="none"
+                viewBox="0 0 24 24"
+              >
+                <circle
+                  className="opacity-25"
+                  cx="12"
+                  cy="12"
+                  r="10"
+                  stroke="currentColor"
+                  strokeWidth="4"
+                />
+                <path
+                  className="opacity-75"
+                  fill="currentColor"
+                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                />
               </svg>
               <div>
                 <p className="text-sm font-medium text-amber-800">
                   AI is analyzing your photos and diagnosing the leak...
                 </p>
                 <p className="text-xs text-amber-600 mt-0.5">
-                  Generating repair instructions + homeowner ticket. This typically takes 1-2 minutes.
+                  Generating repair instructions + homeowner ticket. This
+                  typically takes 1-2 minutes.
                 </p>
               </div>
             </div>
           </div>
         )}
 
+        {/* ========== REPAIR TIMELINE ========== */}
+        {hasCheckpoints && (
+          <div className="bg-white rounded-2xl border border-gray-200 p-6">
+            <h2 className="text-sm font-semibold text-[var(--navy)] mb-5">
+              Repair Timeline
+            </h2>
+
+            <div className="relative">
+              {/* Vertical line */}
+              <div className="absolute left-4 top-2 bottom-2 w-0.5 bg-gray-200" />
+
+              <div className="space-y-6">
+                {/* Initial Diagnosis */}
+                <TimelineItem
+                  icon="ai"
+                  title="Initial Diagnosis"
+                  status="passed"
+                >
+                  <p className="text-sm text-gray-700">
+                    {repair.repair_type &&
+                      (REPAIR_TYPE_LABELS[repair.repair_type] ||
+                        repair.repair_type)}
+                    {repair.original_diagnosis_code &&
+                      repair.original_diagnosis_code !== repair.repair_type && (
+                        <span className="text-gray-400 ml-1">
+                          (originally{" "}
+                          {REPAIR_TYPE_LABELS[repair.original_diagnosis_code] ||
+                            repair.original_diagnosis_code}
+                          )
+                        </span>
+                      )}
+                  </p>
+                </TimelineItem>
+
+                {/* Checkpoints */}
+                {checkpoints.map((cp) => {
+                  const isCurrent = cp.id === repair.current_checkpoint_id;
+                  const isPending = cp.status === "pending";
+                  const isAnalyzing =
+                    cp.status === "analyzing" ||
+                    cp.status === "photos_uploaded";
+                  const isPassed =
+                    cp.status === "passed" || cp.status === "skipped";
+                  const isPivot = cp.ai_decision === "pivot";
+
+                  return (
+                    <div key={cp.id}>
+                      <TimelineItem
+                        icon={isPassed ? "check" : isAnalyzing ? "spin" : "dot"}
+                        title={`Checkpoint ${cp.checkpoint_number} — ${formatCheckpointType(cp.checkpoint_type)}`}
+                        status={
+                          isPassed
+                            ? "passed"
+                            : isAnalyzing
+                              ? "analyzing"
+                              : "pending"
+                        }
+                      >
+                        {/* Instructions */}
+                        <div className="bg-blue-50 border border-blue-100 rounded-lg p-3 mb-2">
+                          <p className="text-sm text-blue-800">
+                            {cp.instructions_en}
+                          </p>
+                          {cp.what_to_photograph && (
+                            <p className="text-xs text-blue-600 mt-1">
+                              Photograph: {cp.what_to_photograph}
+                            </p>
+                          )}
+                        </div>
+
+                        {/* AI Analysis Result */}
+                        {cp.ai_analysis && (
+                          <div
+                            className={`rounded-lg p-3 mb-2 ${
+                              isPivot
+                                ? "bg-purple-50 border border-purple-100"
+                                : "bg-green-50 border border-green-100"
+                            }`}
+                          >
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className="text-xs font-semibold text-gray-500">
+                                AI Analysis
+                              </span>
+                              {cp.ai_confidence != null && (
+                                <span className="text-xs text-gray-400">
+                                  {Math.round(cp.ai_confidence * 100)}%
+                                  confidence
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-sm text-gray-700">
+                              {cp.ai_analysis}
+                            </p>
+                          </div>
+                        )}
+
+                        {/* Message to roofer */}
+                        {cp.message_to_roofer_en && isPassed && (
+                          <div className="bg-gray-50 rounded-lg p-3 mb-2">
+                            <p className="text-sm text-gray-700 italic">
+                              &ldquo;{cp.message_to_roofer_en}&rdquo;
+                            </p>
+                          </div>
+                        )}
+
+                        {/* Pivot Alert */}
+                        {isPivot && cp.pivot_reason && (
+                          <div className="bg-purple-50 border border-purple-200 rounded-lg p-3 mb-2">
+                            <p className="text-xs font-semibold text-purple-700 mb-1">
+                              DIAGNOSIS CHANGED
+                            </p>
+                            <p className="text-sm text-purple-800">
+                              {cp.pivot_reason}
+                            </p>
+                          </div>
+                        )}
+
+                        {/* Photo count */}
+                        {cp.photo_files && cp.photo_files.length > 0 && (
+                          <p className="text-xs text-gray-400">
+                            {cp.photo_files.length} photo
+                            {cp.photo_files.length !== 1 ? "s" : ""} uploaded
+                          </p>
+                        )}
+
+                        {/* Upload zone for active pending checkpoint */}
+                        {isCurrent && isPending && (
+                          <div className="mt-3 space-y-3">
+                            <FileUploadZone
+                              label="Checkpoint Photos"
+                              description="Upload the photos requested above"
+                              accept=".jpg,.jpeg,.png,.heic,.heif,.webp"
+                              multiple
+                              files={uploadFiles}
+                              onFilesChange={setUploadFiles}
+                            />
+
+                            <div>
+                              <label className="block text-xs font-medium text-gray-500 mb-1">
+                                Notes (optional)
+                              </label>
+                              <textarea
+                                value={rooferNotes}
+                                onChange={(e) => setRooferNotes(e.target.value)}
+                                placeholder="Any observations to share with the AI..."
+                                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm resize-none h-16 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              />
+                            </div>
+
+                            <button
+                              onClick={() => handleCheckpointUpload(cp)}
+                              disabled={uploading || uploadFiles.length === 0}
+                              className="w-full bg-[var(--red)] hover:bg-[var(--red-dark)] disabled:opacity-50 disabled:cursor-not-allowed text-white px-4 py-2.5 rounded-xl font-semibold text-sm transition-colors"
+                            >
+                              {uploading
+                                ? "Uploading..."
+                                : `Submit ${uploadFiles.length} Photo${uploadFiles.length !== 1 ? "s" : ""}`}
+                            </button>
+                          </div>
+                        )}
+
+                        {/* Analyzing indicator */}
+                        {isCurrent && isAnalyzing && (
+                          <div className="mt-2 flex items-center gap-2 text-amber-600">
+                            <svg
+                              className="animate-spin w-4 h-4"
+                              fill="none"
+                              viewBox="0 0 24 24"
+                            >
+                              <circle
+                                className="opacity-25"
+                                cx="12"
+                                cy="12"
+                                r="10"
+                                stroke="currentColor"
+                                strokeWidth="4"
+                              />
+                              <path
+                                className="opacity-75"
+                                fill="currentColor"
+                                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                              />
+                            </svg>
+                            <span className="text-sm font-medium">
+                              AI is reviewing your photos...
+                            </span>
+                          </div>
+                        )}
+                      </TimelineItem>
+                    </div>
+                  );
+                })}
+
+                {/* Completion indicator */}
+                {isReady && (
+                  <TimelineItem icon="check" title="Repair Complete" status="passed">
+                    <p className="text-sm text-green-700">
+                      All checkpoints passed. Final documents ready below.
+                    </p>
+                  </TimelineItem>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Output Files */}
-        {isReady && (
+        {repair.output_files && repair.output_files.length > 0 && (
           <div className="bg-white rounded-2xl border border-gray-200 p-6">
             <h2 className="text-sm font-semibold text-[var(--navy)] mb-4">
-              Repair Documents Ready
+              {isReady ? "Repair Documents Ready" : "Preliminary Documents"}
             </h2>
             <div className="grid sm:grid-cols-2 gap-3">
-              {repair.output_files!.map((file) => {
+              {repair.output_files.map((file) => {
                 const isInstructions = file.includes("INSTRUCTIONS");
                 const isTicket = file.includes("TICKET");
                 const isReceipt = file.includes("RECEIPT");
+                const isLog = file.includes("REPAIR_LOG");
 
                 let description = "Download";
-                if (isInstructions) description = "For the roofer — bilingual, skill-calibrated";
-                else if (isTicket) description = "For the homeowner — diagnosis, price, approval";
-                else if (isReceipt) description = "Completion receipt with warranty";
+                if (isInstructions)
+                  description = "For the roofer — bilingual, skill-calibrated";
+                else if (isTicket)
+                  description =
+                    "For the homeowner — diagnosis, price, approval";
+                else if (isReceipt)
+                  description = "Completion receipt with warranty";
+                else if (isLog)
+                  description = "Full repair timeline with checkpoints";
 
                 return (
                   <button
@@ -254,8 +617,18 @@ export default function RepairDetailPage() {
                     disabled={downloading === file}
                     className="flex items-center gap-3 bg-green-50 border border-green-200 rounded-xl px-4 py-3 text-left hover:bg-green-100 transition-colors disabled:opacity-50"
                   >
-                    <svg className="w-5 h-5 text-green-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    <svg
+                      className="w-5 h-5 text-green-600 shrink-0"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                      strokeWidth={2}
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                      />
                     </svg>
                     <div>
                       <p className="text-sm text-gray-700 font-medium">
@@ -282,7 +655,8 @@ export default function RepairDetailPage() {
               </p>
             ) : (
               <p className="text-sm text-red-600">
-                Something went wrong. Please try submitting again with clearer photos.
+                Something went wrong. Please try submitting again with clearer
+                photos.
               </p>
             )}
           </div>
@@ -290,4 +664,71 @@ export default function RepairDetailPage() {
       </div>
     </main>
   );
+}
+
+// ========== TIMELINE COMPONENTS ==========
+
+function TimelineItem({
+  icon,
+  title,
+  status,
+  children,
+}: {
+  icon: "ai" | "check" | "spin" | "dot";
+  title: string;
+  status: "passed" | "analyzing" | "pending";
+  children: React.ReactNode;
+}) {
+  const iconColors = {
+    passed: "bg-green-500 text-white",
+    analyzing: "bg-amber-500 text-white",
+    pending: "bg-gray-200 text-gray-500",
+  };
+
+  return (
+    <div className="relative pl-10">
+      {/* Icon */}
+      <div
+        className={`absolute left-1.5 top-0.5 w-5 h-5 rounded-full flex items-center justify-center ${iconColors[status]}`}
+      >
+        {icon === "check" && (
+          <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+          </svg>
+        )}
+        {icon === "ai" && (
+          <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+          </svg>
+        )}
+        {icon === "spin" && (
+          <svg className="animate-spin w-3 h-3" fill="none" viewBox="0 0 24 24">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+          </svg>
+        )}
+        {icon === "dot" && <div className="w-2 h-2 rounded-full bg-gray-400" />}
+      </div>
+
+      {/* Content */}
+      <div className="pb-2">
+        <h3
+          className={`text-sm font-semibold mb-1 ${status === "pending" ? "text-gray-400" : "text-[var(--navy)]"}`}
+        >
+          {title}
+        </h3>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+function formatCheckpointType(type: string): string {
+  const labels: Record<string, string> = {
+    verify_diagnosis: "Verify Diagnosis",
+    expose_and_inspect: "Expose & Inspect",
+    mid_repair_check: "Mid-Repair Check",
+    completion_verify: "Completion Verification",
+  };
+  return labels[type] || type.replace(/_/g, " ");
 }

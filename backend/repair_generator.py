@@ -986,6 +986,16 @@ def build_repair_ticket(config):
         </table>
         """
 
+    # Preliminary / Final badge
+    is_preliminary = config.get("job", {}).get("preliminary", False)
+    ticket_badge = "PRELIMINARY ESTIMATE" if is_preliminary else ""
+
+    # QC Log (only for repairs that used checkpoints)
+    qc_log_html = build_qc_log_section(config)
+
+    # Diagnosis evolution (only if diagnosis pivoted)
+    evolution_html = build_diagnosis_evolution_section(config)
+
     html = f"""<!DOCTYPE html>
 <html><head><meta charset="UTF-8"><style>{CSS_REPAIR}</style></head>
 <body>
@@ -1001,6 +1011,7 @@ def build_repair_ticket(config):
         <span class="badge-value">{fmt_money(price)}</span>
         TOTAL COST
     </div>
+    {f'<div style="position:absolute;top:8pt;right:0.7in;background:#f59e0b;color:#fff;padding:3pt 10pt;border-radius:0 0 6pt 6pt;font-size:7pt;font-weight:700;letter-spacing:0.5pt;">{ticket_badge}</div>' if ticket_badge else ''}
 </div>
 
 <div class="content">
@@ -1049,6 +1060,10 @@ def build_repair_ticket(config):
 </div>
 
 {materials_html}
+
+{qc_log_html}
+
+{evolution_html}
 
 <div class="warranty-section">
     <h3><span class="warranty-badge">INCLUDED</span> Workmanship Warranty</h3>
@@ -1266,6 +1281,284 @@ def build_completion_receipt(config):
 
 
 # ===================================================================
+# QC LOG SECTION (embedded in ticket when checkpoints were used)
+# ===================================================================
+
+def build_qc_log_section(config):
+    """Build HTML for the Quality Control Log section.
+    Returns empty string if no checkpoint history."""
+    checkpoint_history = config.get("checkpoint_history", [])
+    if not checkpoint_history:
+        return ""
+
+    rows = ""
+    for cp in checkpoint_history:
+        status = cp.get("status", "").upper()
+        status_class = "green" if status in ("PROCEED", "PASSED") else "orange" if status == "PIVOT" else ""
+        status_color = "#16a34a" if status_class == "green" else "#ea580c" if status_class == "orange" else "#64748b"
+        rows += f"""
+        <tr>
+            <td style="text-align:center;font-weight:700;">{cp.get('number', '')}</td>
+            <td>{cp.get('type', '').replace('_', ' ').title()}</td>
+            <td><span style="color:{status_color};font-weight:700;">{status}</span></td>
+            <td>{cp.get('analysis', '')[:80]}{'...' if len(cp.get('analysis', '')) > 80 else ''}</td>
+            <td style="text-align:center;">{cp.get('date', '')}</td>
+        </tr>
+        """
+
+    return f"""
+    <h2>Quality Control Log</h2>
+    <table>
+        <tr>
+            <th style="text-align:center;width:30pt;">#</th>
+            <th>Check</th>
+            <th style="width:55pt;">Result</th>
+            <th>Notes</th>
+            <th style="text-align:center;width:50pt;">Date</th>
+        </tr>
+        {rows}
+    </table>
+    """
+
+
+def build_diagnosis_evolution_section(config):
+    """Build HTML for the Diagnosis Evolution section.
+    Returns empty string if no pivots occurred."""
+    diagnosis_evolution = config.get("diagnosis_evolution", [])
+    if not diagnosis_evolution:
+        return ""
+
+    entries = ""
+    for evo in diagnosis_evolution:
+        entries += f"""
+        <div style="padding:6pt 0;border-bottom:1px solid #f1f5f9;">
+            <div style="font-size:9pt;">
+                <span style="color:#64748b;">Checkpoint {evo.get('checkpoint', '')}:</span>
+                <span style="color:#dc2626;font-weight:600;text-decoration:line-through;">{evo.get('from_code', '')}</span>
+                <span style="color:#64748b;margin:0 4pt;">&rarr;</span>
+                <span style="color:#16a34a;font-weight:700;">{evo.get('to_code', '')}</span>
+                <span style="color:#94a3b8;margin-left:6pt;">({round(evo.get('confidence', 0) * 100)}% confidence)</span>
+            </div>
+            <div style="font-size:8pt;color:#475569;margin-top:2pt;">{evo.get('reason', '')}</div>
+        </div>
+        """
+
+    return f"""
+    <h2>Diagnosis Evolution</h2>
+    <div style="background:#faf5ff;border:1px solid #e9d5ff;border-radius:6pt;padding:10pt 14pt;margin:8pt 0;">
+        {entries}
+    </div>
+    """
+
+
+# ===================================================================
+# DOCUMENT 4: REPAIR LOG (full timeline — internal QC document)
+# ===================================================================
+
+def build_repair_log(config):
+    """Build HTML for the Repair Log — full checkpoint timeline document.
+    Only generated when checkpoints were used. Internal document (not for homeowner)."""
+    checkpoint_history = config.get("checkpoint_history", [])
+    if not checkpoint_history:
+        return None
+
+    contractor = config.get("contractor", {})
+    prop = config.get("property", {})
+    diagnosis = config.get("diagnosis", {})
+    repair = config.get("repair", {})
+    diagnosis_evolution = config.get("diagnosis_evolution", [])
+
+    logo_b64 = get_contractor_logo_b64(config)
+    company_name = contractor.get("company_name", "DumbRoof Repair")
+    address_line = f"{prop.get('address', '')} {prop.get('city', '')}, {prop.get('state', '')} {prop.get('zip', '')}".strip()
+    job_id = config.get("job", {}).get("job_id", "")
+    job_date = config.get("job", {}).get("created", "")[:10]
+
+    # Build timeline entries
+    timeline_html = ""
+
+    # Initial diagnosis entry
+    timeline_html += f"""
+    <div class="log-entry">
+        <div class="log-icon" style="background:#0d2137;">AI</div>
+        <div class="log-content">
+            <div class="log-title">Initial Diagnosis</div>
+            <div class="log-detail">
+                <strong>{diagnosis.get('primary_code', diagnosis.get('repair_type', 'N/A'))}</strong>
+                &mdash; {diagnosis.get('leak_source', 'N/A')}
+            </div>
+            <div class="log-meta">
+                Confidence: {round(diagnosis.get('confidence', 0) * 100)}%
+                &middot; Severity: {diagnosis.get('severity', 'N/A')}
+                &middot; {job_date}
+            </div>
+        </div>
+    </div>
+    """
+
+    # Checkpoint entries
+    for cp in checkpoint_history:
+        status = cp.get("status", "")
+        is_pivot = status.upper() == "PIVOT"
+        icon_bg = "#16a34a" if status.upper() in ("PROCEED", "PASSED") else "#9333ea" if is_pivot else "#f59e0b" if status.upper() == "ESCALATE" else "#64748b"
+        icon_text = "P" if is_pivot else str(cp.get("number", ""))
+
+        timeline_html += f"""
+        <div class="log-entry">
+            <div class="log-icon" style="background:{icon_bg};">{icon_text}</div>
+            <div class="log-content">
+                <div class="log-title">Checkpoint {cp.get('number', '')} — {cp.get('type', '').replace('_', ' ').title()}</div>
+                <div class="log-detail">{cp.get('analysis', '')}</div>
+                <div class="log-meta">
+                    Decision: {status.upper()}
+                    &middot; Confidence: {round(cp.get('confidence', 0) * 100)}%
+                    &middot; {cp.get('date', '')}
+                </div>
+            </div>
+        </div>
+        """
+
+    # Diagnosis evolution section
+    evolution_html = ""
+    if diagnosis_evolution:
+        evo_rows = ""
+        for evo in diagnosis_evolution:
+            evo_rows += f"""
+            <tr>
+                <td style="text-align:center;">{evo.get('checkpoint', '')}</td>
+                <td style="color:#dc2626;text-decoration:line-through;">{evo.get('from_code', '')}</td>
+                <td style="color:#16a34a;font-weight:700;">{evo.get('to_code', '')}</td>
+                <td>{round(evo.get('confidence', 0) * 100)}%</td>
+                <td>{evo.get('reason', '')}</td>
+            </tr>
+            """
+        evolution_html = f"""
+        <h2>Diagnosis Evolution</h2>
+        <table>
+            <tr>
+                <th style="text-align:center;">CP#</th>
+                <th>Original</th>
+                <th>Updated</th>
+                <th>Conf.</th>
+                <th>Reason</th>
+            </tr>
+            {evo_rows}
+        </table>
+        """
+
+    # Summary stats
+    passed_count = sum(1 for cp in checkpoint_history if cp.get("status", "").upper() in ("PROCEED", "PASSED"))
+    pivot_count = sum(1 for cp in checkpoint_history if cp.get("status", "").upper() == "PIVOT")
+
+    html = f"""<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><style>
+{CSS_REPAIR}
+.log-entry {{
+    display: flex;
+    gap: 10pt;
+    padding: 10pt 0;
+    border-bottom: 1px solid #f1f5f9;
+    break-inside: avoid;
+    page-break-inside: avoid;
+}}
+.log-entry:last-child {{ border-bottom: none; }}
+.log-icon {{
+    width: 28pt;
+    height: 28pt;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    font-weight: 800;
+    font-size: 9pt;
+    flex-shrink: 0;
+}}
+.log-content {{ flex: 1; }}
+.log-title {{
+    font-weight: 700;
+    font-size: 10pt;
+    color: #0d2137;
+    margin-bottom: 2pt;
+}}
+.log-detail {{
+    font-size: 9pt;
+    color: #475569;
+    line-height: 1.5;
+}}
+.log-meta {{
+    font-size: 7.5pt;
+    color: #94a3b8;
+    margin-top: 4pt;
+}}
+</style></head>
+<body>
+
+<div class="header-bar">
+    {'<img class="logo-img" src="' + logo_b64 + '">' if logo_b64 else ''}
+    <div class="header-text">
+        <div class="company">{company_name.upper()}</div>
+        <h1>REPAIR LOG</h1>
+        <div class="subtitle">AI-Guided Repair Timeline &amp; Quality Control Record</div>
+    </div>
+    <div class="header-badge">
+        <span class="badge-value">{len(checkpoint_history)}</span>
+        CHECKPOINTS
+    </div>
+</div>
+
+<div class="content">
+
+<div class="summary-panel">
+    <div class="summary-item">
+        <div class="summary-label">Property</div>
+        <div class="summary-value" style="font-size:9pt;">{prop.get('address', '')}</div>
+    </div>
+    <div class="summary-item">
+        <div class="summary-label">Checkpoints</div>
+        <div class="summary-value">{len(checkpoint_history)}</div>
+    </div>
+    <div class="summary-item">
+        <div class="summary-label">Passed</div>
+        <div class="summary-value green">{passed_count}</div>
+    </div>
+    <div class="summary-item">
+        <div class="summary-label">Pivots</div>
+        <div class="summary-value {'orange' if pivot_count else ''}">{pivot_count}</div>
+    </div>
+</div>
+
+<div class="info-grid">
+    <div class="info-item"><span class="label">Property</span> <span class="value">{address_line}</span></div>
+    <div class="info-item"><span class="label">Ticket #</span> <span class="value">{job_id}</span></div>
+    <div class="info-item"><span class="label">Date</span> <span class="value">{job_date}</span></div>
+    <div class="info-item"><span class="label">Final Diagnosis</span> <span class="value">{diagnosis.get('primary_code', diagnosis.get('repair_type', 'N/A'))}</span></div>
+</div>
+
+<h2>Repair Timeline</h2>
+<div style="margin:8pt 0;">
+{timeline_html}
+</div>
+
+{evolution_html}
+
+<h2>QC Summary</h2>
+{build_qc_log_section(config)}
+
+<div class="footer">
+    <div class="footer-left">{company_name} &middot; Internal QC Document</div>
+    <div class="footer-center"><span class="powered-by">POWERED BY DUMB ROOF REPAIR AI</span></div>
+    <div class="footer-right">{job_id}</div>
+</div>
+
+</div><!-- .content -->
+
+</body></html>"""
+
+    return html
+
+
+# ===================================================================
 # MAIN
 # ===================================================================
 
@@ -1340,6 +1633,23 @@ def main():
                 raise RuntimeError(f"PDF generation failed: {e}")
     else:
         print("Skipping: 03_COMPLETION_RECEIPT (repair not yet completed)")
+
+    # Document 4: Repair Log (only when checkpoints were used)
+    if config.get("checkpoint_history"):
+        print("Generating: 04_REPAIR_LOG...")
+        html4 = build_repair_log(config)
+        if html4:
+            html4_path = os.path.join(output_dir, "04_REPAIR_LOG.html")
+            pdf4_path = os.path.join(output_dir, "04_REPAIR_LOG.pdf")
+            with open(html4_path, "w") as f:
+                f.write(html4)
+            try:
+                html_to_pdf(html4_path, pdf4_path)
+            except Exception as e:
+                print(f"[REPAIR] PDF generation failed for {pdf4_path}: {e}")
+                raise RuntimeError(f"PDF generation failed: {e}")
+    else:
+        print("Skipping: 04_REPAIR_LOG (no checkpoint history)")
 
     print()
     print("PDF GENERATION COMPLETE")

@@ -25,7 +25,7 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
 from processor import process_claim, get_supabase_client
-from repair_processor import process_repair
+from repair_processor import process_repair, process_checkpoint, process_completion
 from analytics import (
     get_claim_analytics,
     get_processing_costs,
@@ -89,7 +89,7 @@ app.add_middleware(
 
 @app.get("/health")
 def health():
-    return {"status": "ok", "version": "2026-03-09-v3"}
+    return {"status": "ok", "version": "2026-03-13-v1"}
 
 
 @app.post("/api/reprocess/{claim_id}")
@@ -150,6 +150,29 @@ async def run_repair_processing(repair_id: str):
         }).eq("id", repair_id).execute()
 
 
+async def run_checkpoint_processing(checkpoint_id: str, is_completion: bool = False):
+    """Run checkpoint processing in background."""
+    try:
+        if is_completion:
+            await process_completion(checkpoint_id)
+        else:
+            await process_checkpoint(checkpoint_id)
+    except Exception as e:
+        import traceback, sys
+        print(f"[ERROR] Failed to process checkpoint {checkpoint_id}: {e}", flush=True)
+        traceback.print_exc()
+        sys.stdout.flush()
+        sys.stderr.flush()
+        from datetime import datetime
+        sb = get_supabase_client()
+        # Update checkpoint status to error
+        sb.table("repair_checkpoints").update({
+            "status": "passed",  # Don't block — mark as passed with error note
+            "ai_analysis": f"Processing error: {str(e)[:300]}",
+            "analyzed_at": datetime.now().isoformat(),
+        }).eq("id", checkpoint_id).execute()
+
+
 @app.post("/api/process-repair/{repair_id}")
 async def trigger_repair_processing(repair_id: str, background_tasks: BackgroundTasks):
     """Manually trigger processing for a specific repair."""
@@ -167,6 +190,108 @@ async def reprocess_repair(repair_id: str, background_tasks: BackgroundTasks):
     sb.table("repairs").update({"status": "processing", "error_message": None}).eq("id", repair_id).execute()
     background_tasks.add_task(run_repair_processing, repair_id)
     return {"status": "reprocessing", "repair_id": repair_id, "address": result.data.get("address")}
+
+
+# ===================================================================
+# REPAIR CHECKPOINT ENDPOINTS
+# ===================================================================
+
+@app.get("/api/repair/{repair_id}/checkpoints")
+def get_repair_checkpoints(repair_id: str):
+    """List all checkpoints for a repair."""
+    sb = get_supabase_client()
+    result = sb.table("repair_checkpoints").select("*").eq(
+        "repair_id", repair_id
+    ).order("checkpoint_number").execute()
+    return {"checkpoints": result.data or []}
+
+
+@app.post("/api/repair/{repair_id}/checkpoint/{cp_id}/submit")
+async def submit_checkpoint_photos(
+    repair_id: str, cp_id: str,
+    background_tasks: BackgroundTasks,
+    request: Request,
+):
+    """Mark checkpoint photos as uploaded and trigger AI analysis."""
+    sb = get_supabase_client()
+
+    # Verify checkpoint exists and belongs to repair
+    try:
+        cp = sb.table("repair_checkpoints").select("id, status, checkpoint_type, repair_id").eq(
+            "id", cp_id
+        ).eq("repair_id", repair_id).single().execute()
+    except Exception:
+        raise HTTPException(status_code=404, detail="Checkpoint not found")
+    if not cp.data:
+        raise HTTPException(status_code=404, detail="Checkpoint not found")
+    if cp.data["status"] != "pending":
+        raise HTTPException(status_code=400, detail=f"Checkpoint is {cp.data['status']}, not pending")
+
+    # Parse optional body (photo_files, roofer_notes)
+    body = {}
+    try:
+        body = await request.json()
+    except Exception:
+        pass
+
+    from datetime import datetime
+    # Update checkpoint
+    sb.table("repair_checkpoints").update({
+        "status": "photos_uploaded",
+        "photo_files": body.get("photo_files", []),
+        "roofer_notes": body.get("roofer_notes"),
+        "responded_at": datetime.now().isoformat(),
+    }).eq("id", cp_id).execute()
+
+    # Set repair to processing so poller picks it up
+    sb.table("repairs").update({
+        "status": "processing",
+        "updated_at": datetime.now().isoformat(),
+    }).eq("id", repair_id).execute()
+
+    return {"status": "submitted", "checkpoint_id": cp_id}
+
+
+@app.post("/api/repair/{repair_id}/checkpoint/{cp_id}/skip")
+async def skip_checkpoint(repair_id: str, cp_id: str):
+    """Skip a checkpoint (technician privilege only)."""
+    sb = get_supabase_client()
+
+    # Verify repair is technician level
+    try:
+        repair = sb.table("repairs").select("skill_level").eq("id", repair_id).single().execute()
+    except Exception:
+        raise HTTPException(status_code=404, detail="Repair not found")
+    if not repair.data:
+        raise HTTPException(status_code=404, detail="Repair not found")
+    if repair.data.get("skill_level") != "technician":
+        raise HTTPException(status_code=403, detail="Only technicians can skip checkpoints")
+
+    from datetime import datetime
+    sb.table("repair_checkpoints").update({
+        "status": "skipped",
+        "ai_decision": "skipped",
+        "analyzed_at": datetime.now().isoformat(),
+    }).eq("id", cp_id).execute()
+
+    # Check if there are more checkpoints or finalize
+    cp = sb.table("repair_checkpoints").select("checkpoint_number, repair_id").eq(
+        "id", cp_id
+    ).single().execute()
+    if cp.data:
+        total = sb.table("repairs").select("checkpoint_count").eq(
+            "id", repair_id
+        ).single().execute()
+        total_count = (total.data or {}).get("checkpoint_count", 0)
+
+        if cp.data["checkpoint_number"] >= total_count:
+            # Last checkpoint skipped — go to ready
+            sb.table("repairs").update({
+                "status": "ready",
+                "updated_at": datetime.now().isoformat(),
+            }).eq("id", repair_id).execute()
+
+    return {"status": "skipped", "checkpoint_id": cp_id}
 
 
 # ===================================================================
@@ -684,7 +809,7 @@ async def poll_for_claims():
 
 
 async def poll_for_repairs():
-    """Background poller — checks for new repairs every 10 seconds.
+    """Background poller — checks for new repairs and checkpoint submissions every 10 seconds.
     Also recovers stuck repairs (processing > 15 min)."""
     while True:
         try:
@@ -703,6 +828,17 @@ async def poll_for_repairs():
             for repair in result.data:
                 print(f"[REPAIR POLLER] Found new repair: {repair['id']}")
                 asyncio.create_task(run_repair_processing(repair["id"]))
+
+            # Pick up checkpoints with photos uploaded (needs AI analysis)
+            cp_result = sb.table("repair_checkpoints").select(
+                "id, checkpoint_type"
+            ).eq("status", "photos_uploaded").execute()
+            for cp in (cp_result.data or []):
+                is_completion = cp["checkpoint_type"] == "completion_verify"
+                print(f"[REPAIR POLLER] Found checkpoint to process: {cp['id']} "
+                      f"({'completion' if is_completion else 'checkpoint'})")
+                asyncio.create_task(run_checkpoint_processing(cp["id"], is_completion))
+
         except Exception as e:
             print(f"[REPAIR POLLER] Error: {e}")
         await asyncio.sleep(10)

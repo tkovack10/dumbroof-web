@@ -356,7 +356,8 @@ def extract_measurements(client: anthropic.Anthropic, pdf_path: str) -> dict:
     ],
     "window_count": 0,
     "door_count": 0,
-    "garage_door_count": 0
+    "garage_door_count": 0,
+    "siding_type": "vinyl / aluminum / cedar / fiber_cement / stucco / none"
   }
 }
 
@@ -453,6 +454,7 @@ def analyze_photos(client: anthropic.Anthropic, photo_paths: list[str], user_not
     shingle_votes = []
     shingle_condition = ""
     siding_type = ""
+    siding_votes = []
     damage_type = ""
     severity = ""
     chalk_test_results = []
@@ -638,7 +640,7 @@ Number the photos starting at {start_num}. Return ONLY valid JSON:
         if batch_result.get("shingle_condition"):
             shingle_condition = batch_result["shingle_condition"]
         if batch_result.get("siding_type") and batch_result["siding_type"] != "none":
-            siding_type = batch_result["siding_type"]
+            siding_votes.append(batch_result["siding_type"].lower().strip())
         if batch_result.get("damage_type"):
             damage_type = batch_result["damage_type"]
         if batch_result.get("severity"):
@@ -675,6 +677,11 @@ Number the photos starting at {start_num}. Return ONLY valid JSON:
     # Resolve shingle_type by majority vote across batches
     if shingle_votes:
         shingle_type = _majority_vote_material(shingle_votes)
+
+    # Resolve siding_type by majority vote across batches (not last-batch-wins)
+    if siding_votes:
+        from collections import Counter
+        siding_type = Counter(siding_votes).most_common(1)[0][0]
 
     # Clean up resized temp files
     for path in image_paths:
@@ -1476,7 +1483,7 @@ def build_claim_config(
             "website": (company_profile or {}).get("website", ""),
         },
         "property": {
-            "address": prop.get("address", claim.get("address", "")),
+            "address": claim.get("address", "") or prop.get("address", ""),
             "city": prop.get("city", ""),
             "state": state,
             "zip": prop.get("zip", ""),
@@ -1606,6 +1613,10 @@ def build_claim_config(
         )
         config["appeal_letter"]["requested_actions"] = dynamic_actions
         config["appeal_letter"]["demand_items"] = dynamic_actions
+
+    # Storm date fallback: use date_of_loss if no NOAA storm date
+    if not config["weather"].get("storm_date") and config["dates"].get("date_of_loss"):
+        config["weather"]["storm_date"] = config["dates"]["date_of_loss"]
 
     # Set correct price list for state if not from carrier
     if not config["financials"].get("price_list"):
@@ -2153,8 +2164,8 @@ def _has_trade(trades: list, keyword: str) -> bool:
     return any(kw in t.lower() for t in trades)
 
 
-def _detect_siding_material(photo_analysis: dict, user_notes: str = "", estimate_request: dict = None) -> str:
-    """Detect siding material from photo analysis and user notes.
+def _detect_siding_material(photo_analysis: dict, user_notes: str = "", estimate_request: dict = None, measurements: dict = None) -> str:
+    """Detect siding material from photo analysis, user notes, and wall measurements.
     Returns: aluminum, vinyl, vinyl_high, vinyl_insulated, cedar, fiber_cement, metal
     Default: aluminum (safer to price higher)."""
     # estimate_request override is DEFINITIVE (user-selected from dropdown)
@@ -2198,6 +2209,22 @@ def _detect_siding_material(photo_analysis: dict, user_notes: str = "", estimate
         return "fiber_cement"
     if "metal siding" in notes:
         return "metal"
+
+    # Check EagleView walls extraction as additional signal
+    walls_siding = (measurements or {}).get("walls", {}).get("siding_type", "").lower()
+    if walls_siding and walls_siding != "none":
+        if "vinyl" in walls_siding:
+            return "vinyl"
+        if "cedar" in walls_siding:
+            return "cedar"
+        if "fiber" in walls_siding or "hardie" in walls_siding or "cement" in walls_siding:
+            return "fiber_cement"
+        if "metal" in walls_siding:
+            return "metal"
+        if "stucco" in walls_siding:
+            return "fiber_cement"
+        if "aluminum" in walls_siding:
+            return "aluminum"
 
     # Default to aluminum (most common in NY/PA, prices higher = safer estimate)
     return "aluminum"
@@ -2712,7 +2739,7 @@ def build_line_items(measurements: dict, photo_analysis: dict, state: str, user_
             print(f"[LINE ITEMS] Estimated wall area from footprint: {_footprint:.0f} SF floor → {_perimeter} LF perimeter × {_wall_height} ft = {wall_area} SF")
 
         if wall_area > 0:
-            siding_mat = _detect_siding_material(photo_analysis, user_notes, estimate_request=estimate_request)
+            siding_mat = _detect_siding_material(photo_analysis, user_notes, estimate_request=estimate_request, measurements=measurements)
             print(f"[LINE ITEMS] Siding trade detected — {siding_mat}, {wall_area} SF")
 
             # Siding material pricing map
@@ -2729,10 +2756,11 @@ def build_line_items(measurements: dict, photo_analysis: dict, state: str, user_
             desc, price = siding_prices.get(siding_mat, siding_prices["aluminum"])
             items.append({"category": "SIDING", "description": desc, "qty": wall_area, "unit": "SF", "unit_price": price})
 
-            # House wrap — ALWAYS included with siding (RCNYS R703.2 code requirement)
+            # House wrap — ALWAYS included with siding (code requirement)
             # This is the key argument: house wrap must wrap continuously around outside
             # corners — cannot terminate at a corner joint. Forces full replacement.
-            items.append({"category": "SIDING", "description": "House wrap / Tyvek (code-required per RCNYS R703.2)", "qty": wall_area, "unit": "SF", "unit_price": PRICING.get("house_wrap", 0.64)})
+            _code_prefix = "RCNYS" if state == "NY" else "IRC"
+            items.append({"category": "SIDING", "description": f"House wrap / Tyvek (code-required per {_code_prefix} R703.2)", "qty": wall_area, "unit": "SF", "unit_price": PRICING.get("house_wrap", 0.64)})
 
             # Fanfold insulation (under siding, standard on re-side jobs)
             items.append({"category": "SIDING", "description": "Fanfold insulation board", "qty": wall_area, "unit": "SF", "unit_price": PRICING.get("fanfold_insulation", 1.23)})
@@ -2742,6 +2770,10 @@ def build_line_items(measurements: dict, photo_analysis: dict, state: str, user_
 
             # Scaffolding
             items.append({"category": "SIDING", "description": "Scaffolding - per week", "qty": 1, "unit": "WK", "unit_price": PRICING.get("scaffolding_week", 1405.00)})
+
+            # Siding debris dumpster (separate from roofing dumpster)
+            siding_dumpster_loads = max(1, round(wall_area / 2000))
+            items.append({"category": "DEBRIS", "description": "Dumpster load - siding debris", "qty": siding_dumpster_loads, "unit": "EA", "unit_price": PRICING.get("dumpster", 850.00)})
         else:
             print(f"[LINE ITEMS] Siding trade detected but no wall measurements — skipping siding line items")
 
@@ -2912,6 +2944,58 @@ def generate_pdfs(config: dict, work_dir: str) -> list[str]:
         raise RuntimeError("No PDFs generated")
 
     return pdfs
+
+
+def _merge_measurement_extractions(extractions: list[dict]) -> dict:
+    """Smart-merge multiple EagleView extractions.
+
+    Detects complementary files (one has walls data, other has roof data)
+    and merges into a single result. Falls back to existing multi-structure
+    behavior when no complementary pattern is detected.
+    """
+    if len(extractions) <= 1:
+        return extractions[0] if extractions else {}
+
+    # Partition: which files have walls data vs. roof-only?
+    walls_indices = [i for i, e in enumerate(extractions)
+                     if e.get("walls", {}).get("total_wall_area_sf", 0) > 0]
+    roof_indices = [i for i in range(len(extractions)) if i not in walls_indices]
+
+    if walls_indices and roof_indices:
+        # Complementary pair: merge roof data + walls data into single result
+        roof_ext = max(
+            (extractions[i] for i in roof_indices),
+            key=lambda e: (e.get("structures", [{}])[0]).get("roof_area_sf", 0)
+        )
+        wall_ext = extractions[walls_indices[0]]
+
+        merged = dict(roof_ext)          # Top-level measurements/penetrations from roof
+        merged["walls"] = wall_ext["walls"]
+        merged["stories"] = max((e.get("stories", 0) for e in extractions), default=1) or 1
+        print(f"[MERGE] Complementary EagleViews — roof + walls merged into 1 structure")
+        return merged
+
+    # No complementary pattern — existing multi-structure behavior
+    all_structures = []
+    merged = {}
+    for result in extractions:
+        if not merged:
+            merged = dict(result)
+        for s in result.get("structures", []):
+            s = dict(s)  # Clone to avoid mutating caller's data
+            if not s.get("name") or s["name"] == "Main Roof":
+                s["name"] = f"Structure {len(all_structures) + 1}"
+            if not s.get("measurements") and result.get("measurements"):
+                s["measurements"] = result["measurements"]
+            if not s.get("penetrations") and result.get("penetrations"):
+                s["penetrations"] = result["penetrations"]
+            all_structures.append(s)
+
+    merged["structures"] = all_structures
+    merged["total_roof_area_sf"] = sum(s.get("roof_area_sf", 0) for s in all_structures)
+    merged["total_roof_area_sq"] = sum(s.get("roof_area_sq", 0) for s in all_structures)
+    print(f"[MERGE] {len(all_structures)} structures from {len(extractions)} files")
+    return merged
 
 
 # ===================================================================
@@ -3163,33 +3247,14 @@ async def process_claim(claim_id: str):
                 print("[PROCESS] Extracting measurements...")
                 return await asyncio.to_thread(extract_measurements, claude, resolved)
 
-            # Multiple measurement files — extract each, merge structures
-            all_structures = []
-            merged = {}
-            for i, mpath in enumerate(measurement_paths):
-                resolved = resolve_eml_to_document(mpath, source_dir)
-                print(f"[PROCESS] Extracting measurements from file {i+1}/{len(measurement_paths)}...")
-                result = await asyncio.to_thread(extract_measurements, claude, resolved)
-                if not merged:
-                    merged = dict(result)  # First file sets property, penetrations, etc.
-                # Collect structures from each file
-                file_structs = result.get("structures", [])
-                for s in file_structs:
-                    if not s.get("name") or s["name"] == "Main Roof":
-                        s["name"] = f"Structure {len(all_structures) + 1}"
-                    # Nest per-structure measurements if global measurements present
-                    if not s.get("measurements") and result.get("measurements"):
-                        s["measurements"] = result["measurements"]
-                    if not s.get("penetrations") and result.get("penetrations"):
-                        s["penetrations"] = result["penetrations"]
-                    all_structures.append(s)
+            # Multiple measurement files — extract in parallel, then smart-merge
+            resolved_paths = [resolve_eml_to_document(mpath, source_dir) for mpath in measurement_paths]
+            print(f"[PROCESS] Extracting measurements from {len(resolved_paths)} files in parallel...")
+            extractions = list(await asyncio.gather(*[
+                asyncio.to_thread(extract_measurements, claude, p) for p in resolved_paths
+            ]))
 
-            merged["structures"] = all_structures
-            # Sum total areas
-            merged["total_roof_area_sf"] = sum(s.get("roof_area_sf", 0) for s in all_structures)
-            merged["total_roof_area_sq"] = sum(s.get("roof_area_sq", 0) for s in all_structures)
-            print(f"[PROCESS] Merged {len(all_structures)} structures from {len(measurement_paths)} files")
-            return merged
+            return _merge_measurement_extractions(extractions)
 
         async def _get_photo_analysis():
             if not photo_paths:

@@ -581,6 +581,269 @@ def log_completed_repair(job_config: Dict[str, Any]) -> None:
         f.write(json.dumps(entry) + "\n")
 
 
+def build_checkpoint_instructions(
+    checkpoint_type: str,
+    primary_code: str,
+    leak_source: str,
+    skill_level: str,
+    checkpoint_number: int,
+) -> Dict[str, str]:
+    """Build instructions for a checkpoint based on type and diagnosis.
+
+    Returns dict with: instructions_en, instructions_es, what_to_photograph, expected_finding
+    """
+    skill_desc = SKILL_LEVELS.get(skill_level, SKILL_LEVELS["journeyman"])
+    code_info = REPAIR_TYPES.get(primary_code, {})
+    family = code_info.get("family", "unknown")
+
+    if checkpoint_type == "verify_diagnosis":
+        # Verification checkpoint — confirm the AI's diagnosis
+        instructions = _build_verify_instructions(primary_code, leak_source, family, skill_level)
+    elif checkpoint_type == "expose_and_inspect":
+        instructions = _build_expose_instructions(primary_code, leak_source, family, skill_level)
+    elif checkpoint_type == "mid_repair_check":
+        instructions = _build_mid_repair_instructions(primary_code, leak_source, family, skill_level)
+    elif checkpoint_type == "completion_verify":
+        instructions = _build_completion_instructions(primary_code, leak_source, family, skill_level)
+    else:
+        instructions = {
+            "instructions_en": f"Take 2-3 photos of the repair area for checkpoint #{checkpoint_number}.",
+            "instructions_es": None,
+            "what_to_photograph": "The repair area from multiple angles",
+            "expected_finding": "Confirmation of current repair state",
+        }
+
+    return instructions
+
+
+def _build_verify_instructions(code: str, leak_source: str, family: str, skill_level: str) -> Dict[str, str]:
+    """Build diagnosis verification instructions."""
+    # Family-specific verification instructions
+    verify_map = {
+        "chimney": {
+            "instructions_en": (
+                f"I believe the leak is coming from {leak_source}. "
+                "Before we commit to this repair, I need to verify. "
+                "Gently lift 2 courses of shingles along the chimney-to-roof junction. "
+                "Take 2-3 close-up photos of the flashing underneath — I need to see the condition "
+                "of the step/counter flashing and any sealant."
+            ),
+            "what_to_photograph": "Chimney flashing under lifted shingles, sealant condition, any rust or gaps",
+            "expected_finding": "Deteriorated, separated, or improperly installed chimney flashing",
+        },
+        "wall": {
+            "instructions_en": (
+                f"I believe the leak source is {leak_source}. "
+                "I need to verify before we proceed. "
+                "Carefully lift 2 courses of shingles where the roof meets the sidewall. "
+                "Take 2-3 photos showing the step flashing — I need to see if there's a kickout diverter "
+                "and the condition of the wall flashing."
+            ),
+            "what_to_photograph": "Step flashing at wall junction, kickout diverter presence, any moisture staining",
+            "expected_finding": "Missing kickout, corroded step flashing, or improper wall integration",
+        },
+        "penetration": {
+            "instructions_en": (
+                f"Diagnosis: {leak_source}. "
+                "Take 2-3 close-up photos of the penetration — I need to see the boot/collar, "
+                "any cracking, and the seal around the pipe or vent."
+            ),
+            "what_to_photograph": "Vent boot condition, cracking, seal integrity, any daylight gaps",
+            "expected_finding": "Cracked boot, deteriorated seal, or improper flashing",
+        },
+        "valley": {
+            "instructions_en": (
+                f"I suspect {leak_source}. "
+                "Carefully check the valley for debris buildup, cracked metal, or shingle overlap issues. "
+                "Take 2-3 photos showing the valley condition from above and one close-up of any damage."
+            ),
+            "what_to_photograph": "Valley metal condition, debris, shingle overlap, any water channeling",
+            "expected_finding": "Damaged valley metal, debris dam, or improper shingle cut",
+        },
+        "edge": {
+            "instructions_en": (
+                f"Diagnosis: {leak_source}. "
+                "Check the eave/drip edge area. Take photos showing the drip edge condition, "
+                "any ice dam evidence, and the fascia behind the gutter."
+            ),
+            "what_to_photograph": "Drip edge, fascia condition, any ice dam staining, gutter alignment",
+            "expected_finding": "Missing/bent drip edge, ice dam evidence, or gutter backup",
+        },
+    }
+
+    default = {
+        "instructions_en": (
+            f"I believe the leak is coming from {leak_source}. "
+            "Take 2-3 close-up photos of the suspected area — I need to verify "
+            "the condition before we commit to a repair plan."
+        ),
+        "what_to_photograph": "The suspected leak source from 2-3 angles, close-up and context",
+        "expected_finding": f"Confirmation of {leak_source}",
+    }
+
+    result = verify_map.get(family, default)
+
+    # Add skill-level context for laborers
+    if skill_level == "laborer":
+        result["instructions_en"] += (
+            " IMPORTANT: Use a flat pry bar to gently lift shingles — do NOT use a claw hammer. "
+            "Lift ONLY enough to see underneath. Take photos BEFORE touching anything else."
+        )
+
+    result["instructions_es"] = None  # Generated by AI later if needed
+    return result
+
+
+def _build_expose_instructions(code: str, leak_source: str, family: str, skill_level: str) -> Dict[str, str]:
+    """Build expose-and-inspect instructions (deeper investigation)."""
+    result = {
+        "instructions_en": (
+            f"Good — diagnosis confirmed. Now I need to check the substrate before we install new materials. "
+            f"Remove the damaged component at the leak area. "
+            "Take 2-3 photos of the exposed deck/substrate. I'm checking for rot, water damage, "
+            "or deterioration that would change the repair scope."
+        ),
+        "instructions_es": None,
+        "what_to_photograph": "Exposed substrate/deck after removal, any rot or water staining, structural condition",
+        "expected_finding": "Clean substrate ready for new installation, or deck rot requiring additional repair",
+    }
+
+    if skill_level == "laborer":
+        result["instructions_en"] += (
+            " Use your pry bar to carefully remove the old flashing/component. "
+            "Stack removed materials in one spot for cleanup later. "
+            "If you see soft or spongy wood, STOP and photograph it immediately — do not continue."
+        )
+
+    return result
+
+
+def _build_mid_repair_instructions(code: str, leak_source: str, family: str, skill_level: str) -> Dict[str, str]:
+    """Build mid-repair check instructions."""
+    return {
+        "instructions_en": (
+            "You're doing great. Before closing up, take 2-3 photos of the new installation. "
+            "I need to verify proper overlap, nail placement, and sealant application "
+            "before you lay the final course of shingles."
+        ),
+        "instructions_es": None,
+        "what_to_photograph": "New flashing/component installed, nail pattern, sealant beads, overlap measurements",
+        "expected_finding": "Properly installed component ready for final shingle course",
+    }
+
+
+def _build_completion_instructions(code: str, leak_source: str, family: str, skill_level: str) -> Dict[str, str]:
+    """Build completion verification instructions."""
+    return {
+        "instructions_en": (
+            "Almost done! Take 3-4 final photos showing the completed repair: "
+            "1) Close-up of the repaired area, 2) Wide shot showing the repair in context, "
+            "3) Any sealant or flashing details, 4) The cleaned work area."
+        ),
+        "instructions_es": None,
+        "what_to_photograph": "Completed repair close-up, context shot, sealant detail, clean work area",
+        "expected_finding": "Professional repair matching the repair plan, clean site",
+    }
+
+
+def build_checkpoint_prompt(
+    checkpoint: Dict[str, Any],
+    prior_checkpoints: list[Dict[str, Any]],
+    photo_keys: list[str],
+) -> str:
+    """Build a checkpoint analysis prompt for Claude.
+
+    Gives Claude:
+    - The current diagnosis (from checkpoint's diagnosis_snapshot)
+    - All prior checkpoint results (conversation history)
+    - The new checkpoint photos
+    - Clear instructions: analyze → decide (proceed/pivot/add_checkpoint/escalate)
+    """
+    diagnosis = checkpoint.get("diagnosis_snapshot", {})
+    diag_info = diagnosis.get("diagnosis", {})
+    repair_info = diagnosis.get("repair", {})
+    cp_type = checkpoint.get("checkpoint_type", "")
+    cp_number = checkpoint.get("checkpoint_number", 1)
+    expected = checkpoint.get("expected_finding", "")
+
+    # Build history of prior checkpoints
+    history_parts = []
+    for prior in prior_checkpoints:
+        p_num = prior.get("checkpoint_number", 0)
+        p_type = prior.get("checkpoint_type", "")
+        p_decision = prior.get("ai_decision", "")
+        p_analysis = prior.get("ai_analysis", "")
+        p_confidence = prior.get("ai_confidence", 0)
+        history_parts.append(
+            f"Checkpoint {p_num} ({p_type}): Decision={p_decision}, "
+            f"Confidence={p_confidence:.0%}, Analysis: {p_analysis}"
+        )
+
+    history_str = "\n".join(history_parts) if history_parts else "No prior checkpoints."
+
+    return f"""You are DumbRoof Repair AI analyzing checkpoint #{cp_number} ({cp_type}) photos.
+
+## CURRENT DIAGNOSIS
+- Primary code: {diag_info.get('primary_code', 'unknown')}
+- Family: {diag_info.get('family', 'unknown')}
+- Leak source: {diag_info.get('leak_source', 'unknown')}
+- Severity: {diag_info.get('severity', 'moderate')}
+- Initial confidence: {diag_info.get('confidence', 0):.0%}
+- Decision path: {diag_info.get('decision_path', '')}
+
+## REPAIR PLAN SUMMARY
+{repair_info.get('summary', 'N/A')}
+Steps: {len(repair_info.get('steps', []))}
+Total price: ${repair_info.get('total_price', 0):.2f}
+
+## CHECKPOINT HISTORY
+{history_str}
+
+## WHAT I ASKED THE ROOFER TO DO
+{checkpoint.get('instructions_en', '')}
+
+## WHAT I EXPECTED TO FIND
+{expected}
+
+## ROOFER NOTES
+{checkpoint.get('roofer_notes', 'None provided')}
+
+## NEW PHOTOS
+{', '.join(photo_keys)}
+
+## YOUR TASK
+Analyze these checkpoint photos against the current diagnosis. You MUST decide one of:
+
+1. **proceed** — Photos confirm the diagnosis. The repair should continue as planned.
+2. **pivot** — Photos reveal a DIFFERENT problem. You must provide an updated diagnosis and repair plan.
+3. **add_checkpoint** — Inconclusive. You need another checkpoint with different photos.
+4. **escalate** — This requires a specialist (mason, HVAC, structural engineer).
+
+## RESPONSE FORMAT (strict JSON, no markdown fencing)
+
+{{
+  "decision": "proceed|pivot|add_checkpoint|escalate",
+  "confidence": 0.92,
+  "analysis": "What you see in the photos and why it confirms/changes the diagnosis",
+  "analysis_es": null,
+  "message_to_roofer_en": "Short, clear message to the roofer about what to do next",
+  "message_to_roofer_es": null,
+  "pivot_reason": null,
+  "updated_diagnosis": null,
+  "updated_repair_plan": null,
+  "next_checkpoint": null
+}}
+
+If decision is "pivot", populate updated_diagnosis with the full diagnosis object (same schema as original)
+and updated_repair_plan with the full repair object (steps, materials, pricing).
+
+If decision is "add_checkpoint", populate next_checkpoint with:
+{{"type": "verify_diagnosis|expose_and_inspect|mid_repair_check", "instructions_en": "...", "what_to_photograph": "...", "expected_finding": "..."}}
+
+If decision is "escalate", explain in analysis why a specialist is needed.
+"""
+
+
 def rebuild_repair_stats() -> Dict[str, Any]:
     """
     Rebuild summary statistics from the repair log.

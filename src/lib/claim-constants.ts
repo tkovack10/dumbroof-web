@@ -129,6 +129,35 @@ export const REPAIR_SEVERITY_COLORS: Record<string, string> = {
 export const REPAIR_STATUS_CONFIG: Record<string, { color: string; label: string }> = {
   uploaded: { color: "bg-blue-100 text-blue-700", label: "Queued" },
   processing: { color: "bg-amber-100 text-amber-700", label: "Diagnosing" },
+  active: { color: "bg-blue-100 text-blue-700", label: "Active" },
   ready: { color: "bg-green-100 text-green-700", label: "Ready" },
   error: { color: "bg-red-100 text-red-700", label: "Error" },
 };
+
+export function getRepairDisplayState(
+  repair: { status: string; checkpoint_count?: number | null },
+  activeCheckpoint?: { status: string; checkpoint_number?: number } | null,
+): { label: string; color: string; polling: boolean } {
+  if (repair.status === "processing") {
+    return { label: "AI Analyzing", color: "bg-amber-100 text-amber-700", polling: true };
+  }
+  if (repair.status === "active") {
+    if (activeCheckpoint?.status === "pending") {
+      return { label: "Awaiting Photos", color: "bg-blue-100 text-blue-700", polling: false };
+    }
+    if (activeCheckpoint?.status === "analyzing" || activeCheckpoint?.status === "photos_uploaded") {
+      return { label: "AI Reviewing", color: "bg-amber-100 text-amber-700", polling: true };
+    }
+    return { label: "In Progress", color: "bg-blue-100 text-blue-700", polling: false };
+  }
+  if (repair.status === "ready") {
+    return { label: "Ready", color: "bg-green-100 text-green-700", polling: false };
+  }
+  if (repair.status === "error") {
+    return { label: "Error", color: "bg-red-100 text-red-700", polling: false };
+  }
+  if (repair.status === "uploaded") {
+    return { label: "Queued", color: "bg-blue-100 text-blue-700", polling: true };
+  }
+  return { label: repair.status, color: "bg-gray-100 text-gray-700", polling: false };
+}

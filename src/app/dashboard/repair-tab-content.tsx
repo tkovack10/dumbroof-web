@@ -1,7 +1,7 @@
 "use client";
 
 import type { Repair } from "@/types/repair";
-import { REPAIR_TYPE_LABELS, REPAIR_SEVERITY_COLORS, REPAIR_STATUS_CONFIG } from "@/lib/claim-constants";
+import { REPAIR_TYPE_LABELS, REPAIR_SEVERITY_COLORS, REPAIR_STATUS_CONFIG, getRepairDisplayState } from "@/lib/claim-constants";
 
 interface RepairTabContentProps {
   repairs: Repair[];
@@ -78,10 +78,13 @@ export function RepairTabContent({
       {/* Repair Cards */}
       <div className="space-y-4">
         {repairs.map((repair) => {
+          const displayState = getRepairDisplayState(repair);
           const sc = REPAIR_STATUS_CONFIG[repair.status] || REPAIR_STATUS_CONFIG.uploaded;
           const isReady = repair.status === "ready" && repair.output_files?.length;
           const isProcessing = repair.status === "processing" || repair.status === "uploaded";
+          const isActive = repair.status === "active";
           const severityColor = repair.severity ? REPAIR_SEVERITY_COLORS[repair.severity] : null;
+          const hasCheckpoints = (repair.checkpoint_count ?? 0) > 0;
 
           return (
             <div key={repair.id} className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
@@ -114,14 +117,20 @@ export function RepairTabContent({
                       {repair.severity}
                     </span>
                   )}
-                  <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium ${sc.color}`}>
-                    {isProcessing && (
+                  {hasCheckpoints && (
+                    <span className="px-2 py-0.5 rounded text-xs font-medium bg-indigo-100 text-indigo-700">
+                      CP {repair.checkpoint_count}
+                      {(repair.pivot_count ?? 0) > 0 && ` · ${repair.pivot_count} pivot${repair.pivot_count! > 1 ? "s" : ""}`}
+                    </span>
+                  )}
+                  <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium ${displayState.color}`}>
+                    {(isProcessing || displayState.polling) && (
                       <svg className="animate-spin w-3 h-3" fill="none" viewBox="0 0 24 24">
                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                       </svg>
                     )}
-                    {sc.label}
+                    {displayState.label}
                   </span>
                   {isReady && (
                     <button
@@ -177,6 +186,29 @@ export function RepairTabContent({
                       </div>
                     </div>
                   </div>
+                </div>
+              )}
+
+              {/* Active — checkpoint in progress */}
+              {isActive && (
+                <div className="px-6 pb-4">
+                  <a href={`/dashboard/repair/${repair.id}`} className="block">
+                    <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 hover:bg-blue-100 transition-colors">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center text-white text-xs font-bold shrink-0">
+                          AI
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium text-blue-800">
+                            {displayState.label === "Awaiting Photos" ? "Checkpoint awaiting your photos" : displayState.label === "AI Reviewing" ? "AI is reviewing checkpoint photos..." : "Repair in progress"}
+                          </p>
+                          <p className="text-xs text-blue-600 mt-0.5">
+                            Tap to view timeline and upload photos
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </a>
                 </div>
               )}
 
