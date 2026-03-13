@@ -228,14 +228,18 @@ def write_line_items(sb, claim_id: str, items: list, source: str = "usarm",
             "qty": item.get("qty", 0),
             "unit": item.get("unit", "EA"),
             "unit_price": item.get("unit_price", 0),
-            "xactimate_code": item.get("code_OPTIONAL") or item.get("code"),
-            "trade": item.get("trade_OPTIONAL") or item.get("trade"),
+            "xactimate_code": item.get("code") or item.get("xact_code"),
+            "trade": item.get("trade"),
             "source": source,
             "variance_note": item.get("note") or item.get("variance_note"),
-            "evidence_photos": item.get("evidence_photos_OPTIONAL") or item.get("evidence_photos"),
+            "evidence_photos": item.get("evidence_photos") or item.get("photo_refs"),
             "price_list": price_list,
             "region": region,
         }
+        # New XactRegistry fields for compound learning
+        supp_arg = item.get("supplement_argument", "")
+        if supp_arg:
+            row["variance_note"] = f"{row.get('variance_note', '') or ''}. {supp_arg}".strip(". ")
         rows.append(row)
 
     try:
@@ -384,11 +388,20 @@ def write_claim_outcome(sb, claim_id: str, config: dict, financials: dict,
         row["date_of_loss"] = dol.isoformat()
 
     try:
+        # Try upsert first (handles reprocessing of same claim)
         sb.table("claim_outcomes").upsert(row, on_conflict="claim_id").execute()
         return True
     except Exception as e:
-        print(f"[WAREHOUSE] Claim outcome write failed (non-fatal): {e}")
-        return False
+        print(f"[WAREHOUSE] Claim outcome upsert failed: {e}")
+        # Fallback: delete existing row and insert fresh (handles legacy NULL claim_id conflicts)
+        try:
+            sb.table("claim_outcomes").delete().eq("claim_id", claim_id).execute()
+            sb.table("claim_outcomes").insert(row).execute()
+            print(f"[WAREHOUSE] Claim outcome written via delete+insert fallback")
+            return True
+        except Exception as e2:
+            print(f"[WAREHOUSE] Claim outcome write FAILED (both upsert and insert): {e2}")
+            return False
 
 
 def write_pricing_benchmarks(sb, claim_id: str, items: list, source: str,

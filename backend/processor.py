@@ -25,6 +25,20 @@ from supabase import create_client, Client
 
 from carrier_intelligence import suggest_arguments
 from analytics import predict_settlement, detect_price_deviations
+from xactimate_lookup import XactRegistry
+
+# Xactimate registry cache: market_code → XactRegistry instance
+_XACT_REGISTRIES = {}
+
+
+def _get_registry(state: str, city: str = None) -> XactRegistry:
+    """Get XactRegistry for a state/market, with multi-market price overlay."""
+    market = XactRegistry.resolve_market(state, city=city)
+    if market not in _XACT_REGISTRIES:
+        reg = XactRegistry()
+        reg.load_market_prices(market_code=market)
+        _XACT_REGISTRIES[market] = reg
+    return _XACT_REGISTRIES[market]
 
 from telemetry import (
     call_claude_logged,
@@ -848,7 +862,8 @@ def extract_carrier_scope(client: anthropic.Anthropic, pdf_path: str) -> dict:
       "carrier_amount": 0.00,
       "qty": 0,
       "unit": "SF/LF/SQ/EA",
-      "unit_price": 0.00
+      "unit_price": 0.00,
+      "xact_code": "Xactimate catalog code if visible (e.g., RFG 300S, RFG IWS, SFG GUTA). null if not visible"
     }
   ],
   "carrier_arguments": [
@@ -1410,6 +1425,28 @@ def build_claim_config(
                                                   estimate_request=claim.get("estimate_request"),
                                                   roof_sections=claim.get("roof_sections"))
 
+    # Enrich line items with Xactimate codes, IRC citations, and supplement arguments
+    try:
+        registry = _get_registry(state, city=claim.get("address", "").split(",")[-2].strip() if "," in claim.get("address", "") else None)
+        enriched_count = 0
+        for li in line_items:
+            if li.get("code"):
+                continue  # Already has a code (e.g., from XactRegistry.build_line_items)
+            reg_item = registry.lookup_price(li.get("description", ""))
+            if reg_item:
+                li["code"] = reg_item.get("xact_code", "")
+                li["supplement_argument"] = reg_item.get("supplement_argument", "")
+                li["irc_code"] = reg_item.get("irc_code", "")
+                li["trade"] = li.get("trade") or reg_item.get("trade", "")
+                enriched_count += 1
+            else:
+                li.setdefault("code", "")
+                li.setdefault("supplement_argument", "")
+                li.setdefault("irc_code", "")
+        print(f"[XACT ENRICH] {enriched_count}/{len(line_items)} line items enriched with Xactimate codes")
+    except Exception as e:
+        print(f"[XACT ENRICH] Failed (non-fatal, line items retain original format): {e}")
+
     # Build deterministic code violations based on state + scope
     deterministic_violations = _build_code_violations(state, line_items, trades)
 
@@ -1692,9 +1729,22 @@ def build_claim_config(
         if reasoning:
             config.setdefault("forensic_findings", {}).setdefault("key_arguments", []).append(reasoning)
 
-    # Cross-reference carrier line items against USARM line items
+    # Cross-reference carrier line items against USARM line items using XactRegistry
     if carrier_data and config.get("carrier", {}).get("carrier_line_items"):
-        _cross_reference_line_items(config)
+        try:
+            registry = _get_registry(state, city=config.get("property", {}).get("city"))
+            carrier_items = config["carrier"]["carrier_line_items"]
+            usarm_items = config.get("line_items", [])
+            matched = registry.pre_match_scope_comparison(carrier_items, usarm_items)
+            config["carrier"]["carrier_line_items"] = matched
+            code_matches = sum(1 for m in matched if m.get("matched_by") == "code")
+            fuzzy_matches = sum(1 for m in matched if m.get("matched_by") == "fuzzy")
+            inferred = sum(1 for m in matched if m.get("matched_by") == "code_inferred")
+            missing = sum(1 for m in matched if m.get("matched_by") == "missing")
+            print(f"[SCOPE MATCH] code={code_matches} inferred={inferred} fuzzy={fuzzy_matches} missing={missing} total={len(matched)}")
+        except Exception as e:
+            print(f"[SCOPE MATCH] XactRegistry matching failed, falling back to legacy: {e}")
+            _cross_reference_line_items(config)
 
     return config
 
@@ -2521,7 +2571,7 @@ def build_line_items(measurements: dict, photo_analysis: dict, state: str, user_
         items.append({"category": "ROOFING", "description": "Ice & water barrier (2 courses eaves + 1 course valleys)", "qty": round(iw_sf), "unit": "SF", "unit_price": PRICING.get("ice_water", 2.24)})
 
     # ===================== DRIP EDGE =====================
-    drip = meas.get("drip_edge", 0) or (eave + rake)
+    drip = meas.get("drip_edge", 0) or round((eave + rake) * 1.05, 2)  # 5% waste factor
     if drip > 0:
         if material in ("copper", "slate") and "copper" in notes_lower:
             items.append({"category": "ROOFING", "description": "R&R Drip edge - copper", "qty": drip, "unit": "LF", "unit_price": PRICING.get("drip_edge_copper", 18.50)})
@@ -2566,10 +2616,11 @@ def build_line_items(measurements: dict, photo_analysis: dict, state: str, user_
     is_copper_flashing = material in ("slate", "tile") or ("copper" in notes_lower and "flash" in notes_lower)
 
     if step > 0:
+        step_with_waste = round(step * 1.05, 2)  # 5% waste factor
         if is_copper_flashing:
-            items.append({"category": "ROOFING", "description": "R&R Step flashing - copper", "qty": step, "unit": "LF", "unit_price": PRICING.get("step_flashing_copper", 22.00)})
+            items.append({"category": "ROOFING", "description": "R&R Step flashing - copper", "qty": step_with_waste, "unit": "LF", "unit_price": PRICING.get("step_flashing_copper", 22.00)})
         else:
-            items.append({"category": "ROOFING", "description": "R&R Step flashing", "qty": step, "unit": "LF", "unit_price": PRICING.get("step_flashing", 8.00)})
+            items.append({"category": "ROOFING", "description": "R&R Step flashing", "qty": step_with_waste, "unit": "LF", "unit_price": PRICING.get("step_flashing", 8.00)})
 
     if flashing > 0:
         if is_copper_flashing:
@@ -2578,14 +2629,13 @@ def build_line_items(measurements: dict, photo_analysis: dict, state: str, user_
             items.append({"category": "ROOFING", "description": "R&R Counter/apron flashing", "qty": flashing, "unit": "LF", "unit_price": PRICING.get("counter_flashing", 9.50)})
 
     # ===================== CHIMNEY FLASHING =====================
-    # Step + counter/apron flashing around chimney perimeter. ~20 LF per chimney (standard).
+    # Per-EA pricing per chimney (matches real Xactimate: average 32"x36" = $643.86/EA)
     chimneys = penetrations.get("chimneys", 0)
     if chimneys > 0:
-        chimney_lf = chimneys * 20  # ~20 LF perimeter per chimney
         if is_copper_flashing:
-            items.append({"category": "ROOFING", "description": "R&R Chimney flashing - copper", "qty": chimney_lf, "unit": "LF", "unit_price": PRICING.get("chimney_flashing_copper_lf", 18.42)})
+            items.append({"category": "ROOFING", "description": "R&R Chimney flashing - average (32\" x 36\") - copper", "qty": chimneys, "unit": "EA", "unit_price": PRICING.get("chimney_flashing_copper_ea", 840.00)})
         else:
-            items.append({"category": "ROOFING", "description": "R&R Chimney flashing", "qty": chimney_lf, "unit": "LF", "unit_price": PRICING.get("chimney_flashing_lf", 15.57)})
+            items.append({"category": "ROOFING", "description": "R&R Chimney flashing - average (32\" x 36\")", "qty": chimneys, "unit": "EA", "unit_price": PRICING.get("chimney_flashing_ea", 643.86)})
 
     # ===================== PENETRATIONS =====================
     pipes = penetrations.get("pipes", 0)
@@ -2785,7 +2835,7 @@ def build_line_items(measurements: dict, photo_analysis: dict, state: str, user_
             print(f"[LINE ITEMS] Estimated {window_count} windows from {_ww_wall_area} SF wall area")
 
         if window_count > 0:
-            items.append({"category": "SIDING", "description": "R&R Window wrap - aluminum coil stock", "qty": window_count, "unit": "EA", "unit_price": PRICING.get("window_wrap_small", 256.48)})
+            items.append({"category": "SIDING", "description": "R&R Wrap wood window frame & trim with aluminum sheet", "qty": window_count, "unit": "EA", "unit_price": PRICING.get("window_wrap_standard", 398.11)})
 
     # ===================== DOOR WRAPS =====================
     if _est_req.get("siding"):
@@ -4135,13 +4185,14 @@ def compute_financials(config: dict) -> dict:
     tax_rate = config.get("financials", {}).get("tax_rate", 0.08)
     tax = line_total * tax_rate
     rcv = line_total + tax
-    o_and_p_amount = line_total * 0.20 if config.get("scope", {}).get("o_and_p") else 0
+    # O&P: 10% overhead + 11% profit = 21% (confirmed across 18 gold standard Xactimate estimates)
+    o_and_p_amount = round(line_total * 0.10 + line_total * 0.11, 2) if config.get("scope", {}).get("o_and_p") else 0
     total = rcv + o_and_p_amount
     # Deductible lives in carrier.deductible (NOT financials.deductible — generator ignores that)
     deductible = config.get("carrier", {}).get("deductible", 0) or config.get("financials", {}).get("deductible", 0)
     net = total - deductible
     carrier_rcv = config.get("carrier", {}).get("carrier_rcv", 0)
-    variance = total - carrier_rcv if carrier_rcv else 0
+    variance = total - carrier_rcv if carrier_rcv is not None else 0
     return {
         "line_total": round(line_total, 2),
         "tax": round(tax, 2),
