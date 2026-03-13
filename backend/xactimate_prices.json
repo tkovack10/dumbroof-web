@@ -1559,6 +1559,90 @@
           "mandatory": true,
           "irc_code": null,
           "supplement_argument": "Permit fees required per local building code for re-roofing"
+        },
+        {
+          "xact_code": null,
+          "action": "install",
+          "description": "Dumpster load - roofing debris",
+          "unit": "EA",
+          "unit_price": 850.0,
+          "category": "DEBRIS",
+          "trade": "roofing",
+          "mandatory": true,
+          "supplement_argument": "Job-related overhead \u2014 required for debris disposal"
+        },
+        {
+          "xact_code": null,
+          "action": "install",
+          "description": "Dumpster load - siding debris",
+          "unit": "EA",
+          "unit_price": 850.0,
+          "category": "DEBRIS",
+          "trade": "siding",
+          "mandatory": false,
+          "supplement_argument": "Separate dumpster for siding debris \u2014 cannot mix with roofing materials"
+        },
+        {
+          "xact_code": null,
+          "action": "install",
+          "description": "Tarp - all purpose poly - per sq ft",
+          "unit": "SF",
+          "unit_price": 1.59,
+          "category": "TEMPORARY",
+          "trade": "general",
+          "mandatory": false
+        },
+        {
+          "xact_code": "SDG VINYLI",
+          "action": "r&r",
+          "description": "R&R Vinyl siding - insulated",
+          "unit": "SF",
+          "unit_price": 11.47,
+          "category": "SIDING",
+          "trade": "siding",
+          "mandatory": false,
+          "irc_code": "R703.11",
+          "supplement_argument": "Vinyl siding must conform to ASTM D3679 per IRC R703.11"
+        },
+        {
+          "xact_code": "SFG GRD+",
+          "action": "r&r",
+          "description": "R&R Gutter guard/screen - High grade",
+          "unit": "LF",
+          "unit_price": 22.57,
+          "category": "GUTTERS",
+          "trade": "gutters",
+          "supplement_argument": "Gutter guards must be R&R when gutters are replaced \u2014 cannot reattach to new gutter profile"
+        },
+        {
+          "xact_code": "RFG VMTL",
+          "action": "r&r",
+          "description": "R&R Valley metal",
+          "unit": "LF",
+          "unit_price": 9.19,
+          "category": "ROOFING",
+          "trade": "roofing",
+          "irc_code": "R905.2.8.3",
+          "supplement_argument": "Valley flashing required at all roof-to-roof intersections per IRC R905.2.8.3. Minimum 24\" wide for open valleys"
+        },
+        {
+          "xact_code": "RFG VMTLC",
+          "action": "r&r",
+          "description": "R&R Valley metal - copper",
+          "unit": "LF",
+          "unit_price": 37.26,
+          "category": "ROOFING",
+          "trade": "roofing",
+          "irc_code": "R905.2.8.3"
+        },
+        {
+          "xact_code": null,
+          "action": "r&r",
+          "description": "R&R Exhaust cap - through roof - 6\" to 8\"",
+          "unit": "EA",
+          "unit_price": 156.09,
+          "category": "ROOFING",
+          "trade": "roofing"
         }
       ]
     }

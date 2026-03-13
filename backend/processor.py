@@ -1425,25 +1425,31 @@ def build_claim_config(
                                                   estimate_request=claim.get("estimate_request"),
                                                   roof_sections=claim.get("roof_sections"))
 
-    # Enrich line items with Xactimate codes, IRC citations, and supplement arguments
+    # Enrich line items with Xactimate codes, IRC citations, supplement arguments, AND correct prices
     try:
         registry = _get_registry(state, city=claim.get("address", "").split(",")[-2].strip() if "," in claim.get("address", "") else None)
         enriched_count = 0
+        price_corrected = 0
         for li in line_items:
-            if li.get("code"):
-                continue  # Already has a code (e.g., from XactRegistry.build_line_items)
             reg_item = registry.lookup_price(li.get("description", ""))
             if reg_item:
+                # Add Xactimate metadata
                 li["code"] = reg_item.get("xact_code", "")
                 li["supplement_argument"] = reg_item.get("supplement_argument", "")
                 li["irc_code"] = reg_item.get("irc_code", "")
                 li["trade"] = li.get("trade") or reg_item.get("trade", "")
                 enriched_count += 1
+                # Override price from registry if registry price is higher (maximize legitimate estimate)
+                reg_price = reg_item.get("unit_price", 0)
+                current_price = li.get("unit_price", 0)
+                if reg_price > 0 and reg_price > current_price * 1.05:  # >5% higher = use registry price
+                    li["unit_price"] = reg_price
+                    price_corrected += 1
             else:
                 li.setdefault("code", "")
                 li.setdefault("supplement_argument", "")
                 li.setdefault("irc_code", "")
-        print(f"[XACT ENRICH] {enriched_count}/{len(line_items)} line items enriched with Xactimate codes")
+        print(f"[XACT ENRICH] {enriched_count}/{len(line_items)} items enriched, {price_corrected} prices corrected from registry")
     except Exception as e:
         print(f"[XACT ENRICH] Failed (non-fatal, line items retain original format): {e}")
 
@@ -1742,6 +1748,29 @@ def build_claim_config(
             inferred = sum(1 for m in matched if m.get("matched_by") == "code_inferred")
             missing = sum(1 for m in matched if m.get("matched_by") == "missing")
             print(f"[SCOPE MATCH] code={code_matches} inferred={inferred} fuzzy={fuzzy_matches} missing={missing} total={len(matched)}")
+
+            # Find IRC-required items the carrier completely omitted
+            try:
+                meas_for_missing = {
+                    "remove_sq": sum(s.get("roof_area_sq", 0) for s in config.get("structures", [{}])),
+                    "install_sq": sum(s.get("roof_area_sq", 0) for s in config.get("structures", [{}])),
+                    "ridge_lf": config.get("measurements", {}).get("measurements", {}).get("ridge", 0),
+                    "eave_lf": config.get("measurements", {}).get("measurements", {}).get("eave", 0),
+                    "rake_lf": config.get("measurements", {}).get("measurements", {}).get("rake", 0),
+                    "valley_lf": config.get("measurements", {}).get("measurements", {}).get("valley", 0),
+                    "step_lf": config.get("measurements", {}).get("measurements", {}).get("step_flashing", 0),
+                    "penetrations": config.get("measurements", {}).get("penetrations", {}).get("pipes", 0),
+                    "chimneys": config.get("measurements", {}).get("penetrations", {}).get("chimneys", 0),
+                    "pitch": 4,
+                    "stories": config.get("measurements", {}).get("stories", 1),
+                }
+                missing_items = registry.find_missing_items(carrier_items, meas_for_missing)
+                if missing_items:
+                    print(f"[SCOPE MATCH] Found {len(missing_items)} IRC-required items carrier omitted")
+                    # These are already appended by pre_match_scope_comparison as NOT INCLUDED rows
+            except Exception as e2:
+                print(f"[SCOPE MATCH] find_missing_items failed (non-fatal): {e2}")
+
         except Exception as e:
             print(f"[SCOPE MATCH] XactRegistry matching failed, falling back to legacy: {e}")
             _cross_reference_line_items(config)

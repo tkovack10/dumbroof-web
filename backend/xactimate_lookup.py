@@ -674,16 +674,87 @@ class XactRegistry:
     # 5. Pre-Match Scope Comparison
     # ------------------------------------------------------------------
 
+    @staticmethod
+    def _aggregate_carrier_triples(carrier_line_items):
+        """Aggregate carrier tear-out/supply/install triples into combined R&R items.
+
+        Carriers often split a single item into 2-3 lines:
+        - "Tear Out - Laminated comp shingle" ($75/SQ)
+        - "Material Only - Laminated comp shingle" ($200/SQ)
+        - "Install - Laminated comp shingle" ($150/SQ)
+
+        This combines them into one line with total amount for better matching
+        against USARM's combined R&R items.
+        """
+        if not carrier_line_items:
+            return carrier_line_items
+
+        aggregated = []
+        i = 0
+        while i < len(carrier_line_items):
+            ci = carrier_line_items[i]
+            desc = (ci.get("carrier_desc") or ci.get("item") or "").lower()
+
+            # Check if this is part of a tear-out/install or material/install sequence
+            is_split = False
+            if any(kw in desc for kw in ["tear out", "tear-out", "remove -", "material only"]):
+                # Look ahead for matching install/supply lines
+                base_desc = _clean_desc(desc)
+                combined_amount = float(ci.get("carrier_amount", 0) or 0)
+                combined_parts = [ci]
+                j = i + 1
+                while j < len(carrier_line_items) and j <= i + 3:
+                    next_ci = carrier_line_items[j]
+                    next_desc = (next_ci.get("carrier_desc") or next_ci.get("item") or "").lower()
+                    next_base = _clean_desc(next_desc)
+
+                    # Check if descriptions match (same base item, different action)
+                    if _similarity(base_desc, next_base) >= 0.6 or base_desc in next_base or next_base in base_desc:
+                        if any(kw in next_desc for kw in ["install", "supply", "material only", "replace -"]):
+                            combined_amount += float(next_ci.get("carrier_amount", 0) or 0)
+                            combined_parts.append(next_ci)
+                            is_split = True
+                    else:
+                        break
+                    j += 1
+
+                if is_split and len(combined_parts) >= 2:
+                    # Create a combined item
+                    best_desc = max(combined_parts, key=lambda c: len(c.get("carrier_desc", "")))
+                    combined = dict(best_desc)
+                    combined["carrier_amount"] = round(combined_amount, 2)
+                    combined["_aggregated_from"] = len(combined_parts)
+                    # Preserve xact_code from any part that has it
+                    for part in combined_parts:
+                        if part.get("xact_code"):
+                            combined["xact_code"] = part["xact_code"]
+                            break
+                    aggregated.append(combined)
+                    i = j
+                    continue
+
+            aggregated.append(ci)
+            i += 1
+
+        if len(aggregated) < len(carrier_line_items):
+            print(f"[SCOPE MATCH] Aggregated {len(carrier_line_items)} carrier items → {len(aggregated)} (combined {len(carrier_line_items) - len(aggregated)} split items)")
+
+        return aggregated
+
     def pre_match_scope_comparison(self, carrier_line_items, usarm_line_items):
         """Pre-compute usarm_desc and usarm_amount for each carrier line item.
 
-        Uses a 3-pass algorithm:
+        Uses a 4-pass algorithm:
+          Pass 0: Aggregate carrier tear-out/supply/install triples into combined R&R
           Pass 1: Code-based matching (exact, O(1)) — highest confidence
           Pass 2: Fuzzy description matching with negative exclusions — fallback
           Pass 3: Identify IRC-required items carrier omitted — appended as "NOT INCLUDED"
 
         Returns the carrier_line_items list with usarm_desc/usarm_amount/note added.
         """
+        # ── PASS 0: Aggregate carrier tear-out/supply/install triples ──
+        carrier_line_items = self._aggregate_carrier_triples(carrier_line_items)
+
         used_indices = set()
         result = []
 
