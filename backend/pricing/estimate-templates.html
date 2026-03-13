@@ -1,0 +1,817 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>USARM Estimate Templates</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: Arial, sans-serif; font-size: 12px; background: #f0f2f5; color: #333; }
+
+/* ── Header ── */
+.header {
+  background: linear-gradient(135deg, #1a3a6c, #2a5aac);
+  color: white; padding: 16px 24px;
+  display: flex; align-items: center; justify-content: space-between;
+}
+.header h1 { font-size: 20px; }
+.header p  { font-size: 11px; opacity: 0.8; margin-top: 2px; }
+
+/* ── Market selector bar ── */
+.market-bar {
+  background: white; padding: 10px 20px;
+  display: flex; gap: 16px; align-items: center;
+  border-bottom: 2px solid #1a3a6c; flex-wrap: wrap;
+}
+.market-bar label { font-weight: bold; font-size: 12px; }
+.market-bar select, .market-bar input {
+  padding: 6px 10px; border: 1px solid #ccc; border-radius: 4px;
+  font-size: 12px; background: #f9f9f9;
+}
+.market-bar select { min-width: 220px; }
+.badge {
+  background: #1a5c6c; color: white; border-radius: 4px;
+  padding: 4px 10px; font-size: 11px; font-weight: bold;
+}
+.badge.warn { background: #b45309; }
+
+/* ── Template tabs ── */
+.tabs {
+  background: #1a3a6c; display: flex; gap: 2px; padding: 0 20px; overflow-x: auto;
+}
+.tab-btn {
+  background: rgba(255,255,255,0.15); color: white;
+  border: none; padding: 10px 18px; cursor: pointer;
+  font-size: 12px; font-weight: bold; white-space: nowrap;
+  border-bottom: 3px solid transparent; transition: all 0.15s;
+}
+.tab-btn:hover { background: rgba(255,255,255,0.25); }
+.tab-btn.active { background: white; color: #1a3a6c; border-bottom-color: #2a9d8f; }
+
+/* ── Content area ── */
+.content { padding: 16px 20px; max-width: 1400px; }
+.template { display: none; }
+.template.active { display: block; }
+
+/* ── Section intro ── */
+.intro {
+  background: white; border-left: 4px solid #1a3a6c;
+  padding: 10px 16px; margin-bottom: 14px; border-radius: 0 6px 6px 0;
+  display: flex; gap: 20px; align-items: flex-start; flex-wrap: wrap;
+}
+.intro-text h2 { font-size: 15px; color: #1a3a6c; margin-bottom: 4px; }
+.intro-text p  { font-size: 11px; color: #555; }
+
+/* ── Job size inputs ── */
+.inputs-row {
+  background: #fff8e1; border: 1px solid #f0c040;
+  border-radius: 6px; padding: 12px 16px; margin-bottom: 14px;
+  display: flex; gap: 14px; flex-wrap: wrap; align-items: flex-end;
+}
+.input-group { display: flex; flex-direction: column; gap: 3px; }
+.input-group label { font-size: 10px; font-weight: bold; color: #664d03; text-transform: uppercase; }
+.input-group input  {
+  width: 90px; padding: 5px 8px; border: 1px solid #d4a700;
+  border-radius: 4px; font-size: 13px; font-weight: bold; text-align: center;
+}
+.calc-btn {
+  background: #1a3a6c; color: white; border: none;
+  padding: 7px 16px; border-radius: 4px; cursor: pointer; font-size: 12px;
+  align-self: flex-end;
+}
+.calc-btn:hover { background: #2a5aac; }
+
+/* ── Line items table ── */
+.section-header {
+  background: #0f2244; color: white; padding: 8px 12px;
+  font-size: 11px; font-weight: bold; letter-spacing: 0.5px;
+  display: flex; justify-content: space-between;
+  margin-top: 10px; border-radius: 4px 4px 0 0;
+}
+table { width: 100%; border-collapse: collapse; background: white; margin-bottom: 4px; }
+thead th {
+  background: #1a3a6c; color: white; padding: 7px 10px;
+  text-align: left; font-size: 10px; border-right: 1px solid rgba(255,255,255,0.2);
+}
+thead th.r { text-align: right; }
+td { padding: 6px 10px; border-bottom: 1px solid #eee; border-right: 1px solid #f0f0f0; font-size: 11px; }
+td:last-child { border-right: none; }
+tr:nth-child(even) td { background: #f9f9f9; }
+tr:hover td { background: #e8f0fe !important; }
+.code { font-family: 'Courier New', monospace; font-weight: bold; color: #1a3a6c; white-space: nowrap; }
+.xact { font-family: 'Courier New', monospace; color: #888; font-size: 10px; }
+.desc { color: #333; }
+.unit { text-align: center; color: #888; }
+.qty  { text-align: right; font-weight: bold; color: #333; }
+.price-cell { text-align: right; font-family: 'Courier New', monospace; color: #1a5c2c; font-weight: bold; }
+.price-cell.na { color: #999; font-style: italic; }
+.total-cell { text-align: right; font-family: 'Courier New', monospace; font-weight: bold; color: #0f2244; }
+.action-badge {
+  display: inline-block; padding: 1px 7px; border-radius: 10px;
+  font-size: 10px; font-weight: bold;
+}
+.remove { background: #fee2e2; color: #991b1b; }
+.install { background: #dcfce7; color: #166534; }
+.randr { background: #dbeafe; color: #1e40af; }
+.desktop-note { color: #b45309; font-size: 10px; font-style: italic; }
+.note-row td { background: #fffbeb !important; color: #854d0e; font-size: 10px; padding: 5px 10px; }
+
+/* ── Totals row ── */
+.totals-row { background: #1a3a6c !important; }
+.totals-row td { color: white !important; font-weight: bold; padding: 8px 10px; }
+.totals-row td.total-cell { color: #7dd3fc !important; font-size: 14px; }
+
+/* ── Summary card ── */
+.summary-card {
+  background: white; border: 1px solid #ddd; border-radius: 6px;
+  padding: 14px 18px; margin-top: 12px; display: flex; gap: 20px; flex-wrap: wrap;
+}
+.summary-card h3 { color: #1a3a6c; font-size: 13px; width: 100%; margin-bottom: 6px; }
+.summary-item { text-align: center; }
+.summary-item .num { font-size: 22px; font-weight: bold; color: #1a3a6c; }
+.summary-item .lbl { font-size: 10px; color: #666; }
+
+/* ── Scope notes ── */
+.scope-notes {
+  background: #f0fdf4; border: 1px solid #86efac;
+  border-radius: 6px; padding: 12px 16px; margin-top: 12px;
+}
+.scope-notes h4 { color: #166534; font-size: 12px; margin-bottom: 8px; }
+.scope-notes ul { padding-left: 18px; color: #374151; }
+.scope-notes li { margin-bottom: 4px; font-size: 11px; }
+
+/* ── Print ── */
+.print-bar {
+  background: white; padding: 10px 20px;
+  border-top: 1px solid #eee; display: flex; gap: 10px; align-items: center;
+}
+.print-btn {
+  background: #1a3a6c; color: white; border: none;
+  padding: 8px 18px; border-radius: 4px; cursor: pointer; font-size: 12px;
+}
+@media print {
+  .header, .market-bar, .tabs, .inputs-row, .print-bar,
+  .calc-btn, .scope-notes { display: none !important; }
+  body { background: white; font-size: 10px; }
+  .content { padding: 5px; }
+  th { font-size: 8px; padding: 4px 6px; }
+  td { padding: 3px 8px; font-size: 9px; }
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div>
+    <h1>USA Roof Masters — Estimate Templates</h1>
+    <p>Standard Xactimate scope by work type &nbsp;|&nbsp; Prices live from all-markets.json &nbsp;|&nbsp; MAR26</p>
+  </div>
+  <div style="text-align:right; font-size:11px; opacity:0.8">
+    Asphalt &bull; Siding &bull; Gutters &bull; Cedar &bull; Slate &bull; Repairs
+  </div>
+</div>
+
+<div class="market-bar">
+  <label>Market / Price List:</label>
+  <select id="marketSelect" onchange="loadMarket()">
+    <option value="">-- Select Market --</option>
+  </select>
+  <span id="marketStatus" class="badge warn">No market selected</span>
+  <div style="margin-left:auto; font-size:11px; color:#666;">
+    Prices from <code>price-lists/all-markets.json</code> &nbsp;|&nbsp;
+    14/22 items live &nbsp;|&nbsp; 8 items require Desktop
+  </div>
+</div>
+
+<div class="tabs">
+  <button class="tab-btn active" onclick="showTab('asphalt', this)">🏠 Asphalt Roof</button>
+  <button class="tab-btn" onclick="showTab('siding', this)">🏡 Siding</button>
+  <button class="tab-btn" onclick="showTab('gutters', this)">💧 Gutters</button>
+  <button class="tab-btn" onclick="showTab('cedar', this)">🌲 Cedar Shake</button>
+  <button class="tab-btn" onclick="showTab('slate', this)">⬛ Slate</button>
+  <button class="tab-btn" onclick="showTab('repairs', this)">🔧 Repairs</button>
+</div>
+
+<div class="content">
+
+<!-- ═══════════════════ ASPHALT ROOF ═══════════════════ -->
+<div class="template active" id="tpl-asphalt">
+  <div class="intro">
+    <div class="intro-text">
+      <h2>Asphalt Shingle Roof Replacement — Full Scope</h2>
+      <p>Standard USARM insurance scope. Approved brands: Owens Corning (OC) &amp; GAF. All 22 pipeline items.<br>
+         Crew: Heber / Laz / Yito / Didier &nbsp;|&nbsp; Supplier: QXO &nbsp;|&nbsp; Subcontractor: N/A (in-house)</p>
+    </div>
+  </div>
+
+  <div class="inputs-row">
+    <div class="input-group"><label>Remove SQ</label><input type="number" id="rf_rem_sq" value="25" step="0.5" oninput="calcAsphalt()"></div>
+    <div class="input-group"><label>Install SQ</label><input type="number" id="rf_inst_sq" value="25" step="0.5" oninput="calcAsphalt()"></div>
+    <div class="input-group"><label>Ridge LF</label><input type="number" id="rf_ridge" value="80" oninput="calcAsphalt()"></div>
+    <div class="input-group"><label>Eave LF</label><input type="number" id="rf_eave" value="100" oninput="calcAsphalt()"></div>
+    <div class="input-group"><label>Rake LF</label><input type="number" id="rf_rake" value="90" oninput="calcAsphalt()"></div>
+    <div class="input-group"><label>Valley LF</label><input type="number" id="rf_valley" value="30" oninput="calcAsphalt()"></div>
+    <div class="input-group"><label>Step Flash LF</label><input type="number" id="rf_step" value="40" oninput="calcAsphalt()"></div>
+    <div class="input-group"><label>Pipe Jacks</label><input type="number" id="rf_pipe" value="2" oninput="calcAsphalt()"></div>
+    <div class="input-group"><label>Chimneys</label><input type="number" id="rf_chimney" value="1" oninput="calcAsphalt()"></div>
+    <div class="input-group"><label>Pitch</label>
+      <select id="rf_pitch" oninput="calcAsphalt()" style="width:70px;padding:5px 4px;border:1px solid #d4a700;border-radius:4px;font-weight:bold;font-size:13px;">
+        <option>4/12</option><option>5/12</option><option>6/12</option>
+        <option>7/12</option><option>8/12</option><option>9/12</option>
+        <option>10/12</option><option>12/12</option>
+      </select>
+    </div>
+    <div class="input-group"><label>Stories</label>
+      <select id="rf_stories" oninput="calcAsphalt()" style="width:60px;padding:5px 4px;border:1px solid #d4a700;border-radius:4px;font-weight:bold;font-size:13px;">
+        <option>1</option><option>2</option><option>3</option>
+      </select>
+    </div>
+  </div>
+
+  <div id="asphalt-table"></div>
+  <div id="asphalt-summary" class="summary-card"></div>
+
+  <div class="scope-notes">
+    <h4>Standard Notes — Asphalt Roof</h4>
+    <ul>
+      <li><strong>Shingle brand:</strong> Owens Corning Duration or GAF Timberline HDZ (approved brands). Color per homeowner selection.</li>
+      <li><strong>Ice &amp; water:</strong> Calculated as (eave LF × 3 SF) + (valley LF × 6 SF). Covers 3' at eaves + full valley.</li>
+      <li><strong>Drip edge:</strong> Include 5% waste. Cover all eaves + rakes.</li>
+      <li><strong>Steep charge:</strong> 7/12–9/12 add STP7 remove + install. 10/12+ consult with Tom.</li>
+      <li><strong>High roof:</strong> 2+ stories add HIGH remove + install (per SQ of install area).</li>
+      <li><strong>Ridge vent:</strong> RGVC requires Desktop price lookup — mark as supplement if not in original scope.</li>
+      <li><strong>Dumpster:</strong> 30-yard via CLN DMPW. Order through Matto.</li>
+      <li><strong>Permits:</strong> GEN PRMT — required in most NY/NJ/PA jurisdictions. Matto handles filing.</li>
+      <li><strong>EagleView:</strong> Always order EagleView before finalizing quantities. Carrier scope may differ.</li>
+    </ul>
+  </div>
+</div>
+
+<!-- ═══════════════════ SIDING ═══════════════════ -->
+<div class="template" id="tpl-siding">
+  <div class="intro">
+    <div class="intro-text">
+      <h2>Vinyl Siding Replacement — Full Scope</h2>
+      <p>Standard USARM siding scope. Crew: Norbin (3 crews, subcontractor — contact directly).<br>
+         Common brands: CertainTeed, Alside, Mastic. Typical job = 25–60 SQ. Check FYI for color/profile.</p>
+    </div>
+  </div>
+
+  <div class="inputs-row">
+    <div class="input-group"><label>Wall Area SQ</label><input type="number" id="sid_sq" value="30" step="0.5" oninput="calcSiding()"></div>
+    <div class="input-group"><label>Openings SQ</label><input type="number" id="sid_open" value="3" step="0.5" oninput="calcSiding()"><span style="font-size:9px;color:#666">windows/doors</span></div>
+    <div class="input-group"><label>Corners EA</label><input type="number" id="sid_corners" value="4" oninput="calcSiding()"></div>
+    <div class="input-group"><label>Soffit SF</label><input type="number" id="sid_soffit" value="400" oninput="calcSiding()"></div>
+    <div class="input-group"><label>Fascia LF</label><input type="number" id="sid_fascia" value="120" oninput="calcSiding()"></div>
+    <div class="input-group"><label>Window Trim EA</label><input type="number" id="sid_windows" value="8" oninput="calcSiding()"></div>
+  </div>
+
+  <div id="siding-table"></div>
+  <div id="siding-summary" class="summary-card"></div>
+
+  <div class="scope-notes">
+    <h4>Standard Notes — Siding</h4>
+    <ul>
+      <li><strong>Crew:</strong> Norbin runs siding exclusively. Contact him directly. Does not share crews with roofing.</li>
+      <li><strong>Profile:</strong> Dutch Lap .044 is standard. Beaded CedarMill if homeowner upgrades. Confirm with FYI.</li>
+      <li><strong>House wrap:</strong> Always include Tyvek (SID WRAP) on full replacements. Insurance often approves.</li>
+      <li><strong>Fanfold:</strong> Include ½" fanfold foam if going over existing (add R-value, smoother surface).</li>
+      <li><strong>Openings:</strong> Subtract window/door area but add J-channel for each opening perimeter.</li>
+      <li><strong>Waste factor:</strong> 10% standard for vinyl siding. 15% if lots of cuts (dormers, complex gables).</li>
+      <li><strong>Soffit &amp; fascia:</strong> Price from full Xactimate price list — SID SOFV / SFG FASC codes.</li>
+      <li><strong>Supplement items:</strong> House wrap, fanfold, corner posts, J-channel often NOT in original carrier scope. Submit supplement.</li>
+      <li><strong>Hardie/fiber cement:</strong> Use SID HARR code instead. Greyvin handles specialty installs.</li>
+    </ul>
+  </div>
+</div>
+
+<!-- ═══════════════════ GUTTERS ═══════════════════ -->
+<div class="template" id="tpl-gutters">
+  <div class="intro">
+    <div class="intro-text">
+      <h2>Aluminum Gutter &amp; Downspout Replacement</h2>
+      <p>Standard USARM gutter scope. Crew: Rene (Ice Contractors — handles ALL gutter work).<br>
+         Standard: 5" K-style aluminum. Colors: White, Brown, Almond. Call Rene for schedule.</p>
+    </div>
+  </div>
+
+  <div class="inputs-row">
+    <div class="input-group"><label>Gutter LF</label><input type="number" id="gut_lf" value="150" oninput="calcGutters()"></div>
+    <div class="input-group"><label>Downspout LF</label><input type="number" id="gut_ds" value="60" oninput="calcGutters()"></div>
+    <div class="input-group"><label>DS Elbows EA</label><input type="number" id="gut_elbow" value="8" oninput="calcGutters()"></div>
+    <div class="input-group"><label>DS Boots EA</label><input type="number" id="gut_boot" value="4" oninput="calcGutters()"></div>
+    <div class="input-group"><label>End Caps EA</label><input type="number" id="gut_endcap" value="8" oninput="calcGutters()"></div>
+    <div class="input-group"><label>Splash Blocks EA</label><input type="number" id="gut_splash" value="4" oninput="calcGutters()"></div>
+    <div class="input-group"><label>Gutter Guard LF</label><input type="number" id="gut_guard" value="0" oninput="calcGutters()"></div>
+  </div>
+
+  <div id="gutters-table"></div>
+  <div id="gutters-summary" class="summary-card"></div>
+
+  <div class="scope-notes">
+    <h4>Standard Notes — Gutters</h4>
+    <ul>
+      <li><strong>Crew:</strong> Rene (Ice Contractors) handles ALL gutter work. Al contacts him directly. Do not send roofing crew.</li>
+      <li><strong>Standard size:</strong> 5" K-style aluminum. Some older homes use 4" — confirm before ordering.</li>
+      <li><strong>Color matching:</strong> White is default. Brown or Almond if trim matches. Confirm with homeowner and FYI.</li>
+      <li><strong>Seamless:</strong> Ice Contractors fabricates on-site with seamless gutter machine. No seams = fewer leaks.</li>
+      <li><strong>Prices:</strong> SFG GUTW (gutter) + SFG DNSW (downspout) are in the USARM price list. Other items check Xactimate Desktop.</li>
+      <li><strong>Gutter guards:</strong> Often a supplement item not in original scope. LeafGuard or similar. Submit separately.</li>
+      <li><strong>Fascia damage:</strong> If fascia is rotted behind gutters, add SFG FASC R&amp;R. Often supplement-eligible.</li>
+      <li><strong>Spike-to-screw:</strong> Standard upgrade. Include if carrier allows — prevents gutters pulling away from fascia.</li>
+    </ul>
+  </div>
+</div>
+
+<!-- ═══════════════════ CEDAR SHAKE ═══════════════════ -->
+<div class="template" id="tpl-cedar">
+  <div class="intro">
+    <div class="intro-text">
+      <h2>Cedar Shake Roof Replacement</h2>
+      <p>Specialty work. Crew: Greyvin (independent sub — handles slate, metal &amp; cedar).<br>
+         Contact Greyvin directly for scheduling. Material lead time: 3–5 days. Price from Xactimate price list.</p>
+    </div>
+  </div>
+
+  <div class="inputs-row">
+    <div class="input-group"><label>Remove SQ</label><input type="number" id="ced_rem" value="20" step="0.5" oninput="calcCedar()"></div>
+    <div class="input-group"><label>Install SQ</label><input type="number" id="ced_inst" value="20" step="0.5" oninput="calcCedar()"></div>
+    <div class="input-group"><label>Ridge LF</label><input type="number" id="ced_ridge" value="60" oninput="calcCedar()"></div>
+    <div class="input-group"><label>Valley LF</label><input type="number" id="ced_valley" value="25" oninput="calcCedar()"></div>
+    <div class="input-group"><label>Pipe Jacks EA</label><input type="number" id="ced_pipe" value="2" oninput="calcCedar()"></div>
+  </div>
+
+  <div id="cedar-table"></div>
+
+  <div class="scope-notes">
+    <h4>Standard Notes — Cedar Shake</h4>
+    <ul>
+      <li><strong>Crew:</strong> Greyvin only. Do not send standard asphalt crew — cedar requires specialty knowledge.</li>
+      <li><strong>Material:</strong> Western Red Cedar, #1 grade. Confirm 16", 18", or 24" shakes per original spec.</li>
+      <li><strong>Underlayment:</strong> 30 lb felt between courses + breathable underlayment at deck. Not synthetic.</li>
+      <li><strong>Ridge:</strong> Hand-cut cedar ridge or prefab — check original scope. Insurance typically approves like-for-like.</li>
+      <li><strong>Flashing:</strong> All copper or galvanized steel. Never aluminum with cedar (galvanic reaction).</li>
+      <li><strong>Supplement:</strong> Cedar is almost always a supplement fight. Document existing material grade. Photos critical.</li>
+      <li><strong>Xactimate codes:</strong> RFG WOODA (remove cedar), RFG WOODS (install cedar shake) — check Desktop for current market price.</li>
+      <li><strong>Pricing note:</strong> Cedar prices vary widely. Always pull from Xactimate Desktop for current market rate. Not in standard price list.</li>
+    </ul>
+  </div>
+</div>
+
+<!-- ═══════════════════ SLATE ═══════════════════ -->
+<div class="template" id="tpl-slate">
+  <div class="intro">
+    <div class="intro-text">
+      <h2>Slate Roof Replacement</h2>
+      <p>Specialty work. Crew: Greyvin (independent sub — handles slate, metal &amp; cedar).<br>
+         Highest value work. Lead time: 1–2 weeks for material. Always document existing slate type for insurance match.</p>
+    </div>
+  </div>
+
+  <div class="inputs-row">
+    <div class="input-group"><label>Remove SQ</label><input type="number" id="slt_rem" value="20" step="0.5" oninput="calcSlate()"></div>
+    <div class="input-group"><label>Install SQ</label><input type="number" id="slt_inst" value="20" step="0.5" oninput="calcSlate()"></div>
+    <div class="input-group"><label>Ridge LF</label><input type="number" id="slt_ridge" value="60" oninput="calcSlate()"></div>
+    <div class="input-group"><label>Hip LF</label><input type="number" id="slt_hip" value="40" oninput="calcSlate()"></div>
+    <div class="input-group"><label>Valley LF</label><input type="number" id="slt_valley" value="25" oninput="calcSlate()"></div>
+    <div class="input-group"><label>Pipe Jacks EA</label><input type="number" id="slt_pipe" value="2" oninput="calcSlate()"></div>
+    <div class="input-group"><label>Chimneys EA</label><input type="number" id="slt_chimney" value="1" oninput="calcSlate()"></div>
+  </div>
+
+  <div id="slate-table"></div>
+
+  <div class="scope-notes">
+    <h4>Standard Notes — Slate</h4>
+    <ul>
+      <li><strong>Crew:</strong> Greyvin only. Slate work requires certified installer — do not deviate.</li>
+      <li><strong>Slate type:</strong> Photograph existing slate. Identify: Vermont (soft), Pennsylvania (hard), imported (Chinese — do NOT match with Chinese slate on insurance claims). Document thickness.</li>
+      <li><strong>Deck:</strong> Slate requires solid sheathing (1x4 skip sheating or plywood). Inspect and document deck condition before quoting.</li>
+      <li><strong>Nails:</strong> Copper nails only. Never galvanized with slate.</li>
+      <li><strong>Flashing:</strong> Copper or lead — document existing material. Insurance must match like-for-like.</li>
+      <li><strong>Supplement:</strong> Copper flashing, copper nails, hip &amp; ridge slate, valley metal are all commonly denied and supplemented. Build it all in from the start.</li>
+      <li><strong>Xactimate codes:</strong> RFG SLTR (remove slate), RFG SLTI (install slate) — always pull price from Desktop. Varies significantly by market.</li>
+      <li><strong>Partial replacement:</strong> If only spot repairs needed — Greyvin can hand-set individual slates. Price per EA not SQ.</li>
+    </ul>
+  </div>
+</div>
+
+<!-- ═══════════════════ REPAIRS ═══════════════════ -->
+<div class="template" id="tpl-repairs">
+  <div class="intro">
+    <div class="intro-text">
+      <h2>Repair &amp; Service Call Templates</h2>
+      <p>Common repair items. Crew: Vlad (Vladimir Velazquez) dispatched for all repairs and service visits.<br>
+         Log all repairs in repairs.json. Status: new → in-progress → complete.</p>
+    </div>
+  </div>
+
+  <div id="repairs-table"></div>
+
+  <div class="scope-notes">
+    <h4>Standard Notes — Repairs</h4>
+    <ul>
+      <li><strong>Crew:</strong> Vlad handles all repairs. Al dispatches Vlad — do not send install crews to repairs.</li>
+      <li><strong>Documentation:</strong> Before/after photos required on ALL repairs. Use CompanyCam — link to job.</li>
+      <li><strong>Leak calls:</strong> 1-hour SLA. Vlad goes out same day if reported before 2pm.</li>
+      <li><strong>Post-install repairs:</strong> First 12 months = warranty. No charge to homeowner unless self-inflicted damage.</li>
+      <li><strong>Emergency tarping:</strong> Use when roof is open/active leak before repair can be scheduled. Document everything.</li>
+      <li><strong>Flat roof patches:</strong> EPDM or TPO patch — Greyvin or specialty sub. Not standard crew.</li>
+      <li><strong>Chimney repointing:</strong> Recommend masonry sub. Not USARM scope unless specifically contracted.</li>
+    </ul>
+  </div>
+</div>
+
+</div><!-- /content -->
+
+<div class="print-bar">
+  <button class="print-btn" onclick="window.print()">Print / Save as PDF</button>
+  <span style="font-size:11px; color:#666; margin-left:10px;">
+    Open price-lists.html for full price comparison across all 35 markets.
+  </span>
+</div>
+
+<script>
+// ── Global state ──────────────────────────────────────────────────────────────
+let MARKET_DATA = null;
+let PRICES = {};      // code → price
+const DESKTOP_CODES = ['RFG RGVC','RFG STP7_R','RFG STP7','RFG HIGH_R','RFG HIGH','CLN DMPW','GEN PRMT','CLN GCLN'];
+
+// ── Load all-markets.json ─────────────────────────────────────────────────────
+fetch('price-lists/all-markets.json')
+  .then(r => r.json())
+  .then(data => {
+    MARKET_DATA = data;
+    const sel = document.getElementById('marketSelect');
+    // Populate dropdown, grouped by state
+    const states = {};
+    for (const [code, mkt] of Object.entries(data.markets)) {
+      const st = code.substring(0, 2);
+      if (!states[st]) states[st] = [];
+      states[st].push({ code, name: mkt.name, mkt });
+    }
+    const stateNames = { NY:'New York', NJ:'New Jersey', PA:'Pennsylvania', MD:'Maryland', DE:'Delaware' };
+    for (const [st, mkts] of Object.entries(states).sort()) {
+      const og = document.createElement('optgroup');
+      og.label = stateNames[st] || st;
+      mkts.sort((a,b) => a.name.localeCompare(b.name)).forEach(m => {
+        const opt = document.createElement('option');
+        opt.value = m.code;
+        opt.textContent = `${m.name} (${m.code})`;
+        og.appendChild(opt);
+      });
+      sel.appendChild(og);
+    }
+    // Default to first NY market (Binghamton if available)
+    const nybi = Object.keys(data.markets).find(k => k.startsWith('NYBI'));
+    if (nybi) { sel.value = nybi; loadMarket(); }
+  })
+  .catch(err => {
+    document.getElementById('marketStatus').textContent = 'Could not load price list';
+    console.error(err);
+  });
+
+function loadMarket() {
+  const code = document.getElementById('marketSelect').value;
+  const badge = document.getElementById('marketStatus');
+  if (!code || !MARKET_DATA) { badge.textContent = 'No market selected'; return; }
+  const mkt = MARKET_DATA.markets[code];
+  if (!mkt) return;
+  PRICES = {};
+  for (const [itemCode, item] of Object.entries(mkt.items)) {
+    PRICES[itemCode] = item.price;
+  }
+  badge.textContent = mkt.name + ' — ' + code;
+  badge.className = 'badge';
+  // Recalculate whichever template is active
+  calcAsphalt(); calcSiding(); calcGutters(); calcCedar(); calcSlate(); calcRepairs();
+}
+
+// ── Tab switching ─────────────────────────────────────────────────────────────
+function showTab(name, btn) {
+  document.querySelectorAll('.template').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+  document.getElementById('tpl-' + name).classList.add('active');
+  btn.classList.add('active');
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function n(id) { return parseFloat(document.getElementById(id)?.value) || 0; }
+function val(id) { return document.getElementById(id)?.value || ''; }
+function fmt(v) { return v == null ? '--' : '$' + v.toFixed(2); }
+function fmtN(v, dec=1) { return v == null ? '--' : v.toFixed(dec); }
+
+function priceCell(code) {
+  const p = PRICES[code];
+  if (p == null && DESKTOP_CODES.includes(code)) return `<td class="price-cell na desktop-note">Desktop req.</td>`;
+  if (p == null) return `<td class="price-cell na">no price</td>`;
+  return `<td class="price-cell">${fmt(p)}</td>`;
+}
+function totalCell(code, qty) {
+  const p = PRICES[code];
+  if (!p || !qty) return `<td class="total-cell na">—</td>`;
+  return `<td class="total-cell">${fmt(p * qty)}</td>`;
+}
+function actionBadge(action) {
+  const cls = action === 'Remove' ? 'remove' : action === 'Install' ? 'install' : 'randr';
+  return `<span class="action-badge ${cls}">${action}</span>`;
+}
+
+function tableHead(label, count) {
+  return `<div class="section-header"><span>${label}</span><span>${count} items</span></div>
+<table><thead><tr>
+  <th>Our Code</th><th>Xact Code</th><th>Description</th><th>Unit</th>
+  <th class="r">Qty</th><th>Action</th><th class="r">Unit Price</th><th class="r">Total</th>
+</tr></thead><tbody>`;
+}
+function row(ourCode, xactCode, desc, unit, qty, action) {
+  return `<tr>
+    <td class="code">${ourCode}</td><td class="xact">${xactCode}</td>
+    <td class="desc">${desc}</td><td class="unit">${unit}</td>
+    <td class="qty">${qty > 0 ? fmtN(qty) : '—'}</td>
+    <td>${actionBadge(action)}</td>
+    ${priceCell(ourCode)}
+    ${totalCell(ourCode, qty)}
+  </tr>`;
+}
+function customRow(ourCode, xactCode, desc, unit, qty, action, priceOverride) {
+  const p = priceOverride;
+  const pCell = p ? `<td class="price-cell">${fmt(p)}</td>` : `<td class="price-cell na">See Desktop</td>`;
+  const tCell = (p && qty) ? `<td class="total-cell">${fmt(p * qty)}</td>` : `<td class="total-cell na">—</td>`;
+  return `<tr>
+    <td class="code">${ourCode}</td><td class="xact">${xactCode}</td>
+    <td class="desc">${desc}</td><td class="unit">${unit}</td>
+    <td class="qty">${qty > 0 ? fmtN(qty) : '—'}</td>
+    <td>${actionBadge(action)}</td>
+    ${pCell}${tCell}
+  </tr>`;
+}
+function totalRow(label, total) {
+  return `<tr class="totals-row"><td colspan="7" style="text-align:right">${label}</td><td class="total-cell">${fmt(total)}</td></tr>`;
+}
+function calcTotal(codes, qtys) {
+  let t = 0;
+  codes.forEach((c,i) => { const p = PRICES[c]; if (p && qtys[i]) t += p * qtys[i]; });
+  return t;
+}
+
+// ── ASPHALT ROOF ──────────────────────────────────────────────────────────────
+function calcAsphalt() {
+  const remSQ   = n('rf_rem_sq');
+  const instSQ  = n('rf_inst_sq');
+  const ridgeLF = n('rf_ridge');
+  const eaveLF  = n('rf_eave');
+  const rakeLF  = n('rf_rake');
+  const vallyLF = n('rf_valley');
+  const stepLF  = n('rf_step');
+  const pipe    = n('rf_pipe');
+  const chimney = n('rf_chimney');
+  const pitch   = parseInt(val('rf_pitch')) || 4;
+  const stories = parseInt(val('rf_stories')) || 1;
+
+  const iwSF     = Math.round((eaveLF * 3) + (vallyLF * 6));
+  const startLF  = eaveLF + rakeLF;
+  const dripLF   = Math.round((eaveLF + rakeLF) * 1.05);
+  const isSteep  = pitch >= 7;
+  const isHigh   = stories >= 2;
+
+  let html = tableHead('ROOF SECTION', 12 + (isSteep ? 2:0) + (isHigh ? 2:0));
+  html += row('RFG SHTG', 'RFG 300S',    'Laminated shingle - Remove',       'SQ', remSQ,  'Remove');
+  html += row('RFG LAMI', 'RFG 300S',    'Laminated shingle - Install',      'SQ', instSQ, 'Install');
+  html += row('RFG RDGC', 'RFG RIDGCS',  'Hip/Ridge cap - Standard R&R',     'LF', ridgeLF,'R&R');
+  html += row('RFG STRT', 'RFG ASTR-',   'Starter strip - universal',        'LF', startLF,'Install');
+  html += row('RFG FELT30','RFG FELT30', 'Roofing felt - 30 lb.',            'SQ', instSQ, 'Install');
+  html += row('RFG I&W',  'RFG IWS',     'Ice &amp; water barrier',          'SF', iwSF,   'Install');
+  html += row('RFG DRPE', 'RFG DRIP',    'Drip edge - Remove',               'LF', dripLF, 'Remove');
+  html += row('RFG DRIP', 'RFG DRIP',    'Drip edge - Install',              'LF', dripLF, 'Install');
+  html += row('RFG STPF_R','RFG STEP',   'Step flashing - Remove',           'LF', stepLF, 'Remove');
+  html += row('RFG STPF', 'RFG STEP',    'Step flashing - Install',          'LF', stepLF, 'Install');
+  html += row('RFG JKFL', 'RFG FLPIPE',  'Flashing - pipe jack R&amp;R',     'EA', pipe,   'R&R');
+  html += row('RFG CHFL', 'RFG FLCH',    'Chimney flashing avg 32x36 R&R',   'EA', chimney,'R&R');
+  html += row('RFG RGVC', 'RFG RGVC',    'Continuous ridge vent R&R',        'LF', ridgeLF,'R&R');
+  if (isSteep) {
+    html += row('RFG STP7_R','RFG STP7', `Steep charge ${pitch}/12 - Remove`, 'SQ', remSQ,  'Remove');
+    html += row('RFG STP7',  'RFG STP7', `Steep charge ${pitch}/12 - Install`,'SQ', instSQ, 'Install');
+  }
+  if (isHigh) {
+    html += row('RFG HIGH_R','RFG HIGH',  'High roof 2+ stories - Remove',    'SQ', remSQ,  'Remove');
+    html += row('RFG HIGH',  'RFG HIGH',  'High roof 2+ stories - Install',   'SQ', instSQ, 'Install');
+  }
+  html += '</tbody></table>';
+
+  html += tableHead('GENERAL SECTION', 3);
+  html += row('CLN DMPW','CLN DMPW', 'Dumpster ~30 yards',  'EA', 1, 'R&R');
+  html += row('GEN PRMT','GEN PRMT', 'Permits &amp; fees',  'EA', 1, 'R&R');
+  html += row('CLN GCLN','CLN GCLN', 'General clean-up',    'HR', 8, 'R&R');
+  html += '</tbody></table>';
+
+  html += tableHead('GUTTERS', 2);
+  html += row('SFG GUTW','SFG GUTA', 'Gutter aluminum up to 5" R&R',    'LF', 0, 'R&R');
+  html += row('SFG DNSW','SFG GUTA', 'Downspout aluminum up to 5" R&R', 'LF', 0, 'R&R');
+  html += '<tr class="note-row"><td colspan="8">Enter gutter/downspout LF if included in scope. Often handled as separate gutter job — see Gutters template.</td></tr>';
+  html += '</tbody></table>';
+
+  // Totals
+  const allCodes = ['RFG SHTG','RFG LAMI','RFG RDGC','RFG STRT','RFG FELT30','RFG I&W','RFG DRPE','RFG DRIP','RFG STPF_R','RFG STPF','RFG JKFL','RFG CHFL'];
+  const allQtys  = [remSQ, instSQ, ridgeLF, startLF, instSQ, iwSF, dripLF, dripLF, stepLF, stepLF, pipe, chimney];
+  let total = calcTotal(allCodes, allQtys);
+  if (isSteep) total += calcTotal(['RFG STP7_R','RFG STP7'], [remSQ, instSQ]);
+  if (isHigh)  total += calcTotal(['RFG HIGH_R','RFG HIGH'], [remSQ, instSQ]);
+
+  html += `<table><tbody>${totalRow('SUBTOTAL (excl. Desktop-only items)', total > 0 ? total : null)}</tbody></table>`;
+  document.getElementById('asphalt-table').innerHTML = html;
+
+  // Summary
+  document.getElementById('asphalt-summary').innerHTML = `
+    <h3>Job Summary</h3>
+    <div class="summary-item"><div class="num">${fmtN(instSQ)}</div><div class="lbl">Install SQ</div></div>
+    <div class="summary-item"><div class="num">${fmtN(iwSF,0)}</div><div class="lbl">I&W SF</div></div>
+    <div class="summary-item"><div class="num">${fmtN(startLF,0)}</div><div class="lbl">Starter LF</div></div>
+    <div class="summary-item"><div class="num">${fmtN(dripLF,0)}</div><div class="lbl">Drip Edge LF</div></div>
+    <div class="summary-item"><div class="num">${pipe}</div><div class="lbl">Pipe Jacks</div></div>
+    <div class="summary-item"><div class="num">${chimney}</div><div class="lbl">Chimneys</div></div>
+    ${isSteep ? `<div class="summary-item"><div class="num" style="color:#b45309">${pitch}/12</div><div class="lbl">Steep ⚠</div></div>` : ''}
+    ${isHigh  ? `<div class="summary-item"><div class="num" style="color:#b45309">${stories}</div><div class="lbl">Stories ⚠</div></div>` : ''}
+    <div class="summary-item"><div class="num" style="color:#166534">${total > 0 ? fmt(total) : '--'}</div><div class="lbl">Est. Material Value</div></div>
+  `;
+}
+
+// ── SIDING ────────────────────────────────────────────────────────────────────
+function calcSiding() {
+  const sq      = n('sid_sq');
+  const open    = n('sid_open');
+  const corners = n('sid_corners');
+  const soffit  = n('sid_soffit');
+  const fascia  = n('sid_fascia');
+  const windows = n('sid_windows');
+
+  const net    = Math.max(0, sq - open);
+  const instSQ = Math.round(net * 1.10 * 10) / 10;  // 10% waste
+  const jchan  = Math.ceil(sq * 2);   // J-channel sticks
+  const foam   = Math.ceil(net * 1.05);
+  const nails  = Math.ceil(sq / 5);
+  const caulk  = Math.ceil(sq / 15);
+
+  let html = tableHead('SIDING SECTION', 6);
+  html += customRow('SID VINR','SID 180', 'Vinyl siding - Remove',           'SQ', sq,      'Remove', null);
+  html += customRow('SID VINI','SID 180', 'Vinyl siding - Install (D4 .044)','SQ', instSQ,  'Install',null);
+  html += customRow('SID WRAP','SID WRAP','Tyvek house wrap',                'SQ', instSQ,  'Install',null);
+  html += customRow('SID FOAM','SID FANF','½" fanfold foam insulation',      'SQ', foam,    'Install',null);
+  html += customRow('SID CORV','SID CORV','Outside corner post 10\'',        'EA', corners, 'Install',null);
+  html += customRow('SID JCHN','SID JCHN','J-channel / trim 12\'6"',         'EA', jchan,   'Install',null);
+  html += '<tr class="note-row"><td colspan="8">Siding prices: Pull from Xactimate Desktop → siding codes vary by region. Not in standard price list.</td></tr>';
+  html += '</tbody></table>';
+
+  html += tableHead('SOFFIT & FASCIA', 3);
+  html += customRow('SID SOFV','SFG SOFV','Vinyl soffit R&R',   'SF', soffit,  'R&R', null);
+  html += customRow('SFG FASC','SFG FASC','Fascia board R&R',   'LF', fascia,  'R&R', null);
+  html += customRow('WND TRIM','WND TRIM','Window/door trim R&R','EA', windows, 'R&R', null);
+  html += '<tr class="note-row"><td colspan="8">Soffit &amp; fascia prices: See Xactimate Desktop for market rate. SFG SOFV / SFG FASC.</td></tr>';
+  html += '</tbody></table>';
+
+  html += tableHead('GENERAL', 2);
+  html += row('CLN DMPW','CLN DMPW','Dumpster ~30 yards', 'EA', 1, 'R&R');
+  html += row('GEN PRMT','GEN PRMT','Permits &amp; fees', 'EA', 1, 'R&R');
+  html += '</tbody></table>';
+
+  document.getElementById('siding-table').innerHTML = html;
+  document.getElementById('siding-summary').innerHTML = `
+    <h3>Siding Summary</h3>
+    <div class="summary-item"><div class="num">${fmtN(sq)}</div><div class="lbl">Gross Wall SQ</div></div>
+    <div class="summary-item"><div class="num">${fmtN(open)}</div><div class="lbl">Openings SQ</div></div>
+    <div class="summary-item"><div class="num">${fmtN(instSQ)}</div><div class="lbl">Install SQ (+10%)</div></div>
+    <div class="summary-item"><div class="num">${corners}</div><div class="lbl">Corner Posts</div></div>
+    <div class="summary-item"><div class="num">${jchan}</div><div class="lbl">J-Channel Sticks</div></div>
+    <div class="summary-item"><div class="num">${soffit}</div><div class="lbl">Soffit SF</div></div>
+    <div class="summary-item"><div class="num">${fmtN(fascia,0)}</div><div class="lbl">Fascia LF</div></div>
+    <div class="summary-item"><div class="num" style="color:#b45309">Desktop</div><div class="lbl">Prices via Xactimate</div></div>
+  `;
+}
+
+// ── GUTTERS ───────────────────────────────────────────────────────────────────
+function calcGutters() {
+  const gutLF  = n('gut_lf');
+  const dsLF   = n('gut_ds');
+  const elbows = n('gut_elbow');
+  const boots  = n('gut_boot');
+  const endcap = n('gut_endcap');
+  const splash = n('gut_splash');
+  const guard  = n('gut_guard');
+
+  let html = tableHead('GUTTERS & DOWNSPOUTS', 4 + (guard > 0 ? 1 : 0));
+  html += row('SFG GUTW','SFG GUTA','Gutter aluminum up to 5" - R&R',   'LF', gutLF,  'R&R');
+  html += row('SFG DNSW','SFG GUTA','Downspout aluminum up to 5" - R&R','LF', dsLF,   'R&R');
+  html += customRow('SFG DNSB','SFG DSPT','Downspout elbow/boot',          'EA', elbows, 'R&R', null);
+  html += customRow('SFG ENDC','SFG GUTC','Gutter end cap',                'EA', endcap, 'Install', null);
+  if (guard > 0) html += customRow('SFG GUTK','SFG GUTK','Gutter guard / screen','LF', guard,'Install',null);
+  html += '<tr class="note-row"><td colspan="8">SFG GUTW + SFG DNSW are in the USARM price list. Other gutter items: check Xactimate Desktop for market price.</td></tr>';
+  html += '</tbody></table>';
+
+  html += tableHead('ACCESSORIES', 2);
+  html += customRow('SFG SPLB','SFG SPLB','Splash block',         'EA', splash, 'Install', null);
+  html += customRow('SFG SPKC','SFG SPKC','Spike to screw upgrade','LF', gutLF, 'R&R',    null);
+  html += '</tbody></table>';
+
+  html += tableHead('GENERAL', 1);
+  html += row('CLN GCLN','CLN GCLN','General clean-up', 'HR', 2, 'R&R');
+  html += '</tbody></table>';
+
+  const total = calcTotal(['SFG GUTW','SFG DNSW'], [gutLF, dsLF]);
+  html += `<table><tbody>${totalRow('SUBTOTAL (gutter + downspout only, price-listed items)', total > 0 ? total : null)}</tbody></table>`;
+  document.getElementById('gutters-table').innerHTML = html;
+
+  document.getElementById('gutters-summary').innerHTML = `
+    <h3>Gutter Summary</h3>
+    <div class="summary-item"><div class="num">${fmtN(gutLF,0)}</div><div class="lbl">Gutter LF</div></div>
+    <div class="summary-item"><div class="num">${fmtN(dsLF,0)}</div><div class="lbl">Downspout LF</div></div>
+    <div class="summary-item"><div class="num">${elbows}</div><div class="lbl">Elbows</div></div>
+    <div class="summary-item"><div class="num">${endcap}</div><div class="lbl">End Caps</div></div>
+    <div class="summary-item"><div class="num">${splash}</div><div class="lbl">Splash Blocks</div></div>
+    ${guard > 0 ? `<div class="summary-item"><div class="num">${fmtN(guard,0)}</div><div class="lbl">Guard LF</div></div>` : ''}
+    <div class="summary-item"><div class="num" style="color:#166534">${total > 0 ? fmt(total) : '--'}</div><div class="lbl">Listed Items Value</div></div>
+  `;
+}
+
+// ── CEDAR ─────────────────────────────────────────────────────────────────────
+function calcCedar() {
+  const remSQ  = n('ced_rem');
+  const instSQ = n('ced_inst');
+  const ridgeLF = n('ced_ridge');
+  const vallyLF = n('ced_valley');
+  const pipe    = n('ced_pipe');
+
+  const iwSF = Math.round(vallyLF * 6 + 0 * 3);
+
+  let html = tableHead('CEDAR SHAKE — SPECIALTY SCOPE (prices from Desktop)', 7);
+  html += customRow('RFG WOODA','RFG WOODA','Cedar shake - Remove',             'SQ', remSQ,  'Remove',  null);
+  html += customRow('RFG WOODS','RFG WOODS','Cedar shake - Install',            'SQ', instSQ, 'Install', null);
+  html += customRow('RFG CEDGR','RFG CEDGR','Cedar ridge cap R&R',              'LF', ridgeLF,'R&R',     null);
+  html += customRow('RFG FELT30','RFG FELT30','Roofing felt 30 lb. (interlays)', 'SQ', instSQ, 'Install', PRICES['RFG FELT30'] || null);
+  html += customRow('RFG I&W',  'RFG IWS',  'Ice &amp; water (valleys)',        'SF', iwSF,   'Install', PRICES['RFG I&W']    || null);
+  html += customRow('RFG JKFL', 'RFG FLPIPE','Pipe jack flashing R&R',          'EA', pipe,   'R&R',     PRICES['RFG JKFL']   || null);
+  html += customRow('CLN DMPW','CLN DMPW',  'Dumpster ~30 yards',               'EA', 1,      'R&R',     null);
+  html += '<tr class="note-row"><td colspan="8">Cedar prices MUST be pulled from Xactimate Desktop. Rates vary significantly by market. Greyvin only — do not use standard asphalt crew.</td></tr>';
+  html += '</tbody></table>';
+
+  document.getElementById('cedar-table').innerHTML = html;
+}
+
+// ── SLATE ─────────────────────────────────────────────────────────────────────
+function calcSlate() {
+  const remSQ   = n('slt_rem');
+  const instSQ  = n('slt_inst');
+  const ridgeLF = n('slt_ridge');
+  const hipLF   = n('slt_hip');
+  const vallyLF = n('slt_valley');
+  const pipe    = n('slt_pipe');
+  const chimney = n('slt_chimney');
+
+  let html = tableHead('SLATE — SPECIALTY SCOPE (prices from Desktop)', 8);
+  html += customRow('RFG SLTR','RFG SLTR', 'Slate - Remove',                   'SQ', remSQ,    'Remove',  null);
+  html += customRow('RFG SLTI','RFG SLTI', 'Slate - Install',                  'SQ', instSQ,   'Install', null);
+  html += customRow('RFG SLHP','RFG SLHP', 'Hip/ridge slate R&R',              'LF', ridgeLF+hipLF,'R&R', null);
+  html += customRow('RFG COPV','RFG COPV', 'Copper valley metal R&R',          'LF', vallyLF,  'R&R',     null);
+  html += customRow('RFG COPF','RFG COPF', 'Copper step flashing R&R',         'LF', 0,        'R&R',     null);
+  html += customRow('RFG CHFL','RFG FLCH', 'Chimney flashing avg 32x36 R&R',   'EA', chimney,  'R&R',     PRICES['RFG CHFL'] || null);
+  html += customRow('RFG JKFL','RFG FLPIPE','Pipe jack R&R',                   'EA', pipe,     'R&R',     PRICES['RFG JKFL'] || null);
+  html += customRow('CLN DMPW','CLN DMPW', 'Dumpster ~30 yards',               'EA', 1,        'R&R',     null);
+  html += '<tr class="note-row"><td colspan="8">Slate prices MUST be pulled from Xactimate Desktop — prices vary dramatically. Always photo and document existing slate type (Vermont / PA / imported). Greyvin only.</td></tr>';
+  html += '</tbody></table>';
+
+  document.getElementById('slate-table').innerHTML = html;
+}
+
+// ── REPAIRS ───────────────────────────────────────────────────────────────────
+function calcRepairs() {
+  let html = tableHead('COMMON ROOF REPAIR ITEMS', 8);
+  html += customRow('RFG SHTG_R','RFG 300S', 'Shingle spot repair (per SQ)',     'SQ', 1, 'R&R', null);
+  html += customRow('RFG CHFL',  'RFG FLCH', 'Chimney flashing R&R',             'EA', 1, 'R&R', PRICES['RFG CHFL']||null);
+  html += customRow('RFG JKFL',  'RFG FLPIPE','Pipe jack flashing R&R',          'EA', 1, 'R&R', PRICES['RFG JKFL']||null);
+  html += customRow('RFG VALV',  'RFG VALM', 'Valley metal R&R (per LF)',        'LF', 0, 'R&R', null);
+  html += customRow('RFG RDGC',  'RFG RIDGCS','Ridge cap R&R (per LF)',          'LF', 0, 'R&R', PRICES['RFG RDGC']||null);
+  html += customRow('RFG DRIP',  'RFG DRIP', 'Drip edge R&R',                   'LF', 0, 'R&R', PRICES['RFG DRIP']||null);
+  html += customRow('RFG TARP',  'RFG TARP', 'Emergency tarp (per SQ)',          'SQ', 0, 'Install', null);
+  html += customRow('CLN GCLN',  'CLN GCLN', 'General clean-up',                'HR', 2, 'R&R', null);
+  html += '<tr class="note-row"><td colspan="8">Repairs: Vlad handles all service calls. All repairs must be documented in repairs.json with before/after CompanyCam photos.</td></tr>';
+  html += '</tbody></table>';
+
+  html += tableHead('COMMON SIDING REPAIR ITEMS', 4);
+  html += customRow('SID SIDP','SID 180',  'Vinyl siding - patch/replace (per SQ)', 'SQ', 0, 'R&R', null);
+  html += customRow('SFG FASC','SFG FASC', 'Fascia board repair (per LF)',          'LF', 0, 'R&R', null);
+  html += customRow('SFG SOFV','SFG SOFV', 'Soffit panel repair (per SF)',          'SF', 0, 'R&R', null);
+  html += customRow('WND TRIM','WND TRIM', 'Window/door trim repair',               'EA', 0, 'R&R', null);
+  html += '</tbody></table>';
+
+  html += tableHead('COMMON GUTTER REPAIR ITEMS', 3);
+  html += row('SFG GUTW','SFG GUTA', 'Gutter section R&R (per LF)',       'LF', 0, 'R&R');
+  html += row('SFG DNSW','SFG GUTA', 'Downspout section R&R (per LF)',    'LF', 0, 'R&R');
+  html += customRow('SFG DNSB','SFG DSPT','Downspout elbow/boot repair',  'EA', 0, 'R&R', null);
+  html += '</tbody></table>';
+
+  document.getElementById('repairs-table').innerHTML = html;
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+calcAsphalt(); calcSiding(); calcGutters(); calcCedar(); calcSlate(); calcRepairs();
+</script>
+</body>
+</html>

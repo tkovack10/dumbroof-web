@@ -1,0 +1,412 @@
+{
+  "RFG 240S": {
+    "cost": 73.27,
+    "unit": "SQ",
+    "desc": "3 tab - 25 yr. - comp. shingle roofing - w/out felt"
+  },
+  "RFG 300S": {
+    "cost": 75.07,
+    "unit": "SQ",
+    "desc": "Laminated - comp. shingle rfg. - w/out felt"
+  },
+  "RFG FELTSU": {
+    "cost": 65.02,
+    "unit": "SQ",
+    "desc": "Roofing felt - synthetic underlayment"
+  },
+  "RFG FELTSU-": {
+    "cost": 52.96,
+    "unit": "SQ",
+    "desc": "Roofing felt - synthetic underlayment - Standard grade"
+  },
+  "RFG FELT30": {
+    "cost": 57.61,
+    "unit": "SQ",
+    "desc": "Roofing felt - 30 lb."
+  },
+  "RFG FELT15": {
+    "cost": 50.1,
+    "unit": "SQ",
+    "desc": "Roofing felt - 15 lb."
+  },
+  "RFG IWS": {
+    "cost": 2.32,
+    "unit": "SF",
+    "desc": "Ice & water barrier"
+  },
+  "RFG IWSHT": {
+    "cost": 2.82,
+    "unit": "SF",
+    "desc": "Ice & water barrier - High temp"
+  },
+  "RFG FLCH>": {
+    "cost": 850.66,
+    "unit": "EA",
+    "desc": "Chimney flashing - large (32\" x 60\")"
+  },
+  "RFG FLCH<": {
+    "cost": 514.65,
+    "unit": "EA",
+    "desc": "Chimney flashing - small (24\" x 24\")"
+  },
+  "RFG FLCH": {
+    "cost": 643.86,
+    "unit": "EA",
+    "desc": "Chimney flashing - average (32\" x 36\")"
+  },
+  "RFG DRIP": {
+    "cost": 4.33,
+    "unit": "LF",
+    "desc": "Drip edge"
+  },
+  "RFG FLPIPE": {
+    "cost": 80.97,
+    "unit": "EA",
+    "desc": "Flashing - pipe jack"
+  },
+  "RFG STEP": {
+    "cost": 15.44,
+    "unit": "LF",
+    "desc": "Step flashing"
+  },
+  "RFG VMTL": {
+    "cost": 9.19,
+    "unit": "LF",
+    "desc": "Valley metal"
+  },
+  "RFG VMTLC": {
+    "cost": 37.26,
+    "unit": "LF",
+    "desc": "Valley metal - copper"
+  },
+  "RFG VMTLW": {
+    "cost": 9.91,
+    "unit": "LF",
+    "desc": "Valley metal - (W) profile"
+  },
+  "FRM SH1/2": {
+    "cost": 2.94,
+    "unit": "SF",
+    "desc": "Sheathing - plywood - 1/2\" CDX"
+  },
+  "RFG PAV": {
+    "cost": 346.35,
+    "unit": "EA",
+    "desc": "Roof mount power attic vent"
+  },
+  "RFG PAV>": {
+    "cost": 401.87,
+    "unit": "EA",
+    "desc": "Roof mount power attic vent - Large"
+  },
+  "RFG PAVRS": {
+    "cost": 274.04,
+    "unit": "EA",
+    "desc": "Roof mount power attic vent - Detach & reset"
+  },
+  "RFG 400S": {
+    "cost": 75.07,
+    "unit": "SQ",
+    "desc": "Laminated - High grd - comp. shingle rfg. - w/out felt"
+  },
+  "RFG 500SHS+": {
+    "cost": 79.41,
+    "unit": "SQ",
+    "desc": "Laminated - Shake look Premium grd comp.shingle-w/out felt"
+  },
+  "RFG ADDRM>": {
+    "cost": 46.87,
+    "unit": "SQ",
+    "desc": "Add. layer of comp. shingles, remove & disp. - Laminated"
+  },
+  "RFG ASTR": {
+    "cost": 2.69,
+    "unit": "LF",
+    "desc": "Asphalt starter - peel and stick"
+  },
+  "RFG ASTR-": {
+    "cost": 2.55,
+    "unit": "LF",
+    "desc": "Asphalt starter - universal starter course"
+  },
+  "RFG GCR240": {
+    "cost": 140.77,
+    "unit": "EA",
+    "desc": "Gable cornice return - 3 tab"
+  },
+  "RFG GCR240H": {
+    "cost": 171.11,
+    "unit": "EA",
+    "desc": "Gable cornice return - 3 tab - 2 stories or greater"
+  },
+  "RFG GCR300H": {
+    "cost": 172.25,
+    "unit": "EA",
+    "desc": "Gable cornice return - laminated - 2 stories or greater"
+  },
+  "RFG GCS240": {
+    "cost": 21.47,
+    "unit": "LF",
+    "desc": "Gable cornice strip - 3 tab"
+  },
+  "RFG GCS240H": {
+    "cost": 25.57,
+    "unit": "LF",
+    "desc": "Gable cornice strip - 3 tab - 2 stories or greater"
+  },
+  "RFG RIDGCS": {
+    "cost": 12.29,
+    "unit": "LF",
+    "desc": "Hip / Ridge cap - Standard profile - composition shingles"
+  },
+  "RFG COPS+": {
+    "cost": 29.07,
+    "unit": "SF",
+    "desc": "Copper panel - standing seam 1\" - 20 oz"
+  },
+  "RFG COPV": {
+    "cost": 33.37,
+    "unit": "LF",
+    "desc": "Copper valley - v-channel"
+  },
+  "RFG COPF+": {
+    "cost": 42.55,
+    "unit": "SF",
+    "desc": "Copper panel - flat seam - 20 oz"
+  },
+  "RFG RL": {
+    "cost": 56.52,
+    "unit": "SQ",
+    "desc": "Roll roofing"
+  },
+  "RFG RL+": {
+    "cost": 60.75,
+    "unit": "SQ",
+    "desc": "Roll roofing - 50% overlap"
+  },
+  "RFG SLATE": {
+    "cost": 198.75,
+    "unit": "SQ",
+    "desc": "Slate roofing - 12\" to 18\" tall"
+  },
+  "SFG GRD+": {
+    "cost": 22.57,
+    "unit": "LF",
+    "desc": "Gutter guard/screen - High grade"
+  },
+  "RFG SLATE++": {
+    "cost": 198.75,
+    "unit": "SQ",
+    "desc": "Slate roofing - Premium grade - 12\" to 24\" tall - red"
+  },
+  "RFG SLR++": {
+    "cost": 57.48,
+    "unit": "LF",
+    "desc": "Slate ridge or hip - Premium grade - 18\" to 24\" tall - red"
+  },
+  "RFG WSHK+": {
+    "cost": 84.01,
+    "unit": "SQ",
+    "desc": "Wood shakes - heavy (3/4\") hand split"
+  },
+  "RFG WSTP": {
+    "cost": 84.01,
+    "unit": "SQ",
+    "desc": "Wood shakes/shingles - tapersawn - #1 cedar"
+  },
+  "RFG WSTR": {
+    "cost": 16,
+    "unit": "LF",
+    "desc": "Wood shake/shingle starter"
+  },
+  "SFG GUTA": {
+    "cost": 12.15,
+    "unit": "LF",
+    "desc": "Gutter / downspout - aluminum - up to 5\""
+  },
+  "SFG GUTA>": {
+    "cost": 16.65,
+    "unit": "LF",
+    "desc": "Gutter / downspout - aluminum - 6\""
+  },
+  "SFG GUTHRA": {
+    "cost": 21.01,
+    "unit": "LF",
+    "desc": "Gutter / downspout - half round - aluminum - 6\""
+  },
+  "SFG GUTHRA<": {
+    "cost": 17.16,
+    "unit": "LF",
+    "desc": "Gutter / downspout - half round - aluminum - up to 5\""
+  },
+  "SFG GUTC": {
+    "cost": 33.51,
+    "unit": "LF",
+    "desc": "Gutter / downspout - copper - up to 5\""
+  },
+  "SFG GUTC>": {
+    "cost": 39.19,
+    "unit": "LF",
+    "desc": "Gutter / downspout - copper - 6\""
+  },
+  "SFG GUTHRC": {
+    "cost": 46.76,
+    "unit": "LF",
+    "desc": "Gutter / downspout - half round - copper - 6\""
+  },
+  "SFG DICERS": {
+    "cost": 7.2,
+    "unit": "LF",
+    "desc": "De-icing cable - Detach & reset"
+  },
+  "SFG FACM10": {
+    "cost": 11.37,
+    "unit": "LF",
+    "desc": "Fascia - metal - 10\""
+  },
+  "SFG SFTV": {
+    "cost": 9.38,
+    "unit": "SF",
+    "desc": "Soffit - vinyl"
+  },
+  "SDG INS3/8": {
+    "cost": 1.23,
+    "unit": "SF",
+    "desc": "Fanfold foam insulation board - 3/8\""
+  },
+  "SDG MTL+": {
+    "cost": 14.36,
+    "unit": "SF",
+    "desc": "Siding - .024\" metal (aluminum/steel) - High grade"
+  },
+  "SDG MTLC": {
+    "cost": 12.3,
+    "unit": "LF",
+    "desc": "Metal outside corner post"
+  },
+  "SDG MTLIC": {
+    "cost": 10.2,
+    "unit": "LF",
+    "desc": "Metal inside corner post"
+  },
+  "SDG MTLJ": {
+    "cost": 7.92,
+    "unit": "LF",
+    "desc": "Metal J trim"
+  },
+  "SDG MVRS": {
+    "cost": 4.23,
+    "unit": "SF",
+    "desc": "Metal or Vinyl siding - Detach & reset"
+  },
+  "SDG WRAPP": {
+    "cost": 30.36,
+    "unit": "LF",
+    "desc": "Wrap wood post with aluminum (PER LF)"
+  },
+  "SDG WRAPGD": {
+    "cost": 24.78,
+    "unit": "LF",
+    "desc": "Wrap wood garage door frame & trim with aluminum (PER LF)"
+  },
+  "SDG WDWRP>>": {
+    "cost": 658.66,
+    "unit": "EA",
+    "desc": "Wrap wood window frame & trim with aluminum sheet - XLarge"
+  },
+  "SDG WDWRAP>": {
+    "cost": 543.77,
+    "unit": "EA",
+    "desc": "Wrap wood window frame & trim with aluminum sheet - Large"
+  },
+  "SDG WDWRAP<": {
+    "cost": 259.09,
+    "unit": "EA",
+    "desc": "Wrap wood window frame & trim with aluminum sheet - Small"
+  },
+  "SDG VENTG": {
+    "cost": 191.55,
+    "unit": "EA",
+    "desc": "Attic vent - gable end - vinyl"
+  },
+  "SDG VINBB": {
+    "cost": 8.94,
+    "unit": "SF",
+    "desc": "Siding - vinyl - board & batten"
+  },
+  "SDG VINCI": {
+    "cost": 14.47,
+    "unit": "LF",
+    "desc": "Vinyl outside corner post - insulated"
+  },
+  "SDG VINICI": {
+    "cost": 12.11,
+    "unit": "LF",
+    "desc": "Vinyl inside corner post - insulated"
+  },
+  "SDG VINSP": {
+    "cost": 11.51,
+    "unit": "SF",
+    "desc": "Siding - vinyl - specialty grade - single color"
+  },
+  "SDG VINYLB": {
+    "cost": 39.82,
+    "unit": "EA",
+    "desc": "Light/outlet J-block - vinyl"
+  },
+  "SDG VINYLC": {
+    "cost": 11.47,
+    "unit": "LF",
+    "desc": "Vinyl outside corner post"
+  },
+  "SDG VINYLI": {
+    "cost": 11.47,
+    "unit": "SF",
+    "desc": "Siding - vinyl - insulated"
+  },
+  "SDG VINYLIC": {
+    "cost": 10.31,
+    "unit": "LF",
+    "desc": "Vinyl inside corner post"
+  },
+  "SDG VINYLJ": {
+    "cost": 7.54,
+    "unit": "LF",
+    "desc": "Vinyl J trim"
+  },
+  "SDG CSH": {
+    "cost": 18.14,
+    "unit": "SF",
+    "desc": "Siding - cedar shingle"
+  },
+  "SDG CSH+": {
+    "cost": 19.64,
+    "unit": "SF",
+    "desc": "Siding - cedar shingle - fancy cut"
+  },
+  "RFG DDFL+": {
+    "cost": 169.55,
+    "unit": "EA",
+    "desc": "Skylight flashing kit - dome - High grade"
+  },
+  "WDS DDF": {
+    "cost": 653.23,
+    "unit": "EA",
+    "desc": "Skylight - double dome fixed, 6.6 - 9 sf"
+  },
+  "WDS DDV>>": {
+    "cost": 1151.12,
+    "unit": "EA",
+    "desc": "Skylight - double dome venting, 12.6 - 15.5 sf"
+  },
+  "SDG SHTRA>": {
+    "cost": 538,
+    "unit": "EA",
+    "desc": "Shutters - aluminum - Large"
+  },
+  "SDG SHTR>": {
+    "cost": 254.47,
+    "unit": "EA",
+    "desc": "Shutters - simulated wood (polystyrene) - Large"
+  }
+}
