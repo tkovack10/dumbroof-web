@@ -12,17 +12,25 @@ function fmtBigMoney(val: number): string {
 
 async function getHeroStats() {
   try {
-    const [allClaimsRes, winsRes, repairsRes] = await Promise.all([
-      // Stat 1: Total claims processed — from claim_outcomes (includes local + web)
-      supabaseAdmin.from("claim_outcomes").select("usarm_rcv").not("claim_id", "is", null),
-      // Stat 2: Approved supplements — won claims from claim_outcomes
-      supabaseAdmin.from("claim_outcomes").select("settlement_amount").eq("win", true).not("claim_id", "is", null),
-      // Stat 3: Completed repairs
+    const [webClaimsRes, webWinsRes, localClaimsRes, localWinsRes, repairsRes] = await Promise.all([
+      // Web claims (from claims table — all users)
+      supabaseAdmin.from("claims").select("contractor_rcv"),
+      supabaseAdmin.from("claims").select("settlement_amount").eq("claim_outcome", "won"),
+      // Local CLI claims (from claim_outcomes — not in claims table)
+      supabaseAdmin.from("claim_outcomes").select("usarm_rcv").eq("source", "cli"),
+      supabaseAdmin.from("claim_outcomes").select("settlement_amount").eq("source", "cli").eq("win", true),
+      // Repairs
       supabaseAdmin.from("repairs").select("id", { count: "exact", head: true }).in("status", ["ready", "complete"]),
     ]);
 
-    const totalProcessed = (allClaimsRes.data || []).reduce((s, c) => s + (c.usarm_rcv ?? 0), 0);
-    const totalApproved = (winsRes.data || []).reduce((s, c) => s + (c.settlement_amount ?? 0), 0);
+    const webRcv = (webClaimsRes.data || []).reduce((s, c) => s + (c.contractor_rcv ?? 0), 0);
+    const localRcv = (localClaimsRes.data || []).reduce((s, c) => s + (c.usarm_rcv ?? 0), 0);
+    const totalProcessed = webRcv + localRcv;
+
+    const webWon = (webWinsRes.data || []).reduce((s, c) => s + (c.settlement_amount ?? 0), 0);
+    const localWon = (localWinsRes.data || []).reduce((s, c) => s + (c.settlement_amount ?? 0), 0);
+    const totalApproved = webWon + localWon;
+
     const repairCount = Math.max(repairsRes.count ?? 0, 52);
 
     return {
