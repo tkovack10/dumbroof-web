@@ -12,18 +12,18 @@ function fmtBigMoney(val: number): string {
 
 async function getHeroStats() {
   try {
-    const [claimsRes, winsRes, repairsRes] = await Promise.all([
-      // Stat 1: Total claims processed (sum of contractor_rcv, all users)
-      supabaseAdmin.from("claims").select("contractor_rcv"),
-      // Stat 2: Approved supplements (sum of settlement_amount for won claims)
-      supabaseAdmin.from("claims").select("settlement_amount").eq("claim_outcome", "won"),
+    const [allClaimsRes, winsRes, repairsRes] = await Promise.all([
+      // Stat 1: Total claims processed — from claim_outcomes (includes local + web)
+      supabaseAdmin.from("claim_outcomes").select("usarm_rcv").not("claim_id", "is", null),
+      // Stat 2: Approved supplements — won claims from claim_outcomes
+      supabaseAdmin.from("claim_outcomes").select("settlement_amount").eq("win", true).not("claim_id", "is", null),
       // Stat 3: Completed repairs
       supabaseAdmin.from("repairs").select("id", { count: "exact", head: true }).in("status", ["ready", "complete"]),
     ]);
 
-    const totalProcessed = (claimsRes.data || []).reduce((s, c) => s + (c.contractor_rcv ?? 0), 0);
+    const totalProcessed = (allClaimsRes.data || []).reduce((s, c) => s + (c.usarm_rcv ?? 0), 0);
     const totalApproved = (winsRes.data || []).reduce((s, c) => s + (c.settlement_amount ?? 0), 0);
-    const repairCount = Math.max(repairsRes.count ?? 0, 52); // minimum 52
+    const repairCount = Math.max(repairsRes.count ?? 0, 52);
 
     return {
       claimsProcessed: fmtBigMoney(totalProcessed),
