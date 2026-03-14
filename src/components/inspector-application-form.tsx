@@ -46,6 +46,7 @@ export function InspectorApplicationForm({ className }: InspectorApplicationForm
 
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Submission failed");
+      window.fbq?.("track", "SubmitApplication");
       setSubmitted(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Submission failed. Please try again.");

@@ -78,8 +78,10 @@ function LoginPageContent() {
         setError("An account with this email already exists. Try signing in instead, or use the link from your invite email.");
       } else if (data.session) {
         // Auto-confirmed (email confirmation disabled) — go straight to dashboard
+        window.fbq?.("track", "CompleteRegistration");
         window.location.href = "/dashboard";
       } else {
+        window.fbq?.("track", "CompleteRegistration");
         setMessage("Account created! Check your email for a confirmation link, then come back and sign in.");
       }
     } else {

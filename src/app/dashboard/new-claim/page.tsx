@@ -184,6 +184,7 @@ export default function NewClaimPage() {
       // Increment claim usage counter
       await fetch("/api/billing/check-quota", { method: "POST" });
 
+      window.fbq?.("track", "Lead");
       setStatus("success");
     } catch (err) {
       setStatus("error");
