@@ -1,11 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import JSZip from "jszip";
 import { createClient } from "@/lib/supabase/client";
 import { FileUploadZone } from "@/components/file-upload-zone";
 import { AddressAutocomplete } from "@/components/address-autocomplete";
 import { useBillingQuota } from "@/hooks/use-billing-quota";
+import { uploadFilesBatched } from "@/lib/upload-utils";
 
 type UploadStatus = "idle" | "uploading" | "success" | "error";
 
@@ -31,8 +31,7 @@ export default function NewClaimPage() {
   >(null);
   const [status, setStatus] = useState<UploadStatus>("idle");
   const [errorMsg, setErrorMsg] = useState("");
-
-  const supabase = createClient();
+  const [uploadProgress, setUploadProgress] = useState("");
   const BACKEND_URL =
     process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000";
 
@@ -72,6 +71,7 @@ export default function NewClaimPage() {
     setErrorMsg("");
 
     try {
+      const supabase = createClient();
       const {
         data: { user },
       } = await supabase.auth.getUser();
@@ -86,72 +86,40 @@ export default function NewClaimPage() {
         `-${Date.now()}`;
       const claimPath = `${user.id}/${slug}`;
 
-      // Upload via server-signed URLs (bypasses RLS, sanitizes server-side)
-      const uploadFile = async (file: File, folder: string) => {
-        // Get signed upload URL from server
-        const res = await fetch("/api/storage/sign-upload", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ folder, fileName: file.name, claimPath }),
+      // Upload all file categories with concurrent batching
+      const uploadCategory = async (files: File[], folder: string, label: string) => {
+        if (files.length === 0) return { uploaded: [] as string[], errors: [] as string[] };
+        setUploadProgress(`Uploading ${label}...`);
+        return uploadFilesBatched(supabase, files, folder, claimPath, {
+          concurrency: 3,
+          onProgress: (done, total) =>
+            setUploadProgress(`Uploading ${label}... ${done}/${total}`),
         });
-        const urlData = await res.json();
-        if (!res.ok) throw new Error(`Failed to upload ${file.name}: ${urlData.error}`);
-
-        // Upload directly to Supabase using signed URL
-        const { error } = await supabase.storage
-          .from("claim-documents")
-          .uploadToSignedUrl(urlData.path, urlData.token, file);
-        // Treat "already exists" as success — file is already uploaded
-        if (error && !error.message.includes("already exists") && !error.message.includes("Duplicate")) {
-          throw new Error(`Failed to upload ${file.name}: ${error.message}`);
-        }
-        return urlData.safeName;
       };
 
-      const uploadedNames: Record<string, string[]> = {
-        measurements: [],
-        photos: [],
-        scope: [],
-        weather: [],
+      const [mResult, pResult, sResult, wResult] = await Promise.all([
+        uploadCategory(measurementFiles, "measurements", "measurements"),
+        uploadCategory(photoFiles, "photos", "photos"),
+        uploadCategory(scopeFiles, "scope", "carrier scope"),
+        uploadCategory(weatherFiles, "weather", "weather data"),
+      ]);
+
+      const uploadedNames = {
+        measurements: mResult.uploaded,
+        photos: pResult.uploaded,
+        scope: sResult.uploaded,
+        weather: wResult.uploaded,
       };
 
-      // Upload measurements
-      for (const file of measurementFiles) {
-        uploadedNames.measurements.push(await uploadFile(file, "measurements"));
-      }
-
-      // Upload photos (extract ZIPs client-side first)
-      for (const file of photoFiles) {
-        if (file.name.toLowerCase().endsWith(".zip")) {
-          const zip = await JSZip.loadAsync(file);
-          const imageExts = ["jpg", "jpeg", "png", "heic", "heif", "webp", "tiff", "tif", "bmp"];
-
-          for (const [path, entry] of Object.entries(zip.files)) {
-            if (entry.dir) continue;
-            if (path.includes("__MACOSX") || path.startsWith(".")) continue;
-            const ext = path.split(".").pop()?.toLowerCase();
-            if (!ext || !imageExts.includes(ext)) continue;
-
-            const blob = await entry.async("blob");
-            if (blob.size < 10240) continue; // Skip thumbnails < 10KB
-
-            const name = path.split("/").pop() || path;
-            const photo = new File([blob], name, { type: `image/${ext === "jpg" ? "jpeg" : ext}` });
-            uploadedNames.photos.push(await uploadFile(photo, "photos"));
-          }
-        } else {
-          uploadedNames.photos.push(await uploadFile(file, "photos"));
-        }
-      }
-
-      // Upload scope (if provided)
-      for (const file of scopeFiles) {
-        uploadedNames.scope.push(await uploadFile(file, "scope"));
-      }
-
-      // Upload weather data (if provided)
-      for (const file of weatherFiles) {
-        uploadedNames.weather.push(await uploadFile(file, "weather"));
+      // Collect any upload errors for warning
+      const allErrors = [
+        ...mResult.errors,
+        ...pResult.errors,
+        ...sResult.errors,
+        ...wResult.errors,
+      ];
+      if (allErrors.length > 0) {
+        console.warn("Some files failed to upload:", allErrors);
       }
 
       // Save claim record to database
@@ -471,7 +439,7 @@ export default function NewClaimPage() {
             <FileUploadZone
               label="Inspection Photos"
               description="Upload from camera roll, CompanyCam, JobNimbus, Acculynx, or any source. ZIP archives, PDFs, and email files (.eml) with photo attachments are also supported."
-              accept=".jpg,.jpeg,.png,.heic,.heif,.webp,.tiff,.tif,.bmp,.pdf,.zip,.eml"
+              accept="image/*,.pdf,.zip,.eml"
               multiple
               required
               files={photoFiles}
@@ -706,7 +674,7 @@ export default function NewClaimPage() {
                     d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
                   />
                 </svg>
-                Uploading...
+                {uploadProgress || "Uploading..."}
               </span>
             ) : (
               "Submit Claim"

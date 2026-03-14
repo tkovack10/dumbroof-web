@@ -1,15 +1,15 @@
 "use client";
 
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useParams, useRouter } from "next/navigation";
 import type { Repair, RepairCheckpoint } from "@/types/repair";
 import {
   REPAIR_TYPE_LABELS,
-  REPAIR_SEVERITY_COLORS,
   getRepairDisplayState,
 } from "@/lib/claim-constants";
 import { FileUploadZone } from "@/components/file-upload-zone";
+import { directUpload } from "@/lib/upload-utils";
 
 const SEVERITY_CONFIG: Record<string, { color: string; label: string }> = {
   minor: { color: "bg-green-100 text-green-700", label: "Minor" },
@@ -26,7 +26,7 @@ const BACKEND_URL =
 export default function RepairDetailPage() {
   const params = useParams();
   const router = useRouter();
-  const supabase = createClient();
+  const supabase = useMemo(() => createClient(), []);
   const repairId = params.id as string;
 
   const [repair, setRepair] = useState<Repair | null>(null);
@@ -142,16 +142,7 @@ export default function RepairDetailPage() {
         const urlData = await res.json();
         if (!res.ok) throw new Error(urlData.error);
 
-        const { error } = await supabase.storage
-          .from("claim-documents")
-          .uploadToSignedUrl(urlData.path, urlData.token, file);
-        if (
-          error &&
-          !error.message.includes("already exists") &&
-          !error.message.includes("Duplicate")
-        ) {
-          throw new Error(`Upload failed: ${error.message}`);
-        }
+        await directUpload(urlData.signedUrl, file);
         uploadedNames.push(urlData.safeName);
       }
 
@@ -171,8 +162,7 @@ export default function RepairDetailPage() {
       // Reset upload state and refresh
       setUploadFiles([]);
       setRooferNotes("");
-      await fetchRepair();
-      await fetchCheckpoints();
+      await Promise.all([fetchRepair(), fetchCheckpoints()]);
     } catch (err) {
       console.error("Checkpoint upload failed:", err);
       alert("Upload failed. Please try again.");

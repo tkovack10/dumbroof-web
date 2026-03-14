@@ -4,6 +4,7 @@ import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { FileUploadZone } from "@/components/file-upload-zone";
 import { AddressAutocomplete } from "@/components/address-autocomplete";
+import { uploadFilesBatched } from "@/lib/upload-utils";
 
 type UploadStatus = "idle" | "uploading" | "success" | "error";
 
@@ -19,8 +20,7 @@ export default function NewRepairPage() {
   const [photoFiles, setPhotoFiles] = useState<File[]>([]);
   const [status, setStatus] = useState<UploadStatus>("idle");
   const [errorMsg, setErrorMsg] = useState("");
-
-  const supabase = createClient();
+  const [uploadProgress, setUploadProgress] = useState("");
 
   const canSubmit =
     propertyAddress.trim() !== "" &&
@@ -36,6 +36,7 @@ export default function NewRepairPage() {
     setErrorMsg("");
 
     try {
+      const supabase = createClient();
       const {
         data: { user },
       } = await supabase.auth.getUser();
@@ -49,22 +50,20 @@ export default function NewRepairPage() {
         `-repair-${Date.now()}`;
       const filePath = `${user.id}/${slug}`;
 
-      // Upload photos via server-signed URLs
-      const uploadedPhotos: string[] = [];
-      for (const file of photoFiles) {
-        const res = await fetch("/api/storage/sign-upload", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ folder: "photos", fileName: file.name, claimPath: filePath }),
-        });
-        const urlData = await res.json();
-        if (!res.ok) throw new Error(`Failed to upload ${file.name}: ${urlData.error}`);
-
-        const { error } = await supabase.storage
-          .from("claim-documents")
-          .uploadToSignedUrl(urlData.path, urlData.token, file);
-        if (error) throw new Error(`Failed to upload ${file.name}: ${error.message}`);
-        uploadedPhotos.push(urlData.safeName);
+      // Upload photos with concurrent batching
+      setUploadProgress("Uploading photos...");
+      const { uploaded: uploadedPhotos, errors } = await uploadFilesBatched(
+        supabase, photoFiles, "photos", filePath, {
+          concurrency: 3,
+          onProgress: (done, total) =>
+            setUploadProgress(`Uploading photos... ${done}/${total}`),
+        }
+      );
+      if (uploadedPhotos.length === 0 && photoFiles.length > 0) {
+        throw new Error("All photo uploads failed. Please try again.");
+      }
+      if (errors.length > 0) {
+        console.warn("Some photos failed to upload:", errors);
       }
 
       // Save repair record
@@ -317,7 +316,7 @@ export default function NewRepairPage() {
             <FileUploadZone
               label="Photos of the Leak"
               description="Upload from camera roll, CompanyCam, JobNimbus, Acculynx, or any photo source. PDFs with photos are also supported. More photos = better diagnosis."
-              accept=".jpg,.jpeg,.png,.heic,.heif,.webp,.tiff,.tif,.bmp,.pdf,.zip"
+              accept="image/*,.pdf,.zip"
               multiple
               required
               files={photoFiles}
@@ -361,7 +360,7 @@ export default function NewRepairPage() {
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                 </svg>
-                Uploading...
+                {uploadProgress || "Uploading..."}
               </span>
             ) : (
               "Submit Repair Request"

@@ -1390,6 +1390,92 @@ def _build_code_violations(state: str, line_items: list, trades: list) -> list:
     return violations
 
 
+def attach_evidence_photos(config: dict, sb, claim_id: str):
+    """Query photos table and attach photo_refs to carrier line items.
+
+    For each carrier line item, finds photos matching the item's trade/material
+    and adds them as evidence references in the PDF scope comparison.
+    """
+    if not sb or not claim_id:
+        return
+    carrier_items = config.get("carrier", {}).get("carrier_line_items", [])
+    if not carrier_items:
+        return
+
+    try:
+        result = sb.table("photos").select(
+            "annotation_key, damage_type, material, trade, elevation, severity, fraud_score"
+        ).eq("claim_id", claim_id).execute()
+        photos = result.data or []
+    except Exception as e:
+        print(f"[EVIDENCE] Failed to query photos: {e}")
+        return
+
+    if not photos:
+        return
+
+    # Build annotation_key → page-based key mapping
+    # annotation_key format: "photo_01" → index 0 → p03_01
+    def to_page_key(annotation_key: str) -> str:
+        try:
+            num = int(annotation_key.replace("photo_", ""))
+            idx = num - 1
+            return f"p{(idx // 3 + 3):02d}_{(idx % 3 + 1):02d}"
+        except (ValueError, AttributeError):
+            return annotation_key
+
+    severity_score = {"critical": 40, "severe": 30, "moderate": 20, "minor": 10}
+
+    # Trade keyword mapping: description keywords → photo trade tags
+    trade_keywords = {
+        "roofing": ["shingle", "roof", "ridge", "starter", "drip edge", "underlayment", "felt", "ice"],
+        "siding": ["siding", "house wrap", "wall", "corner"],
+        "gutters": ["gutter", "downspout", "fascia"],
+        "flashing": ["flash", "chimney", "pipe", "vent", "step flash", "counter flash"],
+        "window_wraps": ["window", "wrap", "caulk", "trim"],
+    }
+
+    attached = 0
+    for ci in carrier_items:
+        desc = (ci.get("usarm_desc") or ci.get("carrier_desc") or ci.get("item") or "").lower()
+        if not desc or ci.get("photo_refs"):
+            continue
+
+        # Determine which trade this line item belongs to
+        matched_trade = None
+        for trade, keywords in trade_keywords.items():
+            if any(kw in desc for kw in keywords):
+                matched_trade = trade
+                break
+
+        if not matched_trade:
+            continue
+
+        # Score photos for this trade
+        scored = []
+        for p in photos:
+            if p.get("trade") != matched_trade and matched_trade != "flashing":
+                # Allow flashing photos from any trade (cross-cutting)
+                if p.get("trade") != "flashing" or matched_trade != "flashing":
+                    continue
+            if p.get("damage_type") in ("none", "overview"):
+                continue
+            score = severity_score.get(p.get("severity", ""), 0)
+            if (p.get("fraud_score") or 0) > 50:
+                score -= 20
+            scored.append((p, score))
+
+        scored.sort(key=lambda x: x[1], reverse=True)
+        top = scored[:3]
+
+        if top:
+            ci["photo_refs"] = [to_page_key(p["annotation_key"]) for p, _ in top]
+            attached += 1
+
+    if attached:
+        print(f"[EVIDENCE] Attached photo evidence to {attached}/{len(carrier_items)} carrier line items")
+
+
 def build_claim_config(
     claim: dict,
     measurements: dict,
@@ -3286,6 +3372,9 @@ async def process_claim(claim_id: str):
             user_notes=claim.get("user_notes"),
             photo_integrity=photo_integrity,
         )
+
+        # 9a. Attach evidence photos to carrier line items for PDF scope comparison
+        attach_evidence_photos(config, sb, claim_id)
 
         # Flag measurement extraction failures for downstream warning
         meas_structs = measurements.get("structures", [{}])
