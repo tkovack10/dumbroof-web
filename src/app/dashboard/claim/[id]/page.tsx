@@ -446,6 +446,33 @@ export default function ClaimDetailPage() {
         </div>
       </nav>
 
+      {/* Win Celebration Banner */}
+      {claim.claim_outcome === "won" && (claim.settlement_amount ?? 0) > (claim.original_carrier_rcv ?? 0) && (() => {
+        const orig = claim.original_carrier_rcv ?? 0;
+        const updated = claim.settlement_amount ?? 0;
+        const move = updated - orig;
+        const pct = orig > 0 ? Math.round((move / orig) * 100) : 0;
+        return (
+          <div className="bg-gradient-to-r from-green-500 via-emerald-500 to-green-600 text-white">
+            <div className="max-w-4xl mx-auto px-6 py-6">
+              <div className="flex items-center justify-between flex-wrap gap-4">
+                <div>
+                  <p className="text-sm font-medium text-green-100 uppercase tracking-wider">Carrier Moved</p>
+                  <p className="text-4xl font-black mt-1">+${move.toLocaleString()}</p>
+                  <p className="text-sm text-green-100 mt-1">
+                    ${orig.toLocaleString()} → ${updated.toLocaleString()} ({pct}% increase)
+                  </p>
+                </div>
+                <div className="text-right">
+                  <div className="text-5xl">&#127942;</div>
+                  <p className="text-xs font-bold text-green-200 mt-1 uppercase">Claim Won</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
       <div className="max-w-4xl mx-auto px-6 py-10 space-y-6">
         {/* Claim Header */}
         <div className="bg-white rounded-2xl border border-gray-200 p-6">

@@ -1,6 +1,60 @@
 import { InspectorApplicationForm } from "@/components/inspector-application-form";
+import { supabaseAdmin } from "@/lib/supabase/admin";
 
-export default function Home() {
+// Revalidate homepage stats every 5 minutes
+export const revalidate = 300;
+
+async function getHeroStats() {
+  try {
+    // Query won claims for carrier movement
+    const { data: wonClaims } = await supabaseAdmin
+      .from("claims")
+      .select("original_carrier_rcv, settlement_amount")
+      .eq("claim_outcome", "won");
+
+    const totalMovement = (wonClaims || []).reduce((sum, c) => {
+      const move = (c.settlement_amount ?? 0) - (c.original_carrier_rcv ?? 0);
+      return sum + (move > 0 ? move : 0);
+    }, 0);
+
+    const winCount = (wonClaims || []).length;
+
+    // Average claim increase percentage
+    const avgPct = winCount > 0
+      ? Math.round(
+          (wonClaims || []).reduce((sum, c) => {
+            const orig = c.original_carrier_rcv ?? 0;
+            const move = (c.settlement_amount ?? 0) - orig;
+            return sum + (orig > 0 ? (move / orig) * 100 : 0);
+          }, 0) / winCount
+        )
+      : 0;
+
+    // Total photos analyzed
+    const { count: photoCount } = await supabaseAdmin
+      .from("photos")
+      .select("id", { count: "exact", head: true });
+
+    return {
+      carrierMovement: totalMovement >= 1_000_000
+        ? `$${(totalMovement / 1_000_000).toFixed(1)}M+`
+        : totalMovement >= 1_000
+          ? `$${Math.round(totalMovement / 1_000)}K+`
+          : `$${totalMovement.toLocaleString()}`,
+      avgIncrease: avgPct > 0 ? `${avgPct}%` : "115%",
+      perClaim: "15 min",
+      trainingPhotos: (photoCount ?? 0) >= 1_000
+        ? `${Math.round((photoCount ?? 0) / 1_000)}K+`
+        : `${photoCount ?? 0}+`,
+    };
+  } catch {
+    // Fallback to static values if Supabase is unreachable
+    return { carrierMovement: "$1.2M+", avgIncrease: "115%", perClaim: "15 min", trainingPhotos: "140K+" };
+  }
+}
+
+export default async function Home() {
+  const stats = await getHeroStats();
   return (
     <main className="min-h-screen bg-white">
       {/* Nav */}
@@ -85,10 +139,10 @@ export default function Home() {
           {/* Stats Row */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6 max-w-3xl mx-auto">
             {[
-              { number: "$1.2M+", label: "Carrier Movement" },
-              { number: "115%", label: "Avg. Claim Increase" },
-              { number: "15 min", label: "Per Claim Package" },
-              { number: "140K+", label: "Training Photos" },
+              { number: stats.carrierMovement, label: "Carrier Movement" },
+              { number: stats.avgIncrease, label: "Avg. Claim Increase" },
+              { number: stats.perClaim, label: "Per Claim Package" },
+              { number: stats.trainingPhotos, label: "Training Photos" },
             ].map((stat) => (
               <div key={stat.label} className="text-center">
                 <div className="text-2xl sm:text-3xl font-bold text-white">

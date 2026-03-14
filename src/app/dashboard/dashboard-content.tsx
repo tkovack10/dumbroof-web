@@ -156,7 +156,10 @@ export function DashboardContent({ user }: { user: User }) {
   const readyCount = claims.filter(c => c.status === "ready").length;
   const processingCount = claims.filter(c => c.status === "processing" || c.status === "uploaded").length;
   const wonClaims = claims.filter(c => c.claim_outcome === "won");
-  const totalMovement = wonClaims.reduce((sum, c) => sum + (c.settlement_amount ?? 0), 0);
+  const totalMovement = wonClaims.reduce((sum, c) => {
+    const movement = (c.settlement_amount ?? 0) - (c.original_carrier_rcv ?? 0);
+    return sum + (movement > 0 ? movement : 0);
+  }, 0);
   const totalContractorRcv = claims.reduce((s, c) => s + (c.contractor_rcv ?? 0), 0);
   const totalCarrierRcv = claims.reduce((s, c) => s + (c.original_carrier_rcv ?? 0), 0);
   const attentionCount = claims.filter(c => c.status === "error" || c.status === "needs_improvement" || (c.pending_edits ?? 0) > 0).length;
@@ -382,16 +385,17 @@ export function DashboardContent({ user }: { user: User }) {
                   <p className="text-2xl font-bold text-[var(--navy)]">{fmtMoney(totalCarrierRcv)}</p>
                   <p className="text-xs text-gray-500 mt-1">Carrier RCV</p>
                 </div>
-                <div className="bg-white rounded-xl border border-gray-200 p-4 text-center">
-                  <p className={`text-2xl font-bold ${totalContractorRcv - totalCarrierRcv > 0 ? "text-green-600" : "text-gray-600"}`}>
-                    {fmtMoney(Math.abs(totalContractorRcv - totalCarrierRcv))}
-                  </p>
-                  <p className="text-xs text-gray-500 mt-1">Variance</p>
-                </div>
-                {totalMovement > 0 && (
-                  <div className="bg-white rounded-xl border border-green-200 p-4 text-center">
-                    <p className="text-2xl font-bold text-green-600">{fmtMoney(totalMovement)}</p>
-                    <p className="text-xs text-green-600 mt-1">Won $</p>
+                {totalMovement > 0 ? (
+                  <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl border-2 border-green-300 p-4 text-center col-span-2">
+                    <p className="text-3xl font-black text-green-600">+{fmtMoney(totalMovement)}</p>
+                    <p className="text-xs font-semibold text-green-600 mt-1">Carrier Movement</p>
+                  </div>
+                ) : (
+                  <div className="bg-white rounded-xl border border-gray-200 p-4 text-center col-span-2">
+                    <p className={`text-2xl font-bold ${totalContractorRcv - totalCarrierRcv > 0 ? "text-green-600" : "text-gray-600"}`}>
+                      {fmtMoney(Math.abs(totalContractorRcv - totalCarrierRcv))}
+                    </p>
+                    <p className="text-xs text-gray-500 mt-1">Variance</p>
                   </div>
                 )}
               </div>
@@ -399,17 +403,34 @@ export function DashboardContent({ user }: { user: User }) {
 
             {/* Win Summary Banner */}
             {!loading && wonClaims.length > 0 && (
-              <div className="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-xl p-5 mb-6">
-                <div className="flex items-center justify-between">
+              <div className="bg-gradient-to-r from-green-500 to-emerald-600 rounded-xl p-6 mb-6 text-white shadow-lg">
+                <div className="flex items-center justify-between flex-wrap gap-4">
                   <div>
-                    <p className="text-sm font-semibold text-green-800">
-                      {wonClaims.length} Claim{wonClaims.length > 1 ? "s" : ""} Won
+                    <p className="text-sm font-medium text-green-100 uppercase tracking-wider">
+                      Carrier Movement
                     </p>
-                    {totalMovement > 0 && (
-                      <p className="text-xs text-green-600 mt-0.5">
-                        ${totalMovement.toLocaleString()} recovered from carriers
-                      </p>
-                    )}
+                    <p className="text-3xl font-bold mt-1">
+                      +${totalMovement.toLocaleString()}
+                    </p>
+                    <p className="text-sm text-green-100 mt-1">
+                      {wonClaims.length} claim{wonClaims.length > 1 ? "s" : ""} won — carriers paid more after dumb roof analysis
+                    </p>
+                  </div>
+                  <div className="flex flex-col items-end gap-1">
+                    {wonClaims.map(c => {
+                      const orig = c.original_carrier_rcv ?? 0;
+                      const updated = c.settlement_amount ?? 0;
+                      const move = updated - orig;
+                      if (move <= 0) return null;
+                      return (
+                        <div key={c.id} className="text-xs text-green-100 bg-white/10 rounded-lg px-3 py-1.5">
+                          <span className="font-medium text-white">{c.address?.split(",")[0]}</span>
+                          <span className="mx-1.5">—</span>
+                          ${orig.toLocaleString()} → ${updated.toLocaleString()}
+                          <span className="ml-1.5 font-bold text-white">(+${move.toLocaleString()})</span>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               </div>
@@ -500,10 +521,9 @@ export function DashboardContent({ user }: { user: User }) {
                       <tr className="bg-gray-50 text-left border-b border-gray-100">
                         <th className="px-3 py-3 text-[10px] font-semibold text-gray-400 uppercase">Property</th>
                         <th className="px-3 py-3 text-[10px] font-semibold text-gray-400 uppercase">Carrier</th>
-                        <th className="px-3 py-3 text-[10px] font-semibold text-gray-400 uppercase text-right">Contractor RCV</th>
-                        <th className="px-3 py-3 text-[10px] font-semibold text-gray-400 uppercase text-right">Carrier RCV</th>
-                        <th className="px-3 py-3 text-[10px] font-semibold text-gray-400 uppercase text-right">Variance</th>
-                        <th className="px-3 py-3 text-[10px] font-semibold text-gray-400 uppercase text-center">Phase</th>
+                        <th className="px-3 py-3 text-[10px] font-semibold text-gray-400 uppercase text-right">Our Estimate</th>
+                        <th className="px-3 py-3 text-[10px] font-semibold text-gray-400 uppercase text-right">Original Carrier</th>
+                        <th className="px-3 py-3 text-[10px] font-semibold text-gray-400 uppercase text-right">Updated Carrier</th>
                         <th className="px-3 py-3 text-[10px] font-semibold text-gray-400 uppercase text-center">Status</th>
                       </tr>
                     </thead>
@@ -511,14 +531,17 @@ export function DashboardContent({ user }: { user: User }) {
                       {filteredClaims.map((claim) => {
                         const cRcv = claim.contractor_rcv ?? 0;
                         const iRcv = claim.original_carrier_rcv ?? 0;
-                        const variance = cRcv - iRcv;
+                        const currentCarrier = claim.settlement_amount ?? 0;
+                        const isWon = claim.claim_outcome === "won";
+                        const movement = isWon && currentCarrier > iRcv ? currentCarrier - iRcv : 0;
+                        const movementPct = iRcv > 0 && movement > 0 ? Math.round((movement / iRcv) * 100) : 0;
                         const isProcessing = claim.status === "processing";
 
                         return (
                           <tr
                             key={claim.id}
                             onClick={() => setExpandedRow(expandedRow === claim.id ? null : claim.id)}
-                            className={`hover:bg-gray-50 transition-colors cursor-pointer ${claim.claim_outcome === "won" ? "bg-green-50/40" : ""}`}
+                            className={`hover:bg-gray-50 transition-colors cursor-pointer ${isWon ? "bg-green-50 border-l-4 border-l-green-500" : ""}`}
                           >
                             <td className="px-3 py-2.5">
                               <a href={`/dashboard/claim/${claim.id}`} className="hover:underline" onClick={e => e.stopPropagation()}>
@@ -530,23 +553,38 @@ export function DashboardContent({ user }: { user: User }) {
                             <td className="px-3 py-2.5 text-right text-xs tabular-nums font-medium text-[var(--navy)]">
                               {cRcv > 0 ? `$${cRcv.toLocaleString()}` : "\u2014"}
                             </td>
-                            <td className="px-3 py-2.5 text-right text-xs tabular-nums text-gray-600">
+                            <td className="px-3 py-2.5 text-right text-xs tabular-nums text-gray-500">
                               {iRcv > 0 ? `$${iRcv.toLocaleString()}` : "\u2014"}
                             </td>
-                            <td className="px-3 py-2.5 text-right text-xs tabular-nums">
-                              {cRcv > 0 && iRcv > 0 ? (
-                                <span className={variance > 0 ? "text-green-600 font-medium" : variance < 0 ? "text-red-600" : "text-gray-500"}>
-                                  {variance > 0 ? "+" : ""}{`$${variance.toLocaleString()}`}
-                                </span>
-                              ) : "\u2014"}
-                            </td>
-                            <td className="px-3 py-2.5 text-center">
-                              <span className="text-xs text-gray-500">{claim.phase === "pre-scope" ? "Pre" : "Post"}</span>
+                            <td className="px-3 py-2.5 text-right">
+                              {isWon && movement > 0 ? (
+                                <div>
+                                  <span className="text-xs tabular-nums font-bold text-green-600">
+                                    ${currentCarrier.toLocaleString()}
+                                  </span>
+                                  <div className="text-[10px] font-bold text-green-500 mt-0.5">
+                                    +${movement.toLocaleString()} ({movementPct}%)
+                                  </div>
+                                </div>
+                              ) : currentCarrier > 0 && currentCarrier !== iRcv ? (
+                                <span className="text-xs tabular-nums text-gray-600">${currentCarrier.toLocaleString()}</span>
+                              ) : (
+                                <span className="text-xs text-gray-400">{"\u2014"}</span>
+                              )}
                             </td>
                             <td className="px-3 py-2.5 text-center">
                               <div className="flex flex-col items-center gap-1">
-                                {claim.claim_outcome === "won" ? (
-                                  <span className="inline-block px-2 py-0.5 rounded-full text-xs font-bold bg-green-100 text-green-700">Won</span>
+                                {isWon ? (
+                                  <div className="flex flex-col items-center">
+                                    <span className="inline-block px-3 py-1 rounded-full text-xs font-black bg-green-500 text-white shadow-sm">
+                                      WON
+                                    </span>
+                                    {movement > 0 && (
+                                      <span className="text-[11px] font-bold text-green-600 mt-1">
+                                        +${movement >= 1000 ? `${(movement / 1000).toFixed(0)}K` : movement.toLocaleString()}
+                                      </span>
+                                    )}
+                                  </div>
                                 ) : (
                                   <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${statusColors[claim.status] || "bg-gray-100 text-gray-600"}`}>
                                     {isProcessing && (
