@@ -1,5 +1,3 @@
-"use client";
-
 import { InspectorApplicationForm } from "@/components/inspector-application-form";
 
 export default function Home() {

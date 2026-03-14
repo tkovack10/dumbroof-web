@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useEffect, useState, useCallback, useRef, useMemo } from "react";
 import { createClient } from "@/lib/supabase/client";
 import type { User } from "@supabase/supabase-js";
 import type { Claim } from "@/types/claim";
@@ -20,7 +20,7 @@ function fmtMoney(val: number): string {
 }
 
 export function DashboardContent({ user }: { user: User }) {
-  const supabase = createClient();
+  const supabase = useMemo(() => createClient(), []);
   const [claims, setClaims] = useState<Claim[]>([]);
   const [repairs, setRepairs] = useState<Repair[]>([]);
   const [loading, setLoading] = useState(true);
@@ -44,8 +44,11 @@ export function DashboardContent({ user }: { user: User }) {
     // No-op guard: only update state if data actually changed
     setClaims(prev => {
       const next = claimsRes.data || [];
-      if (prev.length === next.length && prev.every((c, i) => c.id === next[i].id && c.status === next[i].status))
-        return prev;
+      if (prev.length === next.length && prev.every((c, i) =>
+        c.id === next[i].id && c.status === next[i].status &&
+        c.claim_outcome === next[i].claim_outcome && c.settlement_amount === next[i].settlement_amount &&
+        c.contractor_rcv === next[i].contractor_rcv && c.original_carrier_rcv === next[i].original_carrier_rcv
+      )) return prev;
       return next;
     });
     setRepairs(prev => {
@@ -502,7 +505,6 @@ export function DashboardContent({ user }: { user: User }) {
                         <th className="px-3 py-3 text-[10px] font-semibold text-gray-400 uppercase text-right">Variance</th>
                         <th className="px-3 py-3 text-[10px] font-semibold text-gray-400 uppercase text-center">Phase</th>
                         <th className="px-3 py-3 text-[10px] font-semibold text-gray-400 uppercase text-center">Status</th>
-                        <th className="px-3 py-3 text-[10px] font-semibold text-gray-400 uppercase">Date</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-50">
@@ -560,9 +562,6 @@ export function DashboardContent({ user }: { user: User }) {
                                   <span className="text-[10px] text-amber-600 font-medium">{claim.pending_edits} edit{(claim.pending_edits ?? 0) > 1 ? "s" : ""}</span>
                                 )}
                               </div>
-                            </td>
-                            <td className="px-3 py-2.5">
-                              <span className="text-xs text-gray-400">{new Date(claim.created_at).toLocaleDateString()}</span>
                             </td>
                           </tr>
                         );
