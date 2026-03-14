@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import nodemailer from "nodemailer";
+import { sendCAPIEvent } from "@/lib/meta-capi";
 
 function getSb() {
   return createClient(
@@ -48,6 +49,24 @@ export async function POST(request: Request) {
     if (dbError) {
       return NextResponse.json({ error: dbError.message }, { status: 500 });
     }
+
+    // Facebook Conversions API — SubmitApplication event
+    const [firstName, ...lastParts] = name.split(" ");
+    sendCAPIEvent({
+      eventName: "SubmitApplication",
+      eventSourceUrl: "https://www.dumbroof.ai/#inspectors",
+      userData: {
+        email,
+        phone,
+        firstName,
+        lastName: lastParts.join(" ") || undefined,
+        city,
+        state,
+        country: "US",
+        clientIpAddress: request.headers.get("x-forwarded-for")?.split(",")[0] || undefined,
+        clientUserAgent: request.headers.get("user-agent") || undefined,
+      },
+    });
 
     // Send notification email to hello@dumbroof.ai
     if (process.env.SMTP_USER && process.env.SMTP_PASS) {

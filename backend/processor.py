@@ -25,7 +25,7 @@ from supabase import create_client, Client
 
 from carrier_intelligence import suggest_arguments
 from analytics import predict_settlement, detect_price_deviations
-from xactimate_lookup import XactRegistry
+from xactimate_lookup import XactRegistry, _clean_desc
 
 # Xactimate registry cache: market_code → XactRegistry instance
 _XACT_REGISTRIES = {}
@@ -879,7 +879,21 @@ Extract every line item. Use 0 for values not found."""
             ]
         }]
     )
-    return _parse_json_response(response.content[0].text)
+    data = _parse_json_response(response.content[0].text)
+
+    # Normalize carrier items — canonical field names so downstream code doesn't need fallback chains
+    for ci in data.get("carrier_line_items", []):
+        # Ensure carrier_desc always exists (Claude sometimes only populates 'item')
+        if not ci.get("carrier_desc") and ci.get("item"):
+            ci["carrier_desc"] = ci["item"]
+        elif not ci.get("item") and ci.get("carrier_desc"):
+            ci["item"] = ci["carrier_desc"]
+        # Ensure numeric fields default to 0
+        for field in ("carrier_amount", "qty", "unit_price"):
+            if ci.get(field) is None:
+                ci[field] = 0
+
+    return data
 
 
 def diff_carrier_scopes(
@@ -1431,7 +1445,8 @@ def build_claim_config(
         enriched_count = 0
         price_corrected = 0
         for li in line_items:
-            reg_item = registry.lookup_price(li.get("description", ""))
+            lookup_desc = _clean_desc(li.get("description", ""))
+            reg_item = registry.lookup_price(lookup_desc)
             if reg_item:
                 # Validate trade compatibility before enriching (prevent siding-roofing cross-contamination)
                 reg_trade = (reg_item.get("trade") or "").lower()
@@ -1776,7 +1791,6 @@ def build_claim_config(
                 missing_items = registry.find_missing_items(carrier_items, meas_for_missing)
                 if missing_items:
                     # Append missing IRC items that pre_match didn't already flag
-                    from xactimate_lookup import _clean_desc
                     existing_descs = {_clean_desc(r.get("usarm_desc", "")) for r in matched if r.get("matched_by") == "missing"}
                     new_missing = 0
                     for mi in missing_items:
@@ -1799,187 +1813,12 @@ def build_claim_config(
                 print(f"[SCOPE MATCH] find_missing_items failed (non-fatal): {e2}")
 
         except Exception as e:
-            print(f"[SCOPE MATCH] XactRegistry matching failed, falling back to legacy: {e}")
-            _cross_reference_line_items(config)
+            print(f"[SCOPE MATCH] XactRegistry matching failed: {e}")
+            traceback.print_exc()
 
     return config
 
 
-def _get_line_item_justification(desc: str, trade: str) -> str:
-    """Return trade-specific forensic justification for a scope comparison line item."""
-    d = desc.lower()
-    # Roofing components
-    if any(kw in d for kw in ["shingle", "roofing", "comp roof"]):
-        return "Storm-damaged shingles require full R&R per manufacturer warranty requirements"
-    if any(kw in d for kw in ["ice", "water", "i&w", "ice & water"]):
-        return "Code-required ice & water shield at eaves, valleys, and penetrations"
-    if any(kw in d for kw in ["underlayment", "felt", "synthetic"]):
-        return "Code-required underlayment must be replaced with full roof R&R"
-    if any(kw in d for kw in ["drip edge", "drip-edge"]):
-        return "Code-required drip edge at eaves and rakes per IRC R905.2.8.5"
-    if any(kw in d for kw in ["ridge", "hip cap"]):
-        return "Ridge/hip cap damaged by hail impact — R&R required with roof system"
-    if any(kw in d for kw in ["starter", "strip"]):
-        return "Starter strip required per manufacturer installation specifications"
-    if any(kw in d for kw in ["flashing", "step flash", "counter flash"]):
-        return "Flashing must be replaced when removing adjacent roofing materials"
-    if any(kw in d for kw in ["vent", "ridge vent", "pipe boot", "pipe jack"]):
-        return "Roof penetration components damaged by storm impact — R&R required"
-    if any(kw in d for kw in ["skylight"]):
-        return "Skylight flashing disturbed during roof R&R — must be resealed"
-    # Gutters
-    if any(kw in d for kw in ["gutter", "downspout"]):
-        return "Gutter system dented/damaged by hail impact — R&R required"
-    # Siding
-    if any(kw in d for kw in ["siding", "vinyl", "aluminum sid"]):
-        return "Storm-damaged siding requires R&R — matching requirement per NAIC MDL-902"
-    if any(kw in d for kw in ["house wrap", "housewrap", "weather barrier"]):
-        return "Code-required WRB must be replaced per IRC R703.1 when siding is removed"
-    if any(kw in d for kw in ["window wrap", "j-channel", "trim"]):
-        return "Required component for proper siding installation"
-    # General
-    if any(kw in d for kw in ["labor", "tear off", "tear-off", "removal"]):
-        return "Labor required for proper removal and disposal of damaged materials"
-    if any(kw in d for kw in ["dumpster", "haul", "debris"]):
-        return "Debris removal required for full scope of work"
-    if any(kw in d for kw in ["permit"]):
-        return "Building permit required per local jurisdiction"
-    # Trade-based fallback
-    if trade == "roofing":
-        return "Required component of complete roofing system R&R"
-    if trade == "gutters":
-        return "Storm-damaged gutter component — R&R required"
-    if trade == "siding":
-        return "Required for code-compliant siding installation"
-    return ""
-
-
-def _cross_reference_line_items(config: dict) -> None:
-    """Populate usarm_desc, usarm_amount, and note on each carrier line item by matching against USARM line items."""
-    carrier_items = config.get("carrier", {}).get("carrier_line_items", [])
-    line_items = config.get("line_items", [])
-    if not line_items:
-        return
-    if not carrier_items:
-        # Empty carrier scope (denial or missing) — fall through to append all USARM items as "NOT INCLUDED"
-        carrier_items = []
-        config.setdefault("carrier", {})["carrier_line_items"] = carrier_items
-
-    stop_words = {'the', 'a', 'an', 'for', 'of', 'and', 'or', 'w/', 'w/out', '-', 'to', 'per', 'sq', 'lf'}
-
-    def _clean_carrier(name: str) -> str:
-        """Strip structure prefixes and trailing item numbers from carrier item names."""
-        cleaned = re.sub(
-            r'^(shed|dwelling\s*roof|front\s*elevation|rear\s*elevation|'
-            r'left\s*elevation|right\s*elevation|debris\s*removal|'
-            r'interior|garage|porch)\s*[-–—]\s*', '', name.lower().strip()
-        ).strip()
-        cleaned = re.sub(r'\s*[-–—]?\s*item\s*\d+\s*$', '', cleaned).strip()
-        return cleaned
-
-    def _clean_usarm(desc: str) -> str:
-        """Strip R&R prefix from USARM descriptions."""
-        return re.sub(r'^r&r\s+', '', desc.lower().strip()).strip()
-
-    # --- Two-pass matching to prevent duplicate USARM assignments ---
-
-    # Pass 1: Score all potential carrier↔USARM matches (match on BOTH item and carrier_desc)
-    potential_matches = []  # (score, ci_idx, li_idx, amt, desc)
-    for ci_idx, ci in enumerate(carrier_items):
-        item_name = ci.get("item", "")
-        item_clean = _clean_carrier(item_name)
-        desc_raw = ci.get("carrier_desc", "")
-        desc_clean = _clean_carrier(desc_raw)
-        if not item_clean and not desc_clean:
-            continue
-
-        for li_idx, li in enumerate(line_items):
-            li_desc = li.get("description", "")
-            li_clean = _clean_usarm(li_desc)
-            score = 0
-
-            # Try matching on both item and carrier_desc, take the best score
-            for candidate in [item_clean, desc_clean]:
-                if not candidate:
-                    continue
-                s = 0
-                # Substring match (both directions) — score by match length
-                if candidate in li_clean or li_clean in candidate:
-                    s = max(len(candidate), len(li_clean))
-                # Keyword overlap
-                elif len(candidate.split()) >= 3:
-                    cand_words = set(candidate.split()) - stop_words
-                    li_words = set(li_clean.split()) - stop_words
-                    overlap = cand_words & li_words
-                    if len(overlap) >= 3 or (len(overlap) >= 2 and len(cand_words) <= 4):
-                        s = len(overlap)
-                score = max(score, s)
-
-            if score > 0:
-                amt = round(li["qty"] * li["unit_price"], 2)
-                potential_matches.append((score, ci_idx, li_idx, amt, li_desc))
-
-    # Pass 2: Sort by score desc, greedily assign — each USARM item claimed at most once
-    potential_matches.sort(key=lambda x: x[0], reverse=True)
-    claimed_usarm = set()
-    carrier_matches = {}  # ci_idx -> list of (amt, desc)
-
-    for score, ci_idx, li_idx, amt, desc in potential_matches:
-        if li_idx in claimed_usarm:
-            continue
-        claimed_usarm.add(li_idx)
-        carrier_matches.setdefault(ci_idx, []).append((amt, desc, li_idx))
-
-    # Apply results to carrier items
-    for ci_idx, ci in enumerate(carrier_items):
-        matches = carrier_matches.get(ci_idx, [])
-        if matches:
-            total_amt = sum(m[0] for m in matches)
-            best_desc = max(matches, key=lambda m: m[0])[1]
-            ci["usarm_amount"] = round(total_amt, 2)
-            ci["usarm_desc"] = best_desc
-            # Generate variance note with justification
-            carrier_amt = 0
-            try:
-                carrier_amt = float(ci.get("carrier_amount", 0))
-            except (ValueError, TypeError):
-                pass
-            variance_text = ""
-            if carrier_amt > 0 and total_amt > carrier_amt:
-                diff = round(total_amt - carrier_amt, 2)
-                variance_text = f"Underpaid ${diff:,.2f}"
-            elif carrier_amt > 0 and total_amt < carrier_amt:
-                diff = round(carrier_amt - total_amt, 2)
-                variance_text = f"Overpaid ${diff:,.2f}"
-            elif carrier_amt > 0:
-                variance_text = "Amounts match"
-            else:
-                variance_text = "Not in carrier scope"
-            # Add trade-specific justification
-            best_li_idx = max(matches, key=lambda m: m[0])[2]
-            matched_li = line_items[best_li_idx] if best_li_idx < len(line_items) else {}
-            trade = (matched_li.get("trade", "") or "").lower()
-            justification = _get_line_item_justification(best_desc, trade)
-            ci["note"] = f"{variance_text}. {justification}" if justification else variance_text
-        else:
-            ci["usarm_amount"] = 0
-            ci["usarm_desc"] = ""
-            ci["note"] = "No matching USARM line item"
-
-    # Append USARM items NOT in carrier scope as "NOT INCLUDED" rows
-    for idx, li in enumerate(line_items):
-        if idx not in claimed_usarm:
-            amt = round(li["qty"] * li["unit_price"], 2)
-            if amt < 10:  # Skip trivial items
-                continue
-            carrier_items.append({
-                "item": li.get("description", ""),
-                "carrier_desc": "NOT INCLUDED",
-                "carrier_amount": 0,
-                "usarm_desc": li.get("description", ""),
-                "usarm_amount": amt,
-                "note": "Carrier scope incomplete — missing component",
-            })
 
 
 def _classify_from_text(text: str) -> Optional[str]:
@@ -2467,10 +2306,9 @@ def build_multi_structure_line_items(measurements: dict, photo_analysis: dict, s
                 sub_notes = f"{mat}. {user_notes}" if user_notes else mat
 
                 items = build_line_items(sub_meas, photo_analysis, state, sub_notes, mat_er)
-                label = f"[{struct_name}]" if len(structs) > 1 else ""
-                for item in items:
-                    if label:
-                        item["description"] = f"{label} {item['description']}"
+                if len(structs) > 1:
+                    for item in items:
+                        item["structure"] = struct_name  # metadata for PDF sectioning
                 all_items.extend(items)
                 print(f"[LINE ITEMS] {struct_name} ({mat}): {len(items)} items, {area_sq:.1f} SQ, material = slope override")
         else:
@@ -2505,7 +2343,7 @@ def build_multi_structure_line_items(measurements: dict, photo_analysis: dict, s
 
             if len(structs) > 1:
                 for item in items:
-                    item["description"] = f"[{struct_name}] {item['description']}"
+                    item["structure"] = struct_name  # metadata for PDF sectioning
 
             all_items.extend(items)
             mat_source = ('per-struct override' if struct_er and struct_er is not estimate_request
@@ -3984,6 +3822,12 @@ async def process_claim(claim_id: str):
 
         print(f"[PROCESS] Claim complete: {claim['address']} — {len(pdfs)} PDFs ready")
 
+        # 12c. Facebook Conversions API — Lead event on claim completion
+        try:
+            _send_meta_capi_event(claim, contractor_rcv)
+        except Exception as e:
+            print(f"[CAPI] Meta CAPI event failed (non-fatal): {e}")
+
         # 12b. Write to data warehouse tables (non-blocking — failures don't affect claim)
         try:
             _write_to_warehouse(sb, claim_id, config, photo_analysis, photo_integrity,
@@ -4026,6 +3870,46 @@ def _send_completion_notification(claim_id: str):
         print(f"[NOTIFY] Completion email sent to {email}")
     else:
         print(f"[NOTIFY] Notification returned: {result}")
+
+
+def _send_meta_capi_event(claim: dict, contractor_rcv: float):
+    """Send Facebook Conversions API event when claim processing completes. Non-fatal."""
+    import hashlib
+    import urllib.request
+
+    pixel_id = os.environ.get("META_PIXEL_ID")
+    token = os.environ.get("META_CAPI_TOKEN")
+    if not pixel_id or not token:
+        return
+
+    def sha256(val: str) -> str:
+        return hashlib.sha256(val.strip().lower().encode()).hexdigest()
+
+    user_data: dict = {}
+    email = claim.get("user_email") or claim.get("email")
+    if email:
+        user_data["em"] = sha256(email)
+
+    payload = json.dumps({
+        "data": [{
+            "event_name": "Lead",
+            "event_time": int(time.time()),
+            "action_source": "website",
+            "event_source_url": "https://www.dumbroof.ai/dashboard",
+            "user_data": user_data,
+            "custom_data": {
+                "content_name": claim.get("address", "Unknown"),
+                "value": round(contractor_rcv, 2) if contractor_rcv else 0,
+                "currency": "USD",
+            },
+        }],
+    }).encode("utf-8")
+
+    url = f"https://graph.facebook.com/v21.0/{pixel_id}/events?access_token={token}"
+    req = urllib.request.Request(url, data=payload,
+                                headers={"Content-Type": "application/json"})
+    with urllib.request.urlopen(req, timeout=10) as resp:
+        print(f"[CAPI] Meta event sent: {resp.read().decode()}")
 
 
 # ===================================================================
