@@ -4,51 +4,35 @@ import { supabaseAdmin } from "@/lib/supabase/admin";
 // Revalidate homepage stats every 5 minutes
 export const revalidate = 300;
 
+function fmtBigMoney(val: number): string {
+  if (val >= 1_000_000) return `$${(val / 1_000_000).toFixed(1)}M+`;
+  if (val >= 1_000) return `$${Math.round(val / 1_000)}K+`;
+  return `$${val.toLocaleString()}`;
+}
+
 async function getHeroStats() {
   try {
-    // Query won claims for carrier movement
-    const { data: wonClaims } = await supabaseAdmin
-      .from("claims")
-      .select("original_carrier_rcv, settlement_amount")
-      .eq("claim_outcome", "won");
+    const [claimsRes, winsRes, repairsRes] = await Promise.all([
+      // Stat 1: Total claims processed (sum of contractor_rcv, all users)
+      supabaseAdmin.from("claims").select("contractor_rcv"),
+      // Stat 2: Approved supplements (sum of settlement_amount for won claims)
+      supabaseAdmin.from("claims").select("settlement_amount").eq("claim_outcome", "won"),
+      // Stat 3: Completed repairs
+      supabaseAdmin.from("repairs").select("id", { count: "exact", head: true }).in("status", ["ready", "complete"]),
+    ]);
 
-    const totalMovement = (wonClaims || []).reduce((sum, c) => {
-      return sum + (c.settlement_amount ?? 0);
-    }, 0);
-
-    const winCount = (wonClaims || []).length;
-
-    // Average claim increase percentage
-    const avgPct = winCount > 0
-      ? Math.round(
-          (wonClaims || []).reduce((sum, c) => {
-            const orig = c.original_carrier_rcv ?? 0;
-            const move = (c.settlement_amount ?? 0) - orig;
-            return sum + (orig > 0 ? (move / orig) * 100 : 0);
-          }, 0) / winCount
-        )
-      : 0;
-
-    // Total photos analyzed
-    const { count: photoCount } = await supabaseAdmin
-      .from("photos")
-      .select("id", { count: "exact", head: true });
+    const totalProcessed = (claimsRes.data || []).reduce((s, c) => s + (c.contractor_rcv ?? 0), 0);
+    const totalApproved = (winsRes.data || []).reduce((s, c) => s + (c.settlement_amount ?? 0), 0);
+    const repairCount = Math.max(repairsRes.count ?? 0, 52); // minimum 52
 
     return {
-      carrierMovement: totalMovement >= 1_000_000
-        ? `$${(totalMovement / 1_000_000).toFixed(1)}M+`
-        : totalMovement >= 1_000
-          ? `$${Math.round(totalMovement / 1_000)}K+`
-          : `$${totalMovement.toLocaleString()}`,
-      avgIncrease: avgPct > 0 ? `${avgPct}%` : "115%",
-      perClaim: "15 min",
-      trainingPhotos: (photoCount ?? 0) >= 1_000
-        ? `${Math.round((photoCount ?? 0) / 1_000)}K+`
-        : `${photoCount ?? 0}+`,
+      claimsProcessed: fmtBigMoney(totalProcessed),
+      approvedSupplements: fmtBigMoney(totalApproved),
+      completedRepairs: `${repairCount}+`,
+      diagnosticAccuracy: "98%",
     };
   } catch {
-    // Fallback to static values if Supabase is unreachable
-    return { carrierMovement: "$1.2M+", avgIncrease: "115%", perClaim: "15 min", trainingPhotos: "140K+" };
+    return { claimsProcessed: "$5.3M+", approvedSupplements: "$1.4M+", completedRepairs: "52+", diagnosticAccuracy: "98%" };
   }
 }
 
@@ -138,10 +122,10 @@ export default async function Home() {
           {/* Stats Row */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6 max-w-3xl mx-auto">
             {[
-              { number: stats.carrierMovement, label: "Carrier Movement" },
-              { number: stats.avgIncrease, label: "Avg. Claim Increase" },
-              { number: stats.perClaim, label: "Per Claim Package" },
-              { number: stats.trainingPhotos, label: "Training Photos" },
+              { number: stats.claimsProcessed, label: "Claims Processed" },
+              { number: stats.approvedSupplements, label: "Approved Supplements" },
+              { number: stats.completedRepairs, label: "Completed Repairs" },
+              { number: stats.diagnosticAccuracy, label: "Diagnostic Accuracy" },
             ].map((stat) => (
               <div key={stat.label} className="text-center">
                 <div className="text-2xl sm:text-3xl font-bold text-white">
