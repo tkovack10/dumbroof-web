@@ -13,8 +13,7 @@ async function getHeroStats() {
       .eq("claim_outcome", "won");
 
     const totalMovement = (wonClaims || []).reduce((sum, c) => {
-      const move = (c.settlement_amount ?? 0) - (c.original_carrier_rcv ?? 0);
-      return sum + (move > 0 ? move : 0);
+      return sum + (c.settlement_amount ?? 0);
     }, 0);
 
     const winCount = (wonClaims || []).length;
