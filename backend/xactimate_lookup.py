@@ -107,6 +107,12 @@ _SECTION_RE = re.compile(
     re.IGNORECASE,
 )
 _ITEM_NUM_RE = re.compile(r"\s*[-–—]?\s*item\s*\d+\s*$", re.IGNORECASE)
+_STRUCT_PREFIX_RE = re.compile(r"^\[.*?\]\s*", re.IGNORECASE)
+_ELEV_RE = re.compile(
+    r"^(front|rear|back|left|right|north|south|east|west)\s+"
+    r"(elevation|side)?\s*[-–—]?\s*",
+    re.IGNORECASE,
+)
 _STOP_WORDS = frozenset(
     {"the", "a", "an", "for", "of", "and", "or", "w/", "w/out", "-", "to", "per"}
 )
@@ -114,8 +120,9 @@ _STOP_WORDS = frozenset(
 
 @functools.lru_cache(maxsize=512)
 def _clean_desc(desc):
-    """Strip action prefixes, section headers, item numbers, and normalize."""
+    """Strip action prefixes, section headers, structure brackets, item numbers, and normalize."""
     d = desc.lower().strip()
+    d = _STRUCT_PREFIX_RE.sub("", d).strip()  # strip [Structure #N (...)]
     d = _SECTION_RE.sub("", d).strip()
     d = _ITEM_NUM_RE.sub("", d).strip()
     d = _PFX_RE.sub("", d).strip()
@@ -744,7 +751,48 @@ class XactRegistry:
         if len(aggregated) < len(carrier_line_items):
             print(f"[SCOPE MATCH] Aggregated {len(carrier_line_items)} carrier items → {len(aggregated)} (combined {len(carrier_line_items) - len(aggregated)} split items)")
 
-        return aggregated
+        return XactRegistry._aggregate_carrier_elevations(aggregated)
+
+    @staticmethod
+    def _aggregate_carrier_elevations(carrier_line_items):
+        """Combine per-elevation carrier items (Front/Right/Rear/Left) into single items.
+
+        Carriers often list the same item per elevation:
+          "Front Elevation - Gutter" $300, "Rear Elevation - Gutter" $250
+        USARM has a single combined line. Merge these by base description.
+        """
+        elev_groups = {}  # base_desc → list of items
+        non_elev = []
+        for ci in carrier_line_items:
+            desc = ci.get("carrier_desc", "")
+            stripped = _ELEV_RE.sub("", desc).strip()
+            if stripped.lower() != desc.lower().strip():
+                key = _clean_desc(stripped)
+                elev_groups.setdefault(key, []).append(ci)
+            else:
+                non_elev.append(ci)
+
+        combined = list(non_elev)
+        groups_merged = 0
+        items_absorbed = 0
+        for key, items in elev_groups.items():
+            if len(items) >= 2:
+                total_amt = sum(float(it.get("carrier_amount", 0) or 0) for it in items)
+                best = max(items, key=lambda c: len(c.get("carrier_desc", "")))
+                merged = dict(best)
+                merged["carrier_desc"] = _ELEV_RE.sub("", merged.get("carrier_desc", "")).strip()
+                merged["carrier_amount"] = round(total_amt, 2)
+                merged["_aggregated_elevations"] = len(items)
+                combined.append(merged)
+                groups_merged += 1
+                items_absorbed += len(items) - 1
+            else:
+                combined.extend(items)
+
+        if groups_merged:
+            print(f"[SCOPE MATCH] Elevation aggregation: {items_absorbed + groups_merged} per-elevation items → {groups_merged} combined")
+
+        return combined
 
     def pre_match_scope_comparison(self, carrier_line_items, usarm_line_items):
         """Pre-compute usarm_desc and usarm_amount for each carrier line item.
