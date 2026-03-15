@@ -1,10 +1,18 @@
 "use client";
 
 import { useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { Suspense } from "react";
 import { PLANS, type PlanId } from "@/lib/stripe-config";
 
 export default function PricingPage() {
+  return <Suspense><PricingContent /></Suspense>;
+}
+
+function PricingContent() {
   const [loading, setLoading] = useState<PlanId | null>(null);
+  const searchParams = useSearchParams();
+  const coupon = searchParams.get("coupon") || undefined;
 
   const handleSubscribe = async (planId: PlanId) => {
     setLoading(planId);
@@ -12,7 +20,7 @@ export default function PricingPage() {
       const res = await fetch("/api/billing/create-checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ planId }),
+        body: JSON.stringify({ planId, coupon }),
       });
       const data = await res.json();
       if (data.url) {
@@ -127,7 +135,7 @@ export default function PricingPage() {
                     href="/login?mode=signup"
                     className="block text-center bg-[var(--navy)] hover:bg-[var(--navy-light)] text-white py-3 rounded-xl font-semibold transition-colors text-sm"
                   >
-                    Get Started Free
+                    Try 3 Free Claims
                   </a>
                 ) : (
                   <button

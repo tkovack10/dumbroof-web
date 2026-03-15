@@ -85,7 +85,7 @@ export default async function Home() {
               href="/login?mode=signup"
               className="bg-[var(--red)] hover:bg-[var(--red-dark)] text-white px-5 py-2 rounded-lg text-sm font-semibold transition-colors"
             >
-              Create Account
+              Try Free
             </a>
           </div>
         </div>
@@ -738,9 +738,10 @@ export default async function Home() {
             href="/login?mode=signup"
             className="inline-block bg-[var(--red)] hover:bg-[var(--red-dark)] text-white px-8 py-4 rounded-xl text-lg font-semibold transition-colors shadow-lg shadow-red-900/30"
           >
-            Create Your Account
+            Try 3 Free Claims
           </a>
-          <p className="text-gray-500 text-sm mt-4">
+          <p className="text-gray-500 text-xs mt-3">No credit card required</p>
+          <p className="text-gray-500 text-sm mt-3">
             Already have an account?{" "}
             <a href="/login" className="text-white hover:text-[var(--red)] transition-colors">
               Sign in

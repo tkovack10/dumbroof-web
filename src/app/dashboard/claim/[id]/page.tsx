@@ -9,6 +9,7 @@ import { PendingChangesBanner } from "@/components/pending-changes-banner";
 import type { Claim } from "@/types/claim";
 import { CATEGORY_CONFIG, CLAIM_STATUS_CONFIG, type UploadCategory } from "@/lib/claim-constants";
 import { uploadClaimDocuments } from "@/lib/upload-utils";
+import { useBillingQuota } from "@/hooks/use-billing-quota";
 
 interface EditRequest {
   id: string;
@@ -72,6 +73,7 @@ export default function ClaimDetailPage() {
   const supabase = createClient();
   const claimId = params.id as string;
 
+  const quota = useBillingQuota();
   const [claim, setClaim] = useState<Claim | null>(null);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
@@ -710,6 +712,35 @@ export default function ClaimDetailPage() {
               <p className="text-xs text-orange-800">
                 <strong>What to do:</strong> Upload additional photos following the tips above, then click &ldquo;Reprocess&rdquo; to re-analyze your claim. Better documentation can turn a weak claim into a winning one.
               </p>
+            </div>
+          </div>
+        )}
+
+        {/* Flash Sale — 50% off after first claim */}
+        {isReady && quota && quota.planId === "starter" && quota.lifetimeUsed === 1 && (
+          <div className="bg-gradient-to-r from-orange-500 via-red-500 to-pink-500 rounded-2xl p-6 text-white">
+            <div className="flex items-center justify-between flex-wrap gap-4">
+              <div>
+                <p className="text-sm font-bold uppercase tracking-wider text-orange-100">First Claim Special</p>
+                <p className="text-2xl font-black mt-1">50% Off Your First Month</p>
+                <p className="text-sm text-orange-100 mt-1">
+                  Your claim package identified ${((claim.contractor_rcv ?? 0)).toLocaleString()} in damages. Upgrade now to keep building.
+                </p>
+              </div>
+              <div className="flex gap-3">
+                <a
+                  href="/pricing?coupon=FIRSTCLAIM50"
+                  className="bg-white text-red-600 px-5 py-3 rounded-xl font-bold text-sm hover:bg-orange-50 transition-colors"
+                >
+                  Pro — $249/mo
+                </a>
+                <a
+                  href="/pricing?coupon=FIRSTCLAIM50"
+                  className="bg-white/20 backdrop-blur text-white px-5 py-3 rounded-xl font-bold text-sm hover:bg-white/30 transition-colors border border-white/30"
+                >
+                  Growth — $499/mo
+                </a>
+              </div>
             </div>
           </div>
         )}

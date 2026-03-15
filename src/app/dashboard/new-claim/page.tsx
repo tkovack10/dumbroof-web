@@ -252,22 +252,30 @@ export default function NewClaimPage() {
           </p>
         </div>
 
-        {/* Quota Gate */}
+        {/* Quota Gate — Upgrade */}
         {quota && !quota.allowed && (
-          <div className="mb-8 bg-red-50 border border-red-200 rounded-xl p-6 text-center">
-            <h3 className="text-lg font-bold text-red-800 mb-2">
-              Claim Limit Reached
+          <div className="mb-8 bg-gradient-to-br from-[var(--navy)] to-[var(--navy-light)] rounded-2xl p-8 text-center text-white">
+            <h3 className="text-xl font-bold mb-2">
+              You&apos;ve used your {quota.limit} free claims
             </h3>
-            <p className="text-sm text-red-700 mb-4">
-              You&apos;ve used all {quota.limit} claims on your {quota.planName} plan.
-              Upgrade to continue submitting claims.
+            <p className="text-gray-300 text-sm mb-6">
+              Upgrade to keep submitting claims and generating revenue.
             </p>
-            <a
-              href="/pricing"
-              className="inline-block bg-[var(--red)] hover:bg-[var(--red-dark)] text-white px-6 py-3 rounded-xl font-semibold transition-colors text-sm"
-            >
-              View Plans
-            </a>
+            <div className="flex items-center justify-center gap-4 flex-wrap">
+              <a
+                href="/pricing"
+                className="bg-[var(--red)] hover:bg-[var(--red-dark)] text-white px-6 py-3 rounded-xl font-bold text-sm transition-colors"
+              >
+                Pro — $499/mo (10 claims)
+              </a>
+              <a
+                href="/pricing"
+                className="bg-white/10 hover:bg-white/20 text-white px-6 py-3 rounded-xl font-bold text-sm transition-colors border border-white/20"
+              >
+                Growth — $999/mo (30 claims)
+              </a>
+            </div>
+            <p className="text-gray-400 text-xs mt-4">Cancel anytime. No long-term contracts.</p>
           </div>
         )}
 

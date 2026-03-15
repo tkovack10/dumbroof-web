@@ -13,7 +13,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const { planId } = (await req.json()) as { planId: PlanId };
+  const { planId, coupon } = (await req.json()) as { planId: PlanId; coupon?: string };
   const plan = PLANS[planId];
   if (!plan || !plan.stripePriceId) {
     return NextResponse.json({ error: "Invalid plan" }, { status: 400 });
@@ -53,6 +53,7 @@ export async function POST(req: NextRequest) {
     customer: customerId,
     mode: "subscription",
     line_items: [{ price: plan.stripePriceId, quantity: 1 }],
+    ...(coupon ? { discounts: [{ coupon }] } : {}),
     success_url: `${origin}/dashboard/settings?billing=success`,
     cancel_url: `${origin}/pricing`,
     metadata: { user_id: user.id },

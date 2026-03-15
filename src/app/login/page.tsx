@@ -79,7 +79,7 @@ function LoginPageContent() {
       } else if (data.session) {
         // Auto-confirmed (email confirmation disabled) — go straight to dashboard
         window.fbq?.("track", "CompleteRegistration");
-        window.location.href = "/dashboard";
+        window.location.href = "/dashboard/new-claim";
       } else {
         window.fbq?.("track", "CompleteRegistration");
         setMessage("Account created! Check your email for a confirmation link, then come back and sign in.");
@@ -131,7 +131,7 @@ function LoginPageContent() {
             {isForgotPassword
               ? "Enter your email and we'll send a reset link."
               : isSignUp
-                ? "Start generating claim packages today."
+                ? "3 free claims. No credit card."
                 : "Sign in to your dashboard."}
           </p>
 
