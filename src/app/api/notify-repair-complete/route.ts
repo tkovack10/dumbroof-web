@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
-import nodemailer from "nodemailer";
+import { getResend, EMAIL_FROM, EMAIL_REPLY_TO } from "@/lib/resend";
 
 const MAX_ATTACHMENT_BYTES = 20 * 1024 * 1024; // 20MB
 
@@ -14,11 +14,6 @@ export async function POST(request: Request) {
 
     if (!body.repair_id) {
       return NextResponse.json({ error: "Missing repair_id" }, { status: 400 });
-    }
-
-    if (!process.env.SMTP_USER || !process.env.SMTP_PASS) {
-      console.log("[REPAIR-NOTIFY] SMTP not configured — skipping");
-      return NextResponse.json({ success: true, skipped: true });
     }
 
     // 1. Look up repair
@@ -78,12 +73,11 @@ export async function POST(request: Request) {
         return {
           filename,
           content: Buffer.from(await data.arrayBuffer()),
-          contentType: "application/pdf" as const,
         };
       })
     );
 
-    const allAttachments: { filename: string; content: Buffer; contentType: string }[] = [];
+    const allAttachments: { filename: string; content: Buffer }[] = [];
     for (const r of downloadResults) {
       if (r.status === "fulfilled") allAttachments.push(r.value);
     }
@@ -100,21 +94,11 @@ export async function POST(request: Request) {
       attachments.push(att);
     }
 
-    // 5. Create transporter
-    const transporter = nodemailer.createTransport({
-      host: "smtp.gmail.com",
-      port: 465,
-      secure: true,
-      auth: {
-        user: process.env.SMTP_USER,
-        pass: process.env.SMTP_PASS,
-      },
-    });
-
+    const resend = getResend();
     const address = repair.address || "your property";
     const dashboardUrl = "https://dumbroof.ai/dashboard";
 
-    // 6. Email 1: User gets ALL PDFs
+    // 5. Email 1: User gets ALL PDFs
     const userFileList = outputFiles
       .map((f) => `<li style="margin-bottom:4px;color:#374151;">${f.replace(/_/g, " ").replace(".pdf", "")}</li>`)
       .join("");
@@ -165,26 +149,27 @@ export async function POST(request: Request) {
 </body>
 </html>`.trim();
 
-    const userMailOptions: nodemailer.SendMailOptions = {
-      from: `"Dumb Roof" <${process.env.SMTP_USER}>`,
-      to: userEmail,
-      cc: "TKovack@USARoofMasters.com",
+    const { error: userSendError } = await resend.emails.send({
+      from: EMAIL_FROM,
+      to: [userEmail],
+      cc: ["TKovack@USARoofMasters.com"],
+      replyTo: EMAIL_REPLY_TO,
       subject: `Repair Diagnosis Ready \u2014 ${address}`,
       html: userHtml,
-    };
-
-    if (!oversized && attachments.length > 0) {
-      userMailOptions.attachments = attachments.map((att) => ({
+      attachments: oversized ? undefined : attachments.map((att) => ({
         filename: att.filename,
         content: att.content,
-        contentType: att.contentType,
-      }));
+      })),
+    });
+
+    if (userSendError) {
+      console.error("[REPAIR-NOTIFY] Resend error:", userSendError);
+      return NextResponse.json({ error: userSendError.message }, { status: 500 });
     }
 
-    await transporter.sendMail(userMailOptions);
-    console.log(`[REPAIR-NOTIFY] User email sent to ${userEmail}`);
+    console.log(`[REPAIR-NOTIFY] User email sent to ${userEmail} via Resend`);
 
-    // 7. Email 2: Homeowner gets TICKET PDF only (if homeowner_email provided)
+    // 6. Email 2: Homeowner gets TICKET PDF only (if homeowner_email provided)
     let homeownerSent = false;
     if (repair.homeowner_email) {
       const ticketFile = allAttachments.find((a) => a.filename.includes("TICKET"));
@@ -230,27 +215,25 @@ export async function POST(request: Request) {
 </body>
 </html>`.trim();
 
-      const homeownerMailOptions: nodemailer.SendMailOptions = {
-        from: `"${companyName}" <${process.env.SMTP_USER}>`,
-        to: repair.homeowner_email,
+      const { error: hoSendError } = await resend.emails.send({
+        from: `${companyName} <hello@dumbroof.ai>`,
+        to: [repair.homeowner_email],
+        replyTo: EMAIL_REPLY_TO,
         subject: `Roof Repair Diagnosis \u2014 ${address}`,
         html: homeownerHtml,
-      };
-
-      if (ticketFile) {
-        homeownerMailOptions.attachments = [{
+        attachments: ticketFile ? [{
           filename: ticketFile.filename,
           content: ticketFile.content,
-          contentType: ticketFile.contentType,
-        }];
-      }
+        }] : undefined,
+      });
 
-      await transporter.sendMail(homeownerMailOptions);
-      homeownerSent = true;
-      console.log(`[REPAIR-NOTIFY] Homeowner email sent to ${repair.homeowner_email}`);
+      if (!hoSendError) {
+        homeownerSent = true;
+        console.log(`[REPAIR-NOTIFY] Homeowner email sent to ${repair.homeowner_email} via Resend`);
+      }
     }
 
-    // 8. Mark email_sent_at
+    // 7. Mark email_sent_at
     await supabaseAdmin
       .from("repairs")
       .update({ email_sent_at: new Date().toISOString() })

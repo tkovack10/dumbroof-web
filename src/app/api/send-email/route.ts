@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import nodemailer from "nodemailer";
+import { getResend, EMAIL_FROM_CLAIMS, EMAIL_REPLY_TO } from "@/lib/resend";
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -24,22 +24,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Missing required fields: to, subject, body_html" }, { status: 400 });
     }
 
-    if (!process.env.SMTP_USER || !process.env.SMTP_PASS) {
-      return NextResponse.json({ error: "SMTP not configured" }, { status: 500 });
-    }
-
-    const transporter = nodemailer.createTransport({
-      host: "smtp.gmail.com",
-      port: 465,
-      secure: true,
-      auth: {
-        user: process.env.SMTP_USER,
-        pass: process.env.SMTP_PASS,
-      },
-    });
-
     // Download photo attachments from Supabase Storage
-    const attachments: Array<{ filename: string; content: Buffer; contentType: string }> = [];
+    const attachments: Array<{ filename: string; content: Buffer }> = [];
 
     if (body.photo_paths && body.photo_paths.length > 0) {
       for (const path of body.photo_paths) {
@@ -56,35 +42,31 @@ export async function POST(request: Request) {
           const buffer = Buffer.from(await data.arrayBuffer());
           const filename = path.split("/").pop() || "attachment.jpg";
 
-          attachments.push({
-            filename,
-            content: buffer,
-            contentType: data.type || "application/octet-stream",
-          });
+          attachments.push({ filename, content: buffer });
         } catch (err) {
           console.error(`Error downloading ${path}:`, err);
         }
       }
     }
 
-    // Send email
-    const mailOptions: nodemailer.SendMailOptions = {
-      from: `"Dumb Roof Claims" <${process.env.SMTP_USER}>`,
-      to: body.to,
+    const resend = getResend();
+    const { data, error } = await resend.emails.send({
+      from: EMAIL_FROM_CLAIMS,
+      to: [body.to],
+      cc: body.cc ? [body.cc] : undefined,
+      replyTo: EMAIL_REPLY_TO,
       subject: body.subject,
       html: body.body_html,
       attachments: attachments.map((att) => ({
         filename: att.filename,
         content: att.content,
-        contentType: att.contentType,
       })),
-    };
+    });
 
-    if (body.cc) {
-      mailOptions.cc = body.cc;
+    if (error) {
+      console.error("Resend error:", error);
+      return NextResponse.json({ error: error.message }, { status: 500 });
     }
-
-    const info = await transporter.sendMail(mailOptions);
 
     // Update draft status in backend
     if (body.draft_id) {
@@ -101,8 +83,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({
       success: true,
-      messageId: info.messageId,
-      threadId: info.messageId, // Gmail's message ID for thread tracking
+      messageId: data?.id,
     });
 
   } catch (err) {

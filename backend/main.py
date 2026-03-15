@@ -89,7 +89,36 @@ app.add_middleware(
 
 @app.get("/health")
 def health():
-    return {"status": "ok", "version": "2026-03-13-v1"}
+    import psutil, shutil, time as _t
+    vm = psutil.virtual_memory()
+    disk = shutil.disk_usage("/")
+    cpu_count = psutil.cpu_count(logical=True)
+    cpu_pct = psutil.cpu_percent(interval=0.5)
+    proc = psutil.Process()
+    proc_mem = proc.memory_info()
+    return {
+        "status": "ok",
+        "version": "2026-03-14-v1",
+        "system": {
+            "cpu_count": cpu_count,
+            "cpu_percent": cpu_pct,
+            "ram_total_mb": round(vm.total / 1024 / 1024),
+            "ram_used_mb": round(vm.used / 1024 / 1024),
+            "ram_available_mb": round(vm.available / 1024 / 1024),
+            "ram_percent": vm.percent,
+            "disk_total_gb": round(disk.total / 1024 / 1024 / 1024, 1),
+            "disk_used_gb": round(disk.used / 1024 / 1024 / 1024, 1),
+            "disk_free_gb": round(disk.free / 1024 / 1024 / 1024, 1),
+        },
+        "process": {
+            "pid": proc.pid,
+            "rss_mb": round(proc_mem.rss / 1024 / 1024),
+            "vms_mb": round(proc_mem.vms / 1024 / 1024),
+            "cpu_percent": proc.cpu_percent(),
+            "threads": proc.num_threads(),
+            "uptime_hours": round((_t.time() - proc.create_time()) / 3600, 1),
+        },
+    }
 
 
 @app.post("/api/reprocess/{claim_id}")

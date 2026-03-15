@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import nodemailer from "nodemailer";
+import { getResend, EMAIL_FROM, EMAIL_REPLY_TO } from "@/lib/resend";
 import { sendCAPIEvent } from "@/lib/meta-capi";
 
 function getSb() {
@@ -68,18 +68,8 @@ export async function POST(request: Request) {
       },
     });
 
-    // Send notification email to hello@dumbroof.ai
-    if (process.env.SMTP_USER && process.env.SMTP_PASS) {
-      const transporter = nodemailer.createTransport({
-        host: "smtp.gmail.com",
-        port: 465,
-        secure: true,
-        auth: {
-          user: process.env.SMTP_USER,
-          pass: process.env.SMTP_PASS,
-        },
-      });
-
+    // Send notification email via Resend
+    try {
       const haagLabel =
         haag_certified === "yes" ? "Yes - HAAG Certified" :
         haag_certified === "in-progress" ? "In Progress" :
@@ -93,9 +83,11 @@ export async function POST(request: Request) {
         nationwide: "Nationwide - will travel anywhere",
       };
 
-      await transporter.sendMail({
-        from: `"Dumb Roof Inspector Network" <${process.env.SMTP_USER}>`,
-        to: "hello@dumbroof.ai",
+      const resend = getResend();
+      await resend.emails.send({
+        from: EMAIL_FROM,
+        to: ["hello@dumbroof.ai"],
+        replyTo: EMAIL_REPLY_TO,
         subject: `New Inspector Application: ${name} (${city}, ${state})`,
         html: `
           <div style="font-family: -apple-system, sans-serif; max-width: 600px; margin: 0 auto;">
@@ -147,6 +139,8 @@ export async function POST(request: Request) {
           </div>
         `,
       });
+    } catch (emailErr) {
+      console.error("Resend notification error (non-fatal):", emailErr);
     }
 
     return NextResponse.json({ success: true });

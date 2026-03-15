@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import nodemailer from "nodemailer";
+import { getResend, EMAIL_FROM, EMAIL_REPLY_TO } from "@/lib/resend";
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -48,24 +48,16 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: dbError.message }, { status: 500 });
     }
 
-    if (process.env.SMTP_USER && process.env.SMTP_PASS) {
-      const transporter = nodemailer.createTransport({
-        host: "smtp.gmail.com",
-        port: 465,
-        secure: true,
-        auth: {
-          user: process.env.SMTP_USER,
-          pass: process.env.SMTP_PASS,
-        },
-      });
+    const productList = (products || [])
+      .map((p: string) => productLabels[p] || p)
+      .join(", ") || "None selected";
 
-      const productList = (products || [])
-        .map((p: string) => productLabels[p] || p)
-        .join(", ") || "None selected";
-
-      await transporter.sendMail({
-        from: `"Dumb Roof Beta" <${process.env.SMTP_USER}>`,
-        to: "tom@dumbroof.ai, hello@dumbroof.ai, tkovack@usaroofmasters.com",
+    try {
+      const resend = getResend();
+      await resend.emails.send({
+        from: EMAIL_FROM,
+        to: ["tom@dumbroof.ai", "hello@dumbroof.ai", "tkovack@usaroofmasters.com"],
+        replyTo: EMAIL_REPLY_TO,
         subject: `New Beta Signup: ${name} (${roleLabels[role] || role})`,
         html: `
           <div style="font-family: -apple-system, sans-serif; max-width: 600px; margin: 0 auto;">
@@ -110,6 +102,8 @@ export async function POST(request: Request) {
           </div>
         `,
       });
+    } catch (emailErr) {
+      console.error("Resend notification error (non-fatal):", emailErr);
     }
 
     return NextResponse.json({ success: true });

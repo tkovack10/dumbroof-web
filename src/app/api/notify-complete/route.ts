@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
-import nodemailer from "nodemailer";
+import { getResend, EMAIL_FROM, EMAIL_REPLY_TO } from "@/lib/resend";
 
-const MAX_ATTACHMENT_BYTES = 20 * 1024 * 1024; // 20MB — stay under Gmail's 25MB limit
+const MAX_ATTACHMENT_BYTES = 20 * 1024 * 1024; // 20MB
 
 interface NotifyRequest {
   claim_id: string;
@@ -14,11 +14,6 @@ export async function POST(request: Request) {
 
     if (!body.claim_id) {
       return NextResponse.json({ error: "Missing claim_id" }, { status: 400 });
-    }
-
-    if (!process.env.SMTP_USER || !process.env.SMTP_PASS) {
-      console.log("[NOTIFY] SMTP not configured — skipping");
-      return NextResponse.json({ success: true, skipped: true });
     }
 
     // 1. Look up claim
@@ -65,7 +60,6 @@ export async function POST(request: Request) {
     const attachments: Array<{
       filename: string;
       content: Buffer;
-      contentType: string;
     }> = [];
     let totalSize = 0;
     let oversized = false;
@@ -90,11 +84,7 @@ export async function POST(request: Request) {
           break;
         }
 
-        attachments.push({
-          filename,
-          content: buffer,
-          contentType: "application/pdf",
-        });
+        attachments.push({ filename, content: buffer });
       } catch (err) {
         console.error(`[NOTIFY] Error downloading ${storagePath}:`, err);
       }
@@ -171,41 +161,31 @@ export async function POST(request: Request) {
 </body>
 </html>`.trim();
 
-    // 6. Send email
-    const transporter = nodemailer.createTransport({
-      host: "smtp.gmail.com",
-      port: 465,
-      secure: true,
-      auth: {
-        user: process.env.SMTP_USER,
-        pass: process.env.SMTP_PASS,
-      },
-    });
-
-    const mailOptions: nodemailer.SendMailOptions = {
-      from: `"Dumb Roof" <${process.env.SMTP_USER}>`,
-      to: userEmail,
-      cc: "TKovack@USARoofMasters.com",
+    // 6. Send email via Resend
+    const resend = getResend();
+    const { error: sendError } = await resend.emails.send({
+      from: EMAIL_FROM,
+      to: [userEmail],
+      cc: ["TKovack@USARoofMasters.com"],
+      replyTo: EMAIL_REPLY_TO,
       subject: `Your claim documents are ready — ${address}`,
       html,
-    };
-
-    if (!oversized && attachments.length > 0) {
-      mailOptions.attachments = attachments.map((att) => ({
+      attachments: oversized ? undefined : attachments.map((att) => ({
         filename: att.filename,
         content: att.content,
-        contentType: att.contentType,
-      }));
+      })),
+    });
+
+    if (sendError) {
+      console.error("[NOTIFY] Resend error:", sendError);
+      return NextResponse.json({ error: sendError.message }, { status: 500 });
     }
 
-    const info = await transporter.sendMail(mailOptions);
-
-    console.log(`[NOTIFY] Completion email sent to ${userEmail} (messageId: ${info.messageId})`);
+    console.log(`[NOTIFY] Completion email sent to ${userEmail} via Resend`);
 
     return NextResponse.json({
       success: true,
       email: userEmail,
-      messageId: info.messageId,
       attachments: oversized ? 0 : attachments.length,
       oversized,
     });
