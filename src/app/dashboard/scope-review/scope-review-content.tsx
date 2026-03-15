@@ -307,9 +307,9 @@ export function ScopeReviewContent() {
 
               {/* Items */}
               {!isCollapsed && (
-                <div className="border-t border-gray-100">
+                <div className="border-t border-gray-100 overflow-x-auto">
                   {/* Table header */}
-                  <div className="grid grid-cols-[1fr_70px_50px_80px_80px_160px] gap-2 px-5 py-2 bg-gray-50 text-xs font-semibold text-gray-400 uppercase">
+                  <div className="grid grid-cols-[1fr_70px_50px_80px_80px_160px] gap-2 px-5 py-2 bg-gray-50 text-xs font-semibold text-gray-400 uppercase min-w-[640px]">
                     <span>Description</span>
                     <span className="text-right">Qty</span>
                     <span className="text-center">Unit</span>
@@ -326,7 +326,7 @@ export function ScopeReviewContent() {
 
                     if (isEditing) {
                       return (
-                        <div key={item.id} className="px-5 py-3 border-t border-gray-100 bg-blue-50/30">
+                        <div key={item.id} className="px-5 py-3 border-t border-gray-100 bg-blue-50/30 min-w-[640px]">
                           <div className="grid grid-cols-[1fr_70px_50px_80px] gap-2 mb-3">
                             <input
                               value={editState.description}
@@ -379,7 +379,7 @@ export function ScopeReviewContent() {
                     return (
                       <div
                         key={item.id}
-                        className={`grid grid-cols-[1fr_70px_50px_80px_80px_160px] gap-2 px-5 py-2.5 border-t border-gray-100 items-center text-sm ${
+                        className={`grid grid-cols-[1fr_70px_50px_80px_80px_160px] gap-2 px-5 py-2.5 border-t border-gray-100 items-center text-sm min-w-[640px] ${
                           isRemoved ? "opacity-50 bg-red-50/30" : item.feedback_status === "approved" ? "bg-green-50/20" : item.feedback_status === "corrected" ? "bg-blue-50/20" : ""
                         }`}
                       >
@@ -438,7 +438,7 @@ export function ScopeReviewContent() {
 
                   {/* Add item form */}
                   {showAddForm === cat ? (
-                    <div className="px-5 py-3 border-t border-gray-100 bg-purple-50/30">
+                    <div className="px-5 py-3 border-t border-gray-100 bg-purple-50/30 min-w-[640px]">
                       <div className="grid grid-cols-[1fr_70px_50px_80px] gap-2 mb-3">
                         <input
                           value={newItem.description}
