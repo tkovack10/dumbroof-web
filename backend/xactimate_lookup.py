@@ -54,6 +54,17 @@ INTERNAL_TO_XACT = {
     "CLN GCLN":   ("CLN GCLN", "install"),
     "SFG GUTW":   ("SFG GUTA", "r&r"),
     "SFG DNSW":   ("SFG GUTA", "r&r"),
+    # Slate roofing
+    "RFG SLATE":   ("RFG SLATE", "install"),
+    "RFG SLATE++": ("RFG SLATE++", "install"),
+    "RFG SLR++":   ("RFG SLR++", "install"),
+    # Wood shake / cedar roofing
+    "RFG WSHK+":   ("RFG WSHK+", "install"),
+    "RFG WSTP":    ("RFG WSTP", "install"),
+    "RFG WSTR":    ("RFG WSTR", "install"),
+    # Cedar siding
+    "SDG CSH":     ("SDG CSH", "r&r"),
+    "SDG CSH+":    ("SDG CSH+", "r&r"),
 }
 
 # Default market per state (for states with multiple markets)
@@ -98,7 +109,7 @@ def _get_all_markets():
 
 # Prefixes/stopwords stripped during fuzzy matching
 _PFX_RE = re.compile(
-    r"^(r&r\s+|remove\s+|install\s+|detach\s*&?\s*reset\s+)", re.IGNORECASE
+    r"^(r&r\s+|remove\s+|tear\s*off\s+|tear\s*out\s+|install\s+|detach\s*&?\s*reset\s+)", re.IGNORECASE
 )
 _SECTION_RE = re.compile(
     r"^(shed|dwelling\s*roof|front\s*elevation|rear\s*elevation|"
@@ -117,15 +128,36 @@ _STOP_WORDS = frozenset(
     {"the", "a", "an", "for", "of", "and", "or", "w/", "w/out", "-", "to", "per"}
 )
 
+# Qualifier stripping — removes dimensions, grades, colors, weights from descriptions
+# so "Slate roofing - High grade - 18" to 24" tall - w/out felt" → "Slate roofing"
+_QUALIFIER_RE = re.compile(
+    r'\s*[-–—]\s*(?:'
+    r'\d+["\u2033]?\s*to\s*\d+["\u2033]?\s*tall'  # "18" to 24" tall"
+    r'|w/(?:out)?\s+felt'                            # "w/out felt", "w/ felt"
+    r'|premium\s+grade|high\s+grade|standard\s+grade' # grade qualifiers
+    r'|red|gray|grey|black|green|brown'               # color qualifiers
+    r'|\d+\s*(?:lb|oz|mil|mm)\b\.?'                   # weight/thickness
+    r')',
+    re.IGNORECASE
+)
+
+# Material keywords for boosting fuzzy match score when both descriptions share the same material
+_MATERIAL_KEYWORDS = frozenset(
+    {"slate", "cedar", "tile", "copper", "aluminum", "vinyl", "shake", "wood", "metal"}
+)
+
 
 @functools.lru_cache(maxsize=512)
 def _clean_desc(desc):
-    """Strip action prefixes, section headers, structure brackets, item numbers, and normalize."""
+    """Strip action prefixes, section headers, structure brackets, item numbers, qualifiers, and normalize."""
     d = desc.lower().strip()
     d = _STRUCT_PREFIX_RE.sub("", d).strip()  # strip [Structure #N (...)]
     d = _SECTION_RE.sub("", d).strip()
     d = _ITEM_NUM_RE.sub("", d).strip()
     d = _PFX_RE.sub("", d).strip()
+    d = _QUALIFIER_RE.sub("", d).strip()
+    d = re.sub(r'\s*\(revised[^)]*\)', '', d, flags=re.I).strip()
+    d = re.sub(r'\s*\(pre-appraisal[^)]*\)', '', d, flags=re.I).strip()
     return d
 
 
@@ -664,6 +696,12 @@ class XactRegistry:
             if len(overlap) >= 3 or (len(overlap) >= 2 and len(carrier_words) <= 4):
                 word_score = 0.4
 
+            # Material keyword boost — same specialty material = strong signal
+            carrier_mats = carrier_words & _MATERIAL_KEYWORDS
+            li_mats = li_words & _MATERIAL_KEYWORDS
+            if carrier_mats and carrier_mats == li_mats:
+                word_score += 0.2
+
             # Similarity
             sim = _similarity(carrier_clean, li_clean)
             score = sim + word_score
@@ -673,7 +711,7 @@ class XactRegistry:
                 best_item = li
 
         confidence = min(1.0, best_score)
-        if confidence >= 0.5:
+        if confidence >= 0.45:
             return best_item, confidence
         return None, 0.0
 
@@ -892,7 +930,7 @@ class XactRegistry:
                 continue
 
             matched_li, confidence = self.match_carrier_to_usarm(carrier_desc, remaining)
-            if matched_li and confidence >= 0.5:
+            if matched_li and confidence >= 0.45:
                 # Find the original index of the matched item
                 matched_idx = None
                 for ri, li in zip(remaining_indices, remaining):

@@ -3,8 +3,8 @@
   "priceListVersion": "MAR26",
   "profile": "8D",
   "note": "NY/NJ/PA prices from Xactimate Online Excel exports + xactimate-prices.html (MAR26). 6 items (RFG RGVC, STP7, HIGH, CLN DMPW, GEN PRMT, CLN GCLN) require Xactimate Desktop. Other markets need price list requests via Xactimate.",
-  "nullItemsNote": "RFG RGVC / RFG STP7 / RFG HIGH / CLN DMPW / GEN PRMT / CLN GCLN \u00e2\u20ac\u201d not exportable via Online API, requires Desktop price lookup.",
-  "pendingMarketsNote": "Markets beyond NY/NJ/PA require requesting price lists in Xactimate Desktop \u00e2\u2020\u2019 Preferences \u00e2\u2020\u2019 Price Lists \u00e2\u2020\u2019 Request Price List.",
+  "nullItemsNote": "RFG RGVC / RFG STP7 / RFG HIGH / CLN DMPW / GEN PRMT / CLN GCLN â€” not exportable via Online API, requires Desktop price lookup. RFG SLATE / RFG SLATE++ / RFG SLR++ / RFG WSHK+ / RFG WSTP / RFG WSTR / SDG CSH / SDG CSH+ — specialty codes, pending per-market price extraction.",
+  "pendingMarketsNote": "Markets beyond NY/NJ/PA require requesting price lists in Xactimate Desktop â†’ Preferences â†’ Price Lists â†’ Request Price List.",
   "markets": {
     "NYBI8X_MAR26": {
       "name": "Binghamton, NY",
@@ -150,6 +150,54 @@
           "unit": "LF",
           "description": "Downspout aluminum up to 5\"",
           "xactCode": "SFG GUTA"
+        },
+        "RFG SLATE": {
+          "price": null,
+          "unit": "SQ",
+          "description": "Slate roofing - install",
+          "xactCode": "RFG SLATE"
+        },
+        "RFG SLATE++": {
+          "price": null,
+          "unit": "SQ",
+          "description": "Slate roofing premium - install",
+          "xactCode": "RFG SLATE++"
+        },
+        "RFG SLR++": {
+          "price": null,
+          "unit": "LF",
+          "description": "Slate ridge/hip premium - install",
+          "xactCode": "RFG SLR++"
+        },
+        "RFG WSHK+": {
+          "price": null,
+          "unit": "SQ",
+          "description": "Wood shakes heavy hand split - install",
+          "xactCode": "RFG WSHK+"
+        },
+        "RFG WSTP": {
+          "price": null,
+          "unit": "SQ",
+          "description": "Wood shakes tapersawn cedar - install",
+          "xactCode": "RFG WSTP"
+        },
+        "RFG WSTR": {
+          "price": null,
+          "unit": "LF",
+          "description": "Wood shake/shingle starter - install",
+          "xactCode": "RFG WSTR"
+        },
+        "SDG CSH": {
+          "price": null,
+          "unit": "SF",
+          "description": "Cedar shingle siding - R&R",
+          "xactCode": "SDG CSH"
+        },
+        "SDG CSH+": {
+          "price": null,
+          "unit": "SF",
+          "description": "Cedar shingle siding fancy cut - R&R",
+          "xactCode": "SDG CSH+"
         }
       }
     },
@@ -297,6 +345,54 @@
           "unit": "LF",
           "description": "Downspout aluminum up to 5\"",
           "xactCode": "SFG GUTA"
+        },
+        "RFG SLATE": {
+          "price": null,
+          "unit": "SQ",
+          "description": "Slate roofing - install",
+          "xactCode": "RFG SLATE"
+        },
+        "RFG SLATE++": {
+          "price": null,
+          "unit": "SQ",
+          "description": "Slate roofing premium - install",
+          "xactCode": "RFG SLATE++"
+        },
+        "RFG SLR++": {
+          "price": null,
+          "unit": "LF",
+          "description": "Slate ridge/hip premium - install",
+          "xactCode": "RFG SLR++"
+        },
+        "RFG WSHK+": {
+          "price": null,
+          "unit": "SQ",
+          "description": "Wood shakes heavy hand split - install",
+          "xactCode": "RFG WSHK+"
+        },
+        "RFG WSTP": {
+          "price": null,
+          "unit": "SQ",
+          "description": "Wood shakes tapersawn cedar - install",
+          "xactCode": "RFG WSTP"
+        },
+        "RFG WSTR": {
+          "price": null,
+          "unit": "LF",
+          "description": "Wood shake/shingle starter - install",
+          "xactCode": "RFG WSTR"
+        },
+        "SDG CSH": {
+          "price": null,
+          "unit": "SF",
+          "description": "Cedar shingle siding - R&R",
+          "xactCode": "SDG CSH"
+        },
+        "SDG CSH+": {
+          "price": null,
+          "unit": "SF",
+          "description": "Cedar shingle siding fancy cut - R&R",
+          "xactCode": "SDG CSH+"
         }
       }
     },
@@ -444,6 +540,54 @@
           "unit": "LF",
           "description": "Downspout aluminum up to 5\"",
           "xactCode": "SFG GUTA"
+        },
+        "RFG SLATE": {
+          "price": null,
+          "unit": "SQ",
+          "description": "Slate roofing - install",
+          "xactCode": "RFG SLATE"
+        },
+        "RFG SLATE++": {
+          "price": null,
+          "unit": "SQ",
+          "description": "Slate roofing premium - install",
+          "xactCode": "RFG SLATE++"
+        },
+        "RFG SLR++": {
+          "price": null,
+          "unit": "LF",
+          "description": "Slate ridge/hip premium - install",
+          "xactCode": "RFG SLR++"
+        },
+        "RFG WSHK+": {
+          "price": null,
+          "unit": "SQ",
+          "description": "Wood shakes heavy hand split - install",
+          "xactCode": "RFG WSHK+"
+        },
+        "RFG WSTP": {
+          "price": null,
+          "unit": "SQ",
+          "description": "Wood shakes tapersawn cedar - install",
+          "xactCode": "RFG WSTP"
+        },
+        "RFG WSTR": {
+          "price": null,
+          "unit": "LF",
+          "description": "Wood shake/shingle starter - install",
+          "xactCode": "RFG WSTR"
+        },
+        "SDG CSH": {
+          "price": null,
+          "unit": "SF",
+          "description": "Cedar shingle siding - R&R",
+          "xactCode": "SDG CSH"
+        },
+        "SDG CSH+": {
+          "price": null,
+          "unit": "SF",
+          "description": "Cedar shingle siding fancy cut - R&R",
+          "xactCode": "SDG CSH+"
         }
       }
     },
@@ -591,6 +735,54 @@
           "unit": "LF",
           "description": "Downspout aluminum up to 5\"",
           "xactCode": "SFG GUTA"
+        },
+        "RFG SLATE": {
+          "price": null,
+          "unit": "SQ",
+          "description": "Slate roofing - install",
+          "xactCode": "RFG SLATE"
+        },
+        "RFG SLATE++": {
+          "price": null,
+          "unit": "SQ",
+          "description": "Slate roofing premium - install",
+          "xactCode": "RFG SLATE++"
+        },
+        "RFG SLR++": {
+          "price": null,
+          "unit": "LF",
+          "description": "Slate ridge/hip premium - install",
+          "xactCode": "RFG SLR++"
+        },
+        "RFG WSHK+": {
+          "price": null,
+          "unit": "SQ",
+          "description": "Wood shakes heavy hand split - install",
+          "xactCode": "RFG WSHK+"
+        },
+        "RFG WSTP": {
+          "price": null,
+          "unit": "SQ",
+          "description": "Wood shakes tapersawn cedar - install",
+          "xactCode": "RFG WSTP"
+        },
+        "RFG WSTR": {
+          "price": null,
+          "unit": "LF",
+          "description": "Wood shake/shingle starter - install",
+          "xactCode": "RFG WSTR"
+        },
+        "SDG CSH": {
+          "price": null,
+          "unit": "SF",
+          "description": "Cedar shingle siding - R&R",
+          "xactCode": "SDG CSH"
+        },
+        "SDG CSH+": {
+          "price": null,
+          "unit": "SF",
+          "description": "Cedar shingle siding fancy cut - R&R",
+          "xactCode": "SDG CSH+"
         }
       }
     },
@@ -738,6 +930,54 @@
           "unit": "LF",
           "description": "Downspout aluminum up to 5\"",
           "xactCode": "SFG GUTA"
+        },
+        "RFG SLATE": {
+          "price": null,
+          "unit": "SQ",
+          "description": "Slate roofing - install",
+          "xactCode": "RFG SLATE"
+        },
+        "RFG SLATE++": {
+          "price": null,
+          "unit": "SQ",
+          "description": "Slate roofing premium - install",
+          "xactCode": "RFG SLATE++"
+        },
+        "RFG SLR++": {
+          "price": null,
+          "unit": "LF",
+          "description": "Slate ridge/hip premium - install",
+          "xactCode": "RFG SLR++"
+        },
+        "RFG WSHK+": {
+          "price": null,
+          "unit": "SQ",
+          "description": "Wood shakes heavy hand split - install",
+          "xactCode": "RFG WSHK+"
+        },
+        "RFG WSTP": {
+          "price": null,
+          "unit": "SQ",
+          "description": "Wood shakes tapersawn cedar - install",
+          "xactCode": "RFG WSTP"
+        },
+        "RFG WSTR": {
+          "price": null,
+          "unit": "LF",
+          "description": "Wood shake/shingle starter - install",
+          "xactCode": "RFG WSTR"
+        },
+        "SDG CSH": {
+          "price": null,
+          "unit": "SF",
+          "description": "Cedar shingle siding - R&R",
+          "xactCode": "SDG CSH"
+        },
+        "SDG CSH+": {
+          "price": null,
+          "unit": "SF",
+          "description": "Cedar shingle siding fancy cut - R&R",
+          "xactCode": "SDG CSH+"
         }
       }
     },
@@ -885,6 +1125,54 @@
           "unit": "LF",
           "description": "Downspout aluminum up to 5\"",
           "xactCode": "SFG GUTA"
+        },
+        "RFG SLATE": {
+          "price": null,
+          "unit": "SQ",
+          "description": "Slate roofing - install",
+          "xactCode": "RFG SLATE"
+        },
+        "RFG SLATE++": {
+          "price": null,
+          "unit": "SQ",
+          "description": "Slate roofing premium - install",
+          "xactCode": "RFG SLATE++"
+        },
+        "RFG SLR++": {
+          "price": null,
+          "unit": "LF",
+          "description": "Slate ridge/hip premium - install",
+          "xactCode": "RFG SLR++"
+        },
+        "RFG WSHK+": {
+          "price": null,
+          "unit": "SQ",
+          "description": "Wood shakes heavy hand split - install",
+          "xactCode": "RFG WSHK+"
+        },
+        "RFG WSTP": {
+          "price": null,
+          "unit": "SQ",
+          "description": "Wood shakes tapersawn cedar - install",
+          "xactCode": "RFG WSTP"
+        },
+        "RFG WSTR": {
+          "price": null,
+          "unit": "LF",
+          "description": "Wood shake/shingle starter - install",
+          "xactCode": "RFG WSTR"
+        },
+        "SDG CSH": {
+          "price": null,
+          "unit": "SF",
+          "description": "Cedar shingle siding - R&R",
+          "xactCode": "SDG CSH"
+        },
+        "SDG CSH+": {
+          "price": null,
+          "unit": "SF",
+          "description": "Cedar shingle siding fancy cut - R&R",
+          "xactCode": "SDG CSH+"
         }
       }
     },
@@ -1032,6 +1320,54 @@
           "unit": "LF",
           "description": "Downspout aluminum up to 5\"",
           "xactCode": "SFG GUTA"
+        },
+        "RFG SLATE": {
+          "price": null,
+          "unit": "SQ",
+          "description": "Slate roofing - install",
+          "xactCode": "RFG SLATE"
+        },
+        "RFG SLATE++": {
+          "price": null,
+          "unit": "SQ",
+          "description": "Slate roofing premium - install",
+          "xactCode": "RFG SLATE++"
+        },
+        "RFG SLR++": {
+          "price": null,
+          "unit": "LF",
+          "description": "Slate ridge/hip premium - install",
+          "xactCode": "RFG SLR++"
+        },
+        "RFG WSHK+": {
+          "price": null,
+          "unit": "SQ",
+          "description": "Wood shakes heavy hand split - install",
+          "xactCode": "RFG WSHK+"
+        },
+        "RFG WSTP": {
+          "price": null,
+          "unit": "SQ",
+          "description": "Wood shakes tapersawn cedar - install",
+          "xactCode": "RFG WSTP"
+        },
+        "RFG WSTR": {
+          "price": null,
+          "unit": "LF",
+          "description": "Wood shake/shingle starter - install",
+          "xactCode": "RFG WSTR"
+        },
+        "SDG CSH": {
+          "price": null,
+          "unit": "SF",
+          "description": "Cedar shingle siding - R&R",
+          "xactCode": "SDG CSH"
+        },
+        "SDG CSH+": {
+          "price": null,
+          "unit": "SF",
+          "description": "Cedar shingle siding fancy cut - R&R",
+          "xactCode": "SDG CSH+"
         }
       }
     },
@@ -1179,6 +1515,54 @@
           "unit": "LF",
           "description": "Downspout aluminum up to 5\"",
           "xactCode": "SFG GUTA"
+        },
+        "RFG SLATE": {
+          "price": null,
+          "unit": "SQ",
+          "description": "Slate roofing - install",
+          "xactCode": "RFG SLATE"
+        },
+        "RFG SLATE++": {
+          "price": null,
+          "unit": "SQ",
+          "description": "Slate roofing premium - install",
+          "xactCode": "RFG SLATE++"
+        },
+        "RFG SLR++": {
+          "price": null,
+          "unit": "LF",
+          "description": "Slate ridge/hip premium - install",
+          "xactCode": "RFG SLR++"
+        },
+        "RFG WSHK+": {
+          "price": null,
+          "unit": "SQ",
+          "description": "Wood shakes heavy hand split - install",
+          "xactCode": "RFG WSHK+"
+        },
+        "RFG WSTP": {
+          "price": null,
+          "unit": "SQ",
+          "description": "Wood shakes tapersawn cedar - install",
+          "xactCode": "RFG WSTP"
+        },
+        "RFG WSTR": {
+          "price": null,
+          "unit": "LF",
+          "description": "Wood shake/shingle starter - install",
+          "xactCode": "RFG WSTR"
+        },
+        "SDG CSH": {
+          "price": null,
+          "unit": "SF",
+          "description": "Cedar shingle siding - R&R",
+          "xactCode": "SDG CSH"
+        },
+        "SDG CSH+": {
+          "price": null,
+          "unit": "SF",
+          "description": "Cedar shingle siding fancy cut - R&R",
+          "xactCode": "SDG CSH+"
         }
       }
     },
@@ -1326,6 +1710,54 @@
           "unit": "LF",
           "description": "Downspout aluminum up to 5\"",
           "xactCode": "SFG GUTA"
+        },
+        "RFG SLATE": {
+          "price": null,
+          "unit": "SQ",
+          "description": "Slate roofing - install",
+          "xactCode": "RFG SLATE"
+        },
+        "RFG SLATE++": {
+          "price": null,
+          "unit": "SQ",
+          "description": "Slate roofing premium - install",
+          "xactCode": "RFG SLATE++"
+        },
+        "RFG SLR++": {
+          "price": null,
+          "unit": "LF",
+          "description": "Slate ridge/hip premium - install",
+          "xactCode": "RFG SLR++"
+        },
+        "RFG WSHK+": {
+          "price": null,
+          "unit": "SQ",
+          "description": "Wood shakes heavy hand split - install",
+          "xactCode": "RFG WSHK+"
+        },
+        "RFG WSTP": {
+          "price": null,
+          "unit": "SQ",
+          "description": "Wood shakes tapersawn cedar - install",
+          "xactCode": "RFG WSTP"
+        },
+        "RFG WSTR": {
+          "price": null,
+          "unit": "LF",
+          "description": "Wood shake/shingle starter - install",
+          "xactCode": "RFG WSTR"
+        },
+        "SDG CSH": {
+          "price": null,
+          "unit": "SF",
+          "description": "Cedar shingle siding - R&R",
+          "xactCode": "SDG CSH"
+        },
+        "SDG CSH+": {
+          "price": null,
+          "unit": "SF",
+          "description": "Cedar shingle siding fancy cut - R&R",
+          "xactCode": "SDG CSH+"
         }
       }
     },
@@ -1473,6 +1905,54 @@
           "unit": "LF",
           "description": "Downspout aluminum up to 5\"",
           "xactCode": "SFG GUTA"
+        },
+        "RFG SLATE": {
+          "price": null,
+          "unit": "SQ",
+          "description": "Slate roofing - install",
+          "xactCode": "RFG SLATE"
+        },
+        "RFG SLATE++": {
+          "price": null,
+          "unit": "SQ",
+          "description": "Slate roofing premium - install",
+          "xactCode": "RFG SLATE++"
+        },
+        "RFG SLR++": {
+          "price": null,
+          "unit": "LF",
+          "description": "Slate ridge/hip premium - install",
+          "xactCode": "RFG SLR++"
+        },
+        "RFG WSHK+": {
+          "price": null,
+          "unit": "SQ",
+          "description": "Wood shakes heavy hand split - install",
+          "xactCode": "RFG WSHK+"
+        },
+        "RFG WSTP": {
+          "price": null,
+          "unit": "SQ",
+          "description": "Wood shakes tapersawn cedar - install",
+          "xactCode": "RFG WSTP"
+        },
+        "RFG WSTR": {
+          "price": null,
+          "unit": "LF",
+          "description": "Wood shake/shingle starter - install",
+          "xactCode": "RFG WSTR"
+        },
+        "SDG CSH": {
+          "price": null,
+          "unit": "SF",
+          "description": "Cedar shingle siding - R&R",
+          "xactCode": "SDG CSH"
+        },
+        "SDG CSH+": {
+          "price": null,
+          "unit": "SF",
+          "description": "Cedar shingle siding fancy cut - R&R",
+          "xactCode": "SDG CSH+"
         }
       }
     },
@@ -1620,6 +2100,54 @@
           "unit": "LF",
           "description": "Downspout aluminum up to 5\"",
           "xactCode": "SFG GUTA"
+        },
+        "RFG SLATE": {
+          "price": null,
+          "unit": "SQ",
+          "description": "Slate roofing - install",
+          "xactCode": "RFG SLATE"
+        },
+        "RFG SLATE++": {
+          "price": null,
+          "unit": "SQ",
+          "description": "Slate roofing premium - install",
+          "xactCode": "RFG SLATE++"
+        },
+        "RFG SLR++": {
+          "price": null,
+          "unit": "LF",
+          "description": "Slate ridge/hip premium - install",
+          "xactCode": "RFG SLR++"
+        },
+        "RFG WSHK+": {
+          "price": null,
+          "unit": "SQ",
+          "description": "Wood shakes heavy hand split - install",
+          "xactCode": "RFG WSHK+"
+        },
+        "RFG WSTP": {
+          "price": null,
+          "unit": "SQ",
+          "description": "Wood shakes tapersawn cedar - install",
+          "xactCode": "RFG WSTP"
+        },
+        "RFG WSTR": {
+          "price": null,
+          "unit": "LF",
+          "description": "Wood shake/shingle starter - install",
+          "xactCode": "RFG WSTR"
+        },
+        "SDG CSH": {
+          "price": null,
+          "unit": "SF",
+          "description": "Cedar shingle siding - R&R",
+          "xactCode": "SDG CSH"
+        },
+        "SDG CSH+": {
+          "price": null,
+          "unit": "SF",
+          "description": "Cedar shingle siding fancy cut - R&R",
+          "xactCode": "SDG CSH+"
         }
       }
     },
@@ -1767,6 +2295,54 @@
           "unit": "LF",
           "description": "Downspout aluminum up to 5\"",
           "xactCode": "SFG GUTA"
+        },
+        "RFG SLATE": {
+          "price": null,
+          "unit": "SQ",
+          "description": "Slate roofing - install",
+          "xactCode": "RFG SLATE"
+        },
+        "RFG SLATE++": {
+          "price": null,
+          "unit": "SQ",
+          "description": "Slate roofing premium - install",
+          "xactCode": "RFG SLATE++"
+        },
+        "RFG SLR++": {
+          "price": null,
+          "unit": "LF",
+          "description": "Slate ridge/hip premium - install",
+          "xactCode": "RFG SLR++"
+        },
+        "RFG WSHK+": {
+          "price": null,
+          "unit": "SQ",
+          "description": "Wood shakes heavy hand split - install",
+          "xactCode": "RFG WSHK+"
+        },
+        "RFG WSTP": {
+          "price": null,
+          "unit": "SQ",
+          "description": "Wood shakes tapersawn cedar - install",
+          "xactCode": "RFG WSTP"
+        },
+        "RFG WSTR": {
+          "price": null,
+          "unit": "LF",
+          "description": "Wood shake/shingle starter - install",
+          "xactCode": "RFG WSTR"
+        },
+        "SDG CSH": {
+          "price": null,
+          "unit": "SF",
+          "description": "Cedar shingle siding - R&R",
+          "xactCode": "SDG CSH"
+        },
+        "SDG CSH+": {
+          "price": null,
+          "unit": "SF",
+          "description": "Cedar shingle siding fancy cut - R&R",
+          "xactCode": "SDG CSH+"
         }
       }
     },
@@ -1914,6 +2490,54 @@
           "unit": "LF",
           "description": "Downspout aluminum up to 5\"",
           "xactCode": "SFG GUTA"
+        },
+        "RFG SLATE": {
+          "price": null,
+          "unit": "SQ",
+          "description": "Slate roofing - install",
+          "xactCode": "RFG SLATE"
+        },
+        "RFG SLATE++": {
+          "price": null,
+          "unit": "SQ",
+          "description": "Slate roofing premium - install",
+          "xactCode": "RFG SLATE++"
+        },
+        "RFG SLR++": {
+          "price": null,
+          "unit": "LF",
+          "description": "Slate ridge/hip premium - install",
+          "xactCode": "RFG SLR++"
+        },
+        "RFG WSHK+": {
+          "price": null,
+          "unit": "SQ",
+          "description": "Wood shakes heavy hand split - install",
+          "xactCode": "RFG WSHK+"
+        },
+        "RFG WSTP": {
+          "price": null,
+          "unit": "SQ",
+          "description": "Wood shakes tapersawn cedar - install",
+          "xactCode": "RFG WSTP"
+        },
+        "RFG WSTR": {
+          "price": null,
+          "unit": "LF",
+          "description": "Wood shake/shingle starter - install",
+          "xactCode": "RFG WSTR"
+        },
+        "SDG CSH": {
+          "price": null,
+          "unit": "SF",
+          "description": "Cedar shingle siding - R&R",
+          "xactCode": "SDG CSH"
+        },
+        "SDG CSH+": {
+          "price": null,
+          "unit": "SF",
+          "description": "Cedar shingle siding fancy cut - R&R",
+          "xactCode": "SDG CSH+"
         }
       }
     },
@@ -2061,6 +2685,54 @@
           "unit": "LF",
           "description": "Downspout aluminum up to 5\"",
           "xactCode": "SFG GUTA"
+        },
+        "RFG SLATE": {
+          "price": null,
+          "unit": "SQ",
+          "description": "Slate roofing - install",
+          "xactCode": "RFG SLATE"
+        },
+        "RFG SLATE++": {
+          "price": null,
+          "unit": "SQ",
+          "description": "Slate roofing premium - install",
+          "xactCode": "RFG SLATE++"
+        },
+        "RFG SLR++": {
+          "price": null,
+          "unit": "LF",
+          "description": "Slate ridge/hip premium - install",
+          "xactCode": "RFG SLR++"
+        },
+        "RFG WSHK+": {
+          "price": null,
+          "unit": "SQ",
+          "description": "Wood shakes heavy hand split - install",
+          "xactCode": "RFG WSHK+"
+        },
+        "RFG WSTP": {
+          "price": null,
+          "unit": "SQ",
+          "description": "Wood shakes tapersawn cedar - install",
+          "xactCode": "RFG WSTP"
+        },
+        "RFG WSTR": {
+          "price": null,
+          "unit": "LF",
+          "description": "Wood shake/shingle starter - install",
+          "xactCode": "RFG WSTR"
+        },
+        "SDG CSH": {
+          "price": null,
+          "unit": "SF",
+          "description": "Cedar shingle siding - R&R",
+          "xactCode": "SDG CSH"
+        },
+        "SDG CSH+": {
+          "price": null,
+          "unit": "SF",
+          "description": "Cedar shingle siding fancy cut - R&R",
+          "xactCode": "SDG CSH+"
         }
       }
     },
@@ -2208,6 +2880,54 @@
           "unit": "LF",
           "description": "Downspout aluminum up to 5\"",
           "xactCode": "SFG GUTA"
+        },
+        "RFG SLATE": {
+          "price": null,
+          "unit": "SQ",
+          "description": "Slate roofing - install",
+          "xactCode": "RFG SLATE"
+        },
+        "RFG SLATE++": {
+          "price": null,
+          "unit": "SQ",
+          "description": "Slate roofing premium - install",
+          "xactCode": "RFG SLATE++"
+        },
+        "RFG SLR++": {
+          "price": null,
+          "unit": "LF",
+          "description": "Slate ridge/hip premium - install",
+          "xactCode": "RFG SLR++"
+        },
+        "RFG WSHK+": {
+          "price": null,
+          "unit": "SQ",
+          "description": "Wood shakes heavy hand split - install",
+          "xactCode": "RFG WSHK+"
+        },
+        "RFG WSTP": {
+          "price": null,
+          "unit": "SQ",
+          "description": "Wood shakes tapersawn cedar - install",
+          "xactCode": "RFG WSTP"
+        },
+        "RFG WSTR": {
+          "price": null,
+          "unit": "LF",
+          "description": "Wood shake/shingle starter - install",
+          "xactCode": "RFG WSTR"
+        },
+        "SDG CSH": {
+          "price": null,
+          "unit": "SF",
+          "description": "Cedar shingle siding - R&R",
+          "xactCode": "SDG CSH"
+        },
+        "SDG CSH+": {
+          "price": null,
+          "unit": "SF",
+          "description": "Cedar shingle siding fancy cut - R&R",
+          "xactCode": "SDG CSH+"
         }
       }
     },
@@ -2355,6 +3075,54 @@
           "unit": "LF",
           "description": "Downspout aluminum up to 5\"",
           "xactCode": "SFG GUTA"
+        },
+        "RFG SLATE": {
+          "price": null,
+          "unit": "SQ",
+          "description": "Slate roofing - install",
+          "xactCode": "RFG SLATE"
+        },
+        "RFG SLATE++": {
+          "price": null,
+          "unit": "SQ",
+          "description": "Slate roofing premium - install",
+          "xactCode": "RFG SLATE++"
+        },
+        "RFG SLR++": {
+          "price": null,
+          "unit": "LF",
+          "description": "Slate ridge/hip premium - install",
+          "xactCode": "RFG SLR++"
+        },
+        "RFG WSHK+": {
+          "price": null,
+          "unit": "SQ",
+          "description": "Wood shakes heavy hand split - install",
+          "xactCode": "RFG WSHK+"
+        },
+        "RFG WSTP": {
+          "price": null,
+          "unit": "SQ",
+          "description": "Wood shakes tapersawn cedar - install",
+          "xactCode": "RFG WSTP"
+        },
+        "RFG WSTR": {
+          "price": null,
+          "unit": "LF",
+          "description": "Wood shake/shingle starter - install",
+          "xactCode": "RFG WSTR"
+        },
+        "SDG CSH": {
+          "price": null,
+          "unit": "SF",
+          "description": "Cedar shingle siding - R&R",
+          "xactCode": "SDG CSH"
+        },
+        "SDG CSH+": {
+          "price": null,
+          "unit": "SF",
+          "description": "Cedar shingle siding fancy cut - R&R",
+          "xactCode": "SDG CSH+"
         }
       }
     },
@@ -2502,6 +3270,54 @@
           "unit": "LF",
           "description": "Downspout aluminum up to 5\"",
           "xactCode": "SFG GUTA"
+        },
+        "RFG SLATE": {
+          "price": null,
+          "unit": "SQ",
+          "description": "Slate roofing - install",
+          "xactCode": "RFG SLATE"
+        },
+        "RFG SLATE++": {
+          "price": null,
+          "unit": "SQ",
+          "description": "Slate roofing premium - install",
+          "xactCode": "RFG SLATE++"
+        },
+        "RFG SLR++": {
+          "price": null,
+          "unit": "LF",
+          "description": "Slate ridge/hip premium - install",
+          "xactCode": "RFG SLR++"
+        },
+        "RFG WSHK+": {
+          "price": null,
+          "unit": "SQ",
+          "description": "Wood shakes heavy hand split - install",
+          "xactCode": "RFG WSHK+"
+        },
+        "RFG WSTP": {
+          "price": null,
+          "unit": "SQ",
+          "description": "Wood shakes tapersawn cedar - install",
+          "xactCode": "RFG WSTP"
+        },
+        "RFG WSTR": {
+          "price": null,
+          "unit": "LF",
+          "description": "Wood shake/shingle starter - install",
+          "xactCode": "RFG WSTR"
+        },
+        "SDG CSH": {
+          "price": null,
+          "unit": "SF",
+          "description": "Cedar shingle siding - R&R",
+          "xactCode": "SDG CSH"
+        },
+        "SDG CSH+": {
+          "price": null,
+          "unit": "SF",
+          "description": "Cedar shingle siding fancy cut - R&R",
+          "xactCode": "SDG CSH+"
         }
       }
     },
@@ -2649,6 +3465,54 @@
           "unit": "LF",
           "description": "Downspout aluminum up to 5\"",
           "xactCode": "SFG GUTA"
+        },
+        "RFG SLATE": {
+          "price": null,
+          "unit": "SQ",
+          "description": "Slate roofing - install",
+          "xactCode": "RFG SLATE"
+        },
+        "RFG SLATE++": {
+          "price": null,
+          "unit": "SQ",
+          "description": "Slate roofing premium - install",
+          "xactCode": "RFG SLATE++"
+        },
+        "RFG SLR++": {
+          "price": null,
+          "unit": "LF",
+          "description": "Slate ridge/hip premium - install",
+          "xactCode": "RFG SLR++"
+        },
+        "RFG WSHK+": {
+          "price": null,
+          "unit": "SQ",
+          "description": "Wood shakes heavy hand split - install",
+          "xactCode": "RFG WSHK+"
+        },
+        "RFG WSTP": {
+          "price": null,
+          "unit": "SQ",
+          "description": "Wood shakes tapersawn cedar - install",
+          "xactCode": "RFG WSTP"
+        },
+        "RFG WSTR": {
+          "price": null,
+          "unit": "LF",
+          "description": "Wood shake/shingle starter - install",
+          "xactCode": "RFG WSTR"
+        },
+        "SDG CSH": {
+          "price": null,
+          "unit": "SF",
+          "description": "Cedar shingle siding - R&R",
+          "xactCode": "SDG CSH"
+        },
+        "SDG CSH+": {
+          "price": null,
+          "unit": "SF",
+          "description": "Cedar shingle siding fancy cut - R&R",
+          "xactCode": "SDG CSH+"
         }
       }
     },
@@ -2796,6 +3660,54 @@
           "unit": "LF",
           "description": "Downspout aluminum up to 5\"",
           "xactCode": "SFG GUTA"
+        },
+        "RFG SLATE": {
+          "price": null,
+          "unit": "SQ",
+          "description": "Slate roofing - install",
+          "xactCode": "RFG SLATE"
+        },
+        "RFG SLATE++": {
+          "price": null,
+          "unit": "SQ",
+          "description": "Slate roofing premium - install",
+          "xactCode": "RFG SLATE++"
+        },
+        "RFG SLR++": {
+          "price": null,
+          "unit": "LF",
+          "description": "Slate ridge/hip premium - install",
+          "xactCode": "RFG SLR++"
+        },
+        "RFG WSHK+": {
+          "price": null,
+          "unit": "SQ",
+          "description": "Wood shakes heavy hand split - install",
+          "xactCode": "RFG WSHK+"
+        },
+        "RFG WSTP": {
+          "price": null,
+          "unit": "SQ",
+          "description": "Wood shakes tapersawn cedar - install",
+          "xactCode": "RFG WSTP"
+        },
+        "RFG WSTR": {
+          "price": null,
+          "unit": "LF",
+          "description": "Wood shake/shingle starter - install",
+          "xactCode": "RFG WSTR"
+        },
+        "SDG CSH": {
+          "price": null,
+          "unit": "SF",
+          "description": "Cedar shingle siding - R&R",
+          "xactCode": "SDG CSH"
+        },
+        "SDG CSH+": {
+          "price": null,
+          "unit": "SF",
+          "description": "Cedar shingle siding fancy cut - R&R",
+          "xactCode": "SDG CSH+"
         }
       }
     },
@@ -2943,6 +3855,54 @@
           "unit": "LF",
           "description": "Downspout aluminum up to 5\"",
           "xactCode": "SFG GUTA"
+        },
+        "RFG SLATE": {
+          "price": null,
+          "unit": "SQ",
+          "description": "Slate roofing - install",
+          "xactCode": "RFG SLATE"
+        },
+        "RFG SLATE++": {
+          "price": null,
+          "unit": "SQ",
+          "description": "Slate roofing premium - install",
+          "xactCode": "RFG SLATE++"
+        },
+        "RFG SLR++": {
+          "price": null,
+          "unit": "LF",
+          "description": "Slate ridge/hip premium - install",
+          "xactCode": "RFG SLR++"
+        },
+        "RFG WSHK+": {
+          "price": null,
+          "unit": "SQ",
+          "description": "Wood shakes heavy hand split - install",
+          "xactCode": "RFG WSHK+"
+        },
+        "RFG WSTP": {
+          "price": null,
+          "unit": "SQ",
+          "description": "Wood shakes tapersawn cedar - install",
+          "xactCode": "RFG WSTP"
+        },
+        "RFG WSTR": {
+          "price": null,
+          "unit": "LF",
+          "description": "Wood shake/shingle starter - install",
+          "xactCode": "RFG WSTR"
+        },
+        "SDG CSH": {
+          "price": null,
+          "unit": "SF",
+          "description": "Cedar shingle siding - R&R",
+          "xactCode": "SDG CSH"
+        },
+        "SDG CSH+": {
+          "price": null,
+          "unit": "SF",
+          "description": "Cedar shingle siding fancy cut - R&R",
+          "xactCode": "SDG CSH+"
         }
       }
     },
@@ -3090,6 +4050,54 @@
           "unit": "LF",
           "description": "Downspout aluminum up to 5\"",
           "xactCode": "SFG GUTA"
+        },
+        "RFG SLATE": {
+          "price": null,
+          "unit": "SQ",
+          "description": "Slate roofing - install",
+          "xactCode": "RFG SLATE"
+        },
+        "RFG SLATE++": {
+          "price": null,
+          "unit": "SQ",
+          "description": "Slate roofing premium - install",
+          "xactCode": "RFG SLATE++"
+        },
+        "RFG SLR++": {
+          "price": null,
+          "unit": "LF",
+          "description": "Slate ridge/hip premium - install",
+          "xactCode": "RFG SLR++"
+        },
+        "RFG WSHK+": {
+          "price": null,
+          "unit": "SQ",
+          "description": "Wood shakes heavy hand split - install",
+          "xactCode": "RFG WSHK+"
+        },
+        "RFG WSTP": {
+          "price": null,
+          "unit": "SQ",
+          "description": "Wood shakes tapersawn cedar - install",
+          "xactCode": "RFG WSTP"
+        },
+        "RFG WSTR": {
+          "price": null,
+          "unit": "LF",
+          "description": "Wood shake/shingle starter - install",
+          "xactCode": "RFG WSTR"
+        },
+        "SDG CSH": {
+          "price": null,
+          "unit": "SF",
+          "description": "Cedar shingle siding - R&R",
+          "xactCode": "SDG CSH"
+        },
+        "SDG CSH+": {
+          "price": null,
+          "unit": "SF",
+          "description": "Cedar shingle siding fancy cut - R&R",
+          "xactCode": "SDG CSH+"
         }
       }
     },
@@ -3237,6 +4245,54 @@
           "unit": "LF",
           "description": "Downspout aluminum up to 5\"",
           "xactCode": "SFG GUTA"
+        },
+        "RFG SLATE": {
+          "price": null,
+          "unit": "SQ",
+          "description": "Slate roofing - install",
+          "xactCode": "RFG SLATE"
+        },
+        "RFG SLATE++": {
+          "price": null,
+          "unit": "SQ",
+          "description": "Slate roofing premium - install",
+          "xactCode": "RFG SLATE++"
+        },
+        "RFG SLR++": {
+          "price": null,
+          "unit": "LF",
+          "description": "Slate ridge/hip premium - install",
+          "xactCode": "RFG SLR++"
+        },
+        "RFG WSHK+": {
+          "price": null,
+          "unit": "SQ",
+          "description": "Wood shakes heavy hand split - install",
+          "xactCode": "RFG WSHK+"
+        },
+        "RFG WSTP": {
+          "price": null,
+          "unit": "SQ",
+          "description": "Wood shakes tapersawn cedar - install",
+          "xactCode": "RFG WSTP"
+        },
+        "RFG WSTR": {
+          "price": null,
+          "unit": "LF",
+          "description": "Wood shake/shingle starter - install",
+          "xactCode": "RFG WSTR"
+        },
+        "SDG CSH": {
+          "price": null,
+          "unit": "SF",
+          "description": "Cedar shingle siding - R&R",
+          "xactCode": "SDG CSH"
+        },
+        "SDG CSH+": {
+          "price": null,
+          "unit": "SF",
+          "description": "Cedar shingle siding fancy cut - R&R",
+          "xactCode": "SDG CSH+"
         }
       }
     },
@@ -3384,6 +4440,54 @@
           "unit": "LF",
           "description": "Downspout aluminum up to 5\"",
           "xactCode": "SFG GUTA"
+        },
+        "RFG SLATE": {
+          "price": null,
+          "unit": "SQ",
+          "description": "Slate roofing - install",
+          "xactCode": "RFG SLATE"
+        },
+        "RFG SLATE++": {
+          "price": null,
+          "unit": "SQ",
+          "description": "Slate roofing premium - install",
+          "xactCode": "RFG SLATE++"
+        },
+        "RFG SLR++": {
+          "price": null,
+          "unit": "LF",
+          "description": "Slate ridge/hip premium - install",
+          "xactCode": "RFG SLR++"
+        },
+        "RFG WSHK+": {
+          "price": null,
+          "unit": "SQ",
+          "description": "Wood shakes heavy hand split - install",
+          "xactCode": "RFG WSHK+"
+        },
+        "RFG WSTP": {
+          "price": null,
+          "unit": "SQ",
+          "description": "Wood shakes tapersawn cedar - install",
+          "xactCode": "RFG WSTP"
+        },
+        "RFG WSTR": {
+          "price": null,
+          "unit": "LF",
+          "description": "Wood shake/shingle starter - install",
+          "xactCode": "RFG WSTR"
+        },
+        "SDG CSH": {
+          "price": null,
+          "unit": "SF",
+          "description": "Cedar shingle siding - R&R",
+          "xactCode": "SDG CSH"
+        },
+        "SDG CSH+": {
+          "price": null,
+          "unit": "SF",
+          "description": "Cedar shingle siding fancy cut - R&R",
+          "xactCode": "SDG CSH+"
         }
       }
     },
@@ -3531,6 +4635,54 @@
           "unit": "LF",
           "description": "Downspout aluminum up to 5\"",
           "xactCode": "SFG GUTA"
+        },
+        "RFG SLATE": {
+          "price": null,
+          "unit": "SQ",
+          "description": "Slate roofing - install",
+          "xactCode": "RFG SLATE"
+        },
+        "RFG SLATE++": {
+          "price": null,
+          "unit": "SQ",
+          "description": "Slate roofing premium - install",
+          "xactCode": "RFG SLATE++"
+        },
+        "RFG SLR++": {
+          "price": null,
+          "unit": "LF",
+          "description": "Slate ridge/hip premium - install",
+          "xactCode": "RFG SLR++"
+        },
+        "RFG WSHK+": {
+          "price": null,
+          "unit": "SQ",
+          "description": "Wood shakes heavy hand split - install",
+          "xactCode": "RFG WSHK+"
+        },
+        "RFG WSTP": {
+          "price": null,
+          "unit": "SQ",
+          "description": "Wood shakes tapersawn cedar - install",
+          "xactCode": "RFG WSTP"
+        },
+        "RFG WSTR": {
+          "price": null,
+          "unit": "LF",
+          "description": "Wood shake/shingle starter - install",
+          "xactCode": "RFG WSTR"
+        },
+        "SDG CSH": {
+          "price": null,
+          "unit": "SF",
+          "description": "Cedar shingle siding - R&R",
+          "xactCode": "SDG CSH"
+        },
+        "SDG CSH+": {
+          "price": null,
+          "unit": "SF",
+          "description": "Cedar shingle siding fancy cut - R&R",
+          "xactCode": "SDG CSH+"
         }
       }
     },
@@ -3678,6 +4830,54 @@
           "unit": "LF",
           "description": "Downspout aluminum up to 5\"",
           "xactCode": "SFG GUTA"
+        },
+        "RFG SLATE": {
+          "price": null,
+          "unit": "SQ",
+          "description": "Slate roofing - install",
+          "xactCode": "RFG SLATE"
+        },
+        "RFG SLATE++": {
+          "price": null,
+          "unit": "SQ",
+          "description": "Slate roofing premium - install",
+          "xactCode": "RFG SLATE++"
+        },
+        "RFG SLR++": {
+          "price": null,
+          "unit": "LF",
+          "description": "Slate ridge/hip premium - install",
+          "xactCode": "RFG SLR++"
+        },
+        "RFG WSHK+": {
+          "price": null,
+          "unit": "SQ",
+          "description": "Wood shakes heavy hand split - install",
+          "xactCode": "RFG WSHK+"
+        },
+        "RFG WSTP": {
+          "price": null,
+          "unit": "SQ",
+          "description": "Wood shakes tapersawn cedar - install",
+          "xactCode": "RFG WSTP"
+        },
+        "RFG WSTR": {
+          "price": null,
+          "unit": "LF",
+          "description": "Wood shake/shingle starter - install",
+          "xactCode": "RFG WSTR"
+        },
+        "SDG CSH": {
+          "price": null,
+          "unit": "SF",
+          "description": "Cedar shingle siding - R&R",
+          "xactCode": "SDG CSH"
+        },
+        "SDG CSH+": {
+          "price": null,
+          "unit": "SF",
+          "description": "Cedar shingle siding fancy cut - R&R",
+          "xactCode": "SDG CSH+"
         }
       }
     },
@@ -3825,6 +5025,54 @@
           "unit": "LF",
           "description": "Downspout aluminum up to 5\"",
           "xactCode": "SFG GUTA"
+        },
+        "RFG SLATE": {
+          "price": null,
+          "unit": "SQ",
+          "description": "Slate roofing - install",
+          "xactCode": "RFG SLATE"
+        },
+        "RFG SLATE++": {
+          "price": null,
+          "unit": "SQ",
+          "description": "Slate roofing premium - install",
+          "xactCode": "RFG SLATE++"
+        },
+        "RFG SLR++": {
+          "price": null,
+          "unit": "LF",
+          "description": "Slate ridge/hip premium - install",
+          "xactCode": "RFG SLR++"
+        },
+        "RFG WSHK+": {
+          "price": null,
+          "unit": "SQ",
+          "description": "Wood shakes heavy hand split - install",
+          "xactCode": "RFG WSHK+"
+        },
+        "RFG WSTP": {
+          "price": null,
+          "unit": "SQ",
+          "description": "Wood shakes tapersawn cedar - install",
+          "xactCode": "RFG WSTP"
+        },
+        "RFG WSTR": {
+          "price": null,
+          "unit": "LF",
+          "description": "Wood shake/shingle starter - install",
+          "xactCode": "RFG WSTR"
+        },
+        "SDG CSH": {
+          "price": null,
+          "unit": "SF",
+          "description": "Cedar shingle siding - R&R",
+          "xactCode": "SDG CSH"
+        },
+        "SDG CSH+": {
+          "price": null,
+          "unit": "SF",
+          "description": "Cedar shingle siding fancy cut - R&R",
+          "xactCode": "SDG CSH+"
         }
       }
     },
@@ -3972,6 +5220,54 @@
           "unit": "LF",
           "description": "Downspout aluminum up to 5\"",
           "xactCode": "SFG GUTA"
+        },
+        "RFG SLATE": {
+          "price": null,
+          "unit": "SQ",
+          "description": "Slate roofing - install",
+          "xactCode": "RFG SLATE"
+        },
+        "RFG SLATE++": {
+          "price": null,
+          "unit": "SQ",
+          "description": "Slate roofing premium - install",
+          "xactCode": "RFG SLATE++"
+        },
+        "RFG SLR++": {
+          "price": null,
+          "unit": "LF",
+          "description": "Slate ridge/hip premium - install",
+          "xactCode": "RFG SLR++"
+        },
+        "RFG WSHK+": {
+          "price": null,
+          "unit": "SQ",
+          "description": "Wood shakes heavy hand split - install",
+          "xactCode": "RFG WSHK+"
+        },
+        "RFG WSTP": {
+          "price": null,
+          "unit": "SQ",
+          "description": "Wood shakes tapersawn cedar - install",
+          "xactCode": "RFG WSTP"
+        },
+        "RFG WSTR": {
+          "price": null,
+          "unit": "LF",
+          "description": "Wood shake/shingle starter - install",
+          "xactCode": "RFG WSTR"
+        },
+        "SDG CSH": {
+          "price": null,
+          "unit": "SF",
+          "description": "Cedar shingle siding - R&R",
+          "xactCode": "SDG CSH"
+        },
+        "SDG CSH+": {
+          "price": null,
+          "unit": "SF",
+          "description": "Cedar shingle siding fancy cut - R&R",
+          "xactCode": "SDG CSH+"
         }
       }
     },
@@ -4119,6 +5415,54 @@
           "unit": "LF",
           "description": "Downspout aluminum up to 5\"",
           "xactCode": "SFG GUTA"
+        },
+        "RFG SLATE": {
+          "price": null,
+          "unit": "SQ",
+          "description": "Slate roofing - install",
+          "xactCode": "RFG SLATE"
+        },
+        "RFG SLATE++": {
+          "price": null,
+          "unit": "SQ",
+          "description": "Slate roofing premium - install",
+          "xactCode": "RFG SLATE++"
+        },
+        "RFG SLR++": {
+          "price": null,
+          "unit": "LF",
+          "description": "Slate ridge/hip premium - install",
+          "xactCode": "RFG SLR++"
+        },
+        "RFG WSHK+": {
+          "price": null,
+          "unit": "SQ",
+          "description": "Wood shakes heavy hand split - install",
+          "xactCode": "RFG WSHK+"
+        },
+        "RFG WSTP": {
+          "price": null,
+          "unit": "SQ",
+          "description": "Wood shakes tapersawn cedar - install",
+          "xactCode": "RFG WSTP"
+        },
+        "RFG WSTR": {
+          "price": null,
+          "unit": "LF",
+          "description": "Wood shake/shingle starter - install",
+          "xactCode": "RFG WSTR"
+        },
+        "SDG CSH": {
+          "price": null,
+          "unit": "SF",
+          "description": "Cedar shingle siding - R&R",
+          "xactCode": "SDG CSH"
+        },
+        "SDG CSH+": {
+          "price": null,
+          "unit": "SF",
+          "description": "Cedar shingle siding fancy cut - R&R",
+          "xactCode": "SDG CSH+"
         }
       }
     },
@@ -4266,6 +5610,54 @@
           "unit": "LF",
           "description": "Downspout aluminum up to 5\"",
           "xactCode": "SFG GUTA"
+        },
+        "RFG SLATE": {
+          "price": null,
+          "unit": "SQ",
+          "description": "Slate roofing - install",
+          "xactCode": "RFG SLATE"
+        },
+        "RFG SLATE++": {
+          "price": null,
+          "unit": "SQ",
+          "description": "Slate roofing premium - install",
+          "xactCode": "RFG SLATE++"
+        },
+        "RFG SLR++": {
+          "price": null,
+          "unit": "LF",
+          "description": "Slate ridge/hip premium - install",
+          "xactCode": "RFG SLR++"
+        },
+        "RFG WSHK+": {
+          "price": null,
+          "unit": "SQ",
+          "description": "Wood shakes heavy hand split - install",
+          "xactCode": "RFG WSHK+"
+        },
+        "RFG WSTP": {
+          "price": null,
+          "unit": "SQ",
+          "description": "Wood shakes tapersawn cedar - install",
+          "xactCode": "RFG WSTP"
+        },
+        "RFG WSTR": {
+          "price": null,
+          "unit": "LF",
+          "description": "Wood shake/shingle starter - install",
+          "xactCode": "RFG WSTR"
+        },
+        "SDG CSH": {
+          "price": null,
+          "unit": "SF",
+          "description": "Cedar shingle siding - R&R",
+          "xactCode": "SDG CSH"
+        },
+        "SDG CSH+": {
+          "price": null,
+          "unit": "SF",
+          "description": "Cedar shingle siding fancy cut - R&R",
+          "xactCode": "SDG CSH+"
         }
       }
     },
@@ -4413,6 +5805,54 @@
           "unit": "LF",
           "description": "Downspout aluminum up to 5\"",
           "xactCode": "SFG GUTA"
+        },
+        "RFG SLATE": {
+          "price": null,
+          "unit": "SQ",
+          "description": "Slate roofing - install",
+          "xactCode": "RFG SLATE"
+        },
+        "RFG SLATE++": {
+          "price": null,
+          "unit": "SQ",
+          "description": "Slate roofing premium - install",
+          "xactCode": "RFG SLATE++"
+        },
+        "RFG SLR++": {
+          "price": null,
+          "unit": "LF",
+          "description": "Slate ridge/hip premium - install",
+          "xactCode": "RFG SLR++"
+        },
+        "RFG WSHK+": {
+          "price": null,
+          "unit": "SQ",
+          "description": "Wood shakes heavy hand split - install",
+          "xactCode": "RFG WSHK+"
+        },
+        "RFG WSTP": {
+          "price": null,
+          "unit": "SQ",
+          "description": "Wood shakes tapersawn cedar - install",
+          "xactCode": "RFG WSTP"
+        },
+        "RFG WSTR": {
+          "price": null,
+          "unit": "LF",
+          "description": "Wood shake/shingle starter - install",
+          "xactCode": "RFG WSTR"
+        },
+        "SDG CSH": {
+          "price": null,
+          "unit": "SF",
+          "description": "Cedar shingle siding - R&R",
+          "xactCode": "SDG CSH"
+        },
+        "SDG CSH+": {
+          "price": null,
+          "unit": "SF",
+          "description": "Cedar shingle siding fancy cut - R&R",
+          "xactCode": "SDG CSH+"
         }
       }
     },
@@ -4560,6 +6000,54 @@
           "unit": "LF",
           "description": "Downspout aluminum up to 5\"",
           "xactCode": "SFG GUTA"
+        },
+        "RFG SLATE": {
+          "price": null,
+          "unit": "SQ",
+          "description": "Slate roofing - install",
+          "xactCode": "RFG SLATE"
+        },
+        "RFG SLATE++": {
+          "price": null,
+          "unit": "SQ",
+          "description": "Slate roofing premium - install",
+          "xactCode": "RFG SLATE++"
+        },
+        "RFG SLR++": {
+          "price": null,
+          "unit": "LF",
+          "description": "Slate ridge/hip premium - install",
+          "xactCode": "RFG SLR++"
+        },
+        "RFG WSHK+": {
+          "price": null,
+          "unit": "SQ",
+          "description": "Wood shakes heavy hand split - install",
+          "xactCode": "RFG WSHK+"
+        },
+        "RFG WSTP": {
+          "price": null,
+          "unit": "SQ",
+          "description": "Wood shakes tapersawn cedar - install",
+          "xactCode": "RFG WSTP"
+        },
+        "RFG WSTR": {
+          "price": null,
+          "unit": "LF",
+          "description": "Wood shake/shingle starter - install",
+          "xactCode": "RFG WSTR"
+        },
+        "SDG CSH": {
+          "price": null,
+          "unit": "SF",
+          "description": "Cedar shingle siding - R&R",
+          "xactCode": "SDG CSH"
+        },
+        "SDG CSH+": {
+          "price": null,
+          "unit": "SF",
+          "description": "Cedar shingle siding fancy cut - R&R",
+          "xactCode": "SDG CSH+"
         }
       }
     },
@@ -4707,6 +6195,54 @@
           "unit": "LF",
           "description": "Downspout aluminum up to 5\"",
           "xactCode": "SFG GUTA"
+        },
+        "RFG SLATE": {
+          "price": null,
+          "unit": "SQ",
+          "description": "Slate roofing - install",
+          "xactCode": "RFG SLATE"
+        },
+        "RFG SLATE++": {
+          "price": null,
+          "unit": "SQ",
+          "description": "Slate roofing premium - install",
+          "xactCode": "RFG SLATE++"
+        },
+        "RFG SLR++": {
+          "price": null,
+          "unit": "LF",
+          "description": "Slate ridge/hip premium - install",
+          "xactCode": "RFG SLR++"
+        },
+        "RFG WSHK+": {
+          "price": null,
+          "unit": "SQ",
+          "description": "Wood shakes heavy hand split - install",
+          "xactCode": "RFG WSHK+"
+        },
+        "RFG WSTP": {
+          "price": null,
+          "unit": "SQ",
+          "description": "Wood shakes tapersawn cedar - install",
+          "xactCode": "RFG WSTP"
+        },
+        "RFG WSTR": {
+          "price": null,
+          "unit": "LF",
+          "description": "Wood shake/shingle starter - install",
+          "xactCode": "RFG WSTR"
+        },
+        "SDG CSH": {
+          "price": null,
+          "unit": "SF",
+          "description": "Cedar shingle siding - R&R",
+          "xactCode": "SDG CSH"
+        },
+        "SDG CSH+": {
+          "price": null,
+          "unit": "SF",
+          "description": "Cedar shingle siding fancy cut - R&R",
+          "xactCode": "SDG CSH+"
         }
       }
     },
@@ -4854,6 +6390,54 @@
           "unit": "LF",
           "description": "Downspout aluminum up to 5\"",
           "xactCode": "SFG GUTA"
+        },
+        "RFG SLATE": {
+          "price": null,
+          "unit": "SQ",
+          "description": "Slate roofing - install",
+          "xactCode": "RFG SLATE"
+        },
+        "RFG SLATE++": {
+          "price": null,
+          "unit": "SQ",
+          "description": "Slate roofing premium - install",
+          "xactCode": "RFG SLATE++"
+        },
+        "RFG SLR++": {
+          "price": null,
+          "unit": "LF",
+          "description": "Slate ridge/hip premium - install",
+          "xactCode": "RFG SLR++"
+        },
+        "RFG WSHK+": {
+          "price": null,
+          "unit": "SQ",
+          "description": "Wood shakes heavy hand split - install",
+          "xactCode": "RFG WSHK+"
+        },
+        "RFG WSTP": {
+          "price": null,
+          "unit": "SQ",
+          "description": "Wood shakes tapersawn cedar - install",
+          "xactCode": "RFG WSTP"
+        },
+        "RFG WSTR": {
+          "price": null,
+          "unit": "LF",
+          "description": "Wood shake/shingle starter - install",
+          "xactCode": "RFG WSTR"
+        },
+        "SDG CSH": {
+          "price": null,
+          "unit": "SF",
+          "description": "Cedar shingle siding - R&R",
+          "xactCode": "SDG CSH"
+        },
+        "SDG CSH+": {
+          "price": null,
+          "unit": "SF",
+          "description": "Cedar shingle siding fancy cut - R&R",
+          "xactCode": "SDG CSH+"
         }
       }
     },
@@ -5001,6 +6585,54 @@
           "unit": "LF",
           "description": "Downspout aluminum up to 5\"",
           "xactCode": "SFG GUTA"
+        },
+        "RFG SLATE": {
+          "price": null,
+          "unit": "SQ",
+          "description": "Slate roofing - install",
+          "xactCode": "RFG SLATE"
+        },
+        "RFG SLATE++": {
+          "price": null,
+          "unit": "SQ",
+          "description": "Slate roofing premium - install",
+          "xactCode": "RFG SLATE++"
+        },
+        "RFG SLR++": {
+          "price": null,
+          "unit": "LF",
+          "description": "Slate ridge/hip premium - install",
+          "xactCode": "RFG SLR++"
+        },
+        "RFG WSHK+": {
+          "price": null,
+          "unit": "SQ",
+          "description": "Wood shakes heavy hand split - install",
+          "xactCode": "RFG WSHK+"
+        },
+        "RFG WSTP": {
+          "price": null,
+          "unit": "SQ",
+          "description": "Wood shakes tapersawn cedar - install",
+          "xactCode": "RFG WSTP"
+        },
+        "RFG WSTR": {
+          "price": null,
+          "unit": "LF",
+          "description": "Wood shake/shingle starter - install",
+          "xactCode": "RFG WSTR"
+        },
+        "SDG CSH": {
+          "price": null,
+          "unit": "SF",
+          "description": "Cedar shingle siding - R&R",
+          "xactCode": "SDG CSH"
+        },
+        "SDG CSH+": {
+          "price": null,
+          "unit": "SF",
+          "description": "Cedar shingle siding fancy cut - R&R",
+          "xactCode": "SDG CSH+"
         }
       }
     },
@@ -5148,6 +6780,54 @@
           "unit": "LF",
           "description": "Downspout aluminum up to 5\"",
           "xactCode": "SFG GUTA"
+        },
+        "RFG SLATE": {
+          "price": null,
+          "unit": "SQ",
+          "description": "Slate roofing - install",
+          "xactCode": "RFG SLATE"
+        },
+        "RFG SLATE++": {
+          "price": null,
+          "unit": "SQ",
+          "description": "Slate roofing premium - install",
+          "xactCode": "RFG SLATE++"
+        },
+        "RFG SLR++": {
+          "price": null,
+          "unit": "LF",
+          "description": "Slate ridge/hip premium - install",
+          "xactCode": "RFG SLR++"
+        },
+        "RFG WSHK+": {
+          "price": null,
+          "unit": "SQ",
+          "description": "Wood shakes heavy hand split - install",
+          "xactCode": "RFG WSHK+"
+        },
+        "RFG WSTP": {
+          "price": null,
+          "unit": "SQ",
+          "description": "Wood shakes tapersawn cedar - install",
+          "xactCode": "RFG WSTP"
+        },
+        "RFG WSTR": {
+          "price": null,
+          "unit": "LF",
+          "description": "Wood shake/shingle starter - install",
+          "xactCode": "RFG WSTR"
+        },
+        "SDG CSH": {
+          "price": null,
+          "unit": "SF",
+          "description": "Cedar shingle siding - R&R",
+          "xactCode": "SDG CSH"
+        },
+        "SDG CSH+": {
+          "price": null,
+          "unit": "SF",
+          "description": "Cedar shingle siding fancy cut - R&R",
+          "xactCode": "SDG CSH+"
         }
       }
     }
