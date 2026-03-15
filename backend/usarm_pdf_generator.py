@@ -2468,6 +2468,9 @@ def build_supplement_report(config):
     # Helper: fuzzy find carrier match for a USARM line item description
     _stop = {'the', 'a', 'an', 'for', 'of', 'and', 'or', 'w/', 'w/out', '-', 'to', 'per', 'sq', 'lf'}
     _mat_only = {'copper', 'aluminum', 'slate', 'cedar', 'vinyl', 'metal', 'wood', 'shake', 'tile'}
+    # Roofing keywords — if both descriptions are remove/tearoff + contain any of these, they match
+    _roofing_kw = {'shingle', 'shingles', 'comp', 'composition', 'laminated', 'rfg', 'roofing',
+                   'slate', 'tile', 'shake', 'metal', 'bitumen', '3-tab', '3 tab', 'tab'}
     _qual_re = re.compile(
         r'\s*[-\u2013\u2014]\s*(?:'
         r'\d+["\u2033]?\s*to\s*\d+["\u2033]?\s*tall'
@@ -2489,12 +2492,18 @@ def build_supplement_report(config):
         dl = desc.lower().strip()
         return any(kw in dl for kw in _remove_kw)
 
+    def _has_roofing_kw(desc):
+        dl = desc.lower()
+        return any(kw in dl for kw in _roofing_kw)
+
     def _find_carrier_match(usarm_desc):
         """Find the best carrier item matching this USARM description.
-        Action-aware: remove items prefer remove carriers, install prefers install."""
+        Action-aware: remove items prefer remove carriers, install prefers install.
+        Trade-aware: both remove + roofing keywords = same trade, always match."""
         ud_clean = _clean_for_match(usarm_desc)
         ud_words = set(ud_clean.split()) - _stop
         usarm_is_remove = _is_remove_desc(usarm_desc)
+        usarm_is_roofing = _has_roofing_kw(usarm_desc)
 
         best_idx = -1
         best_score = 0.0
@@ -2505,6 +2514,17 @@ def build_supplement_report(config):
             cd_clean = _clean_for_match(cd_raw)
             carrier_is_remove = _is_remove_desc(cd_raw)
 
+            # Trade match: both remove + both roofing = same line item
+            # (e.g., "Remove Laminated comp" ↔ "Tear off 3-tab shingles")
+            if usarm_is_remove and carrier_is_remove and usarm_is_roofing and _has_roofing_kw(cd_raw):
+                return ci_idx, ci
+            # Same for install roofing — only primary material (not nails, hooks, accessories)
+            if not usarm_is_remove and not carrier_is_remove and usarm_is_roofing and _has_roofing_kw(cd_raw):
+                skip_kw = {"steep", "high", "felt", "starter", "ice", "water", "drip", "flash", "ridge",
+                           "vent", "gutter", "dumpster", "nail", "hook", "labor", "charge", "guard", "cap"}
+                if not (set(ud_clean.split()) & skip_kw) and not (set(cd_clean.split()) & skip_kw):
+                    return ci_idx, ci
+
             # Action mismatch penalty: remove↔install gets a -0.3 penalty
             action_penalty = 0.0
             if usarm_is_remove != carrier_is_remove:
@@ -2514,7 +2534,6 @@ def build_supplement_report(config):
             if ud_clean in cd_clean or cd_clean in ud_clean:
                 if action_penalty == 0:
                     return ci_idx, ci
-                # Action mismatch on substring — score high but don't auto-return
                 score = 0.8 + action_penalty
                 if score > best_score:
                     best_score = score
