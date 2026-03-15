@@ -196,7 +196,7 @@ export default function NewRepairPage() {
                 className="w-full px-4 py-3 rounded-lg border border-gray-200 focus:border-[var(--navy)] focus:ring-1 focus:ring-[var(--navy)] outline-none transition-colors text-sm"
               />
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <div className="flex items-baseline gap-2 mb-1">
                   <label className="block text-sm font-semibold text-[var(--navy)]">
@@ -254,7 +254,7 @@ export default function NewRepairPage() {
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-semibold text-[var(--navy)] mb-1">
                   Skill Level

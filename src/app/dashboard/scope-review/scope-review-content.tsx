@@ -252,7 +252,7 @@ export function ScopeReviewContent() {
 
         {/* Financial summary */}
         <div className="bg-white rounded-2xl border border-gray-200 p-6">
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
               <p className="text-xs text-gray-400">Contractor RCV</p>
               <p className="text-2xl font-bold text-[var(--navy)]">${Math.round(liveTotal).toLocaleString()}</p>

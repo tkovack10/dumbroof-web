@@ -125,7 +125,7 @@ export function RepairsDashboard({ user }: { user: User }) {
 
         {/* Stats */}
         {totalRepairs > 0 && (
-          <div className="grid grid-cols-3 gap-4 mb-8">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
             <div className="bg-white rounded-xl border border-gray-200 px-5 py-4">
               <p className="text-xs text-gray-400 font-medium uppercase">Total Repairs</p>
               <p className="text-2xl font-bold text-[var(--navy)] mt-1">{totalRepairs}</p>

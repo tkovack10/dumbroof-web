@@ -215,7 +215,7 @@ export function RepairReviewContent() {
                   {/* Edit panel */}
                   {isEditing && (
                     <div className="border-t border-gray-100 p-5 bg-gray-50/50 space-y-3">
-                      <div className="grid grid-cols-2 gap-3">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div>
                           <label className="block text-xs font-semibold text-gray-500 mb-1">Correct Repair Type</label>
                           <select

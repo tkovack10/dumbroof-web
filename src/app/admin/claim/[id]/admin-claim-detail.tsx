@@ -241,7 +241,7 @@ export function AdminClaimDetail({ claim: initialClaim, userInfo }: Props) {
 
           {/* Financial summary */}
           {(claim.contractor_rcv || claim.original_carrier_rcv) && (
-            <div className="mt-4 grid grid-cols-3 gap-3">
+            <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div className="bg-gray-50 rounded-lg px-3 py-2">
                 <p className="text-xs text-gray-400">Contractor RCV</p>
                 <p className="text-sm font-bold text-[var(--navy)]">

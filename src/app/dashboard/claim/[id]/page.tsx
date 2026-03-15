@@ -1313,7 +1313,7 @@ export default function ClaimDetailPage() {
                   <p className="text-xs font-semibold text-gray-500 mb-2">
                     Selected Evidence Photos ({photos.length})
                   </p>
-                  <div className="grid grid-cols-3 gap-2">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                     {photos.map((photo: { description: string; reasons: string[]; score: number }, i: number) => (
                       <div key={i} className="bg-gray-50 border border-gray-200 rounded-lg p-2">
                         <p className="text-xs font-medium text-[var(--navy)] truncate">
