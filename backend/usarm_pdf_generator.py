@@ -24,6 +24,7 @@ import glob
 import base64
 import re
 import subprocess
+from difflib import SequenceMatcher
 
 # ===================================================================
 # RESOLVE PATHS FROM CONFIG
@@ -2470,7 +2471,9 @@ def build_supplement_report(config):
     _mat_only = {'copper', 'aluminum', 'slate', 'cedar', 'vinyl', 'metal', 'wood', 'shake', 'tile'}
     # Roofing keywords — if both descriptions are remove/tearoff + contain any of these, they match
     _roofing_kw = {'shingle', 'shingles', 'comp', 'composition', 'laminated', 'rfg', 'roofing',
-                   'slate', 'tile', 'shake', 'metal', 'bitumen', '3-tab', '3 tab', 'tab'}
+                   'slate', 'tile', 'shake', 'metal', 'bitumen', '3-tab', '3 tab'}
+    _trade_skip_kw = {"steep", "high", "felt", "starter", "ice", "water", "drip", "flash", "ridge",
+                      "vent", "gutter", "dumpster", "nail", "hook", "labor", "charge", "guard", "cap"}
     _qual_re = re.compile(
         r'\s*[-\u2013\u2014]\s*(?:'
         r'\d+["\u2033]?\s*to\s*\d+["\u2033]?\s*tall'
@@ -2486,11 +2489,10 @@ def build_supplement_report(config):
         d = re.sub(r'\s*\(pre-appraisal[^)]*\)', '', d, flags=re.I).strip()
         return d
 
-    _remove_kw = {"remove", "tear off", "tear out", "tear-out", "detach"}
+    _remove_re = re.compile(r'\b(?:remove|tear\s*off|tear\s*out|tear-out|detach)\b', re.IGNORECASE)
 
     def _is_remove_desc(desc):
-        dl = desc.lower().strip()
-        return any(kw in dl for kw in _remove_kw)
+        return bool(_remove_re.search(desc))
 
     def _has_roofing_kw(desc):
         dl = desc.lower()
@@ -2517,12 +2519,11 @@ def build_supplement_report(config):
             # Trade match: both remove + both roofing = same line item
             # (e.g., "Remove Laminated comp" ↔ "Tear off 3-tab shingles")
             if usarm_is_remove and carrier_is_remove and usarm_is_roofing and _has_roofing_kw(cd_raw):
-                return ci_idx, ci
+                if not (set(ud_clean.split()) & _trade_skip_kw) and not (set(cd_clean.split()) & _trade_skip_kw):
+                    return ci_idx, ci
             # Same for install roofing — only primary material (not nails, hooks, accessories)
             if not usarm_is_remove and not carrier_is_remove and usarm_is_roofing and _has_roofing_kw(cd_raw):
-                skip_kw = {"steep", "high", "felt", "starter", "ice", "water", "drip", "flash", "ridge",
-                           "vent", "gutter", "dumpster", "nail", "hook", "labor", "charge", "guard", "cap"}
-                if not (set(ud_clean.split()) & skip_kw) and not (set(cd_clean.split()) & skip_kw):
+                if not (set(ud_clean.split()) & _trade_skip_kw) and not (set(cd_clean.split()) & _trade_skip_kw):
                     return ci_idx, ci
 
             # Action mismatch penalty: remove↔install gets a -0.3 penalty
@@ -2548,7 +2549,6 @@ def build_supplement_report(config):
             if len(overlap) >= 3 or (len(overlap) >= 2 and len(ud_words) <= 4):
                 score = 0.6
             else:
-                from difflib import SequenceMatcher
                 score = SequenceMatcher(None, ud_clean, cd_clean).ratio()
             # Reject if only material keywords overlap
             if overlap and not non_material and score < 0.70:
