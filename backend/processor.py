@@ -2606,6 +2606,26 @@ def build_multi_structure_line_items(measurements: dict, photo_analysis: dict, s
                           else 'claim-wide override')
             print(f"[LINE ITEMS] {struct_name}: {len(items)} items, {struct.get('roof_area_sq', 0)} SQ, material source = {mat_source}")
 
+    # Dedup claim-wide items — these appear once per claim, not per structure
+    # Keep the first occurrence (from the main structure), remove from subsequent structures
+    if len(structs) > 1:
+        _CLAIM_WIDE_KEYWORDS = {"labor minimum", "siding labor", "equipment operator", "dumpster", "scaffolding"}
+        seen_claim_wide = set()
+        deduped = []
+        for item in all_items:
+            desc_lower = item.get("description", "").lower()
+            is_claim_wide = any(kw in desc_lower for kw in _CLAIM_WIDE_KEYWORDS)
+            if is_claim_wide:
+                key = desc_lower
+                if key in seen_claim_wide:
+                    continue  # skip duplicate
+                seen_claim_wide.add(key)
+            deduped.append(item)
+        removed = len(all_items) - len(deduped)
+        if removed:
+            print(f"[LINE ITEMS] Deduped {removed} claim-wide items (labor/dumpster/equipment — one per claim)")
+        all_items = deduped
+
     print(f"[LINE ITEMS] Total across {len(structs)} structures: {len(all_items)} items")
     return all_items
 
