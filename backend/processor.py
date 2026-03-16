@@ -139,17 +139,177 @@ _PRICING_CACHE = {"nybi26": PRICING}
 STATE_PRICE_LIST = {"NY": "NYBI26", "PA": "PAPI26", "NJ": "NJBI26"}
 
 
-def get_pricing_for_state(state: str) -> dict:
-    """Get pricing for a given state. NY=NYBI26, PA=PAPI26, others=NYBI26."""
-    price_list = STATE_PRICE_LIST.get(state.upper(), "NYBI26").lower()
-    if price_list not in _PRICING_CACHE:
-        loaded = _load_pricing(price_list)
-        if loaded and "_meta" in loaded:
-            _PRICING_CACHE[price_list] = loaded
-        else:
-            # Fallback to NYBI26 if state-specific pricing doesn't exist
-            _PRICING_CACHE[price_list] = PRICING
-    return _PRICING_CACHE[price_list]
+# Alfonso's description → build_line_items() pricing key mapping
+# These map the PDF line item descriptions to the PRICING.get() keys used in build_line_items()
+_DESC_TO_PRICING_KEY = {
+    # Shingles — 3-tab
+    "Remove 3 tab - 25 yr. - comp. shingle roofing - w/out felt": "3tab_remove",
+    "3 tab - 25 yr. - comp. shingle roofing - w/out felt": "3tab_install",
+    # Shingles — Laminated
+    "Remove Laminated - comp. shingle rfg. - w/out felt": "laminated_remove",
+    "Laminated - comp. shingle rfg. - w/out felt": "laminated_install",
+    # Shingles — High grade
+    "Remove Laminated - High grd - comp. shingle rfg. - w/out felt": "laminated_high_remove",
+    "Laminated - High grd - comp. shingle rfg. - w/out felt": "laminated_high_install",
+    # Shingles — Shake look premium
+    "Remove Laminated - Shake look Premium grd comp.shingle-w/out": "shake_look_remove",
+    "Laminated - Shake look Premium grd comp.shingle-w/out felt": "shake_look_install",
+    # Underlayments
+    "Roofing felt - synthetic underlayment": "felt_synthetic",
+    "Roofing felt - synthetic underlayment - Standard grade": "felt_synthetic_std",
+    "Roofing felt - 30 lb.": "felt_30",
+    "Roofing felt - 15 lb.": "felt_15",
+    "Ice & water barrier": "ice_water",
+    "Ice & water barrier - High temp": "ice_water_high",
+    # Flashings
+    "R&R Chimney flashing - large (32\" x 60\")": "chimney_flashing_large",
+    "R&R Chimney flashing - small (24\" x 24\")": "chimney_flashing_small",
+    "R&R Chimney flashing - average (32\" x 36\")": "chimney_flashing_ea",
+    "R&R Drip edge": "drip_edge_aluminum",
+    "R&R Flashing - pipe jack": "pipe_boot",
+    "Step flashing": "step_flashing",
+    "R&R Valley metal": "valley_metal",
+    "R&R Valley metal - copper": "copper_valley_flashing",
+    "R&R Valley metal - (W) profile": "valley_metal_w",
+    "R&R Sheathing - plywood - 1/2\" CDX": "sheathing_plywood",
+    # Starters
+    "Asphalt starter - peel and stick": "starter_peel_stick",
+    "Asphalt starter - universal starter course": "starter_strip",
+    # Ridge cap
+    "R&R Hip / Ridge cap - Standard profile - composition shingles": "laminated_ridge_cap",
+    # Ridge vent — not in Alfonso's list, keep hardcoded fallback
+    # Vents
+    "R&R Roof mount power attic vent": "power_attic_vent",
+    "R&R Roof mount power attic vent - Large": "power_attic_vent_large",
+    "Roof mount power attic vent - Detach & reset": "power_attic_vent_reset",
+    # Steep/High — not in Alfonso's list (these are surcharges, not material prices)
+    # Cornice
+    "R&R Gable cornice return - 3 tab": "cornice_3tab",
+    "R&R Gable cornice return - 3 tab - 2 stories or greater": "cornice_3tab_high",
+    "R&R Gable cornice return - laminated - 2 stories or greater": "cornice_laminated_high",
+    "R&R Gable cornice strip - 3 tab": "cornice_strip_3tab",
+    "R&R Gable cornice strip - 3 tab - 2 stories or greater": "cornice_strip_3tab_high",
+    # Copper
+    "R&R Copper panel - standing seam 1\" - 20 oz": "copper_standing_seam",
+    "R&R Copper panel - flat seam - 20 oz": "flat_seam_copper",
+    "R&R Copper valley - v-channel": "copper_valley",
+    # Roll roofing
+    "Remove Roll roofing": "roll_remove",
+    "Roll roofing": "roll_install",
+    "Remove Roll roofing - 50% overlap": "roll_overlap_remove",
+    "Roll roofing - 50% overlap": "roll_overlap_install",
+    # Slate
+    "Remove Slate roofing - 12\" to 18\" tall": "slate_remove",
+    "Slate roofing - 12\" to 18\" tall": "slate_install",
+    "Remove Slate roofing - Premium grade - 12\" to 24\" tall - red": "slate_premium_remove",
+    "Slate roofing - Premium grade - 12\" to 24\" tall - red": "slate_premium_install",
+    "Slate ridge or hip - Premium grade - 18\" to 24\" tall - red": "slate_ridge_cap",
+    # Wood shake
+    "Remove Wood shakes - heavy (3/4\") hand split": "wood_shake_heavy_remove",
+    "Wood shakes - heavy (3/4\") hand split": "wood_shake_heavy_install",
+    "Remove Wood shakes/shingles - tapersawn - #1 cedar": "cedar_shake_remove",
+    "Wood shakes/shingles - tapersawn - #1 cedar": "cedar_shake_install",
+    "Wood shake/shingle starter": "wood_starter",
+    # Gutters
+    "R&R Gutter / downspout - aluminum - up to 5\"": "gutter_aluminum",
+    "R&R Gutter / downspout - aluminum - 6\"": "gutter_aluminum_6",
+    "R&R Gutter / downspout - copper - up to 5\"": "gutter_copper",
+    "R&R Gutter / downspout - copper - 6\"": "gutter_copper_6",
+    "R&R Gutter / downspout - half round - aluminum - up to 5\"": "gutter_half_round_aluminum",
+    "R&R Gutter / downspout - half round - aluminum - 6\"": "gutter_half_round_aluminum_6",
+    "R&R Gutter / downspout - half round - copper - 6\"": "gutter_half_round_copper_6",
+    "R&R Gutter guard/screen - High grade": "gutter_guard",
+    # Siding
+    "R&R Siding - .024\" metal (aluminum/steel) - High grade": "siding_aluminum_024",
+    "R&R Siding - vinyl - insulated": "siding_vinyl_insulated",
+    "R&R Siding - vinyl - specialty grade - single color": "siding_vinyl_premium",
+    "R&R Siding - vinyl - board & batten": "siding_vinyl_board_batten",
+    "R&R Siding - cedar shingle": "siding_cedar_shingle",
+    "R&R Siding - cedar shingle - fancy cut": "siding_cedar_fancy",
+    "Metal or Vinyl siding - Detach & reset": "siding_detach_reset",
+    # Siding components
+    "R&R Fanfold foam insulation board - 3/8\"": "fanfold_insulation",
+    "R&R Vinyl outside corner post": "vinyl_outside_corner",
+    "R&R Vinyl inside corner post": "vinyl_inside_corner",
+    "R&R Vinyl outside corner post - insulated": "vinyl_outside_corner_insulated",
+    "R&R Vinyl inside corner post - insulated": "vinyl_inside_corner_insulated",
+    "R&R Vinyl J trim": "vinyl_j_trim",
+    "R&R Metal outside corner post": "metal_outside_corner",
+    "R&R Metal inside corner post": "metal_inside_corner",
+    "R&R Metal J trim": "metal_j_trim",
+    "R&R Wrap wood window frame & trim with aluminum sheet -": "window_wrap_standard",
+    "R&R Wrap wood post with aluminum (PER LF)": "wrap_post_aluminum",
+    "R&R Wrap wood garage door frame & trim with aluminum (PER": "garage_door_wrap_lf",
+    "R&R Shutters - simulated wood (polystyrene) - Large": "shutters_poly",
+    "R&R Shutters - aluminum - Large": "shutters_aluminum",
+    "R&R Light/outlet J-block - vinyl": "j_block_vinyl",
+    "R&R Attic vent - gable end - vinyl": "attic_vent_gable",
+    # Soffit/Fascia
+    "R&R Soffit - vinyl": "soffit_vinyl",
+    "R&R Fascia - metal - 10\"": "fascia_metal_10",
+    # Skylights
+    "R&R Skylight - double dome fixed, 6.6 - 9 sf": "skylight_fixed",
+    "R&R Skylight - double dome venting, 12.6 - 15.5 sf": "skylight_venting",
+    "R&R Skylight flashing kit - dome - High grade": "skylight_flashing",
+    # Misc
+    "De-icing cable - Detach & reset": "deicing_cable",
+    "Add. layer of comp. shingles, remove & disp. - Laminated": "additional_layer_remove",
+    "Framing labor minimum": "framing_labor_min",
+    "Gutter labor minimum": "gutter_labor_min",
+}
+
+# Use DEFAULT_MARKETS from xactimate_lookup (single source of truth)
+from xactimate_lookup import XactRegistry as _XactRegistry
+
+
+def get_pricing_for_state(state: str, zip_code: str = "", city: str = "") -> dict:
+    """Get pricing from Alfonso's all-markets.json based on state/zip/city.
+
+    Resolves property location → best Xactimate market → 92 item prices.
+    Falls back to old per-state files for any keys not in Alfonso's data.
+    """
+    cache_key = f"{state}_{zip_code}_{city}".lower()
+    if cache_key in _PRICING_CACHE:
+        return _PRICING_CACHE[cache_key]
+
+    # Resolve to best market code
+    market_code = _XactRegistry.resolve_market(state, zip_code=zip_code, city=city)
+
+    # Load all-markets.json (cached at module level in xactimate_lookup)
+    from xactimate_lookup import _get_all_markets
+    all_data = _get_all_markets()
+
+    market = all_data.get("markets", {}).get(market_code, {})
+    market_items = market.get("items", {})
+
+    # Build pricing dict from Alfonso's descriptions → pricing keys
+    pricing = {}
+    for desc, item_data in market_items.items():
+        price = item_data.get("price")
+        if price is None:
+            continue
+        key = _DESC_TO_PRICING_KEY.get(desc)
+        if key:
+            pricing[key] = price
+
+    # Also store raw descriptions for direct lookup
+    pricing["_market_code"] = market_code
+    pricing["_market_name"] = market.get("name", "")
+    pricing["_meta"] = True
+
+    # Fill gaps from old per-state files (for items Alfonso doesn't have yet)
+    old_price_list = STATE_PRICE_LIST.get(state.upper(), "NYBI26").lower()
+    old_pricing = _load_pricing(old_price_list)
+    if old_pricing:
+        for k, v in old_pricing.items():
+            if k not in pricing:
+                pricing[k] = v
+
+    mapped = sum(1 for k in pricing if not k.startswith("_"))
+    print(f"[PRICING] {market_code} ({market.get('name', '')}): {mapped} prices loaded ({len(market_items)} items in market)")
+
+    _PRICING_CACHE[cache_key] = pricing
+    return pricing
 
 
 # ===================================================================
@@ -1521,9 +1681,17 @@ def build_claim_config(
         print(f"[CONFIG] WARNING: No tax rate configured for state '{state}' — defaulting to 8%. Verify with Tom.")
 
     # Build line items based on measurements and analysis (multi-structure aware)
+    # Parse ZIP and city from full address for market-specific pricing
+    # ZIP anchored after state abbreviation to avoid matching 5-digit house numbers
+    _zip_match = _re.search(r'[A-Z]{2}\s+(\d{5})', claim_addr.upper())
+    _zip = _zip_match.group(1) if _zip_match else ""
+    # City: "79 Maple Ave, Cortland, NY 13045, USA" → "Cortland" (2nd comma part)
+    _addr_parts = [p.strip() for p in claim_addr.split(",")]
+    _city = _addr_parts[1] if len(_addr_parts) >= 3 else ""
     line_items = build_multi_structure_line_items(measurements, photo_analysis, state, user_notes=user_notes or "",
                                                   estimate_request=claim.get("estimate_request"),
-                                                  roof_sections=claim.get("roof_sections"))
+                                                  roof_sections=claim.get("roof_sections"),
+                                                  zip_code=_zip, city=_city)
 
     # Enrich line items with Xactimate codes, IRC citations, supplement arguments, AND correct prices
     try:
@@ -2309,7 +2477,7 @@ def build_roof_sections(measurements: dict, photo_analysis: dict = None, provide
 
 def build_multi_structure_line_items(measurements: dict, photo_analysis: dict, state: str,
                                       user_notes: str = "", estimate_request: dict = None,
-                                      roof_sections: dict = None) -> list:
+                                      roof_sections: dict = None, zip_code: str = "", city: str = "") -> list:
     """Build complete line item sections per structure. Never combines structures.
 
     For single-structure claims (most claims), passes through to build_line_items().
@@ -2330,7 +2498,7 @@ def build_multi_structure_line_items(measurements: dict, photo_analysis: dict, s
                 slope_overrides.setdefault(si, {})[section.get("pitch", "")] = section["user_material_override"]
 
     if len(structs) <= 1 and not slope_overrides:
-        return build_line_items(measurements, photo_analysis, state, user_notes, estimate_request)
+        return build_line_items(measurements, photo_analysis, state, user_notes, estimate_request, zip_code=zip_code, city=city)
 
     # For single-structure claims with slope overrides, treat as multi-structure
     if len(structs) <= 1 and slope_overrides:
@@ -2392,7 +2560,7 @@ def build_multi_structure_line_items(measurements: dict, photo_analysis: dict, s
                 mat_er = {"roof_material": mat}
                 sub_notes = f"{mat}. {user_notes}" if user_notes else mat
 
-                items = build_line_items(sub_meas, photo_analysis, state, sub_notes, mat_er)
+                items = build_line_items(sub_meas, photo_analysis, state, sub_notes, mat_er, zip_code=zip_code, city=city)
                 if len(structs) > 1:
                     for item in items:
                         item["structure"] = struct_name  # metadata for PDF sectioning
@@ -2427,7 +2595,7 @@ def build_multi_structure_line_items(measurements: dict, photo_analysis: dict, s
                 elif struct_note and _classify_from_text(struct_note):
                     struct_er = None
 
-            items = build_line_items(struct_measurements, photo_analysis, state, combined_notes, struct_er)
+            items = build_line_items(struct_measurements, photo_analysis, state, combined_notes, struct_er, zip_code=zip_code, city=city)
 
             if len(structs) > 1:
                 for item in items:
@@ -2443,10 +2611,10 @@ def build_multi_structure_line_items(measurements: dict, photo_analysis: dict, s
     return all_items
 
 
-def build_line_items(measurements: dict, photo_analysis: dict, state: str, user_notes: str = "", estimate_request: dict = None) -> list:
+def build_line_items(measurements: dict, photo_analysis: dict, state: str, user_notes: str = "", estimate_request: dict = None, zip_code: str = "", city: str = "") -> list:
     """Build Xactimate line items from measurements, analysis, and user context."""
-    # Use state-specific pricing (PA=PAPI26, NY=NYBI26, etc.)
-    PRICING = get_pricing_for_state(state)
+    # Use location-specific pricing from Alfonso's all-markets.json
+    PRICING = get_pricing_for_state(state, zip_code=zip_code, city=city)
 
     meas = measurements.get("measurements", {})
     structs = measurements.get("structures", [{}])

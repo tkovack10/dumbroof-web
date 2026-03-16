@@ -2303,7 +2303,7 @@ CANONICAL_ORDER = [
     "door trim",
     "wall flashing",
     "shutter",
-    "seal", "prime", "paint.*siding",
+    "seal", "prime", "paint siding",
     "siding labor",
     # 12. Interior / misc (last)
     "drywall", "tape joint",
@@ -2364,22 +2364,21 @@ def build_xactimate_estimate(config):
         ext = round(item["qty"] * item["unit_price"], 2)
         cat_totals[trade] = cat_totals.get(trade, 0) + ext
 
-    # Group items by structure (preserving order)
-    from collections import OrderedDict
-    structure_groups = OrderedDict()
+    # Group items by structure (preserving insertion order — Python 3.7+)
+    structure_groups = {}
     for item in items:
         struct = item.get("structure", "")
         structure_groups.setdefault(struct, []).append(item)
 
-    has_multiple_structures = len(structure_groups) > 1 or (len(structure_groups) == 1 and list(structure_groups.keys())[0] != "")
+    has_multiple_structures = any(k != "" for k in structure_groups)
 
     for struct_name, struct_items in structure_groups.items():
         # Sort items within structure by canonical build order
         struct_items.sort(key=lambda x: canonical_sort_key(x.get("description", "")))
+        struct_total = sum(round(it["qty"] * it["unit_price"], 2) for it in struct_items)
 
         # Structure header (only for multi-structure claims)
         if has_multiple_structures and struct_name:
-            struct_total = sum(round(it["qty"] * it["unit_price"], 2) for it in struct_items)
             # Try to get roof SQ from first remove item
             roof_sq = ""
             for it in struct_items:
@@ -2427,7 +2426,6 @@ def build_xactimate_estimate(config):
 
         # Structure subtotal (only for multi-structure)
         if has_multiple_structures and struct_name:
-            struct_total = sum(round(it["qty"] * it["unit_price"], 2) for it in struct_items)
             line_rows += f"""<tr style="background:#c8d6e5;border-top:2px solid #0d2137;">
                 <td colspan="5" style="text-align:right;padding-right:12pt;font-weight:700;font-size:10pt;color:#0d2137;">{struct_name.upper()} SUBTOTAL</td>
                 <td class="amt" style="font-weight:700;font-size:10pt;color:#0d2137;">{fmt_money(struct_total)}</td>
