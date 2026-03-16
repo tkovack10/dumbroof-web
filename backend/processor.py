@@ -2384,7 +2384,8 @@ def build_multi_structure_line_items(measurements: dict, photo_analysis: dict, s
                     "stories": struct.get("stories", measurements.get("stories", 1)),
                     "total_roof_area_sf": area_sf,
                     "total_roof_area_sq": area_sq,
-                    "walls": struct.get("walls", measurements.get("walls", {})),
+                    # Walls/siding: only assign to first structure (property-level, not per-structure)
+                    "walls": struct.get("walls", measurements.get("walls", {})) if i == 0 else struct.get("walls", {}),
                 }
 
                 # Map UI material names to estimate_request format
@@ -2406,7 +2407,8 @@ def build_multi_structure_line_items(measurements: dict, photo_analysis: dict, s
                 "stories": struct.get("stories", measurements.get("stories", 1)),
                 "total_roof_area_sf": struct.get("roof_area_sf", 0),
                 "total_roof_area_sq": struct.get("roof_area_sq", 0),
-                "walls": struct.get("walls", measurements.get("walls", {})),
+                # Walls/siding: only assign to first structure (property-level, not per-structure)
+                "walls": struct.get("walls", measurements.get("walls", {})) if i == 0 else struct.get("walls", {}),
             }
 
             # Per-structure material via shingle_type → user_notes (weight 3.0 in detector)

@@ -235,6 +235,7 @@ def write_line_items(sb, claim_id: str, items: list, source: str = "usarm",
             "evidence_photos": item.get("evidence_photos") or item.get("photo_refs"),
             "price_list": price_list,
             "region": region,
+            "structure": item.get("structure"),
         }
         # New XactRegistry fields for compound learning
         supp_arg = item.get("supplement_argument", "")

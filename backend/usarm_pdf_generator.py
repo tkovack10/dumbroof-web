@@ -2242,6 +2242,95 @@ def _build_assoc_logos_footer():
 
 
 # ===================================================================
+# ===================================================================
+# SHARED: Canonical line item sort order (used by Doc 2 + Doc 3)
+# ===================================================================
+
+# Tom's prescribed Xactimate build order — shared between estimate and scope comparison
+CANONICAL_ORDER = [
+    # 1. Roof removal (any material)
+    "remove", "tear off", "tear out", "detach",
+    # 2. Roof material install (with waste)
+    "shingle", "comp shingle", "laminated", "3-tab", "3 tab",
+    "slate", "tile", "wood shake", "cedar shake", "metal roof",
+    "modified bitumen", "synthetic composite",
+    # 3. Underlayments (code-required)
+    "ice & water", "ice and water", "i&w",
+    "felt", "underlayment", "synthetic underlayment",
+    "starter", "starter course", "starter strip",
+    # 4. Flashings
+    "drip edge",
+    "step flashing",
+    "counter flashing", "counterflashing", "apron flashing",
+    "chimney flashing",
+    "valley flashing", "valley metal",
+    # 5. Ridge cap / ridge vent
+    "hip & ridge", "hip and ridge", "ridge cap",
+    "ridge vent", "continuous ridge",
+    # 6. Vents
+    "pipe collar", "pipe jack", "plumbing vent", "flashing - pipe",
+    "exhaust cap",
+    "box vent", "roof vent",
+    "power fan", "power vent",
+    "turtle vent",
+    "snow guard",
+    "skylight", "skylight flashing",
+    "gable cornice",
+    # 7. Steep roof charges
+    "steep", "7/12", "9/12", "10/12", "12/12",
+    # 8. High roof charges
+    "high roof", "2 stor", "two stor", "3 stor",
+    # 9. Labor / dumpster / protection
+    "tarp", "protect",
+    "roofer", "roofing labor", "labor minimum",
+    "equipment operator", "administrative",
+    "fall protection",
+    "fuel surcharge",
+    "dumpster", "debris", "haul",
+    "scaffold", "scaffolding",
+    "mask", "masking",
+    "permit",
+    "clean", "cleanup", "final cleaning",
+    # 10. Gutters
+    "gutter", "downspout", "gutter guard", "gutter screen",
+    # 11. Siding (R&R material first, then components)
+    "siding",
+    "house wrap", "housewrap", "air/moisture barrier",
+    "insulation board", "foam board", "fanfold",
+    "inside corner", "inside cnr", "interior corner",
+    "outside corner", "outside cnr", "exterior corner",
+    "window wrap", "window trim", "wrap wood window",
+    "door trim",
+    "wall flashing",
+    "shutter",
+    "seal", "prime", "paint.*siding",
+    "siding labor",
+    # 12. Interior / misc (last)
+    "drywall", "tape joint",
+    "paint", "texture",
+    "insulation", "batt insulation",
+    "door", "window well", "window drapery",
+    "hvac", "ductless", "split",
+    "speaker", "register",
+    "content", "move out",
+    "masonry",
+    "landscap",
+]
+
+
+def canonical_sort_key(item_name):
+    """Return sort index for canonical line item ordering.
+    Remove items sort before install items within the same category."""
+    name_lower = item_name.lower().strip()
+    is_remove = bool(re.search(r'\b(?:remove|tear\s*off|tear\s*out|detach)\b', name_lower))
+    clean = re.sub(r'^(r&r|remove|tear\s*off|tear\s*out|install|replace|r/r)\s+', '', name_lower).strip()
+    for idx, canon in enumerate(CANONICAL_ORDER):
+        if canon in clean or clean in canon:
+            return idx - 0.5 if is_remove and idx > 3 else idx
+    return len(CANONICAL_ORDER)
+
+
+# ===================================================================
 # DOCUMENT 2: XACTIMATE-STYLE ESTIMATE
 # ===================================================================
 
@@ -2265,9 +2354,7 @@ def build_xactimate_estimate(config):
 
     fin = compute_financials(config)
 
-    # Build line items table with category grouping and category subtotals
-    current_cat = ""
-    cat_subtotal = 0.0
+    # Build line items table — grouped by structure, then by category, sorted by canonical order
     line_rows = ""
 
     # Compute category subtotals for summary
@@ -2277,40 +2364,74 @@ def build_xactimate_estimate(config):
         ext = round(item["qty"] * item["unit_price"], 2)
         cat_totals[trade] = cat_totals.get(trade, 0) + ext
 
-    for idx, item in enumerate(items):
-        cat = item.get("category", "")
-        desc = item["description"]
-        qty = item["qty"]
-        unit = item["unit"]
-        price = item["unit_price"]
-        ext = round(qty * price, 2)
-        code = item.get("code", "")
+    # Group items by structure (preserving order)
+    from collections import OrderedDict
+    structure_groups = OrderedDict()
+    for item in items:
+        struct = item.get("structure", "")
+        structure_groups.setdefault(struct, []).append(item)
 
-        # Check if next item changes category — if so, we need a subtotal row
-        next_cat = items[idx + 1].get("category", "") if idx + 1 < len(items) else ""
+    has_multiple_structures = len(structure_groups) > 1 or (len(structure_groups) == 1 and list(structure_groups.keys())[0] != "")
 
-        # Category header cell — show category name only on first row of each category
-        cat_cell = f'<td style="font-weight:700;color:#0d2137;">{cat}</td>' if cat != current_cat else '<td></td>'
-        if cat != current_cat:
-            cat_subtotal = 0.0
-        current_cat = cat
-        cat_subtotal += ext
+    for struct_name, struct_items in structure_groups.items():
+        # Sort items within structure by canonical build order
+        struct_items.sort(key=lambda x: canonical_sort_key(x.get("description", "")))
 
-        line_rows += f"""<tr>
-            {cat_cell}
-            <td>{code + " — " if code else ""}{desc}</td>
-            <td class="amt">{qty}</td>
-            <td>{unit}</td>
-            <td class="amt">{fmt_money(price)}</td>
-            <td class="amt">{fmt_money(ext)}</td>
-        </tr>\n"""
+        # Structure header (only for multi-structure claims)
+        if has_multiple_structures and struct_name:
+            struct_total = sum(round(it["qty"] * it["unit_price"], 2) for it in struct_items)
+            # Try to get roof SQ from first remove item
+            roof_sq = ""
+            for it in struct_items:
+                if re.search(r'\b(?:remove|tear)', it.get("description", "").lower()) and it.get("unit", "") == "SQ":
+                    roof_sq = f" ({it['qty']} SQ)"
+                    break
+            line_rows += f"""<tr style="background:#0d2137;color:white;">
+                <td colspan="6" style="font-weight:700;font-size:10pt;padding:8pt 6pt;">{struct_name.upper()}{roof_sq}</td>
+            </tr>\n"""
 
-        # Insert category subtotal row when category changes or at end of items
-        if next_cat != cat:
-            line_rows += f"""<tr style="background:#e8edf2;border-top:1px solid #0d2137;">
-            <td colspan="5" style="text-align:right;padding-right:12pt;font-weight:600;font-size:9pt;color:#0d2137;">{cat} SUBTOTAL</td>
-            <td class="amt" style="font-weight:700;color:#0d2137;">{fmt_money(cat_subtotal)}</td>
-        </tr>\n"""
+        # Render items by category with subtotals
+        current_cat = ""
+        cat_subtotal = 0.0
+        for idx, item in enumerate(struct_items):
+            cat = item.get("category", "")
+            desc = item["description"]
+            qty = item["qty"]
+            unit = item["unit"]
+            price = item["unit_price"]
+            ext = round(qty * price, 2)
+            code = item.get("code", "")
+
+            next_cat = struct_items[idx + 1].get("category", "") if idx + 1 < len(struct_items) else ""
+
+            cat_cell = f'<td style="font-weight:700;color:#0d2137;">{cat}</td>' if cat != current_cat else '<td></td>'
+            if cat != current_cat:
+                cat_subtotal = 0.0
+            current_cat = cat
+            cat_subtotal += ext
+
+            line_rows += f"""<tr>
+                {cat_cell}
+                <td>{code + " — " if code else ""}{desc}</td>
+                <td class="amt">{qty}</td>
+                <td>{unit}</td>
+                <td class="amt">{fmt_money(price)}</td>
+                <td class="amt">{fmt_money(ext)}</td>
+            </tr>\n"""
+
+            if next_cat != cat:
+                line_rows += f"""<tr style="background:#e8edf2;border-top:1px solid #0d2137;">
+                <td colspan="5" style="text-align:right;padding-right:12pt;font-weight:600;font-size:9pt;color:#0d2137;">{cat} SUBTOTAL</td>
+                <td class="amt" style="font-weight:700;color:#0d2137;">{fmt_money(cat_subtotal)}</td>
+            </tr>\n"""
+
+        # Structure subtotal (only for multi-structure)
+        if has_multiple_structures and struct_name:
+            struct_total = sum(round(it["qty"] * it["unit_price"], 2) for it in struct_items)
+            line_rows += f"""<tr style="background:#c8d6e5;border-top:2px solid #0d2137;">
+                <td colspan="5" style="text-align:right;padding-right:12pt;font-weight:700;font-size:10pt;color:#0d2137;">{struct_name.upper()} SUBTOTAL</td>
+                <td class="amt" style="font-weight:700;font-size:10pt;color:#0d2137;">{fmt_money(struct_total)}</td>
+            </tr>\n"""
 
     # Summary
     trades_str = ", ".join(t.title() for t in scope.get("trades", []))
