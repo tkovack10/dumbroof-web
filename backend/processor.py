@@ -1682,10 +1682,9 @@ def build_claim_config(
 
     # Build line items based on measurements and analysis (multi-structure aware)
     # Parse ZIP and city from full address for market-specific pricing
-    # ZIP anchored after state abbreviation to avoid matching 5-digit house numbers
-    _zip_match = _re.search(r'[A-Z]{2}\s+(\d{5})', claim_addr.upper())
+    claim_addr = claim.get("address", "")
+    _zip_match = re.search(r'[A-Z]{2}\s+(\d{5})', claim_addr.upper())
     _zip = _zip_match.group(1) if _zip_match else ""
-    # City: "79 Maple Ave, Cortland, NY 13045, USA" → "Cortland" (2nd comma part)
     _addr_parts = [p.strip() for p in claim_addr.split(",")]
     _city = _addr_parts[1] if len(_addr_parts) >= 3 else ""
     line_items = build_multi_structure_line_items(measurements, photo_analysis, state, user_notes=user_notes or "",
