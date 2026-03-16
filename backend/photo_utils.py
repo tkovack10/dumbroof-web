@@ -161,8 +161,11 @@ def resize_photo(path: str, max_dim: int = 1024, quality: int = 70,
         pass
     # Pillow fallback (Linux/Railway)
     try:
-        from PIL import Image
+        from PIL import Image, ImageOps
         with Image.open(path) as img:
+            # Apply EXIF rotation FIRST — fixes sideways phone photos
+            # Without this, horizontal siding appears vertical to Claude
+            img = ImageOps.exif_transpose(img)
             if img.mode not in ("RGB", "L"):
                 img = img.convert("RGB")
             img.thumbnail((max_dim, max_dim), Image.LANCZOS)

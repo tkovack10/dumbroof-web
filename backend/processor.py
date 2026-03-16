@@ -622,6 +622,30 @@ def analyze_photos(client: anthropic.Anthropic, photo_paths: list[str], user_not
     test_square_results = []
     exposure_inches = None
 
+    # Build context strings ONCE (injected into every batch)
+    notes_ctx = ""
+    if user_notes:
+        notes_ctx = f"\n\nCONTEXT FROM CONTRACTOR: {user_notes}\nUse this context to inform your analysis — identify specific materials mentioned, note any adjuster claims to address, and focus on items the contractor highlighted.\n"
+
+    corrections_ctx = ""
+    if corrections:
+        changes_lines = []
+        for c in corrections[:5]:
+            orig = c.get("original_tags") or {}
+            fixed = c.get("corrected_tags") or {}
+            changes = []
+            for field in ["material", "damage_type", "severity", "trade"]:
+                if orig.get(field) != fixed.get(field) and fixed.get(field):
+                    changes.append(f"{field}: {orig.get(field)} -> {fixed.get(field)}")
+            orig_ann = c.get("original_annotation", "")
+            fixed_ann = c.get("corrected_annotation", "")
+            if orig_ann and fixed_ann and orig_ann != fixed_ann:
+                changes.append(f"annotation: '{orig_ann[:80]}...' -> '{fixed_ann[:80]}...'")
+            if changes:
+                changes_lines.append(f"- {', '.join(changes)}")
+        if changes_lines:
+            corrections_ctx = "\n\nHUMAN CORRECTIONS (learn from these — apply to ALL similar photos):\n" + "\n".join(changes_lines) + "\nApply these corrections to similar photos in this batch.\n"
+
     for batch_idx in range(0, len(image_paths), BATCH_SIZE):
         batch = image_paths[batch_idx:batch_idx + BATCH_SIZE]
         batch_num = batch_idx // BATCH_SIZE + 1
@@ -641,28 +665,17 @@ def analyze_photos(client: anthropic.Anthropic, photo_paths: list[str], user_not
                 },
             })
 
-        notes_ctx = ""
-        if batch_idx == 0 and user_notes:
-            notes_ctx = f"\n\nCONTEXT FROM CONTRACTOR: {user_notes}\nUse this context to inform your analysis — identify specific materials mentioned, note any adjuster claims to address, and focus on items the contractor highlighted.\n"
-
-        corrections_ctx = ""
-        if batch_idx == 0 and corrections:
-            changes_lines = []
-            for c in corrections[:5]:
-                orig = c.get("original_tags") or {}
-                fixed = c.get("corrected_tags") or {}
-                changes = []
-                for field in ["material", "damage_type", "severity", "trade"]:
-                    if orig.get(field) != fixed.get(field) and fixed.get(field):
-                        changes.append(f"{field}: {orig.get(field)} -> {fixed.get(field)}")
-                if changes:
-                    changes_lines.append(f"- {', '.join(changes)}")
-            if changes_lines:
-                corrections_ctx = "\n\nHUMAN CORRECTIONS (learn from these):\n" + "\n".join(changes_lines) + "\nApply these corrections to similar photos.\n"
-
         content.append({
             "type": "text",
-            "text": f"""You are a forensic roofing damage analyst specializing in storm damage assessment. Analyze these inspection photos ({start_num}-{start_num + len(batch) - 1}) and document all visible damage with clinical, professional observations.{notes_ctx}{corrections_ctx}
+            "text": f"""You are a forensic roofing damage analyst. Analyze photos {start_num}-{start_num + len(batch) - 1}.{notes_ctx}{corrections_ctx}
+
+STRICT OUTPUT RULES (violations = failure):
+- Each photo_annotation MUST be 1-2 sentences, MAX 150 characters. Lead with the damage finding. No scenery, no context, no preamble.
+- BAD: "The front elevation of this two-story colonial residence reveals significant storm damage including multiple hail impacts on the aluminum gutters and fascia wrap." (too long, scenery)
+- GOOD: "Chalk test on aluminum gutter shows 12 circular gaps confirming hail dent pattern." (1 sentence, damage-focused)
+- GOOD: "Wind-lifted shingle tab at rake edge exposes nail line — no rust confirms recent storm event." (1 sentence, forensic)
+
+PHONE ORIENTATION: Some photos may appear rotated/sideways. If siding appears vertical but windows, doors, or ground line suggest the photo is rotated, assume HORIZONTAL siding. Board-and-batten is rare in residential — default to lap/horizontal siding unless clearly vertical with visible battens.
 
 CRITICAL — CHALK TESTING (you MUST understand this):
 Inspectors use chalk testing to document hail damage. This is standard industry practice, NOT sealant, paint, caulk, or repair material.
@@ -721,7 +734,7 @@ SLATE/TILE/METAL IDENTIFICATION:
 ANALYSIS PRIORITIES:
 - FOCUS ON STORM DAMAGE — hail impacts, wind displacement, fractures from the storm event. This is 90% of the report.
 - Do NOT catalog every minor wear detail (lichen, moss, minor surface weathering, faded paint). Only mention pre-existing condition ONCE, briefly, if it makes spot repair infeasible.
-- Keep annotations concise — 1-2 sentences per photo focusing on the storm damage evidence visible
+- Annotations: 1-2 sentences MAX, under 150 characters. Lead with the damage finding
 - For chalk test photos: describe what the chalk test reveals (number of gaps = hail impacts), not the chalk itself. NEVER call chalk marks "sealant", "paint", "caulk", "adhesive", "coating", "glazing", or "residue" — it is ALWAYS inspector chalk used for hail damage documentation.
 - For test square photos: report the counts (H=hits, W=wind) and what they prove
 - CRITICAL: This is a SINGLE property at ONE address. Multiple structures (main dwelling, garage, shed, porch, outbuilding) are all part of ONE property. NEVER say "two properties", "both properties", or "multiple properties." Say "multiple structures" or "the property" instead.
@@ -737,8 +750,8 @@ Number the photos starting at {start_num}. Return ONLY valid JSON:
 {{
   "damage_summary": "Professional summary focusing on storm damage and why full replacement is required...",
   "photo_annotations": {{
-    "photo_{start_num:02d}": "Forensic observation focusing on storm damage evidence...",
-    "photo_{start_num + 1:02d}": "Forensic observation..."
+    "photo_{start_num:02d}": "Chalk test on gutter reveals 8 circular gaps — confirmed hail dents.",
+    "photo_{start_num + 1:02d}": "Wind-lifted tab at rake exposes rust-free nails — recent storm damage."
   }},
   "shingle_type": "natural slate / architectural laminated / 3-tab 25yr / standing seam metal / etc",
   "shingle_condition": "description focusing on storm vulnerability and non-repairability",
@@ -781,8 +794,18 @@ Number the photos starting at {start_num}. Return ONLY valid JSON:
         )
         batch_result = _parse_json_response(response.content[0].text)
 
-        # Merge batch results
-        all_annotations.update(batch_result.get("photo_annotations", {}))
+        # Merge batch results — enforce annotation length limit (1-2 sentences, <200 chars)
+        for key, ann in batch_result.get("photo_annotations", {}).items():
+            if isinstance(ann, str) and len(ann) > 200:
+                # Find last sentence boundary within 200 chars (robust against abbreviations/decimals)
+                truncated = ann[:200]
+                last_break = truncated.rfind(". ")
+                if last_break > 80:
+                    ann = truncated[:last_break + 1]
+                else:
+                    # Fallback: hard truncate at 200 and add ellipsis
+                    ann = truncated.rstrip(". ") + "."
+            all_annotations[key] = ann
         all_findings.extend(batch_result.get("key_findings", []))
         all_violations.extend(batch_result.get("code_violations", []))
         trades_set.update(batch_result.get("trades_identified", []))
@@ -2627,7 +2650,7 @@ def build_multi_structure_line_items(measurements: dict, photo_analysis: dict, s
         all_items = deduped
 
     print(f"[LINE ITEMS] Total across {len(structs)} structures: {len(all_items)} items")
-    return all_items
+    return _sort_line_items(all_items)
 
 
 def build_line_items(measurements: dict, photo_analysis: dict, state: str, user_notes: str = "", estimate_request: dict = None, zip_code: str = "", city: str = "") -> list:
@@ -3028,7 +3051,65 @@ def build_line_items(measurements: dict, photo_analysis: dict, state: str, user_
             garage_lf = garage_door_count * 34
             items.append({"category": "SIDING", "description": "R&R Garage door wrap - aluminum coil stock", "qty": garage_lf, "unit": "LF", "unit_price": PRICING.get("garage_door_wrap_lf", 24.55)})
 
-    return items
+    return _sort_line_items(items)
+
+
+# Tom's prescribed Xactimate sort order: Remove → Install → Underlayments → Flashings →
+# Ridge cap/vent → Vents → Steep/High → Labor/dumpster → Gutters → Siding → Interior
+# Line Item 1 is ALWAYS remove/tear-off. Line Item 2 is ALWAYS install roofing.
+# All keywords are lowercase — matched against desc.lower()
+_LINE_ITEM_SORT_KEYS = [
+    ("remove", 1),
+    ("comp shingle roofing", 2), ("slate roofing", 2), ("tile roofing", 2),
+    ("metal roofing", 2), ("bitumen roofing", 2), ("r&r natural slate", 2),
+    ("underlayment", 3), ("felt", 3),
+    ("ice & water", 4),
+    ("drip edge", 5),
+    ("starter strip", 6),
+    ("ridge cap", 7),
+    ("ridge vent", 8),
+    ("valley flashing", 9),
+    ("step flashing", 10),
+    ("counter", 11), ("apron flashing", 11),
+    ("chimney flashing", 12),
+    ("skylight flashing", 13),
+    ("pipe boot", 14),
+    ("exhaust vent", 15),
+    ("steep", 16),
+    ("high roof", 17),
+    ("roofer", 18),
+    ("equipment operator", 19),
+    ("gable cornice", 20),
+    ("copper nails", 21), ("flat seam copper", 21),
+    ("copper half round", 22),
+    ("dumpster", 23),
+    ("seamless aluminum gutter", 24), ("gutter", 24),
+    ("siding", 25), ("aluminum siding", 25), ("vinyl siding", 25),
+    ("cedar", 25), ("fiber cement", 25), ("metal siding", 25),
+    ("house wrap", 26), ("tyvek", 26),
+    ("fanfold", 27),
+    ("window wrap", 28), ("wrap wood window", 28),
+    ("door frame wrap", 29), ("door wrap", 29),
+    ("garage door wrap", 30),
+    ("siding labor", 31),
+    ("scaffold", 32),
+]
+
+
+def _sort_line_items(items: list) -> list:
+    """Sort line items per Tom's prescribed Xactimate build order."""
+    def sort_key(item):
+        desc_lower = item.get("description", "").lower()
+        for keyword, order in _LINE_ITEM_SORT_KEYS:
+            if keyword in desc_lower:
+                # "remove" at order 1 = primary roofing tear-off ONLY
+                # Skip: siding/gutter remove, steep/high remove charges
+                if keyword == "remove" and order == 1:
+                    if any(s in desc_lower for s in ["siding", "gutter", "window", "door", "steep", "high roof"]):
+                        continue
+                return order
+        return 50
+    return sorted(items, key=sort_key)
 
 
 # ===================================================================
@@ -3471,15 +3552,26 @@ async def process_claim(claim_id: str):
             few_shot_corrections = []
             if sb:
                 try:
+                    # Prioritize THIS claim's corrections, then fill with global
                     fb = sb.table("annotation_feedback") \
                         .select("original_annotation, corrected_annotation, original_tags, corrected_tags") \
+                        .eq("claim_id", claim_id) \
                         .eq("status", "corrected") \
                         .order("created_at", desc=True) \
                         .limit(5) \
                         .execute()
                     few_shot_corrections = fb.data or []
+                    if len(few_shot_corrections) < 5:
+                        global_fb = sb.table("annotation_feedback") \
+                            .select("original_annotation, corrected_annotation, original_tags, corrected_tags") \
+                            .neq("claim_id", claim_id) \
+                            .eq("status", "corrected") \
+                            .order("created_at", desc=True) \
+                            .limit(5 - len(few_shot_corrections)) \
+                            .execute()
+                        few_shot_corrections.extend(global_fb.data or [])
                     if few_shot_corrections:
-                        print(f"[INTEL] Loaded {len(few_shot_corrections)} photo corrections for few-shot learning")
+                        print(f"[INTEL] Loaded {len(few_shot_corrections)} photo corrections for few-shot learning (claim-specific + global)")
                 except Exception as e:
                     print(f"[INTEL] Photo corrections query failed (non-fatal): {e}")
             print(f"[PROCESS] Analyzing {len(photo_paths)} photos...")
@@ -3564,6 +3656,45 @@ async def process_claim(claim_id: str):
 
         # 9a. Attach evidence photos to carrier line items for PDF scope comparison
         attach_evidence_photos(config, sb, claim_id)
+
+        # 9b. Apply user scope review edits (excluded line items + user-added items)
+        excluded_item_ids = claim.get("excluded_line_items") or []
+        if excluded_item_ids and sb:
+            try:
+                # Read descriptions of excluded items BEFORE warehouse cleanup deletes them
+                excl_result = sb.table("line_items").select("description").in_("id", [str(eid) for eid in excluded_item_ids]).execute()
+                excluded_descs = {r["description"] for r in (excl_result.data or [])}
+                if excluded_descs:
+                    before = len(config.get("line_items", []))
+                    config["line_items"] = [li for li in config.get("line_items", []) if li.get("description") not in excluded_descs]
+                    removed = before - len(config["line_items"])
+                    if removed:
+                        print(f"[SCOPE REVIEW] Excluded {removed} line items per user review")
+            except Exception as e:
+                print(f"[SCOPE REVIEW] excluded_line_items filter failed (non-fatal): {e}")
+
+        # 9c. Inject user-added line items (survive reprocess)
+        if sb:
+            try:
+                user_added = sb.table("line_items").select("category,description,qty,unit,unit_price").eq("claim_id", claim_id).eq("source", "user_added").execute()
+                injected = 0
+                for ua in (user_added.data or []):
+                    try:
+                        config.setdefault("line_items", []).append({
+                            "category": ua.get("category") or "GENERAL",
+                            "description": ua.get("description") or "",
+                            "qty": float(ua.get("qty") or 0),
+                            "unit": ua.get("unit") or "EA",
+                            "unit_price": float(ua.get("unit_price") or 0),
+                            "source": "user_added",
+                        })
+                        injected += 1
+                    except (TypeError, ValueError) as e:
+                        print(f"[SCOPE REVIEW] Skipping user-added item (invalid data): {ua.get('description')}: {e}")
+                if injected:
+                    print(f"[SCOPE REVIEW] Injected {injected} user-added line items")
+            except Exception as e:
+                print(f"[SCOPE REVIEW] user_added injection failed (non-fatal): {e}")
 
         # Flag measurement extraction failures for downstream warning
         meas_structs = measurements.get("structures", [{}])
@@ -4331,11 +4462,12 @@ def _write_to_warehouse(sb, claim_id: str, config: dict, photo_analysis: dict,
     region = f"{city}, {state}".strip(", ")
 
     # 0. Clean up previous warehouse data (prevent duplicates on reprocess)
+    # IMPORTANT: Do NOT delete user_added line items or line_item_feedback — these are user corrections
     try:
-        sb.table("line_items").delete().eq("claim_id", claim_id).in_("source", ["usarm", "carrier", "user_added"]).execute()
-        sb.table("line_item_feedback").delete().eq("claim_id", claim_id).execute()
+        sb.table("line_items").delete().eq("claim_id", claim_id).in_("source", ["usarm", "carrier"]).execute()
+        # line_item_feedback is preserved — contains user corrections that survive reprocess
         sb.table("photos").delete().eq("claim_id", claim_id).execute()
-        print(f"[WAREHOUSE] Cleaned previous data for {claim_id}")
+        print(f"[WAREHOUSE] Cleaned previous data for {claim_id} (preserved user_added + feedback)")
     except Exception as e:
         print(f"[WAREHOUSE] Cleanup failed (non-fatal, may have duplicates): {e}")
 
