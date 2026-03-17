@@ -410,7 +410,7 @@ class XactRegistry:
                 "irc_code": "",
             })
 
-    def build_line_items(self, measurements, config_hints=None):
+    def build_line_items(self, measurements, config_hints=None, state=None):
         """Build complete line_items array from EagleView measurements.
 
         Args:
@@ -420,6 +420,7 @@ class XactRegistry:
                 stories, gutter_lf, downspout_lf, layers (optional)
             config_hints: dict with optional overrides:
                 shingle_type ("laminated"|"3tab"), default "laminated"
+            state: 2-letter state code for jurisdiction-specific formulas
                 include_gutters (bool), default True if gutter_lf > 0
                 siding (dict with siding_sf, windows, etc.) for siding trades
 
@@ -444,8 +445,13 @@ class XactRegistry:
         layers = m.get("layers", 1)
         shingle_type = hints.get("shingle_type", "laminated")
 
-        # Computed quantities (per CLAUDE.md formulas)
-        ice_water_sf = (eave_lf * 6) + (valley_lf * 3)
+        # Computed quantities — state-specific I&W formulas
+        # Valley is ALWAYS × 3 (3ft). Eave varies: NY=6ft (2 courses), PA=3ft (1 course)
+        _state = (state or "NY").upper()
+        if _state in ("PA", "MD", "DE"):
+            ice_water_sf = (eave_lf * 3) + (valley_lf * 3)  # 1 course eave (3ft), valley 3ft
+        else:
+            ice_water_sf = (eave_lf * 6) + (valley_lf * 3)  # 2 courses eave (6ft), valley 3ft
         felt_sq = max(0, round(((install_sq * 100) - ice_water_sf) / 100, 2))
         starter_lf = eave_lf + rake_lf
         drip_edge_lf = round(starter_lf * 1.05, 2)  # 5% waste
@@ -454,91 +460,115 @@ class XactRegistry:
 
         items = []
 
-        def _add(desc, qty, action=None, default_trade="roofing"):
+        def _add(desc, qty, action=None, default_trade="roofing", ev_formula=""):
             """Look up item by description and add to items list.
-            Includes Xactimate code and supplement argument from registry."""
+            Includes Xactimate code, supplement argument, and ev_formula from registry."""
             self._append_item(items, desc, qty, action=action, default_trade=default_trade)
+            # Stamp ev_formula on the item we just added (always the last one)
+            if items and ev_formula:
+                items[-1]["ev_formula"] = ev_formula
+
+        # I&W formula string (state-dependent — eave multiplier changes, valley always × 3)
+        if _state in ("PA", "MD", "DE"):
+            _iw_formula = f"(Eave {eave_lf:.0f} × 3) + (Valley {valley_lf:.0f} × 3) = {ice_water_sf:.0f} SF"
+        else:
+            _iw_formula = f"(Eave {eave_lf:.0f} × 6) + (Valley {valley_lf:.0f} × 3) = {ice_water_sf:.0f} SF"
 
         # ── SHINGLE REMOVAL ──
+        _remove_formula = f"{remove_sq:.2f} SQ (EagleView roof area)"
         if shingle_type == "3tab":
-            _add("Remove 3 tab - 25 yr. comp. shingle roofing - w/out felt", remove_sq, action="remove")
+            _add("Remove 3 tab - 25 yr. comp. shingle roofing - w/out felt", remove_sq, action="remove", ev_formula=_remove_formula)
         else:
-            _add("Remove Laminated comp. shingle rfg. - w/out felt", remove_sq, action="remove")
+            _add("Remove Laminated comp. shingle rfg. - w/out felt", remove_sq, action="remove", ev_formula=_remove_formula)
 
         # Additional layer removal (if > 1 layer)
         if layers > 1:
-            _add("Add. layer of comp. shingles, remove & disp. - Laminated", remove_sq, action="remove")
+            _add("Add. layer of comp. shingles, remove & disp. - Laminated", remove_sq, action="remove", ev_formula=_remove_formula)
 
         # ── SHINGLE INSTALLATION ──
-        if shingle_type == "3tab":
-            _add("3 tab - 25 yr. comp. shingle roofing - w/out felt", install_sq, action="install")
+        if install_sq != remove_sq and remove_sq > 0:
+            waste_pct = round((install_sq / remove_sq - 1) * 100)
+            _install_formula = f"{remove_sq:.2f} × {install_sq / remove_sq:.2f} ({waste_pct}% waste) = {install_sq:.2f} SQ"
         else:
-            _add("Laminated comp. shingle rfg. - w/out felt", install_sq, action="install")
+            _install_formula = f"{install_sq:.2f} SQ (EagleView roof area)"
+        if shingle_type == "3tab":
+            _add("3 tab - 25 yr. comp. shingle roofing - w/out felt", install_sq, action="install", ev_formula=_install_formula)
+        else:
+            _add("Laminated comp. shingle rfg. - w/out felt", install_sq, action="install", ev_formula=_install_formula)
 
         # ── UNDERLAYMENT ──
-        _add("Roofing felt - 15 lb.", felt_sq, action="install")
-        _add("Ice & water barrier", ice_water_sf, action="install")
+        _felt_formula = f"(({install_sq:.2f} × 100) − {ice_water_sf:.0f}) / 100 = {felt_sq:.2f} SQ"
+        _add("Roofing felt - 15 lb.", felt_sq, action="install", ev_formula=_felt_formula)
+        _add("Ice & water barrier", ice_water_sf, action="install", ev_formula=_iw_formula)
 
         # ── STARTER & RIDGE ──
-        _add("Asphalt starter - universal starter course", starter_lf, action="install")
+        _starter_formula = f"Eave {eave_lf:.0f} + Rake {rake_lf:.0f} = {starter_lf:.0f} LF"
+        _add("Asphalt starter - universal starter course", starter_lf, action="install", ev_formula=_starter_formula)
+        _ridge_formula = f"Ridge {ridge_lf:.0f} LF (EagleView)"
         if shingle_type == "3tab":
-            _add("R&R Hip/Ridge cap - cut from 3 tab - composition shingles", ridge_lf, action="r&r")
+            _add("R&R Hip/Ridge cap - cut from 3 tab - composition shingles", ridge_lf, action="r&r", ev_formula=_ridge_formula)
         else:
-            _add("R&R Hip / Ridge cap - Standard profile - composition shingles", ridge_lf, action="r&r")
+            _add("R&R Hip / Ridge cap - Standard profile - composition shingles", ridge_lf, action="r&r", ev_formula=_ridge_formula)
 
         # ── DRIP EDGE ──
-        _add("R&R Drip edge", drip_edge_lf, action="r&r")
+        _drip_formula = f"(Eave {eave_lf:.0f} + Rake {rake_lf:.0f}) × 1.05 = {drip_edge_lf:.0f} LF"
+        _add("R&R Drip edge", drip_edge_lf, action="r&r", ev_formula=_drip_formula)
 
         # ── STEP FLASHING ──
         if step_lf > 0:
-            _add("Remove Step flashing", step_lf, action="remove")
-            _add("Step flashing", step_flash_lf, action="install")
+            _step_formula = f"Step {step_lf:.0f} LF (EagleView)"
+            _step_install_formula = f"Step {step_lf:.0f} × 1.05 = {step_flash_lf:.0f} LF"
+            _add("Remove Step flashing", step_lf, action="remove", ev_formula=_step_formula)
+            _add("Step flashing", step_flash_lf, action="install", ev_formula=_step_install_formula)
 
         # ── COUNTERFLASHING / APRON FLASHING ──
         if step_lf > 0:
-            _add("Remove Counterflashing - Apron flashing", step_lf, action="remove")
-            _add("Counterflashing - Apron flashing", counter_flash_lf, action="install")
+            _counter_formula = f"Counter {step_lf:.0f} × 1.05 = {counter_flash_lf:.0f} LF"
+            _add("Remove Counterflashing - Apron flashing", step_lf, action="remove", ev_formula=_step_formula)
+            _add("Counterflashing - Apron flashing", counter_flash_lf, action="install", ev_formula=_counter_formula)
 
         # ── PIPE JACKS ──
         if penetrations > 0:
-            _add("R&R Flashing - pipe jack", penetrations, action="r&r")
+            _add("R&R Flashing - pipe jack", penetrations, action="r&r", ev_formula=f"{penetrations} EA (EagleView)")
 
         # ── CHIMNEY FLASHING ──
         if chimneys > 0:
-            _add("R&R Chimney flashing - average (32\" x 36\")", chimneys, action="r&r")
+            _add("R&R Chimney flashing - average (32\" x 36\")", chimneys, action="r&r", ev_formula=f"{chimneys} EA (EagleView)")
 
         # ── RIDGE VENT ──
-        _add("R&R Continuous ridge vent - shingle-over style", ridge_lf, action="r&r")
+        _add("R&R Continuous ridge vent - shingle-over style", ridge_lf, action="r&r", ev_formula=_ridge_formula)
 
         # ── STEEP CHARGES ──
         if pitch >= 7:
+            _steep_formula = f"{remove_sq:.2f} SQ steep area"
             if pitch <= 9:
-                _add("Remove Additional charge for steep roof - 7/12 to 9/12 slope", remove_sq, action="remove")
-                _add("Additional charge for steep roof - 7/12 to 9/12 slope", install_sq, action="install")
+                _add("Remove Additional charge for steep roof - 7/12 to 9/12 slope", remove_sq, action="remove", ev_formula=_steep_formula)
+                _add("Additional charge for steep roof - 7/12 to 9/12 slope", install_sq, action="install", ev_formula=_steep_formula)
             elif pitch <= 12:
-                _add("Remove Additional charge for steep roof - 10/12 to 12/12 slope", remove_sq, action="remove")
-                _add("Additional charge for steep roof - 10/12 to 12/12 slope", install_sq, action="install")
+                _add("Remove Additional charge for steep roof - 10/12 to 12/12 slope", remove_sq, action="remove", ev_formula=_steep_formula)
+                _add("Additional charge for steep roof - 10/12 to 12/12 slope", install_sq, action="install", ev_formula=_steep_formula)
             else:
-                _add("Remove Additional charge for steep roof greater than 12/12 slope", remove_sq, action="remove")
-                _add("Additional charge for steep roof greater than 12/12 slope", install_sq, action="install")
+                _add("Remove Additional charge for steep roof greater than 12/12 slope", remove_sq, action="remove", ev_formula=_steep_formula)
+                _add("Additional charge for steep roof greater than 12/12 slope", install_sq, action="install", ev_formula=_steep_formula)
 
         # ── HIGH ROOF CHARGES ──
         if stories >= 2:
-            _add("Remove Additional charge for high roof (2 stories or greater)", remove_sq, action="remove")
-            _add("Additional charge for high roof (2 stories or greater)", install_sq, action="install")
+            _high_formula = f"{remove_sq:.2f} SQ, {stories} stories"
+            _add("Remove Additional charge for high roof (2 stories or greater)", remove_sq, action="remove", ev_formula=_high_formula)
+            _add("Additional charge for high roof (2 stories or greater)", install_sq, action="install", ev_formula=_high_formula)
 
         # ── GABLE CORNICE RETURNS ──
         gable_ends = hints.get("gable_ends", 0)
         if gable_ends > 0:
             if stories >= 2:
                 _add("R&R Gable cornice return - laminated - 2 stories or greater",
-                     gable_ends, action="r&r")
+                     gable_ends, action="r&r", ev_formula=f"{gable_ends} EA")
             else:
-                _add("R&R Gable cornice return - laminated", gable_ends, action="r&r")
+                _add("R&R Gable cornice return - laminated", gable_ends, action="r&r", ev_formula=f"{gable_ends} EA")
 
         # ── LABOR & EQUIPMENT (mandatory, scaled by roof size) ──
         roofer_hours = max(4, min(16, round(install_sq / 4)))
-        _add("Roofer - per hour", roofer_hours, action="install")
+        _add("Roofer - per hour", roofer_hours, action="install", ev_formula=f"max(4, {install_sq:.0f} / 4) = {roofer_hours} HR")
         _add("Equipment operator", max(1, round(roofer_hours / 2)), action="install")
         # Dumpster sizing: 20yd for small, 30yd standard, 40yd for large/multi-trade
         _add("Dumpster load - Approx. 30 yards, 5-7 tons of debris", 1, action="install")
@@ -550,7 +580,7 @@ class XactRegistry:
 
         # ── GUTTERS ──
         if gutter_lf > 0 and hints.get("include_gutters", True):
-            _add("R&R Gutter / downspout - aluminum - up to 5\"", gutter_lf, action="r&r")
+            _add("R&R Gutter / downspout - aluminum - up to 5\"", gutter_lf, action="r&r", ev_formula=f"Gutter {gutter_lf:.0f} LF (EagleView)")
 
         # ── SIDING (if config_hints includes siding) ──
         siding_hints = hints.get("siding")
@@ -832,166 +862,563 @@ class XactRegistry:
 
         return combined
 
-    def pre_match_scope_comparison(self, carrier_line_items, usarm_line_items):
-        """Pre-compute usarm_desc and usarm_amount for each carrier line item.
+    # ── CARRIER TRICKS DATABASE ──────────────────────────────────────
+    # Known carrier patterns where items are disguised or misrepresented
+    CARRIER_TRICKS = {
+        "starter_as_shingle": {
+            "desc_pattern": re.compile(r"3[- ]?tab.*(?:25|20)\s*yr", re.I),
+            "note_pattern": re.compile(r"starter|start\s*course|eave\s*course", re.I),
+            "actual_intent": "starter",
+            "usarm_match_desc": "starter",
+            "flag": "Carrier using 3-tab shingle line item for starter course — massive underpayment vs proper starter strip",
+        },
+        "ridge_as_shingle": {
+            "desc_pattern": re.compile(r"3[- ]?tab.*(?:25|20)\s*yr", re.I),
+            "note_pattern": re.compile(r"ridge|cap|hip.*cap", re.I),
+            "actual_intent": "ridge_cap",
+            "usarm_match_desc": "ridge cap",
+            "flag": "Carrier using 3-tab shingle line item for ridge cap — should be proper hip/ridge cap",
+        },
+        "felt_bundled_in_shingle": {
+            "desc_pattern": re.compile(r"comp.*shingle.*w/\s*felt|shingle.*rfg.*w/\s*felt", re.I),
+            "note_pattern": None,
+            "actual_intent": "shingle_with_felt",
+            "usarm_match_desc": "comp shingle",
+            "flag": "Carrier bundled felt with shingle install — felt should be separate line item per Xactimate standards",
+        },
+        "hover_measurements": {
+            "desc_pattern": None,
+            "note_pattern": re.compile(r"hover|HOVER|Hover\s*measurements?", re.I),
+            "actual_intent": None,
+            "usarm_match_desc": None,
+            "flag": "Carrier used HOVER measurements instead of EagleView — HOVER known for measurement inaccuracies",
+        },
+    }
 
-        Uses a 4-pass algorithm:
-          Pass 0: Aggregate carrier tear-out/supply/install triples into combined R&R
-          Pass 1: Code-based matching (exact, O(1)) — highest confidence
-          Pass 2: Fuzzy description matching with negative exclusions — fallback
-          Pass 3: Identify IRC-required items carrier omitted — appended as "NOT INCLUDED"
+    # ── INTENT KEYWORD MAPPING ────────────────────────────────────
+    # Each USARM line item category maps to keywords for searching carrier scope by INTENT
+    _INTENT_KEYWORDS = {
+        "starter": ["starter", "start course", "eave course"],
+        "ridge cap": ["ridge cap", "cap shingle", "hip cap", "ridge shingle"],
+        "ridge vent": ["ridge vent", "continuous vent", "shingle-over vent"],
+        "ice & water": ["ice", "i&w", "ice barrier", "leak barrier", "ice water", "weather watch"],
+        "felt": ["felt", "underlayment", "synthetic underlayment", "deck armor"],
+        "drip edge": ["drip edge", "drip-edge", "eave/rake metal", "eave metal", "rake metal"],
+        "step flash": ["step flash", "wall flash", "step metal"],
+        "counter flash": ["counter flash", "apron flash", "counter metal"],
+        "chimney flash": ["chimney flash", "chimney metal"],
+        "pipe jack": ["pipe jack", "pipe boot", "pipe flash", "plumbing vent", "roof jack"],
+        "skylight": ["skylight flash", "skylight", "velux"],
+        "steep": ["steep", "pitch charge", "slope charge"],
+        "high roof": ["high roof", "2 stor", "two stor", "height charge"],
+        "gutter": ["gutter", "seamless aluminum"],
+        "downspout": ["downspout", "down spout"],
+        "dumpster": ["dumpster", "debris", "haul away", "dump trailer"],
+        "comp shingle": ["comp shingle", "laminated", "architectural shingle", "dimensional shingle"],
+        "3-tab": ["3-tab", "3 tab", "three tab"],
+        "remove": ["tear off", "tear-off", "tearoff", "remove", "strip"],
+        "siding": ["siding", "vinyl sid", "aluminum sid", "cedar sid"],
+        "house wrap": ["house wrap", "housewrap", "tyvek", "water-resistive"],
+        "window wrap": ["window wrap", "window trim", "j-channel"],
+        "insulation board": ["insulation board", "fan fold", "fanfold"],
+        "permit": ["permit"],
+        "labor": ["labor minim", "minimum charge"],
+    }
 
-        Returns the carrier_line_items list with usarm_desc/usarm_amount/note added.
+    @staticmethod
+    def _get_intent_keywords(usarm_desc: str) -> list[str]:
+        """Get intent keywords for searching carrier scope given a USARM description."""
+        desc_lower = usarm_desc.lower()
+        keywords = []
+        for category, kws in XactRegistry._INTENT_KEYWORDS.items():
+            # Match if category name appears in description OR first 2 keywords match
+            if category in desc_lower or any(kw in desc_lower for kw in kws[:2]):
+                keywords.extend(kws)
+        # Also include raw words from the description as fallback
+        if not keywords:
+            keywords = [w for w in desc_lower.split() if len(w) > 3 and w not in _STOP_WORDS]
+        return keywords
+
+    def _detect_carrier_trick(self, carrier_item: dict, expected_usarm_desc: str):
+        """Check if a carrier item is using a trick for the expected USARM item."""
+        carrier_desc = (carrier_item.get("carrier_desc") or carrier_item.get("item") or "").lower()
+        carrier_notes = (carrier_item.get("notes") or "").lower()
+        combined = f"{carrier_desc} {carrier_notes}"
+
+        for trick_name, trick in self.CARRIER_TRICKS.items():
+            desc_match = trick["desc_pattern"].search(carrier_desc) if trick["desc_pattern"] else False
+            note_match = trick["note_pattern"].search(combined) if trick["note_pattern"] else False
+
+            # The trick applies if carrier item matches trick pattern AND
+            # the expected USARM item matches the trick's actual intent
+            if desc_match or note_match:
+                actual_intent = trick.get("actual_intent") or ""
+                usarm_match_desc = trick.get("usarm_match_desc") or ""
+                expected_lower = expected_usarm_desc.lower()
+                if usarm_match_desc and usarm_match_desc in expected_lower:
+                    return {"name": trick_name, "flag": trick["flag"]}
+
+        return None
+
+    @staticmethod
+    def _action_compatible(usarm_desc: str, carrier_item: dict) -> bool:
+        """Check if USARM and carrier items have compatible actions (remove vs install)."""
+        usarm_lower = usarm_desc.lower()
+        carrier_desc = (carrier_item.get("carrier_desc") or carrier_item.get("item") or "").lower()
+        usarm_is_remove = "remove" in usarm_lower or "tear" in usarm_lower
+        carrier_is_remove = "remove" in carrier_desc or "tear" in carrier_desc
+        # Both remove, both install, or R&R = compatible
+        if usarm_is_remove == carrier_is_remove:
+            return True
+        # R&R items are compatible with either
+        if "r&r" in usarm_lower or "r&r" in carrier_desc:
+            return True
+        return False
+
+    def pre_match_scope_comparison(self, carrier_line_items, usarm_line_items,
+                                    measurements=None, state=None, config_hints=None):
+        """EagleView ground-truth-first scope comparison (Tom's Co-work methodology).
+
+        Algorithm:
+          Pass 0: Aggregate carrier tear-out/supply/install triples
+          Pass 1: Build EagleView checklist from measurements (ground truth)
+          Pass 2: Build USARM lookup for pricing enrichment
+          Pass 3: FOR EACH checklist item, search carrier by INTENT
+                  Search order: notes → description keywords → code → fuzzy
+          Pass 4: USARM extras (items not in measurement checklist)
+          Pass 5: Carrier-only items
+
+        Args:
+            carrier_line_items: Carrier's scope line items (with notes field)
+            usarm_line_items: USARM estimate line items (for pricing enrichment)
+            measurements: EagleView measurements dict (ground truth)
+            state: 2-letter state code for jurisdiction-specific formulas
+            config_hints: dict with shingle_type, etc. for checklist builder
+
+        Returns list of comparison rows with full data model.
         """
-        # ── PASS 0: Aggregate carrier tear-out/supply/install triples ──
-        carrier_line_items = self._aggregate_carrier_triples(carrier_line_items)
+        # ── PASS 0: Aggregate carrier triples ──
+        carrier_items = self._aggregate_carrier_triples(carrier_line_items)
 
-        used_indices = set()
-        result = []
+        meas = measurements or {}
+        tricks_detected = []
+        used_carrier_indices = set()
+        comparison_rows = []
 
-        # Build code index for USARM items
-        usarm_by_code = {}
-        for idx, li in enumerate(usarm_line_items):
-            code = (li.get("code") or "").upper().strip()
-            if code:
-                usarm_by_code.setdefault(code, []).append((idx, li))
+        # ── PASS 1: Build EagleView checklist (ground truth) ──
+        if meas and any(v for v in meas.values() if v):
+            checklist = self.build_line_items(meas, config_hints=config_hints, state=state)
+            # Enrich with 4-layer code citations (IRC/RCNYS + manufacturer specs)
+            try:
+                from code_compliance import enrich_line_items_with_citations
+                enrich_line_items_with_citations(checklist, state or "NY")
+            except ImportError:
+                pass  # code_compliance not available (standalone testing)
+            # ev_formula is stamped on each item inside build_line_items() at computation time
+            print(f"[SCOPE MATCH] EagleView checklist: {len(checklist)} expected items from measurements", flush=True)
+            # Debug: show first items from each side to verify matching inputs
+            for _i, _cl in enumerate(checklist[:5]):
+                print(f"[SCOPE DEBUG] Checklist[{_i}]: {_cl.get('description','')[:60]}", flush=True)
+            for _i, _ci in enumerate(carrier_items[:8]):
+                _cd = _ci.get('carrier_desc') or _ci.get('item','')
+                _cn = _ci.get('notes','')
+                print(f"[SCOPE DEBUG] Carrier[{_i}]: desc={_cd[:60]} notes={_cn[:40]}", flush=True)
+        else:
+            # Fallback: use USARM items as checklist when no measurements
+            checklist = list(usarm_line_items)
+            print(f"[SCOPE MATCH] WARNING: No measurements — falling back to USARM items as checklist. meas={meas}", flush=True)
 
-        # ── PASS 1: Code-based matching ──
-        for ci in carrier_line_items:
-            ci_copy = dict(ci)
-            carrier_code = (ci.get("xact_code") or "").upper().strip()
-            carrier_desc = ci.get("carrier_desc", "") or ci.get("item", "")
+        # ── PASS 2: Build USARM lookup for pricing enrichment ──
+        usarm_by_clean_desc = {}
+        for li in usarm_line_items:
+            key = _clean_desc(li.get("description", ""))
+            usarm_by_clean_desc[key] = li
 
-            matched = False
+        # Track which USARM items were matched to checklist items
+        used_usarm_clean_descs = set()
 
-            carrier_is_remove = "remove" in carrier_desc.lower() or "tear" in carrier_desc.lower()
+        # ── PASS 3: FOR EACH checklist item, search carrier by INTENT ──
+        for expected_item in checklist:
+            expected_desc = expected_item.get("description", "")
+            expected_code = (expected_item.get("code") or "").upper().strip()
+            ev_qty = expected_item.get("qty", 0)
+            ev_unit = expected_item.get("unit", "")
+            xact_unit_price = expected_item.get("unit_price", 0)
 
-            if carrier_code:
-                # Try exact code match — prefer action-matching candidate
-                candidates = usarm_by_code.get(carrier_code, [])
-                # Sort candidates: action-matching ones first
-                sorted_candidates = sorted(candidates, key=lambda c: (
-                    0 if (carrier_is_remove == ("remove" in c[1].get("description", "").lower())) else 1
-                ))
-                for idx, li in sorted_candidates:
-                    if idx in used_indices:
+            if ev_qty <= 0:
+                continue
+
+            intent_kws = self._get_intent_keywords(expected_desc)
+            found_carrier = None
+            match_method = None
+
+            # ── Search 1: Intent via NOTES (highest priority!) ──
+            # Catches 3-tab-as-starter because notes say "starter course"
+            if intent_kws:
+                best_notes_ci = None
+                best_notes_idx = None
+                best_notes_hits = 0
+                for ci_idx, ci in enumerate(carrier_items):
+                    if ci_idx in used_carrier_indices:
                         continue
-                    ext = round(li["qty"] * li["unit_price"], 2)
-                    ci_copy["usarm_desc"] = li["description"]
-                    ci_copy["usarm_amount"] = ext
-                    ci_copy["matched_by"] = "code"
-                    ci_copy["supplement_argument"] = li.get("supplement_argument", "")
-                    used_indices.add(idx)
-                    matched = True
-                    break
+                    ci_notes = (ci.get("notes") or "").lower()
+                    if not ci_notes:
+                        continue
+                    hits = sum(1 for kw in intent_kws if kw in ci_notes)
+                    if hits > 0 and hits > best_notes_hits:
+                        ci_desc = ci.get("carrier_desc", "") or ci.get("item", "")
+                        if not self._check_negative_exclusion(ci_desc, expected_desc):
+                            if self._action_compatible(expected_desc, ci):
+                                best_notes_ci = ci
+                                best_notes_idx = ci_idx
+                                best_notes_hits = hits
+                if best_notes_ci is not None:
+                    found_carrier = (best_notes_idx, best_notes_ci)
+                    match_method = "intent_notes"
 
-            if not matched:
-                # Try to identify code from description via registry lookup
-                reg_item = self.lookup_price(carrier_desc)
-                if reg_item:
-                    reg_code = (reg_item.get("xact_code") or "").upper()
-                    if reg_code:
-                        candidates = usarm_by_code.get(reg_code, [])
-                        # Sort by action match (same fix as Pass 1)
-                        sorted_cands = sorted(candidates, key=lambda c: (
-                            0 if (carrier_is_remove == ("remove" in c[1].get("description", "").lower())) else 1
-                        ))
-                        for idx, li in sorted_cands:
-                            if idx in used_indices:
-                                continue
-                            ext = round(li["qty"] * li["unit_price"], 2)
-                            ci_copy["usarm_desc"] = li["description"]
-                            ci_copy["usarm_amount"] = ext
-                            ci_copy["matched_by"] = "code_inferred"
-                            ci_copy["supplement_argument"] = li.get("supplement_argument", "")
-                            used_indices.add(idx)
-                            matched = True
+            # ── Search 2: Intent via description keywords ──
+            if not found_carrier and intent_kws:
+                best_desc_ci = None
+                best_desc_idx = None
+                best_desc_hits = 0
+                for ci_idx, ci in enumerate(carrier_items):
+                    if ci_idx in used_carrier_indices:
+                        continue
+                    ci_desc = (ci.get("carrier_desc") or ci.get("item") or "").lower()
+                    hits = sum(1 for kw in intent_kws if kw in ci_desc)
+                    if hits > 0 and hits > best_desc_hits:
+                        if not self._check_negative_exclusion(ci_desc, expected_desc):
+                            if self._action_compatible(expected_desc, ci):
+                                best_desc_ci = ci
+                                best_desc_idx = ci_idx
+                                best_desc_hits = hits
+                if best_desc_ci is not None:
+                    found_carrier = (best_desc_idx, best_desc_ci)
+                    match_method = "intent_desc"
+
+            # ── Search 3: Xact code match (ONLY after intent fails) ──
+            # Code is the TRAP — "3-tab" code matches wrong items
+            if not found_carrier and expected_code:
+                for ci_idx, ci in enumerate(carrier_items):
+                    if ci_idx in used_carrier_indices:
+                        continue
+                    if (ci.get("xact_code") or "").upper().strip() == expected_code:
+                        if self._action_compatible(expected_desc, ci):
+                            found_carrier = (ci_idx, ci)
+                            match_method = "code"
                             break
 
-            if not matched:
-                ci_copy["_needs_fuzzy"] = True
-
-            result.append(ci_copy)
-
-        # ── PASS 2: Fuzzy matching for unmatched items ──
-        for ci_copy in result:
-            if not ci_copy.pop("_needs_fuzzy", False):
-                continue
-
-            carrier_desc = ci_copy.get("carrier_desc", "") or ci_copy.get("item", "")
-
-            # Pass ALL remaining items to find the BEST match (not just first above threshold)
-            remaining = [li for idx, li in enumerate(usarm_line_items)
-                         if idx not in used_indices]
-            remaining_indices = [idx for idx in range(len(usarm_line_items))
-                                 if idx not in used_indices]
-
-            if not remaining:
-                continue
-
-            matched_li, confidence = self.match_carrier_to_usarm(carrier_desc, remaining)
-            if matched_li and confidence >= 0.45:
-                # Find the original index of the matched item
-                matched_idx = None
-                for ri, li in zip(remaining_indices, remaining):
-                    if li is matched_li:
-                        matched_idx = ri
+            # ── Search 4: Fuzzy fallback (lowest priority) ──
+            if not found_carrier:
+                expected_clean = _clean_desc(expected_desc)
+                expected_words = _desc_words(expected_clean)
+                best_score = 0.0
+                best_fuzzy = None
+                for ci_idx, ci in enumerate(carrier_items):
+                    if ci_idx in used_carrier_indices:
+                        continue
+                    ci_desc = ci.get("carrier_desc", "") or ci.get("item", "")
+                    if self._check_negative_exclusion(ci_desc, expected_desc):
+                        continue
+                    ci_clean = _clean_desc(ci_desc)
+                    if ci_clean in expected_clean or expected_clean in ci_clean:
+                        best_fuzzy = (ci_idx, ci)
+                        best_score = 1.0
                         break
+                    ci_words = _desc_words(ci_clean)
+                    overlap = ci_words & expected_words
+                    word_score = 0.0
+                    if len(overlap) >= 3 or (len(overlap) >= 2 and len(expected_words) <= 4):
+                        word_score = 0.4
+                    ci_mats = ci_words & _MATERIAL_KEYWORDS
+                    exp_mats = expected_words & _MATERIAL_KEYWORDS
+                    if ci_mats and ci_mats == exp_mats:
+                        word_score += 0.2
+                    sim = _similarity(ci_clean, expected_clean)
+                    score = sim + word_score
+                    if score > best_score and score >= 0.45:
+                        best_score = score
+                        best_fuzzy = (ci_idx, ci)
+                if best_fuzzy and best_score >= 0.45:
+                    found_carrier = best_fuzzy
+                    match_method = "fuzzy"
 
-                ext = round(matched_li["qty"] * matched_li["unit_price"], 2)
-                ci_copy["usarm_desc"] = matched_li["description"]
-                ci_copy["usarm_amount"] = ext
-                ci_copy["matched_by"] = "fuzzy"
-                ci_copy["supplement_argument"] = matched_li.get("supplement_argument", "")
-                if matched_idx is not None:
-                    used_indices.add(matched_idx)
+            # ── USARM pricing enrichment ──
+            usarm_item = usarm_by_clean_desc.get(_clean_desc(expected_desc))
+            usarm_amount = 0
+            usarm_desc = ""
+            if usarm_item:
+                usarm_amount = round(usarm_item["qty"] * usarm_item["unit_price"], 2)
+                usarm_desc = usarm_item["description"]
+                used_usarm_clean_descs.add(_clean_desc(expected_desc))
 
-        # ── Generate variance notes ──
-        for ci_copy in result:
-            carrier_amt = ci_copy.get("carrier_amount", 0) or 0
-            usarm_amt = ci_copy.get("usarm_amount", 0) or 0
-            supp_arg = ci_copy.get("supplement_argument", "")
+            # ── Build comparison row ──
+            row = {
+                # Checklist (ground truth)
+                "checklist_desc": expected_desc,
+                "ev_qty": ev_qty,
+                "ev_unit": ev_unit,
+                "ev_formula": expected_item.get("ev_formula", ""),
+                "xact_code": expected_code,
+                "xact_unit_price": xact_unit_price,
+                # USARM enrichment
+                "usarm_desc": usarm_desc or expected_desc,
+                "usarm_amount": usarm_amount or round(ev_qty * xact_unit_price, 2),
+                # Code compliance (4-layer)
+                "code_citation": expected_item.get("code_citation"),
+                "irc_code": expected_item.get("irc_code", ""),
+                "supplement_argument": expected_item.get("supplement_argument", ""),
+                # Grouping
+                "category": expected_item.get("category", "ROOFING"),
+                "trade": expected_item.get("trade", "roofing"),
+            }
 
-            if usarm_amt and carrier_amt:
-                diff = usarm_amt - carrier_amt
-                if abs(diff) < 0.50:
-                    ci_copy["note"] = "Amounts match"
-                elif diff > 0:
-                    ci_copy["note"] = f"Underpaid ${diff:,.2f}"
-                    if supp_arg:
-                        ci_copy["note"] += f". {supp_arg}"
+            if found_carrier:
+                ci_idx, ci = found_carrier
+                used_carrier_indices.add(ci_idx)
+                carrier_qty = ci.get("qty", 0) or 0
+                carrier_amt = ci.get("carrier_amount", 0) or 0
+                carrier_up = ci.get("unit_price", 0) or 0
+                ci_desc = ci.get("carrier_desc") or ci.get("item", "")
+                ci_notes = ci.get("notes", "") or ""
+
+                row["item"] = ci.get("item") or ci_desc
+                row["carrier_desc"] = ci_desc
+                row["carrier_amount"] = carrier_amt
+                row["carrier_qty"] = carrier_qty
+                row["carrier_unit"] = ci.get("unit", "")
+                row["carrier_unit_price"] = carrier_up
+                row["carrier_notes"] = ci_notes
+                row["matched_by"] = match_method
+
+                # Carrier trick detection (runs on EVERY match)
+                trick = self._detect_carrier_trick(ci, expected_desc)
+                if trick:
+                    row["carrier_trick"] = trick["name"]
+                    row["trick_flag"] = trick["flag"]
+                    tricks_detected.append(trick["name"])
+
+                # HOVER detection
+                if re.search(r"hover|HOVER|Hover\s*measurements?", ci_notes, re.I):
+                    row["measurement_source"] = "HOVER"
+                    row.setdefault("flags", []).append(
+                        self.CARRIER_TRICKS.get("hover_measurements", {}).get("flag", "HOVER measurements detected")
+                    )
+                    if "hover_detected" not in tricks_detected:
+                        tricks_detected.append("hover_detected")
+
+                # Unit mismatch detection
+                carrier_unit = (ci.get("unit") or "").upper()
+                expected_unit_upper = ev_unit.upper() if ev_unit else ""
+                if carrier_unit and expected_unit_upper and carrier_unit != expected_unit_upper:
+                    row["unit_mismatch"] = f"Carrier: {carrier_unit}, Expected: {expected_unit_upper}"
+
+                # QTY comparison: carrier qty vs EagleView qty (ground truth)
+                qty_variance_note = ""
+                if not row.get("unit_mismatch") and ev_qty > 0 and carrier_qty > 0:
+                    qty_diff = ev_qty - carrier_qty
+                    if abs(qty_diff) > 1:
+                        qty_variance_note = f"EagleView: {ev_qty:.0f} {ev_unit}, Carrier: {carrier_qty:.0f} {ev_unit}, Short {qty_diff:.0f} {ev_unit}"
+                        row["qty_variance"] = qty_variance_note
+
+                # Price comparison: carrier unit_price vs Xactimate price list
+                if carrier_up > 0 and xact_unit_price > 0:
+                    price_diff = xact_unit_price - carrier_up
+                    if abs(price_diff) > 0.50:
+                        row["price_variance"] = f"Xact: ${xact_unit_price:.2f}, Carrier: ${carrier_up:.2f}"
+
+                # Amount variance (USARM amount vs carrier amount)
+                compare_amount = row["usarm_amount"]
+                diff = compare_amount - carrier_amt
+                trick_flag = row.get("trick_flag", "")
+                supp_arg = row.get("supplement_argument", "")
+
+                if row.get("unit_mismatch"):
+                    row["status"] = "under"
+                    row["note"] = f"UNIT MISMATCH: {row['unit_mismatch']}"
+                    if trick_flag:
+                        row["note"] += f". {trick_flag}"
+                elif abs(diff) < 0.50 and not qty_variance_note:
+                    row["status"] = "match"
+                    row["note"] = "Amounts match"
+                elif diff > 0 or qty_variance_note:
+                    row["status"] = "under"
+                    note = f"Underpaid ${diff:,.2f}" if diff > 0.50 else ""
+                    if qty_variance_note:
+                        note = f"{note}. {qty_variance_note}" if note else qty_variance_note
+                    if trick_flag:
+                        note = f"{note}. {trick_flag}" if note else trick_flag
+                    elif supp_arg and diff > 0.50:
+                        note += f". {supp_arg}"
+                    row["note"] = note.lstrip(". ")
                 else:
-                    ci_copy["note"] = f"Overpaid ${abs(diff):,.2f}"
-            elif not ci_copy.get("usarm_desc"):
-                ci_copy["note"] = "No matching USARM line item"
+                    row["status"] = "over"
+                    row["note"] = f"Overpaid ${abs(diff):,.2f}"
+            else:
+                # MISSING — carrier didn't include this item
+                row["item"] = expected_desc
+                row["carrier_desc"] = "NOT INCLUDED"
+                row["carrier_amount"] = 0
+                row["matched_by"] = "missing"
+                row["status"] = "missing"
+                note = "NOT INCLUDED in carrier scope"
+                code_cit = row.get("code_citation")
+                if code_cit:
+                    note += f" — required per {code_cit['code_tag']}: {code_cit['title']}"
+                elif row.get("irc_code"):
+                    note += f" — required per {row['irc_code']}"
+                if row.get("supplement_argument"):
+                    note += f". {row['supplement_argument']}"
+                row["note"] = note
 
-        # ── Append unmatched USARM items as "NOT INCLUDED" ──
-        for idx, li in enumerate(usarm_line_items):
-            if idx in used_indices:
+            comparison_rows.append(row)
+
+        if tricks_detected:
+            print(f"[SCOPE MATCH] Carrier tricks detected: {tricks_detected}", flush=True)
+
+        # ── PASS 4: USARM extras (items not in measurement checklist) ──
+        # Only add items genuinely NOT covered by the checklist.
+        # Build a set of cleaned checklist descriptions for fuzzy dedup.
+        _checklist_clean_descs = set()
+        _checklist_words_set = []
+        for cl_item in checklist:
+            cd = _clean_desc(cl_item.get("description", ""))
+            _checklist_clean_descs.add(cd)
+            _checklist_words_set.append(_desc_words(cd))
+
+        for li in usarm_line_items:
+            clean_key = _clean_desc(li.get("description", ""))
+            # Exact match check
+            if clean_key in used_usarm_clean_descs or clean_key in _checklist_clean_descs:
                 continue
-            ext = round(li["qty"] * li["unit_price"], 2)
+            # Fuzzy check — skip if this USARM item overlaps significantly with ANY checklist item
+            usarm_words = _desc_words(clean_key)
+            is_dup = False
+            for cw in _checklist_words_set:
+                overlap = usarm_words & cw
+                if len(overlap) >= 2 or _similarity(clean_key, " ".join(cw)) >= 0.6:
+                    is_dup = True
+                    break
+                # Substring check
+                cw_str = " ".join(cw)
+                if clean_key in cw_str or cw_str in clean_key:
+                    is_dup = True
+                    break
+            if is_dup:
+                continue
+            ext = round(li.get("qty", 0) * li.get("unit_price", 0), 2)
             if ext < 10:
-                continue  # Skip trivial items
-            supp_arg = li.get("supplement_argument", "")
-            irc_code = li.get("irc_code", "")
-            note = "NOT INCLUDED in carrier scope"
-            if irc_code:
-                note += f" — required per IRC {irc_code}"
-            if supp_arg:
-                note += f". {supp_arg}"
-
-            result.append({
-                "item": li["description"],
-                "carrier_desc": "NOT INCLUDED",
-                "carrier_amount": 0,
-                "usarm_desc": li["description"],
+                continue
+            # Search carrier for this USARM extra using same intent logic
+            usarm_desc = li.get("description", "")
+            intent_kws = self._get_intent_keywords(usarm_desc)
+            found_ci = None
+            for ci_idx, ci in enumerate(carrier_items):
+                if ci_idx in used_carrier_indices:
+                    continue
+                ci_text = f"{ci.get('carrier_desc', '')} {ci.get('notes', '')}".lower()
+                if intent_kws and any(kw in ci_text for kw in intent_kws):
+                    if self._action_compatible(usarm_desc, ci):
+                        found_ci = (ci_idx, ci)
+                        break
+            extra_row = {
+                "checklist_desc": "",
+                "usarm_desc": usarm_desc,
                 "usarm_amount": ext,
-                "matched_by": "missing",
-                "supplement_argument": supp_arg,
-                "note": note,
+                "ev_qty": li.get("qty", 0),
+                "ev_unit": li.get("unit", ""),
+                "code_citation": li.get("code_citation"),
+                "irc_code": li.get("irc_code", ""),
+                "supplement_argument": li.get("supplement_argument", ""),
+                "category": li.get("category", ""),
+                "trade": li.get("trade", ""),
+            }
+            if found_ci:
+                ci_idx, ci = found_ci
+                used_carrier_indices.add(ci_idx)
+                carrier_amt = ci.get("carrier_amount", 0) or 0
+                extra_row["item"] = ci.get("item") or ci.get("carrier_desc", "")
+                extra_row["carrier_desc"] = ci.get("carrier_desc") or ci.get("item", "")
+                extra_row["carrier_amount"] = carrier_amt
+                extra_row["carrier_qty"] = ci.get("qty", 0)
+                extra_row["matched_by"] = "usarm_extra"
+                diff = ext - carrier_amt
+                if abs(diff) < 0.50:
+                    extra_row["status"] = "match"
+                    extra_row["note"] = "Amounts match"
+                elif diff > 0:
+                    extra_row["status"] = "under"
+                    extra_row["note"] = f"Underpaid ${diff:,.2f}"
+                else:
+                    extra_row["status"] = "over"
+                    extra_row["note"] = f"Overpaid ${abs(diff):,.2f}"
+            else:
+                extra_row["carrier_desc"] = "NOT INCLUDED"
+                extra_row["carrier_amount"] = 0
+                extra_row["matched_by"] = "missing"
+                extra_row["status"] = "missing"
+                note = "NOT INCLUDED in carrier scope"
+                code_cit = li.get("code_citation")
+                if code_cit:
+                    note += f" — required per {code_cit['code_tag']}: {code_cit['title']}"
+                extra_row["note"] = note
+            comparison_rows.append(extra_row)
+
+        # ── PASS 5: Carrier-only items ──
+        for ci_idx, ci in enumerate(carrier_items):
+            if ci_idx in used_carrier_indices:
+                continue
+            carrier_amt = ci.get("carrier_amount", 0) or 0
+            if carrier_amt < 5:
+                continue
+            ci_desc = ci.get("carrier_desc") or ci.get("item", "")
+            comparison_rows.append({
+                "item": ci.get("item") or ci_desc,
+                "carrier_desc": ci_desc,
+                "carrier_amount": carrier_amt,
+                "carrier_qty": ci.get("qty", 0),
+                "carrier_unit": ci.get("unit", ""),
+                "usarm_desc": "",
+                "usarm_amount": 0,
+                "matched_by": "carrier_only",
+                "status": "carrier_only",
+                "note": "Carrier-only item — not on EagleView checklist",
+                "review_flag": "Verify: legitimate scope item or padding?",
+                "xact_code": ci.get("xact_code", ""),
             })
 
-        return result
+        return comparison_rows
+
+
+    @staticmethod
+    def _get_eagleview_qty(usarm_desc: str, measurements: dict):
+        """Look up the EagleView ground-truth quantity for a USARM line item description.
+
+        Maps description keywords to measurement fields for qty validation.
+        """
+        desc = usarm_desc.lower()
+        _MEAS_MAP = {
+            "ridge": "ridge_lf",
+            "eave": "eave_lf",
+            "rake": "rake_lf",
+            "valley": "valley_lf",
+            "drip edge": "eave_lf",  # drip edge = eave + rake
+            "step flash": "step_lf",
+            "gutter": "gutter_lf",
+        }
+        for keyword, meas_key in _MEAS_MAP.items():
+            if keyword in desc:
+                val = measurements.get(meas_key, 0)
+                # Drip edge is eave + rake
+                if keyword == "drip edge":
+                    val = measurements.get("eave_lf", 0) + measurements.get("rake_lf", 0)
+                return val
+
+        # Roof area items (SQ)
+        if any(k in desc for k in ("shingle", "roofing", "comp", "laminated", "slate")):
+            return measurements.get("install_sq") or measurements.get("remove_sq")
+
+        return None
 
     # ------------------------------------------------------------------
     # 6. Find Missing Items (Level 3 Feature)

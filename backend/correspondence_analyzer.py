@@ -21,7 +21,7 @@ from supabase import Client
 from telemetry import call_claude_logged, _estimate_cost
 
 # Models
-EXTRACTION_MODEL = "claude-sonnet-4-6"  # Carrier position analysis
+EXTRACTION_MODEL = "claude-opus-4-6"  # Carrier position analysis
 DRAFTING_MODEL = "claude-opus-4-6"       # Socratic response drafting
 
 

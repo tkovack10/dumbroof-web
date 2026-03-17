@@ -26,6 +26,7 @@ from supabase import create_client, Client
 from carrier_intelligence import suggest_arguments
 from analytics import predict_settlement, detect_price_deviations
 from xactimate_lookup import XactRegistry, _clean_desc
+from code_compliance import enrich_line_items_with_citations
 
 # Xactimate registry cache: market_code → XactRegistry instance
 _XACT_REGISTRIES = {}
@@ -788,7 +789,7 @@ Number the photos starting at {start_num}. Return ONLY valid JSON:
         response = _call_claude_with_retry(client,
             _step_name="analyze_photos",
             _metadata={"batch": batch_num, "total_batches": total_batches, "photos_in_batch": len(batch)},
-            model="claude-sonnet-4-6",
+            model="claude-opus-4-6",
             max_tokens=4096,
             messages=[{"role": "user", "content": content}]
         )
@@ -959,7 +960,7 @@ Be VERY conservative — chalk marks and test square notations are NEVER fraud. 
     response = _call_claude_with_retry(client,
         _step_name="photo_integrity",
         _metadata={"photo_count": len(sample_paths)},
-        model="claude-sonnet-4-6",
+        model="claude-opus-4-6",
         max_tokens=2048,
         messages=[{"role": "user", "content": content}]
     )
@@ -986,26 +987,31 @@ Be VERY conservative — chalk marks and test square notations are NEVER fraud. 
     }
 
 
-def extract_carrier_scope(client: anthropic.Anthropic, pdf_path: str) -> dict:
-    """Extract carrier scope data from insurance estimate PDF or text file."""
-    ext = pdf_path.lower().rsplit(".", 1)[-1] if "." in pdf_path else ""
+def extract_carrier_scope(client: anthropic.Anthropic, pdf_path, extra_paths=None) -> dict:
+    """Extract carrier scope data from insurance estimate PDF(s) or text file.
 
-    # Build content block based on file type
-    if ext == "txt":
-        # Email body extracted as text (e.g., denial letter was the email itself)
-        with open(pdf_path, "r", encoding="utf-8") as f:
-            text_content = f.read()
-        file_block = {
-            "type": "text",
-            "text": f"[CARRIER DOCUMENT — extracted from email]\n\n{text_content}",
-        }
-    else:
-        # Standard PDF
-        pdf_b64 = file_to_base64(pdf_path)
-        file_block = {
-            "type": "document",
-            "source": {"type": "base64", "media_type": "application/pdf", "data": pdf_b64},
-        }
+    Args:
+        pdf_path: Primary scope file path (str)
+        extra_paths: Additional scope file paths (list of str) — sent as additional
+                     document blocks so Claude sees ALL scope pages in one call.
+    """
+    all_paths = [pdf_path] + (extra_paths or [])
+    file_blocks = []
+    for i, fpath in enumerate(all_paths):
+        ext = fpath.lower().rsplit(".", 1)[-1] if "." in fpath else ""
+        if ext == "txt":
+            with open(fpath, "r", encoding="utf-8") as f:
+                text_content = f.read()
+            file_blocks.append({
+                "type": "text",
+                "text": f"[CARRIER DOCUMENT {i+1} of {len(all_paths)} — extracted from email]\n\n{text_content}",
+            })
+        else:
+            pdf_b64 = file_to_base64(fpath)
+            file_blocks.append({
+                "type": "document",
+                "source": {"type": "base64", "media_type": "application/pdf", "data": pdf_b64},
+            })
 
     response = _call_claude_with_retry(client,
         _step_name="extract_carrier_scope",
@@ -1014,10 +1020,14 @@ def extract_carrier_scope(client: anthropic.Anthropic, pdf_path: str) -> dict:
         messages=[{
             "role": "user",
             "content": [
-                file_block,
+                *file_blocks,
                 {
                     "type": "text",
-                    "text": """Read this insurance carrier scope/estimate and extract ALL data into this exact JSON format. Return ONLY valid JSON:
+                    "text": """Read this insurance carrier scope/estimate and extract ALL data into this exact JSON format. Return ONLY valid JSON.
+
+CRITICAL: For each line item, capture any notes/descriptions that explain WHAT the item is for.
+Carriers sometimes use generic descriptions (e.g., "3-tab shingle") but include notes that reveal
+the actual purpose (e.g., "starter course" or "cap shingles"). These notes are essential.
 
 {
   "carrier": {
@@ -1046,7 +1056,8 @@ def extract_carrier_scope(client: anthropic.Anthropic, pdf_path: str) -> dict:
       "qty": 0,
       "unit": "SF/LF/SQ/EA",
       "unit_price": 0.00,
-      "xact_code": "Xactimate catalog code if visible (e.g., RFG 300S, RFG IWS, SFG GUTA). null if not visible"
+      "xact_code": "Xactimate catalog code if visible (e.g., RFG 300S, RFG IWS, SFG GUTA). null if not visible",
+      "notes": "Any per-item notes, descriptions, or clarifications the carrier included for this line item (e.g., 'includes material and labor for starter course', 'cap shingles', 'per elevation'). Empty string if none."
     }
   ],
   "carrier_arguments": [
@@ -1075,7 +1086,12 @@ Extract every line item. Use 0 for values not found."""
         for field in ("carrier_amount", "qty", "unit_price"):
             if ci.get(field) is None:
                 ci[field] = 0
+        # Ensure notes field exists (empty string if Claude omits it)
+        if ci.get("notes") is None:
+            ci["notes"] = ""
 
+    _cli_count = len(data.get("carrier_line_items", []))
+    print(f"[CARRIER EXTRACT] Extracted {_cli_count} carrier line items, carrier_rcv=${data.get('carrier_rcv', 0):,.2f}", flush=True)
     return data
 
 
@@ -1676,14 +1692,15 @@ def build_claim_config(
     meas = measurements.get("measurements", {})
     phase = "post-scope" if carrier_data else "pre-scope"
 
-    # Determine trades and O&P — siding/gutters are opt-in via estimate_request ONLY
+    # Determine trades and O&P — siding/gutters are opt-in via estimate_request
+    # O&P is VALIDATED later against actual line items (Phase 1 fix)
     _est_req = claim.get("estimate_request") or {}
     trades = ["roofing"]  # Always included
     if _est_req.get("siding"):
         trades.append("siding")
     if _est_req.get("gutters"):
         trades.append("gutters")
-    o_and_p = len(trades) >= 3
+    o_and_p = len(trades) >= 3  # Preliminary — validated after line items are built
 
     # Determine state for tax rate — try measurements first, then parse from claim address
     state = prop.get("state", "").upper()
@@ -1698,7 +1715,7 @@ def build_claim_config(
         else:
             state = "NY"
             print(f"[CONFIG] WARNING: Could not determine state — defaulting to NY")
-    _tax_rates = {"NY": 0.08, "PA": 0.0, "NJ": 0.06625}
+    _tax_rates = {"NY": 0.08, "PA": 0.0, "NJ": 0.06625, "CT": 0.0635, "MD": 0.06, "DE": 0.0}
     tax_rate = _tax_rates.get(state, 0.08)
     if state not in _tax_rates:
         print(f"[CONFIG] WARNING: No tax rate configured for state '{state}' — defaulting to 8%. Verify with Tom.")
@@ -1748,6 +1765,28 @@ def build_claim_config(
         print(f"[XACT ENRICH] {enriched_count}/{len(line_items)} items enriched, {price_corrected} prices corrected from registry")
     except Exception as e:
         print(f"[XACT ENRICH] Failed (non-fatal, line items retain original format): {e}")
+
+    # Enrich line items with jurisdiction-aware code citations (4-layer: code + requirement + argument + mfr specs)
+    try:
+        citation_count = enrich_line_items_with_citations(line_items, state)
+        warranty_void_count = sum(1 for li in line_items if li.get("code_citation", {}).get("has_warranty_void"))
+        print(f"[CODE COMPLIANCE] {citation_count}/{len(line_items)} items carry code citations, {warranty_void_count} have manufacturer warranty VOID warnings")
+    except Exception as e:
+        print(f"[CODE COMPLIANCE] Failed (non-fatal): {e}")
+
+    # VALIDATE O&P against actual line item trades (not just estimate_request checkboxes)
+    # Tom confirmed: debris/dumpster/general is NOT a trade. Only ROOFING, SIDING, GUTTERS count.
+    _OAP_TRADE_CATEGORIES = {"ROOFING", "SIDING", "GUTTERS"}
+    actual_trades = set()
+    for li in line_items:
+        cat = (li.get("category") or li.get("trade") or "").upper()
+        if cat in _OAP_TRADE_CATEGORIES and li.get("qty", 0) > 0:
+            actual_trades.add(cat)
+    actual_o_and_p = len(actual_trades) >= 3
+    if o_and_p != actual_o_and_p:
+        print(f"[O&P FIX] estimate_request said O&P={o_and_p} but actual trades are {actual_trades} → O&P={actual_o_and_p}")
+        o_and_p = actual_o_and_p
+        trades = list(actual_trades) if actual_trades else trades
 
     # Build deterministic code violations based on state + scope
     deterministic_violations = _build_code_violations(state, line_items, trades)
@@ -2032,65 +2071,65 @@ def build_claim_config(
             config.setdefault("forensic_findings", {}).setdefault("key_arguments", []).append(reasoning)
 
     # Cross-reference carrier line items against USARM line items using XactRegistry
+    _has_carrier = bool(carrier_data)
+    _has_cli = bool(config.get("carrier", {}).get("carrier_line_items"))
+    print(f"[SCOPE DEBUG] Guard check: carrier_data={_has_carrier}, carrier_line_items={_has_cli}, carrier keys={list(config.get('carrier', {}).keys())[:5]}", flush=True)
     if carrier_data and config.get("carrier", {}).get("carrier_line_items"):
         try:
             registry = _get_registry(state, city=config.get("property", {}).get("city"))
             carrier_items = config["carrier"]["carrier_line_items"]
             usarm_items = config.get("line_items", [])
-            matched = registry.pre_match_scope_comparison(carrier_items, usarm_items)
-            config["carrier"]["carrier_line_items"] = matched
-            code_matches = sum(1 for m in matched if m.get("matched_by") == "code")
-            fuzzy_matches = sum(1 for m in matched if m.get("matched_by") == "fuzzy")
-            inferred = sum(1 for m in matched if m.get("matched_by") == "code_inferred")
-            missing = sum(1 for m in matched if m.get("matched_by") == "missing")
-            print(f"[SCOPE MATCH] code={code_matches} inferred={inferred} fuzzy={fuzzy_matches} missing={missing} total={len(matched)}")
+            # Build measurements dict for ground-truth validation in scope comparison
+            _meas_inner = config.get("measurements", {})
+            _pens_inner = measurements.get("penetrations", {}) if measurements else {}
+            scope_meas = {
+                "remove_sq": sum(s.get("roof_area_sq", 0) for s in config.get("structures", [{}])),
+                "install_sq": sum(s.get("roof_area_sq", 0) for s in config.get("structures", [{}])),
+                "ridge_lf": _meas_inner.get("ridge", 0),
+                "eave_lf": _meas_inner.get("eave", 0),
+                "rake_lf": _meas_inner.get("rake", 0),
+                "valley_lf": _meas_inner.get("valley", 0),
+                "step_lf": _meas_inner.get("step_flashing", 0),
+                "gutter_lf": _meas_inner.get("gutter", 0),
+                "penetrations": _pens_inner.get("pipes", 0),
+                "chimneys": _pens_inner.get("chimneys", 0),
+                "pitch": 4,
+                "stories": measurements.get("stories", 1) if measurements else 1,
+            }
+            # Get shingle_type from photo analysis (ground truth, NOT carrier assumption)
+            shingle_type = "laminated"  # default
+            structs = config.get("structures", [{}])
+            if structs:
+                st = (structs[0].get("shingle_type") or "").lower()
+                if "3-tab" in st or "three-tab" in st or "3 tab" in st:
+                    shingle_type = "3tab"
 
-            # Find IRC-required items the carrier completely omitted
-            # Note: config["measurements"] is the INNER dict (ridge, eave, etc. at top level)
-            # Penetrations and stories come from the original measurements param still in scope
-            try:
-                _meas = config.get("measurements", {})
-                _pens = measurements.get("penetrations", {}) if measurements else {}
-                meas_for_missing = {
-                    "remove_sq": sum(s.get("roof_area_sq", 0) for s in config.get("structures", [{}])),
-                    "install_sq": sum(s.get("roof_area_sq", 0) for s in config.get("structures", [{}])),
-                    "ridge_lf": _meas.get("ridge", 0),
-                    "eave_lf": _meas.get("eave", 0),
-                    "rake_lf": _meas.get("rake", 0),
-                    "valley_lf": _meas.get("valley", 0),
-                    "step_lf": _meas.get("step_flashing", 0),
-                    "penetrations": _pens.get("pipes", 0),
-                    "chimneys": _pens.get("chimneys", 0),
-                    "pitch": 4,
-                    "stories": measurements.get("stories", 1) if measurements else 1,
-                }
-                missing_items = registry.find_missing_items(carrier_items, meas_for_missing)
-                if missing_items:
-                    # Append missing IRC items that pre_match didn't already flag
-                    existing_descs = {_clean_desc(r.get("usarm_desc", "")) for r in matched if r.get("matched_by") == "missing"}
-                    new_missing = 0
-                    for mi in missing_items:
-                        if _clean_desc(mi["description"]) not in existing_descs:
-                            matched.append({
-                                "item": mi["description"],
-                                "carrier_desc": "NOT INCLUDED",
-                                "carrier_amount": 0,
-                                "usarm_desc": mi["description"],
-                                "usarm_amount": mi["estimated_amount"],
-                                "matched_by": "missing_irc",
-                                "supplement_argument": mi.get("supplement_argument", ""),
-                                "note": f"NOT INCLUDED — required per IRC {mi['irc_code']}. {mi.get('supplement_argument', '')}" if mi.get("irc_code") else f"NOT INCLUDED — IRC required. {mi.get('supplement_argument', '')}",
-                            })
-                            new_missing += 1
-                    if new_missing:
-                        config["carrier"]["carrier_line_items"] = matched
-                        print(f"[SCOPE MATCH] Added {new_missing} IRC-required items carrier omitted (total missing: {new_missing + sum(1 for m in matched if m.get('matched_by') == 'missing')})")
-            except Exception as e2:
-                print(f"[SCOPE MATCH] find_missing_items failed (non-fatal): {e2}")
+            # Debug: verify measurements are populated before scope comparison
+            _meas_vals = {k: v for k, v in scope_meas.items() if v}
+            print(f"[SCOPE DEBUG] scope_meas keys with values: {list(_meas_vals.keys())}", flush=True)
+            print(f"[SCOPE DEBUG] carrier_items={len(carrier_items)}, usarm_items={len(usarm_items)}, state={state}, shingle={shingle_type}", flush=True)
+
+            matched = registry.pre_match_scope_comparison(
+                carrier_items, usarm_items,
+                measurements=scope_meas,
+                state=state,
+                config_hints={"shingle_type": shingle_type}
+            )
+            config["carrier"]["carrier_line_items"] = matched
+            # Log match statistics
+            by_method = {}
+            for m in matched:
+                method = m.get("matched_by", "unknown")
+                by_method[method] = by_method.get(method, 0) + 1
+            stats_str = " ".join(f"{k}={v}" for k, v in sorted(by_method.items()))
+            print(f"[SCOPE MATCH] EagleView-first: {stats_str} total={len(matched)}", flush=True)
+            # Missing items now detected naturally by checklist walk — no separate find_missing_items needed
 
         except Exception as e:
-            print(f"[SCOPE MATCH] XactRegistry matching failed: {e}")
-            traceback.print_exc()
+            print(f"[SCOPE MATCH] XactRegistry matching failed: {e}", flush=True)
+            import traceback as _tb
+            _tb.print_exc()
+            sys.stdout.flush()
 
     return config
 
@@ -2653,6 +2692,93 @@ def build_multi_structure_line_items(measurements: dict, photo_analysis: dict, s
     return _sort_line_items(all_items)
 
 
+def _extract_damage_triggers(photo_analysis: dict) -> dict:
+    """Extract optional line item triggers from photo analysis findings.
+
+    Co-work's damage→scope bridge: photos DRIVE which optional items appear.
+    Reads photo_tags for material/trade combos that imply penetrations,
+    reads key_findings for explicit mentions of chimneys, skylights, pipes, copper.
+
+    Returns dict: {"chimneys": int, "skylights": int, "pipes": int,
+                    "copper_bay_sf": float, "vents": int, "satellite_dishes": int, ...}
+    """
+    triggers = {}
+    photo_tags = photo_analysis.get("photo_tags", {})
+    key_findings = photo_analysis.get("key_findings", [])
+    damage_summary = (photo_analysis.get("damage_summary") or "").lower()
+
+    # --- Scan photo_tags for penetration/component evidence ---
+    _COMPONENT_KEYWORDS = {
+        "chimney": "chimneys",
+        "skylight": "skylights",
+        "pipe": "pipes",
+        "pipe boot": "pipes",
+        "pipe jack": "pipes",
+        "vent": "vents",
+        "exhaust vent": "vents",
+        "satellite": "satellite_dishes",
+        "copper": "copper_detected",
+        "bay window": "bay_windows",
+        "dormer": "dormers",
+        "gutter": "gutter_damage",
+        "downspout": "gutter_damage",
+    }
+
+    for tag_key, tag_val in photo_tags.items():
+        if not isinstance(tag_val, dict):
+            continue
+        # Check material field, trade field, and damage_type for component keywords
+        tag_text = " ".join([
+            str(tag_val.get("material", "")),
+            str(tag_val.get("trade", "")),
+            str(tag_val.get("damage_type", "")),
+            str(tag_val.get("component", "")),
+        ]).lower()
+
+        for keyword, trigger_key in _COMPONENT_KEYWORDS.items():
+            if keyword in tag_text:
+                triggers[trigger_key] = triggers.get(trigger_key, 0) + 1
+
+    # --- Scan key_findings for explicit component mentions ---
+    findings_text = " ".join(key_findings).lower() if key_findings else ""
+    combined_text = findings_text + " " + damage_summary
+
+    _FINDING_PATTERNS = {
+        "chimney": "chimneys",
+        "skylight": "skylights",
+        "pipe boot": "pipes",
+        "pipe jack": "pipes",
+        "plumbing vent": "pipes",
+        "exhaust vent": "vents",
+        "ridge vent": "ridge_vent",
+        "copper": "copper_detected",
+        "bay window": "bay_windows",
+        "dormer": "dormers",
+    }
+
+    for pattern, trigger_key in _FINDING_PATTERNS.items():
+        if pattern in combined_text:
+            # Don't double-count — set to max(1, existing)
+            triggers[trigger_key] = max(triggers.get(trigger_key, 0), 1)
+
+    # --- Deduplicate: photos might show same chimney from multiple angles ---
+    # Cap counts at reasonable maximums (3+ chimneys on a residential home = unlikely)
+    _MAX_COUNTS = {"chimneys": 3, "skylights": 4, "pipes": 8, "vents": 6,
+                   "satellite_dishes": 2, "bay_windows": 3, "dormers": 4}
+    for key, max_val in _MAX_COUNTS.items():
+        if key in triggers:
+            # Multiple photos of same component ≠ multiple components
+            # Use sqrt heuristic: 4 photos → 2 components, 9 photos → 3 components
+            import math
+            raw = triggers[key]
+            triggers[key] = min(max_val, max(1, int(math.sqrt(raw))))
+
+    if triggers:
+        print(f"[DAMAGE TRIGGERS] Photo-detected components: {triggers}")
+
+    return triggers
+
+
 def build_line_items(measurements: dict, photo_analysis: dict, state: str, user_notes: str = "", estimate_request: dict = None, zip_code: str = "", city: str = "") -> list:
     """Build Xactimate line items from measurements, analysis, and user context."""
     # Use location-specific pricing from Alfonso's all-markets.json
@@ -2670,6 +2796,16 @@ def build_line_items(measurements: dict, photo_analysis: dict, state: str, user_
     penetrations = measurements.get("penetrations", {})
     facets = struct.get("facets", 0)
     style = struct.get("style", "combination")
+
+    # DAMAGE→SCOPE BRIDGE: Merge photo-detected components with measurement penetrations
+    # Photos may catch chimneys/skylights/pipes that EagleView didn't report
+    damage_triggers = _extract_damage_triggers(photo_analysis)
+    for comp_key in ("pipes", "vents", "skylights", "chimneys"):
+        meas_count = penetrations.get(comp_key, 0)
+        photo_count = damage_triggers.get(comp_key, 0)
+        if meas_count == 0 and photo_count > 0:
+            penetrations[comp_key] = photo_count
+            print(f"[DAMAGE BRIDGE] {comp_key}: EagleView=0, photos={photo_count} → using photo evidence")
 
     material = _detect_roof_material(photo_analysis, user_notes, estimate_request=estimate_request)
 
@@ -2709,8 +2845,13 @@ def build_line_items(measurements: dict, photo_analysis: dict, state: str, user_
     items = []
 
     # ===================== ICE & WATER BARRIER (calculate first — needed for underlayment) =====================
-    # 2 courses at eaves (6 ft width) + 1 course in valleys (3 ft width) per IRC R905.2.7.1
-    iw_sf = (eave * 6) + (valley * 3)
+    # State-specific I&W formulas (confirmed by Tom):
+    #   NY/NJ/CT/MA (cold climate): 2 courses at eaves (6ft) + 1 course in valleys (3ft)
+    #   PA/MD/DE (moderate climate): 1 course at eaves (3ft) + full valley coverage (6ft)
+    if state.upper() in ("PA", "MD", "DE"):
+        iw_sf = (eave * 3) + (valley * 6)  # 1 course from eave, full valley coverage
+    else:
+        iw_sf = (eave * 6) + (valley * 3)  # 2 courses from eave (NY/NJ/CT default)
 
     # ===================== UNDERLAYMENT =====================
     # Felt/synthetic covers the REMAINDER of the roof deck NOT covered by ice & water barrier.
@@ -2722,8 +2863,16 @@ def build_line_items(measurements: dict, photo_analysis: dict, state: str, user_
         felt_sq = area_sq  # No I&W = felt covers entire deck
 
     # ===================== WASTE FACTOR =====================
-    # Remove = exact area (0% waste). Install = area + waste (10% gable, 15% hip).
-    waste_factor = 1.15 if "hip" in style.lower() else 1.10
+    # Remove = exact area (0% waste). Install = area + waste.
+    # Complexity-based: facet count drives waste (Co-work methodology).
+    if facets >= 20:        # Complex roof (20+ facets)
+        waste_factor = 1.15
+    elif facets >= 10:      # Moderate complexity
+        waste_factor = 1.12
+    elif "hip" in style.lower():
+        waste_factor = 1.12  # Hip roofs without high facet count
+    else:
+        waste_factor = 1.10  # Simple gable
     install_sq = round(area_sq * waste_factor, 2)
 
     # ===================== PRIMARY ROOFING MATERIAL =====================
@@ -3596,9 +3745,12 @@ async def process_claim(claim_id: str):
         async def _get_carrier_data():
             if not scope_paths:
                 return None
-            resolved = resolve_eml_to_document(scope_paths[-1], source_dir)
-            print(f"[PROCESS] Extracting carrier scope ({len(scope_paths)} file(s))...")
-            return await asyncio.to_thread(extract_carrier_scope, claude, resolved)
+            # Send ALL scope files to extraction — line items may be split across PDFs
+            resolved_paths = [resolve_eml_to_document(sp, source_dir) for sp in scope_paths]
+            print(f"[PROCESS] Extracting carrier scope ({len(resolved_paths)} file(s))...", flush=True)
+            primary = resolved_paths[0]
+            extras = resolved_paths[1:] if len(resolved_paths) > 1 else None
+            return await asyncio.to_thread(extract_carrier_scope, claude, primary, extras)
 
         async def _get_weather_data():
             if not weather_paths:
@@ -3647,7 +3799,8 @@ async def process_claim(claim_id: str):
                 print("[WARN] Property Owner Report detected — request full EagleView with measurements")
 
         # 9. Build claim config
-        print(f"[PROCESS] Building claim config...")
+        _cd_cli = len(carrier_data.get("carrier_line_items", [])) if carrier_data else 0
+        print(f"[PROCESS] Building claim config... carrier_data has {_cd_cli} line items", flush=True)
         config = build_claim_config(
             claim, measurements, photo_analysis, carrier_data, photo_filenames, weather_data, company_profile,
             user_notes=claim.get("user_notes"),
@@ -3695,6 +3848,30 @@ async def process_claim(claim_id: str):
                     print(f"[SCOPE REVIEW] Injected {injected} user-added line items")
             except Exception as e:
                 print(f"[SCOPE REVIEW] user_added injection failed (non-fatal): {e}")
+
+        # Apply line_item_feedback corrections (learning loop — user corrections survive reprocess)
+        if sb:
+            try:
+                feedback = sb.table("line_item_feedback") \
+                    .select("original_description,corrected_qty,corrected_unit_price,status") \
+                    .eq("claim_id", claim_id) \
+                    .eq("status", "corrected") \
+                    .execute()
+                corrections_applied = 0
+                for fb in (feedback.data or []):
+                    orig_desc = fb.get("original_description", "")
+                    for li in config.get("line_items", []):
+                        if li.get("description") == orig_desc:
+                            if fb.get("corrected_qty") is not None:
+                                li["qty"] = float(fb["corrected_qty"])
+                            if fb.get("corrected_unit_price") is not None:
+                                li["unit_price"] = float(fb["corrected_unit_price"])
+                            corrections_applied += 1
+                            break
+                if corrections_applied:
+                    print(f"[FEEDBACK LOOP] Applied {corrections_applied} line item corrections from user feedback")
+            except Exception as e:
+                print(f"[FEEDBACK LOOP] line_item_feedback query failed (non-fatal): {e}")
 
         # Flag measurement extraction failures for downstream warning
         meas_structs = measurements.get("structures", [{}])
@@ -4229,6 +4406,49 @@ async def process_claim(claim_id: str):
             except Exception as e:
                 print(f"[DB] Revision columns not available yet (non-fatal): {e}", flush=True)
 
+        # Track winning arguments for compound learning (which arguments recovered money)
+        if revision_data and diff_result.get("is_win") and sb:
+            try:
+                carrier_name = config.get("carrier", {}).get("name", "")
+                region = f"{config.get('property', {}).get('city', '')}, {config.get('property', {}).get('state', '')}".strip(", ")
+                winning_args = []
+                # Diff old carrier items vs new to find which were approved
+                old_items = previous_carrier_data.get("carrier_line_items", []) if previous_carrier_data else []
+                new_items = carrier_data.get("carrier_line_items", []) if carrier_data else []
+                old_by_desc = {_clean_desc(ci.get("carrier_desc", "") or ci.get("item", "")): ci for ci in old_items}
+                for ni in new_items:
+                    ni_desc = _clean_desc(ni.get("carrier_desc", "") or ni.get("item", ""))
+                    ni_amt = ni.get("carrier_amount", 0) or 0
+                    old_ci = old_by_desc.get(ni_desc)
+                    old_amt = (old_ci.get("carrier_amount", 0) or 0) if old_ci else 0
+                    recovered = ni_amt - old_amt
+                    if recovered > 10:  # Meaningful increase
+                        # Find matching USARM item to get the argument used
+                        matched_usarm = ni.get("usarm_desc", "")
+                        supp_arg = ni.get("supplement_argument", "")
+                        code_cit = ni.get("code_citation", {})
+                        winning_args.append({
+                            "claim_id": claim_id,
+                            "carrier": carrier_name,
+                            "line_item": ni.get("carrier_desc") or ni.get("item", ""),
+                            "usarm_item": matched_usarm,
+                            "argument_used": supp_arg,
+                            "code_citation": code_cit.get("code_tag", "") if code_cit else "",
+                            "original_carrier_amount": round(old_amt, 2),
+                            "approved_amount": round(ni_amt, 2),
+                            "recovered": round(recovered, 2),
+                            "region": region,
+                        })
+                if winning_args:
+                    try:
+                        sb.table("winning_arguments").insert(winning_args).execute()
+                        print(f"[WIN TRACKING] Captured {len(winning_args)} winning arguments (${sum(w['recovered'] for w in winning_args):,.2f} total recovered)")
+                    except Exception as e:
+                        # Table may not exist yet — log for creation
+                        print(f"[WIN TRACKING] winning_arguments table write failed (may need migration): {e}")
+            except Exception as e:
+                print(f"[WIN TRACKING] Failed to capture winning arguments (non-fatal): {e}")
+
         print(f"[PROCESS] Claim complete: {claim['address']} — {len(pdfs)} PDFs ready")
 
         # 12c. Facebook Conversions API — Lead event on claim completion
@@ -4475,9 +4695,13 @@ def _write_to_warehouse(sb, claim_id: str, config: dict, photo_analysis: dict,
     photo_count = write_photos(sb, claim_id, photo_analysis, photo_integrity, photo_filenames=photo_filenames)
     print(f"[WAREHOUSE] Wrote {photo_count} photos")
 
-    # 2. USARM line items
+    # 2. USARM line items (filter zero-qty items — they produce $0 rows that corrupt estimates)
+    usarm_items_filtered = [li for li in config.get("line_items", []) if li.get("qty", 0) > 0]
+    zero_qty_removed = len(config.get("line_items", [])) - len(usarm_items_filtered)
+    if zero_qty_removed:
+        print(f"[WAREHOUSE] Filtered {zero_qty_removed} zero-qty line items before write")
     usarm_count = write_line_items(
-        sb, claim_id, config.get("line_items", []),
+        sb, claim_id, usarm_items_filtered,
         source="usarm", price_list=price_list, region=region,
     )
     print(f"[WAREHOUSE] Wrote {usarm_count} USARM line items")

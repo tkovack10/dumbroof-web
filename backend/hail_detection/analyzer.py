@@ -28,7 +28,7 @@ from hail_detection.prompts import (
     CHALK_CHECK_PROMPT,
 )
 
-MODEL = "claude-sonnet-4-20250514"
+MODEL = "claude-opus-4-6"
 MAX_TOKENS = 4096
 
 

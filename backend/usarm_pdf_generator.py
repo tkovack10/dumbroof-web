@@ -2372,9 +2372,14 @@ def build_xactimate_estimate(config):
 
     has_multiple_structures = any(k != "" for k in structure_groups)
 
+    _CAT_ORDER = {"ROOFING": 0, "SIDING": 1, "GUTTERS": 2, "INTERIOR": 3, "GENERAL": 4, "DEBRIS": 5}
     for struct_name, struct_items in structure_groups.items():
-        # Sort items within structure by canonical build order
-        struct_items.sort(key=lambda x: canonical_sort_key(x.get("description", "")))
+        # Sort items within structure: by category FIRST (all roofing together, all siding together),
+        # then by canonical build order within each category. Prevents interleaved subtotals.
+        struct_items.sort(key=lambda x: (
+            _CAT_ORDER.get(x.get("category", "").upper(), 99),
+            canonical_sort_key(x.get("description", ""))
+        ))
         struct_total = sum(round(it["qty"] * it["unit_price"], 2) for it in struct_items)
 
         # Structure header (only for multi-structure claims)
@@ -2573,210 +2578,73 @@ def build_supplement_report(config):
     # For each USARM line item, find the best matching carrier item.
     # Unmatched carrier items are appended at the end.
 
-    carrier_items = carrier.get("carrier_line_items", [])
+    # Use pre-computed comparison rows from pre_match_scope_comparison()
+    # These already have carrier matching, intent detection, qty variance, and code citations done.
+    comparison_rows = carrier.get("carrier_line_items", [])
     variance_rows = ""
-    used_carrier_indices = set()
     row_num = 0
 
-    # Build reverse map from pre_match: usarm_desc → list of carrier items matched to it
-    _usarm_to_carrier = {}
-    for ci_idx, ci in enumerate(carrier_items):
-        ud = ci.get("usarm_desc", "")
-        if ud:
-            _usarm_to_carrier.setdefault(ud, []).append((ci_idx, ci))
-
-    # Helper: fuzzy find carrier match for a USARM line item description
-    _stop = {'the', 'a', 'an', 'for', 'of', 'and', 'or', 'w/', 'w/out', '-', 'to', 'per', 'sq', 'lf'}
-    _mat_only = {'copper', 'aluminum', 'slate', 'cedar', 'vinyl', 'metal', 'wood', 'shake', 'tile'}
-    # Roofing keywords — if both descriptions are remove/tearoff + contain any of these, they match
-    _roofing_kw = {'shingle', 'shingles', 'comp', 'composition', 'laminated', 'rfg', 'roofing',
-                   'slate', 'tile', 'shake', 'metal', 'bitumen', '3-tab', '3 tab'}
-    _trade_skip_kw = {"steep", "high", "felt", "starter", "ice", "water", "drip", "flash", "ridge",
-                      "vent", "gutter", "dumpster", "nail", "hook", "labor", "charge", "guard", "cap"}
-    _qual_re = re.compile(
-        r'\s*[-\u2013\u2014]\s*(?:'
-        r'\d+["\u2033]?\s*to\s*\d+["\u2033]?\s*tall'
-        r'|w/(?:out)?\s+felt|premium\s+grade|high\s+grade|standard\s+grade'
-        r'|red|gray|grey|black|green|brown|\d+\s*(?:lb|oz|mil|mm)\b\.?)',
-        re.IGNORECASE)
-
-    def _clean_for_match(desc):
-        d = desc.lower().strip()
-        d = re.sub(r'^(r&r|remove|tear\s*off|tear\s*out|install|replace|r/r)\s+', '', d).strip()
-        d = _qual_re.sub('', d).strip()
-        d = re.sub(r'\s*\(revised[^)]*\)', '', d, flags=re.I).strip()
-        d = re.sub(r'\s*\(pre-appraisal[^)]*\)', '', d, flags=re.I).strip()
-        return d
-
-    _remove_re = re.compile(r'\b(?:remove|tear\s*off|tear\s*out|tear-out|detach)\b', re.IGNORECASE)
-
-    def _is_remove_desc(desc):
-        return bool(_remove_re.search(desc))
-
-    def _has_roofing_kw(desc):
-        dl = desc.lower()
-        return any(kw in dl for kw in _roofing_kw)
-
-    def _find_carrier_match(usarm_desc):
-        """Find the best carrier item matching this USARM description.
-        Action-aware: remove items prefer remove carriers, install prefers install.
-        Trade-aware: both remove + roofing keywords = same trade, always match."""
-        ud_clean = _clean_for_match(usarm_desc)
-        ud_words = set(ud_clean.split()) - _stop
-        usarm_is_remove = _is_remove_desc(usarm_desc)
-        usarm_is_roofing = _has_roofing_kw(usarm_desc)
-
-        best_idx = -1
-        best_score = 0.0
-        for ci_idx, ci in enumerate(carrier_items):
-            if ci_idx in used_carrier_indices:
-                continue
-            cd_raw = (ci.get("carrier_desc", "") or ci.get("item", ""))
-            cd_clean = _clean_for_match(cd_raw)
-            carrier_is_remove = _is_remove_desc(cd_raw)
-
-            # Trade match: both remove + both roofing = same line item
-            # (e.g., "Remove Laminated comp" ↔ "Tear off 3-tab shingles")
-            if usarm_is_remove and carrier_is_remove and usarm_is_roofing and _has_roofing_kw(cd_raw):
-                if not (set(ud_clean.split()) & _trade_skip_kw) and not (set(cd_clean.split()) & _trade_skip_kw):
-                    return ci_idx, ci
-            # Same for install roofing — only primary material (not nails, hooks, accessories)
-            if not usarm_is_remove and not carrier_is_remove and usarm_is_roofing and _has_roofing_kw(cd_raw):
-                if not (set(ud_clean.split()) & _trade_skip_kw) and not (set(cd_clean.split()) & _trade_skip_kw):
-                    return ci_idx, ci
-
-            # Action mismatch penalty: remove↔install gets a -0.3 penalty
-            action_penalty = 0.0
-            if usarm_is_remove != carrier_is_remove:
-                action_penalty = -0.3
-
-            # Substring match (only if actions align)
-            if ud_clean in cd_clean or cd_clean in ud_clean:
-                if action_penalty == 0:
-                    return ci_idx, ci
-                score = 0.8 + action_penalty
-                if score > best_score:
-                    best_score = score
-                    best_idx = ci_idx
-                continue
-
-            # Word overlap + similarity
-            cd_words = set(cd_clean.split()) - _stop
-            overlap = ud_words & cd_words
-            non_material = overlap - _mat_only
-            score = 0.0
-            if len(overlap) >= 3 or (len(overlap) >= 2 and len(ud_words) <= 4):
-                score = 0.6
-            else:
-                score = SequenceMatcher(None, ud_clean, cd_clean).ratio()
-            # Reject if only material keywords overlap
-            if overlap and not non_material and score < 0.70:
-                continue
-            score += action_penalty
-            if score > best_score and score >= 0.50:
-                best_score = score
-                best_idx = ci_idx
-        if best_idx >= 0:
-            return best_idx, carrier_items[best_idx]
-        return -1, None
-
-    # Pass 1: Iterate USARM line items in estimate build order
-    for li in line_items:
-        usarm_desc = li.get("description", "")
-        usarm_qty = li.get("qty", "")
-        usarm_unit = li.get("unit", "")
-        usarm_amt = round(float(usarm_qty or 0) * float(li.get("unit_price", 0)), 2)
-
-        # Find matching carrier item
-        # First check pre_match reverse map
-        carrier_match = None
-        carrier_idx = -1
-        if usarm_desc in _usarm_to_carrier:
-            for ci_idx, ci in _usarm_to_carrier[usarm_desc]:
-                if ci_idx not in used_carrier_indices:
-                    carrier_match = ci
-                    carrier_idx = ci_idx
-                    break
-
-        # Fallback: fuzzy match carrier items directly
-        if not carrier_match:
-            carrier_idx, carrier_match = _find_carrier_match(usarm_desc)
-
-        if carrier_match and carrier_idx >= 0:
-            used_carrier_indices.add(carrier_idx)
-
+    for row in comparison_rows:
         row_num += 1
+        matched_by = row.get("matched_by", "")
+        status = row.get("status", "")
 
-        # Format contractor column (our estimate — always present)
-        contractor_col = usarm_desc
-        if usarm_qty and usarm_unit:
-            contractor_col += f" ({usarm_qty} {usarm_unit})"
+        # Item description (checklist or USARM)
+        item_desc = row.get("checklist_desc") or row.get("usarm_desc", "")
+        ev_qty = row.get("ev_qty", "")
+        ev_unit = row.get("ev_unit", "")
 
-        # Format carrier column
-        if carrier_match:
-            carrier_desc = carrier_match.get("carrier_desc", "") or carrier_match.get("item", "")
-            carrier_amt = carrier_match.get("carrier_amount", 0) or 0
-            carrier_qty_str = carrier_match.get("carrier_qty", "")
-            carrier_unit_str = carrier_match.get("carrier_unit", "")
-            carrier_col = carrier_desc if carrier_desc else "&mdash;"
-            if carrier_qty_str and carrier_unit_str:
-                carrier_col += f" ({carrier_qty_str} {carrier_unit_str})"
+        # Contractor column (our estimate)
+        contractor_col = item_desc
+        usarm_amt = row.get("usarm_amount", 0)
+        if ev_qty and ev_unit:
+            contractor_col += f" ({ev_qty} {ev_unit})"
 
-            # Variance note
-            note = carrier_match.get("note", "")
-            if not note:
-                diff = usarm_amt - float(carrier_amt)
-                if abs(diff) < 0.50:
-                    note = "Amounts match"
-                elif diff > 0:
-                    note = f"Underpaid ${diff:,.2f}"
-                    supp = li.get("supplement_argument", "")
-                    if supp:
-                        note += f". {supp}"
-                else:
-                    note = f"Overpaid ${abs(diff):,.2f}"
-            var_class = ""
-        else:
+        # Carrier column
+        carrier_desc = row.get("carrier_desc", "")
+        carrier_amt = row.get("carrier_amount", 0) or 0
+        carrier_qty = row.get("carrier_qty", "")
+        carrier_unit = row.get("carrier_unit", "")
+
+        if matched_by in ("missing", "") and (not carrier_desc or carrier_desc == "NOT INCLUDED"):
             carrier_col = "&mdash;"
-            note = "NOT INCLUDED by carrier"
-            supp = li.get("supplement_argument", "")
-            irc = li.get("irc_code", "")
-            if irc:
-                note += f" — required per IRC {irc}"
-            if supp:
-                note += f". {supp}"
+        else:
+            carrier_col = carrier_desc if carrier_desc else "&mdash;"
+            if carrier_qty and carrier_unit:
+                carrier_col += f" ({carrier_qty} {carrier_unit})"
+
+        # Variance note
+        note = row.get("note", "")
+        trick = row.get("trick_flag", "")
+        if trick and trick not in note:
+            note = f"{note}. {trick}" if note else trick
+
+        # Status-based styling
+        if status == "missing":
             var_class = ' class="var-pos"'
+            if not note:
+                note = "NOT INCLUDED by carrier"
+                code_cit = row.get("code_citation")
+                irc = row.get("irc_code", "")
+                if code_cit and isinstance(code_cit, dict):
+                    note += f" — required per {code_cit.get('code_tag', '')}"
+                elif irc:
+                    note += f" — required per {irc}"
+        elif status == "under":
+            var_class = ' class="var-pos"'
+        elif status == "carrier_only":
+            var_class = ''
+            contractor_col = "&mdash;"
+            note = row.get("note", "Carrier-only item")
+        else:
+            var_class = ""
 
         variance_rows += f"""<tr>
             <td>{row_num}</td>
-            <td><strong>{usarm_desc}</strong></td>
+            <td><strong>{item_desc}</strong></td>
             <td>{carrier_col}</td>
             <td>{contractor_col}</td>
             <td{var_class}>{note}</td>
-        </tr>\n"""
-
-    # Pass 2: Append unmatched carrier items (carrier has items we don't)
-    for ci_idx, ci in enumerate(carrier_items):
-        if ci_idx in used_carrier_indices:
-            continue
-        carrier_desc = ci.get("carrier_desc", "") or ci.get("item", "")
-        if not carrier_desc or str(carrier_desc).upper() in ("NOT INCLUDED", "OMITTED"):
-            continue  # skip pre_match "NOT INCLUDED" appended items
-        carrier_amt = ci.get("carrier_amount", "")
-        carrier_qty_str = ci.get("carrier_qty", "")
-        carrier_unit_str = ci.get("carrier_unit", "")
-        carrier_col = carrier_desc
-        if carrier_qty_str and carrier_unit_str:
-            carrier_col += f" ({carrier_qty_str} {carrier_unit_str})"
-
-        row_num += 1
-        item_name = ci.get("item", carrier_desc)
-        variance_rows += f"""<tr>
-            <td>{row_num}</td>
-            <td><strong>{item_name}</strong></td>
-            <td>{carrier_col}</td>
-            <td>&mdash;</td>
-            <td>Carrier-only item (no USARM equivalent)</td>
         </tr>\n"""
 
     # Code violations section (below comparison table)

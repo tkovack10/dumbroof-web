@@ -253,6 +253,38 @@ def _score_code_triggers(config: dict) -> CodeTriggerFactor:
     if len(code_violations) > ct.other_code_violations:
         ct.other_code_violations = min(5, len(code_violations))
 
+    # BOOST: Structured code citations from code_compliance engine (Phase 2B)
+    # Each line item with a code_citation is a guaranteed code trigger
+    items_with_citation = 0
+    warranty_void_count = 0
+    for li in config.get("line_items", []):
+        citation = li.get("code_citation")
+        if citation:
+            items_with_citation += 1
+            if citation.get("has_warranty_void"):
+                warranty_void_count += 1
+
+    if items_with_citation > 0:
+        # Boost I&W if we have structured citation for it
+        if ct.ice_water_shield < 3:
+            for li in config.get("line_items", []):
+                cit = li.get("code_citation", {})
+                if cit and "905.1.2" in cit.get("section", ""):
+                    ct.ice_water_shield = 3
+                    break
+
+        # Boost drip edge if we have structured citation
+        if ct.drip_edge < 2:
+            for li in config.get("line_items", []):
+                cit = li.get("code_citation", {})
+                if cit and "905.2.8.5" in cit.get("section", ""):
+                    ct.drip_edge = 2
+                    break
+
+        # Manufacturer warranty VOID = strong supplement argument (+1 per VOID, max 3)
+        warranty_bonus = min(3, warranty_void_count)
+        ct.other_code_violations = min(5, ct.other_code_violations + warranty_bonus)
+
     return ct
 
 

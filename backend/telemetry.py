@@ -58,7 +58,7 @@ def call_claude_logged(
 
     Drop-in replacement for _call_claude_with_retry that also logs to Supabase.
     """
-    model = kwargs.get("model", "claude-sonnet-4-6")
+    model = kwargs.get("model", "claude-opus-4-6")
     start_ms = time.time() * 1000
     last_error = None
 
@@ -220,14 +220,18 @@ def write_line_items(sb, claim_id: str, items: list, source: str = "usarm",
         return 0
 
     rows = []
-    for item in items:
+    for idx, item in enumerate(items):
+        # Carrier items use "carrier_desc"/"item" fields, USARM uses "description"
+        desc = (item.get("description") or item.get("carrier_desc") or item.get("item") or "")[:500]
+        qty = item.get("qty", 0)
+        unit_price = item.get("unit_price", 0)
         row = {
             "claim_id": claim_id,
             "category": item.get("category", "GENERAL"),
-            "description": item.get("description", "")[:500],
-            "qty": item.get("qty", 0),
+            "description": desc,
+            "qty": qty,
             "unit": item.get("unit", "EA"),
-            "unit_price": item.get("unit_price", 0),
+            "unit_price": unit_price,
             "xactimate_code": item.get("code") or item.get("xact_code"),
             "trade": item.get("trade"),
             "source": source,

@@ -18,7 +18,7 @@ from damage_scoring.prompts import (
     DOCUMENTATION_QUALITY_PROMPT,
 )
 
-MODEL = "claude-sonnet-4-20250514"
+MODEL = "claude-opus-4-6"
 MAX_TOKENS = 4096
 
 
