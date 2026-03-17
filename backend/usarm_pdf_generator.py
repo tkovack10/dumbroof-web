@@ -351,10 +351,11 @@ def _photo_intro_text(config):
     total_photos = findings.get("total_photos", 0)
     if not total_photos:
         total_photos = len(config.get("photo_annotations", {}))
+    _co = config.get("company", {}).get("name", "our") or "our"
     if total_photos:
-        return f"{total_photos} photographs were taken during the USARM inspection(s)."
+        return f"{total_photos} photographs were taken during the {_co} inspection(s)."
     else:
-        return "Photographs were taken during the USARM inspection(s)."
+        return f"Photographs were taken during the {_co} inspection(s)."
 
 
 def _get_code_reference(config):
@@ -1807,7 +1808,7 @@ def build_forensic_report(config):
 
 <!-- COVER PAGE -->
 <div class="cover-page">
-    <img src="{logo_b64}" alt="USA Roof Masters" class="cover-logo">
+    <img src="{logo_b64}" alt="{company['name']}" class="cover-logo">
     <div class="cover-company">{company['name']}</div>
     <div class="cover-tagline">{company.get('tagline', '')}</div>
     <div style="width:60%; border-top:3px solid #c8102e; margin:0 auto 24pt;"></div>
@@ -2463,7 +2464,7 @@ body {{ margin: 0; padding: 0; }}
 <body>
 
 <div class="header-bar">
-    <img src="{logo_b64}" alt="USA Roof Masters" class="logo-img">
+    <img src="{logo_b64}" alt="{company['name']}" class="logo-img">
     <div class="header-text">
         <div class="company">{company['name']}</div>
         <h1>X STYLE BUILD SCOPE</h1>
@@ -2766,7 +2767,7 @@ td.var-pos {{ color: #c8102e; font-weight: 700; }}
 <body>
 
 <div class="header-bar">
-    <img src="{logo_b64}" alt="USA Roof Masters" class="logo-img">
+    <img src="{logo_b64}" alt="{company['name']}" class="logo-img">
     <div class="header-text">
         <div class="company">{company['name']}</div>
         <h1>{lang['doc3_title']}</h1>
@@ -3052,7 +3053,7 @@ h2 {{ font-size: 13pt; }}
 <body>
 
 <div style="text-align:center; margin-bottom:20pt;">
-    <img src="{logo_b64}" alt="USA Roof Masters" style="height:60pt; width:auto; margin-bottom:8pt;"><br>
+    <img src="{logo_b64}" alt="{company['name']}" style="height:60pt; width:auto; margin-bottom:8pt;"><br>
     <div style="font-size:18pt; font-weight:800; color:#0d2137; letter-spacing:2pt;">{company['name']}</div>
     <div style="font-size:9pt; color:#666;">{company['address']} | {company['city_state_zip']}<br>
     Office: {company['office_phone']} | Cell: {company['cell_phone']} | {company['email']}</div>
@@ -3186,7 +3187,7 @@ body {{ font-size: 11pt; line-height: 1.7; max-width: 600pt; margin: 0 auto; }}
 <body>
 
 <div style="text-align:center; margin-bottom:16pt;">
-    <img src="{logo_b64}" alt="USA Roof Masters" style="height:50pt; width:auto; margin-bottom:8pt;"><br>
+    <img src="{logo_b64}" alt="{company['name']}" style="height:50pt; width:auto; margin-bottom:8pt;"><br>
     <div style="font-size:16pt; font-weight:800; color:#0d2137; letter-spacing:1pt;">COVER EMAIL -- READY TO SEND</div>
 </div>
 
@@ -3307,7 +3308,7 @@ body {{ font-size: 11pt; line-height: 1.7; max-width: 600pt; margin: 0 auto; }}
 <body>
 
 <div style="text-align:center; margin-bottom:16pt;">
-    <img src="{logo_b64}" alt="USA Roof Masters" style="height:50pt; width:auto; margin-bottom:8pt;"><br>
+    <img src="{logo_b64}" alt="{company['name']}" style="height:50pt; width:auto; margin-bottom:8pt;"><br>
     <div style="font-size:16pt; font-weight:800; color:#0d2137; letter-spacing:1pt;">COVER LETTER &mdash; PRE-INSPECTION SUBMISSION</div>
 </div>
 

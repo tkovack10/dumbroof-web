@@ -3505,15 +3505,39 @@ async def process_claim(claim_id: str):
 
     # 1b. Get user's company profile for white-label branding
     company_profile = None
+    _uid = claim.get("user_id", "")
+    _sb_url = os.environ.get("SUPABASE_URL", "")
+    _sb_key = os.environ.get("SUPABASE_SERVICE_KEY", "")
+    print(f"[PROFILE] user_id={_uid}, sb_url={_sb_url[:30] if _sb_url else 'MISSING'}..., key_len={len(_sb_key)}, key_prefix={_sb_key[:10] if _sb_key else 'MISSING'}...", flush=True)
+    # Try SDK first, then REST fallback (SDK can fail if PostgREST schema cache is stale)
     try:
-        profile_result = sb.table("company_profiles").select("*").eq("user_id", claim["user_id"]).limit(1).execute()
+        profile_result = sb.table("company_profiles").select("*").eq("user_id", _uid).limit(1).execute()
         if profile_result.data and len(profile_result.data) > 0:
             company_profile = profile_result.data[0]
-            print(f"[PROCESS] Using company branding: {company_profile.get('company_name', 'N/A')}", flush=True)
+            print(f"[PROCESS] SDK: company branding = {company_profile.get('company_name', 'N/A')}", flush=True)
         else:
-            print(f"[PROCESS] No company profile found for user {claim['user_id']}", flush=True)
+            print(f"[PROCESS] SDK: no company profile found", flush=True)
     except Exception as e:
-        print(f"[PROCESS] Company profile query failed: {e}", flush=True)
+        print(f"[PROCESS] SDK query failed: {e}", flush=True)
+    # REST API fallback if SDK returned nothing
+    if not company_profile and _uid:
+        try:
+            import urllib.request
+            _sb_url = os.environ.get("SUPABASE_URL", "")
+            _sb_key = os.environ.get("SUPABASE_SERVICE_KEY", "")
+            _req = urllib.request.Request(
+                f"{_sb_url}/rest/v1/company_profiles?user_id=eq.{_uid}&select=*&limit=1",
+                headers={"apikey": _sb_key, "Authorization": f"Bearer {_sb_key}"}
+            )
+            with urllib.request.urlopen(_req, timeout=10) as _resp:
+                _data = json.loads(_resp.read())
+                if _data and len(_data) > 0:
+                    company_profile = _data[0]
+                    print(f"[PROCESS] REST fallback: company branding = {company_profile.get('company_name', 'N/A')}", flush=True)
+                else:
+                    print(f"[PROCESS] REST fallback: no profile found", flush=True)
+        except Exception as e2:
+            print(f"[PROCESS] REST fallback failed: {e2}", flush=True)
     _usarm_defaults = {
         "company_name": "USA ROOF MASTERS",
         "address": "3070 Bristol Pike, Building 1, Suite 122",
