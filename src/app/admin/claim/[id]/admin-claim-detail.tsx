@@ -6,6 +6,9 @@ import type { Claim } from "@/types/claim";
 import { FileUploadZone } from "@/components/file-upload-zone";
 import { PendingChangesBanner } from "@/components/pending-changes-banner";
 import { ScopeComparison } from "@/components/scope-comparison";
+import { EstimateView } from "@/components/estimate-view";
+import { SupplementComposer } from "@/components/supplement-composer";
+import type { ScopeComparisonRow } from "@/types/scope-comparison";
 import { CATEGORY_CONFIG, FILE_CATEGORIES, CLAIM_STATUS_CONFIG, type UploadCategory } from "@/lib/claim-constants";
 import { uploadClaimDocuments } from "@/lib/upload-utils";
 
@@ -453,6 +456,22 @@ export function AdminClaimDetail({ claim: initialClaim, userInfo }: Props) {
         {/* Scope Comparison — only when scope_comparison data exists */}
         {isReady && claim.scope_comparison && (
           <ScopeComparison claimId={claim.id} carrierName={claim.carrier} />
+        )}
+
+        {/* Estimate & Damage Assessment */}
+        {isReady && (
+          <EstimateView claimId={claim.id} />
+        )}
+
+        {/* Supplement Composer */}
+        {isReady && claim.scope_comparison && (
+          <SupplementComposer
+            claimAddress={claim.address}
+            carrierName={claim.carrier}
+            comparisonRows={claim.scope_comparison as ScopeComparisonRow[]}
+            carrierRcv={claim.current_carrier_rcv ?? claim.original_carrier_rcv ?? 0}
+            contractorRcv={claim.contractor_rcv ?? 0}
+          />
         )}
 
         {/* Error state */}
