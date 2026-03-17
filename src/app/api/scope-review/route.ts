@@ -2,6 +2,41 @@ import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { requireAuth, isAuthError, canAccessClaim } from "@/lib/api-auth";
 
+/**
+ * Recalculate contractor_rcv including tax + O&P (matches processor.py compute_financials).
+ * Fixes the discrepancy where dashboard showed total with tax+O&P but scope review showed line total only.
+ */
+async function recalculateContractorRcv(claimId: string): Promise<number> {
+  const { data: claim } = await supabaseAdmin
+    .from("claims")
+    .select("excluded_line_items, o_and_p_enabled, tax_rate")
+    .eq("id", claimId)
+    .single();
+
+  const excludedIds = new Set<string>((claim?.excluded_line_items as string[]) || []);
+  const oAndPEnabled = claim?.o_and_p_enabled ?? false;
+  const taxRate = claim?.tax_rate ?? 0.08;
+
+  const { data: allItems } = await supabaseAdmin
+    .from("line_items")
+    .select("id, qty, unit_price")
+    .eq("claim_id", claimId)
+    .in("source", ["usarm", "user_added"]);
+
+  const lineTotal = (allItems || [])
+    .filter((i) => !excludedIds.has(i.id))
+    .reduce((sum, i) => sum + i.qty * i.unit_price, 0);
+
+  const tax = lineTotal * taxRate;
+  const rcv = lineTotal + tax;
+  // O&P: 10% overhead + 11% profit = 21% (matches processor.py compute_financials)
+  const oAndP = oAndPEnabled ? lineTotal * 0.10 + lineTotal * 0.11 : 0;
+  const total = Math.round((rcv + oAndP) * 100) / 100;
+
+  await supabaseAdmin.from("claims").update({ contractor_rcv: total }).eq("id", claimId);
+  return total;
+}
+
 export async function GET(req: NextRequest) {
   const auth = await requireAuth();
   if (isAuthError(auth)) return auth.response;
@@ -171,34 +206,8 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  // Recalculate contractor_rcv
-  const { error: rcvErr } = await supabaseAdmin.rpc("recalculate_contractor_rcv", {
-    claim_id_param: claimId,
-  });
-
-  // Fallback calculation if RPC doesn't exist
-  let newRcv = 0;
-  if (rcvErr?.message?.includes("does not exist")) {
-    const { data: claim } = await supabaseAdmin.from("claims").select("excluded_line_items").eq("id", claimId).single();
-    const excludedIds = new Set<string>((claim?.excluded_line_items as string[]) || []);
-
-    const { data: allItems } = await supabaseAdmin
-      .from("line_items")
-      .select("id, qty, unit_price")
-      .eq("claim_id", claimId)
-      .in("source", ["usarm", "user_added"]);
-
-    newRcv = (allItems || [])
-      .filter((i) => !excludedIds.has(i.id))
-      .reduce((sum, i) => sum + i.qty * i.unit_price, 0);
-
-    newRcv = Math.round(newRcv * 100) / 100;
-    await supabaseAdmin.from("claims").update({ contractor_rcv: newRcv }).eq("id", claimId);
-  } else {
-    // Get updated RCV
-    const { data: updated } = await supabaseAdmin.from("claims").select("contractor_rcv").eq("id", claimId).single();
-    newRcv = updated?.contractor_rcv || 0;
-  }
+  // Recalculate contractor_rcv (includes tax + O&P)
+  const newRcv = await recalculateContractorRcv(claimId);
 
   return NextResponse.json({ ok: true, new_contractor_rcv: newRcv });
 }
@@ -251,36 +260,41 @@ export async function PUT(req: NextRequest) {
     original_unit: unit || "EA",
   });
 
-  // Recalculate contractor_rcv
-  const { error: rcvErr } = await supabaseAdmin.rpc("recalculate_contractor_rcv", {
-    claim_id_param: claim_id,
-  });
-
-  let newRcv = 0;
-  if (rcvErr?.message?.includes("does not exist")) {
-    const { data: claim } = await supabaseAdmin.from("claims").select("excluded_line_items").eq("id", claim_id).single();
-    const excludedIds = new Set<string>((claim?.excluded_line_items as string[]) || []);
-
-    const { data: allItems } = await supabaseAdmin
-      .from("line_items")
-      .select("id, qty, unit_price")
-      .eq("claim_id", claim_id)
-      .in("source", ["usarm", "user_added"]);
-
-    newRcv = (allItems || [])
-      .filter((i) => !excludedIds.has(i.id))
-      .reduce((sum, i) => sum + i.qty * i.unit_price, 0);
-
-    newRcv = Math.round(newRcv * 100) / 100;
-    await supabaseAdmin.from("claims").update({ contractor_rcv: newRcv }).eq("id", claim_id);
-  } else {
-    const { data: updated } = await supabaseAdmin.from("claims").select("contractor_rcv").eq("id", claim_id).single();
-    newRcv = updated?.contractor_rcv || 0;
-  }
+  // Recalculate contractor_rcv (includes tax + O&P)
+  const newRcv = await recalculateContractorRcv(claim_id);
 
   return NextResponse.json({
     ok: true,
     item: { ...newItem, total: Math.round(qty * unit_price * 100) / 100, feedback_status: "approved" },
     new_contractor_rcv: newRcv,
   });
+}
+
+/**
+ * PATCH: Toggle O&P on/off for a claim. Recalculates contractor_rcv.
+ */
+export async function PATCH(req: NextRequest) {
+  const auth = await requireAuth();
+  if (isAuthError(auth)) return auth.response;
+  const userId = auth.user.id;
+
+  const body = await req.json();
+  const { claimId, o_and_p_enabled } = body;
+
+  if (!claimId || typeof o_and_p_enabled !== "boolean") {
+    return NextResponse.json({ error: "claimId and o_and_p_enabled (boolean) required" }, { status: 400 });
+  }
+
+  const authorized = await canAccessClaim(userId, claimId);
+  if (!authorized) {
+    return NextResponse.json({ error: "Not authorized for this claim" }, { status: 403 });
+  }
+
+  // Update O&P flag
+  await supabaseAdmin.from("claims").update({ o_and_p_enabled }).eq("id", claimId);
+
+  // Recalculate with new O&P state
+  const newRcv = await recalculateContractorRcv(claimId);
+
+  return NextResponse.json({ ok: true, new_contractor_rcv: newRcv, o_and_p_enabled });
 }

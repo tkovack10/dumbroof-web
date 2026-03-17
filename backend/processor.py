@@ -4355,6 +4355,25 @@ async def process_claim(claim_id: str):
         if contractor_rcv:
             update_data["contractor_rcv"] = round(contractor_rcv, 2)
 
+        # Store O&P + tax metadata for frontend financial display
+        _o_and_p = config.get("scope", {}).get("o_and_p", False)
+        _tax_rate = config.get("financials", {}).get("tax_rate", 0.08)
+        _trades = set()
+        for li in config.get("line_items", []):
+            t = (li.get("trade") or "").lower().strip()
+            if t:
+                _trades.add(t)
+        update_data["o_and_p_enabled"] = bool(_o_and_p)
+        update_data["tax_rate"] = _tax_rate
+        update_data["trade_count"] = len(_trades)
+
+        # Store scope comparison JSONB for interactive frontend display
+        _scope_comp = config.get("carrier", {}).get("carrier_line_items", [])
+        if _scope_comp and isinstance(_scope_comp, list) and len(_scope_comp) > 0:
+            # Only store if comparison rows have matched_by field (not raw carrier items)
+            if _scope_comp[0].get("matched_by") or _scope_comp[0].get("status"):
+                update_data["scope_comparison"] = _scope_comp
+
         # Save scores (already computed above)
         if ds and tas:
             update_data["damage_score"] = ds.score

@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/client";
 import type { Claim } from "@/types/claim";
 import { FileUploadZone } from "@/components/file-upload-zone";
 import { PendingChangesBanner } from "@/components/pending-changes-banner";
+import { ScopeComparison } from "@/components/scope-comparison";
 import { CATEGORY_CONFIG, FILE_CATEGORIES, CLAIM_STATUS_CONFIG, type UploadCategory } from "@/lib/claim-constants";
 import { uploadClaimDocuments } from "@/lib/upload-utils";
 
@@ -447,6 +448,11 @@ export function AdminClaimDetail({ claim: initialClaim, userInfo }: Props) {
               ))}
             </div>
           </div>
+        )}
+
+        {/* Scope Comparison — only when scope_comparison data exists */}
+        {isReady && claim.scope_comparison && (
+          <ScopeComparison claimId={claim.id} carrierName={claim.carrier} />
         )}
 
         {/* Error state */}

@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/client";
 import { useParams, useRouter } from "next/navigation";
 import { FileUploadZone } from "@/components/file-upload-zone";
 import { PendingChangesBanner } from "@/components/pending-changes-banner";
+import { ScopeComparison } from "@/components/scope-comparison";
 
 import type { Claim } from "@/types/claim";
 import { CATEGORY_CONFIG, CLAIM_STATUS_CONFIG, type UploadCategory } from "@/lib/claim-constants";
@@ -779,6 +780,11 @@ export default function ClaimDetailPage() {
               ))}
             </div>
           </div>
+        )}
+
+        {/* Scope Comparison — only when scope_comparison data exists */}
+        {isReady && claim.scope_comparison && (
+          <ScopeComparison claimId={claim.id} carrierName={claim.carrier} />
         )}
 
         {/* Error state */}

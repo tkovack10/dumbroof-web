@@ -53,6 +53,11 @@ export interface Claim {
   last_processed_at?: string | null;
   // Photo corrections
   excluded_photos?: string[] | null;
+  // Scope comparison (JSONB from processor)
+  scope_comparison?: unknown[] | null;
+  o_and_p_enabled?: boolean | null;
+  tax_rate?: number | null;
+  trade_count?: number | null;
   // Line item corrections
   excluded_line_items?: string[] | null;
   // Admin enrichment

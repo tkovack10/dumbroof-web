@@ -1387,6 +1387,13 @@ class XactRegistry:
                 "xact_code": ci.get("xact_code", ""),
             })
 
+        # Sort by trade/category to prevent interleaved subtotals
+        _CAT_SORT = {"ROOFING": 0, "SIDING": 1, "GUTTERS": 2, "INTERIOR": 3, "GENERAL": 4, "DEBRIS": 5}
+        comparison_rows.sort(key=lambda x: (
+            _CAT_SORT.get((x.get("category") or "").upper(), 99),
+            0 if x.get("status") != "carrier_only" else 1,
+        ))
+
         return comparison_rows
 
 
