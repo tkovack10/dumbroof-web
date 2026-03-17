@@ -3506,12 +3506,14 @@ async def process_claim(claim_id: str):
     # 1b. Get user's company profile for white-label branding
     company_profile = None
     try:
-        profile_result = sb.table("company_profiles").select("*").eq("user_id", claim["user_id"]).single().execute()
-        company_profile = profile_result.data
-        if company_profile:
-            print(f"[PROCESS] Using company branding: {company_profile.get('company_name', 'N/A')}")
-    except Exception:
-        pass  # No profile set — use defaults
+        profile_result = sb.table("company_profiles").select("*").eq("user_id", claim["user_id"]).limit(1).execute()
+        if profile_result.data and len(profile_result.data) > 0:
+            company_profile = profile_result.data[0]
+            print(f"[PROCESS] Using company branding: {company_profile.get('company_name', 'N/A')}", flush=True)
+        else:
+            print(f"[PROCESS] No company profile found for user {claim['user_id']}", flush=True)
+    except Exception as e:
+        print(f"[PROCESS] Company profile query failed: {e}", flush=True)
     _usarm_defaults = {
         "company_name": "USA ROOF MASTERS",
         "address": "3070 Bristol Pike, Building 1, Suite 122",
