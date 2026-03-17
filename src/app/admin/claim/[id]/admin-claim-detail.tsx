@@ -240,8 +240,8 @@ export function AdminClaimDetail({ claim: initialClaim, userInfo }: Props) {
           </div>
 
           {/* Financial summary */}
-          {(claim.contractor_rcv || claim.original_carrier_rcv) && (
-            <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-3">
+          {(claim.contractor_rcv || claim.original_carrier_rcv || claim.current_carrier_rcv) && (
+            <div className="mt-4 grid grid-cols-1 sm:grid-cols-4 gap-3">
               <div className="bg-gray-50 rounded-lg px-3 py-2">
                 <p className="text-xs text-gray-400">Contractor RCV</p>
                 <p className="text-sm font-bold text-[var(--navy)]">
@@ -249,15 +249,21 @@ export function AdminClaimDetail({ claim: initialClaim, userInfo }: Props) {
                 </p>
               </div>
               <div className="bg-gray-50 rounded-lg px-3 py-2">
-                <p className="text-xs text-gray-400">Carrier RCV</p>
+                <p className="text-xs text-gray-400">Carrier RCV {claim.current_carrier_rcv && claim.original_carrier_rcv && claim.current_carrier_rcv !== claim.original_carrier_rcv ? "(Current)" : ""}</p>
                 <p className="text-sm font-bold text-[var(--navy)]">
-                  {claim.original_carrier_rcv ? `$${claim.original_carrier_rcv.toLocaleString()}` : "\u2014"}
+                  {(claim.current_carrier_rcv ?? claim.original_carrier_rcv) ? `$${(claim.current_carrier_rcv ?? claim.original_carrier_rcv)!.toLocaleString()}` : "\u2014"}
                 </p>
+                {claim.current_carrier_rcv && claim.original_carrier_rcv && claim.current_carrier_rcv !== claim.original_carrier_rcv && (
+                  <p className="text-[10px] text-green-600 mt-0.5">
+                    Was ${claim.original_carrier_rcv.toLocaleString()} (+${(claim.current_carrier_rcv - claim.original_carrier_rcv).toLocaleString()})
+                  </p>
+                )}
               </div>
               <div className="bg-gray-50 rounded-lg px-3 py-2">
                 <p className="text-xs text-gray-400">Variance</p>
                 {(() => {
-                  const v = (claim.contractor_rcv ?? 0) - (claim.original_carrier_rcv ?? 0);
+                  const carrierRcv = claim.current_carrier_rcv ?? claim.original_carrier_rcv ?? 0;
+                  const v = (claim.contractor_rcv ?? 0) - carrierRcv;
                   return (
                     <p className={`text-sm font-bold ${v > 0 ? "text-green-700" : v < 0 ? "text-red-600" : "text-gray-500"}`}>
                       {v > 0 ? "+" : ""}${v.toLocaleString()}
@@ -265,6 +271,21 @@ export function AdminClaimDetail({ claim: initialClaim, userInfo }: Props) {
                   );
                 })()}
               </div>
+              {claim.claim_outcome === "won" && (
+                <div className="bg-green-50 rounded-lg px-3 py-2">
+                  <p className="text-xs text-green-600">Movement</p>
+                  {(() => {
+                    const orig = claim.original_carrier_rcv ?? 0;
+                    const curr = claim.current_carrier_rcv ?? claim.settlement_amount ?? 0;
+                    const pct = orig > 0 ? Math.round(((curr - orig) / orig) * 100) : 0;
+                    return (
+                      <p className="text-sm font-bold text-green-700">
+                        +${(curr - orig).toLocaleString()} ({pct}%)
+                      </p>
+                    );
+                  })()}
+                </div>
+              )}
             </div>
           )}
 

@@ -24,6 +24,7 @@ export interface Claim {
   // Financial (populated by backend processor)
   contractor_rcv?: number | null;
   original_carrier_rcv?: number | null;
+  current_carrier_rcv?: number | null;
   settlement_amount?: number | null;
   claim_outcome?: string | null; // pending | won | lost
   // Communication

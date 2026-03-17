@@ -4380,6 +4380,9 @@ async def process_claim(claim_id: str):
 
         # Save revision data to DB (columns may not exist yet — separate call so core update isn't blocked)
         revision_update = {}
+        # Always write the current carrier RCV so the dashboard shows the latest scope price
+        if carrier_data:
+            revision_update["current_carrier_rcv"] = carrier_data.get("carrier_rcv", 0)
         if revision_data:
             revision_update["scope_revisions"] = config.get("scope_revisions", [])
             if diff_result.get("is_win"):

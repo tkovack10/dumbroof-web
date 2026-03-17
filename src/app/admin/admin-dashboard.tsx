@@ -455,7 +455,7 @@ export function AdminDashboard() {
               {(() => {
                 const wonClaims = claims.filter(c => c.claim_outcome === "won");
                 const totalContractorRcv = claims.reduce((s, c) => s + (c.contractor_rcv ?? 0), 0);
-                const totalCarrierRcv = claims.reduce((s, c) => s + (c.original_carrier_rcv ?? 0), 0);
+                const totalCarrierRcv = claims.reduce((s, c) => s + (c.current_carrier_rcv ?? c.original_carrier_rcv ?? 0), 0);
                 const totalVariance = totalContractorRcv - totalCarrierRcv;
                 const totalWon = wonClaims.reduce((s, c) => s + (c.settlement_amount ?? 0), 0);
                 const fmt = (v: number) => v >= 1000 ? `$${(v / 1000).toFixed(0)}K` : `$${v.toFixed(0)}`;
@@ -525,12 +525,12 @@ export function AdminDashboard() {
                           {claim.contractor_rcv ? `$${claim.contractor_rcv.toLocaleString()}` : "—"}
                         </td>
                         <td className="px-3 py-2.5 text-right text-xs text-gray-600 tabular-nums">
-                          {claim.original_carrier_rcv ? `$${claim.original_carrier_rcv.toLocaleString()}` : "—"}
+                          {(claim.current_carrier_rcv ?? claim.original_carrier_rcv) ? `$${(claim.current_carrier_rcv ?? claim.original_carrier_rcv)!.toLocaleString()}` : "—"}
                         </td>
                         <td className="px-3 py-2.5 text-right text-xs tabular-nums">
                           {(() => {
                             const cRcv = claim.contractor_rcv ?? 0;
-                            const iRcv = claim.original_carrier_rcv ?? 0;
+                            const iRcv = claim.current_carrier_rcv ?? claim.original_carrier_rcv ?? 0;
                             if (!cRcv && !iRcv) return "—";
                             const v = cRcv - iRcv;
                             return <span className={v > 0 ? "text-green-700 font-medium" : v < 0 ? "text-red-600 font-medium" : "text-gray-500"}>{v > 0 ? "+" : ""}${v.toLocaleString()}</span>;
