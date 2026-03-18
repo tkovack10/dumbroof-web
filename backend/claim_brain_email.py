@@ -334,6 +334,11 @@ def send_claim_email(
     gmail_refresh_token = profile.get("gmail_refresh_token")
     sending_email = profile.get("sending_email") or profile.get("email", "")
     reply_to = sending_email or profile.get("email")
+    admin_email = profile.get("email", "")
+
+    # Auto-CC the company admin on all claim emails
+    if admin_email and admin_email != to_email:
+        cc = f"{cc}, {admin_email}" if cc else admin_email
 
     result = {}
 
