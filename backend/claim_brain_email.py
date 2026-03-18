@@ -34,7 +34,10 @@ from supabase import Client
 
 GMAIL_CLIENT_ID = os.environ.get("GMAIL_OAUTH_CLIENT_ID", "")
 GMAIL_CLIENT_SECRET = os.environ.get("GMAIL_OAUTH_CLIENT_SECRET", "")
-GMAIL_SCOPES = ["https://www.googleapis.com/auth/gmail.send"]
+GMAIL_SCOPES = [
+    "https://www.googleapis.com/auth/gmail.send",
+    "https://www.googleapis.com/auth/gmail.readonly",
+]
 
 
 def get_gmail_auth_url(redirect_uri: str, state: str = "") -> str:
@@ -134,6 +137,117 @@ def send_via_gmail(
     )
     with urllib.request.urlopen(req) as resp:
         return json.loads(resp.read())
+
+
+# ───────────────────────────────────────────
+# Gmail — read inbound emails (claim-number filtered)
+# ───────────────────────────────────────────
+
+def fetch_claim_emails_from_gmail(
+    refresh_token: str,
+    claim_numbers: list[str],
+    max_results: int = 20,
+) -> list[dict]:
+    """Fetch emails from user's Gmail that contain claim numbers in subject.
+
+    Only reads emails matching claim numbers — never touches personal emails.
+    Returns list of {from, to, subject, date, snippet, body_text, thread_id, message_id}.
+    """
+    import urllib.request
+    from html.parser import HTMLParser
+
+    if not claim_numbers or not refresh_token:
+        return []
+
+    access_token = refresh_gmail_token(refresh_token)
+
+    # Build Gmail search query: subject contains ANY claim number
+    # e.g. "subject:5293M465L OR subject:JBG2746"
+    query_parts = [f"subject:{cn}" for cn in claim_numbers if cn and cn != "Pending"]
+    if not query_parts:
+        return []
+    query = " OR ".join(query_parts)
+
+    # Search for matching messages
+    from urllib.parse import urlencode
+    params = urlencode({"q": query, "maxResults": max_results})
+    req = urllib.request.Request(
+        f"https://gmail.googleapis.com/gmail/v1/users/me/messages?{params}",
+        headers={"Authorization": f"Bearer {access_token}"},
+    )
+    try:
+        with urllib.request.urlopen(req) as resp:
+            search_result = json.loads(resp.read())
+    except Exception as e:
+        print(f"[GMAIL READ] Search failed: {e}", flush=True)
+        return []
+
+    messages = search_result.get("messages", [])
+    if not messages:
+        return []
+
+    # Fetch each message's metadata + snippet
+    results = []
+    for msg_ref in messages[:max_results]:
+        msg_id = msg_ref["id"]
+        req = urllib.request.Request(
+            f"https://gmail.googleapis.com/gmail/v1/users/me/messages/{msg_id}?format=metadata&metadataHeaders=From&metadataHeaders=To&metadataHeaders=Subject&metadataHeaders=Date",
+            headers={"Authorization": f"Bearer {access_token}"},
+        )
+        try:
+            with urllib.request.urlopen(req) as resp:
+                msg_data = json.loads(resp.read())
+        except Exception:
+            continue
+
+        headers = {h["name"].lower(): h["value"] for h in msg_data.get("payload", {}).get("headers", [])}
+        results.append({
+            "message_id": msg_id,
+            "thread_id": msg_data.get("threadId", ""),
+            "from": headers.get("from", ""),
+            "to": headers.get("to", ""),
+            "subject": headers.get("subject", ""),
+            "date": headers.get("date", ""),
+            "snippet": msg_data.get("snippet", ""),
+            "label_ids": msg_data.get("labelIds", []),
+        })
+
+    print(f"[GMAIL READ] Found {len(results)} emails matching claim numbers {claim_numbers}", flush=True)
+    return results
+
+
+def fetch_email_body(refresh_token: str, message_id: str) -> str:
+    """Fetch the full body text of a specific email."""
+    import urllib.request
+
+    access_token = refresh_gmail_token(refresh_token)
+    req = urllib.request.Request(
+        f"https://gmail.googleapis.com/gmail/v1/users/me/messages/{message_id}?format=full",
+        headers={"Authorization": f"Bearer {access_token}"},
+    )
+    try:
+        with urllib.request.urlopen(req) as resp:
+            msg_data = json.loads(resp.read())
+    except Exception as e:
+        return f"Error fetching email: {e}"
+
+    # Extract text/plain or text/html body
+    payload = msg_data.get("payload", {})
+
+    def _extract_body(part):
+        if part.get("mimeType") == "text/plain" and part.get("body", {}).get("data"):
+            return base64.urlsafe_b64decode(part["body"]["data"]).decode("utf-8", errors="replace")
+        for sub in part.get("parts", []):
+            result = _extract_body(sub)
+            if result:
+                return result
+        return ""
+
+    body = _extract_body(payload)
+    if not body and payload.get("body", {}).get("data"):
+        body = base64.urlsafe_b64decode(payload["body"]["data"]).decode("utf-8", errors="replace")
+
+    return body or "(no body text found)"
 
 
 # ───────────────────────────────────────────

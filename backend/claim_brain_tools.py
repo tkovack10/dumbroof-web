@@ -139,6 +139,20 @@ CLAIM_BRAIN_TOOLS = [
             "required": [],
         },
     },
+    {
+        "name": "check_carrier_emails",
+        "description": (
+            "Check the user's Gmail inbox for emails from the insurance carrier "
+            "related to this claim. Only reads emails with the claim number in the "
+            "subject line — never touches personal emails. Returns carrier responses, "
+            "adjuster communications, and any scope revisions received."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {},
+            "required": [],
+        },
+    },
 ]
 
 
@@ -187,6 +201,9 @@ async def execute_tool(
 
     elif tool_name == "check_claim_status":
         return await _handle_check_status(sb, claim_id, claim_data)
+
+    elif tool_name == "check_carrier_emails":
+        return await _handle_check_carrier_emails(sb, claim_id, user_id, claim_data)
 
     return {"action": "error", "message": f"Unknown tool: {tool_name}"}
 
@@ -452,4 +469,91 @@ async def _handle_check_status(sb, claim_id, claim_data):
             "damage_grade": claim_data.get("damage_grade"),
         },
         "message": "Status loaded.",
+    }
+
+
+async def _handle_check_carrier_emails(sb, claim_id, user_id, claim_data):
+    """Check user's Gmail for carrier emails related to this claim."""
+    from claim_brain_email import fetch_claim_emails_from_gmail
+
+    # Get user's Gmail refresh token
+    try:
+        profile_result = sb.table("company_profiles").select("gmail_refresh_token, sending_email").eq("user_id", user_id).limit(1).execute()
+        profile = (profile_result.data or [{}])[0] if profile_result.data else {}
+    except Exception:
+        profile = {}
+
+    refresh_token = profile.get("gmail_refresh_token")
+    if not refresh_token:
+        return {
+            "action": "complete",
+            "type": "info",
+            "data": {"message": "Gmail not connected. Go to Settings → Connect Gmail to enable email monitoring."},
+            "message": "Gmail not connected.",
+        }
+
+    # Get claim numbers to search for
+    # claim_number is a direct column in the claims table
+    claim_number = claim_data.get("claim_number") or ""
+    # Also try nested carrier dict (legacy config format)
+    if not claim_number and isinstance(claim_data.get("carrier"), dict):
+        claim_number = claim_data["carrier"].get("claim_number", "")
+
+    claim_numbers = []
+    if claim_number and claim_number != "Pending":
+        claim_numbers.append(claim_number)
+
+    # Also search by address keywords as fallback
+    address = claim_data.get("address", "")
+    address_parts = address.split(",")[0].strip() if address else ""
+
+    if not claim_numbers and address_parts:
+        claim_numbers.append(address_parts)
+
+    if not claim_numbers:
+        return {
+            "action": "complete",
+            "type": "info",
+            "data": {"message": "No claim number found to search for."},
+            "message": "No claim number available.",
+        }
+
+    # Fetch emails from Gmail
+    emails = fetch_claim_emails_from_gmail(
+        refresh_token=refresh_token,
+        claim_numbers=claim_numbers,
+        max_results=15,
+    )
+
+    if not emails:
+        return {
+            "action": "complete",
+            "type": "info",
+            "data": {
+                "message": f"No emails found with claim number(s): {', '.join(claim_numbers)}",
+                "searched": claim_numbers,
+            },
+            "message": f"No carrier emails found for {', '.join(claim_numbers)}.",
+        }
+
+    # Return summary for Claim Brain to analyze
+    email_summaries = []
+    for e in emails:
+        email_summaries.append({
+            "from": e["from"],
+            "subject": e["subject"],
+            "date": e["date"],
+            "snippet": e["snippet"],
+            "is_inbound": "INBOX" in e.get("label_ids", []),
+        })
+
+    return {
+        "action": "complete",
+        "type": "carrier_emails",
+        "data": {
+            "emails": email_summaries,
+            "total": len(email_summaries),
+            "searched_claim_numbers": claim_numbers,
+        },
+        "message": f"Found {len(email_summaries)} emails related to this claim.",
     }
