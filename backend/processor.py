@@ -1040,6 +1040,9 @@ the actual purpose (e.g., "starter course" or "cap shingles"). These notes are e
     "inspector_company": "FieldAssist/Accurence/etc if found",
     "inspector_name": "Name if found",
     "insured_name": "Homeowner/insured name if found",
+    "insured_email": "Homeowner email if found",
+    "insured_phone": "Homeowner phone if found",
+    "adjuster_phone": "Adjuster phone if found",
     "date_of_loss": "Date of loss if found"
   },
   "carrier_rcv": 0.00,
@@ -4392,6 +4395,17 @@ async def process_claim(claim_id: str):
             if _scope_comp[0].get("matched_by") or _scope_comp[0].get("status"):
                 update_data["scope_comparison"] = _scope_comp
 
+        # Save homeowner name + adjuster info from carrier extraction
+        _insured = config.get("insured", {}).get("name", "")
+        if _insured and _insured != "Property Owner":
+            update_data["homeowner_name"] = _insured
+        _carrier_cfg = config.get("carrier", {})
+        _adjuster_name = _carrier_cfg.get("adjuster_name", "")
+        _adjuster_email = _carrier_cfg.get("adjuster_email", "")
+        _claim_number = _carrier_cfg.get("claim_number", "")
+        # Store adjuster info in previous_carrier_data (already has carrier_line_items)
+        # These will be visible to Claim Brain via the system prompt
+
         # Save scores (already computed above)
         if ds and tas:
             update_data["damage_score"] = ds.score
@@ -4420,6 +4434,15 @@ async def process_claim(claim_id: str):
         # Always write the current carrier RCV so the dashboard shows the latest scope price
         if carrier_data:
             revision_update["current_carrier_rcv"] = carrier_data.get("carrier_rcv", 0)
+        # Extract adjuster + homeowner contact info from carrier data
+        _carrier_info = carrier_data.get("carrier", {}) if carrier_data else {}
+        _contact_fields = {
+            "adjuster_name": _carrier_info.get("adjuster_name", ""),
+            "adjuster_email": _carrier_info.get("adjuster_email", ""),
+            "claim_number": _carrier_info.get("claim_number", ""),
+            "insured_name": _carrier_info.get("insured_name", ""),
+            "inspector_name": _carrier_info.get("inspector_name", ""),
+        }
         if revision_data:
             revision_update["scope_revisions"] = config.get("scope_revisions", [])
             if diff_result.get("is_win"):
@@ -4429,6 +4452,7 @@ async def process_claim(claim_id: str):
                 "carrier_rcv": carrier_data.get("carrier_rcv", 0),
                 "carrier_line_items": carrier_data.get("carrier_line_items", []),
                 "carrier_arguments": carrier_data.get("carrier_arguments", []),
+                **_contact_fields,
             }
             if not original_carrier_rcv:
                 revision_update["original_carrier_rcv"] = previous_carrier_data.get("carrier_rcv", 0)
@@ -4437,6 +4461,7 @@ async def process_claim(claim_id: str):
                 "carrier_rcv": carrier_data.get("carrier_rcv", 0),
                 "carrier_line_items": carrier_data.get("carrier_line_items", []),
                 "carrier_arguments": carrier_data.get("carrier_arguments", []),
+                **_contact_fields,
             }
             revision_update["original_carrier_rcv"] = carrier_data.get("carrier_rcv", 0)
 

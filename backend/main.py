@@ -866,6 +866,18 @@ def _build_claim_brain_prompt(claim_data: dict, photos: list, scope_comparison: 
     phase = claim_data.get("phase", "unknown")
     homeowner = claim_data.get("homeowner_name", "Unknown")
     date_of_loss = claim_data.get("date_of_loss", "Unknown")
+    # Adjuster + claim number from previous_carrier_data
+    prev_data = claim_data.get("previous_carrier_data") or {}
+    adjuster_name = prev_data.get("adjuster_name", "") if isinstance(prev_data, dict) else ""
+    adjuster_email = prev_data.get("adjuster_email", "") if isinstance(prev_data, dict) else ""
+    claim_number = prev_data.get("claim_number", "") if isinstance(prev_data, dict) else ""
+    # Also check carrier_arguments for these (sometimes nested differently)
+    if not claim_number:
+        carrier_items = prev_data.get("carrier_line_items", []) if isinstance(prev_data, dict) else []
+        # Claim number might be in scope_comparison rows
+        for row in (scope_comparison or [])[:5]:
+            if isinstance(row, dict) and row.get("carrier_desc", "").startswith("Claim"):
+                break
     contractor_rcv = claim_data.get("contractor_rcv") or 0
     carrier_rcv = claim_data.get("current_carrier_rcv") or claim_data.get("original_carrier_rcv") or 0
     variance = contractor_rcv - carrier_rcv if contractor_rcv else 0
@@ -930,6 +942,8 @@ Current date/time: {datetime.now().strftime('%Y-%m-%d %H:%M')}
 - **Homeowner:** {homeowner}
 - **Date of Loss:** {date_of_loss}
 - **Carrier:** {carrier}
+- **Claim Number:** {claim_number or 'Not extracted yet'}
+- **Adjuster:** {adjuster_name or 'Unknown'} {f'({adjuster_email})' if adjuster_email else ''}
 - **Phase:** {phase}
 - **Damage Score:** {damage_score} ({damage_grade})
 - **Approval Score:** {approval_score}
@@ -983,6 +997,7 @@ Available actions:
 - **send_aob_for_signature** — Generate AOB and send to homeowner for digital signature
 - **send_custom_email** — Send any custom email related to this claim
 - **check_claim_status** — Pull current financials, emails, and next actions
+- **check_carrier_emails** — Search the user's Gmail for carrier emails matching this claim number (only reads claim-related emails, never personal). Use this when the user asks "has the carrier responded?", "any emails from the adjuster?", or when you want to check for carrier movement.
 
 **IMPORTANT**: All emails require user approval before sending. When you use an email tool,
 the user will see a preview card and must click "Approve" before anything sends. Tell the
