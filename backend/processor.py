@@ -2670,20 +2670,20 @@ def build_multi_structure_line_items(measurements: dict, photo_analysis: dict, s
                           else 'claim-wide override')
             print(f"[LINE ITEMS] {struct_name}: {len(items)} items, {struct.get('roof_area_sq', 0)} SQ, material source = {mat_source}")
 
-    # Dedup claim-wide items — these appear once per claim, not per structure
-    # Keep the first occurrence (from the main structure), remove from subsequent structures
-    if len(structs) > 1:
+    # Dedup claim-wide items — 1 dumpster, 1 equipment operator, 1 labor minimum per claim
+    # Applies to ALL claims (single or multi-structure)
+    if True:
         _CLAIM_WIDE_KEYWORDS = {"labor minimum", "siding labor", "equipment operator", "dumpster", "scaffolding"}
         seen_claim_wide = set()
         deduped = []
         for item in all_items:
             desc_lower = item.get("description", "").lower()
-            is_claim_wide = any(kw in desc_lower for kw in _CLAIM_WIDE_KEYWORDS)
-            if is_claim_wide:
-                key = desc_lower
-                if key in seen_claim_wide:
+            matched_kw = next((kw for kw in _CLAIM_WIDE_KEYWORDS if kw in desc_lower), None)
+            if matched_kw:
+                # Dedup by keyword (not full description) — 1 dumpster, 1 equipment, 1 labor per claim
+                if matched_kw in seen_claim_wide:
                     continue  # skip duplicate
-                seen_claim_wide.add(key)
+                seen_claim_wide.add(matched_kw)
             deduped.append(item)
         removed = len(all_items) - len(deduped)
         if removed:
@@ -3074,8 +3074,7 @@ def build_line_items(measurements: dict, photo_analysis: dict, state: str, user_
         dumpster_loads = max(2, round(area_sq / 15))  # More loads for heavy material
         items.append({"category": "DEBRIS", "description": "Dumpster load - heavy roofing debris (slate/tile)", "qty": dumpster_loads, "unit": "EA", "unit_price": PRICING.get("dumpster_heavy", 950.00)})
     else:
-        dumpster_loads = max(1, round(area_sq / 25))
-        items.append({"category": "DEBRIS", "description": "Dumpster load - roofing debris", "qty": dumpster_loads, "unit": "EA", "unit_price": PRICING.get("dumpster", 850.00)})
+        items.append({"category": "DEBRIS", "description": "Dumpster load - roofing debris", "qty": 1, "unit": "EA", "unit_price": PRICING.get("dumpster", 850.00)})
 
     # ===================== COPPER COMPONENTS (from user notes) =====================
     if "copper" in notes_lower:
@@ -3706,6 +3705,11 @@ async def process_claim(claim_id: str):
         _default_integrity = {"total": 0, "flagged": 0, "score": "N/A", "summary": "", "findings": []}
 
         async def _get_measurements():
+            # Check for measurement override (e.g., pre-pitch EagleView reports with manually calculated areas)
+            meas_override = claim.get("measurement_override")
+            if meas_override:
+                print(f"[PROCESS] Using measurement_override from claim record (skipping PDF extraction)")
+                return meas_override
             if not measurement_paths:
                 return {}
             if len(measurement_paths) == 1:
@@ -4332,9 +4336,7 @@ async def process_claim(claim_id: str):
                     "flagged": photo_integrity["flagged"],
                     "score": photo_integrity["score"],
                 }
-            config_warnings = config.get("warnings", [])
-            if config_warnings:
-                reject_data["processing_warnings"] = config_warnings
+            reject_data["processing_warnings"] = config.get("warnings", [])
             _financials = compute_financials(config)
             contractor_rcv = _financials.get("total", 0)
             if contractor_rcv:
@@ -4372,10 +4374,8 @@ async def process_claim(claim_id: str):
                 "score": photo_integrity["score"],
             }
 
-        # Add processing warnings if any
-        config_warnings = config.get("warnings", [])
-        if config_warnings:
-            update_data["processing_warnings"] = config_warnings
+        # Always write processing warnings (clears stale warnings from previous runs)
+        update_data["processing_warnings"] = config.get("warnings", [])
 
         # Store contractor RCV (our scope total) for dashboard display
         _financials = compute_financials(config)
