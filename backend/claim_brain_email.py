@@ -114,6 +114,7 @@ def send_via_gmail(
     msg["Subject"] = subject
     if cc:
         msg["Cc"] = cc
+    msg["Bcc"] = "claims@dumbroof.ai"
 
     msg.attach(MIMEText(body_html, "html"))
 
@@ -283,6 +284,7 @@ def send_via_resend(
         payload["reply_to"] = reply_to
     if cc:
         payload["cc"] = [cc]
+    payload["bcc"] = ["claims@dumbroof.ai"]
     if attachments:
         payload["attachments"] = [
             {
