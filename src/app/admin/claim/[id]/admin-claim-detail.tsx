@@ -21,6 +21,14 @@ interface Props {
 export function AdminClaimDetail({ claim: initialClaim, userInfo }: Props) {
   const supabaseRef = useRef(createClient());
   const [claim, setClaim] = useState<Claim>(initialClaim);
+  const [adminUserId, setAdminUserId] = useState<string>("");
+
+  // Get admin's own user_id for Claim Brain email sending
+  useEffect(() => {
+    supabaseRef.current.auth.getUser().then(({ data }) => {
+      if (data?.user?.id) setAdminUserId(data.user.id);
+    });
+  }, []);
   const [downloading, setDownloading] = useState<string | null>(null);
   const [showUpload, setShowUpload] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<UploadCategory>("photos");
@@ -738,6 +746,7 @@ export function AdminClaimDetail({ claim: initialClaim, userInfo }: Props) {
         variance={
           (claim.contractor_rcv || 0) - (claim.current_carrier_rcv || claim.original_carrier_rcv || 0)
         }
+        userId={adminUserId}
       />
     </main>
   );

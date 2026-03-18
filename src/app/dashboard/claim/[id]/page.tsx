@@ -98,6 +98,7 @@ export default function ClaimDetailPage() {
   const [regenerating, setRegenerating] = useState<string | null>(null);
   const [editRequests, setEditRequests] = useState<EditRequest[]>([]);
   const [applyingEdit, setApplyingEdit] = useState<string | null>(null);
+  const [currentUserId, setCurrentUserId] = useState<string>("");
   const formRef = useRef<HTMLDivElement>(null);
 
   const fetchClaim = useCallback(async () => {
@@ -107,6 +108,9 @@ export default function ClaimDetailPage() {
     if (!user) {
       router.push("/login");
       return;
+    }
+    if (user.id && !currentUserId) {
+      setCurrentUserId(user.id);
     }
 
     const { data } = await supabase
@@ -1458,6 +1462,7 @@ export default function ClaimDetailPage() {
           variance={
             (claim.contractor_rcv || 0) - (claim.current_carrier_rcv || claim.original_carrier_rcv || 0)
           }
+          userId={currentUserId}
         />
       )}
     </main>

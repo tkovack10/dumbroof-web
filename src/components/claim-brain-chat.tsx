@@ -31,6 +31,7 @@ interface ClaimBrainChatProps {
   claimAddress?: string;
   carrier?: string;
   variance?: number;
+  userId?: string;
 }
 
 // Minimal markdown → HTML (no dependencies)
@@ -91,6 +92,7 @@ const TOOL_ICONS: Record<string, string> = {
   send_aob_for_signature: "✍️",
   send_custom_email: "✉️",
   check_claim_status: "📊",
+  check_carrier_emails: "📨",
 };
 
 const TOOL_LABELS: Record<string, string> = {
@@ -101,6 +103,7 @@ const TOOL_LABELS: Record<string, string> = {
   send_aob_for_signature: "AOB for Signature",
   send_custom_email: "Email",
   check_claim_status: "Status Check",
+  check_carrier_emails: "Carrier Emails",
 };
 
 const QUICK_ACTIONS = [
@@ -110,6 +113,7 @@ const QUICK_ACTIONS = [
   { label: "Photo gaps", prompt: "What photos am I missing?" },
   { label: "Draft email", prompt: "Draft a supplement response to the adjuster" },
   { label: "Line items", prompt: "Break down the financials line by line" },
+  { label: "Carrier emails", prompt: "Check if the carrier has responded to any emails on this claim" },
 ];
 
 function ToolActionCard({
@@ -292,6 +296,7 @@ export function ClaimBrainChat({
   claimAddress,
   carrier,
   variance,
+  userId,
 }: ClaimBrainChatProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
@@ -334,7 +339,7 @@ export function ClaimBrainChat({
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ message: msg }),
+          body: JSON.stringify({ message: msg, user_id: userId || null }),
         }
       );
 
