@@ -849,6 +849,232 @@ async def apply_edit_request(request_id: str, background_tasks: BackgroundTasks)
 
 
 # ===================================================================
+# CLAIM BRAIN — AI Chat per Claim (SSE Streaming)
+# ===================================================================
+
+import anthropic
+from fastapi.responses import StreamingResponse
+
+# In-memory conversation store (per claim_id)
+_brain_conversations: dict = {}
+
+
+def _build_claim_brain_prompt(claim_data: dict, photos: list, scope_comparison: list, carrier_playbook: str = "") -> str:
+    """Build the Claim Brain system prompt from Supabase claim data."""
+    address = claim_data.get("address", "Unknown")
+    carrier = claim_data.get("carrier", "Unknown")
+    phase = claim_data.get("phase", "unknown")
+    homeowner = claim_data.get("homeowner_name", "Unknown")
+    date_of_loss = claim_data.get("date_of_loss", "Unknown")
+    contractor_rcv = claim_data.get("contractor_rcv") or 0
+    carrier_rcv = claim_data.get("current_carrier_rcv") or claim_data.get("original_carrier_rcv") or 0
+    variance = contractor_rcv - carrier_rcv if contractor_rcv else 0
+    damage_score = claim_data.get("damage_score")
+    damage_grade = claim_data.get("damage_grade", "")
+    approval_score = claim_data.get("approval_score")
+    o_and_p = claim_data.get("o_and_p_enabled", False)
+    tax_rate = claim_data.get("tax_rate", 0)
+    trade_count = claim_data.get("trade_count", 0)
+    photo_integrity = claim_data.get("photo_integrity") or {}
+    processing_warnings = claim_data.get("processing_warnings") or []
+
+    # Photo summary
+    photo_summary = ""
+    if photos:
+        photo_summary = f"\n### Photos on File ({len(photos)})\n"
+        for p in photos[:40]:
+            tags = p.get("annotation", {})
+            damage = tags.get("damage_type", "unclassified") if isinstance(tags, dict) else "unclassified"
+            material = tags.get("material", "") if isinstance(tags, dict) else ""
+            photo_summary += f"- {p.get('photo_tag', 'unknown')}: {damage} | {material}\n"
+
+    # Scope comparison
+    scope_text = ""
+    if scope_comparison:
+        scope_text = "\n### Scope Comparison — Carrier vs. USARM\n"
+        for row in scope_comparison[:50]:
+            if isinstance(row, dict):
+                item = row.get("item", row.get("description", "Unknown"))
+                carrier_amt = row.get("carrier_amount", row.get("carrier_total", 0))
+                usarm_amt = row.get("usarm_amount", row.get("usarm_total", 0))
+                diff = row.get("difference", (usarm_amt or 0) - (carrier_amt or 0))
+                note = row.get("note", row.get("notes", ""))
+                scope_text += f"- **{item}**: Carrier ${carrier_amt:,.2f} → USARM ${usarm_amt:,.2f} (Δ ${diff:,.2f}) {note}\n"
+
+    # Carrier intelligence
+    playbook_section = ""
+    if carrier_playbook:
+        playbook_section = f"\n## CARRIER INTELLIGENCE — {carrier}\n{carrier_playbook}\n"
+
+    from datetime import datetime
+    return f"""You are the Claim Brain for {address} — an AI claims operations manager
+built by DumbRoof.ai. You are an expert on EVERY piece of data related to this ONE
+specific insurance claim. Your job is to maximize recovery, ensure compliance,
+track every dollar, and never let a detail slip.
+
+You speak like an experienced roofing claims manager — direct, knowledgeable, no fluff.
+You use industry terminology naturally (O&P, RCV, supplement, carrier movement).
+When coaching field reps, you're specific and actionable — not theoretical.
+
+When formatting responses, use markdown. Use **bold** for emphasis, bullet points for lists,
+and ### headings to organize longer responses. Keep responses focused and actionable.
+
+Current date/time: {datetime.now().strftime('%Y-%m-%d %H:%M')}
+
+## CLAIM DETAILS
+- **Property:** {address}
+- **Homeowner:** {homeowner}
+- **Date of Loss:** {date_of_loss}
+- **Carrier:** {carrier}
+- **Phase:** {phase}
+- **Damage Score:** {damage_score} ({damage_grade})
+- **Approval Score:** {approval_score}
+- **Trades:** {trade_count} | O&P: {'Yes (10%+10%)' if o_and_p else 'No'} | Tax: {(tax_rate or 0)*100:.1f}%
+
+## FINANCIAL LEDGER
+| Metric | Amount |
+|--------|--------|
+| Contractor RCV | ${contractor_rcv:,.2f} |
+| Carrier RCV | ${carrier_rcv:,.2f} |
+| Variance | ${variance:,.2f} |
+
+## PHOTO INTEGRITY
+- Total photos: {photo_integrity.get('total', len(photos))}
+- Flagged: {photo_integrity.get('flagged', 0)}
+- Score: {photo_integrity.get('score', 'N/A')}
+
+{photo_summary}
+
+{scope_text}
+
+{playbook_section}
+
+## PROCESSING WARNINGS
+{chr(10).join(f'- {w}' for w in processing_warnings) if processing_warnings else 'None'}
+
+## COMPLIANCE — CONTRACTOR MODE (CRITICAL)
+NEVER use: "on behalf of", "demand", "appeal", cite 11 NYCRR/§ 2601.
+You present FACTS and DOCUMENTATION. You do NOT advocate.
+Use "supplement" or "scope clarification" — never "appeal".
+
+## YOUR CORE BEHAVIORS
+1. Be specific, not general. Say "the carrier missed valley flashing at $14.72/LF" not "check the documentation."
+2. Think in dollars. Every gap = money. Translate everything to revenue impact.
+3. Track the ledger. Know: what we estimated, what they offered, what they've paid, what they owe.
+4. Coach, don't lecture. "Chalk circle the cracked hip cap, photo from two angles with a ruler."
+5. Use the carrier playbook. If the carrier tends to deny specific items, preemptively build that argument.
+6. Respect compliance. CONTRACTOR MODE — no advocacy language.
+7. Be proactive. If you notice something — photo gap, deadline, payment discrepancy — say it.
+8. When asked "where does this claim stand?" — lead with the money, then the status, then the next action.
+"""
+
+
+def _load_carrier_playbook(carrier_name: str) -> str:
+    """Try to load carrier playbook from local files (if available on Railway)."""
+    if not carrier_name:
+        return ""
+    slug = carrier_name.lower().replace(" ", "-").replace(".", "").replace(",", "")
+    # Check common locations
+    for base in ["/app/carrier_playbooks", "./carrier_playbooks", "../carrier_playbooks"]:
+        for ext in [".md", ".json"]:
+            path = os.path.join(base, f"{slug}{ext}")
+            if os.path.exists(path):
+                try:
+                    with open(path) as f:
+                        return f.read()
+                except Exception:
+                    pass
+    return ""
+
+
+class ChatMessage(BaseModel):
+    message: str
+    user_id: str | None = None
+
+
+@app.post("/api/claim-brain/{claim_id}/chat")
+async def claim_brain_chat(claim_id: str, body: ChatMessage):
+    """Claim Brain — streaming AI chat for a specific claim."""
+    sb = get_supabase_client()
+
+    # Verify claim exists
+    result = sb.table("claims").select("*").eq("id", claim_id).single().execute()
+    if not result.data:
+        raise HTTPException(status_code=404, detail="Claim not found")
+
+    claim_data = result.data
+
+    # Load photos with annotations
+    photos_result = sb.table("photos").select(
+        "photo_tag, annotation, damage_type, material, trade, severity"
+    ).eq("claim_id", claim_id).execute()
+    photos = photos_result.data or []
+
+    # Load scope comparison
+    scope_comparison = claim_data.get("scope_comparison") or []
+
+    # Load carrier playbook
+    playbook = _load_carrier_playbook(claim_data.get("carrier", ""))
+
+    # Build system prompt
+    system_prompt = _build_claim_brain_prompt(claim_data, photos, scope_comparison, playbook)
+
+    # Get or create conversation
+    if claim_id not in _brain_conversations:
+        _brain_conversations[claim_id] = []
+    _brain_conversations[claim_id].append({"role": "user", "content": body.message})
+
+    # Keep last 50 messages to manage context window
+    if len(_brain_conversations[claim_id]) > 50:
+        _brain_conversations[claim_id] = _brain_conversations[claim_id][-50:]
+
+    client = anthropic.Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
+
+    async def stream_response():
+        try:
+            full_response = ""
+            with client.messages.stream(
+                model="claude-sonnet-4-20250514",
+                max_tokens=4096,
+                system=system_prompt,
+                messages=_brain_conversations[claim_id],
+            ) as stream:
+                for text in stream.text_stream:
+                    full_response += text
+                    yield f"data: {json.dumps({'text': text})}\n\n"
+
+            _brain_conversations[claim_id].append({"role": "assistant", "content": full_response})
+
+            # Log to telemetry (approximate token count)
+            try:
+                from telemetry import log_processing_step
+                prompt_tokens = len(system_prompt.split()) + sum(len(m["content"].split()) for m in _brain_conversations[claim_id])
+                completion_tokens = len(full_response.split())
+                log_processing_step(
+                    claim_id=claim_id,
+                    step_name="claim_brain_chat",
+                    model="claude-sonnet-4-20250514",
+                    prompt_tokens=int(prompt_tokens * 1.3),
+                    completion_tokens=int(completion_tokens * 1.3),
+                )
+            except Exception:
+                pass
+
+            yield f"data: {json.dumps({'done': True})}\n\n"
+        except Exception as e:
+            yield f"data: {json.dumps({'error': str(e)})}\n\n"
+
+    return StreamingResponse(stream_response(), media_type="text/event-stream")
+
+
+@app.post("/api/claim-brain/{claim_id}/reset")
+async def reset_claim_brain(claim_id: str):
+    """Reset the Claim Brain conversation for a claim."""
+    _brain_conversations.pop(claim_id, None)
+    return {"status": "reset", "claim_id": claim_id}
+
+
+# ===================================================================
 # BACKGROUND POLLERS
 # ===================================================================
 

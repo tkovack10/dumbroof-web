@@ -11,6 +11,7 @@ import { SupplementComposer } from "@/components/supplement-composer";
 import type { ScopeComparisonRow } from "@/types/scope-comparison";
 import { CATEGORY_CONFIG, FILE_CATEGORIES, CLAIM_STATUS_CONFIG, type UploadCategory } from "@/lib/claim-constants";
 import { uploadClaimDocuments } from "@/lib/upload-utils";
+import { ClaimBrainChat } from "@/components/claim-brain-chat";
 
 interface Props {
   claim: Claim;
@@ -728,6 +729,16 @@ export function AdminClaimDetail({ claim: initialClaim, userInfo }: Props) {
           </div>
         )}
       </div>
+
+      {/* Claim Brain — AI Chat */}
+      <ClaimBrainChat
+        claimId={claim.id}
+        claimAddress={claim.address}
+        carrier={claim.carrier}
+        variance={
+          (claim.contractor_rcv || 0) - (claim.current_carrier_rcv || claim.original_carrier_rcv || 0)
+        }
+      />
     </main>
   );
 }
