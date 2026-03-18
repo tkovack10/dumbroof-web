@@ -65,12 +65,12 @@ export function EstimateView({ claimId }: Props) {
           setItems(data.items || []);
         }
 
-        // Fetch photos from Supabase
-        const { data: photosData } = await supabase
-          .from("photos")
-          .select("annotation_key, annotation_text, damage_type, material, trade, severity, storage_path")
-          .eq("claim_id", claimId);
-        if (photosData) setPhotos(photosData);
+        // Fetch photos via API route (bypasses RLS)
+        const photosRes = await fetch(`/api/claim-photos?claim_id=${claimId}`);
+        if (photosRes.ok) {
+          const photosJson = await photosRes.json();
+          setPhotos(photosJson.photos || []);
+        }
 
         // Fetch comparison rows (for code citations)
         const compRes = await fetch(`/api/scope-comparison?claim_id=${claimId}`);

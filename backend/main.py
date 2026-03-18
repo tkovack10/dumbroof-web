@@ -883,10 +883,14 @@ def _build_claim_brain_prompt(claim_data: dict, photos: list, scope_comparison: 
     if photos:
         photo_summary = f"\n### Photos on File ({len(photos)})\n"
         for p in photos[:40]:
-            tags = p.get("annotation", {})
-            damage = tags.get("damage_type", "unclassified") if isinstance(tags, dict) else "unclassified"
-            material = tags.get("material", "") if isinstance(tags, dict) else ""
-            photo_summary += f"- {p.get('photo_tag', 'unknown')}: {damage} | {material}\n"
+            damage = p.get("damage_type", "unclassified")
+            material = p.get("material", "")
+            severity = p.get("severity", "")
+            desc = p.get("annotation_text", "")
+            photo_summary += f"- {p.get('annotation_key', 'unknown')}: {damage} | {material} | {severity}"
+            if desc:
+                photo_summary += f" — {desc[:100]}"
+            photo_summary += "\n"
 
     # Scope comparison
     scope_text = ""
@@ -894,10 +898,10 @@ def _build_claim_brain_prompt(claim_data: dict, photos: list, scope_comparison: 
         scope_text = "\n### Scope Comparison — Carrier vs. USARM\n"
         for row in scope_comparison[:50]:
             if isinstance(row, dict):
-                item = row.get("item", row.get("description", "Unknown"))
-                carrier_amt = row.get("carrier_amount", row.get("carrier_total", 0))
-                usarm_amt = row.get("usarm_amount", row.get("usarm_total", 0))
-                diff = row.get("difference", (usarm_amt or 0) - (carrier_amt or 0))
+                item = row.get("checklist_desc", row.get("usarm_desc", row.get("carrier_desc", "Unknown")))
+                carrier_amt = row.get("carrier_amount", 0) or 0
+                usarm_amt = row.get("usarm_amount", 0) or 0
+                diff = usarm_amt - carrier_amt
                 note = row.get("note", row.get("notes", ""))
                 scope_text += f"- **{item}**: Carrier ${carrier_amt:,.2f} → USARM ${usarm_amt:,.2f} (Δ ${diff:,.2f}) {note}\n"
 
@@ -1006,7 +1010,7 @@ async def claim_brain_chat(claim_id: str, body: ChatMessage):
 
     # Load photos with annotations
     photos_result = sb.table("photos").select(
-        "photo_tag, annotation, damage_type, material, trade, severity"
+        "annotation_key, annotation_text, damage_type, material, trade, severity"
     ).eq("claim_id", claim_id).execute()
     photos = photos_result.data or []
 
