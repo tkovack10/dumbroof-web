@@ -970,6 +970,26 @@ Use "supplement" or "scope clarification" — never "appeal".
 6. Respect compliance. CONTRACTOR MODE — no advocacy language.
 7. Be proactive. If you notice something — photo gap, deadline, payment discrepancy — say it.
 8. When asked "where does this claim stand?" — lead with the money, then the status, then the next action.
+
+## TOOLS — You Can Take Action
+You have tools to perform real actions on this claim. When the user asks you to do something
+actionable (send emails, generate documents, check status), USE the appropriate tool.
+
+Available actions:
+- **send_supplement_email** — Draft & send supplement email to carrier adjuster
+- **generate_invoice** — Create invoice PDF for homeowner or carrier (with optional Stripe link)
+- **generate_coc** — Create Certificate of Completion and optionally send to carrier
+- **send_aob_to_carrier** — Send signed AOB + cover letter to carrier
+- **send_aob_for_signature** — Generate AOB and send to homeowner for digital signature
+- **send_custom_email** — Send any custom email related to this claim
+- **check_claim_status** — Pull current financials, emails, and next actions
+
+**IMPORTANT**: All emails require user approval before sending. When you use an email tool,
+the user will see a preview card and must click "Approve" before anything sends. Tell the
+user you've prepared the draft and it's ready for their review.
+
+When generating emails, use a professional but direct tone. Include specific dollar amounts
+and line items when relevant. Reference claim details (address, carrier, claim number) naturally.
 """
 
 
@@ -996,9 +1016,20 @@ class ChatMessage(BaseModel):
     user_id: str | None = None
 
 
+class ToolApproval(BaseModel):
+    tool_call_id: str
+    approved: bool
+
+
+# Pending tool actions awaiting user approval: {claim_id: {tool_call_id: tool_result}}
+_pending_tool_actions: dict = {}
+
+
 @app.post("/api/claim-brain/{claim_id}/chat")
 async def claim_brain_chat(claim_id: str, body: ChatMessage):
-    """Claim Brain — streaming AI chat for a specific claim."""
+    """Claim Brain — streaming AI chat for a specific claim with tool use."""
+    from claim_brain_tools import CLAIM_BRAIN_TOOLS, execute_tool
+
     sb = get_supabase_client()
 
     # Verify claim exists
@@ -1033,26 +1064,130 @@ async def claim_brain_chat(claim_id: str, body: ChatMessage):
         _brain_conversations[claim_id] = _brain_conversations[claim_id][-50:]
 
     client = anthropic.Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
+    user_id = body.user_id or claim_data.get("user_id", "")
 
     async def stream_response():
         try:
-            full_response = ""
-            with client.messages.stream(
-                model="claude-sonnet-4-20250514",
-                max_tokens=4096,
-                system=system_prompt,
-                messages=_brain_conversations[claim_id],
-            ) as stream:
-                for text in stream.text_stream:
-                    full_response += text
-                    yield f"data: {json.dumps({'text': text})}\n\n"
+            messages = list(_brain_conversations[claim_id])
+            full_text_parts = []
+            tool_results_for_frontend = []
 
+            # Tool use loop — may iterate if Claude calls tools
+            max_tool_rounds = 3
+            for _round in range(max_tool_rounds):
+                response = client.messages.create(
+                    model="claude-sonnet-4-20250514",
+                    max_tokens=4096,
+                    system=system_prompt,
+                    messages=messages,
+                    tools=CLAIM_BRAIN_TOOLS,
+                )
+
+                # Process content blocks
+                has_tool_use = False
+                tool_use_results = []
+
+                for block in response.content:
+                    if block.type == "text":
+                        full_text_parts.append(block.text)
+                        yield f"data: {json.dumps({'text': block.text})}\n\n"
+
+                    elif block.type == "tool_use":
+                        has_tool_use = True
+                        tool_name = block.name
+                        tool_input = block.input
+                        tool_use_id = block.id
+
+                        # Stream a status message to the user
+                        status_msg = f"\n\n*Executing: {tool_name}...*\n\n"
+                        full_text_parts.append(status_msg)
+                        yield f"data: {json.dumps({'text': status_msg})}\n\n"
+
+                        # Execute the tool
+                        try:
+                            tool_result = await execute_tool(
+                                sb, claim_id, user_id, tool_name, tool_input
+                            )
+                        except Exception as te:
+                            tool_result = {"action": "error", "message": str(te)}
+
+                        # If it's a preview (needs approval), store it and send to frontend
+                        if tool_result.get("action") == "preview":
+                            import uuid
+                            approval_id = str(uuid.uuid4())[:8]
+                            if claim_id not in _pending_tool_actions:
+                                _pending_tool_actions[claim_id] = {}
+                            _pending_tool_actions[claim_id][approval_id] = tool_result
+
+                            tool_result["approval_id"] = approval_id
+                            tool_results_for_frontend.append(tool_result)
+
+                            # Send the tool action card to frontend
+                            yield f"data: {json.dumps({'tool_action': tool_result})}\n\n"
+
+                            # Provide tool result back to Claude so it can continue
+                            tool_use_results.append({
+                                "type": "tool_result",
+                                "tool_use_id": tool_use_id,
+                                "content": json.dumps({
+                                    "status": "preview_sent",
+                                    "message": tool_result.get("message", ""),
+                                    "awaiting_user_approval": True,
+                                }),
+                            })
+                        elif tool_result.get("action") == "complete":
+                            # Tool completed without needing approval (e.g., status check)
+                            yield f"data: {json.dumps({'tool_action': tool_result})}\n\n"
+
+                            tool_use_results.append({
+                                "type": "tool_result",
+                                "tool_use_id": tool_use_id,
+                                "content": json.dumps(tool_result.get("data", tool_result)),
+                            })
+                        else:
+                            # Error
+                            tool_use_results.append({
+                                "type": "tool_result",
+                                "tool_use_id": tool_use_id,
+                                "content": json.dumps({"error": tool_result.get("message", "Tool execution failed")}),
+                                "is_error": True,
+                            })
+
+                # If no tool use, we're done
+                if not has_tool_use:
+                    break
+
+                # Otherwise, add assistant message + tool results to messages and loop
+                # Serialize content blocks to dicts for the next API call
+                serialized_content = []
+                for block in response.content:
+                    if block.type == "text":
+                        serialized_content.append({"type": "text", "text": block.text})
+                    elif block.type == "tool_use":
+                        serialized_content.append({
+                            "type": "tool_use",
+                            "id": block.id,
+                            "name": block.name,
+                            "input": block.input,
+                        })
+                messages.append({"role": "assistant", "content": serialized_content})
+                messages.append({"role": "user", "content": tool_use_results})
+
+                # If stop_reason is end_turn (not tool_use), break
+                if response.stop_reason != "tool_use":
+                    break
+
+            # Store the final text in conversation history
+            full_response = "".join(full_text_parts)
             _brain_conversations[claim_id].append({"role": "assistant", "content": full_response})
 
-            # Log to telemetry (approximate token count)
+            # Log to telemetry
             try:
                 from telemetry import log_processing_step
-                prompt_tokens = len(system_prompt.split()) + sum(len(m["content"].split()) for m in _brain_conversations[claim_id])
+                prompt_tokens = len(system_prompt.split()) + sum(
+                    len(m["content"].split()) if isinstance(m["content"], str) else 100
+                    for m in _brain_conversations[claim_id]
+                )
                 completion_tokens = len(full_response.split())
                 log_processing_step(
                     claim_id=claim_id,
@@ -1071,11 +1206,149 @@ async def claim_brain_chat(claim_id: str, body: ChatMessage):
     return StreamingResponse(stream_response(), media_type="text/event-stream")
 
 
+@app.post("/api/claim-brain/{claim_id}/approve-action")
+async def approve_brain_action(claim_id: str, body: ToolApproval):
+    """Approve or reject a pending Claim Brain tool action (email send, etc.)."""
+    from claim_brain_email import send_claim_email
+
+    sb = get_supabase_client()
+
+    pending = _pending_tool_actions.get(claim_id, {})
+    tool_result = pending.pop(body.tool_call_id, None)
+
+    if not tool_result:
+        raise HTTPException(status_code=404, detail="No pending action found with that ID")
+
+    if not body.approved:
+        return {"status": "discarded", "message": "Action was discarded by user."}
+
+    # Execute the approved action (send the email)
+    draft = tool_result.get("draft")
+    if not draft:
+        return {"status": "complete", "message": "Action approved (no email to send)."}
+
+    # Load claim for user_id
+    claim_result = sb.table("claims").select("user_id, file_path").eq("id", claim_id).single().execute()
+    user_id = claim_result.data.get("user_id", "") if claim_result.data else ""
+
+    try:
+        # Download attachment content from Supabase Storage
+        resolved_attachments = []
+        for att in (draft.get("attachments") or []):
+            try:
+                content = sb.storage.from_("claim-documents").download(att["path"])
+                resolved_attachments.append({
+                    "filename": att["filename"],
+                    "content": content,
+                })
+            except Exception as ae:
+                print(f"[WARN] Failed to download attachment {att['path']}: {ae}")
+
+        email_result = send_claim_email(
+            sb=sb,
+            claim_id=claim_id,
+            user_id=user_id,
+            to_email=draft["to"],
+            subject=draft["subject"],
+            body_html=draft["body_html"],
+            cc=draft.get("cc"),
+            attachments=resolved_attachments if resolved_attachments else None,
+            email_type=tool_result.get("tool_name", "custom"),
+        )
+        return {
+            "status": "sent",
+            "message": f"Email sent to {draft['to']}",
+            "email_id": email_result.get("email_id"),
+        }
+    except Exception as e:
+        return {"status": "error", "message": f"Failed to send: {str(e)}"}
+
+
 @app.post("/api/claim-brain/{claim_id}/reset")
 async def reset_claim_brain(claim_id: str):
     """Reset the Claim Brain conversation for a claim."""
     _brain_conversations.pop(claim_id, None)
     return {"status": "reset", "claim_id": claim_id}
+
+
+# ===================================================================
+# GMAIL OAUTH — Connect user's Gmail for sending
+# ===================================================================
+
+@app.get("/api/gmail-auth/authorize")
+async def gmail_auth_authorize(user_id: str):
+    """Start Gmail OAuth flow — returns the Google consent URL."""
+    from claim_brain_email import get_gmail_auth_url
+
+    base_url = os.environ.get("NEXT_PUBLIC_BACKEND_URL", "http://localhost:8000")
+    redirect_uri = f"{base_url}/api/gmail-auth/callback"
+    auth_url = get_gmail_auth_url(redirect_uri=redirect_uri, state=user_id)
+    return {"auth_url": auth_url}
+
+
+@app.get("/api/gmail-auth/callback")
+async def gmail_auth_callback(code: str, state: str = ""):
+    """Google OAuth callback — exchanges code for tokens and stores refresh_token."""
+    from claim_brain_email import exchange_gmail_code
+
+    base_url = os.environ.get("NEXT_PUBLIC_BACKEND_URL", "http://localhost:8000")
+    redirect_uri = f"{base_url}/api/gmail-auth/callback"
+
+    try:
+        tokens = exchange_gmail_code(code=code, redirect_uri=redirect_uri)
+    except Exception as e:
+        return JSONResponse({"error": f"Token exchange failed: {str(e)}"}, status_code=400)
+
+    refresh_token = tokens.get("refresh_token")
+    if not refresh_token:
+        return JSONResponse({"error": "No refresh token received — user may need to re-consent."}, status_code=400)
+
+    # Get user's email from Gmail API
+    gmail_email = ""
+    try:
+        import urllib.request
+        req = urllib.request.Request(
+            "https://gmail.googleapis.com/gmail/v1/users/me/profile",
+            headers={"Authorization": f"Bearer {tokens['access_token']}"},
+        )
+        with urllib.request.urlopen(req) as resp:
+            profile = json.loads(resp.read())
+            gmail_email = profile.get("emailAddress", "")
+    except Exception:
+        pass
+
+    # Store in company_profiles
+    user_id = state
+    if user_id:
+        sb = get_supabase_client()
+        try:
+            # Upsert: update if exists, insert if not
+            sb.table("company_profiles").upsert({
+                "user_id": user_id,
+                "gmail_refresh_token": refresh_token,
+                "sending_email": gmail_email,
+            }, on_conflict="user_id").execute()
+        except Exception as e:
+            print(f"[WARN] Failed to save Gmail token: {e}")
+
+    # Redirect to settings page with success
+    site_url = os.environ.get("NEXT_PUBLIC_SITE_URL", "https://dumbroof.ai")
+    from starlette.responses import RedirectResponse
+    return RedirectResponse(url=f"{site_url}/dashboard/settings?gmail=connected")
+
+
+@app.post("/api/gmail-auth/disconnect")
+async def gmail_auth_disconnect(user_id: str = Body(..., embed=True)):
+    """Disconnect Gmail — removes stored refresh token."""
+    sb = get_supabase_client()
+    try:
+        sb.table("company_profiles").update({
+            "gmail_refresh_token": None,
+            "sending_email": None,
+        }).eq("user_id", user_id).execute()
+        return {"status": "disconnected"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 # ===================================================================

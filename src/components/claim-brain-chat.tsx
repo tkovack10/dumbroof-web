@@ -5,6 +5,25 @@ import { useState, useRef, useEffect, useCallback } from "react";
 interface Message {
   role: "user" | "assistant";
   content: string;
+  toolActions?: ToolAction[];
+}
+
+interface ToolAction {
+  action: "preview" | "complete" | "error";
+  type: string;
+  tool_name: string;
+  approval_id?: string;
+  message: string;
+  draft?: {
+    to: string;
+    cc?: string;
+    subject: string;
+    body_html: string;
+    attachments?: { path: string; filename: string }[];
+  };
+  pdf_path?: string;
+  sign_link?: string;
+  data?: Record<string, unknown>;
 }
 
 interface ClaimBrainChatProps {
@@ -64,6 +83,26 @@ function renderMarkdown(text: string): string {
   return '<p class="text-sm my-1">' + html + "</p>";
 }
 
+const TOOL_ICONS: Record<string, string> = {
+  send_supplement_email: "📧",
+  generate_invoice: "🧾",
+  generate_coc: "📋",
+  send_aob_to_carrier: "📜",
+  send_aob_for_signature: "✍️",
+  send_custom_email: "✉️",
+  check_claim_status: "📊",
+};
+
+const TOOL_LABELS: Record<string, string> = {
+  send_supplement_email: "Supplement Email",
+  generate_invoice: "Invoice",
+  generate_coc: "Certificate of Completion",
+  send_aob_to_carrier: "AOB to Carrier",
+  send_aob_for_signature: "AOB for Signature",
+  send_custom_email: "Email",
+  check_claim_status: "Status Check",
+};
+
 const QUICK_ACTIONS = [
   { label: "Claim status", prompt: "Where does this claim stand?" },
   { label: "Carrier gaps", prompt: "What did the carrier miss?" },
@@ -72,6 +111,181 @@ const QUICK_ACTIONS = [
   { label: "Draft email", prompt: "Draft a supplement response to the adjuster" },
   { label: "Line items", prompt: "Break down the financials line by line" },
 ];
+
+function ToolActionCard({
+  action,
+  claimId,
+  backendUrl,
+  onStatusUpdate,
+}: {
+  action: ToolAction;
+  claimId: string;
+  backendUrl: string;
+  onStatusUpdate: (id: string, status: string) => void;
+}) {
+  const [status, setStatus] = useState<"pending" | "approving" | "sent" | "discarded" | "error">("pending");
+  const [expanded, setExpanded] = useState(false);
+
+  const icon = TOOL_ICONS[action.tool_name] || "🔧";
+  const label = TOOL_LABELS[action.tool_name] || action.tool_name;
+
+  const handleApprove = async () => {
+    if (!action.approval_id) return;
+    setStatus("approving");
+    try {
+      const res = await fetch(`${backendUrl}/api/claim-brain/${claimId}/approve-action`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tool_call_id: action.approval_id, approved: true }),
+      });
+      const data = await res.json();
+      if (data.status === "sent") {
+        setStatus("sent");
+        onStatusUpdate(action.approval_id, "sent");
+      } else if (data.status === "error") {
+        setStatus("error");
+      } else {
+        setStatus("sent");
+      }
+    } catch {
+      setStatus("error");
+    }
+  };
+
+  const handleDiscard = async () => {
+    if (!action.approval_id) return;
+    try {
+      await fetch(`${backendUrl}/api/claim-brain/${claimId}/approve-action`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tool_call_id: action.approval_id, approved: false }),
+      });
+    } catch {
+      // ignore
+    }
+    setStatus("discarded");
+    onStatusUpdate(action.approval_id, "discarded");
+  };
+
+  // Status check (no approval needed) — show data inline
+  if (action.action === "complete" && action.type === "status" && action.data) {
+    return (
+      <div className="bg-blue-500/5 border border-blue-500/20 rounded-lg p-3 my-2">
+        <div className="flex items-center gap-1.5 text-xs text-blue-400 font-medium mb-2">
+          {icon} {label}
+        </div>
+        <div className="grid grid-cols-2 gap-1 text-[11px]">
+          {Object.entries(action.data).map(([key, val]) => (
+            <div key={key} className="flex justify-between">
+              <span className="text-white/40">{key.replace(/_/g, " ")}:</span>
+              <span className="text-white/70">
+                {typeof val === "number" && key.includes("rcv")
+                  ? `$${val.toLocaleString()}`
+                  : String(val ?? "—")}
+              </span>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  // PDF generated (no email) — complete action
+  if (action.action === "complete" && action.pdf_path) {
+    return (
+      <div className="bg-emerald-500/5 border border-emerald-500/20 rounded-lg p-3 my-2">
+        <div className="flex items-center gap-1.5 text-xs text-emerald-400 font-medium">
+          {icon} {label} Generated
+        </div>
+        <div className="text-[11px] text-white/50 mt-1">{action.message}</div>
+      </div>
+    );
+  }
+
+  // Preview card (needs approval)
+  return (
+    <div className={`border rounded-lg p-3 my-2 ${
+      status === "sent" ? "bg-emerald-500/5 border-emerald-500/20" :
+      status === "discarded" ? "bg-white/5 border-white/10 opacity-50" :
+      status === "error" ? "bg-red-500/5 border-red-500/20" :
+      "bg-amber-500/5 border-amber-500/20"
+    }`}>
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-1.5 text-xs font-medium" style={{
+          color: status === "sent" ? "#34d399" : status === "error" ? "#f87171" : "#fbbf24"
+        }}>
+          {icon} {label}
+          {status === "sent" && " — Sent"}
+          {status === "discarded" && " — Discarded"}
+          {status === "error" && " — Failed"}
+          {status === "approving" && " — Sending..."}
+        </div>
+        {action.draft && (
+          <button
+            onClick={() => setExpanded(!expanded)}
+            className="text-[10px] text-white/30 hover:text-white/60"
+          >
+            {expanded ? "Hide" : "Preview"}
+          </button>
+        )}
+      </div>
+
+      {/* Summary */}
+      {action.draft && (
+        <div className="mt-1.5 text-[11px] text-white/50">
+          <span className="text-white/30">To:</span> {action.draft.to}
+          {action.draft.cc && <> · <span className="text-white/30">CC:</span> {action.draft.cc}</>}
+          <br />
+          <span className="text-white/30">Subject:</span> {action.draft.subject}
+          {action.draft.attachments && action.draft.attachments.length > 0 && (
+            <div className="mt-0.5">
+              <span className="text-white/30">Attachments:</span>{" "}
+              {action.draft.attachments.map((a) => a.filename).join(", ")}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Expanded preview */}
+      {expanded && action.draft && (
+        <div className="mt-2 p-2 bg-white/5 rounded text-[11px] text-white/60 max-h-40 overflow-y-auto"
+          dangerouslySetInnerHTML={{ __html: action.draft.body_html }}
+        />
+      )}
+
+      {/* Sign link */}
+      {action.sign_link && (
+        <div className="mt-1.5 text-[11px]">
+          <span className="text-white/30">Sign link:</span>{" "}
+          <span className="text-blue-400">{action.sign_link}</span>
+        </div>
+      )}
+
+      {/* Action buttons */}
+      {status === "pending" && action.action === "preview" && (
+        <div className="flex gap-2 mt-2.5">
+          <button
+            onClick={handleApprove}
+            className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-medium py-1.5 rounded-lg transition-colors"
+          >
+            Approve & Send
+          </button>
+          <button
+            onClick={handleDiscard}
+            className="px-3 bg-white/5 hover:bg-white/10 text-white/50 text-[11px] py-1.5 rounded-lg transition-colors"
+          >
+            Discard
+          </button>
+        </div>
+      )}
+
+      {status === "approving" && (
+        <div className="mt-2 text-[11px] text-amber-400 animate-pulse">Sending...</div>
+      )}
+    </div>
+  );
+}
 
 export function ClaimBrainChat({
   claimId,
@@ -112,7 +326,7 @@ export function ClaimBrainChat({
 
     // Add placeholder for assistant
     const assistantIndex = newMessages.length;
-    setMessages([...newMessages, { role: "assistant", content: "" }]);
+    setMessages([...newMessages, { role: "assistant", content: "", toolActions: [] }]);
 
     try {
       const res = await fetch(
@@ -129,6 +343,7 @@ export function ClaimBrainChat({
 
       const decoder = new TextDecoder();
       let fullText = "";
+      const toolActions: ToolAction[] = [];
 
       while (true) {
         const { done, value } = await reader.read();
@@ -147,6 +362,19 @@ export function ClaimBrainChat({
                   updated[assistantIndex] = {
                     role: "assistant",
                     content: fullText,
+                    toolActions: [...toolActions],
+                  };
+                  return updated;
+                });
+              }
+              if (data.tool_action) {
+                toolActions.push(data.tool_action as ToolAction);
+                setMessages((prev) => {
+                  const updated = [...prev];
+                  updated[assistantIndex] = {
+                    role: "assistant",
+                    content: fullText,
+                    toolActions: [...toolActions],
                   };
                   return updated;
                 });
@@ -157,6 +385,7 @@ export function ClaimBrainChat({
                   updated[assistantIndex] = {
                     role: "assistant",
                     content: `Error: ${data.error}`,
+                    toolActions: [],
                   };
                   return updated;
                 });
@@ -173,6 +402,7 @@ export function ClaimBrainChat({
         updated[assistantIndex] = {
           role: "assistant",
           content: `Connection error: ${err instanceof Error ? err.message : "Unknown"}`,
+          toolActions: [],
         };
         return updated;
       });
@@ -198,6 +428,11 @@ export function ClaimBrainChat({
       e.preventDefault();
       sendMessage();
     }
+  };
+
+  const handleToolStatusUpdate = (approvalId: string, status: string) => {
+    // Could log or update UI state if needed
+    console.log(`Tool action ${approvalId}: ${status}`);
   };
 
   // Floating button when closed
@@ -258,7 +493,7 @@ export function ClaimBrainChat({
             </div>
             <div className="text-white/40 text-xs max-w-[280px] mx-auto">
               I know every document, line item, and dollar on this claim. Ask me
-              anything.
+              anything — or tell me to take action.
             </div>
             <div className="flex flex-wrap gap-1.5 justify-center mt-4">
               {QUICK_ACTIONS.map((action) => (
@@ -295,16 +530,28 @@ export function ClaimBrainChat({
                 }`}
               >
                 {msg.role === "assistant" ? (
-                  <div
-                    dangerouslySetInnerHTML={{
-                      __html: renderMarkdown(msg.content),
-                    }}
-                    className={
-                      isStreaming && i === messages.length - 1
-                        ? "streaming-cursor"
-                        : ""
-                    }
-                  />
+                  <>
+                    <div
+                      dangerouslySetInnerHTML={{
+                        __html: renderMarkdown(msg.content),
+                      }}
+                      className={
+                        isStreaming && i === messages.length - 1
+                          ? "streaming-cursor"
+                          : ""
+                      }
+                    />
+                    {/* Tool action cards */}
+                    {msg.toolActions && msg.toolActions.map((action, j) => (
+                      <ToolActionCard
+                        key={`${action.approval_id || j}`}
+                        action={action}
+                        claimId={claimId}
+                        backendUrl={BACKEND_URL}
+                        onStatusUpdate={handleToolStatusUpdate}
+                      />
+                    ))}
+                  </>
                 ) : (
                   <span className="text-sm">{msg.content}</span>
                 )}

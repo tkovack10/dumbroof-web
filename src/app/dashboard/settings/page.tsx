@@ -26,6 +26,7 @@ function SettingsPageContent() {
   const searchParams = useSearchParams();
   const isPasswordReset = searchParams.get("reset") === "true";
   const billingSuccess = searchParams.get("billing") === "success";
+  const gmailJustConnected = searchParams.get("gmail") === "connected";
   const passwordRef = useRef<HTMLDivElement>(null);
   const [loading, setLoading] = useState(true);
   const billing = useBillingQuota();
@@ -45,6 +46,11 @@ function SettingsPageContent() {
   const [passwordSaving, setPasswordSaving] = useState(false);
   const [passwordMessage, setPasswordMessage] = useState("");
   const [passwordError, setPasswordError] = useState("");
+  // Gmail integration state
+  const [gmailConnected, setGmailConnected] = useState(false);
+  const [gmailEmail, setGmailEmail] = useState("");
+  const [gmailConnecting, setGmailConnecting] = useState(false);
+  const [gmailDisconnecting, setGmailDisconnecting] = useState(false);
   // Repair pricing state
   const [repairPricing, setRepairPricing] = useState({
     diagnostic_fee: "250.00",
@@ -120,6 +126,11 @@ function SettingsPageContent() {
           phone: data.phone || "",
           website: data.website || "",
         });
+        // Check Gmail connection
+        if (data.gmail_refresh_token) {
+          setGmailConnected(true);
+          setGmailEmail(data.sending_email || data.email || "");
+        }
         if (data.logo_path) {
           const { data: logoData } = supabase.storage
             .from("claim-documents")
@@ -522,6 +533,102 @@ function SettingsPageContent() {
             >
               {addingForwarder ? "Adding..." : "Add Forwarder"}
             </button>
+          </div>
+        </div>
+
+        {/* Email Integration (Claim Brain) */}
+        <div className="mt-12 pt-8 border-t border-gray-200">
+          <h2 className="text-xl font-bold text-[var(--navy)] mb-1">Email Integration</h2>
+          <p className="text-gray-500 text-sm mb-6">
+            Connect your Gmail to send emails from Claim Brain as yourself.
+            Without Gmail, emails send via <strong>claims@dumbroof.ai</strong> with your company name.
+          </p>
+
+          {(gmailJustConnected && !gmailConnected) && (
+            <div className="bg-green-50 border border-green-200 text-green-700 text-sm rounded-lg px-4 py-3 mb-4">
+              Gmail connected successfully! Reload to see the updated status.
+            </div>
+          )}
+
+          <div className="bg-white border border-gray-200 rounded-xl p-6">
+            {gmailConnected ? (
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
+                    <svg className="w-5 h-5 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                    </svg>
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-[var(--navy)]">Gmail Connected</p>
+                    <p className="text-xs text-gray-500">
+                      Sending from <strong>{gmailEmail}</strong>
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={async () => {
+                    setGmailDisconnecting(true);
+                    const { data: { user } } = await supabase.auth.getUser();
+                    if (!user) return;
+                    try {
+                      await fetch(`${BACKEND_URL}/api/gmail-auth/disconnect`, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ user_id: user.id }),
+                      });
+                      setGmailConnected(false);
+                      setGmailEmail("");
+                    } catch {
+                      // ignore
+                    }
+                    setGmailDisconnecting(false);
+                  }}
+                  disabled={gmailDisconnecting}
+                  className="text-red-500 hover:text-red-700 text-sm font-medium transition-colors disabled:opacity-50"
+                >
+                  {gmailDisconnecting ? "Disconnecting..." : "Disconnect"}
+                </button>
+              </div>
+            ) : (
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center">
+                    <svg className="w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75" />
+                    </svg>
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-[var(--navy)]">Gmail Not Connected</p>
+                    <p className="text-xs text-gray-500">
+                      Emails currently send via <strong>claims@dumbroof.ai</strong>
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={async () => {
+                    setGmailConnecting(true);
+                    const { data: { user } } = await supabase.auth.getUser();
+                    if (!user) return;
+                    try {
+                      const res = await fetch(
+                        `${BACKEND_URL}/api/gmail-auth/authorize?user_id=${user.id}`
+                      );
+                      const data = await res.json();
+                      if (data.auth_url) {
+                        window.location.href = data.auth_url;
+                      }
+                    } catch {
+                      setGmailConnecting(false);
+                    }
+                  }}
+                  disabled={gmailConnecting}
+                  className="bg-[var(--navy)] hover:bg-[var(--navy-light)] disabled:opacity-50 text-white px-5 py-2.5 rounded-lg text-sm font-medium transition-colors"
+                >
+                  {gmailConnecting ? "Connecting..." : "Connect Gmail"}
+                </button>
+              </div>
+            )}
           </div>
         </div>
 
