@@ -1292,6 +1292,52 @@ async def reset_claim_brain(claim_id: str):
 
 
 # ===================================================================
+# DIRECT EMAIL SEND — For Supplement Composer (bypasses Claim Brain chat)
+# ===================================================================
+
+class DirectEmailRequest(BaseModel):
+    claim_id: str
+    user_id: str | None = None
+    to_email: str
+    subject: str
+    body_html: str
+    cc: str | None = None
+
+
+@app.post("/api/supplement-email/send")
+async def send_supplement_email_direct(body: DirectEmailRequest):
+    """Send a supplement email directly (not through Claim Brain tool loop)."""
+    from claim_brain_email import send_claim_email
+
+    sb = get_supabase_client()
+
+    # Get user_id from claim if not provided
+    user_id = body.user_id
+    if not user_id:
+        claim_result = sb.table("claims").select("user_id").eq("id", body.claim_id).limit(1).execute()
+        user_id = claim_result.data[0]["user_id"] if claim_result.data else ""
+
+    if not user_id:
+        return {"status": "error", "message": "Could not determine user"}
+
+    try:
+        result = send_claim_email(
+            sb=sb,
+            user_id=user_id,
+            claim_id=body.claim_id,
+            to_email=body.to_email,
+            subject=body.subject,
+            body_html=body.body_html,
+            cc=body.cc,
+            email_type="supplement",
+        )
+        return result
+    except Exception as e:
+        print(f"[EMAIL ERROR] {e}", flush=True)
+        return {"status": "error", "message": str(e)}
+
+
+# ===================================================================
 # GMAIL OAUTH — Connect user's Gmail for sending
 # ===================================================================
 

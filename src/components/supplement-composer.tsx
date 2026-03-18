@@ -353,31 +353,40 @@ export function SupplementComposer({ claimId, claimAddress, carrierName, compari
                 <button
                   onClick={async () => {
                     if (!toEmail) { setSendResult({ ok: false, message: "Enter adjuster email address" }); return; }
+                    if (!claimNumber) { setSendResult({ ok: false, message: "Enter claim number (used as subject line)" }); return; }
                     setSending(true);
                     setSendResult(null);
                     try {
                       const emailText = generateEmail();
-                      const bodyHtml = emailText.replace(/\n/g, "<br>");
-                      const subject = claimNumber || "CLAIM NUMBER NEEDED";
-                      const res = await fetch(`${BACKEND_URL}/api/claim-brain/${claimId}/chat`, {
+                      // Convert plain text to HTML paragraphs
+                      const bodyHtml = emailText
+                        .split("\n\n")
+                        .map((p: string) => `<p>${p.replace(/\n/g, "<br>")}</p>`)
+                        .join("");
+                      // Send directly via backend email endpoint (not through Claim Brain chat)
+                      const res = await fetch(`${BACKEND_URL}/api/supplement-email/send`, {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
                         body: JSON.stringify({
-                          message: `SYSTEM: Send this exact supplement email to ${toEmail} with subject "${subject}". Do not modify the content or subject. The subject MUST be exactly "${subject}" — claim number only. Use the send_custom_email tool with this exact body:\n\n${emailText}`,
+                          claim_id: claimId,
                           user_id: userId || null,
+                          to_email: toEmail,
+                          subject: claimNumber,
+                          body_html: bodyHtml,
                         }),
                       });
-                      if (res.ok) {
-                        setSendResult({ ok: true, message: `Supplement email sent to ${toEmail}` });
+                      const data = await res.json();
+                      if (res.ok && data.status === "sent") {
+                        setSendResult({ ok: true, message: `Supplement email sent to ${toEmail} (${data.method})` });
                       } else {
-                        setSendResult({ ok: false, message: "Failed to send — try Copy to Clipboard instead" });
+                        setSendResult({ ok: false, message: data.message || "Failed to send — try Copy to Clipboard instead" });
                       }
                     } catch {
                       setSendResult({ ok: false, message: "Connection error — try Copy to Clipboard instead" });
                     }
                     setSending(false);
                   }}
-                  disabled={sending || !toEmail}
+                  disabled={sending || !toEmail || !claimNumber}
                   className="bg-green-600 hover:bg-green-700 disabled:opacity-40 text-white px-5 py-2 rounded-lg text-sm font-semibold transition-colors"
                 >
                   {sending ? "Sending..." : "Send via Gmail"}
