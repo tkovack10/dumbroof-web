@@ -28,6 +28,7 @@ export function SupplementComposer({ claimId, claimAddress, carrierName, compari
   const [showComposer, setShowComposer] = useState(false);
   const [copied, setCopied] = useState(false);
   const [toEmail, setToEmail] = useState("");
+  const [claimNumber, setClaimNumber] = useState("");
   const [sending, setSending] = useState(false);
   const [sendResult, setSendResult] = useState<{ ok: boolean; message: string } | null>(null);
 
@@ -106,7 +107,7 @@ export function SupplementComposer({ claimId, claimAddress, carrierName, compari
     const underItems = selectedItems.filter((i) => i.type === "under");
     const codeSelections = selectedItems.filter((i) => i.type === "code");
 
-    let email = `Subject: Supplement Request — ${claimAddress}\n\n`;
+    let email = `Subject: ${claimNumber || "CLAIM NUMBER NEEDED"}\n\n`;
     email += `Dear ${carrierName} Claims Department,\n\n`;
     email += `We are writing regarding the above-referenced property to request a supplement to the current scope of repairs. `;
     email += `After thorough inspection and review of the EagleView certified measurements, we have identified the following discrepancies between the carrier's approved scope and the documented conditions.\n\n`;
@@ -300,16 +301,28 @@ export function SupplementComposer({ claimId, claimAddress, carrierName, compari
                 </svg>
               </button>
             </div>
-            {/* Send to field */}
-            <div className="px-6 py-3 border-b border-gray-100 bg-gray-50">
-              <label className="text-[10px] uppercase font-semibold text-gray-400 tracking-wide">Send To (adjuster email)</label>
-              <input
-                type="email"
-                value={toEmail}
-                onChange={(e) => setToEmail(e.target.value)}
-                placeholder="adjuster@carrier.com"
-                className="w-full mt-1 px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
+            {/* Send to + claim number fields */}
+            <div className="px-6 py-3 border-b border-gray-100 bg-gray-50 grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-[10px] uppercase font-semibold text-gray-400 tracking-wide">Send To (adjuster email)</label>
+                <input
+                  type="email"
+                  value={toEmail}
+                  onChange={(e) => setToEmail(e.target.value)}
+                  placeholder="adjuster@carrier.com"
+                  className="w-full mt-1 px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <div>
+                <label className="text-[10px] uppercase font-semibold text-gray-400 tracking-wide">Claim Number (subject line)</label>
+                <input
+                  type="text"
+                  value={claimNumber}
+                  onChange={(e) => setClaimNumber(e.target.value)}
+                  placeholder="e.g. 0820085561"
+                  className="w-full mt-1 px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
             </div>
             <div className="flex-1 overflow-y-auto p-6">
               <pre className="text-xs text-gray-700 whitespace-pre-wrap font-sans leading-relaxed">{generateEmail()}</pre>
@@ -345,12 +358,12 @@ export function SupplementComposer({ claimId, claimAddress, carrierName, compari
                     try {
                       const emailText = generateEmail();
                       const bodyHtml = emailText.replace(/\n/g, "<br>");
-                      const subject = `Supplement Request — ${claimAddress}`;
+                      const subject = claimNumber || "CLAIM NUMBER NEEDED";
                       const res = await fetch(`${BACKEND_URL}/api/claim-brain/${claimId}/chat`, {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
                         body: JSON.stringify({
-                          message: `SYSTEM: Send this exact supplement email to ${toEmail} with subject "${subject}". Do not modify the content. Use the send_custom_email tool with this exact body:\n\n${emailText}`,
+                          message: `SYSTEM: Send this exact supplement email to ${toEmail} with subject "${subject}". Do not modify the content or subject. The subject MUST be exactly "${subject}" — claim number only. Use the send_custom_email tool with this exact body:\n\n${emailText}`,
                           user_id: userId || null,
                         }),
                       });
