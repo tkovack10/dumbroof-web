@@ -803,11 +803,13 @@ export default function ClaimDetailPage() {
         {/* Supplement Composer — only for post-scope claims with comparison data */}
         {isReady && claim.scope_comparison && (
           <SupplementComposer
+            claimId={claim.id}
             claimAddress={claim.address}
             carrierName={claim.carrier}
             comparisonRows={claim.scope_comparison as ScopeComparisonRow[]}
             carrierRcv={claim.current_carrier_rcv ?? claim.original_carrier_rcv ?? 0}
             contractorRcv={claim.contractor_rcv ?? 0}
+            userId={currentUserId}
           />
         )}
 

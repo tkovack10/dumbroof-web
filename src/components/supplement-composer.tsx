@@ -14,17 +14,24 @@ interface SupplementItem {
 }
 
 interface Props {
+  claimId: string;
   claimAddress: string;
   carrierName: string;
   comparisonRows: ScopeComparisonRow[];
   carrierRcv: number;
   contractorRcv: number;
+  userId?: string;
 }
 
-export function SupplementComposer({ claimAddress, carrierName, comparisonRows, carrierRcv, contractorRcv }: Props) {
+export function SupplementComposer({ claimId, claimAddress, carrierName, comparisonRows, carrierRcv, contractorRcv, userId }: Props) {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [showComposer, setShowComposer] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [toEmail, setToEmail] = useState("");
+  const [sending, setSending] = useState(false);
+  const [sendResult, setSendResult] = useState<{ ok: boolean; message: string } | null>(null);
+
+  const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "https://dumbroof-backend-production.up.railway.app";
 
   // Build selectable items from comparison rows
   const items: SupplementItem[] = [];
@@ -293,27 +300,74 @@ export function SupplementComposer({ claimAddress, carrierName, comparisonRows, 
                 </svg>
               </button>
             </div>
+            {/* Send to field */}
+            <div className="px-6 py-3 border-b border-gray-100 bg-gray-50">
+              <label className="text-[10px] uppercase font-semibold text-gray-400 tracking-wide">Send To (adjuster email)</label>
+              <input
+                type="email"
+                value={toEmail}
+                onChange={(e) => setToEmail(e.target.value)}
+                placeholder="adjuster@carrier.com"
+                className="w-full mt-1 px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
             <div className="flex-1 overflow-y-auto p-6">
               <pre className="text-xs text-gray-700 whitespace-pre-wrap font-sans leading-relaxed">{generateEmail()}</pre>
             </div>
+            {sendResult && (
+              <div className={`px-6 py-2 text-sm ${sendResult.ok ? "bg-green-50 text-green-700" : "bg-red-50 text-red-700"}`}>
+                {sendResult.message}
+              </div>
+            )}
             <div className="px-6 py-4 border-t border-gray-200 flex items-center justify-between">
-              <p className="text-[10px] text-gray-400">Copy this text and send from your email client</p>
+              <button
+                onClick={() => { setShowComposer(false); setSendResult(null); }}
+                className="px-4 py-2 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-100 transition-colors"
+              >
+                Close
+              </button>
               <div className="flex gap-2">
-                <button
-                  onClick={() => setShowComposer(false)}
-                  className="px-4 py-2 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-100 transition-colors"
-                >
-                  Close
-                </button>
                 <button
                   onClick={() => {
                     navigator.clipboard.writeText(generateEmail());
                     setCopied(true);
                     setTimeout(() => setCopied(false), 2000);
                   }}
-                  className="bg-[var(--navy)] hover:bg-[var(--navy-light)] text-white px-5 py-2 rounded-lg text-sm font-semibold transition-colors"
+                  className="px-4 py-2 rounded-lg text-sm font-medium border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors"
                 >
                   {copied ? "Copied!" : "Copy to Clipboard"}
+                </button>
+                <button
+                  onClick={async () => {
+                    if (!toEmail) { setSendResult({ ok: false, message: "Enter adjuster email address" }); return; }
+                    setSending(true);
+                    setSendResult(null);
+                    try {
+                      const emailText = generateEmail();
+                      const bodyHtml = emailText.replace(/\n/g, "<br>");
+                      const subject = `Supplement Request — ${claimAddress}`;
+                      const res = await fetch(`${BACKEND_URL}/api/claim-brain/${claimId}/chat`, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                          message: `SYSTEM: Send this exact supplement email to ${toEmail} with subject "${subject}". Do not modify the content. Use the send_custom_email tool with this exact body:\n\n${emailText}`,
+                          user_id: userId || null,
+                        }),
+                      });
+                      if (res.ok) {
+                        setSendResult({ ok: true, message: `Supplement email sent to ${toEmail}` });
+                      } else {
+                        setSendResult({ ok: false, message: "Failed to send — try Copy to Clipboard instead" });
+                      }
+                    } catch {
+                      setSendResult({ ok: false, message: "Connection error — try Copy to Clipboard instead" });
+                    }
+                    setSending(false);
+                  }}
+                  disabled={sending || !toEmail}
+                  className="bg-green-600 hover:bg-green-700 disabled:opacity-40 text-white px-5 py-2 rounded-lg text-sm font-semibold transition-colors"
+                >
+                  {sending ? "Sending..." : "Send via Gmail"}
                 </button>
               </div>
             </div>
