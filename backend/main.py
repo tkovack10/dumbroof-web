@@ -121,6 +121,35 @@ def health():
     }
 
 
+@app.get("/api/debug/profile/{user_id}")
+async def debug_profile(user_id: str):
+    """Debug endpoint: test company_profiles query on Railway."""
+    import urllib.request, json as _json
+    sb = get_supabase_client()
+    results = {}
+    # Test 1: SDK query
+    try:
+        r = sb.table("company_profiles").select("company_name,contact_name").eq("user_id", user_id).limit(1).execute()
+        results["sdk"] = {"rows": len(r.data or []), "data": r.data[0] if r.data else None}
+    except Exception as e:
+        results["sdk"] = {"error": f"{type(e).__name__}: {e}"}
+    # Test 2: REST query
+    try:
+        _sb_url = os.environ.get("SUPABASE_URL", "")
+        _sb_key = os.environ.get("SUPABASE_SERVICE_KEY", "")
+        results["env"] = {"url_prefix": _sb_url[:30], "key_len": len(_sb_key), "key_prefix": _sb_key[:10]}
+        req = urllib.request.Request(
+            f"{_sb_url}/rest/v1/company_profiles?user_id=eq.{user_id}&select=company_name,contact_name&limit=1",
+            headers={"apikey": _sb_key, "Authorization": f"Bearer {_sb_key}"}
+        )
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            data = _json.loads(resp.read())
+            results["rest"] = {"rows": len(data), "data": data[0] if data else None}
+    except Exception as e:
+        results["rest"] = {"error": f"{type(e).__name__}: {e}"}
+    return results
+
+
 @app.post("/api/reprocess/{claim_id}")
 async def reprocess_claim(claim_id: str, background_tasks: BackgroundTasks):
     """Re-process a claim after additional documents are uploaded."""
