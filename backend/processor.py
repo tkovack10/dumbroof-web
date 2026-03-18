@@ -3054,19 +3054,9 @@ def build_line_items(measurements: dict, photo_analysis: dict, state: str, user_
     items.append({"category": "ROOFING", "description": "Equipment operator", "qty": 1, "unit": "EA", "unit_price": PRICING.get("equipment_operator", 450.00)})
 
     # ===================== GABLE CORNICE RETURNS =====================
-    # Included on gable and combination roofs — decorative trim at gable ends
-    if style in ("gable", "combination"):
-        # Estimate 2 cornice returns per gable end (1 per side)
-        # Gable roof = 2 gable ends = 4 returns; combination = estimate 2 returns
-        cornice_count = 4 if style == "gable" else 2
-        if material in ("laminated", "3tab"):
-            mat_label = "laminated" if material == "laminated" else "3tab"
-            if stories >= 2:
-                cornice_key = f"gable_cornice_return_{mat_label}_2story"
-                items.append({"category": "ROOFING", "description": f"R&R Gable cornice return - {material} - 2+ stories", "qty": cornice_count, "unit": "EA", "unit_price": PRICING.get(cornice_key, 165.29)})
-            else:
-                cornice_key = f"gable_cornice_return_{mat_label}"
-                items.append({"category": "ROOFING", "description": f"R&R Gable cornice return - {material}", "qty": cornice_count, "unit": "EA", "unit_price": PRICING.get(cornice_key, 136.32)})
+    # REMOVED from auto-generation — not all homes have gable cornice returns.
+    # Available as a supplement option if the user confirms they exist on the property.
+    # Pricing retained in PRICING dict for supplement builder use.
 
     # ===================== DEBRIS =====================
     # Slate/tile debris is significantly heavier — smaller loads, higher price per load
