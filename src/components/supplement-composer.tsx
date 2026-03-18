@@ -21,9 +21,12 @@ interface Props {
   carrierRcv: number;
   contractorRcv: number;
   userId?: string;
+  userName?: string;
+  companyName?: string;
+  companyPhone?: string;
 }
 
-export function SupplementComposer({ claimId, claimAddress, carrierName, comparisonRows, carrierRcv, contractorRcv, userId }: Props) {
+export function SupplementComposer({ claimId, claimAddress, carrierName, comparisonRows, carrierRcv, contractorRcv, userId, userName, companyName, companyPhone }: Props) {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [showComposer, setShowComposer] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -132,7 +135,7 @@ export function SupplementComposer({ claimId, claimAddress, carrierName, compari
       email += `UNDER-SCOPED ITEMS — QUANTITY/PRICING DISCREPANCIES\n`;
       email += `${"=".repeat(50)}\n\n`;
       for (const item of underItems) {
-        email += `• ${item.label} — Underpaid $${item.amount.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}\n`;
+        email += `• ${item.label} — Underscoped $${item.amount.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}\n`;
         email += `  ${item.detail}\n`;
         if (item.codeCitation) {
           email += `  Code Authority: ${item.codeCitation.code_tag}\n`;
@@ -171,8 +174,9 @@ export function SupplementComposer({ claimId, claimAddress, carrierName, compari
     email += `We request that these items be added to the approved scope of repairs. All quantities are derived from EagleView certified measurements and verified against applicable building codes.\n\n`;
     email += `Please contact us at your earliest convenience to discuss.\n\n`;
     email += `Respectfully,\n`;
-    email += `[Your Name]\n`;
-    email += `[Company Name]\n`;
+    email += `${userName || "Your Name"}\n`;
+    email += `${companyName || "Company Name"}\n`;
+    if (companyPhone) email += `${companyPhone}\n`;
 
     return email;
   }

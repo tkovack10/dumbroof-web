@@ -152,7 +152,7 @@ LINE_ITEM_CODE_MAP = {
         "section": "R908.3",
         "title": "Reroofing — Tear-Off Requirement",
         "requirement": "Existing roofing materials shall be removed before applying new roofing when existing roof has two or more applications of any type of roof covering",
-        "supplement_argument": "Complete tear-off is required per code. Carrier's scope must include full removal of existing roofing material. Overlay is not code-compliant when damage necessitates deck inspection.",
+        "supplement_argument": "Complete tear-off is required per code for a code-compliant installation. Overlay is not code-compliant when damage necessitates deck inspection.",
         "manufacturer_specs": ["gaf_timberline_hdz"],
     },
     "RFG 300S|install": {
@@ -166,14 +166,14 @@ LINE_ITEM_CODE_MAP = {
         "section": "R905.1.2",
         "title": "Ice Barrier Requirement",
         "requirement": "Ice barrier required at eaves extending from eave edge to at least 24 inches past interior wall line, and in valleys",
-        "supplement_argument": "Ice & water barrier is required by code at all eaves and valleys. This is not an optional upgrade — it is a mandatory building code requirement. Carrier must include full I&W coverage.",
+        "supplement_argument": "Ice & water barrier is required by code at all eaves and valleys. This is not an optional upgrade — it is a mandatory building code requirement for a code-compliant installation.",
         "manufacturer_specs": ["gaf_weatherwatch"],
     },
     "RFG FELT15|install": {
         "section": "R905.1.1",
         "title": "Underlayment Requirement",
         "requirement": "Underlayment required over entire roof deck area not covered by ice barrier",
-        "supplement_argument": "Underlayment is code-mandated over the entire roof deck. Areas not covered by ice & water barrier must have felt or synthetic underlayment. Omission is a code violation.",
+        "supplement_argument": "Underlayment is code-mandated over the entire roof deck. Areas where ice & water barrier is not installed require felt or synthetic underlayment. Omission does not meet code requirements.",
         "manufacturer_specs": [],
     },
     "RFG ASTR-|install": {
@@ -246,7 +246,7 @@ LINE_ITEM_CODE_MAP = {
         "section": "R703.3",
         "title": "Exterior Wall Covering — Vinyl Siding",
         "requirement": "Siding must be installed per manufacturer instructions AND R703.1 (flashing at intersections). Attachment per Table R703.3.2. Must maintain 6\" min clearance from grade.",
-        "supplement_argument": "Siding installation must comply with R703.3 AND manufacturer installation instructions per R703.1. The carrier's scope must include all components for code-compliant installation: house wrap (R703.2), wall flashing at all intersections (R703.8), and proper attachment per Table R703.3.2. Partial siding replacement that doesn't maintain weather barrier continuity is a code violation.",
+        "supplement_argument": "Siding installation requires compliance with R703.3 AND manufacturer installation instructions per R703.1. A code-compliant installation includes: house wrap (R703.2), wall flashing at all intersections (R703.8), and proper attachment per Table R703.3.2. Partial siding replacement that doesn't maintain weather barrier continuity does not meet code requirements.",
         "manufacturer_specs": ["certainteed_siding", "alside_vinyl"],
     },
     "SDG ALUM|r&r": {

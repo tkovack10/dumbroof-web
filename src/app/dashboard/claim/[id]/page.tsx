@@ -99,6 +99,7 @@ export default function ClaimDetailPage() {
   const [editRequests, setEditRequests] = useState<EditRequest[]>([]);
   const [applyingEdit, setApplyingEdit] = useState<string | null>(null);
   const [currentUserId, setCurrentUserId] = useState<string>("");
+  const [userProfile, setUserProfile] = useState<{ name: string; company: string; phone: string }>({ name: "", company: "", phone: "" });
   const formRef = useRef<HTMLDivElement>(null);
 
   const fetchClaim = useCallback(async () => {
@@ -111,6 +112,10 @@ export default function ClaimDetailPage() {
     }
     if (user.id && !currentUserId) {
       setCurrentUserId(user.id);
+      // Fetch company profile for supplement composer signature
+      supabase.from("company_profiles").select("contact_name,company_name,phone").eq("user_id", user.id).limit(1).then(({ data }) => {
+        if (data?.[0]) setUserProfile({ name: data[0].contact_name || "", company: data[0].company_name || "", phone: data[0].phone || "" });
+      });
     }
 
     const { data } = await supabase
@@ -810,6 +815,9 @@ export default function ClaimDetailPage() {
             carrierRcv={claim.current_carrier_rcv ?? claim.original_carrier_rcv ?? 0}
             contractorRcv={claim.contractor_rcv ?? 0}
             userId={currentUserId}
+            userName={userProfile.name}
+            companyName={userProfile.company}
+            companyPhone={userProfile.phone}
           />
         )}
 

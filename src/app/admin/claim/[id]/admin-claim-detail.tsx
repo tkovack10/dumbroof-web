@@ -22,11 +22,17 @@ export function AdminClaimDetail({ claim: initialClaim, userInfo }: Props) {
   const supabaseRef = useRef(createClient());
   const [claim, setClaim] = useState<Claim>(initialClaim);
   const [adminUserId, setAdminUserId] = useState<string>("");
+  const [adminProfile, setAdminProfile] = useState<{ name: string; company: string; phone: string }>({ name: "", company: "", phone: "" });
 
-  // Get admin's own user_id for Claim Brain email sending
+  // Get admin's own user_id + profile for Claim Brain email sending
   useEffect(() => {
     supabaseRef.current.auth.getUser().then(({ data }) => {
-      if (data?.user?.id) setAdminUserId(data.user.id);
+      if (data?.user?.id) {
+        setAdminUserId(data.user.id);
+        supabaseRef.current.from("company_profiles").select("contact_name,company_name,phone").eq("user_id", data.user.id).limit(1).then(({ data: profiles }) => {
+          if (profiles?.[0]) setAdminProfile({ name: profiles[0].contact_name || "", company: profiles[0].company_name || "", phone: profiles[0].phone || "" });
+        });
+      }
     });
   }, []);
   const [downloading, setDownloading] = useState<string | null>(null);
@@ -482,6 +488,9 @@ export function AdminClaimDetail({ claim: initialClaim, userInfo }: Props) {
             carrierRcv={claim.current_carrier_rcv ?? claim.original_carrier_rcv ?? 0}
             contractorRcv={claim.contractor_rcv ?? 0}
             userId={adminUserId}
+            userName={adminProfile.name}
+            companyName={adminProfile.company}
+            companyPhone={adminProfile.phone}
           />
         )}
 

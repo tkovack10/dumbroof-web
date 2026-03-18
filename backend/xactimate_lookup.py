@@ -1243,7 +1243,7 @@ class XactRegistry:
                     row["note"] = "Amounts match"
                 elif diff > 0 or qty_variance_note:
                     row["status"] = "under"
-                    note = f"Underpaid ${diff:,.2f}" if diff > 0.50 else ""
+                    note = f"Underscoped ${diff:,.2f}" if diff > 0.50 else ""
                     if qty_variance_note:
                         note = f"{note}. {qty_variance_note}" if note else qty_variance_note
                     if trick_flag:
@@ -1348,7 +1348,7 @@ class XactRegistry:
                     extra_row["note"] = "Amounts match"
                 elif diff > 0:
                     extra_row["status"] = "under"
-                    extra_row["note"] = f"Underpaid ${diff:,.2f}"
+                    extra_row["note"] = f"Underscoped ${diff:,.2f}"
                 else:
                     extra_row["status"] = "over"
                     extra_row["note"] = f"Overpaid ${abs(diff):,.2f}"
