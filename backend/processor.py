@@ -1823,12 +1823,14 @@ def build_claim_config(
             "photos": photo_entries
         })
 
-    # Photo map — map keys to actual filenames (now aligned with filtered annotations)
+    # Photo map — map keys to actual filenames (only count images, skip non-image files)
     photo_map = {}
-    for i, filename in enumerate(photo_filenames):
+    _img_idx = 0
+    for filename in photo_filenames:
         if get_media_type(filename).startswith("image/"):
-            key = f"p{(i // 3 + 3):02d}_{(i % 3 + 1):02d}"
+            key = f"p{(_img_idx // 3 + 3):02d}_{(_img_idx % 3 + 1):02d}"
             photo_map[key] = filename
+            _img_idx += 1
 
     # Sanitize contact_name — reject AI/bot names so USARM defaults apply
     _contact_name = (company_profile or {}).get("contact_name", "")
