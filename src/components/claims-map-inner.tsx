@@ -15,11 +15,12 @@ function scoreColor(score: number | null | undefined): string {
 
 function makeIcon(score: number | null | undefined) {
   const color = scoreColor(score);
+  const label = score != null ? String(score) : "?";
   return L.divIcon({
     className: "",
-    iconSize: [20, 20],
-    iconAnchor: [10, 10],
-    html: `<div style="width:20px;height:20px;border-radius:50%;background:${color};border:2px solid white;box-shadow:0 1px 4px rgba(0,0,0,0.3);"></div>`,
+    iconSize: [28, 28],
+    iconAnchor: [14, 14],
+    html: `<div style="width:28px;height:28px;border-radius:50%;background:${color};border:2px solid white;box-shadow:0 1px 4px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;color:white;font-size:10px;font-weight:700;font-family:system-ui;text-shadow:0 1px 1px rgba(0,0,0,0.3);">${label}</div>`,
   });
 }
 
