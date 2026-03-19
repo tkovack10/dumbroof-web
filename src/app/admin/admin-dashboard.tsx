@@ -458,7 +458,7 @@ export function AdminDashboard() {
                 const totalCarrierRcv = claims.reduce((s, c) => s + (c.current_carrier_rcv ?? c.original_carrier_rcv ?? 0), 0);
                 const totalVariance = totalContractorRcv - totalCarrierRcv;
                 const totalWon = wonClaims.reduce((s, c) => s + (c.settlement_amount ?? 0), 0);
-                const fmt = (v: number) => v >= 1000 ? `$${(v / 1000).toFixed(0)}K` : `$${v.toFixed(0)}`;
+                const fmt = (v: number) => v >= 1000000 ? `$${(v / 1000000).toFixed(2)}M` : v >= 1000 ? `$${(v / 1000).toFixed(0)}K` : `$${v.toFixed(0)}`;
                 return [
                   { label: "Total Claims", value: String(stats.total), color: "text-[var(--navy)]" },
                   { label: "Users", value: String(stats.uniqueUsers), color: "text-[var(--navy)]" },
