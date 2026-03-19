@@ -1034,6 +1034,7 @@ def _load_carrier_playbook(carrier_name: str) -> str:
 class ChatMessage(BaseModel):
     message: str
     user_id: str | None = None
+    locale: str | None = "en"
 
 
 class ToolApproval(BaseModel):
@@ -1073,6 +1074,10 @@ async def claim_brain_chat(claim_id: str, body: ChatMessage):
 
     # Build system prompt
     system_prompt = _build_claim_brain_prompt(claim_data, photos, scope_comparison, playbook)
+
+    # Spanish language mode
+    if body.locale == "es":
+        system_prompt += "\n\n## LANGUAGE: SPANISH\nThe user has selected Spanish. Respond ENTIRELY in Spanish. All explanations, recommendations, and coaching should be in Spanish. Technical terms (Xactimate codes, IRC sections, dollar amounts) stay in English. Email drafts should still be in English (carriers expect English).\n"
 
     # Get or create conversation
     if claim_id not in _brain_conversations:

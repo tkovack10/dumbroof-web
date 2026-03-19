@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
+import { useI18n } from "@/lib/i18n";
 
 interface Message {
   role: "user" | "assistant";
@@ -298,6 +299,7 @@ export function ClaimBrainChat({
   variance,
   userId,
 }: ClaimBrainChatProps) {
+  const { locale } = useI18n();
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [isStreaming, setIsStreaming] = useState(false);
@@ -339,7 +341,7 @@ export function ClaimBrainChat({
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ message: msg, user_id: userId || null }),
+          body: JSON.stringify({ message: msg, user_id: userId || null, locale: locale }),
         }
       );
 

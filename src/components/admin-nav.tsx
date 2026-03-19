@@ -2,6 +2,7 @@
 
 import { usePathname } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { LanguageToggle } from "@/lib/i18n";
 
 interface AdminNavProps {
   variant?: "full" | "minimal";
@@ -56,6 +57,7 @@ export function AdminNav({ variant = "full" }: AdminNavProps) {
               <a href="/dashboard" className="text-gray-400 hover:text-white text-sm transition-colors">
                 My Dashboard
               </a>
+              <LanguageToggle />
               <button onClick={handleSignOut} className="text-gray-400 hover:text-white text-sm transition-colors">
                 Sign Out
               </button>

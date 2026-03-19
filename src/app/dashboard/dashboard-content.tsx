@@ -6,6 +6,7 @@ import type { User } from "@supabase/supabase-js";
 import type { Claim } from "@/types/claim";
 import type { Repair } from "@/types/repair";
 import { useBillingQuota } from "@/hooks/use-billing-quota";
+import { LanguageToggle } from "@/lib/i18n";
 import { ClaimsMap } from "@/components/claims-map";
 import { RepairTabContent } from "./repair-tab-content";
 
@@ -226,6 +227,7 @@ export function DashboardContent({ user }: { user: User }) {
                 </span>
               )}
             </span>
+            <LanguageToggle />
             <button
               onClick={handleSignOut}
               className="text-gray-400 hover:text-white text-sm transition-colors hidden sm:block"
