@@ -119,12 +119,9 @@ export default function ClaimDetailPage() {
       });
     }
 
-    const { data } = await supabase
-      .from("claims")
-      .select("*")
-      .eq("id", claimId)
-      .eq("user_id", user.id)
-      .single();
+    // Domain sharing: fetch via API which checks team membership
+    const claimRes = await fetch(`/api/team-claims/claim?id=${claimId}`);
+    const data = claimRes.ok ? (await claimRes.json()).claim : null;
 
     setClaim(data);
     setLoading(false);

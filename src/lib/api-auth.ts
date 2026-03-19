@@ -41,7 +41,7 @@ export async function isAdmin(userId: string): Promise<boolean> {
  * Verify user owns the claim OR is an admin. Returns true if authorized.
  */
 export async function canAccessClaim(userId: string, claimId: string): Promise<boolean> {
-  // Check ownership first (cheaper)
+  // Check ownership first (cheapest)
   const { data: claim } = await supabaseAdmin
     .from("claims")
     .select("user_id")
@@ -49,6 +49,18 @@ export async function canAccessClaim(userId: string, claimId: string): Promise<b
     .single();
 
   if (claim?.user_id === userId) return true;
+
+  // Check domain sharing (same email domain = same company)
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (user?.email && claim?.user_id) {
+    const { data: owner } = await supabaseAdmin.auth.admin.getUserById(claim.user_id);
+    if (owner?.user?.email) {
+      const userDomain = user.email.split("@")[1];
+      const ownerDomain = owner.user.email.split("@")[1];
+      if (userDomain === ownerDomain) return true;
+    }
+  }
 
   // Fall back to admin check
   return isAdmin(userId);

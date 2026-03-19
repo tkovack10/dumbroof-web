@@ -35,12 +35,13 @@ export function DashboardContent({ user }: { user: User }) {
   const menuRef = useRef<HTMLDivElement>(null);
   const billing = useBillingQuota();
 
-  // Parallel fetch for claims + repairs
+  // Parallel fetch for claims (domain-shared) + repairs
   const fetchAll = useCallback(async () => {
-    const [claimsRes, repairsRes] = await Promise.all([
-      supabase.from("claims").select("*").eq("user_id", user.id).order("created_at", { ascending: false }),
+    const [teamClaimsRes, repairsRes] = await Promise.all([
+      fetch("/api/team-claims").then(r => r.json()).catch(() => ({ claims: [] })),
       supabase.from("repairs").select("*").eq("user_id", user.id).order("created_at", { ascending: false }),
     ]);
+    const claimsRes = { data: teamClaimsRes.claims || [] };
 
     // No-op guard: only update state if data actually changed
     setClaims(prev => {
