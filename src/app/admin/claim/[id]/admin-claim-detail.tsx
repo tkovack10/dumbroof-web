@@ -12,6 +12,7 @@ import type { ScopeComparisonRow } from "@/types/scope-comparison";
 import { CATEGORY_CONFIG, FILE_CATEGORIES, CLAIM_STATUS_CONFIG, type UploadCategory } from "@/lib/claim-constants";
 import { uploadClaimDocuments } from "@/lib/upload-utils";
 import { ClaimBrainChat } from "@/components/claim-brain-chat";
+import { CommunicationLog } from "@/components/communication-log";
 
 interface Props {
   claim: Claim;
@@ -748,6 +749,9 @@ export function AdminClaimDetail({ claim: initialClaim, userInfo }: Props) {
           </div>
         )}
       </div>
+
+      {/* Communication Log */}
+      {isReady && <CommunicationLog claimId={claim.id} />}
 
       {/* Claim Brain — AI Chat */}
       <ClaimBrainChat

@@ -15,6 +15,7 @@ import { CATEGORY_CONFIG, CLAIM_STATUS_CONFIG, type UploadCategory } from "@/lib
 import { uploadClaimDocuments } from "@/lib/upload-utils";
 import { useBillingQuota } from "@/hooks/use-billing-quota";
 import { ClaimBrainChat } from "@/components/claim-brain-chat";
+import { CommunicationLog } from "@/components/communication-log";
 
 interface EditRequest {
   id: string;
@@ -1462,6 +1463,9 @@ export default function ClaimDetailPage() {
           );
         })}
       </div>
+
+      {/* Communication Log */}
+      {isReady && <CommunicationLog claimId={claim.id} />}
 
       {/* Claim Brain — AI Chat */}
       {claim && (
