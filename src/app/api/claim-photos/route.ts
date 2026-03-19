@@ -36,8 +36,26 @@ export async function GET(req: NextRequest) {
     .eq("id", claimId)
     .single();
 
+  const claimFilePath = claim?.file_path || "";
+
+  // Generate signed URLs for photo thumbnails (server-side, bypasses RLS)
+  const photosWithUrls = await Promise.all(
+    (photos || []).slice(0, 30).map(async (photo) => {
+      let signedUrl = "";
+      // Try the file_path from photos table first, then construct from annotation_key
+      const storagePath = photo.file_path || `${claimFilePath}/photos/${photo.annotation_key}.jpg`;
+      if (storagePath && claimFilePath) {
+        const { data } = await supabaseAdmin.storage
+          .from("claim-documents")
+          .createSignedUrl(storagePath, 3600);
+        if (data?.signedUrl) signedUrl = data.signedUrl;
+      }
+      return { ...photo, signed_url: signedUrl };
+    })
+  );
+
   return NextResponse.json({
-    photos: photos || [],
-    claim_file_path: claim?.file_path || "",
+    photos: photosWithUrls,
+    claim_file_path: claimFilePath,
   });
 }

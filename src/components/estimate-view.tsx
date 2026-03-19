@@ -1,7 +1,6 @@
 "use client";
 
-import { Fragment, useEffect, useState, useMemo } from "react";
-import { createClient } from "@/lib/supabase/client";
+import { Fragment, useEffect, useState } from "react";
 import type { ScopeComparisonRow, CodeCitation } from "@/types/scope-comparison";
 
 interface LineItem {
@@ -51,9 +50,9 @@ export function EstimateView({ claimId }: Props) {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<Tab>("estimate");
   const [expanded, setExpanded] = useState(false);
-  const [photoUrls, setPhotoUrls] = useState<Record<string, string>>({});
+  // photoUrls removed — signed URLs now come from API
 
-  const supabase = useMemo(() => createClient(), []);
+  // Supabase client removed — photos now fetched via API with server-side signed URLs
 
   useEffect(() => {
     async function fetchData() {
@@ -85,7 +84,7 @@ export function EstimateView({ claimId }: Props) {
       }
     }
     fetchData();
-  }, [claimId, supabase]);
+  }, [claimId]);
 
   if (loading || items.length === 0) return null;
 
@@ -165,7 +164,7 @@ export function EstimateView({ claimId }: Props) {
             <LineItemsTable items={grouped} lineTotal={lineTotal} trades={trades} />
           )}
           {activeTab === "damage" && (
-            <DamageAssessment photos={damagePhotos} claimId={claimId} supabase={supabase} photoUrls={photoUrls} setPhotoUrls={setPhotoUrls} />
+            <DamageAssessment photos={damagePhotos} />
           )}
           {activeTab === "codes" && (
             <CodeCompliance citations={uniqueCitations} />
@@ -262,49 +261,9 @@ function LineItemsTable({ items, lineTotal, trades }: { items: LineItem[]; lineT
 
 function DamageAssessment({
   photos,
-  claimId,
-  supabase,
-  photoUrls,
-  setPhotoUrls,
 }: {
   photos: Photo[];
-  claimId: string;
-  supabase: ReturnType<typeof createClient>;
-  photoUrls: Record<string, string>;
-  setPhotoUrls: (urls: Record<string, string>) => void;
 }) {
-  const [loadingPhotos, setLoadingPhotos] = useState(false);
-
-  // Load photo URLs on first render
-  useEffect(() => {
-    if (Object.keys(photoUrls).length > 0 || photos.length === 0) return;
-    setLoadingPhotos(true);
-
-    async function loadUrls() {
-      const urls: Record<string, string> = {};
-      // Get claim file_path for storage
-      const { data: claim } = await supabase
-        .from("claims")
-        .select("file_path")
-        .eq("id", claimId)
-        .single();
-
-      if (!claim?.file_path) { setLoadingPhotos(false); return; }
-
-      for (const photo of photos.slice(0, 20)) { // Limit to first 20
-        const path = photo.storage_path || `${claim.file_path}/photos/${photo.annotation_key}.jpg`;
-        const { data } = await supabase.storage
-          .from("claim-documents")
-          .createSignedUrl(path, 3600);
-        if (data?.signedUrl) {
-          urls[photo.annotation_key] = data.signedUrl;
-        }
-      }
-      setPhotoUrls(urls);
-      setLoadingPhotos(false);
-    }
-    loadUrls();
-  }, [photos, claimId, supabase, photoUrls, setPhotoUrls]);
 
   if (photos.length === 0) {
     return <div className="p-8 text-center text-sm text-gray-400">No damage findings documented</div>;
@@ -341,14 +300,12 @@ function DamageAssessment({
                 <div key={photo.annotation_key} className={`flex gap-4 ${style.bg} rounded-lg p-3`}>
                   {/* Photo thumbnail */}
                   <div className="w-20 h-20 rounded-lg overflow-hidden bg-gray-200 shrink-0">
-                    {photoUrls[photo.annotation_key] ? (
+                    {photo.signed_url ? (
                       <img
-                        src={photoUrls[photo.annotation_key]}
+                        src={photo.signed_url}
                         alt={photo.annotation_text || photo.annotation_key}
                         className="w-full h-full object-cover"
                       />
-                    ) : loadingPhotos ? (
-                      <div className="w-full h-full flex items-center justify-center text-gray-400 text-[10px]">Loading...</div>
                     ) : (
                       <div className="w-full h-full flex items-center justify-center text-gray-400 text-[10px]">{photo.annotation_key}</div>
                     )}
