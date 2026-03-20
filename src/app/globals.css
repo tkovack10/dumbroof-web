@@ -3,19 +3,19 @@
 :root {
   /* ─── Glassmorphism Design System ─── */
 
-  /* Backgrounds */
+  /* Backgrounds — slightly more visible glass */
   --bg-deep: #060918;
   --bg-dark: #0a0e27;
-  --bg-card: rgba(255, 255, 255, 0.04);
-  --bg-glass: rgba(255, 255, 255, 0.06);
-  --bg-glass-hover: rgba(255, 255, 255, 0.10);
-  --bg-glass-active: rgba(255, 255, 255, 0.12);
-  --bg-input: rgba(255, 255, 255, 0.05);
+  --bg-card: rgba(255, 255, 255, 0.06);
+  --bg-glass: rgba(255, 255, 255, 0.08);
+  --bg-glass-hover: rgba(255, 255, 255, 0.12);
+  --bg-glass-active: rgba(255, 255, 255, 0.15);
+  --bg-input: rgba(255, 255, 255, 0.07);
 
-  /* Borders */
-  --border-glass: rgba(255, 255, 255, 0.10);
-  --border-glass-hover: rgba(255, 255, 255, 0.20);
-  --border-glass-active: rgba(255, 255, 255, 0.25);
+  /* Borders — more visible edges */
+  --border-glass: rgba(255, 255, 255, 0.14);
+  --border-glass-hover: rgba(255, 255, 255, 0.25);
+  --border-glass-active: rgba(255, 255, 255, 0.30);
 
   /* Brand gradient (pink → purple → blue) */
   --pink: #ff3cac;
@@ -25,18 +25,18 @@
   --gradient-glow: linear-gradient(135deg, rgba(255,60,172,0.3) 0%, rgba(120,75,160,0.2) 50%, rgba(43,134,197,0.3) 100%);
   --gradient-subtle: linear-gradient(135deg, rgba(255,60,172,0.08) 0%, rgba(43,134,197,0.08) 100%);
 
-  /* Accent colors */
-  --cyan: #00d4ff;
-  --cyan-dim: #0099b8;
-  --green: #00e676;
-  --red-accent: #ff4757;
-  --amber: #ffb300;
+  /* Accent colors — vivid on dark */
+  --cyan: #22d8ff;
+  --cyan-dim: #00b8d4;
+  --green: #00f27d;
+  --red-accent: #ff5a6a;
+  --amber: #ffc233;
 
-  /* Text */
+  /* Text — bright enough to read on dark glass */
   --white: #f0f0f5;
-  --gray: #8892a4;
-  --gray-dim: #4a5568;
-  --gray-muted: #5a6478;
+  --gray: #b0b8c8;
+  --gray-dim: #8892a8;
+  --gray-muted: #98a2b8;
 
   /* Shadows */
   --shadow-card: 0 8px 32px rgba(0, 0, 0, 0.3);
