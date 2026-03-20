@@ -217,22 +217,22 @@ export function AdminClaimDetail({ claim: initialClaim, userInfo }: Props) {
   );
 
   return (
-    <main className="min-h-screen bg-gray-50">
+    <main className="min-h-screen">
       <div className="max-w-4xl mx-auto px-6 py-10 space-y-6">
         {/* Claim Header */}
-        <div className="bg-white rounded-2xl border border-gray-200 p-6">
+        <div className="glass-card p-6">
           <div className="flex items-start justify-between">
             <div>
-              <h1 className="text-xl font-bold text-[var(--navy)]">
+              <h1 className="text-xl font-bold text-[var(--white)]">
                 {claim.address}
               </h1>
-              <p className="text-sm text-gray-500 mt-1">
+              <p className="text-sm text-[var(--gray-muted)] mt-1">
                 {claim.carrier} &middot;{" "}
                 {claim.phase === "pre-scope" ? "Pre-Scope" : "Supplement"} &middot;{" "}
                 {new Date(claim.created_at).toLocaleDateString()}
               </p>
               {userInfo && (
-                <p className="text-xs text-gray-400 mt-1">
+                <p className="text-xs text-[var(--gray-dim)] mt-1">
                   User: {userInfo.company_name || userInfo.contact_email || claim.user_id.slice(0, 8)}
                   {userInfo.contact_email && userInfo.company_name && (
                     <span> ({userInfo.contact_email})</span>
@@ -240,7 +240,7 @@ export function AdminClaimDetail({ claim: initialClaim, userInfo }: Props) {
                 </p>
               )}
               {claim.homeowner_name && (
-                <p className="text-xs text-gray-400 mt-0.5">
+                <p className="text-xs text-[var(--gray-dim)] mt-0.5">
                   Homeowner: {claim.homeowner_name}
                   {claim.date_of_loss && <span> &middot; Loss: {claim.date_of_loss}</span>}
                 </p>
@@ -262,15 +262,15 @@ export function AdminClaimDetail({ claim: initialClaim, userInfo }: Props) {
           {/* Financial summary */}
           {(claim.contractor_rcv || claim.original_carrier_rcv || claim.current_carrier_rcv) && (
             <div className="mt-4 grid grid-cols-1 sm:grid-cols-4 gap-3">
-              <div className="bg-gray-50 rounded-lg px-3 py-2">
-                <p className="text-xs text-gray-400">Contractor RCV</p>
-                <p className="text-sm font-bold text-[var(--navy)]">
+              <div className="bg-white/[0.04] rounded-lg px-3 py-2">
+                <p className="text-xs text-[var(--gray-dim)]">Contractor RCV</p>
+                <p className="text-sm font-bold text-[var(--white)]">
                   {claim.contractor_rcv ? `$${claim.contractor_rcv.toLocaleString()}` : "\u2014"}
                 </p>
               </div>
-              <div className="bg-gray-50 rounded-lg px-3 py-2">
-                <p className="text-xs text-gray-400">Carrier RCV {claim.current_carrier_rcv && claim.original_carrier_rcv && claim.current_carrier_rcv !== claim.original_carrier_rcv ? "(Current)" : ""}</p>
-                <p className="text-sm font-bold text-[var(--navy)]">
+              <div className="bg-white/[0.04] rounded-lg px-3 py-2">
+                <p className="text-xs text-[var(--gray-dim)]">Carrier RCV {claim.current_carrier_rcv && claim.original_carrier_rcv && claim.current_carrier_rcv !== claim.original_carrier_rcv ? "(Current)" : ""}</p>
+                <p className="text-sm font-bold text-[var(--white)]">
                   {(claim.current_carrier_rcv ?? claim.original_carrier_rcv) ? `$${(claim.current_carrier_rcv ?? claim.original_carrier_rcv)!.toLocaleString()}` : "\u2014"}
                 </p>
                 {claim.current_carrier_rcv && claim.original_carrier_rcv && claim.current_carrier_rcv !== claim.original_carrier_rcv && (
@@ -279,13 +279,13 @@ export function AdminClaimDetail({ claim: initialClaim, userInfo }: Props) {
                   </p>
                 )}
               </div>
-              <div className="bg-gray-50 rounded-lg px-3 py-2">
-                <p className="text-xs text-gray-400">Variance</p>
+              <div className="bg-white/[0.04] rounded-lg px-3 py-2">
+                <p className="text-xs text-[var(--gray-dim)]">Variance</p>
                 {(() => {
                   const carrierRcv = claim.current_carrier_rcv ?? claim.original_carrier_rcv ?? 0;
                   const v = (claim.contractor_rcv ?? 0) - carrierRcv;
                   return (
-                    <p className={`text-sm font-bold ${v > 0 ? "text-green-700" : v < 0 ? "text-red-600" : "text-gray-500"}`}>
+                    <p className={`text-sm font-bold ${v > 0 ? "text-green-700" : v < 0 ? "text-red-600" : "text-[var(--gray-muted)]"}`}>
                       {v > 0 ? "+" : ""}${v.toLocaleString()}
                     </p>
                   );
@@ -333,23 +333,23 @@ export function AdminClaimDetail({ claim: initialClaim, userInfo }: Props) {
             return (
               <div className="mt-4 grid grid-cols-2 gap-3">
                 {/* Damage Score — ring + grade */}
-                <div className="bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 flex items-center gap-3">
+                <div className="bg-gray-50 border border-[var(--border-glass)] rounded-xl px-4 py-3 flex items-center gap-3">
                   <div className="relative w-11 h-11 shrink-0">
                     <svg className="w-11 h-11 -rotate-90" viewBox="0 0 36 36">
                       <circle cx="18" cy="18" r="15.5" fill="none" className="stroke-gray-200" strokeWidth="3" />
-                      <circle cx="18" cy="18" r="15.5" fill="none" className={`${ringColors[dsGrade] || "text-gray-400"} stroke-current`} strokeWidth="3" strokeDasharray={`${dsPct} ${100 - dsPct}`} strokeLinecap="round" />
+                      <circle cx="18" cy="18" r="15.5" fill="none" className={`${ringColors[dsGrade] || "text-[var(--gray-dim)]"} stroke-current`} strokeWidth="3" strokeDasharray={`${dsPct} ${100 - dsPct}`} strokeLinecap="round" />
                     </svg>
-                    <span className="absolute inset-0 flex items-center justify-center text-xs font-bold text-[var(--navy)]">{dsValue}</span>
+                    <span className="absolute inset-0 flex items-center justify-center text-xs font-bold text-[var(--white)]">{dsValue}</span>
                   </div>
                   <div className="min-w-0">
-                    <p className="text-xs text-gray-500">Damage Score</p>
+                    <p className="text-xs text-[var(--gray-muted)]">Damage Score</p>
                     <div className="flex items-center gap-1.5 mt-0.5">
-                      <span className="text-sm font-bold text-[var(--navy)]">{dsValue}/100</span>
-                      <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold border ${gradeColors[dsGrade] || "bg-gray-100 text-gray-600 border-gray-300"}`}>
+                      <span className="text-sm font-bold text-[var(--white)]">{dsValue}/100</span>
+                      <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold border ${gradeColors[dsGrade] || "bg-white/[0.06] text-[var(--gray)] border-gray-300"}`}>
                         {dsGrade}
                       </span>
                     </div>
-                    <p className="text-[10px] text-gray-400 mt-0.5 leading-tight">Storm damage severity</p>
+                    <p className="text-[10px] text-[var(--gray-dim)] mt-0.5 leading-tight">Storm damage severity</p>
                   </div>
                 </div>
                 {/* Tech Boost — green positive indicator */}
@@ -387,9 +387,9 @@ export function AdminClaimDetail({ claim: initialClaim, userInfo }: Props) {
           )}
 
           {claim.user_notes && (
-            <div className="mt-4 bg-gray-50 rounded-lg px-4 py-3">
-              <p className="text-xs font-semibold text-gray-400 uppercase mb-1">User Notes</p>
-              <p className="text-sm text-gray-700">{claim.user_notes}</p>
+            <div className="mt-4 bg-white/[0.04] rounded-lg px-4 py-3">
+              <p className="text-xs font-semibold text-[var(--gray-dim)] uppercase mb-1">User Notes</p>
+              <p className="text-sm text-[var(--gray)]">{claim.user_notes}</p>
             </div>
           )}
         </div>
@@ -431,14 +431,14 @@ export function AdminClaimDetail({ claim: initialClaim, userInfo }: Props) {
             </div>
             <div className="grid gap-3">
               {claim.improvement_guidance.tips.map((tip: { category: string; title: string; detail: string }, i: number) => (
-                <div key={i} className="bg-white border border-orange-100 rounded-xl px-4 py-3">
+                <div key={i} className="bg-[var(--bg-glass)] border border-orange-100 rounded-xl px-4 py-3">
                   <div className="flex items-center gap-2 mb-1">
                     <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-orange-100 text-orange-700 border border-orange-200">
                       {tip.category}
                     </span>
-                    <span className="text-sm font-semibold text-[var(--navy)]">{tip.title}</span>
+                    <span className="text-sm font-semibold text-[var(--white)]">{tip.title}</span>
                   </div>
-                  <p className="text-xs text-gray-600 leading-relaxed">{tip.detail}</p>
+                  <p className="text-xs text-[var(--gray)] leading-relaxed">{tip.detail}</p>
                 </div>
               ))}
             </div>
@@ -447,8 +447,8 @@ export function AdminClaimDetail({ claim: initialClaim, userInfo }: Props) {
 
         {/* Output Files */}
         {isReady && (
-          <div className="bg-white rounded-2xl border border-gray-200 p-6">
-            <h2 className="text-sm font-semibold text-[var(--navy)] mb-4">Generated Documents</h2>
+          <div className="glass-card p-6">
+            <h2 className="text-sm font-semibold text-[var(--white)] mb-4">Generated Documents</h2>
             <div className="grid sm:grid-cols-2 gap-3">
               {claim.output_files!.map((file) => (
                 <button
@@ -460,7 +460,7 @@ export function AdminClaimDetail({ claim: initialClaim, userInfo }: Props) {
                   <svg className="w-5 h-5 text-green-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                   </svg>
-                  <span className="text-sm text-gray-700 font-medium">
+                  <span className="text-sm text-[var(--gray)] font-medium">
                     {file.replace(/_/g, " ").replace(".pdf", "")}
                   </span>
                 </button>
@@ -510,11 +510,11 @@ export function AdminClaimDetail({ claim: initialClaim, userInfo }: Props) {
         )}
 
         {/* Admin Actions: Upload + Reprocess + Photo Review */}
-        <div className="bg-white rounded-2xl border border-gray-200 p-6">
+        <div className="glass-card p-6">
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h2 className="text-sm font-semibold text-[var(--navy)]">Admin Actions</h2>
-              <p className="text-xs text-gray-500 mt-0.5">Upload documents, review photos, or reprocess this claim</p>
+              <h2 className="text-sm font-semibold text-[var(--white)]">Admin Actions</h2>
+              <p className="text-xs text-[var(--gray-muted)] mt-0.5">Upload documents, review photos, or reprocess this claim</p>
             </div>
             {!showUpload && (
               <button
@@ -615,7 +615,7 @@ export function AdminClaimDetail({ claim: initialClaim, userInfo }: Props) {
                       className={`px-3 py-2 rounded-lg text-xs font-medium transition-colors border ${
                         selectedCategory === key
                           ? "bg-[var(--navy)] text-white border-[var(--navy)]"
-                          : "bg-white text-gray-600 border-gray-200 hover:bg-gray-50"
+                          : "bg-[var(--bg-glass)] text-[var(--gray)] border-[var(--border-glass)] hover:bg-white/[0.04]"
                       }`}
                     >
                       {config.label}
@@ -639,7 +639,7 @@ export function AdminClaimDetail({ claim: initialClaim, userInfo }: Props) {
                     setShowUpload(false);
                     setNewFiles([]);
                   }}
-                  className="px-4 py-2 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-100 transition-colors"
+                  className="px-4 py-2 rounded-lg text-sm font-medium text-[var(--gray)] hover:bg-white/[0.06] transition-colors"
                 >
                   Cancel
                 </button>
@@ -657,10 +657,10 @@ export function AdminClaimDetail({ claim: initialClaim, userInfo }: Props) {
 
         {/* Uploaded Source Documents */}
         {totalSourceFiles > 0 && (
-          <div className="bg-white rounded-2xl border border-gray-200 p-6">
-            <h2 className="text-sm font-semibold text-[var(--navy)] mb-4">
+          <div className="glass-card p-6">
+            <h2 className="text-sm font-semibold text-[var(--white)] mb-4">
               Uploaded Documents
-              <span className="text-xs text-gray-400 font-normal ml-2">
+              <span className="text-xs text-[var(--gray-dim)] font-normal ml-2">
                 {totalSourceFiles} file{totalSourceFiles !== 1 ? "s" : ""}
               </span>
             </h2>
@@ -674,7 +674,7 @@ export function AdminClaimDetail({ claim: initialClaim, userInfo }: Props) {
                       <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border ${color}`}>
                         {label}
                       </span>
-                      <span className="text-xs text-gray-400">{files.length} file{files.length !== 1 ? "s" : ""}</span>
+                      <span className="text-xs text-[var(--gray-dim)]">{files.length} file{files.length !== 1 ? "s" : ""}</span>
                     </div>
                     <div className="grid sm:grid-cols-2 gap-2">
                       {files.map((filename) => {
@@ -685,18 +685,18 @@ export function AdminClaimDetail({ claim: initialClaim, userInfo }: Props) {
                         return (
                           <div
                             key={filename}
-                            className="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 group relative"
+                            className="flex items-center gap-2 bg-gray-50 border border-[var(--border-glass)] rounded-lg px-3 py-2 group relative"
                           >
                             {/* Download button */}
                             <button
                               onClick={() => handleDownloadSource(folder, filename)}
                               disabled={downloading === fileKey || isDeleting}
-                              className="flex items-center gap-2 flex-1 min-w-0 text-left hover:bg-gray-100 rounded transition-colors disabled:opacity-50"
+                              className="flex items-center gap-2 flex-1 min-w-0 text-left hover:bg-white/[0.06] rounded transition-colors disabled:opacity-50"
                             >
-                              <svg className="w-4 h-4 text-gray-400 group-hover:text-gray-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                              <svg className="w-4 h-4 text-[var(--gray-dim)] group-hover:text-[var(--gray)] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3M6 20h12a2 2 0 002-2V8l-6-6H6a2 2 0 00-2 2v14a2 2 0 002 2z" />
                               </svg>
-                              <span className="text-xs text-gray-600 truncate">
+                              <span className="text-xs text-[var(--gray)] truncate">
                                 {downloading === fileKey ? "Downloading..." : isDeleting ? "Deleting..." : filename}
                               </span>
                             </button>
@@ -713,7 +713,7 @@ export function AdminClaimDetail({ claim: initialClaim, userInfo }: Props) {
                                 </button>
                                 <button
                                   onClick={() => setDeleteConfirm(null)}
-                                  className="text-xs bg-gray-200 text-gray-600 px-2 py-0.5 rounded hover:bg-gray-300 transition-colors"
+                                  className="text-xs bg-gray-200 text-[var(--gray)] px-2 py-0.5 rounded hover:bg-gray-300 transition-colors"
                                 >
                                   No
                                 </button>
@@ -723,7 +723,7 @@ export function AdminClaimDetail({ claim: initialClaim, userInfo }: Props) {
                               <button
                                 onClick={() => setDeleteConfirm({ folder, fileName: filename, dbField: key })}
                                 disabled={isDeleting}
-                                className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-red-500 transition-all shrink-0 disabled:opacity-50"
+                                className="opacity-0 group-hover:opacity-100 text-[var(--gray-dim)] hover:text-red-500 transition-all shrink-0 disabled:opacity-50"
                                 title="Delete file"
                               >
                                 {isDeleting ? (

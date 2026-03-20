@@ -68,15 +68,15 @@ export function ScopeComparison({ claimId, carrierName }: Props) {
   const fmt2 = (v: number) => `$${v.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
   return (
-    <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+    <div className="glass-card overflow-hidden">
       {/* Header */}
       <button
         onClick={() => setExpanded(!expanded)}
-        className="w-full flex items-center justify-between px-6 py-4 hover:bg-gray-50 transition-colors"
+        className="w-full flex items-center justify-between px-6 py-4 hover:bg-white/[0.04] transition-colors"
       >
         <div className="flex items-center gap-3">
-          <h2 className="text-sm font-semibold text-[var(--navy)]">Scope Comparison</h2>
-          <span className="text-xs text-gray-400">{carrierName}</span>
+          <h2 className="text-sm font-semibold text-[var(--white)]">Scope Comparison</h2>
+          <span className="text-xs text-[var(--gray-dim)]">{carrierName}</span>
           {summary.missing_count > 0 && (
             <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-100 text-red-700">
               {summary.missing_count} Missing
@@ -93,7 +93,7 @@ export function ScopeComparison({ claimId, carrierName }: Props) {
             </span>
           )}
         </div>
-        <svg className={`w-5 h-5 text-gray-400 transition-transform ${expanded ? "rotate-180" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+        <svg className={`w-5 h-5 text-[var(--gray-dim)] transition-transform ${expanded ? "rotate-180" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
         </svg>
       </button>
@@ -104,7 +104,7 @@ export function ScopeComparison({ claimId, carrierName }: Props) {
           <SummaryCards financials={fin} summary={summary} />
 
           {/* Tabs */}
-          <div className="flex border-b border-gray-200 px-6 gap-0">
+          <div className="flex border-b border-[var(--border-glass)] px-6 gap-0">
             {([
               ["roofing", `Roofing (${roofingRows.length})`],
               ["siding", `Exterior (${sidingRows.length})`],
@@ -117,7 +117,7 @@ export function ScopeComparison({ claimId, carrierName }: Props) {
                 className={`px-4 py-3 text-xs font-semibold border-b-2 transition-colors ${
                   activeTab === key
                     ? "text-blue-600 border-blue-600"
-                    : "text-gray-500 border-transparent hover:text-gray-700"
+                    : "text-[var(--gray-muted)] border-transparent hover:text-[var(--gray)]"
                 }`}
               >
                 {label}
@@ -148,12 +148,12 @@ function SummaryCards({ financials: fin, summary }: { financials: ScopeCompariso
         <p className="text-[10px] uppercase text-blue-600 font-semibold tracking-wide">Carrier RCV</p>
         <p className="text-lg font-bold text-blue-700">{fmt(fin.carrier_rcv)}</p>
       </div>
-      <div className="bg-gray-50 rounded-lg p-3">
-        <p className="text-[10px] uppercase text-gray-500 font-semibold tracking-wide">USARM RCV</p>
-        <p className="text-lg font-bold text-[var(--navy)]">{fmt(fin.contractor_rcv)}</p>
+      <div className="bg-white/[0.04] rounded-lg p-3">
+        <p className="text-[10px] uppercase text-[var(--gray-muted)] font-semibold tracking-wide">USARM RCV</p>
+        <p className="text-lg font-bold text-[var(--white)]">{fmt(fin.contractor_rcv)}</p>
       </div>
       <div className={`rounded-lg p-3 ${variance > 0 ? "bg-green-50" : "bg-red-50"}`}>
-        <p className="text-[10px] uppercase text-gray-500 font-semibold tracking-wide">Variance</p>
+        <p className="text-[10px] uppercase text-[var(--gray-muted)] font-semibold tracking-wide">Variance</p>
         <p className={`text-lg font-bold ${variance > 0 ? "text-green-700" : "text-red-600"}`}>
           {variance > 0 ? "+" : "-"}{fmt(variance)}
         </p>
@@ -162,10 +162,10 @@ function SummaryCards({ financials: fin, summary }: { financials: ScopeCompariso
         <p className="text-[10px] uppercase text-red-600 font-semibold tracking-wide">Supplement Opportunity</p>
         <p className="text-lg font-bold text-red-700">{fmt(fin.supplement_opportunity)}+</p>
       </div>
-      <div className="bg-gray-50 rounded-lg p-3">
-        <p className="text-[10px] uppercase text-gray-500 font-semibold tracking-wide">Items</p>
-        <p className="text-lg font-bold text-[var(--navy)]">{summary.total_items}</p>
-        <p className="text-[10px] text-gray-400">{summary.match_count} match, {summary.missing_count} missing, {summary.under_count} under</p>
+      <div className="bg-white/[0.04] rounded-lg p-3">
+        <p className="text-[10px] uppercase text-[var(--gray-muted)] font-semibold tracking-wide">Items</p>
+        <p className="text-lg font-bold text-[var(--white)]">{summary.total_items}</p>
+        <p className="text-[10px] text-[var(--gray-dim)]">{summary.match_count} match, {summary.missing_count} missing, {summary.under_count} under</p>
       </div>
     </div>
   );
@@ -173,22 +173,22 @@ function SummaryCards({ financials: fin, summary }: { financials: ScopeCompariso
 
 function ComparisonTable({ rows }: { rows: ScopeComparisonRow[] }) {
   if (rows.length === 0) {
-    return <div className="p-8 text-center text-sm text-gray-400">No items in this category</div>;
+    return <div className="p-8 text-center text-sm text-[var(--gray-dim)]">No items in this category</div>;
   }
 
   return (
     <table className="w-full text-xs">
       <thead>
-        <tr className="bg-gray-50 text-left">
-          <th className="px-3 py-2 text-[10px] font-semibold text-gray-400 uppercase">Line Item</th>
-          <th className="px-3 py-2 text-[10px] font-semibold text-gray-400 uppercase text-center">Status</th>
-          <th className="px-3 py-2 text-[10px] font-semibold text-gray-400 uppercase text-right">Carrier Qty</th>
-          <th className="px-3 py-2 text-[10px] font-semibold text-gray-400 uppercase text-right">USARM Qty</th>
-          <th className="px-3 py-2 text-[10px] font-semibold text-gray-400 uppercase">Unit</th>
-          <th className="px-3 py-2 text-[10px] font-semibold text-gray-400 uppercase text-right">Carrier $</th>
-          <th className="px-3 py-2 text-[10px] font-semibold text-gray-400 uppercase text-right">USARM $</th>
-          <th className="px-3 py-2 text-[10px] font-semibold text-gray-400 uppercase text-right">Variance</th>
-          <th className="px-3 py-2 text-[10px] font-semibold text-gray-400 uppercase">Notes</th>
+        <tr className="bg-white/[0.04] text-left">
+          <th className="px-3 py-2 text-[10px] font-semibold text-[var(--gray-dim)] uppercase">Line Item</th>
+          <th className="px-3 py-2 text-[10px] font-semibold text-[var(--gray-dim)] uppercase text-center">Status</th>
+          <th className="px-3 py-2 text-[10px] font-semibold text-[var(--gray-dim)] uppercase text-right">Carrier Qty</th>
+          <th className="px-3 py-2 text-[10px] font-semibold text-[var(--gray-dim)] uppercase text-right">USARM Qty</th>
+          <th className="px-3 py-2 text-[10px] font-semibold text-[var(--gray-dim)] uppercase">Unit</th>
+          <th className="px-3 py-2 text-[10px] font-semibold text-[var(--gray-dim)] uppercase text-right">Carrier $</th>
+          <th className="px-3 py-2 text-[10px] font-semibold text-[var(--gray-dim)] uppercase text-right">USARM $</th>
+          <th className="px-3 py-2 text-[10px] font-semibold text-[var(--gray-dim)] uppercase text-right">Variance</th>
+          <th className="px-3 py-2 text-[10px] font-semibold text-[var(--gray-dim)] uppercase">Notes</th>
         </tr>
       </thead>
       <tbody>
@@ -202,7 +202,7 @@ function ComparisonTable({ rows }: { rows: ScopeComparisonRow[] }) {
           return (
             <tr key={i} className={`${st.row} hover:brightness-95 transition-colors`}>
               <td className="px-3 py-2 max-w-[200px]">
-                <p className="font-medium text-gray-800 truncate">{desc}</p>
+                <p className="font-medium text-[var(--white)] truncate">{desc}</p>
                 {row.irc_code && (
                   <span className="inline-block mt-0.5 px-1.5 py-0.5 rounded text-[9px] font-semibold bg-green-100 text-green-700">
                     {row.irc_code}
@@ -214,20 +214,20 @@ function ComparisonTable({ rows }: { rows: ScopeComparisonRow[] }) {
                   {st.label}
                 </span>
               </td>
-              <td className="px-3 py-2 text-right font-mono text-gray-600">
+              <td className="px-3 py-2 text-right font-mono text-[var(--gray)]">
                 {row.carrier_qty ? row.carrier_qty.toLocaleString(undefined, { maximumFractionDigits: 2 }) : "\u2014"}
               </td>
-              <td className="px-3 py-2 text-right font-mono text-gray-600">
+              <td className="px-3 py-2 text-right font-mono text-[var(--gray)]">
                 {row.ev_qty ? row.ev_qty.toLocaleString(undefined, { maximumFractionDigits: 2 }) : "\u2014"}
               </td>
-              <td className="px-3 py-2 text-gray-500">{row.ev_unit || row.carrier_unit || ""}</td>
-              <td className="px-3 py-2 text-right font-mono text-gray-600">
+              <td className="px-3 py-2 text-[var(--gray-muted)]">{row.ev_unit || row.carrier_unit || ""}</td>
+              <td className="px-3 py-2 text-right font-mono text-[var(--gray)]">
                 {carrierAmt > 0 ? `$${carrierAmt.toLocaleString(undefined, { minimumFractionDigits: 2 })}` : "\u2014"}
               </td>
-              <td className="px-3 py-2 text-right font-mono text-gray-600">
+              <td className="px-3 py-2 text-right font-mono text-[var(--gray)]">
                 {usarmAmt > 0 ? `$${usarmAmt.toLocaleString(undefined, { minimumFractionDigits: 2 })}` : "\u2014"}
               </td>
-              <td className={`px-3 py-2 text-right font-mono font-medium ${variance > 0 ? "text-red-600" : variance < 0 ? "text-green-600" : "text-gray-400"}`}>
+              <td className={`px-3 py-2 text-right font-mono font-medium ${variance > 0 ? "text-red-600" : variance < 0 ? "text-green-600" : "text-[var(--gray-dim)]"}`}>
                 {row.status === "missing" ? `+$${usarmAmt.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}` :
                   variance !== 0 ? `${variance > 0 ? "+" : ""}$${variance.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}` : "\u2014"}
               </td>
@@ -242,7 +242,7 @@ function ComparisonTable({ rows }: { rows: ScopeComparisonRow[] }) {
                     {row.unit_mismatch}
                   </p>
                 )}
-                <p className="text-[10px] text-gray-500 leading-tight truncate">{row.note || ""}</p>
+                <p className="text-[10px] text-[var(--gray-muted)] leading-tight truncate">{row.note || ""}</p>
               </td>
             </tr>
           );
@@ -254,7 +254,7 @@ function ComparisonTable({ rows }: { rows: ScopeComparisonRow[] }) {
 
 function MissingItems({ rows }: { rows: ScopeComparisonRow[] }) {
   if (rows.length === 0) {
-    return <div className="p-8 text-center text-sm text-gray-400">No missing items detected</div>;
+    return <div className="p-8 text-center text-sm text-[var(--gray-dim)]">No missing items detected</div>;
   }
 
   return (
@@ -266,7 +266,7 @@ function MissingItems({ rows }: { rows: ScopeComparisonRow[] }) {
           <div key={i} className="border-l-4 border-red-500 bg-red-50 rounded-r-lg px-4 py-3">
             <div className="flex items-start justify-between gap-4">
               <div className="min-w-0">
-                <p className="text-sm font-bold text-gray-800">
+                <p className="text-sm font-bold text-[var(--white)]">
                   {i + 1}. {row.checklist_desc || row.usarm_desc}
                   {row.irc_code && (
                     <span className="ml-2 inline-block px-1.5 py-0.5 rounded text-[10px] font-semibold bg-green-100 text-green-700">
@@ -274,14 +274,14 @@ function MissingItems({ rows }: { rows: ScopeComparisonRow[] }) {
                     </span>
                   )}
                 </p>
-                <p className="text-xs text-gray-600 mt-1">
+                <p className="text-xs text-[var(--gray)] mt-1">
                   {row.ev_qty > 0 && <span>{row.ev_qty} {row.ev_unit}</span>}
-                  {row.ev_formula && <span className="text-gray-400 ml-2">({row.ev_formula})</span>}
+                  {row.ev_formula && <span className="text-[var(--gray-dim)] ml-2">({row.ev_formula})</span>}
                 </p>
-                {row.note && <p className="text-xs text-gray-500 mt-1">{row.note}</p>}
+                {row.note && <p className="text-xs text-[var(--gray-muted)] mt-1">{row.note}</p>}
                 {citation && (
                   <div className="mt-2 space-y-1">
-                    <p className="text-[10px] text-gray-600">
+                    <p className="text-[10px] text-[var(--gray)]">
                       <span className="font-bold text-blue-700">{citation.code_tag}:</span> {citation.title}
                     </p>
                     {citation.supplement_argument && (
@@ -297,7 +297,7 @@ function MissingItems({ rows }: { rows: ScopeComparisonRow[] }) {
               </div>
               <div className="shrink-0 text-right">
                 <p className="text-lg font-bold text-red-700">${amt.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</p>
-                <p className="text-[10px] text-gray-400">Not in carrier scope</p>
+                <p className="text-[10px] text-[var(--gray-dim)]">Not in carrier scope</p>
               </div>
             </div>
           </div>
@@ -346,19 +346,19 @@ function FinancialSummary({ rows, financials: fin }: { rows: ScopeComparisonRow[
     <div className="p-6 space-y-6">
       {/* Trade Comparison */}
       <div>
-        <h3 className="text-sm font-semibold text-[var(--navy)] mb-3">Cost by Trade</h3>
+        <h3 className="text-sm font-semibold text-[var(--white)] mb-3">Cost by Trade</h3>
         <table className="w-full text-xs">
           <thead>
-            <tr className="bg-gray-50">
-              <th className="px-3 py-2 text-left text-[10px] font-semibold text-gray-400 uppercase">Trade</th>
-              <th className="px-3 py-2 text-right text-[10px] font-semibold text-gray-400 uppercase">Carrier</th>
-              <th className="px-3 py-2 text-right text-[10px] font-semibold text-gray-400 uppercase">USARM</th>
-              <th className="px-3 py-2 text-right text-[10px] font-semibold text-gray-400 uppercase">Variance</th>
+            <tr className="bg-white/[0.04]">
+              <th className="px-3 py-2 text-left text-[10px] font-semibold text-[var(--gray-dim)] uppercase">Trade</th>
+              <th className="px-3 py-2 text-right text-[10px] font-semibold text-[var(--gray-dim)] uppercase">Carrier</th>
+              <th className="px-3 py-2 text-right text-[10px] font-semibold text-[var(--gray-dim)] uppercase">USARM</th>
+              <th className="px-3 py-2 text-right text-[10px] font-semibold text-[var(--gray-dim)] uppercase">Variance</th>
             </tr>
           </thead>
           <tbody>
             {trades.map(([trade, vals]) => (
-              <tr key={trade} className="border-b border-gray-100">
+              <tr key={trade} className="border-b border-white/[0.04]">
                 <td className="px-3 py-2 capitalize font-medium">{trade}</td>
                 <td className="px-3 py-2 text-right font-mono">{fmt(vals.carrier)}</td>
                 <td className="px-3 py-2 text-right font-mono">{fmt(vals.usarm)}</td>
@@ -382,18 +382,18 @@ function FinancialSummary({ rows, financials: fin }: { rows: ScopeComparisonRow[
       {/* Supplement Breakdown */}
       {supplementRows.length > 0 && (
         <div>
-          <h3 className="text-sm font-semibold text-[var(--navy)] mb-3">Supplement Value — Missing &amp; Under-Scoped Items</h3>
+          <h3 className="text-sm font-semibold text-[var(--white)] mb-3">Supplement Value — Missing &amp; Under-Scoped Items</h3>
           <table className="w-full text-xs">
             <thead>
-              <tr className="bg-gray-50">
-                <th className="px-3 py-2 text-left text-[10px] font-semibold text-gray-400 uppercase">Item</th>
-                <th className="px-3 py-2 text-center text-[10px] font-semibold text-gray-400 uppercase">Issue</th>
-                <th className="px-3 py-2 text-right text-[10px] font-semibold text-gray-400 uppercase">Supplement Value</th>
+              <tr className="bg-white/[0.04]">
+                <th className="px-3 py-2 text-left text-[10px] font-semibold text-[var(--gray-dim)] uppercase">Item</th>
+                <th className="px-3 py-2 text-center text-[10px] font-semibold text-[var(--gray-dim)] uppercase">Issue</th>
+                <th className="px-3 py-2 text-right text-[10px] font-semibold text-[var(--gray-dim)] uppercase">Supplement Value</th>
               </tr>
             </thead>
             <tbody>
               {supplementRows.map((r, i) => (
-                <tr key={i} className={`border-b border-gray-100 ${r.status === "missing" ? "bg-red-50" : "bg-amber-50"}`}>
+                <tr key={i} className={`border-b border-white/[0.04] ${r.status === "missing" ? "bg-red-50" : "bg-amber-50"}`}>
                   <td className="px-3 py-2 font-medium">{r.desc}</td>
                   <td className="px-3 py-2 text-center">
                     <span className={`inline-block px-2 py-0.5 rounded-full text-[9px] font-bold ${r.status === "missing" ? "bg-red-600 text-white" : "bg-orange-500 text-white"}`}>
@@ -410,7 +410,7 @@ function FinancialSummary({ rows, financials: fin }: { rows: ScopeComparisonRow[
                 <td className="px-3 py-2 text-right font-mono text-red-700">${supplementTotal.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</td>
               </tr>
               <tr className="bg-blue-50">
-                <td colSpan={2} className="px-3 py-2 text-gray-600">+ Tax ({(fin.tax_rate * 100).toFixed(0)}%)</td>
+                <td colSpan={2} className="px-3 py-2 text-[var(--gray)]">+ Tax ({(fin.tax_rate * 100).toFixed(0)}%)</td>
                 <td className="px-3 py-2 text-right font-mono">${supplementTax.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</td>
               </tr>
               <tr className="bg-red-600 text-white font-bold text-sm">

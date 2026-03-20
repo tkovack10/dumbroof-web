@@ -356,7 +356,7 @@ export function AdminDashboard() {
   const haagColors: Record<string, string> = {
     yes: "bg-yellow-100 text-yellow-800",
     "in-progress": "bg-blue-100 text-blue-700",
-    no: "bg-gray-100 text-gray-600",
+    no: "bg-white/[0.06] text-[var(--gray)]",
   };
 
   const travelLabels: Record<string, string> = {
@@ -372,21 +372,21 @@ export function AdminDashboard() {
   const betaPendingCount = betaSignups.filter(s => s.status === "pending").length;
 
   return (
-    <main className="min-h-screen bg-gray-50">
+    <main className="min-h-screen">
       <div className="max-w-7xl mx-auto px-6 py-10">
         <div className="mb-8">
-          <h1 className="text-2xl font-bold text-[var(--navy)]">Admin Dashboard</h1>
-          <p className="text-gray-500 mt-1">Manage claims and inspector applications.</p>
+          <h1 className="text-2xl font-bold text-[var(--white)]">Admin Dashboard</h1>
+          <p className="text-[var(--gray-muted)] mt-1">Manage claims and inspector applications.</p>
         </div>
 
         {/* Tabs */}
-        <div className="flex gap-1 mb-8 bg-gray-100 rounded-xl p-1 w-fit">
+        <div className="flex gap-1 mb-8 bg-white/[0.06] rounded-xl p-1 w-fit">
           <button
             onClick={() => setActiveTab("claims")}
             className={`px-5 py-2 rounded-lg text-sm font-semibold transition-colors ${
               activeTab === "claims"
-                ? "bg-white text-[var(--navy)] shadow-sm"
-                : "text-gray-500 hover:text-gray-700"
+                ? "bg-[var(--bg-glass)] text-[var(--white)] shadow-sm"
+                : "text-[var(--gray-muted)] hover:text-[var(--gray)]"
             }`}
           >
             Claims
@@ -395,8 +395,8 @@ export function AdminDashboard() {
             onClick={() => setActiveTab("repairs")}
             className={`px-5 py-2 rounded-lg text-sm font-semibold transition-colors flex items-center gap-2 ${
               activeTab === "repairs"
-                ? "bg-white text-[var(--navy)] shadow-sm"
-                : "text-gray-500 hover:text-gray-700"
+                ? "bg-[var(--bg-glass)] text-[var(--white)] shadow-sm"
+                : "text-[var(--gray-muted)] hover:text-[var(--gray)]"
             }`}
           >
             Repairs
@@ -410,8 +410,8 @@ export function AdminDashboard() {
             onClick={() => setActiveTab("inspectors")}
             className={`px-5 py-2 rounded-lg text-sm font-semibold transition-colors flex items-center gap-2 ${
               activeTab === "inspectors"
-                ? "bg-white text-[var(--navy)] shadow-sm"
-                : "text-gray-500 hover:text-gray-700"
+                ? "bg-[var(--bg-glass)] text-[var(--white)] shadow-sm"
+                : "text-[var(--gray-muted)] hover:text-[var(--gray)]"
             }`}
           >
             Inspector Applications
@@ -425,8 +425,8 @@ export function AdminDashboard() {
             onClick={() => setActiveTab("beta")}
             className={`px-5 py-2 rounded-lg text-sm font-semibold transition-colors flex items-center gap-2 ${
               activeTab === "beta"
-                ? "bg-white text-[var(--navy)] shadow-sm"
-                : "text-gray-500 hover:text-gray-700"
+                ? "bg-[var(--bg-glass)] text-[var(--white)] shadow-sm"
+                : "text-[var(--gray-muted)] hover:text-[var(--gray)]"
             }`}
           >
             Beta Signups
@@ -440,8 +440,8 @@ export function AdminDashboard() {
             onClick={() => setActiveTab("map")}
             className={`px-5 py-2 rounded-lg text-sm font-semibold transition-colors ${
               activeTab === "map"
-                ? "bg-white text-[var(--navy)] shadow-sm"
-                : "text-gray-500 hover:text-gray-700"
+                ? "bg-[var(--bg-glass)] text-[var(--white)] shadow-sm"
+                : "text-[var(--gray-muted)] hover:text-[var(--gray)]"
             }`}
           >
             Map
@@ -460,48 +460,48 @@ export function AdminDashboard() {
                 const totalWon = wonClaims.reduce((s, c) => s + (c.settlement_amount ?? 0), 0);
                 const fmt = (v: number) => v >= 1000000 ? `$${(v / 1000000).toFixed(2)}M` : v >= 1000 ? `$${(v / 1000).toFixed(0)}K` : `$${v.toFixed(0)}`;
                 return [
-                  { label: "Total Claims", value: String(stats.total), color: "text-[var(--navy)]" },
-                  { label: "Users", value: String(stats.uniqueUsers), color: "text-[var(--navy)]" },
+                  { label: "Total Claims", value: String(stats.total), color: "text-[var(--white)]" },
+                  { label: "Users", value: String(stats.uniqueUsers), color: "text-[var(--white)]" },
                   { label: "Ready", value: String(stats.ready), color: "text-green-600" },
                   { label: "Processing", value: String(stats.processing), color: "text-amber-600" },
-                  { label: "Contractor RCV", value: fmt(totalContractorRcv), color: "text-[var(--navy)]" },
-                  { label: "Carrier RCV", value: fmt(totalCarrierRcv), color: "text-[var(--navy)]" },
+                  { label: "Contractor RCV", value: fmt(totalContractorRcv), color: "text-[var(--white)]" },
+                  { label: "Carrier RCV", value: fmt(totalCarrierRcv), color: "text-[var(--white)]" },
                   { label: "Variance", value: fmt(totalVariance), color: totalVariance > 0 ? "text-green-600" : "text-red-600" },
                   { label: "Wins", value: String(wonClaims.length), color: "text-green-600" },
                 ];
               })().map(({ label, value, color }) => (
-                <div key={label} className="bg-white rounded-xl border border-gray-200 p-4 text-center">
+                <div key={label} className="glass-card p-4 text-center">
                   <p className={`text-2xl font-bold ${color}`}>{value}</p>
-                  <p className="text-xs text-gray-500 mt-1">{label}</p>
+                  <p className="text-xs text-[var(--gray-muted)] mt-1">{label}</p>
                 </div>
               ))}
             </div>
 
             {/* Claims Table — Google Sheet style */}
-            <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+            <div className="glass-card overflow-hidden">
               {loading ? (
                 <div className="text-center py-16">
-                  <p className="text-gray-400 text-sm">Loading all claims...</p>
+                  <p className="text-[var(--gray-dim)] text-sm">Loading all claims...</p>
                 </div>
               ) : claims.length === 0 ? (
                 <div className="text-center py-16">
-                  <p className="text-gray-400 text-sm">No claims processed yet.</p>
+                  <p className="text-[var(--gray-dim)] text-sm">No claims processed yet.</p>
                 </div>
               ) : (
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead>
-                      <tr className="bg-gray-50 text-left border-b border-gray-100">
-                        <th className="px-3 py-3 text-[10px] font-semibold text-gray-400 uppercase w-8">#</th>
-                        <th className="px-3 py-3 text-[10px] font-semibold text-gray-400 uppercase">Property</th>
-                        <th className="px-3 py-3 text-[10px] font-semibold text-gray-400 uppercase">Carrier</th>
-                        <th className="px-3 py-3 text-[10px] font-semibold text-gray-400 uppercase">User</th>
-                        <th className="px-3 py-3 text-[10px] font-semibold text-gray-400 uppercase text-right">Contractor RCV</th>
-                        <th className="px-3 py-3 text-[10px] font-semibold text-gray-400 uppercase text-right">Carrier RCV</th>
-                        <th className="px-3 py-3 text-[10px] font-semibold text-gray-400 uppercase text-right">Variance</th>
-                        <th className="px-3 py-3 text-[10px] font-semibold text-gray-400 uppercase text-center">Phase</th>
-                        <th className="px-3 py-3 text-[10px] font-semibold text-gray-400 uppercase text-center">Status</th>
-                        <th className="px-3 py-3 text-[10px] font-semibold text-gray-400 uppercase">Date</th>
+                      <tr className="bg-gray-50 text-left border-b border-white/[0.04]">
+                        <th className="px-3 py-3 text-[10px] font-semibold text-[var(--gray-dim)] uppercase w-8">#</th>
+                        <th className="px-3 py-3 text-[10px] font-semibold text-[var(--gray-dim)] uppercase">Property</th>
+                        <th className="px-3 py-3 text-[10px] font-semibold text-[var(--gray-dim)] uppercase">Carrier</th>
+                        <th className="px-3 py-3 text-[10px] font-semibold text-[var(--gray-dim)] uppercase">User</th>
+                        <th className="px-3 py-3 text-[10px] font-semibold text-[var(--gray-dim)] uppercase text-right">Contractor RCV</th>
+                        <th className="px-3 py-3 text-[10px] font-semibold text-[var(--gray-dim)] uppercase text-right">Carrier RCV</th>
+                        <th className="px-3 py-3 text-[10px] font-semibold text-[var(--gray-dim)] uppercase text-right">Variance</th>
+                        <th className="px-3 py-3 text-[10px] font-semibold text-[var(--gray-dim)] uppercase text-center">Phase</th>
+                        <th className="px-3 py-3 text-[10px] font-semibold text-[var(--gray-dim)] uppercase text-center">Status</th>
+                        <th className="px-3 py-3 text-[10px] font-semibold text-[var(--gray-dim)] uppercase">Date</th>
                         <th className="px-3 py-3 w-8"></th>
                       </tr>
                     </thead>
@@ -510,21 +510,21 @@ export function AdminDashboard() {
                       <tr
                         key={claim.id}
                         onClick={() => { window.location.href = `/admin/claim/${claim.id}`; }}
-                        className={`hover:bg-gray-50 transition-colors cursor-pointer ${claim.claim_outcome === "won" ? "bg-green-50/40" : ""}`}
+                        className={`hover:bg-white/[0.04] transition-colors cursor-pointer ${claim.claim_outcome === "won" ? "bg-green-50/40" : ""}`}
                       >
-                        <td className="px-3 py-2.5 text-gray-400 text-xs">{claims.length - i}</td>
+                        <td className="px-3 py-2.5 text-[var(--gray-dim)] text-xs">{claims.length - i}</td>
                         <td className="px-3 py-2.5">
-                          <p className="font-medium text-[var(--navy)] truncate max-w-[200px]">{claim.address}</p>
+                          <p className="font-medium text-[var(--white)] truncate max-w-[200px]">{claim.address}</p>
                         </td>
-                        <td className="px-3 py-2.5 text-gray-600 truncate max-w-[150px]">{claim.carrier || "—"}</td>
+                        <td className="px-3 py-2.5 text-[var(--gray)] truncate max-w-[150px]">{claim.carrier || "—"}</td>
                         <td className="px-3 py-2.5 truncate max-w-[150px]">
-                          <p className="text-gray-700 text-xs font-medium">{userMap[claim.user_id]?.name || "—"}</p>
-                          <p className="text-gray-400 text-[10px] truncate">{userMap[claim.user_id]?.email || ""}</p>
+                          <p className="text-[var(--gray)] text-xs font-medium">{userMap[claim.user_id]?.name || "—"}</p>
+                          <p className="text-[var(--gray-dim)] text-[10px] truncate">{userMap[claim.user_id]?.email || ""}</p>
                         </td>
-                        <td className="px-3 py-2.5 text-right text-xs text-gray-600 tabular-nums">
+                        <td className="px-3 py-2.5 text-right text-xs text-[var(--gray)] tabular-nums">
                           {claim.contractor_rcv ? `$${claim.contractor_rcv.toLocaleString()}` : "—"}
                         </td>
-                        <td className="px-3 py-2.5 text-right text-xs text-gray-600 tabular-nums">
+                        <td className="px-3 py-2.5 text-right text-xs text-[var(--gray)] tabular-nums">
                           {(claim.current_carrier_rcv ?? claim.original_carrier_rcv) ? `$${(claim.current_carrier_rcv ?? claim.original_carrier_rcv)!.toLocaleString()}` : "—"}
                         </td>
                         <td className="px-3 py-2.5 text-right text-xs tabular-nums">
@@ -533,24 +533,24 @@ export function AdminDashboard() {
                             const iRcv = claim.current_carrier_rcv ?? claim.original_carrier_rcv ?? 0;
                             if (!cRcv && !iRcv) return "—";
                             const v = cRcv - iRcv;
-                            return <span className={v > 0 ? "text-green-700 font-medium" : v < 0 ? "text-red-600 font-medium" : "text-gray-500"}>{v > 0 ? "+" : ""}${v.toLocaleString()}</span>;
+                            return <span className={v > 0 ? "text-green-700 font-medium" : v < 0 ? "text-red-600 font-medium" : "text-[var(--gray-muted)]"}>{v > 0 ? "+" : ""}${v.toLocaleString()}</span>;
                           })()}
                         </td>
                         <td className="px-3 py-2.5 text-center">
-                          <span className="text-xs text-gray-500">{claim.phase === "pre-scope" ? "Pre" : "Post"}</span>
+                          <span className="text-xs text-[var(--gray-muted)]">{claim.phase === "pre-scope" ? "Pre" : "Post"}</span>
                         </td>
                         <td className="px-3 py-2.5 text-center">
                           {claim.claim_outcome === "won" ? (
                             <span className="inline-block px-2 py-0.5 rounded-full text-xs font-bold bg-green-100 text-green-700">Won</span>
                           ) : (
-                            <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${statusColors[claim.status] || "bg-gray-100 text-gray-600"}`}>
+                            <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${statusColors[claim.status] || "bg-white/[0.06] text-[var(--gray)]"}`}>
                               {claim.status.charAt(0).toUpperCase() + claim.status.slice(1)}
                             </span>
                           )}
                         </td>
                         <td className="px-3 py-2.5">
                           <div className="flex items-center gap-2">
-                            <span className="text-xs text-gray-400">{new Date(claim.created_at).toLocaleDateString()}</span>
+                            <span className="text-xs text-[var(--gray-dim)]">{new Date(claim.created_at).toLocaleDateString()}</span>
                             {(claim.status === "error" || claim.status === "processing") && (
                               <button
                                 onClick={(e) => { e.stopPropagation(); reprocessClaim(claim.id); }}
@@ -568,7 +568,7 @@ export function AdminDashboard() {
                             className="p-1 rounded hover:bg-gray-200 transition-colors"
                             title="Quick preview"
                           >
-                            <svg className={`w-4 h-4 text-gray-400 transition-transform ${expandedRow === claim.id ? "rotate-180" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                            <svg className={`w-4 h-4 text-[var(--gray-dim)] transition-transform ${expandedRow === claim.id ? "rotate-180" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                               <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
                             </svg>
                           </button>
@@ -580,7 +580,7 @@ export function AdminDashboard() {
                   {/* Expanded row detail panel */}
                   {claims.map((claim) => (
                     expandedRow === claim.id ? (
-                      <div key={`exp-${claim.id}`} className="px-6 pb-4 bg-gray-50/50 border-t border-gray-200">
+                      <div key={`exp-${claim.id}`} className="px-6 pb-4 bg-gray-50/50 border-t border-[var(--border-glass)]">
                         {claim.error_message && (
                           <p className="text-xs text-red-600 bg-red-50 rounded px-3 py-2 mt-2 mb-2 font-mono">
                             {claim.error_message}
@@ -593,7 +593,7 @@ export function AdminDashboard() {
                             { label: "Photos", files: claim.photo_files, color: "bg-purple-50 text-purple-700 border-purple-200" },
                             { label: "Scope", files: claim.scope_files, color: "bg-amber-50 text-amber-700 border-amber-200" },
                             { label: "Weather", files: claim.weather_files, color: "bg-teal-50 text-teal-700 border-teal-200" },
-                            { label: "Other", files: claim.other_files, color: "bg-gray-100 text-gray-600 border-gray-200" },
+                            { label: "Other", files: claim.other_files, color: "bg-white/[0.06] text-[var(--gray)] border-[var(--border-glass)]" },
                           ].map(({ label, files, color }) => (
                             <div key={label} className={`rounded-lg px-3 py-2 border ${color}`}>
                               <p className="text-xs font-bold">{files?.length ?? 0}</p>
@@ -627,7 +627,7 @@ export function AdminDashboard() {
                             ))}
                           </div>
                         ) : (
-                          <p className="text-xs text-gray-400">No output files yet.</p>
+                          <p className="text-xs text-[var(--gray-dim)]">No output files yet.</p>
                         )}
                       </div>
                     ) : null
@@ -643,32 +643,32 @@ export function AdminDashboard() {
             {/* Repair Stats */}
             <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
               {[
-                { label: "Total Repairs", value: repairs.length, color: "text-[var(--navy)]" },
+                { label: "Total Repairs", value: repairs.length, color: "text-[var(--white)]" },
                 { label: "Processing", value: repairs.filter(r => r.status === "processing").length, color: "text-amber-600" },
                 { label: "Ready", value: repairs.filter(r => r.status === "ready").length, color: "text-green-600" },
                 { label: "Errors", value: repairErrorCount, color: "text-red-600" },
                 { label: "Revenue", value: `$${repairs.reduce((sum, r) => sum + (r.total_price || 0), 0).toLocaleString()}`, color: "text-emerald-600" },
               ].map(({ label, value, color }) => (
-                <div key={label} className="bg-white rounded-xl border border-gray-200 p-4 text-center">
+                <div key={label} className="glass-card p-4 text-center">
                   <p className={`text-2xl font-bold ${color}`}>{value}</p>
-                  <p className="text-xs text-gray-500 mt-1">{label}</p>
+                  <p className="text-xs text-[var(--gray-muted)] mt-1">{label}</p>
                 </div>
               ))}
             </div>
 
             {/* Repairs Table */}
-            <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+            <div className="glass-card overflow-hidden">
               {repairsLoading ? (
                 <div className="text-center py-16">
-                  <p className="text-gray-400 text-sm">Loading repairs...</p>
+                  <p className="text-[var(--gray-dim)] text-sm">Loading repairs...</p>
                 </div>
               ) : repairs.length === 0 ? (
                 <div className="text-center py-16">
-                  <p className="text-gray-400 text-sm">No repairs yet.</p>
+                  <p className="text-[var(--gray-dim)] text-sm">No repairs yet.</p>
                 </div>
               ) : (
                 <div>
-                  <div className="px-6 py-3 bg-gray-50 grid grid-cols-12 gap-4 text-xs font-semibold text-gray-400 uppercase tracking-wider border-b border-gray-100">
+                  <div className="px-6 py-3 bg-gray-50 grid grid-cols-12 gap-4 text-xs font-semibold text-[var(--gray-dim)] uppercase tracking-wider border-b border-white/[0.04]">
                     <div className="col-span-3">Address</div>
                     <div className="col-span-2">Homeowner</div>
                     <div className="col-span-1">Photos</div>
@@ -682,18 +682,18 @@ export function AdminDashboard() {
                       <div key={repair.id}>
                         <div
                           onClick={() => setExpandedRow(expandedRow === repair.id ? null : repair.id)}
-                          className="px-6 py-3 grid grid-cols-12 gap-4 items-center hover:bg-gray-50 transition-colors text-sm cursor-pointer"
+                          className="px-6 py-3 grid grid-cols-12 gap-4 items-center hover:bg-white/[0.04] transition-colors text-sm cursor-pointer"
                         >
                           <div className="col-span-3">
-                            <p className="font-medium text-[var(--navy)] truncate">{repair.address}</p>
-                            <p className="text-xs text-gray-400 truncate">{userMap[repair.user_id]?.name || repair.user_id.slice(0, 8)}</p>
+                            <p className="font-medium text-[var(--white)] truncate">{repair.address}</p>
+                            <p className="text-xs text-[var(--gray-dim)] truncate">{userMap[repair.user_id]?.name || repair.user_id.slice(0, 8)}</p>
                           </div>
-                          <div className="col-span-2 text-gray-600 truncate">{repair.homeowner_name}</div>
-                          <div className="col-span-1 text-gray-500 text-xs">
+                          <div className="col-span-2 text-[var(--gray)] truncate">{repair.homeowner_name}</div>
+                          <div className="col-span-1 text-[var(--gray-muted)] text-xs">
                             {repair.photo_files?.length || 0}
                           </div>
                           <div className="col-span-1">
-                            <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${statusColors[repair.status] || "bg-gray-100 text-gray-600"}`}>
+                            <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${statusColors[repair.status] || "bg-white/[0.06] text-[var(--gray)]"}`}>
                               {repair.status.charAt(0).toUpperCase() + repair.status.slice(1)}
                             </span>
                           </div>
@@ -706,11 +706,11 @@ export function AdminDashboard() {
                               <span className="text-xs text-gray-300">—</span>
                             )}
                           </div>
-                          <div className="col-span-1 text-gray-700 text-sm font-medium">
+                          <div className="col-span-1 text-[var(--gray)] text-sm font-medium">
                             {repair.total_price ? `$${repair.total_price.toLocaleString()}` : "—"}
                           </div>
                           <div className="col-span-2 flex items-center gap-2">
-                            <span className="text-xs text-gray-400">
+                            <span className="text-xs text-[var(--gray-dim)]">
                               {new Date(repair.created_at).toLocaleDateString()}
                             </span>
                             {(repair.status === "error" || repair.status === "processing") && (
@@ -725,7 +725,7 @@ export function AdminDashboard() {
                           </div>
                         </div>
                         {expandedRow === repair.id && (
-                          <div className="px-6 pb-4 bg-gray-50/50 border-t border-gray-100">
+                          <div className="px-6 pb-4 bg-gray-50/50 border-t border-white/[0.04]">
                             {repair.error_message && (
                               <p className="text-xs text-red-600 bg-red-50 rounded px-3 py-2 mt-2 mb-2 font-mono">
                                 {repair.error_message}
@@ -748,7 +748,7 @@ export function AdminDashboard() {
                                 ))}
                               </div>
                             ) : (
-                              <p className="text-xs text-gray-400 mt-2">No output files yet.</p>
+                              <p className="text-xs text-[var(--gray-dim)] mt-2">No output files yet.</p>
                             )}
                           </div>
                         )}
@@ -766,31 +766,31 @@ export function AdminDashboard() {
             {/* Beta Signup Stats */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
               {[
-                { label: "Total Signups", value: betaSignups.length, color: "text-[var(--navy)]" },
+                { label: "Total Signups", value: betaSignups.length, color: "text-[var(--white)]" },
                 { label: "Pending", value: betaSignups.filter(s => s.status === "pending").length, color: "text-amber-600" },
                 { label: "Approved", value: betaSignups.filter(s => s.status === "approved").length, color: "text-green-600" },
                 { label: "Active", value: betaSignups.filter(s => s.status === "active").length, color: "text-emerald-600" },
               ].map(({ label, value, color }) => (
-                <div key={label} className="bg-white rounded-xl border border-gray-200 p-4 text-center">
+                <div key={label} className="glass-card p-4 text-center">
                   <p className={`text-2xl font-bold ${color}`}>{value}</p>
-                  <p className="text-xs text-gray-500 mt-1">{label}</p>
+                  <p className="text-xs text-[var(--gray-muted)] mt-1">{label}</p>
                 </div>
               ))}
             </div>
 
             {/* Beta Signups Table */}
-            <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+            <div className="glass-card overflow-hidden">
               {betaLoading ? (
                 <div className="text-center py-16">
-                  <p className="text-gray-400 text-sm">Loading signups...</p>
+                  <p className="text-[var(--gray-dim)] text-sm">Loading signups...</p>
                 </div>
               ) : betaSignups.length === 0 ? (
                 <div className="text-center py-16">
-                  <p className="text-gray-400 text-sm">No beta signups yet.</p>
+                  <p className="text-[var(--gray-dim)] text-sm">No beta signups yet.</p>
                 </div>
               ) : (
                 <div>
-                  <div className="px-6 py-3 bg-gray-50 grid grid-cols-12 gap-4 text-xs font-semibold text-gray-400 uppercase tracking-wider border-b border-gray-100">
+                  <div className="px-6 py-3 bg-gray-50 grid grid-cols-12 gap-4 text-xs font-semibold text-[var(--gray-dim)] uppercase tracking-wider border-b border-white/[0.04]">
                     <div className="col-span-2">Name</div>
                     <div className="col-span-2">Contact</div>
                     <div className="col-span-2">Company</div>
@@ -801,39 +801,39 @@ export function AdminDashboard() {
                   </div>
                   <div className="divide-y divide-gray-50">
                     {betaSignups.map((signup) => (
-                      <div key={signup.id} className="px-6 py-4 grid grid-cols-12 gap-4 items-center hover:bg-gray-50 transition-colors text-sm">
+                      <div key={signup.id} className="px-6 py-4 grid grid-cols-12 gap-4 items-center hover:bg-white/[0.04] transition-colors text-sm">
                         <div className="col-span-2">
-                          <p className="font-medium text-[var(--navy)]">{signup.name}</p>
-                          <p className="text-xs text-gray-400 mt-0.5">
+                          <p className="font-medium text-[var(--white)]">{signup.name}</p>
+                          <p className="text-xs text-[var(--gray-dim)] mt-0.5">
                             {new Date(signup.created_at).toLocaleDateString()}
                           </p>
                         </div>
                         <div className="col-span-2">
-                          <p className="text-gray-700 truncate">{signup.email}</p>
-                          {signup.phone && <p className="text-xs text-gray-400">{signup.phone}</p>}
+                          <p className="text-[var(--gray)] truncate">{signup.email}</p>
+                          {signup.phone && <p className="text-xs text-[var(--gray-dim)]">{signup.phone}</p>}
                         </div>
                         <div className="col-span-2">
-                          <p className="text-gray-700 truncate">{signup.company_name || "-"}</p>
+                          <p className="text-[var(--gray)] truncate">{signup.company_name || "-"}</p>
                         </div>
                         <div className="col-span-1">
-                          <span className="text-xs text-gray-600 font-medium">
+                          <span className="text-xs text-[var(--gray)] font-medium">
                             {roleLabels[signup.role] || signup.role}
                           </span>
                         </div>
                         <div className="col-span-2">
                           <div className="flex flex-wrap gap-1">
                             {(signup.products || []).map((p) => (
-                              <span key={p} className="inline-block px-2 py-0.5 rounded-full text-xs font-medium bg-[var(--navy)]/10 text-[var(--navy)]">
+                              <span key={p} className="inline-block px-2 py-0.5 rounded-full text-xs font-medium bg-[var(--navy)]/10 text-[var(--white)]">
                                 {p === "claims_ai" ? "Claims" : p === "repair_ai" ? "Repair" : p}
                               </span>
                             ))}
                             {(!signup.products || signup.products.length === 0) && (
-                              <span className="text-xs text-gray-400">-</span>
+                              <span className="text-xs text-[var(--gray-dim)]">-</span>
                             )}
                           </div>
                         </div>
                         <div className="col-span-1">
-                          <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${betaStatusColors[signup.status] || "bg-gray-100 text-gray-600"}`}>
+                          <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${betaStatusColors[signup.status] || "bg-white/[0.06] text-[var(--gray)]"}`}>
                             {signup.status.charAt(0).toUpperCase() + signup.status.slice(1)}
                           </span>
                         </div>
@@ -874,7 +874,7 @@ export function AdminDashboard() {
                           {(signup.status === "approved" || signup.status === "invited" || signup.status === "active" || signup.status === "rejected") && (
                             <button
                               onClick={() => updateBetaStatus(signup.id, "pending")}
-                              className="px-3 py-1 bg-gray-50 hover:bg-gray-100 text-gray-600 text-xs font-semibold rounded-lg transition-colors"
+                              className="px-3 py-1 bg-gray-50 hover:bg-white/[0.06] text-[var(--gray)] text-xs font-semibold rounded-lg transition-colors"
                             >
                               Undo
                             </button>
@@ -894,31 +894,31 @@ export function AdminDashboard() {
             {/* Inspector Stats */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
               {[
-                { label: "Total Applications", value: inspectors.length, color: "text-[var(--navy)]" },
+                { label: "Total Applications", value: inspectors.length, color: "text-[var(--white)]" },
                 { label: "Pending Review", value: inspectors.filter(i => i.status === "pending").length, color: "text-amber-600" },
                 { label: "Approved", value: inspectors.filter(i => i.status === "approved").length, color: "text-green-600" },
                 { label: "HAAG Certified", value: inspectors.filter(i => i.haag_certified === "yes").length, color: "text-yellow-700" },
               ].map(({ label, value, color }) => (
-                <div key={label} className="bg-white rounded-xl border border-gray-200 p-4 text-center">
+                <div key={label} className="glass-card p-4 text-center">
                   <p className={`text-2xl font-bold ${color}`}>{value}</p>
-                  <p className="text-xs text-gray-500 mt-1">{label}</p>
+                  <p className="text-xs text-[var(--gray-muted)] mt-1">{label}</p>
                 </div>
               ))}
             </div>
 
             {/* Inspector Applications Table */}
-            <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+            <div className="glass-card overflow-hidden">
               {inspectorsLoading ? (
                 <div className="text-center py-16">
-                  <p className="text-gray-400 text-sm">Loading applications...</p>
+                  <p className="text-[var(--gray-dim)] text-sm">Loading applications...</p>
                 </div>
               ) : inspectors.length === 0 ? (
                 <div className="text-center py-16">
-                  <p className="text-gray-400 text-sm">No inspector applications yet.</p>
+                  <p className="text-[var(--gray-dim)] text-sm">No inspector applications yet.</p>
                 </div>
               ) : (
                 <div>
-                  <div className="px-6 py-3 bg-gray-50 grid grid-cols-12 gap-4 text-xs font-semibold text-gray-400 uppercase tracking-wider border-b border-gray-100">
+                  <div className="px-6 py-3 bg-gray-50 grid grid-cols-12 gap-4 text-xs font-semibold text-[var(--gray-dim)] uppercase tracking-wider border-b border-white/[0.04]">
                     <div className="col-span-2">Name</div>
                     <div className="col-span-2">Contact</div>
                     <div className="col-span-1">Location</div>
@@ -930,32 +930,32 @@ export function AdminDashboard() {
                   </div>
                   <div className="divide-y divide-gray-50">
                     {inspectors.map((app) => (
-                      <div key={app.id} className="px-6 py-4 grid grid-cols-12 gap-4 items-center hover:bg-gray-50 transition-colors text-sm">
+                      <div key={app.id} className="px-6 py-4 grid grid-cols-12 gap-4 items-center hover:bg-white/[0.04] transition-colors text-sm">
                         <div className="col-span-2">
-                          <p className="font-medium text-[var(--navy)]">{app.name}</p>
+                          <p className="font-medium text-[var(--white)]">{app.name}</p>
                           {app.notes && (
-                            <p className="text-xs text-gray-400 mt-0.5 truncate" title={app.notes}>{app.notes}</p>
+                            <p className="text-xs text-[var(--gray-dim)] mt-0.5 truncate" title={app.notes}>{app.notes}</p>
                           )}
                         </div>
                         <div className="col-span-2">
-                          <p className="text-gray-700 truncate">{app.email}</p>
-                          <p className="text-xs text-gray-400">{app.phone}</p>
+                          <p className="text-[var(--gray)] truncate">{app.email}</p>
+                          <p className="text-xs text-[var(--gray-dim)]">{app.phone}</p>
                         </div>
                         <div className="col-span-1">
-                          <p className="text-gray-700">{app.city}</p>
-                          <p className="text-xs text-gray-400 font-medium">{app.state}</p>
+                          <p className="text-[var(--gray)]">{app.city}</p>
+                          <p className="text-xs text-[var(--gray-dim)] font-medium">{app.state}</p>
                         </div>
-                        <div className="col-span-1 text-gray-600">{app.experience} yrs</div>
+                        <div className="col-span-1 text-[var(--gray)]">{app.experience} yrs</div>
                         <div className="col-span-1">
-                          <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${haagColors[app.haag_certified] || "bg-gray-100 text-gray-600"}`}>
+                          <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${haagColors[app.haag_certified] || "bg-white/[0.06] text-[var(--gray)]"}`}>
                             {app.haag_certified === "yes" ? "HAAG" : app.haag_certified === "in-progress" ? "In Prog" : "No"}
                           </span>
                         </div>
                         <div className="col-span-2">
-                          <p className="text-gray-600 text-xs">{travelLabels[app.willing_to_travel] || app.willing_to_travel}</p>
+                          <p className="text-[var(--gray)] text-xs">{travelLabels[app.willing_to_travel] || app.willing_to_travel}</p>
                         </div>
                         <div className="col-span-1">
-                          <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${inspectorStatusColors[app.status] || "bg-gray-100 text-gray-600"}`}>
+                          <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${inspectorStatusColors[app.status] || "bg-white/[0.06] text-[var(--gray)]"}`}>
                             {app.status.charAt(0).toUpperCase() + app.status.slice(1)}
                           </span>
                         </div>
@@ -996,7 +996,7 @@ export function AdminDashboard() {
                           {(app.status === "approved" || app.status === "invited" || app.status === "active" || app.status === "rejected") && (
                             <button
                               onClick={() => updateInspectorStatus(app.id, "pending")}
-                              className="px-3 py-1 bg-gray-50 hover:bg-gray-100 text-gray-600 text-xs font-semibold rounded-lg transition-colors"
+                              className="px-3 py-1 bg-gray-50 hover:bg-white/[0.06] text-[var(--gray)] text-xs font-semibold rounded-lg transition-colors"
                             >
                               Undo
                             </button>
@@ -1012,8 +1012,8 @@ export function AdminDashboard() {
         )}
 
         {activeTab === "map" && (
-          <div className="bg-white rounded-2xl border border-gray-200 p-6">
-            <h2 className="text-lg font-bold text-[var(--navy)] mb-4">All Claims Map</h2>
+          <div className="glass-card p-6">
+            <h2 className="text-lg font-bold text-[var(--white)] mb-4">All Claims Map</h2>
             <ClaimsMap claims={claims} height="600px" showUserEmail />
           </div>
         )}

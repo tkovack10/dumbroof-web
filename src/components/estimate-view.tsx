@@ -115,14 +115,14 @@ export function EstimateView({ claimId }: Props) {
   }
 
   return (
-    <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+    <div className="glass-card overflow-hidden">
       <button
         onClick={() => setExpanded(!expanded)}
-        className="w-full flex items-center justify-between px-6 py-4 hover:bg-gray-50 transition-colors"
+        className="w-full flex items-center justify-between px-6 py-4 hover:bg-white/[0.04] transition-colors"
       >
         <div className="flex items-center gap-3">
-          <h2 className="text-sm font-semibold text-[var(--navy)]">Estimate &amp; Damage Assessment</h2>
-          <span className="text-xs text-gray-400">{grouped.length} items, {trades.length} trades</span>
+          <h2 className="text-sm font-semibold text-[var(--white)]">Estimate &amp; Damage Assessment</h2>
+          <span className="text-xs text-[var(--gray-dim)]">{grouped.length} items, {trades.length} trades</span>
           {damagePhotos.length > 0 && (
             <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-100 text-red-700">
               {damagePhotos.length} damage findings
@@ -134,7 +134,7 @@ export function EstimateView({ claimId }: Props) {
             </span>
           )}
         </div>
-        <svg className={`w-5 h-5 text-gray-400 transition-transform ${expanded ? "rotate-180" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+        <svg className={`w-5 h-5 text-[var(--gray-dim)] transition-transform ${expanded ? "rotate-180" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
         </svg>
       </button>
@@ -142,7 +142,7 @@ export function EstimateView({ claimId }: Props) {
       {expanded && (
         <div>
           {/* Tabs */}
-          <div className="flex border-b border-gray-200 px-6">
+          <div className="flex border-b border-[var(--border-glass)] px-6">
             {([
               ["estimate", `Line Items (${grouped.length})`],
               ["damage", `Damage Assessment (${damagePhotos.length})`],
@@ -152,7 +152,7 @@ export function EstimateView({ claimId }: Props) {
                 key={key}
                 onClick={() => setActiveTab(key)}
                 className={`px-4 py-3 text-xs font-semibold border-b-2 transition-colors ${
-                  activeTab === key ? "text-blue-600 border-blue-600" : "text-gray-500 border-transparent hover:text-gray-700"
+                  activeTab === key ? "text-blue-600 border-blue-600" : "text-[var(--gray-muted)] border-transparent hover:text-[var(--gray)]"
                 }`}
               >
                 {label}
@@ -188,15 +188,15 @@ function LineItemsTable({ items, lineTotal, trades }: { items: LineItem[]; lineT
     <div className="overflow-x-auto">
       <table className="w-full text-xs">
         <thead>
-          <tr className="bg-gray-50">
-            <th className="px-3 py-2 text-[10px] font-semibold text-gray-400 uppercase w-8">#</th>
-            <th className="px-3 py-2 text-[10px] font-semibold text-gray-400 uppercase w-16">Action</th>
-            <th className="px-3 py-2 text-[10px] font-semibold text-gray-400 uppercase">Description</th>
-            <th className="px-3 py-2 text-[10px] font-semibold text-gray-400 uppercase w-20">Code</th>
-            <th className="px-3 py-2 text-[10px] font-semibold text-gray-400 uppercase text-right w-16">Qty</th>
-            <th className="px-3 py-2 text-[10px] font-semibold text-gray-400 uppercase w-10">Unit</th>
-            <th className="px-3 py-2 text-[10px] font-semibold text-gray-400 uppercase text-right w-20">Price</th>
-            <th className="px-3 py-2 text-[10px] font-semibold text-gray-400 uppercase text-right w-24">Total</th>
+          <tr className="bg-white/[0.04]">
+            <th className="px-3 py-2 text-[10px] font-semibold text-[var(--gray-dim)] uppercase w-8">#</th>
+            <th className="px-3 py-2 text-[10px] font-semibold text-[var(--gray-dim)] uppercase w-16">Action</th>
+            <th className="px-3 py-2 text-[10px] font-semibold text-[var(--gray-dim)] uppercase">Description</th>
+            <th className="px-3 py-2 text-[10px] font-semibold text-[var(--gray-dim)] uppercase w-20">Code</th>
+            <th className="px-3 py-2 text-[10px] font-semibold text-[var(--gray-dim)] uppercase text-right w-16">Qty</th>
+            <th className="px-3 py-2 text-[10px] font-semibold text-[var(--gray-dim)] uppercase w-10">Unit</th>
+            <th className="px-3 py-2 text-[10px] font-semibold text-[var(--gray-dim)] uppercase text-right w-20">Price</th>
+            <th className="px-3 py-2 text-[10px] font-semibold text-[var(--gray-dim)] uppercase text-right w-24">Total</th>
           </tr>
         </thead>
         <tbody>
@@ -220,12 +220,12 @@ function LineItemsTable({ items, lineTotal, trades }: { items: LineItem[]; lineT
                   </tr>
                 )}
                 <tr>
-                  <td className="px-3 py-1.5 text-gray-400">{i + 1}</td>
-                  <td className="px-3 py-1.5 font-semibold text-[var(--navy)] text-[10px]">{action}</td>
-                  <td className="px-3 py-1.5 text-gray-700">{desc}</td>
-                  <td className="px-3 py-1.5 font-mono text-gray-500 text-[10px]">{item.xactimate_code || ""}</td>
+                  <td className="px-3 py-1.5 text-[var(--gray-dim)]">{i + 1}</td>
+                  <td className="px-3 py-1.5 font-semibold text-[var(--white)] text-[10px]">{action}</td>
+                  <td className="px-3 py-1.5 text-[var(--gray)]">{desc}</td>
+                  <td className="px-3 py-1.5 font-mono text-[var(--gray-muted)] text-[10px]">{item.xactimate_code || ""}</td>
                   <td className="px-3 py-1.5 text-right font-mono">{item.qty.toLocaleString(undefined, { maximumFractionDigits: 2 })}</td>
-                  <td className="px-3 py-1.5 text-gray-500">{item.unit}</td>
+                  <td className="px-3 py-1.5 text-[var(--gray-muted)]">{item.unit}</td>
                   <td className="px-3 py-1.5 text-right font-mono">${item.unit_price.toFixed(2)}</td>
                   <td className="px-3 py-1.5 text-right font-mono font-medium">${total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                 </tr>
@@ -266,7 +266,7 @@ function DamageAssessment({
 }) {
 
   if (photos.length === 0) {
-    return <div className="p-8 text-center text-sm text-gray-400">No damage findings documented</div>;
+    return <div className="p-8 text-center text-sm text-[var(--gray-dim)]">No damage findings documented</div>;
   }
 
   // Group by severity
@@ -281,8 +281,8 @@ function DamageAssessment({
   return (
     <div className="p-6 space-y-4">
       <div className="flex items-center gap-3 mb-2">
-        <h3 className="text-sm font-semibold text-[var(--navy)]">Inspection Findings</h3>
-        <span className="text-xs text-gray-400">{photos.length} damage items documented</span>
+        <h3 className="text-sm font-semibold text-[var(--white)]">Inspection Findings</h3>
+        <span className="text-xs text-[var(--gray-dim)]">{photos.length} damage items documented</span>
       </div>
 
       {severityOrder.map((sev) => {
@@ -307,23 +307,23 @@ function DamageAssessment({
                         className="w-full h-full object-cover"
                       />
                     ) : (
-                      <div className="w-full h-full flex items-center justify-center text-gray-400 text-[10px]">{photo.annotation_key}</div>
+                      <div className="w-full h-full flex items-center justify-center text-[var(--gray-dim)] text-[10px]">{photo.annotation_key}</div>
                     )}
                   </div>
                   {/* Info */}
                   <div className="min-w-0 flex-1">
-                    <p className="text-sm font-semibold text-gray-800">
+                    <p className="text-sm font-semibold text-[var(--white)]">
                       {photo.material ? `${photo.material} — ` : ""}{photo.damage_type}
                     </p>
                     {photo.annotation_text && (
-                      <p className="text-xs text-gray-600 mt-1 leading-relaxed line-clamp-3">{photo.annotation_text}</p>
+                      <p className="text-xs text-[var(--gray)] mt-1 leading-relaxed line-clamp-3">{photo.annotation_text}</p>
                     )}
                     <div className="flex gap-2 mt-1.5">
                       {photo.trade && (
-                        <span className="text-[9px] px-1.5 py-0.5 rounded bg-gray-200 text-gray-600 font-medium">{photo.trade}</span>
+                        <span className="text-[9px] px-1.5 py-0.5 rounded bg-gray-200 text-[var(--gray)] font-medium">{photo.trade}</span>
                       )}
                       <span className={`text-[9px] px-1.5 py-0.5 rounded font-bold ${style.bg} ${style.text}`}>{sev}</span>
-                      <span className="text-[9px] px-1.5 py-0.5 rounded bg-gray-100 text-gray-500 font-mono">{photo.annotation_key}</span>
+                      <span className="text-[9px] px-1.5 py-0.5 rounded bg-gray-100 text-[var(--gray-muted)] font-mono">{photo.annotation_key}</span>
                     </div>
                   </div>
                 </div>
@@ -340,14 +340,14 @@ function CodeCompliance({ citations }: { citations: { desc: string; citation: Co
   const [expandedIdx, setExpandedIdx] = useState<number | null>(null);
 
   if (citations.length === 0) {
-    return <div className="p-8 text-center text-sm text-gray-400">No code citations available</div>;
+    return <div className="p-8 text-center text-sm text-[var(--gray-dim)]">No code citations available</div>;
   }
 
   return (
     <div className="p-6 space-y-3">
       <div className="mb-2">
-        <h3 className="text-sm font-semibold text-[var(--navy)]">Building Code Citations</h3>
-        <p className="text-xs text-gray-400 mt-0.5">{citations.length} items with code authority — click to expand</p>
+        <h3 className="text-sm font-semibold text-[var(--white)]">Building Code Citations</h3>
+        <p className="text-xs text-[var(--gray-dim)] mt-0.5">{citations.length} items with code authority — click to expand</p>
       </div>
 
       {citations.map((c, i) => {
@@ -355,23 +355,23 @@ function CodeCompliance({ citations }: { citations: { desc: string; citation: Co
         const cit = c.citation;
 
         return (
-          <div key={i} className="border border-gray-200 rounded-lg overflow-hidden">
+          <div key={i} className="border border-[var(--border-glass)] rounded-lg overflow-hidden">
             {/* Header */}
             <button
               onClick={() => setExpandedIdx(isExpanded ? null : i)}
-              className="w-full flex items-center gap-3 px-4 py-3 bg-gray-50 hover:bg-gray-100 transition-colors text-left"
+              className="w-full flex items-center gap-3 px-4 py-3 bg-white/[0.04] hover:bg-gray-100 transition-colors text-left"
             >
               <span className="inline-block px-2.5 py-1 rounded text-[10px] font-bold font-mono bg-[var(--navy)] text-white shrink-0">
                 {cit.code_tag}
               </span>
-              <span className="text-sm font-semibold text-gray-800">{cit.title}</span>
-              <span className="text-xs text-gray-400 ml-auto shrink-0 hidden sm:block">
+              <span className="text-sm font-semibold text-[var(--white)]">{cit.title}</span>
+              <span className="text-xs text-[var(--gray-dim)] ml-auto shrink-0 hidden sm:block">
                 {c.desc}
               </span>
               {cit.has_warranty_void && (
                 <span className="text-[9px] font-bold text-red-600 bg-red-50 px-1.5 py-0.5 rounded shrink-0">WARRANTY</span>
               )}
-              <svg className={`w-4 h-4 text-gray-400 transition-transform shrink-0 ${isExpanded ? "rotate-180" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <svg className={`w-4 h-4 text-[var(--gray-dim)] transition-transform shrink-0 ${isExpanded ? "rotate-180" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
               </svg>
             </button>
@@ -383,7 +383,7 @@ function CodeCompliance({ citations }: { citations: { desc: string; citation: Co
                 {cit.requirement && (
                   <div className="bg-amber-50 border-l-4 border-amber-400 px-3 py-2 rounded-r">
                     <p className="text-[10px] font-bold text-amber-700 uppercase mb-1">Code Requirement</p>
-                    <p className="text-xs text-gray-700 leading-relaxed">{cit.requirement}</p>
+                    <p className="text-xs text-[var(--gray)] leading-relaxed">{cit.requirement}</p>
                   </div>
                 )}
 
@@ -391,7 +391,7 @@ function CodeCompliance({ citations }: { citations: { desc: string; citation: Co
                 {cit.supplement_argument && (
                   <div className="bg-green-50 border-l-4 border-green-400 px-3 py-2 rounded-r">
                     <p className="text-[10px] font-bold text-green-700 uppercase mb-1">Supplement Argument</p>
-                    <p className="text-xs text-gray-700 leading-relaxed">{cit.supplement_argument}</p>
+                    <p className="text-xs text-[var(--gray)] leading-relaxed">{cit.supplement_argument}</p>
                   </div>
                 )}
 
@@ -402,9 +402,9 @@ function CodeCompliance({ citations }: { citations: { desc: string; citation: Co
                       <div key={j} className="bg-blue-50 border-l-4 border-blue-400 px-3 py-2 rounded-r">
                         <div className="flex items-center gap-2 mb-1">
                           <span className="text-xs font-bold text-blue-800">{spec.manufacturer}</span>
-                          <span className="text-[10px] text-gray-500">{spec.document}</span>
+                          <span className="text-[10px] text-[var(--gray-muted)]">{spec.document}</span>
                         </div>
-                        <p className="text-xs text-gray-700 leading-relaxed">{spec.requirement}</p>
+                        <p className="text-xs text-[var(--gray)] leading-relaxed">{spec.requirement}</p>
                         {spec.warranty_void && spec.warranty_text && (
                           <p className="text-xs font-bold text-red-600 mt-1">{spec.warranty_text}</p>
                         )}

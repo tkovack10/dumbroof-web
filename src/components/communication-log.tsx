@@ -52,24 +52,24 @@ export function CommunicationLog({ claimId }: Props) {
   if (loading || emails.length === 0) return null;
 
   return (
-    <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+    <div className="glass-card overflow-hidden">
       <button
         onClick={() => setExpanded(!expanded)}
-        className="w-full flex items-center justify-between px-6 py-4 hover:bg-gray-50 transition-colors"
+        className="w-full flex items-center justify-between px-6 py-4 hover:bg-white/[0.04] transition-colors"
       >
         <div className="flex items-center gap-3">
-          <h2 className="text-sm font-semibold text-[var(--navy)]">Communication Log</h2>
+          <h2 className="text-sm font-semibold text-[var(--white)]">Communication Log</h2>
           <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-blue-700">
             {emails.length} sent
           </span>
         </div>
-        <svg className={`w-5 h-5 text-gray-400 transition-transform ${expanded ? "rotate-180" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+        <svg className={`w-5 h-5 text-[var(--gray-dim)] transition-transform ${expanded ? "rotate-180" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
         </svg>
       </button>
 
       {expanded && (
-        <div className="border-t border-gray-100">
+        <div className="border-t border-white/[0.04]">
           {emails.map((email) => {
             const style = TYPE_STYLES[email.email_type] || TYPE_STYLES.custom;
             const isExpanded = expandedEmail === email.id;
@@ -81,7 +81,7 @@ export function CommunicationLog({ claimId }: Props) {
               <div key={email.id} className="border-b border-gray-50 last:border-b-0">
                 <button
                   onClick={() => setExpandedEmail(isExpanded ? null : email.id)}
-                  className="w-full flex items-center gap-3 px-6 py-3 hover:bg-gray-50 transition-colors text-left"
+                  className="w-full flex items-center gap-3 px-6 py-3 hover:bg-white/[0.04] transition-colors text-left"
                 >
                   <div className="w-8 h-8 rounded-full bg-blue-50 flex items-center justify-center shrink-0">
                     <svg className="w-4 h-4 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -93,22 +93,22 @@ export function CommunicationLog({ claimId }: Props) {
                       <span className={`inline-block px-1.5 py-0.5 rounded text-[9px] font-bold ${style.bg}`}>
                         {style.label}
                       </span>
-                      <span className="text-xs font-medium text-gray-800 truncate">{email.subject}</span>
+                      <span className="text-xs font-medium text-[var(--white)] truncate">{email.subject}</span>
                     </div>
-                    <p className="text-[10px] text-gray-500 mt-0.5">
+                    <p className="text-[10px] text-[var(--gray-muted)] mt-0.5">
                       To: {email.to_email}
                       {email.cc_email && <span> | CC: {email.cc_email}</span>}
                     </p>
                   </div>
                   <div className="text-right shrink-0">
-                    <p className="text-[10px] text-gray-400">{dateStr}</p>
-                    <p className="text-[10px] text-gray-400">{timeStr}</p>
+                    <p className="text-[10px] text-[var(--gray-dim)]">{dateStr}</p>
+                    <p className="text-[10px] text-[var(--gray-dim)]">{timeStr}</p>
                   </div>
                   <div className="flex items-center gap-1 shrink-0">
                     <span className={`text-[9px] font-medium px-1.5 py-0.5 rounded ${email.status === "sent" ? "bg-green-50 text-green-600" : "bg-red-50 text-red-600"}`}>
                       {email.status === "sent" ? "Sent" : email.status}
                     </span>
-                    <span className="text-[9px] text-gray-400">via {email.send_method}</span>
+                    <span className="text-[9px] text-[var(--gray-dim)]">via {email.send_method}</span>
                   </div>
                   <svg className={`w-4 h-4 text-gray-300 transition-transform shrink-0 ${isExpanded ? "rotate-180" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
@@ -117,7 +117,7 @@ export function CommunicationLog({ claimId }: Props) {
 
                 {isExpanded && (
                   <div className="px-6 pb-4 pt-1">
-                    <div className="bg-gray-50 rounded-lg p-4 text-xs text-gray-700 leading-relaxed" dangerouslySetInnerHTML={{ __html: email.body_html || "" }} />
+                    <div className="bg-white/[0.04] rounded-lg p-4 text-xs text-[var(--gray)] leading-relaxed" dangerouslySetInnerHTML={{ __html: email.body_html || "" }} />
                   </div>
                 )}
               </div>

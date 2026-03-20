@@ -184,16 +184,16 @@ export function SupplementComposer({ claimId, claimAddress, carrierName, compari
   if (allItems.length === 0) return null;
 
   return (
-    <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
-      <div className="px-6 py-4 flex items-center justify-between border-b border-gray-100">
+    <div className="glass-card overflow-hidden">
+      <div className="px-6 py-4 flex items-center justify-between border-b border-white/[0.04]">
         <div className="flex items-center gap-3">
-          <h2 className="text-sm font-semibold text-[var(--navy)]">Supplement Composer</h2>
-          <span className="text-xs text-gray-400">Select items to include in your supplement email</span>
+          <h2 className="text-sm font-semibold text-[var(--white)]">Supplement Composer</h2>
+          <span className="text-xs text-[var(--gray-dim)]">Select items to include in your supplement email</span>
         </div>
         <div className="flex items-center gap-2">
           <button onClick={selectAll} className="text-[10px] text-blue-600 hover:text-blue-800 font-medium">Select All</button>
           <span className="text-gray-300">|</span>
-          <button onClick={clearAll} className="text-[10px] text-gray-500 hover:text-gray-700 font-medium">Clear</button>
+          <button onClick={clearAll} className="text-[10px] text-[var(--gray-muted)] hover:text-[var(--gray)] font-medium">Clear</button>
         </div>
       </div>
 
@@ -205,7 +205,7 @@ export function SupplementComposer({ claimId, claimAddress, carrierName, compari
           </div>
         )}
         {items.filter((i) => i.type === "missing").map((item) => (
-          <label key={item.id} className={`flex items-start gap-3 px-6 py-3 cursor-pointer hover:bg-gray-50 transition-colors ${selected.has(item.id) ? "bg-red-50/50" : ""}`}>
+          <label key={item.id} className={`flex items-start gap-3 px-6 py-3 cursor-pointer hover:bg-white/[0.04] transition-colors ${selected.has(item.id) ? "bg-red-50/50" : ""}`}>
             <input
               type="checkbox"
               checked={selected.has(item.id)}
@@ -213,8 +213,8 @@ export function SupplementComposer({ claimId, claimAddress, carrierName, compari
               className="mt-0.5 rounded border-gray-300 text-red-600 focus:ring-red-500"
             />
             <div className="flex-1 min-w-0">
-              <p className="text-xs font-medium text-gray-800">{item.label}</p>
-              <p className="text-[10px] text-gray-500 mt-0.5">{item.detail}</p>
+              <p className="text-xs font-medium text-[var(--white)]">{item.label}</p>
+              <p className="text-[10px] text-[var(--gray-muted)] mt-0.5">{item.detail}</p>
               {item.codeCitation && (
                 <span className="inline-block mt-1 px-1.5 py-0.5 rounded text-[9px] font-semibold bg-green-100 text-green-700">
                   {item.codeCitation.code_tag}
@@ -232,7 +232,7 @@ export function SupplementComposer({ claimId, claimAddress, carrierName, compari
           </div>
         )}
         {items.filter((i) => i.type === "under").map((item) => (
-          <label key={item.id} className={`flex items-start gap-3 px-6 py-3 cursor-pointer hover:bg-gray-50 transition-colors ${selected.has(item.id) ? "bg-orange-50/50" : ""}`}>
+          <label key={item.id} className={`flex items-start gap-3 px-6 py-3 cursor-pointer hover:bg-white/[0.04] transition-colors ${selected.has(item.id) ? "bg-orange-50/50" : ""}`}>
             <input
               type="checkbox"
               checked={selected.has(item.id)}
@@ -240,8 +240,8 @@ export function SupplementComposer({ claimId, claimAddress, carrierName, compari
               className="mt-0.5 rounded border-gray-300 text-orange-500 focus:ring-orange-500"
             />
             <div className="flex-1 min-w-0">
-              <p className="text-xs font-medium text-gray-800">{item.label}</p>
-              <p className="text-[10px] text-gray-500 mt-0.5">{item.detail}</p>
+              <p className="text-xs font-medium text-[var(--white)]">{item.label}</p>
+              <p className="text-[10px] text-[var(--gray-muted)] mt-0.5">{item.detail}</p>
             </div>
             <span className="text-xs font-bold text-orange-700 shrink-0">+${item.amount.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</span>
           </label>
@@ -254,7 +254,7 @@ export function SupplementComposer({ claimId, claimAddress, carrierName, compari
           </div>
         )}
         {codeItems.map((item) => (
-          <label key={item.id} className={`flex items-start gap-3 px-6 py-3 cursor-pointer hover:bg-gray-50 transition-colors ${selected.has(item.id) ? "bg-blue-50/50" : ""}`}>
+          <label key={item.id} className={`flex items-start gap-3 px-6 py-3 cursor-pointer hover:bg-white/[0.04] transition-colors ${selected.has(item.id) ? "bg-blue-50/50" : ""}`}>
             <input
               type="checkbox"
               checked={selected.has(item.id)}
@@ -262,8 +262,8 @@ export function SupplementComposer({ claimId, claimAddress, carrierName, compari
               className="mt-0.5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
             />
             <div className="flex-1 min-w-0">
-              <p className="text-xs font-medium text-gray-800">{item.label}</p>
-              <p className="text-[10px] text-gray-500 mt-0.5 line-clamp-2">{item.detail}</p>
+              <p className="text-xs font-medium text-[var(--white)]">{item.label}</p>
+              <p className="text-[10px] text-[var(--gray-muted)] mt-0.5 line-clamp-2">{item.detail}</p>
               {item.codeCitation?.has_warranty_void && (
                 <span className="inline-block mt-1 px-1.5 py-0.5 rounded text-[9px] font-bold bg-red-100 text-red-700">WARRANTY VOID</span>
               )}
@@ -273,9 +273,9 @@ export function SupplementComposer({ claimId, claimAddress, carrierName, compari
       </div>
 
       {/* Footer with compose button */}
-      <div className="px-6 py-4 bg-gray-50 border-t border-gray-200 flex items-center justify-between">
+      <div className="px-6 py-4 bg-white/[0.04] border-t border-[var(--border-glass)] flex items-center justify-between">
         <div>
-          <p className="text-xs text-gray-600">
+          <p className="text-xs text-[var(--gray)]">
             <span className="font-bold">{selected.size}</span> items selected
             {selectedAmount > 0 && (
               <span className="ml-2 font-bold text-red-700">
@@ -296,50 +296,50 @@ export function SupplementComposer({ claimId, claimAddress, carrierName, compari
       {/* Email Preview Modal */}
       {showComposer && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[80vh] overflow-hidden flex flex-col">
-            <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
-              <h3 className="text-base font-bold text-[var(--navy)]">Supplement Email</h3>
-              <button onClick={() => setShowComposer(false)} className="text-gray-400 hover:text-gray-600">
+          <div className="bg-[var(--bg-glass)] rounded-2xl max-w-2xl w-full max-h-[80vh] overflow-hidden flex flex-col">
+            <div className="px-6 py-4 border-b border-[var(--border-glass)] flex items-center justify-between">
+              <h3 className="text-base font-bold text-[var(--white)]">Supplement Email</h3>
+              <button onClick={() => setShowComposer(false)} className="text-[var(--gray-dim)] hover:text-[var(--gray)]">
                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
                 </svg>
               </button>
             </div>
             {/* Send to + claim number fields */}
-            <div className="px-6 py-3 border-b border-gray-100 bg-gray-50 grid grid-cols-2 gap-3">
+            <div className="px-6 py-3 border-b border-white/[0.04] bg-white/[0.04] grid grid-cols-2 gap-3">
               <div>
-                <label className="text-[10px] uppercase font-semibold text-gray-400 tracking-wide">Send To (adjuster email)</label>
+                <label className="text-[10px] uppercase font-semibold text-[var(--gray-dim)] tracking-wide">Send To (adjuster email)</label>
                 <input
                   type="email"
                   value={toEmail}
                   onChange={(e) => setToEmail(e.target.value)}
                   placeholder="adjuster@carrier.com"
-                  className="w-full mt-1 px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full mt-1 px-3 py-2 border border-[var(--border-glass)] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
               <div>
-                <label className="text-[10px] uppercase font-semibold text-gray-400 tracking-wide">Claim Number (subject line)</label>
+                <label className="text-[10px] uppercase font-semibold text-[var(--gray-dim)] tracking-wide">Claim Number (subject line)</label>
                 <input
                   type="text"
                   value={claimNumber}
                   onChange={(e) => setClaimNumber(e.target.value)}
                   placeholder="e.g. 0820085561"
-                  className="w-full mt-1 px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full mt-1 px-3 py-2 border border-[var(--border-glass)] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
             </div>
             <div className="flex-1 overflow-y-auto p-6">
-              <pre className="text-xs text-gray-700 whitespace-pre-wrap font-sans leading-relaxed">{generateEmail()}</pre>
+              <pre className="text-xs text-[var(--gray)] whitespace-pre-wrap font-sans leading-relaxed">{generateEmail()}</pre>
             </div>
             {sendResult && (
               <div className={`px-6 py-2 text-sm ${sendResult.ok ? "bg-green-50 text-green-700" : "bg-red-50 text-red-700"}`}>
                 {sendResult.message}
               </div>
             )}
-            <div className="px-6 py-4 border-t border-gray-200 flex items-center justify-between">
+            <div className="px-6 py-4 border-t border-[var(--border-glass)] flex items-center justify-between">
               <button
                 onClick={() => { setShowComposer(false); setSendResult(null); }}
-                className="px-4 py-2 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-100 transition-colors"
+                className="px-4 py-2 rounded-lg text-sm font-medium text-[var(--gray)] hover:bg-gray-100 transition-colors"
               >
                 Close
               </button>
@@ -350,7 +350,7 @@ export function SupplementComposer({ claimId, claimAddress, carrierName, compari
                     setCopied(true);
                     setTimeout(() => setCopied(false), 2000);
                   }}
-                  className="px-4 py-2 rounded-lg text-sm font-medium border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors"
+                  className="px-4 py-2 rounded-lg text-sm font-medium border border-[var(--border-glass)] text-[var(--gray)] hover:bg-white/[0.04] transition-colors"
                 >
                   {copied ? "Copied!" : "Copy to Clipboard"}
                 </button>

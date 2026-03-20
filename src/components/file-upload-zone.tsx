@@ -57,16 +57,16 @@ export function FileUploadZone({
   return (
     <div className="space-y-2">
       <div className="flex items-baseline gap-2">
-        <label className="block text-sm font-semibold text-[var(--navy)]">
+        <label className="block text-sm font-semibold text-[var(--white)]">
           {label}
         </label>
         {required ? (
           <span className="text-xs text-[var(--red)] font-medium">Required</span>
         ) : (
-          <span className="text-xs text-gray-400 font-medium">Optional</span>
+          <span className="text-xs text-[var(--gray-dim)] font-medium">Optional</span>
         )}
       </div>
-      <p className="text-xs text-gray-500 mb-2">{description}</p>
+      <p className="text-xs text-[var(--gray-muted)] mb-2">{description}</p>
 
       {largeFiles.length > 0 && (
         <div className="bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
@@ -91,7 +91,7 @@ export function FileUploadZone({
             ? "border-[var(--red)] bg-red-50/50"
             : files.length > 0
               ? "border-green-300 bg-green-50/30"
-              : "border-gray-200 hover:border-gray-300 bg-white"
+              : "border-[var(--border-glass)] hover:border-gray-300 bg-white"
         }`}
       >
         <input
@@ -117,7 +117,7 @@ export function FileUploadZone({
                 d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5"
               />
             </svg>
-            <p className="text-sm text-gray-500">
+            <p className="text-sm text-[var(--gray-muted)]">
               Drag & drop or <span className="text-[var(--red)] font-medium">browse</span>
             </p>
           </div>
@@ -126,7 +126,7 @@ export function FileUploadZone({
             {files.map((file, i) => (
               <div
                 key={`${file.name}-${i}`}
-                className="flex items-center justify-between bg-white border border-gray-100 rounded-lg px-3 py-2 text-left"
+                className="flex items-center justify-between bg-[var(--bg-glass)] border border-white/[0.04] rounded-lg px-3 py-2 text-left"
               >
                 <div className="flex items-center gap-2 min-w-0">
                   <svg
@@ -142,10 +142,10 @@ export function FileUploadZone({
                       d="M9 12l2 2 4-4"
                     />
                   </svg>
-                  <span className="text-sm text-gray-700 truncate">
+                  <span className="text-sm text-[var(--gray)] truncate">
                     {file.name}
                   </span>
-                  <span className="text-xs text-gray-400 shrink-0">
+                  <span className="text-xs text-[var(--gray-dim)] shrink-0">
                     {(file.size / 1024 / 1024).toFixed(1)} MB
                   </span>
                 </div>
@@ -155,7 +155,7 @@ export function FileUploadZone({
                     e.stopPropagation();
                     removeFile(i);
                   }}
-                  className="text-gray-400 hover:text-red-500 ml-2 shrink-0"
+                  className="text-[var(--gray-dim)] hover:text-red-500 ml-2 shrink-0"
                 >
                   <svg
                     className="w-4 h-4"
@@ -173,7 +173,7 @@ export function FileUploadZone({
                 </button>
               </div>
             ))}
-            <p className="text-xs text-gray-400 pt-1">
+            <p className="text-xs text-[var(--gray-dim)] pt-1">
               {multiple ? "Drop more files or click to add" : "Click to replace"}
             </p>
           </div>

@@ -406,23 +406,23 @@ export default function ClaimDetailPage() {
       reinspection_offer: { bg: "bg-purple-100", text: "text-purple-700", label: "Reinspection" },
       acceptance: { bg: "bg-green-100", text: "text-green-700", label: "Acceptance" },
     };
-    const c = configs[stance] || { bg: "bg-gray-100", text: "text-gray-700", label: stance || "Pending" };
+    const c = configs[stance] || { bg: "bg-white/[0.06]", text: "text-[var(--gray)]", label: stance || "Pending" };
     return <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${c.bg} ${c.text}`}>{c.label}</span>;
   };
 
   if (loading) {
     return (
-      <main className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <p className="text-gray-400">Loading...</p>
+      <main className="min-h-screen flex items-center justify-center">
+        <p className="text-[var(--gray-dim)]">Loading...</p>
       </main>
     );
   }
 
   if (!claim) {
     return (
-      <main className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <main className="min-h-screen flex items-center justify-center">
         <div className="text-center">
-          <p className="text-gray-500 mb-4">Claim not found</p>
+          <p className="text-[var(--gray-muted)] mb-4">Claim not found</p>
           <a href="/dashboard" className="text-[var(--red)] font-medium">
             Back to Dashboard
           </a>
@@ -439,7 +439,7 @@ export default function ClaimDetailPage() {
   const integrity = claim.photo_integrity;
 
   return (
-    <main className="min-h-screen bg-gray-50">
+    <main className="min-h-screen">
       {/* Top Bar */}
       <nav className="bg-[var(--navy)] border-b border-white/10">
         <div className="max-w-4xl mx-auto px-6 py-4 flex items-center justify-between">
@@ -453,7 +453,7 @@ export default function ClaimDetailPage() {
           </div>
           <a
             href="/dashboard"
-            className="text-gray-400 hover:text-white text-sm transition-colors"
+            className="text-[var(--gray-dim)] hover:text-white text-sm transition-colors"
           >
             Back to Dashboard
           </a>
@@ -489,13 +489,13 @@ export default function ClaimDetailPage() {
 
       <div className="max-w-4xl mx-auto px-6 py-10 space-y-6">
         {/* Claim Header */}
-        <div className="bg-white rounded-2xl border border-gray-200 p-6">
+        <div className="glass-card p-6">
           <div className="flex items-start justify-between">
             <div>
-              <h1 className="text-xl font-bold text-[var(--navy)]">
+              <h1 className="text-xl font-bold text-[var(--white)]">
                 {claim.address}
               </h1>
-              <p className="text-sm text-gray-500 mt-1">
+              <p className="text-sm text-[var(--gray-muted)] mt-1">
                 {claim.carrier} &middot;{" "}
                 {claim.phase === "pre-scope" ? "Pre-Scope" : "Supplement"} &middot;{" "}
                 {new Date(claim.created_at).toLocaleDateString()}
@@ -553,23 +553,23 @@ export default function ClaimDetailPage() {
             return (
               <div className="mt-4 grid grid-cols-2 gap-3">
                 {/* Damage Score — ring + grade */}
-                <div className="bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 flex items-center gap-3">
+                <div className="bg-gray-50 border border-[var(--border-glass)] rounded-xl px-4 py-3 flex items-center gap-3">
                   <div className="relative w-11 h-11 shrink-0">
                     <svg className="w-11 h-11 -rotate-90" viewBox="0 0 36 36">
                       <circle cx="18" cy="18" r="15.5" fill="none" className="stroke-gray-200" strokeWidth="3" />
-                      <circle cx="18" cy="18" r="15.5" fill="none" className={`${ringColors[dsGrade] || "text-gray-400"} stroke-current`} strokeWidth="3" strokeDasharray={`${dsPct} ${100 - dsPct}`} strokeLinecap="round" />
+                      <circle cx="18" cy="18" r="15.5" fill="none" className={`${ringColors[dsGrade] || "text-[var(--gray-dim)]"} stroke-current`} strokeWidth="3" strokeDasharray={`${dsPct} ${100 - dsPct}`} strokeLinecap="round" />
                     </svg>
-                    <span className="absolute inset-0 flex items-center justify-center text-xs font-bold text-[var(--navy)]">{dsValue}</span>
+                    <span className="absolute inset-0 flex items-center justify-center text-xs font-bold text-[var(--white)]">{dsValue}</span>
                   </div>
                   <div className="min-w-0">
-                    <p className="text-xs text-gray-500">Damage Score</p>
+                    <p className="text-xs text-[var(--gray-muted)]">Damage Score</p>
                     <div className="flex items-center gap-1.5 mt-0.5">
-                      <span className="text-sm font-bold text-[var(--navy)]">{dsValue}/100</span>
-                      <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold border ${gradeColors[dsGrade] || "bg-gray-100 text-gray-600 border-gray-300"}`}>
+                      <span className="text-sm font-bold text-[var(--white)]">{dsValue}/100</span>
+                      <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold border ${gradeColors[dsGrade] || "bg-white/[0.06] text-[var(--gray)] border-gray-300"}`}>
                         {dsGrade}
                       </span>
                     </div>
-                    <p className="text-[10px] text-gray-400 mt-0.5 leading-tight">Storm damage severity</p>
+                    <p className="text-[10px] text-[var(--gray-dim)] mt-0.5 leading-tight">Storm damage severity</p>
                   </div>
                 </div>
                 {/* Tech Boost — green positive indicator */}
@@ -638,11 +638,11 @@ export default function ClaimDetailPage() {
           )}
 
           {claim.user_notes && (
-            <div className="mt-4 bg-gray-50 rounded-lg px-4 py-3">
-              <p className="text-xs font-semibold text-gray-400 uppercase mb-1">
+            <div className="mt-4 bg-white/[0.04] rounded-lg px-4 py-3">
+              <p className="text-xs font-semibold text-[var(--gray-dim)] uppercase mb-1">
                 Your Notes
               </p>
-              <p className="text-sm text-gray-700">{claim.user_notes}</p>
+              <p className="text-sm text-[var(--gray)]">{claim.user_notes}</p>
             </div>
           )}
         </div>
@@ -709,14 +709,14 @@ export default function ClaimDetailPage() {
             </div>
             <div className="grid gap-3">
               {claim.improvement_guidance.tips.map((tip, i) => (
-                <div key={i} className="bg-white border border-orange-100 rounded-xl px-4 py-3">
+                <div key={i} className="bg-[var(--bg-glass)] border border-orange-100 rounded-xl px-4 py-3">
                   <div className="flex items-center gap-2 mb-1">
                     <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-orange-100 text-orange-700 border border-orange-200">
                       {tip.category}
                     </span>
-                    <span className="text-sm font-semibold text-[var(--navy)]">{tip.title}</span>
+                    <span className="text-sm font-semibold text-[var(--white)]">{tip.title}</span>
                   </div>
-                  <p className="text-xs text-gray-600 leading-relaxed">{tip.detail}</p>
+                  <p className="text-xs text-[var(--gray)] leading-relaxed">{tip.detail}</p>
                 </div>
               ))}
             </div>
@@ -742,7 +742,7 @@ export default function ClaimDetailPage() {
               <div className="flex gap-3">
                 <a
                   href="/pricing?coupon=FIRSTCLAIM50"
-                  className="bg-white text-red-600 px-5 py-3 rounded-xl font-bold text-sm hover:bg-orange-50 transition-colors"
+                  className="bg-[var(--bg-glass)] text-red-600 px-5 py-3 rounded-xl font-bold text-sm hover:bg-orange-50 transition-colors"
                 >
                   Pro — $249/mo
                 </a>
@@ -759,8 +759,8 @@ export default function ClaimDetailPage() {
 
         {/* Output Files */}
         {isReady && (
-          <div className="bg-white rounded-2xl border border-gray-200 p-6">
-            <h2 className="text-sm font-semibold text-[var(--navy)] mb-4">
+          <div className="glass-card p-6">
+            <h2 className="text-sm font-semibold text-[var(--white)] mb-4">
               Generated Documents
             </h2>
             <div className="grid sm:grid-cols-2 gap-3">
@@ -784,7 +784,7 @@ export default function ClaimDetailPage() {
                       d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
                     />
                   </svg>
-                  <span className="text-sm text-gray-700 font-medium">
+                  <span className="text-sm text-[var(--gray)] font-medium">
                     {file.replace(/_/g, " ").replace(".pdf", "")}
                   </span>
                 </button>
@@ -838,13 +838,13 @@ export default function ClaimDetailPage() {
         )}
 
         {/* Upload Additional Documents */}
-        <div className="bg-white rounded-2xl border border-gray-200 p-6">
+        <div className="glass-card p-6">
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h2 className="text-sm font-semibold text-[var(--navy)]">
+              <h2 className="text-sm font-semibold text-[var(--white)]">
                 Add Documents
               </h2>
-              <p className="text-xs text-gray-500 mt-0.5">
+              <p className="text-xs text-[var(--gray-muted)] mt-0.5">
                 Upload additional photos, carrier scope, weather data, or correspondence
               </p>
             </div>
@@ -970,7 +970,7 @@ export default function ClaimDetailPage() {
                     className={`px-3 py-2 rounded-lg text-xs font-medium transition-colors border ${
                       selectedCategory === key
                         ? "bg-[var(--navy)] text-white border-[var(--navy)]"
-                        : "bg-white text-gray-600 border-gray-200 hover:border-gray-300"
+                        : "bg-[var(--bg-glass)] text-[var(--gray)] border-[var(--border-glass)] hover:border-gray-300"
                     }`}
                   >
                     {config.label.split(" / ")[0]}
@@ -1028,7 +1028,7 @@ export default function ClaimDetailPage() {
                     setNewFiles([]);
                     setUploadError("");
                   }}
-                  className="text-gray-400 hover:text-gray-600 text-sm transition-colors"
+                  className="text-[var(--gray-dim)] hover:text-[var(--gray)] text-sm transition-colors"
                 >
                   Cancel
                 </button>
@@ -1041,10 +1041,10 @@ export default function ClaimDetailPage() {
         {/* EDIT REQUESTS PANEL                                          */}
         {/* ============================================================ */}
         {editRequests.filter((r) => r.status === "pending").length > 0 && (
-          <div className="bg-white rounded-2xl border-2 border-amber-300 p-6">
+          <div className="bg-[var(--bg-glass)] rounded-2xl border-2 border-amber-300 p-6">
             <div className="flex items-center gap-2 mb-4">
               <div className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
-              <h2 className="text-sm font-semibold text-[var(--navy)]">
+              <h2 className="text-sm font-semibold text-[var(--white)]">
                 Edit Requests
               </h2>
               <span className="ml-auto text-xs text-amber-600 font-medium">
@@ -1068,10 +1068,10 @@ export default function ClaimDetailPage() {
                     >
                       <div className="flex items-start justify-between mb-2">
                         <div>
-                          <p className="text-sm font-medium text-[var(--navy)]">
+                          <p className="text-sm font-medium text-[var(--white)]">
                             {req.original_subject || "Edit Request"}
                           </p>
-                          <p className="text-xs text-gray-500 mt-0.5">
+                          <p className="text-xs text-[var(--gray-muted)] mt-0.5">
                             From {req.from_email} &middot;{" "}
                             {new Date(req.created_at).toLocaleDateString()}{" "}
                             {new Date(req.created_at).toLocaleTimeString([], {
@@ -1087,11 +1087,11 @@ export default function ClaimDetailPage() {
 
                       {/* AI Summary of Changes */}
                       {summary && summary.changes && summary.changes.length > 0 && (
-                        <div className="bg-white border border-amber-100 rounded-lg p-3 mb-3">
-                          <p className="text-xs font-semibold text-gray-500 mb-1.5">
+                        <div className="bg-[var(--bg-glass)] border border-amber-100 rounded-lg p-3 mb-3">
+                          <p className="text-xs font-semibold text-[var(--gray-muted)] mb-1.5">
                             AI-Parsed Changes
                             {summary.confidence && (
-                              <span className="ml-2 text-gray-400 font-normal">
+                              <span className="ml-2 text-[var(--gray-dim)] font-normal">
                                 ({summary.confidence}% confidence)
                               </span>
                             )}
@@ -1104,7 +1104,7 @@ export default function ClaimDetailPage() {
                               ) => (
                                 <li
                                   key={i}
-                                  className="text-xs text-gray-700 flex items-start gap-1.5"
+                                  className="text-xs text-[var(--gray)] flex items-start gap-1.5"
                                 >
                                   <span
                                     className={`mt-0.5 font-semibold ${
@@ -1130,7 +1130,7 @@ export default function ClaimDetailPage() {
 
                       {/* Original email body preview */}
                       {req.original_body && (
-                        <div className="text-xs text-gray-600 bg-gray-50 rounded-lg p-2 mb-3 max-h-20 overflow-y-auto whitespace-pre-wrap">
+                        <div className="text-xs text-[var(--gray)] bg-white/[0.04] rounded-lg p-2 mb-3 max-h-20 overflow-y-auto whitespace-pre-wrap">
                           {req.original_body.slice(0, 300)}
                           {req.original_body.length > 300 && "..."}
                         </div>
@@ -1138,7 +1138,7 @@ export default function ClaimDetailPage() {
 
                       {/* Attachments */}
                       {req.attachment_paths && req.attachment_paths.length > 0 && (
-                        <p className="text-xs text-gray-500 mb-3">
+                        <p className="text-xs text-[var(--gray-muted)] mb-3">
                           {req.attachment_paths.length} attachment
                           {req.attachment_paths.length !== 1 ? "s" : ""} included
                         </p>
@@ -1180,7 +1180,7 @@ export default function ClaimDetailPage() {
                         </button>
                         <button
                           onClick={() => handleRejectEditRequest(req.id)}
-                          className="text-gray-400 hover:text-red-500 text-xs transition-colors"
+                          className="text-[var(--gray-dim)] hover:text-red-500 text-xs transition-colors"
                         >
                           Reject
                         </button>
@@ -1196,8 +1196,8 @@ export default function ClaimDetailPage() {
         {/* CARRIER CORRESPONDENCE TIMELINE                              */}
         {/* ============================================================ */}
         {correspondence.length > 0 && (
-          <div className="bg-white rounded-2xl border border-gray-200 p-6">
-            <h2 className="text-sm font-semibold text-[var(--navy)] mb-4">
+          <div className="glass-card p-6">
+            <h2 className="text-sm font-semibold text-[var(--white)] mb-4">
               Carrier Correspondence
             </h2>
             <div className="space-y-3">
@@ -1208,23 +1208,23 @@ export default function ClaimDetailPage() {
                   : email.carrier_position;
 
                 return (
-                  <div key={email.id} className="border border-gray-100 rounded-xl overflow-hidden">
+                  <div key={email.id} className="border border-white/[0.04] rounded-xl overflow-hidden">
                     {/* Email header row */}
                     <button
                       onClick={() => setExpandedEmail(isExpanded ? null : email.id)}
-                      className="w-full px-4 py-3 flex items-center justify-between text-left hover:bg-gray-50 transition-colors"
+                      className="w-full px-4 py-3 flex items-center justify-between text-left hover:bg-white/[0.04] transition-colors"
                     >
                       <div className="flex items-center gap-3 min-w-0">
-                        <div className="w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center shrink-0">
-                          <svg className="w-4 h-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <div className="w-8 h-8 rounded-lg bg-white/[0.06] flex items-center justify-center shrink-0">
+                          <svg className="w-4 h-4 text-[var(--gray-muted)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                             <path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                           </svg>
                         </div>
                         <div className="min-w-0">
-                          <p className="text-sm font-medium text-[var(--navy)] truncate">
+                          <p className="text-sm font-medium text-[var(--white)] truncate">
                             {email.original_subject || "No subject"}
                           </p>
-                          <p className="text-xs text-gray-400">
+                          <p className="text-xs text-[var(--gray-dim)]">
                             {email.carrier_name || email.original_from} &middot;{" "}
                             {email.original_date
                               ? new Date(email.original_date).toLocaleDateString()
@@ -1243,7 +1243,7 @@ export default function ClaimDetailPage() {
                             Analyzing
                           </span>
                         )}
-                        <svg className={`w-4 h-4 text-gray-400 transition-transform ${isExpanded ? "rotate-180" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <svg className={`w-4 h-4 text-[var(--gray-dim)] transition-transform ${isExpanded ? "rotate-180" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                           <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
                         </svg>
                       </div>
@@ -1251,18 +1251,18 @@ export default function ClaimDetailPage() {
 
                     {/* Expanded email body */}
                     {isExpanded && (
-                      <div className="px-4 pb-4 border-t border-gray-100">
+                      <div className="px-4 pb-4 border-t border-white/[0.04]">
                         {/* AI Analysis Summary */}
                         {position && (
-                          <div className="mt-3 bg-gray-50 rounded-lg p-3">
-                            <p className="text-xs font-semibold text-gray-500 uppercase mb-1">AI Analysis</p>
-                            <p className="text-sm text-gray-700 mb-2">{position.summary}</p>
+                          <div className="mt-3 bg-white/[0.04] rounded-lg p-3">
+                            <p className="text-xs font-semibold text-[var(--gray-muted)] uppercase mb-1">AI Analysis</p>
+                            <p className="text-sm text-[var(--gray)] mb-2">{position.summary}</p>
                             {position.weaknesses && position.weaknesses.length > 0 && (
                               <div>
-                                <p className="text-xs font-semibold text-gray-500 mt-2 mb-1">Identified Weaknesses:</p>
+                                <p className="text-xs font-semibold text-[var(--gray-muted)] mt-2 mb-1">Identified Weaknesses:</p>
                                 <ul className="space-y-1">
                                   {position.weaknesses.map((w: { weakness: string }, i: number) => (
-                                    <li key={i} className="text-xs text-gray-600 flex items-start gap-1.5">
+                                    <li key={i} className="text-xs text-[var(--gray)] flex items-start gap-1.5">
                                       <span className="text-red-500 mt-0.5">&#8226;</span>
                                       {w.weakness}
                                     </li>
@@ -1270,7 +1270,7 @@ export default function ClaimDetailPage() {
                                 </ul>
                               </div>
                             )}
-                            <div className="flex items-center gap-3 mt-2 text-xs text-gray-500">
+                            <div className="flex items-center gap-3 mt-2 text-xs text-[var(--gray-muted)]">
                               <span>Tone: {position.tone}</span>
                               <span>Urgency: {position.urgency}</span>
                             </div>
@@ -1278,9 +1278,9 @@ export default function ClaimDetailPage() {
                         )}
 
                         {/* Email body */}
-                        <div className="mt-3 bg-white border border-gray-100 rounded-lg p-3">
-                          <p className="text-xs font-semibold text-gray-400 mb-2">Original Email</p>
-                          <div className="text-sm text-gray-700 whitespace-pre-wrap max-h-64 overflow-y-auto">
+                        <div className="mt-3 bg-[var(--bg-glass)] border border-white/[0.04] rounded-lg p-3">
+                          <p className="text-xs font-semibold text-[var(--gray-dim)] mb-2">Original Email</p>
+                          <div className="text-sm text-[var(--gray)] whitespace-pre-wrap max-h-64 overflow-y-auto">
                             {email.text_body}
                           </div>
                         </div>
@@ -1318,15 +1318,15 @@ export default function ClaimDetailPage() {
           const isRegenerating = regenerating === draft.id;
 
           return (
-            <div key={draft.id} className="bg-white rounded-2xl border-2 border-red-200 p-6">
+            <div key={draft.id} className="bg-[var(--bg-glass)] rounded-2xl border-2 border-red-200 p-6">
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2">
                   <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-                  <h2 className="text-sm font-semibold text-[var(--navy)]">
+                  <h2 className="text-sm font-semibold text-[var(--white)]">
                     Draft Response Pending Review
                   </h2>
                 </div>
-                <span className="text-xs text-gray-400">
+                <span className="text-xs text-[var(--gray-dim)]">
                   Strategy: {draft.response_strategy} &middot; {draft.compliance_role} mode
                 </span>
               </div>
@@ -1348,16 +1348,16 @@ export default function ClaimDetailPage() {
               {/* Selected Evidence Photos */}
               {photos.length > 0 && (
                 <div className="mb-4">
-                  <p className="text-xs font-semibold text-gray-500 mb-2">
+                  <p className="text-xs font-semibold text-[var(--gray-muted)] mb-2">
                     Selected Evidence Photos ({photos.length})
                   </p>
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                     {photos.map((photo: { description: string; reasons: string[]; score: number }, i: number) => (
-                      <div key={i} className="bg-gray-50 border border-gray-200 rounded-lg p-2">
-                        <p className="text-xs font-medium text-[var(--navy)] truncate">
+                      <div key={i} className="bg-gray-50 border border-[var(--border-glass)] rounded-lg p-2">
+                        <p className="text-xs font-medium text-[var(--white)] truncate">
                           Photo {i + 1}
                         </p>
-                        <p className="text-xs text-gray-500 truncate">{photo.description}</p>
+                        <p className="text-xs text-[var(--gray-muted)] truncate">{photo.description}</p>
                         {photo.reasons && photo.reasons.length > 0 && (
                           <p className="text-xs text-green-600 mt-1 truncate">
                             {photo.reasons[0]}
@@ -1372,7 +1372,7 @@ export default function ClaimDetailPage() {
               {/* Email Draft Body */}
               <div className="mb-4">
                 <div className="flex items-center justify-between mb-2">
-                  <p className="text-xs font-semibold text-gray-500">
+                  <p className="text-xs font-semibold text-[var(--gray-muted)]">
                     To: {draft.to_email} &middot; Subject: {draft.subject}
                   </p>
                   {!isEditing && (
@@ -1393,7 +1393,7 @@ export default function ClaimDetailPage() {
                     <textarea
                       value={editedHtml}
                       onChange={(e) => setEditedHtml(e.target.value)}
-                      className="w-full h-64 px-3 py-2 text-sm border border-gray-200 rounded-lg font-mono focus:border-[var(--navy)] focus:ring-1 focus:ring-[var(--navy)] outline-none"
+                      className="w-full h-64 px-3 py-2 text-sm border border-[var(--border-glass)] rounded-lg font-mono focus:border-[var(--navy)] focus:ring-1 focus:ring-[var(--navy)] outline-none"
                     />
                     <div className="flex items-center gap-2 mt-2">
                       <button
@@ -1404,7 +1404,7 @@ export default function ClaimDetailPage() {
                       </button>
                       <button
                         onClick={() => setEditingDraft(null)}
-                        className="text-gray-400 hover:text-gray-600 text-xs"
+                        className="text-[var(--gray-dim)] hover:text-[var(--gray)] text-xs"
                       >
                         Cancel
                       </button>
@@ -1412,7 +1412,7 @@ export default function ClaimDetailPage() {
                   </div>
                 ) : (
                   <div
-                    className="bg-gray-50 border border-gray-200 rounded-lg p-4 text-sm text-gray-700 max-h-80 overflow-y-auto prose prose-sm"
+                    className="bg-gray-50 border border-[var(--border-glass)] rounded-lg p-4 text-sm text-[var(--gray)] max-h-80 overflow-y-auto prose prose-sm"
                     dangerouslySetInnerHTML={{
                       __html: draft.edited_body_html || draft.body_html,
                     }}
@@ -1421,7 +1421,7 @@ export default function ClaimDetailPage() {
               </div>
 
               {/* Action Buttons */}
-              <div className="flex items-center gap-3 pt-3 border-t border-gray-100">
+              <div className="flex items-center gap-3 pt-3 border-t border-white/[0.04]">
                 <button
                   onClick={() => handleApproveSend(draft)}
                   disabled={isSending}
@@ -1442,17 +1442,17 @@ export default function ClaimDetailPage() {
                 <button
                   onClick={() => handleRegenerateDraft(draft.id)}
                   disabled={isRegenerating}
-                  className="bg-white border border-gray-200 hover:border-gray-300 text-gray-700 px-4 py-2.5 rounded-xl font-medium transition-colors text-sm disabled:opacity-50"
+                  className="bg-[var(--bg-glass)] border border-[var(--border-glass)] hover:border-gray-300 text-[var(--gray)] px-4 py-2.5 rounded-xl font-medium transition-colors text-sm disabled:opacity-50"
                 >
                   {isRegenerating ? "Regenerating..." : "Regenerate"}
                 </button>
                 <button
                   onClick={() => handleRejectDraft(draft.id)}
-                  className="text-gray-400 hover:text-red-500 text-sm transition-colors"
+                  className="text-[var(--gray-dim)] hover:text-red-500 text-sm transition-colors"
                 >
                   Discard
                 </button>
-                <span className="ml-auto text-xs text-gray-400">
+                <span className="ml-auto text-xs text-[var(--gray-dim)]">
                   Cost: ${draft.generation_cost?.toFixed(4) || "0.00"}
                 </span>
               </div>
