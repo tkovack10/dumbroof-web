@@ -191,15 +191,15 @@ export function DashboardContent({ user }: { user: User }) {
   ];
 
   return (
-    <main className="min-h-screen bg-gray-50">
+    <main className="min-h-screen">
       {/* Top Bar */}
-      <nav className="bg-[var(--navy)] border-b border-white/10">
+      <nav className="bg-[rgba(6,9,24,0.85)] backdrop-blur-[20px] border-b border-[var(--border-glass)] sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
           <a href="/" className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-lg bg-[var(--red)] flex items-center justify-center font-bold text-white">
+            <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-[var(--pink)] to-[var(--blue)] flex items-center justify-center font-bold text-white text-xs">
               DR
             </div>
-            <span className="text-white font-bold text-lg tracking-tight">
+            <span className="gradient-text font-bold text-lg tracking-tight">
               dumb roof<sup className="text-[9px] font-medium align-super ml-0.5">&trade;</sup>
             </span>
           </a>
@@ -254,18 +254,18 @@ export function DashboardContent({ user }: { user: User }) {
                 )}
               </button>
               {menuOpen && (
-                <div className="absolute right-0 top-full mt-2 w-56 bg-white rounded-xl shadow-lg border border-gray-200 py-2 z-50">
+                <div className="absolute right-0 top-full mt-2 w-56 glass-card py-2 z-50">
                   {navLinks.map(link => (
                     <a
                       key={link.href}
                       href={link.href}
                       onClick={() => setMenuOpen(false)}
-                      className="block px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                      className="block px-4 py-2.5 text-sm text-[var(--gray)] hover:bg-white/[0.04] transition-colors"
                     >
                       {link.label}
                     </a>
                   ))}
-                  <div className="border-t border-gray-100 mt-1 pt-1">
+                  <div className="border-t border-[var(--border-glass)] mt-1 pt-1">
                     <div className="px-4 py-2 text-xs text-gray-400">
                       {user.email}
                       {billing?.planName && (
@@ -292,7 +292,7 @@ export function DashboardContent({ user }: { user: User }) {
       <div className="max-w-7xl mx-auto px-6 py-10">
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h1 className="text-2xl font-bold text-[var(--navy)]">Dashboard</h1>
+            <h1 className="text-2xl font-bold gradient-text">Dashboard</h1>
             <p className="text-gray-500 mt-1 text-sm">
               {activeTab === "claims" ? "Upload documents and generate claim packages." : "Diagnose leaks and generate repair documents."}
             </p>
@@ -320,7 +320,7 @@ export function DashboardContent({ user }: { user: User }) {
             className={`px-5 py-2.5 rounded-xl text-sm font-semibold transition-colors ${
               activeTab === "claims"
                 ? "bg-[var(--navy)] text-white"
-                : "bg-white text-gray-600 border border-gray-200 hover:bg-gray-50"
+                : "bg-transparent text-[var(--gray)] border border-[var(--border-glass)] hover:bg-white/[0.04]"
             }`}
           >
             Claims
@@ -335,7 +335,7 @@ export function DashboardContent({ user }: { user: User }) {
             className={`px-5 py-2.5 rounded-xl text-sm font-semibold transition-colors ${
               activeTab === "repairs"
                 ? "bg-[var(--navy)] text-white"
-                : "bg-white text-gray-600 border border-gray-200 hover:bg-gray-50"
+                : "bg-transparent text-[var(--gray)] border border-[var(--border-glass)] hover:bg-white/[0.04]"
             }`}
           >
             Repairs
@@ -364,28 +364,28 @@ export function DashboardContent({ user }: { user: User }) {
             {/* KPI Stats Bar */}
             {!loading && claims.length > 0 && (
               <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-4 mb-6">
-                <div className="bg-white rounded-xl border border-gray-200 p-4 text-center">
-                  <p className="text-2xl font-bold text-[var(--navy)]">{claims.length}</p>
+                <div className="glass-card p-4 text-center">
+                  <p className="text-2xl font-bold gradient-text">{claims.length}</p>
                   <p className="text-xs text-gray-500 mt-1">Total Claims</p>
                 </div>
-                <div className="bg-white rounded-xl border border-gray-200 p-4 text-center">
+                <div className="glass-card p-4 text-center">
                   <p className="text-2xl font-bold text-green-600">{readyCount}</p>
                   <p className="text-xs text-gray-500 mt-1">Ready</p>
                 </div>
-                <div className="bg-white rounded-xl border border-gray-200 p-4 text-center">
+                <div className="glass-card p-4 text-center">
                   <p className="text-2xl font-bold text-amber-600">{processingCount}</p>
                   <p className="text-xs text-gray-500 mt-1">Processing</p>
                 </div>
-                <div className="bg-white rounded-xl border border-gray-200 p-4 text-center">
+                <div className="glass-card p-4 text-center">
                   <p className="text-2xl font-bold text-green-600">{wonClaims.length}</p>
                   <p className="text-xs text-gray-500 mt-1">Wins</p>
                 </div>
-                <div className="bg-white rounded-xl border border-gray-200 p-4 text-center">
-                  <p className="text-2xl font-bold text-[var(--navy)]">{fmtMoney(totalContractorRcv)}</p>
+                <div className="glass-card p-4 text-center">
+                  <p className="text-2xl font-bold gradient-text">{fmtMoney(totalContractorRcv)}</p>
                   <p className="text-xs text-gray-500 mt-1">Contractor RCV</p>
                 </div>
-                <div className="bg-white rounded-xl border border-gray-200 p-4 text-center">
-                  <p className="text-2xl font-bold text-[var(--navy)]">{fmtMoney(totalCarrierRcv)}</p>
+                <div className="glass-card p-4 text-center">
+                  <p className="text-2xl font-bold gradient-text">{fmtMoney(totalCarrierRcv)}</p>
                   <p className="text-xs text-gray-500 mt-1">Carrier RCV</p>
                 </div>
                 {totalMovement > 0 ? (
@@ -394,7 +394,7 @@ export function DashboardContent({ user }: { user: User }) {
                     <p className="text-xs font-semibold text-green-600 mt-1">Carrier Movement</p>
                   </div>
                 ) : (
-                  <div className="bg-white rounded-xl border border-gray-200 p-4 text-center col-span-2">
+                  <div className="glass-card p-4 text-center col-span-2">
                     <p className={`text-2xl font-bold ${totalContractorRcv - totalCarrierRcv > 0 ? "text-green-600" : "text-gray-600"}`}>
                       {fmtMoney(Math.abs(totalContractorRcv - totalCarrierRcv))}
                     </p>
@@ -448,7 +448,7 @@ export function DashboardContent({ user }: { user: User }) {
                     className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
                       viewMode === "table"
                         ? "bg-[var(--navy)] text-white"
-                        : "bg-white text-gray-600 border border-gray-200 hover:bg-gray-50"
+                        : "bg-transparent text-[var(--gray)] border border-[var(--border-glass)] hover:bg-white/[0.04]"
                     }`}
                   >
                     Table
@@ -458,7 +458,7 @@ export function DashboardContent({ user }: { user: User }) {
                     className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
                       viewMode === "map"
                         ? "bg-[var(--navy)] text-white"
-                        : "bg-white text-gray-600 border border-gray-200 hover:bg-gray-50"
+                        : "bg-transparent text-[var(--gray)] border border-[var(--border-glass)] hover:bg-white/[0.04]"
                     }`}
                   >
                     Map
@@ -475,7 +475,7 @@ export function DashboardContent({ user }: { user: User }) {
                     className={`px-4 py-2 rounded-full text-xs font-semibold transition-colors ${
                       statusFilter === tab.key
                         ? "bg-[var(--navy)] text-white"
-                        : "bg-white text-gray-600 border border-gray-200 hover:bg-gray-50"
+                        : "bg-transparent text-[var(--gray)] border border-[var(--border-glass)] hover:bg-white/[0.04]"
                     }`}
                   >
                     {tab.label}
@@ -517,11 +517,11 @@ export function DashboardContent({ user }: { user: User }) {
                 </a>
               </div>
             ) : (
-              <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+              <div className="glass-card overflow-hidden">
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead>
-                      <tr className="bg-gray-50 text-left border-b border-gray-100">
+                      <tr className="bg-white/[0.06] text-left border-b border-[var(--border-glass)]">
                         <th className="px-3 py-3 text-[10px] font-semibold text-gray-400 uppercase">Property</th>
                         <th className="px-3 py-3 text-[10px] font-semibold text-gray-400 uppercase">Carrier</th>
                         <th className="px-3 py-3 text-[10px] font-semibold text-gray-400 uppercase text-right">Our Estimate</th>
@@ -544,16 +544,16 @@ export function DashboardContent({ user }: { user: User }) {
                           <tr
                             key={claim.id}
                             onClick={() => setExpandedRow(expandedRow === claim.id ? null : claim.id)}
-                            className={`hover:bg-gray-50 transition-colors cursor-pointer ${isWon ? "bg-green-50 border-l-4 border-l-green-500" : ""}`}
+                            className={`hover:bg-white/[0.04] transition-colors cursor-pointer ${isWon ? "bg-green-50 border-l-4 border-l-green-500" : ""}`}
                           >
                             <td className="px-3 py-2.5">
                               <a href={`/dashboard/claim/${claim.id}`} className="hover:underline" onClick={e => e.stopPropagation()}>
-                                <p className="font-medium text-[var(--navy)] truncate max-w-[220px]">{claim.address}</p>
+                                <p className="font-medium text-[var(--white)] truncate max-w-[220px]">{claim.address}</p>
                               </a>
                               <p className="text-[10px] text-gray-400 mt-0.5">{new Date(claim.created_at).toLocaleDateString()}</p>
                             </td>
                             <td className="px-3 py-2.5 text-gray-600 truncate max-w-[140px]">{claim.carrier || "\u2014"}</td>
-                            <td className="px-3 py-2.5 text-right text-xs tabular-nums font-medium text-[var(--navy)]">
+                            <td className="px-3 py-2.5 text-right text-xs tabular-nums font-medium text-[var(--white)]">
                               {cRcv > 0 ? `$${cRcv.toLocaleString()}` : "\u2014"}
                             </td>
                             <td className="px-3 py-2.5 text-right text-xs tabular-nums text-gray-500">
