@@ -1,21 +1,54 @@
 @import "tailwindcss";
 
 :root {
-  --navy: #0d2137;
-  --navy-light: #1a3a5c;
-  --red: #c8102e;
-  --red-dark: #a50d24;
-  --gold: #d4a843;
-  --gray-50: #f8f9fa;
-  --gray-100: #e8edf2;
-  --gray-200: #d1d9e0;
-  --gray-600: #6b7280;
-  --gray-800: #1f2937;
-  --dark-navy: #0F1A2E;
-  --teal: #0EA5E9;
-  --purple: #8B5CF6;
-  --orange: #F59E0B;
-  --green: #22C55E;
+  /* ─── Glassmorphism Design System ─── */
+
+  /* Backgrounds */
+  --bg-deep: #060918;
+  --bg-dark: #0a0e27;
+  --bg-card: rgba(255, 255, 255, 0.04);
+  --bg-glass: rgba(255, 255, 255, 0.06);
+  --bg-glass-hover: rgba(255, 255, 255, 0.10);
+  --bg-glass-active: rgba(255, 255, 255, 0.12);
+  --bg-input: rgba(255, 255, 255, 0.05);
+
+  /* Borders */
+  --border-glass: rgba(255, 255, 255, 0.10);
+  --border-glass-hover: rgba(255, 255, 255, 0.20);
+  --border-glass-active: rgba(255, 255, 255, 0.25);
+
+  /* Brand gradient (pink → purple → blue) */
+  --pink: #ff3cac;
+  --purple: #784ba0;
+  --blue: #2b86c5;
+  --gradient-main: linear-gradient(135deg, #ff3cac 0%, #784ba0 50%, #2b86c5 100%);
+  --gradient-glow: linear-gradient(135deg, rgba(255,60,172,0.3) 0%, rgba(120,75,160,0.2) 50%, rgba(43,134,197,0.3) 100%);
+  --gradient-subtle: linear-gradient(135deg, rgba(255,60,172,0.08) 0%, rgba(43,134,197,0.08) 100%);
+
+  /* Accent colors */
+  --cyan: #00d4ff;
+  --cyan-dim: #0099b8;
+  --green: #00e676;
+  --red-accent: #ff4757;
+  --amber: #ffb300;
+
+  /* Text */
+  --white: #f0f0f5;
+  --gray: #8892a4;
+  --gray-dim: #4a5568;
+  --gray-muted: #5a6478;
+
+  /* Shadows */
+  --shadow-card: 0 8px 32px rgba(0, 0, 0, 0.3);
+  --shadow-elevated: 0 12px 48px rgba(0, 0, 0, 0.4);
+  --shadow-glow-pink: 0 4px 20px rgba(255, 60, 172, 0.3);
+  --shadow-glow-cyan: 0 4px 20px rgba(0, 212, 255, 0.3);
+
+  /* ─── Legacy aliases (backward compat for components not yet migrated) ─── */
+  --navy: #0a0e27;
+  --navy-light: #1a2744;
+  --red: #ff3cac;
+  --red-dark: #e0359a;
 }
 
 html {
@@ -23,6 +56,67 @@ html {
 }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  color: var(--gray-800);
+  font-family: var(--font-inter, 'Inter'), -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: var(--bg-deep);
+  color: var(--white);
+  overflow-x: hidden;
+}
+
+/* ─── Monospace for financial numbers ─── */
+.font-mono, [data-money], .money {
+  font-family: var(--font-mono, 'JetBrains Mono'), 'Courier New', monospace;
+}
+
+/* ─── Glassmorphism utility classes ─── */
+.glass {
+  background: var(--bg-glass);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--border-glass);
+}
+
+.glass-card {
+  background: var(--bg-glass);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--border-glass);
+  border-radius: 20px;
+  box-shadow: var(--shadow-card);
+}
+
+.glass-card:hover {
+  border-color: var(--border-glass-hover);
+}
+
+.gradient-text {
+  background: var(--gradient-main);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ─── Custom scrollbars ─── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.25); }
+
+/* ─── Animations ─── */
+@keyframes pulse-slow {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.7; transform: scale(1.05); }
+}
+.animate-pulse-slow { animation: pulse-slow 8s ease-in-out infinite; }
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+.animate-shimmer {
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.04), transparent);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
 }

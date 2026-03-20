@@ -1,14 +1,21 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import { Inter, JetBrains_Mono } from "next/font/google";
 import Script from "next/script";
 import { PLANS } from "@/lib/stripe-config";
 import { Providers } from "@/components/providers";
+import { GlassBackground } from "@/components/glass-background";
 import "./globals.css";
 
 const inter = Inter({
   subsets: ["latin"],
   display: "swap",
   variable: "--font-inter",
+});
+
+const jetbrainsMono = JetBrains_Mono({
+  subsets: ["latin"],
+  display: "swap",
+  variable: "--font-mono",
 });
 
 const siteUrl = "https://www.dumbroof.ai";
@@ -136,7 +143,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className={inter.variable}>
+    <html lang="en" className={`${inter.variable} ${jetbrainsMono.variable}`}>
       <head>
         <script
           type="application/ld+json"
@@ -161,6 +168,7 @@ export default function RootLayout({
         </noscript>
       </head>
       <body className={`${inter.className} antialiased`}>
+        <GlassBackground />
         <Providers>
           {children}
         </Providers>
