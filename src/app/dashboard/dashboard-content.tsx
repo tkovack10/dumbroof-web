@@ -273,7 +273,7 @@ export function DashboardContent({ user }: { user: User }) {
                 )}
               </button>
               {menuOpen && (
-                <div className="absolute right-0 top-full mt-2 w-56 glass-card py-2 z-50">
+                <div className="absolute right-0 top-full mt-2 w-56 bg-[rgb(15,18,35)] border border-[var(--border-glass)] rounded-2xl shadow-2xl py-2 z-50">
                   {navLinks.map(link => (
                     <a
                       key={link.href}

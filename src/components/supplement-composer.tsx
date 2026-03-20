@@ -295,8 +295,8 @@ export function SupplementComposer({ claimId, claimAddress, carrierName, compari
 
       {/* Email Preview Modal */}
       {showComposer && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-[var(--bg-glass)] rounded-2xl max-w-2xl w-full max-h-[80vh] overflow-hidden flex flex-col">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-[rgb(15,18,35)] border border-[var(--border-glass)] rounded-2xl max-w-2xl w-full max-h-[80vh] overflow-hidden flex flex-col shadow-2xl">
             <div className="px-6 py-4 border-b border-[var(--border-glass)] flex items-center justify-between">
               <h3 className="text-base font-bold text-[var(--white)]">Supplement Email</h3>
               <button onClick={() => setShowComposer(false)} className="text-[var(--gray-dim)] hover:text-[var(--gray)]">
