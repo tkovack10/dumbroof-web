@@ -100,7 +100,7 @@ export default function CorrespondencePage() {
       reinspection_offer: { bg: "bg-purple-100", text: "text-purple-700", label: "Reinspection" },
       acceptance: { bg: "bg-green-100", text: "text-green-700", label: "Acceptance" },
     };
-    const c = configs[stance] || { bg: "bg-gray-100", text: "text-gray-700", label: stance || "Pending" };
+    const c = configs[stance] || { bg: "bg-white/[0.06]", text: "text-[var(--gray)]", label: stance || "Pending" };
     return <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${c.bg} ${c.text}`}>{c.label}</span>;
   };
 
@@ -110,9 +110,9 @@ export default function CorrespondencePage() {
       matched: { bg: "bg-blue-100", text: "text-blue-700" },
       response_drafted: { bg: "bg-purple-100", text: "text-purple-700" },
       response_sent: { bg: "bg-green-100", text: "text-green-700" },
-      archived: { bg: "bg-gray-100", text: "text-gray-500" },
+      archived: { bg: "bg-white/[0.06]", text: "text-[var(--gray-muted)]" },
     };
-    const c = configs[status] || { bg: "bg-gray-100", text: "text-gray-500" };
+    const c = configs[status] || { bg: "bg-white/[0.06]", text: "text-[var(--gray-muted)]" };
     return (
       <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${c.bg} ${c.text}`}>
         {status.replace(/_/g, " ")}
@@ -131,14 +131,14 @@ export default function CorrespondencePage() {
 
   if (loading) {
     return (
-      <main className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <p className="text-gray-400">Loading...</p>
+      <main className="min-h-screen bg-white/[0.04] flex items-center justify-center">
+        <p className="text-[var(--gray-dim)]">Loading...</p>
       </main>
     );
   }
 
   return (
-    <main className="min-h-screen bg-gray-50">
+    <main className="min-h-screen bg-white/[0.04]">
       {/* Top Bar */}
       <nav className="bg-[var(--navy)] border-b border-white/10">
         <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
@@ -148,7 +148,7 @@ export default function CorrespondencePage() {
               dumb roof<sup className="text-[9px] font-medium align-super ml-0.5">™</sup>
             </span>
           </div>
-          <a href="/dashboard" className="text-gray-400 hover:text-white text-sm transition-colors">
+          <a href="/dashboard" className="text-[var(--gray-dim)] hover:text-white text-sm transition-colors">
             Back to Dashboard
           </a>
         </div>
@@ -157,7 +157,7 @@ export default function CorrespondencePage() {
       <div className="max-w-6xl mx-auto px-6 py-10">
         <div className="mb-8">
           <h1 className="text-2xl font-bold text-[var(--navy)]">Carrier Correspondence</h1>
-          <p className="text-gray-500 mt-1">
+          <p className="text-[var(--gray-muted)] mt-1">
             All inbound carrier emails across your claims. Forward carrier emails to <strong>claims@dumbroof.ai</strong> to auto-ingest.
           </p>
         </div>
@@ -171,12 +171,12 @@ export default function CorrespondencePage() {
               className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors border ${
                 filter === f
                   ? "bg-[var(--navy)] text-white border-[var(--navy)]"
-                  : "bg-white text-gray-600 border-gray-200 hover:border-gray-300"
+                  : "bg-white text-[var(--gray)] border-[var(--border-glass)] hover:border-[var(--border-glass)]"
               }`}
             >
               {f === "all" ? "All" : f.replace(/_/g, " ")}
               {counts[f] > 0 && (
-                <span className={`ml-1.5 ${filter === f ? "text-white/70" : "text-gray-400"}`}>
+                <span className={`ml-1.5 ${filter === f ? "text-white/70" : "text-[var(--gray-dim)]"}`}>
                   ({counts[f]})
                 </span>
               )}
@@ -186,16 +186,16 @@ export default function CorrespondencePage() {
 
         {/* Correspondence list */}
         {filtered.length === 0 ? (
-          <div className="bg-white rounded-2xl border border-gray-200 text-center py-16 px-8">
-            <div className="w-16 h-16 rounded-2xl bg-gray-50 border-2 border-dashed border-gray-300 flex items-center justify-center mx-auto mb-5">
-              <svg className="w-8 h-8 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+          <div className="bg-white rounded-2xl border border-[var(--border-glass)] text-center py-16 px-8">
+            <div className="w-16 h-16 rounded-2xl bg-white/[0.04] border-2 border-dashed border-[var(--border-glass)] flex items-center justify-center mx-auto mb-5">
+              <svg className="w-8 h-8 text-[var(--gray-dim)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75" />
               </svg>
             </div>
             <h3 className="text-lg font-semibold text-[var(--navy)] mb-2">
               {filter === "all" ? "No correspondence yet" : `No ${filter.replace(/_/g, " ")} emails`}
             </h3>
-            <p className="text-gray-500 text-sm max-w-md mx-auto">
+            <p className="text-[var(--gray-muted)] text-sm max-w-md mx-auto">
               Forward carrier emails to <strong>claims@dumbroof.ai</strong> and they&apos;ll appear here automatically with AI analysis.
             </p>
           </div>
@@ -208,26 +208,26 @@ export default function CorrespondencePage() {
               const isMatchingThis = matchingId === item.id;
 
               return (
-                <div key={item.id} className="bg-white rounded-xl border border-gray-200 px-5 py-4">
+                <div key={item.id} className="bg-white rounded-xl border border-[var(--border-glass)] px-5 py-4">
                   <div className="flex items-start justify-between gap-4">
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2 mb-1 flex-wrap">
                         {statusBadge(item.status)}
                         {position && stanceBadge(position.stance)}
                         {item.carrier_name && (
-                          <span className="text-xs text-gray-400">{item.carrier_name}</span>
+                          <span className="text-xs text-[var(--gray-dim)]">{item.carrier_name}</span>
                         )}
                       </div>
                       <p className="text-sm font-medium text-[var(--navy)] truncate">
                         {item.original_subject || "No subject"}
                       </p>
-                      <p className="text-xs text-gray-500 mt-0.5">
+                      <p className="text-xs text-[var(--gray-muted)] mt-0.5">
                         From: {item.original_from}
                         {item.address_parsed && <> &middot; {item.address_parsed}</>}
                         {" "}&middot; {new Date(item.original_date || item.created_at).toLocaleDateString()}
                       </p>
                       {position?.summary && (
-                        <p className="text-xs text-gray-600 mt-1.5 line-clamp-2">{position.summary}</p>
+                        <p className="text-xs text-[var(--gray)] mt-1.5 line-clamp-2">{position.summary}</p>
                       )}
                     </div>
 
@@ -255,11 +255,11 @@ export default function CorrespondencePage() {
 
                   {/* Manual matching UI */}
                   {isMatchingThis && (
-                    <div className="mt-3 pt-3 border-t border-gray-100 flex items-center gap-3">
+                    <div className="mt-3 pt-3 border-t border-white/[0.04] flex items-center gap-3">
                       <select
                         value={selectedClaimId}
                         onChange={(e) => setSelectedClaimId(e.target.value)}
-                        className="flex-1 px-3 py-2 rounded-lg border border-gray-200 text-sm focus:border-[var(--navy)] focus:ring-1 focus:ring-[var(--navy)] outline-none"
+                        className="flex-1 px-3 py-2 rounded-lg border border-[var(--border-glass)] text-sm focus:border-[var(--navy)] focus:ring-1 focus:ring-[var(--navy)] outline-none"
                       >
                         <option value="">Select a claim...</option>
                         {claims.map((c) => (

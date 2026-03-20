@@ -283,7 +283,7 @@ function SettingsPageContent() {
   if (loading) {
     return (
       <main className="min-h-screen bg-white/[0.04] flex items-center justify-center">
-        <p className="text-gray-400">Loading...</p>
+        <p className="text-[var(--gray-dim)]">Loading...</p>
       </main>
     );
   }
@@ -296,14 +296,14 @@ function SettingsPageContent() {
             <div className="w-9 h-9 rounded-lg bg-[var(--red)] flex items-center justify-center font-bold text-white">DR</div>
             <span className="text-white font-bold text-lg tracking-tight">dumb roof<sup className="text-[9px] font-medium align-super ml-0.5">™</sup></span>
           </div>
-          <a href="/dashboard" className="text-gray-400 hover:text-white text-sm transition-colors">Back to Dashboard</a>
+          <a href="/dashboard" className="text-[var(--gray-dim)] hover:text-white text-sm transition-colors">Back to Dashboard</a>
         </div>
       </nav>
 
       <div className="max-w-xl mx-auto px-6 py-10">
         <div className="mb-8">
           <h1 className="text-2xl font-bold text-[var(--navy)]">Company Profile</h1>
-          <p className="text-gray-500 mt-1">
+          <p className="text-[var(--gray-muted)] mt-1">
             Your company info and logo will appear on all generated claim documents.
           </p>
         </div>
@@ -313,7 +313,7 @@ function SettingsPageContent() {
           <div>
             <label className="block text-sm font-semibold text-[var(--navy)] mb-2">Company Logo</label>
             <div className="flex items-center gap-6">
-              <div className="w-20 h-20 rounded-xl bg-gray-100 border-2 border-dashed border-[var(--border-glass)] flex items-center justify-center overflow-hidden">
+              <div className="w-20 h-20 rounded-xl bg-white/[0.06] border-2 border-dashed border-[var(--border-glass)] flex items-center justify-center overflow-hidden">
                 {logoPreview ? (
                   <img src={logoPreview} alt="Logo" className="w-full h-full object-contain" />
                 ) : (
@@ -327,7 +327,7 @@ function SettingsPageContent() {
                   Upload Logo
                   <input type="file" accept=".jpg,.jpeg,.png,.svg" onChange={handleLogoChange} className="hidden" />
                 </label>
-                <p className="text-xs text-gray-400 mt-1">JPG, PNG, or SVG. Recommended 400x400px.</p>
+                <p className="text-xs text-[var(--gray-dim)] mt-1">JPG, PNG, or SVG. Recommended 400x400px.</p>
               </div>
             </div>
           </div>
@@ -366,7 +366,7 @@ function SettingsPageContent() {
         {/* Billing */}
         <div className="mt-12 pt-8 border-t border-[var(--border-glass)]">
           <h2 className="text-xl font-bold text-[var(--navy)] mb-1">Billing & Subscription</h2>
-          <p className="text-gray-500 text-sm mb-6">
+          <p className="text-[var(--gray-muted)] text-sm mb-6">
             Manage your plan and claim quota.
           </p>
 
@@ -383,7 +383,7 @@ function SettingsPageContent() {
                   <p className="text-sm font-semibold text-[var(--navy)]">
                     {billing.planName} Plan
                   </p>
-                  <p className="text-xs text-gray-500 mt-0.5">
+                  <p className="text-xs text-[var(--gray-muted)] mt-0.5">
                     {billing.planId === "starter"
                       ? `${billing.lifetimeUsed} of ${billing.limit} lifetime claims used`
                       : `${billing.periodUsed} of ${billing.limit} claims used this month`}
@@ -395,7 +395,7 @@ function SettingsPageContent() {
                       ? "bg-green-100 text-green-700"
                       : billing.status === "past_due"
                       ? "bg-amber-100 text-amber-700"
-                      : "bg-gray-100 text-gray-600"
+                      : "bg-white/[0.06] text-[var(--gray)]"
                   }`}
                 >
                   {billing.status === "active" ? "Active" : billing.status === "past_due" ? "Past Due" : "Canceled"}
@@ -403,7 +403,7 @@ function SettingsPageContent() {
               </div>
 
               {/* Usage bar */}
-              <div className="w-full bg-gray-100 rounded-full h-2">
+              <div className="w-full bg-white/[0.06] rounded-full h-2">
                 <div
                   className="bg-[var(--navy)] h-2 rounded-full transition-all"
                   style={{
@@ -464,7 +464,7 @@ function SettingsPageContent() {
         {/* Authorized Forwarders */}
         <div className="mt-12 pt-8 border-t border-[var(--border-glass)]">
           <h2 className="text-xl font-bold text-[var(--navy)] mb-1">Email Forwarding</h2>
-          <p className="text-gray-500 text-sm mb-6">
+          <p className="text-[var(--gray-muted)] text-sm mb-6">
             Add team members authorized to forward carrier emails to <strong>claims@dumbroof.ai</strong>.
             The system will match forwarded emails to their account.
           </p>
@@ -478,13 +478,13 @@ function SettingsPageContent() {
                     <p className="text-sm font-medium text-[var(--navy)]">
                       {fwd.name || fwd.email}
                     </p>
-                    <p className="text-xs text-gray-500">
+                    <p className="text-xs text-[var(--gray-muted)]">
                       {fwd.email} &middot; {fwd.role.replace(/_/g, " ")}
                     </p>
                   </div>
                   <button
                     onClick={() => handleDeleteForwarder(fwd.id)}
-                    className="text-gray-400 hover:text-red-500 transition-colors"
+                    className="text-[var(--gray-dim)] hover:text-red-500 transition-colors"
                     title="Remove forwarder"
                   >
                     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -539,7 +539,7 @@ function SettingsPageContent() {
         {/* Email Integration (Claim Brain) */}
         <div className="mt-12 pt-8 border-t border-[var(--border-glass)]">
           <h2 className="text-xl font-bold text-[var(--navy)] mb-1">Email Integration</h2>
-          <p className="text-gray-500 text-sm mb-6">
+          <p className="text-[var(--gray-muted)] text-sm mb-6">
             Connect your Gmail to send emails from Claim Brain as yourself.
             Without Gmail, emails send via <strong>claims@dumbroof.ai</strong> with your company name.
           </p>
@@ -561,7 +561,7 @@ function SettingsPageContent() {
                   </div>
                   <div>
                     <p className="text-sm font-semibold text-[var(--navy)]">Gmail Connected</p>
-                    <p className="text-xs text-gray-500">
+                    <p className="text-xs text-[var(--gray-muted)]">
                       Sending from <strong>{gmailEmail}</strong>
                     </p>
                   </div>
@@ -593,14 +593,14 @@ function SettingsPageContent() {
             ) : (
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center">
-                    <svg className="w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                  <div className="w-10 h-10 bg-white/[0.06] rounded-lg flex items-center justify-center">
+                    <svg className="w-5 h-5 text-[var(--gray-dim)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75" />
                     </svg>
                   </div>
                   <div>
                     <p className="text-sm font-semibold text-[var(--navy)]">Gmail Not Connected</p>
-                    <p className="text-xs text-gray-500">
+                    <p className="text-xs text-[var(--gray-muted)]">
                       Emails currently send via <strong>claims@dumbroof.ai</strong>
                     </p>
                   </div>
@@ -635,7 +635,7 @@ function SettingsPageContent() {
         {/* Repair Pricing */}
         <div className="mt-12 pt-8 border-t border-[var(--border-glass)]">
           <h2 className="text-xl font-bold text-[var(--navy)] mb-1">Repair Pricing</h2>
-          <p className="text-gray-500 text-sm mb-6">
+          <p className="text-[var(--gray-muted)] text-sm mb-6">
             Set your default pricing for repair jobs. These values are used when AI generates repair quotes.
           </p>
 
@@ -651,7 +651,7 @@ function SettingsPageContent() {
                   onChange={(e) => setRepairPricing({ ...repairPricing, diagnostic_fee: e.target.value })}
                   className="w-full px-4 py-3 rounded-lg border border-[var(--border-glass)] focus:border-[var(--navy)] focus:ring-1 focus:ring-[var(--navy)] outline-none transition-colors text-sm"
                 />
-                <p className="text-[11px] text-gray-400 mt-1">Flat fee included in every repair</p>
+                <p className="text-[11px] text-[var(--gray-dim)] mt-1">Flat fee included in every repair</p>
               </div>
               <div>
                 <label className="block text-sm font-semibold text-[var(--navy)] mb-1">Labor Rate ($/hr)</label>
@@ -675,7 +675,7 @@ function SettingsPageContent() {
                   onChange={(e) => setRepairPricing({ ...repairPricing, markup_percent: e.target.value })}
                   className="w-full px-4 py-3 rounded-lg border border-[var(--border-glass)] focus:border-[var(--navy)] focus:ring-1 focus:ring-[var(--navy)] outline-none transition-colors text-sm"
                 />
-                <p className="text-[11px] text-gray-400 mt-1">Applied on top of material cost (20 = 20% markup)</p>
+                <p className="text-[11px] text-[var(--gray-dim)] mt-1">Applied on top of material cost (20 = 20% markup)</p>
               </div>
               <div>
                 <label className="block text-sm font-semibold text-[var(--navy)] mb-1">Minimum Job Charge ($)</label>
@@ -687,7 +687,7 @@ function SettingsPageContent() {
                   onChange={(e) => setRepairPricing({ ...repairPricing, minimum_job_charge: e.target.value })}
                   className="w-full px-4 py-3 rounded-lg border border-[var(--border-glass)] focus:border-[var(--navy)] focus:ring-1 focus:ring-[var(--navy)] outline-none transition-colors text-sm"
                 />
-                <p className="text-[11px] text-gray-400 mt-1">Floor price — no repair goes below this</p>
+                <p className="text-[11px] text-[var(--gray-dim)] mt-1">Floor price — no repair goes below this</p>
               </div>
             </div>
 
@@ -728,7 +728,7 @@ function SettingsPageContent() {
           <h2 className="text-xl font-bold text-[var(--navy)] mb-1">
             {isPasswordReset ? "Set Your Password" : "Change Password"}
           </h2>
-          <p className="text-gray-500 text-sm mb-6">
+          <p className="text-[var(--gray-muted)] text-sm mb-6">
             {isPasswordReset
               ? "Welcome! Set a password to finish setting up your account."
               : "Update your account password."}

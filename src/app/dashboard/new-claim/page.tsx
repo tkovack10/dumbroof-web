@@ -193,12 +193,12 @@ export default function NewClaimPage() {
           <h2 className="text-2xl font-bold text-[var(--navy)] mb-2">
             Documents Uploaded
           </h2>
-          <p className="text-gray-500 mb-2">
+          <p className="text-[var(--gray-muted)] mb-2">
             Your {phase === "pre-scope" ? "pre-scope" : "supplement"} package is
             being prepared.
           </p>
-          <div className="inline-block bg-gray-100 rounded-lg px-4 py-2 mb-8">
-            <span className="text-sm text-gray-600">
+          <div className="inline-block bg-white/[0.06] rounded-lg px-4 py-2 mb-8">
+            <span className="text-sm text-[var(--gray)]">
               Phase:{" "}
               <span className="font-semibold text-[var(--navy)]">
                 {phase === "pre-scope"
@@ -235,7 +235,7 @@ export default function NewClaimPage() {
           </div>
           <a
             href="/dashboard"
-            className="text-gray-400 hover:text-white text-sm transition-colors"
+            className="text-[var(--gray-dim)] hover:text-white text-sm transition-colors"
           >
             Cancel
           </a>
@@ -247,7 +247,7 @@ export default function NewClaimPage() {
           <h1 className="text-2xl font-bold text-[var(--navy)]">
             New Claim Package
           </h1>
-          <p className="text-gray-500 mt-1">
+          <p className="text-[var(--gray-muted)] mt-1">
             Upload your documents and we&apos;ll generate your appeal package.
           </p>
         </div>
@@ -275,16 +275,16 @@ export default function NewClaimPage() {
                 Growth — $999/mo (30 claims)
               </a>
             </div>
-            <p className="text-gray-400 text-xs mt-4">Cancel anytime. No long-term contracts.</p>
+            <p className="text-[var(--gray-dim)] text-xs mt-4">Cancel anytime. No long-term contracts.</p>
           </div>
         )}
 
         {quota && quota.allowed && (
           <div className="mb-6 flex items-center justify-between bg-white/[0.04] rounded-lg px-4 py-2.5 border border-[var(--border-glass)]">
-            <span className="text-xs text-gray-500">
+            <span className="text-xs text-[var(--gray-muted)]">
               <span className="font-semibold text-[var(--navy)]">{quota.planName}</span> plan
             </span>
-            <span className="text-xs text-gray-500">
+            <span className="text-xs text-[var(--gray-muted)]">
               <span className="font-semibold text-[var(--navy)]">{quota.remaining}</span> claim{quota.remaining !== 1 ? "s" : ""} remaining
             </span>
           </div>
@@ -293,7 +293,7 @@ export default function NewClaimPage() {
         <form onSubmit={handleSubmit} className="space-y-8">
           {/* Property Info */}
           <div className="space-y-4">
-            <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider">
+            <h3 className="text-sm font-semibold text-[var(--gray-dim)] uppercase tracking-wider">
               Property Info
             </h3>
             <div>
@@ -313,7 +313,7 @@ export default function NewClaimPage() {
                 <label className="block text-sm font-semibold text-[var(--navy)]">
                   Homeowner Name
                 </label>
-                <span className="text-xs text-gray-400 font-medium">Optional</span>
+                <span className="text-xs text-[var(--gray-dim)] font-medium">Optional</span>
               </div>
               <input
                 type="text"
@@ -328,7 +328,7 @@ export default function NewClaimPage() {
                 <label className="block text-sm font-semibold text-[var(--navy)]">
                   Insurance Carrier
                 </label>
-                <span className="text-xs text-gray-400 font-medium">Optional</span>
+                <span className="text-xs text-[var(--gray-dim)] font-medium">Optional</span>
               </div>
               <input
                 type="text"
@@ -337,7 +337,7 @@ export default function NewClaimPage() {
                 placeholder="e.g. State Farm, Allstate, Erie..."
                 className="w-full px-4 py-3 rounded-lg border border-[var(--border-glass)] focus:border-[var(--navy)] focus:ring-1 focus:ring-[var(--navy)] outline-none transition-colors text-sm"
               />
-              <p className="text-xs text-gray-400 mt-1">
+              <p className="text-xs text-[var(--gray-dim)] mt-1">
                 {hasScope
                   ? "We'll auto-detect the carrier from your scope if left blank."
                   : "Leave blank if you don't know yet — you can add it later."}
@@ -351,7 +351,7 @@ export default function NewClaimPage() {
               <label className="block text-sm font-semibold text-[var(--navy)]">
                 Date of Loss
               </label>
-              <span className="text-xs text-gray-400 font-medium">Optional</span>
+              <span className="text-xs text-[var(--gray-dim)] font-medium">Optional</span>
             </div>
             <div className="flex gap-2">
               <input
@@ -394,17 +394,17 @@ export default function NewClaimPage() {
                 )}
               </button>
             </div>
-            <p className="text-xs text-gray-400 mt-1">
+            <p className="text-xs text-[var(--gray-dim)] mt-1">
               Enter the storm date, or click &quot;Scan for storms&quot; to find recent events near this address.
             </p>
             {stormResults !== null && stormResults.length === 0 && !scanningStorms && (
-              <p className="text-xs text-gray-500 mt-2 bg-white/[0.04] rounded-lg px-3 py-2">
+              <p className="text-xs text-[var(--gray-muted)] mt-2 bg-white/[0.04] rounded-lg px-3 py-2">
                 No recent storm events found in NOAA records for this area.
               </p>
             )}
             {stormResults && stormResults.length > 0 && (
               <div className="mt-2 space-y-1">
-                <p className="text-xs text-gray-500">
+                <p className="text-xs text-[var(--gray-muted)]">
                   Recent storm events near this address (click to select):
                 </p>
                 {stormResults.map((storm, i) => (
@@ -430,7 +430,7 @@ export default function NewClaimPage() {
 
           {/* Documents */}
           <div className="space-y-6">
-            <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider">
+            <h3 className="text-sm font-semibold text-[var(--gray-dim)] uppercase tracking-wider">
               Documents
             </h3>
 
@@ -475,7 +475,7 @@ export default function NewClaimPage() {
 
           {/* Estimate Request */}
           <div className="space-y-4">
-            <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider">
+            <h3 className="text-sm font-semibold text-[var(--gray-dim)] uppercase tracking-wider">
               Estimate Request
             </h3>
 
@@ -513,7 +513,7 @@ export default function NewClaimPage() {
                   className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors ${
                     includeGutters
                       ? "border-[var(--navy)] bg-[var(--navy)]"
-                      : "border-[var(--border-glass)] bg-[var(--bg-glass)] group-hover:border-gray-400"
+                      : "border-[var(--border-glass)] bg-[var(--bg-glass)] group-hover:border-[var(--border-glass)]"
                   }`}
                 >
                   {includeGutters && (
@@ -552,7 +552,7 @@ export default function NewClaimPage() {
                   className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors ${
                     includeSiding
                       ? "border-[var(--navy)] bg-[var(--navy)]"
-                      : "border-[var(--border-glass)] bg-[var(--bg-glass)] group-hover:border-gray-400"
+                      : "border-[var(--border-glass)] bg-[var(--bg-glass)] group-hover:border-[var(--border-glass)]"
                   }`}
                 >
                   {includeSiding && (
@@ -584,7 +584,7 @@ export default function NewClaimPage() {
 
           {/* Additional Context */}
           <div className="space-y-2">
-            <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider">
+            <h3 className="text-sm font-semibold text-[var(--gray-dim)] uppercase tracking-wider">
               Additional Context
             </h3>
             <div>
@@ -592,9 +592,9 @@ export default function NewClaimPage() {
                 <label className="block text-sm font-semibold text-[var(--navy)]">
                   Notes for the AI
                 </label>
-                <span className="text-xs text-gray-400 font-medium">Not required</span>
+                <span className="text-xs text-[var(--gray-dim)] font-medium">Not required</span>
               </div>
-              <p className="text-xs text-gray-500 mb-2">
+              <p className="text-xs text-[var(--gray-muted)] mb-2">
                 Describe what you want included in the scope, materials on the property, or anything the adjuster said during inspection.
               </p>
               <textarea
@@ -689,7 +689,7 @@ export default function NewClaimPage() {
             )}
           </button>
           {!canSubmit && status === "idle" && (
-            <p className="text-xs text-gray-400 text-center">
+            <p className="text-xs text-[var(--gray-dim)] text-center">
               Still need:{" "}
               {[
                 !propertyAddress.trim() && "property address",

@@ -78,7 +78,7 @@ export function CommunicationLog({ claimId }: Props) {
             const timeStr = date.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
 
             return (
-              <div key={email.id} className="border-b border-gray-50 last:border-b-0">
+              <div key={email.id} className="border-b border-white/[0.04] last:border-b-0">
                 <button
                   onClick={() => setExpandedEmail(isExpanded ? null : email.id)}
                   className="w-full flex items-center gap-3 px-6 py-3 hover:bg-white/[0.04] transition-colors text-left"

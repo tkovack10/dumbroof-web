@@ -367,7 +367,7 @@ function FinancialSummary({ rows, financials: fin }: { rows: ScopeComparisonRow[
                 </td>
               </tr>
             ))}
-            <tr className="bg-gray-100 font-bold">
+            <tr className="bg-white/[0.06] font-bold">
               <td className="px-3 py-2">Total</td>
               <td className="px-3 py-2 text-right font-mono">{fmt(totalCarrier)}</td>
               <td className="px-3 py-2 text-right font-mono">{fmt(totalUsarm)}</td>

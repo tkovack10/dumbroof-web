@@ -48,22 +48,22 @@ export function AdminNav({ variant = "full" }: AdminNavProps) {
                   className={`text-sm transition-colors ${
                     pathname === link.href
                       ? "text-white font-semibold"
-                      : "text-gray-400 hover:text-white"
+                      : "text-[var(--gray-dim)] hover:text-white"
                   }`}
                 >
                   {link.label}
                 </a>
               ))}
-              <a href="/dashboard" className="text-gray-400 hover:text-white text-sm transition-colors">
+              <a href="/dashboard" className="text-[var(--gray-dim)] hover:text-white text-sm transition-colors">
                 My Dashboard
               </a>
               <LanguageToggle />
-              <button onClick={handleSignOut} className="text-gray-400 hover:text-white text-sm transition-colors">
+              <button onClick={handleSignOut} className="text-[var(--gray-dim)] hover:text-white text-sm transition-colors">
                 Sign Out
               </button>
             </>
           ) : (
-            <a href="/admin" className="text-gray-400 hover:text-white text-sm transition-colors">
+            <a href="/admin" className="text-[var(--gray-dim)] hover:text-white text-sm transition-colors">
               Back to Admin
             </a>
           )}

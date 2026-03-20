@@ -299,7 +299,7 @@ function DamageAssessment({
               {items.map((photo, i) => (
                 <div key={photo.annotation_key} className={`flex gap-4 ${style.bg} rounded-lg p-3`}>
                   {/* Photo thumbnail */}
-                  <div className="w-20 h-20 rounded-lg overflow-hidden bg-gray-200 shrink-0">
+                  <div className="w-20 h-20 rounded-lg overflow-hidden bg-white/[0.04] shrink-0">
                     {photo.signed_url ? (
                       <img
                         src={photo.signed_url}
@@ -320,10 +320,10 @@ function DamageAssessment({
                     )}
                     <div className="flex gap-2 mt-1.5">
                       {photo.trade && (
-                        <span className="text-[9px] px-1.5 py-0.5 rounded bg-gray-200 text-[var(--gray)] font-medium">{photo.trade}</span>
+                        <span className="text-[9px] px-1.5 py-0.5 rounded bg-white/[0.04] text-[var(--gray)] font-medium">{photo.trade}</span>
                       )}
                       <span className={`text-[9px] px-1.5 py-0.5 rounded font-bold ${style.bg} ${style.text}`}>{sev}</span>
-                      <span className="text-[9px] px-1.5 py-0.5 rounded bg-gray-100 text-[var(--gray-muted)] font-mono">{photo.annotation_key}</span>
+                      <span className="text-[9px] px-1.5 py-0.5 rounded bg-white/[0.06] text-[var(--gray-muted)] font-mono">{photo.annotation_key}</span>
                     </div>
                   </div>
                 </div>
@@ -359,7 +359,7 @@ function CodeCompliance({ citations }: { citations: { desc: string; citation: Co
             {/* Header */}
             <button
               onClick={() => setExpandedIdx(isExpanded ? null : i)}
-              className="w-full flex items-center gap-3 px-4 py-3 bg-white/[0.04] hover:bg-gray-100 transition-colors text-left"
+              className="w-full flex items-center gap-3 px-4 py-3 bg-white/[0.04] hover:bg-white/[0.06] transition-colors text-left"
             >
               <span className="inline-block px-2.5 py-1 rounded text-[10px] font-bold font-mono bg-[var(--navy)] text-white shrink-0">
                 {cit.code_tag}

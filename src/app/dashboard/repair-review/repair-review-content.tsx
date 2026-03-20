@@ -82,21 +82,21 @@ export function RepairReviewContent() {
 
   if (loading) {
     return (
-      <main className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <p className="text-gray-400">Loading...</p>
+      <main className="min-h-screen bg-white/[0.04] flex items-center justify-center">
+        <p className="text-[var(--gray-dim)]">Loading...</p>
       </main>
     );
   }
 
   return (
-    <main className="min-h-screen bg-gray-50">
+    <main className="min-h-screen bg-white/[0.04]">
       <nav className="bg-[var(--navy)] border-b border-white/10">
         <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-lg bg-[var(--red)] flex items-center justify-center font-bold text-white">DR</div>
             <span className="text-white font-bold text-lg tracking-tight">dumb roof<sup className="text-[9px] font-medium align-super ml-0.5">&trade;</sup></span>
           </div>
-          <a href="/dashboard" className="text-gray-400 hover:text-white text-sm transition-colors">Back to Dashboard</a>
+          <a href="/dashboard" className="text-[var(--gray-dim)] hover:text-white text-sm transition-colors">Back to Dashboard</a>
         </div>
       </nav>
 
@@ -104,14 +104,14 @@ export function RepairReviewContent() {
         <div className="flex items-center justify-between mb-8">
           <div>
             <h1 className="text-2xl font-bold text-[var(--navy)]">Repair Review</h1>
-            <p className="text-gray-500 mt-1 text-sm">
+            <p className="text-[var(--gray-muted)] mt-1 text-sm">
               Review AI diagnoses to improve accuracy over time.
             </p>
           </div>
           <div className="text-right">
             <p className="text-sm font-semibold text-[var(--navy)]">{reviewed} / {total} reviewed</p>
             {total > 0 && (
-              <div className="w-32 bg-gray-100 rounded-full h-1.5 mt-1">
+              <div className="w-32 bg-white/[0.06] rounded-full h-1.5 mt-1">
                 <div
                   className="bg-green-500 h-1.5 rounded-full transition-all"
                   style={{ width: `${Math.min(100, (reviewed / total) * 100)}%` }}
@@ -122,9 +122,9 @@ export function RepairReviewContent() {
         </div>
 
         {repairs.length === 0 ? (
-          <div className="bg-white rounded-2xl border border-gray-200 text-center py-16 px-8">
+          <div className="bg-white rounded-2xl border border-[var(--border-glass)] text-center py-16 px-8">
             <h3 className="text-lg font-semibold text-[var(--navy)] mb-2">No repairs to review</h3>
-            <p className="text-gray-500 text-sm">Completed repairs will appear here for diagnosis review.</p>
+            <p className="text-[var(--gray-muted)] text-sm">Completed repairs will appear here for diagnosis review.</p>
           </div>
         ) : (
           <div className="space-y-4">
@@ -138,11 +138,11 @@ export function RepairReviewContent() {
               }[repair.feedback_status] : null;
 
               return (
-                <div key={repair.id} className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+                <div key={repair.id} className="bg-white rounded-2xl border border-[var(--border-glass)] overflow-hidden">
                   <div className="flex gap-4 p-5">
                     {/* Photo preview */}
                     {repair.photo_url && (
-                      <div className="w-24 h-24 rounded-lg overflow-hidden shrink-0 bg-gray-100">
+                      <div className="w-24 h-24 rounded-lg overflow-hidden shrink-0 bg-white/[0.06]">
                         <img src={repair.photo_url} alt="Leak" className="w-full h-full object-cover" />
                       </div>
                     )}
@@ -157,13 +157,13 @@ export function RepairReviewContent() {
                           </span>
                         )}
                       </div>
-                      <p className="text-xs text-gray-500 mb-2">
+                      <p className="text-xs text-[var(--gray-muted)] mb-2">
                         {repair.homeowner_name} &middot; {new Date(repair.created_at).toLocaleDateString()}
                       </p>
 
                       {/* AI Diagnosis */}
                       <div className="flex items-center gap-2 mb-2">
-                        <span className="text-xs font-semibold text-gray-400">AI Diagnosis:</span>
+                        <span className="text-xs font-semibold text-[var(--gray-dim)]">AI Diagnosis:</span>
                         <span className="text-xs font-medium text-[var(--navy)]">
                           {repair.repair_type ? (REPAIR_TYPE_LABELS[repair.repair_type] || repair.repair_type) : "Unknown"}
                         </span>
@@ -180,7 +180,7 @@ export function RepairReviewContent() {
                       </div>
 
                       {repair.leak_description && (
-                        <p className="text-xs text-gray-500 line-clamp-2">{repair.leak_description}</p>
+                        <p className="text-xs text-[var(--gray-muted)] line-clamp-2">{repair.leak_description}</p>
                       )}
                     </div>
                   </div>
@@ -214,14 +214,14 @@ export function RepairReviewContent() {
 
                   {/* Edit panel */}
                   {isEditing && (
-                    <div className="border-t border-gray-100 p-5 bg-gray-50/50 space-y-3">
+                    <div className="border-t border-white/[0.04] p-5 bg-white/[0.04]/50 space-y-3">
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div>
-                          <label className="block text-xs font-semibold text-gray-500 mb-1">Correct Repair Type</label>
+                          <label className="block text-xs font-semibold text-[var(--gray-muted)] mb-1">Correct Repair Type</label>
                           <select
                             value={editForm.corrected_repair_type}
                             onChange={(e) => setEditForm({ ...editForm, corrected_repair_type: e.target.value })}
-                            className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm bg-white"
+                            className="w-full px-3 py-2 rounded-lg border border-[var(--border-glass)] text-sm bg-white"
                           >
                             <option value="">-- Select --</option>
                             {repairTypeOptions.map(({ code, label }) => (
@@ -230,11 +230,11 @@ export function RepairReviewContent() {
                           </select>
                         </div>
                         <div>
-                          <label className="block text-xs font-semibold text-gray-500 mb-1">Correct Severity</label>
+                          <label className="block text-xs font-semibold text-[var(--gray-muted)] mb-1">Correct Severity</label>
                           <select
                             value={editForm.corrected_severity}
                             onChange={(e) => setEditForm({ ...editForm, corrected_severity: e.target.value })}
-                            className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm bg-white"
+                            className="w-full px-3 py-2 rounded-lg border border-[var(--border-glass)] text-sm bg-white"
                           >
                             <option value="">-- Select --</option>
                             <option value="minor">Minor</option>
@@ -246,33 +246,33 @@ export function RepairReviewContent() {
                         </div>
                       </div>
                       <div>
-                        <label className="block text-xs font-semibold text-gray-500 mb-1">Actual Leak Source</label>
+                        <label className="block text-xs font-semibold text-[var(--gray-muted)] mb-1">Actual Leak Source</label>
                         <input
                           type="text"
                           value={editForm.actual_leak_source}
                           onChange={(e) => setEditForm({ ...editForm, actual_leak_source: e.target.value })}
                           placeholder="What was actually causing the leak?"
-                          className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm"
+                          className="w-full px-3 py-2 rounded-lg border border-[var(--border-glass)] text-sm"
                         />
                       </div>
                       <div>
-                        <label className="block text-xs font-semibold text-gray-500 mb-1">Actual Repair Performed</label>
+                        <label className="block text-xs font-semibold text-[var(--gray-muted)] mb-1">Actual Repair Performed</label>
                         <input
                           type="text"
                           value={editForm.actual_repair_performed}
                           onChange={(e) => setEditForm({ ...editForm, actual_repair_performed: e.target.value })}
                           placeholder="What repair was actually done?"
-                          className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm"
+                          className="w-full px-3 py-2 rounded-lg border border-[var(--border-glass)] text-sm"
                         />
                       </div>
                       <div>
-                        <label className="block text-xs font-semibold text-gray-500 mb-1">Notes</label>
+                        <label className="block text-xs font-semibold text-[var(--gray-muted)] mb-1">Notes</label>
                         <textarea
                           value={editForm.notes}
                           onChange={(e) => setEditForm({ ...editForm, notes: e.target.value })}
                           placeholder="Any additional notes..."
                           rows={2}
-                          className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm resize-none"
+                          className="w-full px-3 py-2 rounded-lg border border-[var(--border-glass)] text-sm resize-none"
                         />
                       </div>
                       <div className="flex gap-2">
@@ -289,7 +289,7 @@ export function RepairReviewContent() {
                         </button>
                         <button
                           onClick={() => setEditingId(null)}
-                          className="text-gray-500 hover:text-gray-700 px-4 py-2 text-xs font-medium transition-colors"
+                          className="text-[var(--gray-muted)] hover:text-[var(--gray)] px-4 py-2 text-xs font-medium transition-colors"
                         >
                           Cancel
                         </button>

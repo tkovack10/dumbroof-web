@@ -172,17 +172,17 @@ export default function RepairDetailPage() {
 
   if (loading) {
     return (
-      <main className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <p className="text-gray-400">Loading...</p>
+      <main className="min-h-screen bg-white/[0.04] flex items-center justify-center">
+        <p className="text-[var(--gray-dim)]">Loading...</p>
       </main>
     );
   }
 
   if (!repair) {
     return (
-      <main className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <main className="min-h-screen bg-white/[0.04] flex items-center justify-center">
         <div className="text-center">
-          <p className="text-gray-500 mb-4">Repair not found</p>
+          <p className="text-[var(--gray-muted)] mb-4">Repair not found</p>
           <a href="/dashboard" className="text-[var(--red)] font-medium">
             Back to Dashboard
           </a>
@@ -203,7 +203,7 @@ export default function RepairDetailPage() {
   const hasCheckpoints = checkpoints.length > 0;
 
   return (
-    <main className="min-h-screen bg-gray-50">
+    <main className="min-h-screen bg-white/[0.04]">
       {/* Top Bar */}
       <nav className="bg-[var(--navy)] border-b border-white/10">
         <div className="max-w-4xl mx-auto px-6 py-4 flex items-center justify-between">
@@ -220,7 +220,7 @@ export default function RepairDetailPage() {
           </div>
           <a
             href="/dashboard"
-            className="text-gray-400 hover:text-white text-sm transition-colors"
+            className="text-[var(--gray-dim)] hover:text-white text-sm transition-colors"
           >
             Back to Dashboard
           </a>
@@ -229,7 +229,7 @@ export default function RepairDetailPage() {
 
       <div className="max-w-4xl mx-auto px-6 py-10 space-y-6">
         {/* Repair Header */}
-        <div className="bg-white rounded-2xl border border-gray-200 p-6">
+        <div className="bg-white rounded-2xl border border-[var(--border-glass)] p-6">
           <div className="flex items-start justify-between">
             <div>
               <div className="flex items-center gap-2 mb-1">
@@ -253,7 +253,7 @@ export default function RepairDetailPage() {
               <h1 className="text-xl font-bold text-[var(--navy)]">
                 {repair.address}
               </h1>
-              <p className="text-sm text-gray-500 mt-1">
+              <p className="text-sm text-[var(--gray-muted)] mt-1">
                 {repair.homeowner_name} &middot;{" "}
                 {repair.repair_type
                   ? REPAIR_TYPE_LABELS[repair.repair_type] || repair.repair_type
@@ -293,7 +293,7 @@ export default function RepairDetailPage() {
           <div className="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-3">
             {repair.total_price ? (
               <div className="bg-[var(--navy)] rounded-lg px-4 py-3 text-center">
-                <p className="text-xs text-gray-400">Price</p>
+                <p className="text-xs text-[var(--gray-dim)]">Price</p>
                 <p className="text-lg font-bold text-white">
                   $
                   {repair.total_price.toLocaleString("en-US", {
@@ -302,21 +302,21 @@ export default function RepairDetailPage() {
                 </p>
               </div>
             ) : null}
-            <div className="bg-gray-50 rounded-lg px-4 py-3">
-              <p className="text-xs text-gray-400">Skill Level</p>
+            <div className="bg-white/[0.04] rounded-lg px-4 py-3">
+              <p className="text-xs text-[var(--gray-dim)]">Skill Level</p>
               <p className="text-sm font-semibold text-[var(--navy)] capitalize">
                 {repair.skill_level || "Journeyman"}
               </p>
             </div>
-            <div className="bg-gray-50 rounded-lg px-4 py-3">
-              <p className="text-xs text-gray-400">Language</p>
+            <div className="bg-white/[0.04] rounded-lg px-4 py-3">
+              <p className="text-xs text-[var(--gray-dim)]">Language</p>
               <p className="text-sm font-semibold text-[var(--navy)]">
                 {repair.preferred_language === "es" ? "Spanish" : "English"}
               </p>
             </div>
             {repair.roofer_name && (
-              <div className="bg-gray-50 rounded-lg px-4 py-3">
-                <p className="text-xs text-gray-400">Roofer</p>
+              <div className="bg-white/[0.04] rounded-lg px-4 py-3">
+                <p className="text-xs text-[var(--gray-dim)]">Roofer</p>
                 <p className="text-sm font-semibold text-[var(--navy)]">
                   {repair.roofer_name}
                 </p>
@@ -325,11 +325,11 @@ export default function RepairDetailPage() {
           </div>
 
           {repair.leak_description && (
-            <div className="mt-4 bg-gray-50 rounded-lg px-4 py-3">
-              <p className="text-xs font-semibold text-gray-400 uppercase mb-1">
+            <div className="mt-4 bg-white/[0.04] rounded-lg px-4 py-3">
+              <p className="text-xs font-semibold text-[var(--gray-dim)] uppercase mb-1">
                 Leak Description
               </p>
-              <p className="text-sm text-gray-700">{repair.leak_description}</p>
+              <p className="text-sm text-[var(--gray)]">{repair.leak_description}</p>
             </div>
           )}
         </div>
@@ -372,14 +372,14 @@ export default function RepairDetailPage() {
 
         {/* ========== REPAIR TIMELINE ========== */}
         {hasCheckpoints && (
-          <div className="bg-white rounded-2xl border border-gray-200 p-6">
+          <div className="bg-white rounded-2xl border border-[var(--border-glass)] p-6">
             <h2 className="text-sm font-semibold text-[var(--navy)] mb-5">
               Repair Timeline
             </h2>
 
             <div className="relative">
               {/* Vertical line */}
-              <div className="absolute left-4 top-2 bottom-2 w-0.5 bg-gray-200" />
+              <div className="absolute left-4 top-2 bottom-2 w-0.5 bg-white/[0.04]" />
 
               <div className="space-y-6">
                 {/* Initial Diagnosis */}
@@ -388,13 +388,13 @@ export default function RepairDetailPage() {
                   title="Initial Diagnosis"
                   status="passed"
                 >
-                  <p className="text-sm text-gray-700">
+                  <p className="text-sm text-[var(--gray)]">
                     {repair.repair_type &&
                       (REPAIR_TYPE_LABELS[repair.repair_type] ||
                         repair.repair_type)}
                     {repair.original_diagnosis_code &&
                       repair.original_diagnosis_code !== repair.repair_type && (
-                        <span className="text-gray-400 ml-1">
+                        <span className="text-[var(--gray-dim)] ml-1">
                           (originally{" "}
                           {REPAIR_TYPE_LABELS[repair.original_diagnosis_code] ||
                             repair.original_diagnosis_code}
@@ -450,17 +450,17 @@ export default function RepairDetailPage() {
                             }`}
                           >
                             <div className="flex items-center gap-2 mb-1">
-                              <span className="text-xs font-semibold text-gray-500">
+                              <span className="text-xs font-semibold text-[var(--gray-muted)]">
                                 AI Analysis
                               </span>
                               {cp.ai_confidence != null && (
-                                <span className="text-xs text-gray-400">
+                                <span className="text-xs text-[var(--gray-dim)]">
                                   {Math.round(cp.ai_confidence * 100)}%
                                   confidence
                                 </span>
                               )}
                             </div>
-                            <p className="text-sm text-gray-700">
+                            <p className="text-sm text-[var(--gray)]">
                               {cp.ai_analysis}
                             </p>
                           </div>
@@ -468,8 +468,8 @@ export default function RepairDetailPage() {
 
                         {/* Message to roofer */}
                         {cp.message_to_roofer_en && isPassed && (
-                          <div className="bg-gray-50 rounded-lg p-3 mb-2">
-                            <p className="text-sm text-gray-700 italic">
+                          <div className="bg-white/[0.04] rounded-lg p-3 mb-2">
+                            <p className="text-sm text-[var(--gray)] italic">
                               &ldquo;{cp.message_to_roofer_en}&rdquo;
                             </p>
                           </div>
@@ -489,7 +489,7 @@ export default function RepairDetailPage() {
 
                         {/* Photo count */}
                         {cp.photo_files && cp.photo_files.length > 0 && (
-                          <p className="text-xs text-gray-400">
+                          <p className="text-xs text-[var(--gray-dim)]">
                             {cp.photo_files.length} photo
                             {cp.photo_files.length !== 1 ? "s" : ""} uploaded
                           </p>
@@ -508,14 +508,14 @@ export default function RepairDetailPage() {
                             />
 
                             <div>
-                              <label className="block text-xs font-medium text-gray-500 mb-1">
+                              <label className="block text-xs font-medium text-[var(--gray-muted)] mb-1">
                                 Notes (optional)
                               </label>
                               <textarea
                                 value={rooferNotes}
                                 onChange={(e) => setRooferNotes(e.target.value)}
                                 placeholder="Any observations to share with the AI..."
-                                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm resize-none h-16 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                className="w-full border border-[var(--border-glass)] rounded-lg px-3 py-2 text-sm resize-none h-16 focus:outline-none focus:ring-2 focus:ring-blue-500"
                               />
                             </div>
 
@@ -578,7 +578,7 @@ export default function RepairDetailPage() {
 
         {/* Output Files */}
         {repair.output_files && repair.output_files.length > 0 && (
-          <div className="bg-white rounded-2xl border border-gray-200 p-6">
+          <div className="bg-white rounded-2xl border border-[var(--border-glass)] p-6">
             <h2 className="text-sm font-semibold text-[var(--navy)] mb-4">
               {isReady ? "Repair Documents Ready" : "Preliminary Documents"}
             </h2>
@@ -621,10 +621,10 @@ export default function RepairDetailPage() {
                       />
                     </svg>
                     <div>
-                      <p className="text-sm text-gray-700 font-medium">
+                      <p className="text-sm text-[var(--gray)] font-medium">
                         {file.replace(/_/g, " ").replace(".pdf", "")}
                       </p>
-                      <p className="text-xs text-gray-500">{description}</p>
+                      <p className="text-xs text-[var(--gray-muted)]">{description}</p>
                     </div>
                   </button>
                 );
@@ -672,7 +672,7 @@ function TimelineItem({
   const iconColors = {
     passed: "bg-green-500 text-white",
     analyzing: "bg-amber-500 text-white",
-    pending: "bg-gray-200 text-gray-500",
+    pending: "bg-white/[0.04] text-[var(--gray-muted)]",
   };
 
   return (
@@ -697,13 +697,13 @@ function TimelineItem({
             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
           </svg>
         )}
-        {icon === "dot" && <div className="w-2 h-2 rounded-full bg-gray-400" />}
+        {icon === "dot" && <div className="w-2 h-2 rounded-full bg-white/[0.04]" />}
       </div>
 
       {/* Content */}
       <div className="pb-2">
         <h3
-          className={`text-sm font-semibold mb-1 ${status === "pending" ? "text-gray-400" : "text-[var(--navy)]"}`}
+          className={`text-sm font-semibold mb-1 ${status === "pending" ? "text-[var(--gray-dim)]" : "text-[var(--navy)]"}`}
         >
           {title}
         </h3>

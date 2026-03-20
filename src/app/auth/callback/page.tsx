@@ -131,7 +131,7 @@ export default function AuthCallbackPage() {
           </div>
           <a
             href="/login"
-            className="text-sm text-gray-500 hover:text-[var(--navy)] transition-colors"
+            className="text-sm text-[var(--gray-muted)] hover:text-[var(--navy)] transition-colors"
           >
             Back to sign in
           </a>
@@ -157,7 +157,7 @@ export default function AuthCallbackPage() {
 
         <div className="bg-white rounded-2xl p-8 shadow-xl">
           <h2 className="text-xl font-bold text-[var(--navy)] mb-1">Set your password</h2>
-          <p className="text-gray-500 text-sm mb-6">
+          <p className="text-[var(--gray-muted)] text-sm mb-6">
             Choose a password to finish setting up your account.
           </p>
 
@@ -168,7 +168,7 @@ export default function AuthCallbackPage() {
           ) : (
             <form onSubmit={handlePasswordSubmit} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-[var(--gray)] mb-1">
                   New Password
                 </label>
                 <input
@@ -178,11 +178,11 @@ export default function AuthCallbackPage() {
                   onChange={(e) => setNewPassword(e.target.value)}
                   placeholder="Enter new password"
                   minLength={6}
-                  className="w-full px-4 py-3 rounded-lg border border-gray-200 focus:border-[var(--navy)] focus:ring-1 focus:ring-[var(--navy)] outline-none transition-colors text-sm"
+                  className="w-full px-4 py-3 rounded-lg border border-[var(--border-glass)] focus:border-[var(--navy)] focus:ring-1 focus:ring-[var(--navy)] outline-none transition-colors text-sm"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-[var(--gray)] mb-1">
                   Confirm Password
                 </label>
                 <input
@@ -192,7 +192,7 @@ export default function AuthCallbackPage() {
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   placeholder="Confirm new password"
                   minLength={6}
-                  className="w-full px-4 py-3 rounded-lg border border-gray-200 focus:border-[var(--navy)] focus:ring-1 focus:ring-[var(--navy)] outline-none transition-colors text-sm"
+                  className="w-full px-4 py-3 rounded-lg border border-[var(--border-glass)] focus:border-[var(--navy)] focus:ring-1 focus:ring-[var(--navy)] outline-none transition-colors text-sm"
                 />
               </div>
 

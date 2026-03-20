@@ -91,7 +91,7 @@ export function FileUploadZone({
             ? "border-[var(--red)] bg-red-50/50"
             : files.length > 0
               ? "border-green-300 bg-green-50/30"
-              : "border-[var(--border-glass)] hover:border-gray-300 bg-white"
+              : "border-[var(--border-glass)] hover:border-[var(--border-glass)] bg-white"
         }`}
       >
         <input
@@ -105,7 +105,7 @@ export function FileUploadZone({
         {files.length === 0 ? (
           <div>
             <svg
-              className="w-8 h-8 text-gray-300 mx-auto mb-2"
+              className="w-8 h-8 text-[var(--gray-dim)] mx-auto mb-2"
               fill="none"
               viewBox="0 0 24 24"
               stroke="currentColor"

@@ -35,7 +35,7 @@ function statusBorderColor(status: string | null): string {
     case "approved": return "border-green-500";
     case "rejected": return "border-red-500";
     case "corrected": return "border-blue-500";
-    default: return "border-gray-300";
+    default: return "border-[var(--border-glass)]";
   }
 }
 
@@ -44,7 +44,7 @@ function statusBadge(status: string | null): { bg: string; label: string } {
     case "approved": return { bg: "bg-green-500", label: "Approved" };
     case "rejected": return { bg: "bg-red-500", label: "Rejected" };
     case "corrected": return { bg: "bg-blue-500", label: "Corrected" };
-    default: return { bg: "bg-gray-400", label: "Unreviewed" };
+    default: return { bg: "bg-white/[0.04]", label: "Unreviewed" };
   }
 }
 
@@ -266,12 +266,12 @@ export function PhotoReviewContent() {
           <div className="w-9 h-9 rounded-lg bg-[var(--red)] flex items-center justify-center font-bold text-white">DR</div>
           <span className="text-white font-bold text-lg tracking-tight">Photo Review</span>
         </a>
-        <div className="flex items-center gap-4 text-sm text-gray-400">
+        <div className="flex items-center gap-4 text-sm text-[var(--gray-dim)]">
           <span>{currentIndex + 1} of {photos.length}</span>
           <span className="text-green-400">{sessionStats.approved} approved</span>
           <span className="text-blue-400">{sessionStats.corrected} corrected</span>
           <span className="text-red-400">{sessionStats.rejected} rejected</span>
-          {sessionStats.skipped > 0 && <span className="text-gray-500">{sessionStats.skipped} skipped</span>}
+          {sessionStats.skipped > 0 && <span className="text-[var(--gray-muted)]">{sessionStats.skipped} skipped</span>}
           <button
             onClick={() => setViewMode((m) => m === "card" ? "grid" : "card")}
             className="px-2 py-1 rounded bg-white/10 hover:bg-white/20 text-white text-xs font-medium transition-colors"
@@ -296,21 +296,21 @@ export function PhotoReviewContent() {
 
   if (loading) {
     return (
-      <main className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <p className="text-gray-400">Loading photos...</p>
+      <main className="min-h-screen bg-white/[0.04] flex items-center justify-center">
+        <p className="text-[var(--gray-dim)]">Loading photos...</p>
       </main>
     );
   }
 
   if (photos.length === 0) {
     return (
-      <main className="min-h-screen bg-gray-50">
+      <main className="min-h-screen bg-white/[0.04]">
         {navBar}
         <div className="max-w-lg mx-auto mt-20 text-center">
           <div className="text-5xl mb-4">&#128247;</div>
           <h2 className="text-2xl font-bold text-[var(--navy)] mb-2">No photos found</h2>
-          <p className="text-gray-500 mb-6">This claim doesn&apos;t have any photos to review yet.</p>
-          <a href="/dashboard" className="text-sm text-gray-500 hover:text-[var(--navy)]">Back to Dashboard</a>
+          <p className="text-[var(--gray-muted)] mb-6">This claim doesn&apos;t have any photos to review yet.</p>
+          <a href="/dashboard" className="text-sm text-[var(--gray-muted)] hover:text-[var(--navy)]">Back to Dashboard</a>
         </div>
       </main>
     );
@@ -320,13 +320,13 @@ export function PhotoReviewContent() {
   if (currentIndex >= photos.length && viewMode === "card") {
     const unreviewedCount = photos.filter((p) => getEffectiveStatus(p) === null).length;
     return (
-      <main className="min-h-screen bg-gray-50">
+      <main className="min-h-screen bg-white/[0.04]">
         {navBar}
         {errorBanner}
         <div className="max-w-lg mx-auto mt-20 text-center">
           <div className="text-5xl mb-4">&#10003;</div>
           <h2 className="text-2xl font-bold text-[var(--navy)] mb-2">Review complete!</h2>
-          <p className="text-gray-500 mb-6">
+          <p className="text-[var(--gray-muted)] mb-6">
             {unreviewedCount > 0
               ? `${unreviewedCount} photo${unreviewedCount > 1 ? "s" : ""} skipped — you can go back and review them.`
               : `All ${photos.length} photos reviewed.`}
@@ -334,15 +334,15 @@ export function PhotoReviewContent() {
           <div className="flex justify-center gap-6 mb-8">
             <div className="text-center">
               <p className="text-2xl font-bold text-green-600">{sessionStats.approved}</p>
-              <p className="text-xs text-gray-500">Approved</p>
+              <p className="text-xs text-[var(--gray-muted)]">Approved</p>
             </div>
             <div className="text-center">
               <p className="text-2xl font-bold text-blue-600">{sessionStats.corrected}</p>
-              <p className="text-xs text-gray-500">Corrected</p>
+              <p className="text-xs text-[var(--gray-muted)]">Corrected</p>
             </div>
             <div className="text-center">
               <p className="text-2xl font-bold text-red-600">{sessionStats.rejected}</p>
-              <p className="text-xs text-gray-500">Rejected</p>
+              <p className="text-xs text-[var(--gray-muted)]">Rejected</p>
             </div>
           </div>
           <div className="flex flex-col items-center gap-3">
@@ -365,7 +365,7 @@ export function PhotoReviewContent() {
                 Continue to Scope Review
               </a>
             )}
-            <a href={claimId ? `/dashboard/claim/${claimId}` : "/dashboard"} className="text-sm text-gray-500 hover:text-[var(--navy)]">
+            <a href={claimId ? `/dashboard/claim/${claimId}` : "/dashboard"} className="text-sm text-[var(--gray-muted)] hover:text-[var(--navy)]">
               Back to Claim
             </a>
           </div>
@@ -377,7 +377,7 @@ export function PhotoReviewContent() {
   // ==================== GRID VIEW ====================
   if (viewMode === "grid") {
     return (
-      <main className="min-h-screen bg-gray-50">
+      <main className="min-h-screen bg-white/[0.04]">
         {navBar}
         {errorBanner}
         <div className="max-w-6xl mx-auto px-4 py-6">
@@ -391,7 +391,7 @@ export function PhotoReviewContent() {
                   onClick={() => jumpToIndex(idx)}
                   className={`relative rounded-xl overflow-hidden border-2 ${statusBorderColor(status)} hover:shadow-lg transition-all bg-white`}
                 >
-                  <div className="aspect-square bg-gray-100">
+                  <div className="aspect-square bg-white/[0.06]">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
                       src={photo.signed_url}
@@ -406,7 +406,7 @@ export function PhotoReviewContent() {
                   </div>
                   {/* Info bar */}
                   <div className="px-2 py-1.5">
-                    <p className="text-[10px] font-mono text-gray-500 truncate">{photo.annotation_key}</p>
+                    <p className="text-[10px] font-mono text-[var(--gray-muted)] truncate">{photo.annotation_key}</p>
                     {photo.damage_type && (
                       <span className="inline-block mt-0.5 px-1.5 py-0.5 rounded-full text-[9px] font-medium bg-red-100 text-red-700">
                         {photo.damage_type}
@@ -424,11 +424,11 @@ export function PhotoReviewContent() {
 
   // ==================== CARD VIEW ====================
   return (
-    <main className="min-h-screen bg-gray-50">
+    <main className="min-h-screen bg-white/[0.04]">
       {navBar}
 
       {/* Progress bar — two-tone */}
-      <div className="h-1.5 bg-gray-200 flex">
+      <div className="h-1.5 bg-white/[0.04] flex">
         <div className="h-full bg-[var(--red)] transition-all duration-300" style={{ width: `${progress}%` }} />
       </div>
 
@@ -437,12 +437,12 @@ export function PhotoReviewContent() {
       {/* Card */}
       <div className="max-w-2xl mx-auto px-4 py-6">
         {currentPhoto && (
-          <div className={`bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-lg transition-all duration-300 ${stampType ? "scale-95 opacity-80" : ""}`}>
+          <div className={`bg-white rounded-2xl border border-[var(--border-glass)] overflow-hidden shadow-lg transition-all duration-300 ${stampType ? "scale-95 opacity-80" : ""}`}>
             {/* Header */}
-            <div className="px-5 py-3 border-b border-gray-100 flex items-center justify-between">
+            <div className="px-5 py-3 border-b border-white/[0.04] flex items-center justify-between">
               <div>
                 <p className="text-sm font-semibold text-[var(--navy)]">{currentPhoto.address}</p>
-                <p className="text-xs text-gray-400">{currentPhoto.annotation_key}</p>
+                <p className="text-xs text-[var(--gray-dim)]">{currentPhoto.annotation_key}</p>
               </div>
               {getEffectiveStatus(currentPhoto) && (
                 <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold text-white ${statusBadge(getEffectiveStatus(currentPhoto)).bg}`}>
@@ -452,7 +452,7 @@ export function PhotoReviewContent() {
             </div>
 
             {/* Photo */}
-            <div className="relative aspect-[4/3] bg-gray-100">
+            <div className="relative aspect-[4/3] bg-white/[0.06]">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={currentPhoto.signed_url}
@@ -477,13 +477,13 @@ export function PhotoReviewContent() {
 
             {/* Annotation */}
             <div className="px-5 py-4">
-              <p className="text-sm text-gray-700 mb-3">{currentPhoto.annotation_text || "No annotation"}</p>
+              <p className="text-sm text-[var(--gray)] mb-3">{currentPhoto.annotation_text || "No annotation"}</p>
               <div className="flex flex-wrap gap-2">
                 {TAG_CONFIG.map(({ key, color }) => {
                   const value = currentPhoto[key as keyof PhotoForReview] as string | null;
                   if (!value) return null;
                   const colorClass = key === "severity"
-                    ? (SEVERITY_COLORS[value] || "bg-gray-100 text-gray-600")
+                    ? (SEVERITY_COLORS[value] || "bg-white/[0.06] text-[var(--gray)]")
                     : TAG_COLORS[color];
                   return (
                     <span key={key} className={`px-2 py-0.5 rounded-full text-xs font-medium ${colorClass}`}>
@@ -521,7 +521,7 @@ export function PhotoReviewContent() {
                 <button
                   onClick={handleSkip}
                   disabled={submitting}
-                  className="py-3 px-4 rounded-xl bg-gray-50 hover:bg-gray-100 text-gray-500 font-semibold text-sm transition-colors border border-gray-200 disabled:opacity-50"
+                  className="py-3 px-4 rounded-xl bg-white/[0.04] hover:bg-white/[0.06] text-[var(--gray-muted)] font-semibold text-sm transition-colors border border-[var(--border-glass)] disabled:opacity-50"
                   title="Skip (S or ArrowRight)"
                 >
                   Skip
@@ -531,14 +531,14 @@ export function PhotoReviewContent() {
 
             {/* Editor panel */}
             {showEditor && (
-              <div className="px-5 pb-5 border-t border-gray-100 pt-4 space-y-3">
+              <div className="px-5 pb-5 border-t border-white/[0.04] pt-4 space-y-3">
                 <div>
-                  <label className="block text-xs font-semibold text-gray-500 mb-1">Annotation</label>
+                  <label className="block text-xs font-semibold text-[var(--gray-muted)] mb-1">Annotation</label>
                   <textarea
                     value={editAnnotation}
                     onChange={(e) => setEditAnnotation(e.target.value)}
                     rows={3}
-                    className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full rounded-lg border border-[var(--border-glass)] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
                 <div className="grid grid-cols-2 gap-3">
@@ -550,11 +550,11 @@ export function PhotoReviewContent() {
                     { key: "severity", label: "Severity", options: SEVERITIES },
                   ].map(({ key, label, options }) => (
                     <div key={key}>
-                      <label className="block text-xs font-semibold text-gray-500 mb-1">{label}</label>
+                      <label className="block text-xs font-semibold text-[var(--gray-muted)] mb-1">{label}</label>
                       <select
                         value={editTags[key] || ""}
                         onChange={(e) => setEditTags({ ...editTags, [key]: e.target.value })}
-                        className="w-full rounded-lg border border-gray-200 px-2 py-1.5 text-sm"
+                        className="w-full rounded-lg border border-[var(--border-glass)] px-2 py-1.5 text-sm"
                       >
                         <option value="">—</option>
                         {options.map((o) => (
@@ -565,18 +565,18 @@ export function PhotoReviewContent() {
                   ))}
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-gray-500 mb-1">Notes (why the correction?)</label>
+                  <label className="block text-xs font-semibold text-[var(--gray-muted)] mb-1">Notes (why the correction?)</label>
                   <input
                     value={editNotes}
                     onChange={(e) => setEditNotes(e.target.value)}
-                    className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm"
+                    className="w-full rounded-lg border border-[var(--border-glass)] px-3 py-2 text-sm"
                     placeholder="Optional"
                   />
                 </div>
                 <div className="flex gap-3">
                   <button
                     onClick={() => setShowEditor(false)}
-                    className="flex-1 py-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-600 font-semibold text-sm transition-colors"
+                    className="flex-1 py-2 rounded-xl bg-white/[0.06] hover:bg-white/[0.04] text-[var(--gray)] font-semibold text-sm transition-colors"
                   >
                     Cancel
                   </button>
@@ -628,21 +628,21 @@ export function PhotoReviewContent() {
           <button
             onClick={handlePrevious}
             disabled={currentIndex === 0}
-            className="px-3 py-1.5 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-600 text-sm font-medium disabled:opacity-30 transition-colors"
+            className="px-3 py-1.5 rounded-lg bg-white/[0.06] hover:bg-white/[0.04] text-[var(--gray)] text-sm font-medium disabled:opacity-30 transition-colors"
           >
             ← Previous
           </button>
-          <p className="text-center text-xs text-gray-400">
-            <kbd className="px-1.5 py-0.5 bg-gray-200 rounded text-gray-600">A</kbd> approve &middot;{" "}
-            <kbd className="px-1.5 py-0.5 bg-gray-200 rounded text-gray-600">R</kbd> reject &middot;{" "}
-            <kbd className="px-1.5 py-0.5 bg-gray-200 rounded text-gray-600">E</kbd> edit &middot;{" "}
-            <kbd className="px-1.5 py-0.5 bg-gray-200 rounded text-gray-600">S</kbd> skip &middot;{" "}
-            <kbd className="px-1.5 py-0.5 bg-gray-200 rounded text-gray-600">G</kbd> grid
+          <p className="text-center text-xs text-[var(--gray-dim)]">
+            <kbd className="px-1.5 py-0.5 bg-white/[0.04] rounded text-[var(--gray)]">A</kbd> approve &middot;{" "}
+            <kbd className="px-1.5 py-0.5 bg-white/[0.04] rounded text-[var(--gray)]">R</kbd> reject &middot;{" "}
+            <kbd className="px-1.5 py-0.5 bg-white/[0.04] rounded text-[var(--gray)]">E</kbd> edit &middot;{" "}
+            <kbd className="px-1.5 py-0.5 bg-white/[0.04] rounded text-[var(--gray)]">S</kbd> skip &middot;{" "}
+            <kbd className="px-1.5 py-0.5 bg-white/[0.04] rounded text-[var(--gray)]">G</kbd> grid
           </p>
           <button
             onClick={handleSkip}
             disabled={currentIndex >= photos.length - 1}
-            className="px-3 py-1.5 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-600 text-sm font-medium disabled:opacity-30 transition-colors"
+            className="px-3 py-1.5 rounded-lg bg-white/[0.06] hover:bg-white/[0.04] text-[var(--gray)] text-sm font-medium disabled:opacity-30 transition-colors"
           >
             Next →
           </button>

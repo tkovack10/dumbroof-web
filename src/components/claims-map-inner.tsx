@@ -103,5 +103,5 @@ export default function ClaimsMapInner({ claims, height, showUserEmail }: Props)
     }
   }, [claims, showUserEmail]);
 
-  return <div ref={containerRef} className="rounded-xl overflow-hidden border border-gray-200" style={{ height }} />;
+  return <div ref={containerRef} className="rounded-xl overflow-hidden border border-[var(--border-glass)]" style={{ height }} />;
 }

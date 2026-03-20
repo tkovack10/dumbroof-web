@@ -61,17 +61,17 @@ export function InspectorApplicationForm({ className }: InspectorApplicationForm
 
   if (submitted) {
     return (
-      <div className={`bg-[var(--gray-50)] rounded-2xl p-8 border border-gray-100 text-center ${className || ""}`}>
+      <div className={`bg-[var(--gray-50)] rounded-2xl p-8 border border-white/[0.04] text-center ${className || ""}`}>
         <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-6">
           <svg className="w-8 h-8 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
         </div>
         <h3 className="text-xl font-bold text-[var(--navy)] mb-2">Application Received</h3>
-        <p className="text-gray-500 mb-1">
+        <p className="text-[var(--gray-muted)] mb-1">
           We&apos;ll review your application and reach out within 48 hours.
         </p>
-        <p className="text-sm text-gray-400">
+        <p className="text-sm text-[var(--gray-dim)]">
           Welcome to the network, {form.name.split(" ")[0] || "Inspector"}.
         </p>
       </div>
@@ -79,48 +79,48 @@ export function InspectorApplicationForm({ className }: InspectorApplicationForm
   }
 
   return (
-    <form onSubmit={handleSubmit} className={`bg-[var(--gray-50)] rounded-2xl p-8 border border-gray-100 space-y-5 ${className || ""}`}>
+    <form onSubmit={handleSubmit} className={`bg-[var(--gray-50)] rounded-2xl p-8 border border-white/[0.04] space-y-5 ${className || ""}`}>
       <h3 className="text-lg font-bold text-[var(--navy)]">Apply to Join</h3>
 
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Full Name</label>
+          <label className="block text-xs font-semibold text-[var(--gray-muted)] uppercase tracking-wider mb-1.5">Full Name</label>
           <input type="text" required value={form.name} onChange={(e) => update("name", e.target.value)}
-            className="w-full px-4 py-3 rounded-lg border border-gray-200 focus:border-[var(--navy)] focus:ring-1 focus:ring-[var(--navy)] outline-none text-sm" />
+            className="w-full px-4 py-3 rounded-lg border border-[var(--border-glass)] focus:border-[var(--navy)] focus:ring-1 focus:ring-[var(--navy)] outline-none text-sm" />
         </div>
         <div>
-          <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Phone</label>
+          <label className="block text-xs font-semibold text-[var(--gray-muted)] uppercase tracking-wider mb-1.5">Phone</label>
           <input type="tel" required value={form.phone} onChange={(e) => update("phone", e.target.value)}
-            className="w-full px-4 py-3 rounded-lg border border-gray-200 focus:border-[var(--navy)] focus:ring-1 focus:ring-[var(--navy)] outline-none text-sm" />
+            className="w-full px-4 py-3 rounded-lg border border-[var(--border-glass)] focus:border-[var(--navy)] focus:ring-1 focus:ring-[var(--navy)] outline-none text-sm" />
         </div>
       </div>
 
       <div>
-        <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Email</label>
+        <label className="block text-xs font-semibold text-[var(--gray-muted)] uppercase tracking-wider mb-1.5">Email</label>
         <input type="email" required value={form.email} onChange={(e) => update("email", e.target.value)}
           placeholder="you@example.com"
-          className="w-full px-4 py-3 rounded-lg border border-gray-200 focus:border-[var(--navy)] focus:ring-1 focus:ring-[var(--navy)] outline-none text-sm" />
+          className="w-full px-4 py-3 rounded-lg border border-[var(--border-glass)] focus:border-[var(--navy)] focus:ring-1 focus:ring-[var(--navy)] outline-none text-sm" />
       </div>
 
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">City</label>
+          <label className="block text-xs font-semibold text-[var(--gray-muted)] uppercase tracking-wider mb-1.5">City</label>
           <input type="text" required value={form.city} onChange={(e) => update("city", e.target.value)}
-            className="w-full px-4 py-3 rounded-lg border border-gray-200 focus:border-[var(--navy)] focus:ring-1 focus:ring-[var(--navy)] outline-none text-sm" />
+            className="w-full px-4 py-3 rounded-lg border border-[var(--border-glass)] focus:border-[var(--navy)] focus:ring-1 focus:ring-[var(--navy)] outline-none text-sm" />
         </div>
         <div>
-          <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">State</label>
+          <label className="block text-xs font-semibold text-[var(--gray-muted)] uppercase tracking-wider mb-1.5">State</label>
           <input type="text" required value={form.state} onChange={(e) => update("state", e.target.value)}
             placeholder="e.g. TX, FL, NY"
-            className="w-full px-4 py-3 rounded-lg border border-gray-200 focus:border-[var(--navy)] focus:ring-1 focus:ring-[var(--navy)] outline-none text-sm" />
+            className="w-full px-4 py-3 rounded-lg border border-[var(--border-glass)] focus:border-[var(--navy)] focus:ring-1 focus:ring-[var(--navy)] outline-none text-sm" />
         </div>
       </div>
 
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Years of Experience</label>
+          <label className="block text-xs font-semibold text-[var(--gray-muted)] uppercase tracking-wider mb-1.5">Years of Experience</label>
           <select required value={form.experience} onChange={(e) => update("experience", e.target.value)}
-            className="w-full px-4 py-3 rounded-lg border border-gray-200 focus:border-[var(--navy)] focus:ring-1 focus:ring-[var(--navy)] outline-none text-sm bg-white">
+            className="w-full px-4 py-3 rounded-lg border border-[var(--border-glass)] focus:border-[var(--navy)] focus:ring-1 focus:ring-[var(--navy)] outline-none text-sm bg-white">
             <option value="">Select</option>
             <option value="1-3">1 - 3 years</option>
             <option value="3-5">3 - 5 years</option>
@@ -129,9 +129,9 @@ export function InspectorApplicationForm({ className }: InspectorApplicationForm
           </select>
         </div>
         <div>
-          <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">HAAG Certified?</label>
+          <label className="block text-xs font-semibold text-[var(--gray-muted)] uppercase tracking-wider mb-1.5">HAAG Certified?</label>
           <select required value={form.haagCertified} onChange={(e) => update("haagCertified", e.target.value)}
-            className="w-full px-4 py-3 rounded-lg border border-gray-200 focus:border-[var(--navy)] focus:ring-1 focus:ring-[var(--navy)] outline-none text-sm bg-white">
+            className="w-full px-4 py-3 rounded-lg border border-[var(--border-glass)] focus:border-[var(--navy)] focus:ring-1 focus:ring-[var(--navy)] outline-none text-sm bg-white">
             <option value="">Select</option>
             <option value="yes">Yes &mdash; HAAG Certified</option>
             <option value="in-progress">In Progress</option>
@@ -141,12 +141,12 @@ export function InspectorApplicationForm({ className }: InspectorApplicationForm
       </div>
 
       <div>
-        <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
+        <label className="block text-xs font-semibold text-[var(--gray-muted)] uppercase tracking-wider mb-1.5">
           Willing to Travel?
           <span className="ml-1 text-[var(--red)]">*</span>
         </label>
         <select required value={form.willingToTravel} onChange={(e) => update("willingToTravel", e.target.value)}
-          className="w-full px-4 py-3 rounded-lg border border-gray-200 focus:border-[var(--navy)] focus:ring-1 focus:ring-[var(--navy)] outline-none text-sm bg-white">
+          className="w-full px-4 py-3 rounded-lg border border-[var(--border-glass)] focus:border-[var(--navy)] focus:ring-1 focus:ring-[var(--navy)] outline-none text-sm bg-white">
           <option value="">Select travel radius</option>
           <option value="local">Local only (within 50 miles)</option>
           <option value="regional">Regional (within 150 miles)</option>
@@ -157,12 +157,12 @@ export function InspectorApplicationForm({ className }: InspectorApplicationForm
       </div>
 
       <div>
-        <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
+        <label className="block text-xs font-semibold text-[var(--gray-muted)] uppercase tracking-wider mb-1.5">
           Anything else we should know?
         </label>
         <textarea value={form.notes} onChange={(e) => update("notes", e.target.value)}
           rows={3} placeholder="Certifications, specialties (tile, slate, metal, commercial), current employer, etc."
-          className="w-full px-4 py-3 rounded-lg border border-gray-200 focus:border-[var(--navy)] focus:ring-1 focus:ring-[var(--navy)] outline-none text-sm resize-none" />
+          className="w-full px-4 py-3 rounded-lg border border-[var(--border-glass)] focus:border-[var(--navy)] focus:ring-1 focus:ring-[var(--navy)] outline-none text-sm resize-none" />
       </div>
 
       {error && (
@@ -184,7 +184,7 @@ export function InspectorApplicationForm({ className }: InspectorApplicationForm
         ) : "Submit Application"}
       </button>
 
-      <p className="text-xs text-gray-400 text-center leading-relaxed">
+      <p className="text-xs text-[var(--gray-dim)] text-center leading-relaxed">
         We review every application within 48 hours.
         All inspectors must carry valid 1099 insurance to be activated on the network.
       </p>

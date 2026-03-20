@@ -116,10 +116,10 @@ export default function NewRepairPage() {
           <h2 className="text-2xl font-bold text-[var(--navy)] mb-2">
             Repair Request Submitted
           </h2>
-          <p className="text-gray-500 mb-2">
+          <p className="text-[var(--gray-muted)] mb-2">
             AI is diagnosing the leak and generating your repair documents.
           </p>
-          <p className="text-sm text-gray-400 mb-8">
+          <p className="text-sm text-[var(--gray-dim)] mb-8">
             This typically takes 1-2 minutes. Your roofer instructions and homeowner repair ticket will be ready shortly.
           </p>
           <a
@@ -148,7 +148,7 @@ export default function NewRepairPage() {
           </div>
           <a
             href="/dashboard"
-            className="text-gray-400 hover:text-white text-sm transition-colors"
+            className="text-[var(--gray-dim)] hover:text-white text-sm transition-colors"
           >
             Cancel
           </a>
@@ -160,7 +160,7 @@ export default function NewRepairPage() {
           <h1 className="text-2xl font-bold text-[var(--navy)]">
             New Repair Request
           </h1>
-          <p className="text-gray-500 mt-1">
+          <p className="text-[var(--gray-muted)] mt-1">
             Upload photos of the leak and we&apos;ll diagnose, price, and generate repair documents instantly.
           </p>
         </div>
@@ -168,7 +168,7 @@ export default function NewRepairPage() {
         <form onSubmit={handleSubmit} className="space-y-8">
           {/* Property Info */}
           <div className="space-y-4">
-            <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider">
+            <h3 className="text-sm font-semibold text-[var(--gray-dim)] uppercase tracking-wider">
               Property & Homeowner
             </h3>
             <div>
@@ -202,7 +202,7 @@ export default function NewRepairPage() {
                   <label className="block text-sm font-semibold text-[var(--navy)]">
                     Phone
                   </label>
-                  <span className="text-xs text-gray-400 font-medium">Optional</span>
+                  <span className="text-xs text-[var(--gray-dim)] font-medium">Optional</span>
                 </div>
                 <input
                   type="tel"
@@ -217,7 +217,7 @@ export default function NewRepairPage() {
                   <label className="block text-sm font-semibold text-[var(--navy)]">
                     Email
                   </label>
-                  <span className="text-xs text-gray-400 font-medium">Optional</span>
+                  <span className="text-xs text-[var(--gray-dim)] font-medium">Optional</span>
                 </div>
                 <input
                   type="email"
@@ -226,7 +226,7 @@ export default function NewRepairPage() {
                   placeholder="john@email.com"
                   className="w-full px-4 py-3 rounded-lg border border-[var(--border-glass)] focus:border-[var(--navy)] focus:ring-1 focus:ring-[var(--navy)] outline-none transition-colors text-sm"
                 />
-                <p className="text-[11px] text-gray-400 mt-1">
+                <p className="text-[11px] text-[var(--gray-dim)] mt-1">
                   Adding email sends the homeowner their repair quote automatically.
                 </p>
               </div>
@@ -235,7 +235,7 @@ export default function NewRepairPage() {
 
           {/* Roofer Info */}
           <div className="space-y-4">
-            <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider">
+            <h3 className="text-sm font-semibold text-[var(--gray-dim)] uppercase tracking-wider">
               Who&apos;s on the Roof?
             </h3>
             <div>
@@ -243,7 +243,7 @@ export default function NewRepairPage() {
                 <label className="block text-sm font-semibold text-[var(--navy)]">
                   Roofer Name
                 </label>
-                <span className="text-xs text-gray-400 font-medium">Optional</span>
+                <span className="text-xs text-[var(--gray-dim)] font-medium">Optional</span>
               </div>
               <input
                 type="text"
@@ -287,14 +287,14 @@ export default function NewRepairPage() {
 
           {/* Leak Description */}
           <div className="space-y-2">
-            <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider">
+            <h3 className="text-sm font-semibold text-[var(--gray-dim)] uppercase tracking-wider">
               The Leak
             </h3>
             <div>
               <label className="block text-sm font-semibold text-[var(--navy)] mb-1">
                 Where is water showing up? What do you see on the roof?
               </label>
-              <p className="text-xs text-gray-500 mb-2">
+              <p className="text-xs text-[var(--gray-muted)] mb-2">
                 Be specific. &quot;Water staining on ceiling below chimney, second floor bedroom. Caulk around flashing is cracking.&quot;
               </p>
               <textarea
@@ -310,7 +310,7 @@ export default function NewRepairPage() {
 
           {/* Photos */}
           <div className="space-y-2">
-            <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider">
+            <h3 className="text-sm font-semibold text-[var(--gray-dim)] uppercase tracking-wider">
               Leak Area Photos
             </h3>
             <FileUploadZone

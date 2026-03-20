@@ -197,7 +197,7 @@ export function SupplementComposer({ claimId, claimAddress, carrierName, compari
         </div>
       </div>
 
-      <div className="divide-y divide-gray-100 max-h-[500px] overflow-y-auto">
+      <div className="divide-y divide-white/[0.06] max-h-[500px] overflow-y-auto">
         {/* Missing items */}
         {items.filter((i) => i.type === "missing").length > 0 && (
           <div className="px-6 py-2">
@@ -339,7 +339,7 @@ export function SupplementComposer({ claimId, claimAddress, carrierName, compari
             <div className="px-6 py-4 border-t border-[var(--border-glass)] flex items-center justify-between">
               <button
                 onClick={() => { setShowComposer(false); setSendResult(null); }}
-                className="px-4 py-2 rounded-lg text-sm font-medium text-[var(--gray)] hover:bg-gray-100 transition-colors"
+                className="px-4 py-2 rounded-lg text-sm font-medium text-[var(--gray)] hover:bg-white/[0.06] transition-colors"
               >
                 Close
               </button>

@@ -32,22 +32,22 @@ export function RepairTabContent({
 
   if (loading) {
     return (
-      <div className="bg-white rounded-2xl border border-gray-200 text-center py-16">
-        <p className="text-gray-400 text-sm">Loading repairs...</p>
+      <div className="bg-white rounded-2xl border border-[var(--border-glass)] text-center py-16">
+        <p className="text-[var(--gray-dim)] text-sm">Loading repairs...</p>
       </div>
     );
   }
 
   if (repairs.length === 0) {
     return (
-      <div className="bg-white rounded-2xl border border-gray-200 text-center py-16 px-8">
+      <div className="bg-white rounded-2xl border border-[var(--border-glass)] text-center py-16 px-8">
         <div className="w-16 h-16 rounded-2xl bg-blue-50 border-2 border-dashed border-blue-200 flex items-center justify-center mx-auto mb-5">
           <svg className="w-8 h-8 text-blue-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M11.42 15.17l-5.66-5.66a8 8 0 1111.31 0l-5.65 5.66zm0 0L12 21" />
           </svg>
         </div>
         <h3 className="text-lg font-semibold text-[var(--navy)] mb-2">No repairs yet</h3>
-        <p className="text-gray-500 text-sm mb-6 max-w-md mx-auto">
+        <p className="text-[var(--gray-muted)] text-sm mb-6 max-w-md mx-auto">
           Upload photos of a roof leak and AI will diagnose it, generate repair instructions for your crew, and a professional repair ticket for the homeowner.
         </p>
         <a href="/dashboard/new-repair" className="inline-block bg-[var(--red)] hover:bg-[var(--red-dark)] text-white px-8 py-3 rounded-xl font-semibold transition-colors text-sm">
@@ -61,17 +61,17 @@ export function RepairTabContent({
     <>
       {/* Repair KPIs */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-        <div className="bg-white rounded-xl border border-gray-200 px-5 py-4 text-center">
+        <div className="bg-white rounded-xl border border-[var(--border-glass)] px-5 py-4 text-center">
           <p className="text-2xl font-bold text-[var(--navy)]">{totalRepairs}</p>
-          <p className="text-xs text-gray-500 mt-1">Total Repairs</p>
+          <p className="text-xs text-[var(--gray-muted)] mt-1">Total Repairs</p>
         </div>
-        <div className="bg-white rounded-xl border border-gray-200 px-5 py-4 text-center">
+        <div className="bg-white rounded-xl border border-[var(--border-glass)] px-5 py-4 text-center">
           <p className="text-2xl font-bold text-green-600">{readyCount}</p>
-          <p className="text-xs text-gray-500 mt-1">Completed</p>
+          <p className="text-xs text-[var(--gray-muted)] mt-1">Completed</p>
         </div>
-        <div className="bg-white rounded-xl border border-gray-200 px-5 py-4 text-center">
+        <div className="bg-white rounded-xl border border-[var(--border-glass)] px-5 py-4 text-center">
           <p className="text-2xl font-bold text-[var(--navy)]">{fmtMoney(totalRevenue)}</p>
-          <p className="text-xs text-gray-500 mt-1">Total Revenue</p>
+          <p className="text-xs text-[var(--gray-muted)] mt-1">Total Revenue</p>
         </div>
       </div>
 
@@ -87,7 +87,7 @@ export function RepairTabContent({
           const hasCheckpoints = (repair.checkpoint_count ?? 0) > 0;
 
           return (
-            <div key={repair.id} className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+            <div key={repair.id} className="bg-white rounded-2xl border border-[var(--border-glass)] overflow-hidden">
               {/* Repair Header */}
               <div className="px-6 py-4 flex items-center justify-between">
                 <a href={`/dashboard/repair/${repair.id}`} className="flex items-center gap-4 hover:opacity-80 transition-opacity min-w-0">
@@ -97,12 +97,12 @@ export function RepairTabContent({
                         {repair.address}
                       </h3>
                       {repair.total_price ? (
-                        <span className="text-xs font-bold text-[var(--navy)] bg-gray-100 px-2 py-0.5 rounded shrink-0">
+                        <span className="text-xs font-bold text-[var(--navy)] bg-white/[0.06] px-2 py-0.5 rounded shrink-0">
                           ${repair.total_price.toLocaleString("en-US", { minimumFractionDigits: 0 })}
                         </span>
                       ) : null}
                     </div>
-                    <p className="text-xs text-gray-400 mt-0.5 truncate">
+                    <p className="text-xs text-[var(--gray-dim)] mt-0.5 truncate">
                       {repair.homeowner_name}
                       {repair.repair_type && (
                         <> &middot; {REPAIR_TYPE_LABELS[repair.repair_type] || repair.repair_type}</>
@@ -162,7 +162,7 @@ export function RepairTabContent({
                             <svg className="w-4 h-4 text-green-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                               <path strokeLinecap="round" strokeLinejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                             </svg>
-                            <span className="text-xs text-gray-700 truncate">{label}</span>
+                            <span className="text-xs text-[var(--gray)] truncate">{label}</span>
                           </button>
                         );
                       })}

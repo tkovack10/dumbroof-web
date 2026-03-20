@@ -209,7 +209,7 @@ export function DashboardContent({ user }: { user: User }) {
               <a
                 key={link.href}
                 href={link.href}
-                className="text-gray-400 hover:text-white text-sm transition-colors hidden sm:block relative"
+                className="text-[var(--gray-dim)] hover:text-white text-sm transition-colors hidden sm:block relative"
               >
                 {link.label}
                 {link.hasDraftDot && (
@@ -220,7 +220,7 @@ export function DashboardContent({ user }: { user: User }) {
                 )}
               </a>
             ))}
-            <span className="text-gray-400 text-sm hidden sm:block">
+            <span className="text-[var(--gray-dim)] text-sm hidden sm:block">
               {user.email}
               {billing?.planName && (
                 <span className="ml-2 px-1.5 py-0.5 rounded text-[10px] font-bold bg-white/10 text-[var(--gray-dim)]">
@@ -231,7 +231,7 @@ export function DashboardContent({ user }: { user: User }) {
             <LanguageToggle />
             <button
               onClick={handleSignOut}
-              className="text-gray-400 hover:text-white text-sm transition-colors hidden sm:block"
+              className="text-[var(--gray-dim)] hover:text-white text-sm transition-colors hidden sm:block"
             >
               Sign Out
             </button>
@@ -240,7 +240,7 @@ export function DashboardContent({ user }: { user: User }) {
             <div className="relative sm:hidden" ref={menuRef}>
               <button
                 onClick={() => setMenuOpen(!menuOpen)}
-                className="text-gray-400 hover:text-white p-1 transition-colors"
+                className="text-[var(--gray-dim)] hover:text-white p-1 transition-colors"
                 aria-label="Menu"
               >
                 {menuOpen ? (
@@ -266,10 +266,10 @@ export function DashboardContent({ user }: { user: User }) {
                     </a>
                   ))}
                   <div className="border-t border-[var(--border-glass)] mt-1 pt-1">
-                    <div className="px-4 py-2 text-xs text-gray-400">
+                    <div className="px-4 py-2 text-xs text-[var(--gray-dim)]">
                       {user.email}
                       {billing?.planName && (
-                        <span className="ml-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-gray-100 text-gray-500">
+                        <span className="ml-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-white/[0.06] text-[var(--gray-muted)]">
                           {billing.planName}
                         </span>
                       )}
@@ -293,7 +293,7 @@ export function DashboardContent({ user }: { user: User }) {
         <div className="flex items-center justify-between mb-6">
           <div>
             <h1 className="text-2xl font-bold gradient-text">Dashboard</h1>
-            <p className="text-gray-500 mt-1 text-sm">
+            <p className="text-[var(--gray-muted)] mt-1 text-sm">
               {activeTab === "claims" ? "Upload documents and generate claim packages." : "Diagnose leaks and generate repair documents."}
             </p>
           </div>
@@ -325,7 +325,7 @@ export function DashboardContent({ user }: { user: User }) {
           >
             Claims
             {claims.length > 0 && (
-              <span className={`ml-2 ${activeTab === "claims" ? "text-white/70" : "text-gray-400"}`}>
+              <span className={`ml-2 ${activeTab === "claims" ? "text-white/70" : "text-[var(--gray-dim)]"}`}>
                 {claims.length}
               </span>
             )}
@@ -340,7 +340,7 @@ export function DashboardContent({ user }: { user: User }) {
           >
             Repairs
             {repairs.length > 0 && (
-              <span className={`ml-2 ${activeTab === "repairs" ? "text-white/70" : "text-gray-400"}`}>
+              <span className={`ml-2 ${activeTab === "repairs" ? "text-white/70" : "text-[var(--gray-dim)]"}`}>
                 {repairs.length}
               </span>
             )}
@@ -366,27 +366,27 @@ export function DashboardContent({ user }: { user: User }) {
               <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-4 mb-6">
                 <div className="glass-card p-4 text-center">
                   <p className="text-2xl font-bold gradient-text">{claims.length}</p>
-                  <p className="text-xs text-gray-500 mt-1">Total Claims</p>
+                  <p className="text-xs text-[var(--gray-muted)] mt-1">Total Claims</p>
                 </div>
                 <div className="glass-card p-4 text-center">
                   <p className="text-2xl font-bold text-green-600">{readyCount}</p>
-                  <p className="text-xs text-gray-500 mt-1">Ready</p>
+                  <p className="text-xs text-[var(--gray-muted)] mt-1">Ready</p>
                 </div>
                 <div className="glass-card p-4 text-center">
                   <p className="text-2xl font-bold text-amber-600">{processingCount}</p>
-                  <p className="text-xs text-gray-500 mt-1">Processing</p>
+                  <p className="text-xs text-[var(--gray-muted)] mt-1">Processing</p>
                 </div>
                 <div className="glass-card p-4 text-center">
                   <p className="text-2xl font-bold text-green-600">{wonClaims.length}</p>
-                  <p className="text-xs text-gray-500 mt-1">Wins</p>
+                  <p className="text-xs text-[var(--gray-muted)] mt-1">Wins</p>
                 </div>
                 <div className="glass-card p-4 text-center">
                   <p className="text-2xl font-bold gradient-text">{fmtMoney(totalContractorRcv)}</p>
-                  <p className="text-xs text-gray-500 mt-1">Contractor RCV</p>
+                  <p className="text-xs text-[var(--gray-muted)] mt-1">Contractor RCV</p>
                 </div>
                 <div className="glass-card p-4 text-center">
                   <p className="text-2xl font-bold gradient-text">{fmtMoney(totalCarrierRcv)}</p>
-                  <p className="text-xs text-gray-500 mt-1">Carrier RCV</p>
+                  <p className="text-xs text-[var(--gray-muted)] mt-1">Carrier RCV</p>
                 </div>
                 {totalMovement > 0 ? (
                   <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl border-2 border-green-300 p-4 text-center col-span-2">
@@ -395,10 +395,10 @@ export function DashboardContent({ user }: { user: User }) {
                   </div>
                 ) : (
                   <div className="glass-card p-4 text-center col-span-2">
-                    <p className={`text-2xl font-bold ${totalContractorRcv - totalCarrierRcv > 0 ? "text-green-600" : "text-gray-600"}`}>
+                    <p className={`text-2xl font-bold ${totalContractorRcv - totalCarrierRcv > 0 ? "text-green-600" : "text-[var(--gray)]"}`}>
                       {fmtMoney(Math.abs(totalContractorRcv - totalCarrierRcv))}
                     </p>
-                    <p className="text-xs text-gray-500 mt-1">Variance</p>
+                    <p className="text-xs text-[var(--gray-muted)] mt-1">Variance</p>
                   </div>
                 )}
               </div>
@@ -480,7 +480,7 @@ export function DashboardContent({ user }: { user: User }) {
                   >
                     {tab.label}
                     {tab.count != null && tab.count > 0 && (
-                      <span className={`ml-1.5 ${statusFilter === tab.key ? "text-white/70" : "text-gray-400"}`}>
+                      <span className={`ml-1.5 ${statusFilter === tab.key ? "text-white/70" : "text-[var(--gray-dim)]"}`}>
                         {tab.count}
                       </span>
                     )}
@@ -499,7 +499,7 @@ export function DashboardContent({ user }: { user: User }) {
             {/* Claims Table */}
             {loading ? (
               <div className="bg-[var(--bg-glass)] rounded-2xl border border-[var(--border-glass)] text-center py-16">
-                <p className="text-gray-400 text-sm">Loading claims...</p>
+                <p className="text-[var(--gray-dim)] text-sm">Loading claims...</p>
               </div>
             ) : claims.length === 0 ? (
               <div className="bg-[var(--bg-glass)] rounded-2xl border border-[var(--border-glass)] text-center py-16 px-8">
@@ -509,7 +509,7 @@ export function DashboardContent({ user }: { user: User }) {
                   </svg>
                 </div>
                 <h3 className="text-lg font-semibold text-[var(--navy)] mb-2">No claims yet</h3>
-                <p className="text-gray-500 text-sm mb-6 max-w-md mx-auto">
+                <p className="text-[var(--gray-muted)] text-sm mb-6 max-w-md mx-auto">
                   Upload your measurements, inspection photos, and carrier scope to generate your first claim package.
                 </p>
                 <a href="/dashboard/new-claim" className="inline-block bg-[var(--red)] hover:bg-[var(--red-dark)] text-white px-8 py-3 rounded-xl font-semibold transition-colors text-sm">
@@ -522,15 +522,15 @@ export function DashboardContent({ user }: { user: User }) {
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="bg-white/[0.06] text-left border-b border-[var(--border-glass)]">
-                        <th className="px-3 py-3 text-[10px] font-semibold text-gray-400 uppercase">Property</th>
-                        <th className="px-3 py-3 text-[10px] font-semibold text-gray-400 uppercase">Carrier</th>
-                        <th className="px-3 py-3 text-[10px] font-semibold text-gray-400 uppercase text-right">Our Estimate</th>
-                        <th className="px-3 py-3 text-[10px] font-semibold text-gray-400 uppercase text-right">Original Carrier</th>
-                        <th className="px-3 py-3 text-[10px] font-semibold text-gray-400 uppercase text-right">Updated Carrier</th>
-                        <th className="px-3 py-3 text-[10px] font-semibold text-gray-400 uppercase text-center">Status</th>
+                        <th className="px-3 py-3 text-[10px] font-semibold text-[var(--gray-dim)] uppercase">Property</th>
+                        <th className="px-3 py-3 text-[10px] font-semibold text-[var(--gray-dim)] uppercase">Carrier</th>
+                        <th className="px-3 py-3 text-[10px] font-semibold text-[var(--gray-dim)] uppercase text-right">Our Estimate</th>
+                        <th className="px-3 py-3 text-[10px] font-semibold text-[var(--gray-dim)] uppercase text-right">Original Carrier</th>
+                        <th className="px-3 py-3 text-[10px] font-semibold text-[var(--gray-dim)] uppercase text-right">Updated Carrier</th>
+                        <th className="px-3 py-3 text-[10px] font-semibold text-[var(--gray-dim)] uppercase text-center">Status</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-gray-50">
+                    <tbody className="divide-y divide-white/[0.04]">
                       {filteredClaims.map((claim) => {
                         const cRcv = claim.contractor_rcv ?? 0;
                         const iRcv = claim.original_carrier_rcv ?? 0;
@@ -550,13 +550,13 @@ export function DashboardContent({ user }: { user: User }) {
                               <a href={`/dashboard/claim/${claim.id}`} className="hover:underline" onClick={e => e.stopPropagation()}>
                                 <p className="font-medium text-[var(--white)] truncate max-w-[220px]">{claim.address}</p>
                               </a>
-                              <p className="text-[10px] text-gray-400 mt-0.5">{new Date(claim.created_at).toLocaleDateString()}</p>
+                              <p className="text-[10px] text-[var(--gray-dim)] mt-0.5">{new Date(claim.created_at).toLocaleDateString()}</p>
                             </td>
-                            <td className="px-3 py-2.5 text-gray-600 truncate max-w-[140px]">{claim.carrier || "\u2014"}</td>
+                            <td className="px-3 py-2.5 text-[var(--gray)] truncate max-w-[140px]">{claim.carrier || "\u2014"}</td>
                             <td className="px-3 py-2.5 text-right text-xs tabular-nums font-medium text-[var(--white)]">
                               {cRcv > 0 ? `$${cRcv.toLocaleString()}` : "\u2014"}
                             </td>
-                            <td className="px-3 py-2.5 text-right text-xs tabular-nums text-gray-500">
+                            <td className="px-3 py-2.5 text-right text-xs tabular-nums text-[var(--gray-muted)]">
                               {iRcv > 0 ? `$${iRcv.toLocaleString()}` : "\u2014"}
                             </td>
                             <td className="px-3 py-2.5 text-right">
@@ -570,9 +570,9 @@ export function DashboardContent({ user }: { user: User }) {
                                   </div>
                                 </div>
                               ) : currentCarrier > 0 && currentCarrier !== iRcv ? (
-                                <span className="text-xs tabular-nums text-gray-600">${currentCarrier.toLocaleString()}</span>
+                                <span className="text-xs tabular-nums text-[var(--gray)]">${currentCarrier.toLocaleString()}</span>
                               ) : (
-                                <span className="text-xs text-gray-400">{"\u2014"}</span>
+                                <span className="text-xs text-[var(--gray-dim)]">{"\u2014"}</span>
                               )}
                             </td>
                             <td className="px-3 py-2.5 text-center">
@@ -589,7 +589,7 @@ export function DashboardContent({ user }: { user: User }) {
                                     )}
                                   </div>
                                 ) : (
-                                  <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${statusColors[claim.status] || "bg-gray-100 text-gray-600"}`}>
+                                  <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${statusColors[claim.status] || "bg-white/[0.06] text-[var(--gray)]"}`}>
                                     {isProcessing && (
                                       <svg className="animate-spin w-3 h-3" fill="none" viewBox="0 0 24 24">
                                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
@@ -622,7 +622,7 @@ export function DashboardContent({ user }: { user: User }) {
                           { label: "Photos", files: claim.photo_files, color: "bg-purple-500/10 text-purple-700 border-purple-500/30" },
                           { label: "Scope", files: claim.scope_files, color: "bg-amber-500/10 text-amber-700 border-amber-500/30" },
                           { label: "Weather", files: claim.weather_files, color: "bg-teal-500/10 text-teal-700 border-teal-500/30" },
-                          { label: "Other", files: claim.other_files, color: "bg-gray-100 text-gray-600 border-[var(--border-glass)]" },
+                          { label: "Other", files: claim.other_files, color: "bg-white/[0.06] text-[var(--gray)] border-[var(--border-glass)]" },
                         ].map(({ label, files, color }) => (
                           <div key={label} className={`rounded-lg px-3 py-2 border ${color}`}>
                             <p className="text-xs font-bold">{files?.length ?? 0}</p>
@@ -670,7 +670,7 @@ export function DashboardContent({ user }: { user: User }) {
                       ) : claim.status === "error" ? (
                         <p className="text-xs text-red-600 py-2">Processing failed. Our team has been notified.</p>
                       ) : (
-                        <p className="text-xs text-gray-400 py-2">No output files yet.</p>
+                        <p className="text-xs text-[var(--gray-dim)] py-2">No output files yet.</p>
                       )}
                     </div>
                   ) : null

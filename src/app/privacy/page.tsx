@@ -21,7 +21,7 @@ export default function PrivacyPage() {
           </a>
           <a
             href="/dashboard"
-            className="text-gray-400 hover:text-white text-sm transition-colors"
+            className="text-[var(--gray-dim)] hover:text-white text-sm transition-colors"
           >
             Dashboard
           </a>
@@ -33,11 +33,11 @@ export default function PrivacyPage() {
         <h1 className="text-3xl font-bold text-[var(--navy)] mb-2">
           Privacy Policy
         </h1>
-        <p className="text-gray-400 text-sm mb-10">
+        <p className="text-[var(--gray-dim)] text-sm mb-10">
           Effective Date: March 18, 2026 &middot; Last Updated: March 18, 2026
         </p>
 
-        <div className="prose prose-gray max-w-none text-[15px] leading-relaxed [&_h2]:text-xl [&_h2]:font-bold [&_h2]:text-[var(--navy)] [&_h2]:mt-10 [&_h2]:mb-4 [&_h3]:text-base [&_h3]:font-semibold [&_h3]:text-[var(--navy)] [&_h3]:mt-6 [&_h3]:mb-2 [&_p]:mb-4 [&_p]:text-gray-600">
+        <div className="prose prose-gray max-w-none text-[15px] leading-relaxed [&_h2]:text-xl [&_h2]:font-bold [&_h2]:text-[var(--navy)] [&_h2]:mt-10 [&_h2]:mb-4 [&_h3]:text-base [&_h3]:font-semibold [&_h3]:text-[var(--navy)] [&_h3]:mt-6 [&_h3]:mb-2 [&_p]:mb-4 [&_p]:text-[var(--gray)]">
           <h2>1. Introduction</h2>
           <p>
             Dumb Roof Technologies, LLC (&ldquo;DumbRoof,&rdquo; &ldquo;we,&rdquo;
@@ -292,7 +292,7 @@ export default function PrivacyPage() {
       </article>
 
       {/* Footer */}
-      <footer className="border-t border-gray-100 py-8 text-center text-sm text-gray-400">
+      <footer className="border-t border-white/[0.04] py-8 text-center text-sm text-[var(--gray-dim)]">
         &copy; {new Date().getFullYear()} Dumb Roof Technologies, LLC. All rights
         reserved.
       </footer>

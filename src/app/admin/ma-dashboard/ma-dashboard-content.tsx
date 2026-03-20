@@ -22,7 +22,7 @@ function Panel({ title, badge, badgeColor, children }: {
   };
   return (
     <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-      <div className="px-5 py-3.5 border-b border-gray-100 flex items-center justify-between">
+      <div className="px-5 py-3.5 border-b border-white/[0.04] flex items-center justify-between">
         <span className="text-sm font-bold text-[var(--dark-navy)]">{title}</span>
         {badge && (
           <span className={`text-[11px] font-bold px-2.5 py-0.5 rounded-full ${colors[badgeColor || "green"]}`}>
@@ -38,8 +38,8 @@ function Panel({ title, badge, badgeColor, children }: {
 function MetricRow({ label, value, color }: { label: string; value: string; color?: string }) {
   const colorClass = color === "green" ? "text-green-600" : color === "gold" ? "text-amber-700" : color === "red" ? "text-red-600" : color === "teal" ? "text-sky-600" : color === "orange" ? "text-amber-500" : "";
   return (
-    <div className="flex justify-between items-center py-2.5 border-b border-gray-50 last:border-b-0">
-      <span className="text-[13px] text-gray-500">{label}</span>
+    <div className="flex justify-between items-center py-2.5 border-b border-white/[0.04] last:border-b-0">
+      <span className="text-[13px] text-[var(--gray-muted)]">{label}</span>
       <span className={`text-sm font-bold tabular-nums ${colorClass}`}>{value}</span>
     </div>
   );
@@ -48,8 +48,8 @@ function MetricRow({ label, value, color }: { label: string; value: string; colo
 function BarChart({ label, value, pct, color }: { label: string; value: string; pct: number; color: string }) {
   return (
     <div className="flex items-center gap-3 py-2">
-      <span className="text-xs font-semibold text-gray-800 min-w-[90px]">{label}</span>
-      <div className="flex-1 bg-gray-100 rounded h-5 overflow-hidden relative">
+      <span className="text-xs font-semibold text-[var(--white)] min-w-[90px]">{label}</span>
+      <div className="flex-1 bg-white/[0.06] rounded h-5 overflow-hidden relative">
         <div className={`h-full rounded flex items-center pl-2 text-[11px] font-bold text-white min-w-[30px]`} style={{ width: `${pct}%`, background: color }}>{value}</div>
       </div>
     </div>
@@ -58,11 +58,11 @@ function BarChart({ label, value, pct, color }: { label: string; value: string; 
 
 function TierCard({ name, price, claims, cpc, popular }: { name: string; price: string; claims: string; cpc: string; popular?: boolean }) {
   return (
-    <div className={`border rounded-lg p-4 text-center transition-all hover:-translate-y-0.5 hover:shadow-md ${popular ? "border-amber-400 bg-gradient-to-b from-amber-50 to-white" : "border-gray-200"}`}>
+    <div className={`border rounded-lg p-4 text-center transition-all hover:-translate-y-0.5 hover:shadow-md ${popular ? "border-amber-400 bg-gradient-to-b from-amber-50 to-white" : "border-[var(--border-glass)]"}`}>
       {popular && <div className="text-[10px] font-bold text-amber-600 uppercase tracking-widest mb-1">Most Popular</div>}
       <div className="text-[13px] font-bold text-[var(--dark-navy)] mb-1">{name}</div>
-      <div className="text-[28px] font-black text-[var(--dark-navy)]">{price}<small className="text-[13px] font-medium text-gray-400">/mo</small></div>
-      <div className="text-xs text-gray-500 mt-1">{claims}</div>
+      <div className="text-[28px] font-black text-[var(--dark-navy)]">{price}<small className="text-[13px] font-medium text-[var(--gray-dim)]">/mo</small></div>
+      <div className="text-xs text-[var(--gray-muted)] mt-1">{claims}</div>
       <div className="text-[11px] font-bold text-green-600 mt-2 inline-block bg-green-100 px-2.5 py-0.5 rounded-full">{cpc}</div>
     </div>
   );
@@ -85,11 +85,11 @@ function TimelineItem({ date, title, desc, color, kpi, kpiColor }: { date: strin
   };
   return (
     <div className="relative pl-10 pb-5 last:pb-0">
-      <div className="absolute left-0 top-0 bottom-0 w-0.5 bg-gray-200" />
-      <div className={`absolute left-[-4px] top-1 w-2.5 h-2.5 rounded-full border-2 border-white shadow-[0_0_0_2px] ${dotColors[color] || "bg-gray-400 shadow-gray-200"}`} />
-      <div className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">{date}</div>
+      <div className="absolute left-0 top-0 bottom-0 w-0.5 bg-white/[0.04]" />
+      <div className={`absolute left-[-4px] top-1 w-2.5 h-2.5 rounded-full border-2 border-white shadow-[0_0_0_2px] ${dotColors[color] || "bg-white/[0.04] shadow-gray-200"}`} />
+      <div className="text-[11px] font-bold text-[var(--gray-muted)] uppercase tracking-wider">{date}</div>
       <div className="text-[13px] font-bold text-[var(--dark-navy)] mt-0.5">{title}</div>
-      <div className="text-xs text-gray-500 leading-relaxed mt-0.5">{desc}</div>
+      <div className="text-xs text-[var(--gray-muted)] leading-relaxed mt-0.5">{desc}</div>
       {kpi && <span className={`inline-block text-[11px] font-bold px-2 py-0.5 rounded-lg mt-1 ${kpiColors[kpiColor || "green"]}`}>{kpi}</span>}
     </div>
   );
@@ -97,7 +97,7 @@ function TimelineItem({ date, title, desc, color, kpi, kpiColor }: { date: strin
 
 export function MADashboardContent({ webClaims, wins, saasUsers, inspectorApps }: Props) {
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-white/[0.04]">
       {/* Valuation Banner */}
       <div className="mx-4 sm:mx-8 mt-5 rounded-xl bg-gradient-to-br from-[#1a1a2e] to-[#16213e] border border-amber-700/30 p-7 grid grid-cols-1 md:grid-cols-3 gap-8 items-center">
         <div className="text-center">
@@ -138,7 +138,7 @@ export function MADashboardContent({ webClaims, wins, saasUsers, inspectorApps }
       </div>
 
       {/* Growth Signals */}
-      <div className="text-xs uppercase tracking-widest text-gray-500 font-bold px-4 sm:px-8 pt-5 pb-2">Growth Signals</div>
+      <div className="text-xs uppercase tracking-widest text-[var(--gray-muted)] font-bold px-4 sm:px-8 pt-5 pb-2">Growth Signals</div>
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 px-4 sm:px-8 pb-4">
         <Panel title="User Acquisition" badge="First Multi-User Week" badgeColor="green">
           <MetricRow label="Distinct Users" value={String(saasUsers)} color="gold" />
@@ -153,8 +153,8 @@ export function MADashboardContent({ webClaims, wins, saasUsers, inspectorApps }
           <BarChart label="Local Claims" value="34" pct={55} color="#1E3A5F" />
           <BarChart label="Wins" value={String(wins > 0 ? wins : 10)} pct={16} color="var(--green)" />
           <BarChart label="Pending" value="24" pct={39} color="var(--orange)" />
-          <div className="mt-3 text-xs text-gray-500">
-            Win Rate: <strong className="text-gray-800">29.4%</strong> (10/34 local) &mdash; web claims too new for outcomes
+          <div className="mt-3 text-xs text-[var(--gray-muted)]">
+            Win Rate: <strong className="text-[var(--white)]">29.4%</strong> (10/34 local) &mdash; web claims too new for outcomes
           </div>
         </Panel>
 
@@ -168,39 +168,39 @@ export function MADashboardContent({ webClaims, wins, saasUsers, inspectorApps }
       </div>
 
       {/* Cost Audit */}
-      <div className="text-xs uppercase tracking-widest text-gray-500 font-bold px-4 sm:px-8 pt-3 pb-2">Cost Audit &mdash; AI Processing Economics</div>
+      <div className="text-xs uppercase tracking-widest text-[var(--gray-muted)] font-bold px-4 sm:px-8 pt-3 pb-2">Cost Audit &mdash; AI Processing Economics</div>
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 px-4 sm:px-8 pb-4">
         <Panel title="Cost Per Claim (COGS)" badge="Under $2 Target" badgeColor="green">
           <div className="text-center py-3">
             <div className="text-5xl font-black text-[var(--dark-navy)]">$1.91</div>
-            <div className="text-xs text-gray-500 mt-1">avg per claim (corrected telemetry, 30 claims)</div>
+            <div className="text-xs text-[var(--gray-muted)] mt-1">avg per claim (corrected telemetry, 30 claims)</div>
           </div>
           <div className="flex items-center justify-center gap-2 text-xs">
             <span className="line-through text-red-500">$2.14</span>
-            <span className="text-gray-400">&rarr;</span>
+            <span className="text-[var(--gray-dim)]">&rarr;</span>
             <span className="text-green-600 font-bold">$1.91</span>
-            <span className="text-gray-400 ml-1">after Opus 3x fix</span>
+            <span className="text-[var(--gray-dim)] ml-1">after Opus 3x fix</span>
           </div>
         </Panel>
 
         <Panel title="Cost by Model" badge="Corrected" badgeColor="blue">
-          <div className="bg-gray-50 rounded-lg p-4 border border-gray-100 mb-3">
+          <div className="bg-white/[0.04] rounded-lg p-4 border border-white/[0.04] mb-3">
             <div className="flex justify-between items-center mb-1">
               <span className="text-[13px] font-bold">Claude Sonnet 4.6</span>
               <span className="text-lg font-extrabold text-sky-500">$53.60</span>
             </div>
-            <div className="text-xs text-gray-500">93% of total &mdash; dominates web pipeline (photo analysis, config building, extraction)</div>
-            <div className="text-[11px] text-gray-400 mt-1">$3/M input &bull; $15/M output</div>
+            <div className="text-xs text-[var(--gray-muted)]">93% of total &mdash; dominates web pipeline (photo analysis, config building, extraction)</div>
+            <div className="text-[11px] text-[var(--gray-dim)] mt-1">$3/M input &bull; $15/M output</div>
           </div>
-          <div className="bg-gray-50 rounded-lg p-4 border border-gray-100">
+          <div className="bg-white/[0.04] rounded-lg p-4 border border-white/[0.04]">
             <div className="flex justify-between items-center mb-1">
               <span className="text-[13px] font-bold">Claude Opus 4.6</span>
               <span className="text-lg font-extrabold text-purple-500">$3.58</span>
             </div>
-            <div className="text-xs text-gray-500">7% of total &mdash; forensic synthesis, repair diagnosis</div>
+            <div className="text-xs text-[var(--gray-muted)]">7% of total &mdash; forensic synthesis, repair diagnosis</div>
             <div className="flex items-center gap-2 text-xs mt-1">
               <span className="line-through text-red-500">$10.74 (was 3x overestimated)</span>
-              <span className="text-gray-400">&rarr;</span>
+              <span className="text-[var(--gray-dim)]">&rarr;</span>
               <span className="text-green-600 font-bold">$3.58</span>
             </div>
           </div>
@@ -212,19 +212,19 @@ export function MADashboardContent({ webClaims, wins, saasUsers, inspectorApps }
             { title: "R&D / Development", amount: "TBD", color: "border-purple-500", amountColor: "text-purple-500", desc: "Claude Code sessions (Tom, Kristen, Alfonso) — separate API key" },
             { title: "Operational Overhead", amount: "~$0", color: "border-amber-500", amountColor: "text-amber-500", desc: "Gmail poller, correspondence analysis — now tracked via telemetry" },
           ].map((c) => (
-            <div key={c.title} className={`bg-gray-50 rounded-lg p-4 border-l-[3px] ${c.color} border border-gray-100 mb-3 last:mb-0`}>
+            <div key={c.title} className={`bg-white/[0.04] rounded-lg p-4 border-l-[3px] ${c.color} border border-white/[0.04] mb-3 last:mb-0`}>
               <div className="flex justify-between items-center mb-1">
                 <span className="text-[13px] font-bold">{c.title}</span>
                 <span className={`text-lg font-extrabold ${c.amountColor}`}>{c.amount}</span>
               </div>
-              <div className="text-xs text-gray-500">{c.desc}</div>
+              <div className="text-xs text-[var(--gray-muted)]">{c.desc}</div>
             </div>
           ))}
         </Panel>
       </div>
 
       {/* Revenue Model */}
-      <div className="text-xs uppercase tracking-widest text-gray-500 font-bold px-4 sm:px-8 pt-3 pb-2">Revenue Model</div>
+      <div className="text-xs uppercase tracking-widest text-[var(--gray-muted)] font-bold px-4 sm:px-8 pt-3 pb-2">Revenue Model</div>
 
       {/* Stripe Tiers */}
       <div className="px-4 sm:px-8 pb-4">
@@ -251,16 +251,16 @@ export function MADashboardContent({ webClaims, wins, saasUsers, inspectorApps }
             { name: "Thermal Imaging Scans", desc: "FLIR thermal documentation for leak claims. AI-integrated moisture path detection.", price: "$999", comps: ["Market rate: $300-500"], us: "Ours: 2-3x (AI-integrated)" },
             { name: '"I Hate Dumbroof-ers Club"', desc: "PA/contractor matchmaking network. Free to join. Platform margin on matched claims. PAs = highest-LTV users.", price: "Network Effect", comps: [], us: "Three-way marketplace" },
           ].map((r) => (
-            <div key={r.name} className="border border-gray-200 rounded-lg p-4 mb-3 last:mb-0 hover:border-amber-400 transition-colors">
+            <div key={r.name} className="border border-[var(--border-glass)] rounded-lg p-4 mb-3 last:mb-0 hover:border-amber-400 transition-colors">
               <div className="flex justify-between items-start mb-2">
                 <div>
                   <div className="text-sm font-bold text-[var(--dark-navy)]">{r.name}</div>
-                  <div className="text-xs text-gray-500 mt-1 leading-relaxed">{r.desc}</div>
+                  <div className="text-xs text-[var(--gray-muted)] mt-1 leading-relaxed">{r.desc}</div>
                 </div>
                 <div className="text-lg font-extrabold text-amber-500 whitespace-nowrap ml-4">{r.price}</div>
               </div>
               <div className="flex gap-2 flex-wrap mt-2">
-                {r.comps.map((c) => <span key={c} className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-gray-100 text-gray-500">{c}</span>)}
+                {r.comps.map((c) => <span key={c} className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-white/[0.06] text-[var(--gray-muted)]">{c}</span>)}
                 <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-green-100 text-green-700">{r.us}</span>
               </div>
             </div>
@@ -275,25 +275,25 @@ export function MADashboardContent({ webClaims, wins, saasUsers, inspectorApps }
                 Contractor
                 <span className="text-[9px] font-normal mt-0.5">Uploads claims</span>
               </div>
-              <span className="text-xl text-gray-400">&harr;</span>
+              <span className="text-xl text-[var(--gray-dim)]">&harr;</span>
               <div className="w-28 h-28 rounded-full bg-gradient-to-br from-[var(--dark-navy)] to-[var(--navy)] border-[3px] border-amber-400 flex flex-col items-center justify-center text-xs font-extrabold text-white text-center">
                 Dumb Roof
                 <span className="text-[9px] text-amber-400 font-semibold">Margin on all sides</span>
               </div>
-              <span className="text-xl text-gray-400">&harr;</span>
+              <span className="text-xl text-[var(--gray-dim)]">&harr;</span>
               <div className="w-24 h-24 rounded-full bg-purple-100 border-[3px] border-purple-500 flex flex-col items-center justify-center text-[11px] font-bold text-purple-700 text-center">
                 Public Adj.
                 <span className="text-[9px] font-normal mt-0.5">Supplements</span>
               </div>
             </div>
-            <div className="text-center -mt-2 mb-2 text-xl text-gray-400">&uarr;</div>
+            <div className="text-center -mt-2 mb-2 text-xl text-[var(--gray-dim)]">&uarr;</div>
             <div className="flex justify-center">
               <div className="w-24 h-24 rounded-full bg-amber-100 border-[3px] border-amber-500 flex flex-col items-center justify-center text-[11px] font-bold text-amber-800 text-center">
                 Inspector
                 <span className="text-[9px] font-normal mt-0.5">$300/job</span>
               </div>
             </div>
-            <div className="text-center mt-3 text-[11px] text-gray-500">Each side makes the other more valuable &mdash; classic network effect</div>
+            <div className="text-center mt-3 text-[11px] text-[var(--gray-muted)]">Each side makes the other more valuable &mdash; classic network effect</div>
           </Panel>
 
           {/* Inspector Competitive */}
@@ -301,9 +301,9 @@ export function MADashboardContent({ webClaims, wins, saasUsers, inspectorApps }
             <table className="w-full text-xs">
               <thead>
                 <tr className="text-left">
-                  <th className="pb-2 text-[10px] uppercase tracking-wider text-gray-500 font-bold">Company</th>
-                  <th className="pb-2 text-[10px] uppercase tracking-wider text-gray-500 font-bold">Pay/Inspection</th>
-                  <th className="pb-2 text-[10px] uppercase tracking-wider text-gray-500 font-bold">Our Premium</th>
+                  <th className="pb-2 text-[10px] uppercase tracking-wider text-[var(--gray-muted)] font-bold">Company</th>
+                  <th className="pb-2 text-[10px] uppercase tracking-wider text-[var(--gray-muted)] font-bold">Pay/Inspection</th>
+                  <th className="pb-2 text-[10px] uppercase tracking-wider text-[var(--gray-muted)] font-bold">Our Premium</th>
                 </tr>
               </thead>
               <tbody>
@@ -312,13 +312,13 @@ export function MADashboardContent({ webClaims, wins, saasUsers, inspectorApps }
                   { company: "Seek Now", pay: "$75 - $150", premium: "2 - 4x" },
                   { company: "Pilot Catastrophe", pay: "$50 - $100", premium: "3 - 6x" },
                 ].map((r) => (
-                  <tr key={r.company} className="border-t border-gray-100 hover:bg-gray-50">
+                  <tr key={r.company} className="border-t border-white/[0.04] hover:bg-white/[0.04]">
                     <td className="py-2.5">{r.company}</td>
                     <td className="py-2.5">{r.pay}</td>
                     <td className="py-2.5 font-extrabold text-green-600">{r.premium}</td>
                   </tr>
                 ))}
-                <tr className="border-t border-gray-100 bg-amber-50">
+                <tr className="border-t border-white/[0.04] bg-amber-50">
                   <td className="py-2.5 font-bold">Inspector Club</td>
                   <td className="py-2.5 font-extrabold text-amber-700">$300/job</td>
                   <td className="py-2.5 font-extrabold text-amber-700">Defection target</td>
@@ -330,7 +330,7 @@ export function MADashboardContent({ webClaims, wins, saasUsers, inspectorApps }
       </div>
 
       {/* Product & IP */}
-      <div className="text-xs uppercase tracking-widest text-gray-500 font-bold px-4 sm:px-8 pt-3 pb-2">Product &amp; Intellectual Property</div>
+      <div className="text-xs uppercase tracking-widest text-[var(--gray-muted)] font-bold px-4 sm:px-8 pt-3 pb-2">Product &amp; Intellectual Property</div>
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 px-4 sm:px-8 pb-4">
         <Panel title="Deployed Feature Set" badge="Full SaaS Live" badgeColor="green">
           <ul className="space-y-1.5">
@@ -351,10 +351,10 @@ export function MADashboardContent({ webClaims, wins, saasUsers, inspectorApps }
               ["Self-service document replacement via email", "Mar 6"],
               ["Analytics dashboard with web-only filtering", "Mar 10"],
             ].map(([feat, date]) => (
-              <li key={feat} className="flex items-start gap-2 py-1.5 border-b border-gray-50 last:border-b-0 text-xs">
+              <li key={feat} className="flex items-start gap-2 py-1.5 border-b border-white/[0.04] last:border-b-0 text-xs">
                 <span className="text-green-500 font-bold shrink-0">&#10003;</span>
-                <span className="text-gray-800 flex-1">{feat}</span>
-                <span className="text-[10px] text-gray-400 whitespace-nowrap">{date}</span>
+                <span className="text-[var(--white)] flex-1">{feat}</span>
+                <span className="text-[10px] text-[var(--gray-dim)] whitespace-nowrap">{date}</span>
               </li>
             ))}
           </ul>
@@ -380,9 +380,9 @@ export function MADashboardContent({ webClaims, wins, saasUsers, inspectorApps }
                 { name: "Fraud Detection", desc: "EXIF, GPS, duplicates", color: "border-red-500" },
                 { name: "Repair AI", desc: "Leak diagnosis + docs", color: "border-amber-400" },
               ].map((m) => (
-                <div key={m.name} className={`p-2.5 bg-gray-50 rounded-md border-l-[3px] ${m.color}`}>
+                <div key={m.name} className={`p-2.5 bg-white/[0.04] rounded-md border-l-[3px] ${m.color}`}>
                   <div className="text-xs font-bold">{m.name}</div>
-                  <div className="text-[10px] text-gray-500">{m.desc}</div>
+                  <div className="text-[10px] text-[var(--gray-muted)]">{m.desc}</div>
                 </div>
               ))}
             </div>
@@ -391,7 +391,7 @@ export function MADashboardContent({ webClaims, wins, saasUsers, inspectorApps }
       </div>
 
       {/* Data Moat */}
-      <div className="text-xs uppercase tracking-widest text-gray-500 font-bold px-4 sm:px-8 pt-3 pb-2">Data Moat &amp; Infrastructure</div>
+      <div className="text-xs uppercase tracking-widest text-[var(--gray-muted)] font-bold px-4 sm:px-8 pt-3 pb-2">Data Moat &amp; Infrastructure</div>
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 px-4 sm:px-8 pb-4">
         {[
           { value: "123,942", label: "Data Warehouse Rows", sub: "51 tables in Supabase" },
@@ -401,14 +401,14 @@ export function MADashboardContent({ webClaims, wins, saasUsers, inspectorApps }
         ].map((d) => (
           <div key={d.label} className="bg-white rounded-xl shadow-sm p-5 text-center">
             <div className="text-4xl font-black text-[var(--dark-navy)]">{d.value}</div>
-            <div className="text-[11px] text-gray-500 uppercase tracking-wider font-semibold mt-1">{d.label}</div>
-            <div className="text-[11px] text-gray-400 mt-1">{d.sub}</div>
+            <div className="text-[11px] text-[var(--gray-muted)] uppercase tracking-wider font-semibold mt-1">{d.label}</div>
+            <div className="text-[11px] text-[var(--gray-dim)] mt-1">{d.sub}</div>
           </div>
         ))}
       </div>
 
       {/* GTM & Audience */}
-      <div className="text-xs uppercase tracking-widest text-gray-500 font-bold px-4 sm:px-8 pt-3 pb-2">Go-to-Market &amp; Audience</div>
+      <div className="text-xs uppercase tracking-widest text-[var(--gray-muted)] font-bold px-4 sm:px-8 pt-3 pb-2">Go-to-Market &amp; Audience</div>
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 px-4 sm:px-8 pb-4">
         <Panel title="Audience Intelligence">
           <MetricRow label="Named Prospects" value="469" />
@@ -422,7 +422,7 @@ export function MADashboardContent({ webClaims, wins, saasUsers, inspectorApps }
           <BarChart label="Conservative" value="$754K" pct={33} color="#1E3A5F" />
           <BarChart label="Moderate" value="$1.1M" pct={48} color="var(--teal)" />
           <BarChart label="Target" value="$2.3M" pct={100} color="var(--gold)" />
-          <div className="mt-3 text-xs text-gray-500">
+          <div className="mt-3 text-xs text-[var(--gray-muted)]">
             Month 12 projections. At avg $999/mo: need <strong>192 users</strong> for target.
           </div>
         </Panel>
@@ -437,7 +437,7 @@ export function MADashboardContent({ webClaims, wins, saasUsers, inspectorApps }
       </div>
 
       {/* Development Timeline */}
-      <div className="text-xs uppercase tracking-widest text-gray-500 font-bold px-4 sm:px-8 pt-3 pb-2">Recent Development Timeline</div>
+      <div className="text-xs uppercase tracking-widest text-[var(--gray-muted)] font-bold px-4 sm:px-8 pt-3 pb-2">Recent Development Timeline</div>
       <div className="px-4 sm:px-8 pb-4">
         <div className="bg-white rounded-xl shadow-sm p-6">
           <TimelineItem date="Mar 12" title="Cost Audit + M&A Report Refresh" desc="Telemetry bugs fixed (Opus 3x, cache tracking, retry logging). Gmail + repair calls instrumented. Service add-ons documented." color="gold" kpi="Cost/claim: $1.91" kpiColor="gold" />
@@ -454,17 +454,17 @@ export function MADashboardContent({ webClaims, wins, saasUsers, inspectorApps }
       </div>
 
       {/* KPI Scorecard */}
-      <div className="text-xs uppercase tracking-widest text-gray-500 font-bold px-4 sm:px-8 pt-3 pb-2">Full KPI Scorecard</div>
+      <div className="text-xs uppercase tracking-widest text-[var(--gray-muted)] font-bold px-4 sm:px-8 pt-3 pb-2">Full KPI Scorecard</div>
       <div className="px-4 sm:px-8 pb-4">
         <div className="bg-white rounded-xl shadow-sm overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-[13px]">
               <thead>
-                <tr className="bg-gray-50">
-                  <th className="text-left px-4 py-2.5 text-[10px] uppercase tracking-wider text-gray-500 font-bold w-[35%]">KPI</th>
-                  <th className="text-left px-4 py-2.5 text-[10px] uppercase tracking-wider text-gray-500 font-bold w-[22%]">Current</th>
-                  <th className="text-left px-4 py-2.5 text-[10px] uppercase tracking-wider text-gray-500 font-bold w-[22%]">$40M Target</th>
-                  <th className="text-left px-4 py-2.5 text-[10px] uppercase tracking-wider text-gray-500 font-bold w-[21%]">Gap / Status</th>
+                <tr className="bg-white/[0.04]">
+                  <th className="text-left px-4 py-2.5 text-[10px] uppercase tracking-wider text-[var(--gray-muted)] font-bold w-[35%]">KPI</th>
+                  <th className="text-left px-4 py-2.5 text-[10px] uppercase tracking-wider text-[var(--gray-muted)] font-bold w-[22%]">Current</th>
+                  <th className="text-left px-4 py-2.5 text-[10px] uppercase tracking-wider text-[var(--gray-muted)] font-bold w-[22%]">$40M Target</th>
+                  <th className="text-left px-4 py-2.5 text-[10px] uppercase tracking-wider text-[var(--gray-muted)] font-bold w-[21%]">Gap / Status</th>
                 </tr>
               </thead>
               <tbody>
@@ -487,7 +487,7 @@ export function MADashboardContent({ webClaims, wins, saasUsers, inspectorApps }
                   { kpi: "API Integrations", current: "8+ connected", target: "N/A", gap: "Asset", gColor: "text-green-600 font-bold" },
                   { kpi: "Service Add-Ons Designed", current: "4 streams", target: "N/A", gap: "New revenue", gColor: "text-amber-600 font-bold" },
                 ].map((r) => (
-                  <tr key={r.kpi} className="border-t border-gray-100 hover:bg-gray-50">
+                  <tr key={r.kpi} className="border-t border-white/[0.04] hover:bg-white/[0.04]">
                     <td className="px-4 py-2.5 font-semibold">{r.kpi}</td>
                     <td className={`px-4 py-2.5 ${r.cColor || ""}`}>{r.current}</td>
                     <td className="px-4 py-2.5">{r.target}</td>
@@ -501,7 +501,7 @@ export function MADashboardContent({ webClaims, wins, saasUsers, inspectorApps }
       </div>
 
       {/* Risks & Blockers */}
-      <div className="text-xs uppercase tracking-widest text-gray-500 font-bold px-4 sm:px-8 pt-3 pb-2">Risks &amp; Blockers</div>
+      <div className="text-xs uppercase tracking-widest text-[var(--gray-muted)] font-bold px-4 sm:px-8 pt-3 pb-2">Risks &amp; Blockers</div>
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 px-4 sm:px-8 pb-4">
         <Panel title="Active Blockers" badge="Action Required" badgeColor="red">
           {[
@@ -509,7 +509,7 @@ export function MADashboardContent({ webClaims, wins, saasUsers, inspectorApps }
             { label: "Dev costs unseparated", value: "Claude Code on same Anthropic bill", lColor: "text-amber-600", vColor: "text-amber-500" },
             { label: "Patent non-provisional", value: "Due 2027-02-26 (11.5 months)", lColor: "text-amber-600", vColor: "text-amber-500" },
           ].map((b) => (
-            <div key={b.label} className="flex justify-between items-center py-2.5 border-b border-gray-50 last:border-b-0">
+            <div key={b.label} className="flex justify-between items-center py-2.5 border-b border-white/[0.04] last:border-b-0">
               <span className={`text-[13px] font-semibold ${b.lColor}`}>{b.label}</span>
               <span className={`text-xs font-bold ${b.vColor}`}>{b.value}</span>
             </div>
@@ -523,17 +523,17 @@ export function MADashboardContent({ webClaims, wins, saasUsers, inspectorApps }
             { label: "3. Separate API keys", value: "Dev vs. prod for cost reporting" },
             { label: "4. Mike Coday outreach", value: "469-member group owner" },
           ].map((a) => (
-            <div key={a.label} className="flex justify-between items-center py-2.5 border-b border-gray-50 last:border-b-0">
+            <div key={a.label} className="flex justify-between items-center py-2.5 border-b border-white/[0.04] last:border-b-0">
               <span className="text-[13px] font-semibold">{a.label}</span>
-              <span className="text-xs text-gray-500">{a.value}</span>
+              <span className="text-xs text-[var(--gray-muted)]">{a.value}</span>
             </div>
           ))}
         </Panel>
       </div>
 
       {/* Footer */}
-      <div className="text-center py-6 px-8 border-t border-gray-200 mx-4 sm:mx-8 mb-4 text-xs text-gray-500">
-        <strong className="text-gray-800">Dumb Roof Technologies LLC</strong> &mdash; Confidential M&A Advisor Report
+      <div className="text-center py-6 px-8 border-t border-[var(--border-glass)] mx-4 sm:mx-8 mb-4 text-xs text-[var(--gray-muted)]">
+        <strong className="text-[var(--white)]">Dumb Roof Technologies LLC</strong> &mdash; Confidential M&A Advisor Report
         <br />Tom Kovack Jr. &bull; TKovack@USARoofMasters.com &bull; 267-679-1504
       </div>
     </div>

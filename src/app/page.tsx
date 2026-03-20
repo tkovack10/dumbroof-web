@@ -60,25 +60,25 @@ export default async function Home() {
             </span>
           </a>
           <div className="flex items-center gap-6">
-            <a href="#problem" className="text-gray-300 hover:text-white text-sm transition-colors hidden sm:block">
+            <a href="#problem" className="text-[var(--gray-dim)] hover:text-white text-sm transition-colors hidden sm:block">
               The Problem
             </a>
-            <a href="#how-it-works" className="text-gray-300 hover:text-white text-sm transition-colors hidden sm:block">
+            <a href="#how-it-works" className="text-[var(--gray-dim)] hover:text-white text-sm transition-colors hidden sm:block">
               How It Works
             </a>
-            <a href="#repair" className="text-gray-300 hover:text-white text-sm transition-colors hidden sm:block">
+            <a href="#repair" className="text-[var(--gray-dim)] hover:text-white text-sm transition-colors hidden sm:block">
               Repair
             </a>
-            <a href="#results" className="text-gray-300 hover:text-white text-sm transition-colors hidden sm:block">
+            <a href="#results" className="text-[var(--gray-dim)] hover:text-white text-sm transition-colors hidden sm:block">
               Results
             </a>
-            <a href="#inspectors" className="text-gray-300 hover:text-white text-sm transition-colors hidden sm:block">
+            <a href="#inspectors" className="text-[var(--gray-dim)] hover:text-white text-sm transition-colors hidden sm:block">
               Inspectors
             </a>
-            <a href="/pricing" className="text-gray-300 hover:text-white text-sm transition-colors hidden sm:block">
+            <a href="/pricing" className="text-[var(--gray-dim)] hover:text-white text-sm transition-colors hidden sm:block">
               Pricing
             </a>
-            <a href="/login" className="text-gray-300 hover:text-white text-sm font-medium transition-colors">
+            <a href="/login" className="text-[var(--gray-dim)] hover:text-white text-sm font-medium transition-colors">
               Sign In
             </a>
             <a
@@ -106,7 +106,7 @@ export default async function Home() {
             <span className="text-[var(--red)]">Show them.</span>
           </h1>
 
-          <p className="text-lg sm:text-xl text-gray-300 max-w-2xl mx-auto mb-10 leading-relaxed">
+          <p className="text-lg sm:text-xl text-[var(--gray-dim)] max-w-2xl mx-auto mb-10 leading-relaxed">
             Generate forensic-grade claim documentation that would impress
             the best carrier litigation attorney in the country. Upload your
             docs, get back a 5-document appeal package in 15 minutes.
@@ -139,7 +139,7 @@ export default async function Home() {
                 <div className="text-2xl sm:text-3xl font-bold text-white">
                   {stat.number}
                 </div>
-                <div className="text-sm text-gray-400 mt-1">{stat.label}</div>
+                <div className="text-sm text-[var(--gray-dim)] mt-1">{stat.label}</div>
               </div>
             ))}
           </div>
@@ -152,7 +152,7 @@ export default async function Home() {
           <h2 className="text-3xl sm:text-4xl font-bold text-[var(--navy)] text-center mb-4">
             Homeowners Don&apos;t Trust You
           </h2>
-          <p className="text-gray-500 text-center mb-14 max-w-2xl mx-auto">
+          <p className="text-[var(--gray-muted)] text-center mb-14 max-w-2xl mx-auto">
             Studies prove it. The BBB confirms it. And insurance carriers are counting on it.
           </p>
 
@@ -164,17 +164,17 @@ export default async function Home() {
               { stat: "16 mo", detail: "Average time a roofing employee stays before leaving &mdash; vs. 4.6 years in other industries", source: "Construction Industry Data" },
               { stat: "40%", detail: "of homeowners say poor communication is their #1 frustration with contractors", source: "Roofing Contractor Magazine" },
             ].map((item, i) => (
-              <div key={i} className="bg-white rounded-xl p-6 border border-gray-100 text-center">
+              <div key={i} className="bg-white rounded-xl p-6 border border-white/[0.04] text-center">
                 <p className="text-3xl font-bold text-[var(--red)] mb-2" dangerouslySetInnerHTML={{ __html: item.stat }} />
-                <p className="text-sm text-gray-600 leading-relaxed" dangerouslySetInnerHTML={{ __html: item.detail }} />
-                <p className="text-xs text-gray-400 mt-2">{item.source}</p>
+                <p className="text-sm text-[var(--gray)] leading-relaxed" dangerouslySetInnerHTML={{ __html: item.detail }} />
+                <p className="text-xs text-[var(--gray-dim)] mt-2">{item.source}</p>
               </div>
             ))}
           </div>
 
           {/* The Real Problems */}
           <div className="space-y-6">
-            <div className="bg-white rounded-2xl p-8 border border-gray-100">
+            <div className="bg-white rounded-2xl p-8 border border-white/[0.04]">
               <h3 className="text-xl font-bold text-[var(--navy)] mb-4">
                 The Contractor&apos;s Impossible Choice
               </h3>
@@ -184,7 +184,7 @@ export default async function Home() {
                     <span className="text-[var(--red)] text-lg mt-0.5 shrink-0">01</span>
                     <div>
                       <p className="font-semibold text-[var(--navy)]">Train reps for years on insurance</p>
-                      <p className="text-sm text-gray-500 mt-1">
+                      <p className="text-sm text-[var(--gray-muted)] mt-1">
                         It takes years to learn the full insurance process &mdash; building codes, Xactimate,
                         supplement negotiations, carrier tactics. Just when they hit their stride...
                       </p>
@@ -194,7 +194,7 @@ export default async function Home() {
                     <span className="text-[var(--red)] text-lg mt-0.5 shrink-0">02</span>
                     <div>
                       <p className="font-semibold text-[var(--navy)]">They leave and start their own company</p>
-                      <p className="text-sm text-gray-500 mt-1">
+                      <p className="text-sm text-[var(--gray-muted)] mt-1">
                         They take every skill you trained them on. Average roofing employee tenure: 16 months.
                         You just funded your next competitor.
                       </p>
@@ -206,7 +206,7 @@ export default async function Home() {
                     <span className="text-[var(--red)] text-lg mt-0.5 shrink-0">03</span>
                     <div>
                       <p className="font-semibold text-[var(--navy)]">Or don&apos;t train them enough</p>
-                      <p className="text-sm text-gray-500 mt-1">
+                      <p className="text-sm text-[var(--gray-muted)] mt-1">
                         Untrained reps miss supplements and line items. One photo could add a $5,000 line item
                         to a claim &mdash; but they don&apos;t know to take it. Money left on every roof.
                       </p>
@@ -216,7 +216,7 @@ export default async function Home() {
                     <span className="text-[var(--red)] text-lg mt-0.5 shrink-0">04</span>
                     <div>
                       <p className="font-semibold text-[var(--navy)]">Or skip insurance work entirely</p>
-                      <p className="text-sm text-gray-500 mt-1">
+                      <p className="text-sm text-[var(--gray-muted)] mt-1">
                         Most contractors avoid insurance claims because the process is too frustrating.
                         That&apos;s by design &mdash; carriers built it that way.
                       </p>
@@ -231,7 +231,7 @@ export default async function Home() {
               <h3 className="text-xl font-bold mb-4">
                 Why Private Equity Hates Insurance Work
               </h3>
-              <p className="text-gray-300 mb-6 leading-relaxed">
+              <p className="text-[var(--gray-dim)] mb-6 leading-relaxed">
                 PE firms don&apos;t hate the money insurance claims generate &mdash; they hate the
                 inconsistency. They hate the complexity. They hate that it takes years to train
                 a rep who might leave in 16 months. With 25+ PE rollups now operating in roofing,
@@ -245,8 +245,8 @@ export default async function Home() {
                   { label: "The Fix", value: "World-class system that plugs directly into your company" },
                 ].map((item) => (
                   <div key={item.label} className="bg-white/10 rounded-xl p-4 border border-white/10">
-                    <p className="text-xs text-gray-400 font-semibold uppercase tracking-wider">{item.label}</p>
-                    <p className="text-sm text-gray-200 mt-2">{item.value}</p>
+                    <p className="text-xs text-[var(--gray-dim)] font-semibold uppercase tracking-wider">{item.label}</p>
+                    <p className="text-sm text-[var(--gray-dim)] mt-2">{item.value}</p>
                   </div>
                 ))}
               </div>
@@ -266,16 +266,16 @@ export default async function Home() {
           <h2 className="text-3xl sm:text-4xl font-bold text-[var(--navy)] text-center mb-4">
             Don&apos;t Tell. Prove.
           </h2>
-          <p className="text-gray-500 text-center mb-14 max-w-2xl mx-auto">
+          <p className="text-[var(--gray-muted)] text-center mb-14 max-w-2xl mx-auto">
             Homeowners don&apos;t trust storm chasers. Carriers dismiss sloppy supplements.
             So we built documentation so thorough, so forensic, so code-cited that
             it speaks for itself.
           </p>
 
           <div className="grid md:grid-cols-2 gap-8">
-            <div className="bg-[var(--gray-50)] rounded-2xl p-8 border border-gray-100">
+            <div className="bg-[var(--gray-50)] rounded-2xl p-8 border border-white/[0.04]">
               <h3 className="text-lg font-bold text-[var(--navy)] mb-4">What Estimate Services Do</h3>
-              <ul className="space-y-3 text-gray-600 text-sm">
+              <ul className="space-y-3 text-[var(--gray)] text-sm">
                 <li className="flex items-start gap-2">
                   <span className="text-[var(--red)] mt-0.5 shrink-0">&#x2715;</span>
                   Write numbers on a spreadsheet
@@ -296,7 +296,7 @@ export default async function Home() {
             </div>
             <div className="bg-[var(--gray-50)] rounded-2xl p-8 border border-[var(--navy)]/20">
               <h3 className="text-lg font-bold text-[var(--navy)] mb-4">What Dumb Roof Generates</h3>
-              <ul className="space-y-3 text-gray-600 text-sm">
+              <ul className="space-y-3 text-[var(--gray)] text-sm">
                 <li className="flex items-start gap-2">
                   <span className="text-green-600 mt-0.5 shrink-0">&#x2713;</span>
                   Forensic report with annotated photos tied to specific damage
@@ -335,7 +335,7 @@ export default async function Home() {
           <h2 className="text-3xl sm:text-4xl font-bold text-[var(--navy)] text-center mb-4">
             How It Works
           </h2>
-          <p className="text-gray-500 text-center mb-14 max-w-xl mx-auto">
+          <p className="text-[var(--gray-muted)] text-center mb-14 max-w-xl mx-auto">
             Three steps. Fifteen minutes. Every rep on your team performs like a
             20-year insurance veteran.
           </p>
@@ -375,16 +375,16 @@ export default async function Home() {
             ].map((item) => (
               <div
                 key={item.step}
-                className="relative bg-white rounded-2xl p-8 border border-gray-100 hover:border-[var(--navy)]/20 transition-colors"
+                className="relative bg-white rounded-2xl p-8 border border-white/[0.04] hover:border-[var(--navy)]/20 transition-colors"
               >
-                <span className="absolute top-6 right-6 text-5xl font-bold text-gray-100">
+                <span className="absolute top-6 right-6 text-5xl font-bold text-[var(--gray-dim)]">
                   {item.step}
                 </span>
                 <div className="mb-5">{item.icon}</div>
                 <h3 className="text-xl font-bold text-[var(--navy)] mb-2">
                   {item.title}
                 </h3>
-                <p className="text-gray-600 leading-relaxed text-sm">{item.desc}</p>
+                <p className="text-[var(--gray)] leading-relaxed text-sm">{item.desc}</p>
               </div>
             ))}
           </div>
@@ -397,7 +397,7 @@ export default async function Home() {
           <h2 className="text-3xl sm:text-4xl font-bold text-white text-center mb-4">
             The 5-Document Package
           </h2>
-          <p className="text-gray-400 text-center mb-14 max-w-xl mx-auto">
+          <p className="text-[var(--gray-dim)] text-center mb-14 max-w-xl mx-auto">
             Every document forensic-grade, code-cited, and branded
             with your company logo.
           </p>
@@ -414,7 +414,7 @@ export default async function Home() {
               <div key={doc.num} className="bg-white/5 border border-white/10 rounded-xl p-6 hover:bg-white/10 transition-colors">
                 <span className="text-[var(--red)] text-sm font-mono font-bold">{doc.num}</span>
                 <h4 className="text-white font-semibold mt-2 mb-2">{doc.title}</h4>
-                <p className="text-gray-400 text-sm leading-relaxed">{doc.desc}</p>
+                <p className="text-[var(--gray-dim)] text-sm leading-relaxed">{doc.desc}</p>
               </div>
             ))}
           </div>
@@ -443,9 +443,9 @@ export default async function Home() {
                 desc: "Supplements are your biggest profit leak. One missed photo costs you $5,000. This catches every line item, every code citation, every time.",
               },
             ].map((item) => (
-              <div key={item.title} className="bg-[var(--gray-50)] rounded-2xl p-8 border border-gray-100">
+              <div key={item.title} className="bg-[var(--gray-50)] rounded-2xl p-8 border border-white/[0.04]">
                 <h3 className="text-lg font-bold text-[var(--navy)] mb-3">{item.title}</h3>
-                <p className="text-gray-600 text-sm leading-relaxed">{item.desc}</p>
+                <p className="text-[var(--gray)] text-sm leading-relaxed">{item.desc}</p>
               </div>
             ))}
           </div>
@@ -458,7 +458,7 @@ export default async function Home() {
           <h2 className="text-3xl sm:text-4xl font-bold text-[var(--navy)] text-center mb-4">
             Real Results. Real Claims. Real Carrier Movement.
           </h2>
-          <p className="text-gray-500 text-center mb-14 max-w-xl mx-auto">
+          <p className="text-[var(--gray-muted)] text-center mb-14 max-w-xl mx-auto">
             Not projections. Documented carrier movement from actual claims.
           </p>
 
@@ -471,10 +471,10 @@ export default async function Home() {
               { carrier: "Hanover", before: "$33,394", after: "$56,769", increase: "70%" },
               { carrier: "State Farm", before: "$37,669", after: "$80,963", increase: "115%" },
             ].map((result) => (
-              <div key={result.carrier} className="bg-white rounded-xl p-6 border border-gray-100">
-                <div className="text-sm font-semibold text-gray-500 mb-3">{result.carrier}</div>
+              <div key={result.carrier} className="bg-white rounded-xl p-6 border border-white/[0.04]">
+                <div className="text-sm font-semibold text-[var(--gray-muted)] mb-3">{result.carrier}</div>
                 <div className="flex items-baseline gap-3 mb-1">
-                  <span className="text-gray-400 line-through text-sm">{result.before}</span>
+                  <span className="text-[var(--gray-dim)] line-through text-sm">{result.before}</span>
                   <span className="text-[var(--navy)] font-bold text-xl">{result.after}</span>
                 </div>
                 <div className="text-[var(--red)] font-bold text-sm">+{result.increase}</div>
@@ -483,16 +483,16 @@ export default async function Home() {
           </div>
 
           {/* Comparison Table */}
-          <div className="bg-white rounded-2xl p-8 border border-gray-100">
+          <div className="bg-white rounded-2xl p-8 border border-white/[0.04]">
             <h3 className="text-xl font-bold text-[var(--navy)] mb-6 text-center">
               Dumb Roof vs. The Old Way
             </h3>
             <div className="overflow-x-auto">
               <table className="w-full text-left">
                 <thead>
-                  <tr className="border-b border-gray-200">
-                    <th className="pb-3 text-sm text-gray-500 font-medium"></th>
-                    <th className="pb-3 text-sm text-gray-500 font-medium">Traditional</th>
+                  <tr className="border-b border-[var(--border-glass)]">
+                    <th className="pb-3 text-sm text-[var(--gray-muted)] font-medium"></th>
+                    <th className="pb-3 text-sm text-[var(--gray-muted)] font-medium">Traditional</th>
                     <th className="pb-3 text-sm text-[var(--red)] font-bold">Dumb Roof</th>
                   </tr>
                 </thead>
@@ -507,9 +507,9 @@ export default async function Home() {
                     ["Training required", "Years of insurance experience", "Upload and click"],
                     ["Rep turnover risk", "Knowledge walks out the door", "System stays. Forever."],
                   ].map(([label, old, dr]) => (
-                    <tr key={label} className="border-b border-gray-100">
-                      <td className="py-3 font-medium text-gray-700">{label}</td>
-                      <td className="py-3 text-gray-500">{old}</td>
+                    <tr key={label} className="border-b border-white/[0.04]">
+                      <td className="py-3 font-medium text-[var(--gray)]">{label}</td>
+                      <td className="py-3 text-[var(--gray-muted)]">{old}</td>
                       <td className="py-3 font-semibold text-[var(--navy)]">{dr}</td>
                     </tr>
                   ))}
@@ -532,7 +532,7 @@ export default async function Home() {
             <h2 className="text-3xl sm:text-4xl font-bold text-[var(--navy)] mb-4">
               Dumb Roof Repair
             </h2>
-            <p className="text-gray-500 max-w-3xl mx-auto leading-relaxed">
+            <p className="text-[var(--gray-muted)] max-w-3xl mx-auto leading-relaxed">
               Patent pending technology trained on over 140,000 real before, during, and after
               roof inspection photos. One visit. Diagnose, present, close, collect, repair. On to the next.
             </p>
@@ -543,39 +543,39 @@ export default async function Home() {
             <div className="grid sm:grid-cols-3 gap-8 items-center">
               <div>
                 <div className="text-5xl sm:text-6xl font-bold text-white mb-2">98%</div>
-                <p className="text-gray-400 text-sm">Diagnostic Accuracy</p>
+                <p className="text-[var(--gray-dim)] text-sm">Diagnostic Accuracy</p>
               </div>
               <div>
                 <div className="text-5xl sm:text-6xl font-bold text-[var(--gold)] mb-2">140K+</div>
-                <p className="text-gray-400 text-sm">Training Photos</p>
+                <p className="text-[var(--gray-dim)] text-sm">Training Photos</p>
               </div>
               <div>
                 <div className="text-5xl sm:text-6xl font-bold text-[var(--red)] mb-2">2%</div>
-                <p className="text-gray-400 text-sm">Caught by Built-In Checkpoints</p>
+                <p className="text-[var(--gray-dim)] text-sm">Caught by Built-In Checkpoints</p>
               </div>
             </div>
           </div>
 
           {/* Pain / Solution columns */}
           <div className="grid md:grid-cols-2 gap-8 mb-10">
-            <div className="bg-[var(--gray-50)] rounded-2xl p-8 border border-gray-100">
+            <div className="bg-[var(--gray-50)] rounded-2xl p-8 border border-white/[0.04]">
               <h3 className="text-lg font-bold text-[var(--navy)] mb-4">The Problem Nobody Has Solved</h3>
               <div className="space-y-4">
                 <div className="flex items-start gap-3">
                   <span className="text-[var(--red)] mt-0.5 shrink-0">&#x2715;</span>
-                  <p className="text-sm text-gray-600">Service departments live and die by 1&ndash;2 techs who can diagnose a leak. Everyone else waits for instructions</p>
+                  <p className="text-sm text-[var(--gray)]">Service departments live and die by 1&ndash;2 techs who can diagnose a leak. Everyone else waits for instructions</p>
                 </div>
                 <div className="flex items-start gap-3">
                   <span className="text-[var(--red)] mt-0.5 shrink-0">&#x2715;</span>
-                  <p className="text-sm text-gray-600">Those techs quit, and your revenue stream stops. Key man risk in its purest form &mdash; and it happens every 16 months</p>
+                  <p className="text-sm text-[var(--gray)]">Those techs quit, and your revenue stream stops. Key man risk in its purest form &mdash; and it happens every 16 months</p>
                 </div>
                 <div className="flex items-start gap-3">
                   <span className="text-[var(--red)] mt-0.5 shrink-0">&#x2715;</span>
-                  <p className="text-sm text-gray-600">You have 10x more tradesmen who can execute a repair perfectly when told what to do. The bottleneck was never labor &mdash; it&apos;s diagnosis</p>
+                  <p className="text-sm text-[var(--gray)]">You have 10x more tradesmen who can execute a repair perfectly when told what to do. The bottleneck was never labor &mdash; it&apos;s diagnosis</p>
                 </div>
                 <div className="flex items-start gap-3">
                   <span className="text-[var(--red)] mt-0.5 shrink-0">&#x2715;</span>
-                  <p className="text-sm text-gray-600">Your best roofers can often find the problem but can&apos;t present it to a homeowner in fluent English. The language barrier doesn&apos;t just limit hiring &mdash; it kills the close</p>
+                  <p className="text-sm text-[var(--gray)]">Your best roofers can often find the problem but can&apos;t present it to a homeowner in fluent English. The language barrier doesn&apos;t just limit hiring &mdash; it kills the close</p>
                 </div>
               </div>
             </div>
@@ -585,19 +585,19 @@ export default async function Home() {
               <div className="space-y-4">
                 <div className="flex items-start gap-3">
                   <span className="text-green-600 mt-0.5 shrink-0">&#x2713;</span>
-                  <p className="text-sm text-gray-600">Tech uploads photos and answers 3 questions. AI diagnoses the root cause, builds the repair scope, and generates a professional branded ticket &mdash; in minutes</p>
+                  <p className="text-sm text-[var(--gray)]">Tech uploads photos and answers 3 questions. AI diagnoses the root cause, builds the repair scope, and generates a professional branded ticket &mdash; in minutes</p>
                 </div>
                 <div className="flex items-start gap-3">
                   <span className="text-green-600 mt-0.5 shrink-0">&#x2713;</span>
-                  <p className="text-sm text-gray-600">Wraps the diagnosis, the sale presentation, the financial transaction, and the repair instructions into a single visit</p>
+                  <p className="text-sm text-[var(--gray)]">Wraps the diagnosis, the sale presentation, the financial transaction, and the repair instructions into a single visit</p>
                 </div>
                 <div className="flex items-start gap-3">
                   <span className="text-green-600 mt-0.5 shrink-0">&#x2713;</span>
-                  <p className="text-sm text-gray-600">Homeowner receives clear before-and-after documentation, clicks to approve, and payment processes automatically &mdash; contactless, professional, done</p>
+                  <p className="text-sm text-[var(--gray)]">Homeowner receives clear before-and-after documentation, clicks to approve, and payment processes automatically &mdash; contactless, professional, done</p>
                 </div>
                 <div className="flex items-start gap-3">
                   <span className="text-green-600 mt-0.5 shrink-0">&#x2713;</span>
-                  <p className="text-sm text-gray-600">Built-in checkpoints flag the 2% of edge cases for human review. Nothing gets through that shouldn&apos;t</p>
+                  <p className="text-sm text-[var(--gray)]">Built-in checkpoints flag the 2% of edge cases for human review. Nothing gets through that shouldn&apos;t</p>
                 </div>
               </div>
             </div>
@@ -606,7 +606,7 @@ export default async function Home() {
           {/* Why nothing like this exists */}
           <div className="bg-[var(--navy)] rounded-2xl p-8 text-white">
             <h3 className="text-xl font-bold mb-4">Why Nothing Like This Exists</h3>
-            <p className="text-gray-300 mb-6 leading-relaxed">
+            <p className="text-[var(--gray-dim)] mb-6 leading-relaxed">
               Every service department runs the same play: diagnose, quote, follow up, schedule, return,
               repair, collect. That&apos;s 3&ndash;5 touchpoints and weeks of delay. Dumb Roof Repair compresses
               it into one. Diagnose, present, close, collect, repair &mdash; one visit, one tech, one call.
@@ -621,7 +621,7 @@ export default async function Home() {
               ].map((item) => (
                 <div key={item.label} className="bg-white/10 rounded-xl p-4 border border-white/10">
                   <p className="text-xs text-[var(--gold)] font-semibold uppercase tracking-wider">{item.label}</p>
-                  <p className="text-sm text-gray-200 mt-2 leading-relaxed">{item.value}</p>
+                  <p className="text-sm text-[var(--gray-dim)] mt-2 leading-relaxed">{item.value}</p>
                 </div>
               ))}
             </div>
@@ -641,7 +641,7 @@ export default async function Home() {
             <h2 className="text-3xl sm:text-4xl font-bold text-[var(--navy)] mb-4">
               Join the Dumb Roof Inspector Network
             </h2>
-            <p className="text-gray-500 max-w-2xl mx-auto leading-relaxed">
+            <p className="text-[var(--gray-muted)] max-w-2xl mx-auto leading-relaxed">
               Professional roof inspections. No angry homeowners. No &ldquo;my roof is leaking&rdquo;
               calls six months later. No punch lists. No warranty callbacks.
               Just detailed, standards-based inspections.
@@ -651,7 +651,7 @@ export default async function Home() {
           <div className="grid lg:grid-cols-2 gap-10">
             {/* Left — Value Props */}
             <div className="space-y-6">
-              <div className="bg-[var(--gray-50)] rounded-2xl p-8 border border-gray-100">
+              <div className="bg-[var(--gray-50)] rounded-2xl p-8 border border-white/[0.04]">
                 <h3 className="text-xl font-bold text-[var(--navy)] mb-6">
                   Just Inspections. Nothing Else.
                 </h3>
@@ -682,7 +682,7 @@ export default async function Home() {
                       </div>
                       <div>
                         <p className="font-semibold text-[var(--navy)] text-sm">{item.title}</p>
-                        <p className="text-gray-500 text-sm mt-1 leading-relaxed">{item.desc}</p>
+                        <p className="text-[var(--gray-muted)] text-sm mt-1 leading-relaxed">{item.desc}</p>
                       </div>
                     </div>
                   ))}
@@ -697,17 +697,17 @@ export default async function Home() {
                       <div className="w-2 h-2 rounded-full bg-[var(--gold)]" />
                       <span className="text-[var(--gold)] text-xs font-bold uppercase tracking-wider">HAAG Certified</span>
                     </div>
-                    <p className="text-gray-300 text-sm leading-relaxed">
+                    <p className="text-[var(--gray-dim)] text-sm leading-relaxed">
                       Premium rate. Your HAAG stamp goes on the report.
                       The gold standard carriers trust &mdash; now working for the policyholder.
                     </p>
                   </div>
                   <div className="bg-white/10 border border-white/10 rounded-xl p-5">
                     <div className="flex items-center gap-2 mb-2">
-                      <div className="w-2 h-2 rounded-full bg-gray-400" />
-                      <span className="text-gray-300 text-xs font-bold uppercase tracking-wider">Experienced</span>
+                      <div className="w-2 h-2 rounded-full bg-white/[0.04]" />
+                      <span className="text-[var(--gray-dim)] text-xs font-bold uppercase tracking-wider">Experienced</span>
                     </div>
-                    <p className="text-gray-300 text-sm leading-relaxed">
+                    <p className="text-[var(--gray-dim)] text-sm leading-relaxed">
                       Competitive rate. Years of field experience without
                       HAAG certification. Proper 1099 insurance required.
                     </p>
@@ -730,7 +730,7 @@ export default async function Home() {
           <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">
             Ready to Get Started?
           </h2>
-          <p className="text-gray-400 mb-8">
+          <p className="text-[var(--gray-dim)] mb-8">
             Create your account in 30 seconds. Upload your first claim
             and get back a forensic-grade package in 15 minutes.
           </p>
@@ -740,8 +740,8 @@ export default async function Home() {
           >
             Try 3 Free Claims
           </a>
-          <p className="text-gray-500 text-xs mt-3">No credit card required</p>
-          <p className="text-gray-500 text-sm mt-3">
+          <p className="text-[var(--gray-muted)] text-xs mt-3">No credit card required</p>
+          <p className="text-[var(--gray-muted)] text-sm mt-3">
             Already have an account?{" "}
             <a href="/login" className="text-white hover:text-[var(--red)] transition-colors">
               Sign in
@@ -755,17 +755,17 @@ export default async function Home() {
         <div className="max-w-5xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-lg bg-[var(--red)] flex items-center justify-center font-bold text-white text-sm">DR</div>
-            <span className="text-gray-400 text-sm">Dumb Roof Technologies™</span>
+            <span className="text-[var(--gray-dim)] text-sm">Dumb Roof Technologies™</span>
           </div>
           <div className="flex items-center gap-6">
-            <a href="/login" className="text-gray-500 hover:text-gray-300 text-sm transition-colors">
+            <a href="/login" className="text-[var(--gray-muted)] hover:text-[var(--gray-dim)] text-sm transition-colors">
               Sign In
             </a>
             <div className="text-center sm:text-right">
-              <p className="text-gray-500 text-sm">
+              <p className="text-[var(--gray-muted)] text-sm">
                 &copy; {new Date().getFullYear()} Dumb Roof Technologies. All rights reserved.
               </p>
-              <p className="text-gray-600 text-xs mt-1">
+              <p className="text-[var(--gray)] text-xs mt-1">
                 Patent Pending
               </p>
             </div>

@@ -50,7 +50,7 @@ function PricingContent() {
             </span>
           </a>
           <div className="flex items-center gap-4">
-            <a href="/login" className="text-gray-300 hover:text-white text-sm transition-colors">
+            <a href="/login" className="text-[var(--gray-dim)] hover:text-white text-sm transition-colors">
               Sign In
             </a>
             <a
@@ -68,7 +68,7 @@ function PricingContent() {
         <h1 className="text-4xl sm:text-5xl font-bold text-[var(--navy)] mb-4">
           Simple, Transparent Pricing
         </h1>
-        <p className="text-gray-500 max-w-xl mx-auto text-lg">
+        <p className="text-[var(--gray-muted)] max-w-xl mx-auto text-lg">
           Start free. Upgrade when you need more claims.
           Every plan includes the full 5-document forensic package.
         </p>
@@ -86,7 +86,7 @@ function PricingContent() {
                 className={`relative rounded-2xl p-6 border flex flex-col ${
                   isPopular
                     ? "border-[var(--red)] bg-red-50/30 shadow-lg"
-                    : "border-gray-200 bg-white"
+                    : "border-[var(--border-glass)] bg-white"
                 }`}
               >
                 {isPopular && (
@@ -102,17 +102,17 @@ function PricingContent() {
                     ${plan.price}
                   </span>
                   {plan.price > 0 && (
-                    <span className="text-gray-500 text-sm">/mo</span>
+                    <span className="text-[var(--gray-muted)] text-sm">/mo</span>
                   )}
                 </div>
-                <p className="text-sm text-gray-500 mb-6">
+                <p className="text-sm text-[var(--gray-muted)] mb-6">
                   {id === "starter"
                     ? "3 claims, free forever"
                     : `${plan.claimsPerMonth} claims per month`}
                 </p>
                 <ul className="space-y-2 mb-8 flex-1">
                   {plan.features.map((f) => (
-                    <li key={f} className="flex items-start gap-2 text-sm text-gray-600">
+                    <li key={f} className="flex items-start gap-2 text-sm text-[var(--gray)]">
                       <svg
                         className="w-4 h-4 text-green-500 mt-0.5 shrink-0"
                         fill="none"
@@ -157,7 +157,7 @@ function PricingContent() {
 
         {/* FAQ-ish note */}
         <div className="max-w-2xl mx-auto mt-12 text-center">
-          <p className="text-gray-500 text-sm">
+          <p className="text-[var(--gray-muted)] text-sm">
             All plans include the full 5-document forensic package, AI photo analysis,
             and company branding. Cancel anytime from your dashboard.
             Need more than 100 claims/month?{" "}
@@ -173,9 +173,9 @@ function PricingContent() {
         <div className="max-w-5xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-lg bg-[var(--red)] flex items-center justify-center font-bold text-white text-sm">DR</div>
-            <span className="text-gray-400 text-sm">Dumb Roof Technologies&trade;</span>
+            <span className="text-[var(--gray-dim)] text-sm">Dumb Roof Technologies&trade;</span>
           </div>
-          <p className="text-gray-500 text-sm">
+          <p className="text-[var(--gray-muted)] text-sm">
             &copy; {new Date().getFullYear()} Dumb Roof Technologies. All rights reserved.
           </p>
         </div>

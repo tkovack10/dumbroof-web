@@ -127,7 +127,7 @@ function LoginPageContent() {
                 ? "Create your account"
                 : "Welcome back"}
           </h2>
-          <p className="text-gray-500 text-sm mb-6">
+          <p className="text-[var(--gray-muted)] text-sm mb-6">
             {isForgotPassword
               ? "Enter your email and we'll send a reset link."
               : isSignUp
@@ -137,7 +137,7 @@ function LoginPageContent() {
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-[var(--gray)] mb-1">
                 Email
               </label>
               <input
@@ -145,14 +145,14 @@ function LoginPageContent() {
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full px-4 py-3 rounded-lg border border-gray-200 focus:border-[var(--navy)] focus:ring-1 focus:ring-[var(--navy)] outline-none transition-colors text-sm"
+                className="w-full px-4 py-3 rounded-lg border border-[var(--border-glass)] focus:border-[var(--navy)] focus:ring-1 focus:ring-[var(--navy)] outline-none transition-colors text-sm"
                 placeholder="you@company.com"
               />
             </div>
 
             {!isForgotPassword && (
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-[var(--gray)] mb-1">
                   Password
                 </label>
                 <input
@@ -160,7 +160,7 @@ function LoginPageContent() {
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full px-4 py-3 rounded-lg border border-gray-200 focus:border-[var(--navy)] focus:ring-1 focus:ring-[var(--navy)] outline-none transition-colors text-sm"
+                  className="w-full px-4 py-3 rounded-lg border border-[var(--border-glass)] focus:border-[var(--navy)] focus:ring-1 focus:ring-[var(--navy)] outline-none transition-colors text-sm"
                   placeholder="••••••••"
                   minLength={6}
                 />
@@ -202,7 +202,7 @@ function LoginPageContent() {
                   setError("");
                   setMessage("");
                 }}
-                className="block w-full text-sm text-gray-400 hover:text-[var(--red)] transition-colors"
+                className="block w-full text-sm text-[var(--gray-dim)] hover:text-[var(--red)] transition-colors"
               >
                 Forgot your password?
               </button>
@@ -217,7 +217,7 @@ function LoginPageContent() {
                 setError("");
                 setMessage("");
               }}
-              className="text-sm text-gray-500 hover:text-[var(--navy)] transition-colors"
+              className="text-sm text-[var(--gray-muted)] hover:text-[var(--navy)] transition-colors"
             >
               {isForgotPassword
                 ? "Back to sign in"

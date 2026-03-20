@@ -505,7 +505,7 @@ export function AdminDashboard() {
                         <th className="px-3 py-3 w-8"></th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-gray-50">
+                    <tbody className="divide-y divide-white/[0.04]">
                     {claims.map((claim, i) => (
                       <tr
                         key={claim.id}
@@ -677,7 +677,7 @@ export function AdminDashboard() {
                     <div className="col-span-1">Price</div>
                     <div className="col-span-2">Date / Actions</div>
                   </div>
-                  <div className="divide-y divide-gray-50">
+                  <div className="divide-y divide-white/[0.04]">
                     {repairs.map((repair) => (
                       <div key={repair.id}>
                         <div
@@ -799,7 +799,7 @@ export function AdminDashboard() {
                     <div className="col-span-1">Status</div>
                     <div className="col-span-2">Actions</div>
                   </div>
-                  <div className="divide-y divide-gray-50">
+                  <div className="divide-y divide-white/[0.04]">
                     {betaSignups.map((signup) => (
                       <div key={signup.id} className="px-6 py-4 grid grid-cols-12 gap-4 items-center hover:bg-white/[0.04] transition-colors text-sm">
                         <div className="col-span-2">
@@ -928,7 +928,7 @@ export function AdminDashboard() {
                     <div className="col-span-1">Status</div>
                     <div className="col-span-2">Actions</div>
                   </div>
-                  <div className="divide-y divide-gray-50">
+                  <div className="divide-y divide-white/[0.04]">
                     {inspectors.map((app) => (
                       <div key={app.id} className="px-6 py-4 grid grid-cols-12 gap-4 items-center hover:bg-white/[0.04] transition-colors text-sm">
                         <div className="col-span-2">

@@ -79,24 +79,24 @@ export function RoofSectionsEditor({ claimId }: Props) {
 
   if (loading) {
     return (
-      <div className="bg-white rounded-2xl border border-gray-200 p-6">
-        <p className="text-sm text-gray-400">Loading roof sections...</p>
+      <div className="bg-white rounded-2xl border border-[var(--border-glass)] p-6">
+        <p className="text-sm text-[var(--gray-dim)]">Loading roof sections...</p>
       </div>
     );
   }
 
   if (!data || !data.sections || data.sections.length === 0) {
     return (
-      <div className="bg-gray-50 border border-gray-200 rounded-2xl p-5">
+      <div className="bg-white/[0.04] border border-[var(--border-glass)] rounded-2xl p-5">
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center">
-            <svg className="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <div className="w-9 h-9 rounded-full bg-white/[0.06] flex items-center justify-center">
+            <svg className="w-4 h-4 text-[var(--gray-dim)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
             </svg>
           </div>
           <div>
-            <p className="text-sm font-medium text-gray-600">No slope breakdown available</p>
-            <p className="text-xs text-gray-400">Reprocess with a measurement report to extract per-slope data</p>
+            <p className="text-sm font-medium text-[var(--gray)]">No slope breakdown available</p>
+            <p className="text-xs text-[var(--gray-dim)]">Reprocess with a measurement report to extract per-slope data</p>
           </div>
         </div>
       </div>
@@ -123,9 +123,9 @@ export function RoofSectionsEditor({ claimId }: Props) {
   const hasOverrides = data.sections.some((s) => s.user_material_override !== null);
 
   return (
-    <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+    <div className="bg-white rounded-2xl border border-[var(--border-glass)] overflow-hidden">
       {/* Header */}
-      <div className="px-5 py-3 border-b border-gray-100 flex items-center justify-between">
+      <div className="px-5 py-3 border-b border-white/[0.04] flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center">
             <svg className="w-4 h-4 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -134,7 +134,7 @@ export function RoofSectionsEditor({ claimId }: Props) {
           </div>
           <div>
             <h3 className="text-sm font-semibold text-[var(--navy)]">Roof Sections</h3>
-            <p className="text-xs text-gray-400">
+            <p className="text-xs text-[var(--gray-dim)]">
               {data.total_area_sq.toFixed(1)} SQ total &middot; {data.sections.length} slope{data.sections.length > 1 ? "s" : ""} &middot; {data.provider}
             </p>
           </div>
@@ -158,7 +158,7 @@ export function RoofSectionsEditor({ claimId }: Props) {
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
-            <tr className="bg-gray-50 text-xs font-semibold text-gray-400 uppercase">
+            <tr className="bg-white/[0.04] text-xs font-semibold text-[var(--gray-dim)] uppercase">
               <th className="px-5 py-2 text-left">Slope</th>
               <th className="px-3 py-2 text-right">Area (SQ)</th>
               <th className="px-3 py-2 text-center">Pitch</th>
@@ -176,19 +176,19 @@ export function RoofSectionsEditor({ claimId }: Props) {
                 return (
                   <tr
                     key={globalIndex}
-                    className={`border-t border-gray-100 ${isOverridden ? "bg-amber-50/30" : ""}`}
+                    className={`border-t border-white/[0.04] ${isOverridden ? "bg-amber-50/30" : ""}`}
                   >
-                    <td className="px-5 py-2.5 text-gray-700">
+                    <td className="px-5 py-2.5 text-[var(--gray)]">
                       <span className="font-medium">{section.structure_name}</span>
-                      {section.pitch && <span className="ml-1 text-gray-400">({section.pitch})</span>}
+                      {section.pitch && <span className="ml-1 text-[var(--gray-dim)]">({section.pitch})</span>}
                     </td>
-                    <td className="px-3 py-2.5 text-right text-gray-600 font-mono">
+                    <td className="px-3 py-2.5 text-right text-[var(--gray)] font-mono">
                       {section.area_sq.toFixed(1)}
                     </td>
-                    <td className="px-3 py-2.5 text-center text-gray-500">
+                    <td className="px-3 py-2.5 text-center text-[var(--gray-muted)]">
                       {section.pitch || "—"}
                     </td>
-                    <td className="px-3 py-2.5 text-center text-gray-400">
+                    <td className="px-3 py-2.5 text-center text-[var(--gray-dim)]">
                       {section.percent > 0 ? `${section.percent}%` : "—"}
                     </td>
                     <td className="px-5 py-2.5">
@@ -200,7 +200,7 @@ export function RoofSectionsEditor({ claimId }: Props) {
                           className={`rounded-lg border px-2 py-1.5 text-sm min-w-[180px] ${
                             isOverridden
                               ? "border-amber-300 bg-amber-50 text-amber-800 font-medium"
-                              : "border-gray-200 text-gray-700"
+                              : "border-[var(--border-glass)] text-[var(--gray)]"
                           } disabled:opacity-50`}
                         >
                           {ROOF_MATERIALS.map((m) => (
@@ -219,7 +219,7 @@ export function RoofSectionsEditor({ claimId }: Props) {
                           </button>
                         )}
                         {isSaving && (
-                          <svg className="animate-spin w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24">
+                          <svg className="animate-spin w-4 h-4 text-[var(--gray-dim)]" fill="none" viewBox="0 0 24 24">
                             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                           </svg>
@@ -236,11 +236,11 @@ export function RoofSectionsEditor({ claimId }: Props) {
 
       {/* Material impact summary */}
       {hasOverrides && (
-        <div className="px-5 py-3 border-t border-gray-100 bg-amber-50/30">
+        <div className="px-5 py-3 border-t border-white/[0.04] bg-amber-50/30">
           <p className="text-xs font-semibold text-amber-700 mb-1">Impact Preview</p>
           <div className="flex flex-wrap gap-2">
             {[...materialSummary.entries()].map(([mat, sq]) => (
-              <span key={mat} className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-white border border-gray-200 text-gray-700">
+              <span key={mat} className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-white border border-[var(--border-glass)] text-[var(--gray)]">
                 {materialLabel(mat)}: {sq.toFixed(1)} SQ
               </span>
             ))}

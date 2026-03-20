@@ -64,7 +64,7 @@ export function CoverageMap({ activeStates, title }: CoverageMapProps) {
   const activeSet = new Set(activeStates.map(s => s.toUpperCase()));
 
   return (
-    <div className="bg-white rounded-2xl border border-gray-200 p-6">
+    <div className="bg-white rounded-2xl border border-[var(--border-glass)] p-6">
       {title && (
         <h3 className="text-lg font-bold text-[var(--navy)] mb-4 text-center">{title}</h3>
       )}
@@ -86,11 +86,11 @@ export function CoverageMap({ activeStates, title }: CoverageMapProps) {
       <div className="flex items-center justify-center gap-6 mt-4">
         <div className="flex items-center gap-2">
           <div className="w-4 h-3 rounded-sm bg-[var(--navy)] opacity-80" />
-          <span className="text-xs text-gray-600">Active coverage</span>
+          <span className="text-xs text-[var(--gray)]">Active coverage</span>
         </div>
         <div className="flex items-center gap-2">
-          <div className="w-4 h-3 rounded-sm bg-gray-200" />
-          <span className="text-xs text-gray-600">Coming soon</span>
+          <div className="w-4 h-3 rounded-sm bg-white/[0.04]" />
+          <span className="text-xs text-[var(--gray)]">Coming soon</span>
         </div>
       </div>
     </div>
