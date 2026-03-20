@@ -14,6 +14,8 @@ import type { Claim } from "@/types/claim";
 import { CATEGORY_CONFIG, CLAIM_STATUS_CONFIG, type UploadCategory } from "@/lib/claim-constants";
 import { uploadClaimDocuments } from "@/lib/upload-utils";
 import { useBillingQuota } from "@/hooks/use-billing-quota";
+import { useCountUp } from "@/hooks/use-count-up";
+import { Confetti } from "@/components/confetti";
 import { ClaimBrainChat } from "@/components/claim-brain-chat";
 import { CommunicationLog } from "@/components/communication-log";
 
@@ -460,30 +462,14 @@ export default function ClaimDetailPage() {
         </div>
       </nav>
 
-      {/* Win Celebration Banner */}
+      {/* Win Celebration Banner — Robinhood dopamine */}
       {claim.claim_outcome === "won" && (claim.settlement_amount ?? 0) > (claim.original_carrier_rcv ?? 0) && (() => {
         const orig = claim.original_carrier_rcv ?? 0;
         const updated = claim.settlement_amount ?? 0;
         const move = updated - orig;
         const pct = orig > 0 ? Math.round((move / orig) * 100) : 0;
         return (
-          <div className="bg-gradient-to-r from-green-500 via-emerald-500 to-green-600 text-white">
-            <div className="max-w-4xl mx-auto px-6 py-6">
-              <div className="flex items-center justify-between flex-wrap gap-4">
-                <div>
-                  <p className="text-sm font-medium text-green-100 uppercase tracking-wider">Carrier Moved</p>
-                  <p className="text-4xl font-black mt-1">+${move.toLocaleString()}</p>
-                  <p className="text-sm text-green-100 mt-1">
-                    ${orig.toLocaleString()} → ${updated.toLocaleString()} ({pct}% increase)
-                  </p>
-                </div>
-                <div className="text-right">
-                  <div className="text-5xl">&#127942;</div>
-                  <p className="text-xs font-bold text-green-200 mt-1 uppercase">Claim Won</p>
-                </div>
-              </div>
-            </div>
-          </div>
+          <WinBanner orig={orig} updated={updated} move={move} pct={pct} />
         );
       })()}
 
@@ -1477,5 +1463,67 @@ export default function ClaimDetailPage() {
         />
       )}
     </main>
+  );
+}
+
+/** Robinhood-style win celebration with confetti + animated counter */
+function WinBanner({ orig, updated, move, pct }: { orig: number; updated: number; move: number; pct: number }) {
+  const animatedMove = useCountUp(move, 2500, 500);
+  const animatedPct = useCountUp(pct, 2000, 800);
+  const [confetti, setConfetti] = useState(true);
+
+  useEffect(() => {
+    const t = setTimeout(() => setConfetti(false), 100);
+    return () => clearTimeout(t);
+  }, []);
+
+  return (
+    <>
+      <Confetti active={confetti} duration={5000} />
+      <div className="relative overflow-hidden">
+        {/* Animated gradient background */}
+        <div className="absolute inset-0 bg-gradient-to-br from-green-600 via-emerald-500 to-green-400 animate-gradient-shift" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_50%,rgba(255,255,255,0.15),transparent_60%)]" />
+
+        <div className="relative max-w-4xl mx-auto px-6 py-10">
+          <div className="flex items-center justify-between flex-wrap gap-6">
+            <div>
+              <div className="flex items-center gap-3 mb-3">
+                <div className="w-12 h-12 rounded-full bg-white/20 backdrop-blur flex items-center justify-center shadow-[0_0_20px_rgba(255,255,255,0.3)]">
+                  <svg className="w-7 h-7 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 18L9 11.25l4.306 4.307a11.95 11.95 0 015.814-5.519l2.74-1.22m0 0l-5.94-2.28m5.94 2.28l-2.28 5.941" />
+                  </svg>
+                </div>
+                <div>
+                  <p className="text-xs font-bold text-white/70 uppercase tracking-[0.2em]">Carrier Moved</p>
+                  <p className="text-xs text-white/50 font-medium">dumb roof got the carrier to pay more</p>
+                </div>
+              </div>
+              <p className="text-6xl md:text-7xl font-black text-white tracking-tight tabular-nums">
+                +${animatedMove.toLocaleString()}
+              </p>
+              <div className="flex items-center gap-4 mt-3">
+                <span className="inline-flex items-center gap-1.5 bg-white/20 backdrop-blur rounded-full px-4 py-1.5 text-sm font-bold text-white">
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 10.5L12 3m0 0l7.5 7.5M12 3v18" />
+                  </svg>
+                  {animatedPct}% increase
+                </span>
+                <span className="text-sm text-white/60 tabular-nums font-medium">
+                  ${orig.toLocaleString()} → ${updated.toLocaleString()}
+                </span>
+              </div>
+            </div>
+
+            <div className="text-center">
+              <div className="text-7xl animate-bounce" style={{ animationDuration: "2s" }}>
+                &#127942;
+              </div>
+              <p className="text-sm font-black text-white/90 uppercase tracking-widest mt-2">Claim Won</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </>
   );
 }

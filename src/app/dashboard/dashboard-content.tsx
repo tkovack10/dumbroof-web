@@ -9,6 +9,8 @@ import { useBillingQuota } from "@/hooks/use-billing-quota";
 import { LanguageToggle } from "@/lib/i18n";
 import { ClaimsMap } from "@/components/claims-map";
 import { RepairTabContent } from "./repair-tab-content";
+import { Confetti } from "@/components/confetti";
+import { useCountUp } from "@/hooks/use-count-up";
 
 type StatusFilter = "all" | "processing" | "ready" | "attention";
 type ViewMode = "table" | "map";
@@ -32,6 +34,8 @@ export function DashboardContent({ user }: { user: User }) {
   const [activeTab, setActiveTab] = useState<DashboardTab>("claims");
   const [initialLoadDone, setInitialLoadDone] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [showConfetti, setShowConfetti] = useState(false);
+  const prevWinCountRef = useRef(0);
   const menuRef = useRef<HTMLDivElement>(null);
   const billing = useBillingQuota();
 
@@ -166,6 +170,20 @@ export function DashboardContent({ user }: { user: User }) {
   const totalCarrierRcv = claims.reduce((s, c) => s + (c.original_carrier_rcv ?? 0), 0);
   const attentionCount = claims.filter(c => c.status === "error" || c.status === "needs_improvement" || (c.pending_edits ?? 0) > 0).length;
 
+  // Animated count-up for win banner
+  const animatedMovement = useCountUp(totalMovement, 2000, 300);
+
+  // Fire confetti when a NEW win appears (not on every render)
+  useEffect(() => {
+    if (wonClaims.length > prevWinCountRef.current && prevWinCountRef.current >= 0) {
+      if (prevWinCountRef.current > 0 || (initialLoadDone && wonClaims.length > 0)) {
+        setShowConfetti(true);
+        setTimeout(() => setShowConfetti(false), 100);
+      }
+    }
+    prevWinCountRef.current = wonClaims.length;
+  }, [wonClaims.length, initialLoadDone]);
+
   // Filter logic
   const filteredClaims = claims.filter(c => {
     if (statusFilter === "all") return true;
@@ -192,6 +210,7 @@ export function DashboardContent({ user }: { user: User }) {
 
   return (
     <main className="min-h-screen">
+      <Confetti active={showConfetti} duration={5000} />
       {/* Top Bar */}
       <nav className="bg-[rgba(6,9,24,0.85)] backdrop-blur-[20px] border-b border-[var(--border-glass)] sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
@@ -404,36 +423,61 @@ export function DashboardContent({ user }: { user: User }) {
               </div>
             )}
 
-            {/* Win Summary Banner */}
+            {/* Win Banner — Robinhood-style dopamine */}
             {!loading && wonClaims.length > 0 && (
-              <div className="bg-gradient-to-r from-green-500 to-emerald-600 rounded-xl p-6 mb-6 text-white shadow-lg">
-                <div className="flex items-center justify-between flex-wrap gap-4">
-                  <div>
-                    <p className="text-sm font-medium text-green-100 uppercase tracking-wider">
-                      Carrier Movement
-                    </p>
-                    <p className="text-3xl font-bold mt-1">
-                      +${totalMovement.toLocaleString()}
-                    </p>
-                    <p className="text-sm text-green-100 mt-1">
-                      {wonClaims.length} claim{wonClaims.length > 1 ? "s" : ""} won — carriers paid more after dumb roof analysis
-                    </p>
-                  </div>
-                  <div className="flex flex-col items-end gap-1">
-                    {wonClaims.map(c => {
-                      const orig = c.original_carrier_rcv ?? 0;
-                      const updated = c.settlement_amount ?? 0;
-                      const move = updated - orig;
-                      if (move <= 0) return null;
-                      return (
-                        <div key={c.id} className="text-xs text-green-100 bg-white/10 rounded-lg px-3 py-1.5">
-                          <span className="font-medium text-white">{c.address?.split(",")[0]}</span>
-                          <span className="mx-1.5">—</span>
-                          ${orig.toLocaleString()} → ${updated.toLocaleString()}
-                          <span className="ml-1.5 font-bold text-white">(+${move.toLocaleString()})</span>
+              <div className="relative overflow-hidden rounded-2xl mb-6 shadow-[0_0_40px_rgba(34,197,94,0.25)]">
+                {/* Animated gradient background */}
+                <div className="absolute inset-0 bg-gradient-to-br from-green-600 via-emerald-500 to-green-400 animate-gradient-shift" />
+                <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_50%,rgba(255,255,255,0.15),transparent_60%)]" />
+
+                <div className="relative p-8">
+                  <div className="flex items-center justify-between flex-wrap gap-6">
+                    <div>
+                      <div className="flex items-center gap-3 mb-2">
+                        <div className="w-10 h-10 rounded-full bg-white/20 backdrop-blur flex items-center justify-center">
+                          <svg className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 18L9 11.25l4.306 4.307a11.95 11.95 0 015.814-5.519l2.74-1.22m0 0l-5.94-2.28m5.94 2.28l-2.28 5.941" />
+                          </svg>
                         </div>
-                      );
-                    })}
+                        <p className="text-sm font-bold text-white/80 uppercase tracking-[0.2em]">
+                          Carrier Movement
+                        </p>
+                      </div>
+                      <p className="text-5xl md:text-6xl font-black text-white tracking-tight tabular-nums">
+                        +${animatedMovement.toLocaleString()}
+                      </p>
+                      <p className="text-sm text-white/70 mt-2 font-medium">
+                        {wonClaims.length} claim{wonClaims.length > 1 ? "s" : ""} won — carriers moved after dumb roof analysis
+                      </p>
+                    </div>
+
+                    <div className="flex flex-col gap-2">
+                      {wonClaims.map(c => {
+                        const orig = c.original_carrier_rcv ?? 0;
+                        const updated = c.settlement_amount ?? 0;
+                        const move = updated - orig;
+                        const pct = orig > 0 ? Math.round((move / orig) * 100) : 0;
+                        if (move <= 0) return null;
+                        return (
+                          <a
+                            key={c.id}
+                            href={`/dashboard/claim/${c.id}`}
+                            className="group flex items-center gap-3 bg-white/10 hover:bg-white/20 backdrop-blur rounded-xl px-4 py-3 transition-all hover:scale-[1.02]"
+                          >
+                            <div className="flex-1 min-w-0">
+                              <p className="font-bold text-white text-sm truncate">{c.address?.split(",")[0]}</p>
+                              <p className="text-xs text-white/60 mt-0.5 tabular-nums">
+                                ${orig.toLocaleString()} → ${updated.toLocaleString()}
+                              </p>
+                            </div>
+                            <div className="text-right shrink-0">
+                              <p className="text-lg font-black text-white tabular-nums">+${move.toLocaleString()}</p>
+                              <p className="text-xs font-bold text-green-200">{pct}% increase</p>
+                            </div>
+                          </a>
+                        );
+                      })}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -544,7 +588,7 @@ export function DashboardContent({ user }: { user: User }) {
                           <tr
                             key={claim.id}
                             onClick={() => setExpandedRow(expandedRow === claim.id ? null : claim.id)}
-                            className={`hover:bg-white/[0.04] transition-colors cursor-pointer ${isWon ? "bg-green-500/10 border-l-4 border-l-green-500" : ""}`}
+                            className={`hover:bg-white/[0.04] transition-colors cursor-pointer ${isWon ? "bg-green-500/10 border-l-4 border-l-green-500 animate-won-glow" : ""}`}
                           >
                             <td className="px-3 py-2.5">
                               <a href={`/dashboard/claim/${claim.id}`} className="hover:underline" onClick={e => e.stopPropagation()}>
@@ -579,12 +623,12 @@ export function DashboardContent({ user }: { user: User }) {
                               <div className="flex flex-col items-center gap-1">
                                 {isWon ? (
                                   <div className="flex flex-col items-center">
-                                    <span className="inline-block px-3 py-1 rounded-full text-xs font-black bg-green-500/100 text-white shadow-sm">
+                                    <span className="inline-block px-4 py-1.5 rounded-full text-xs font-black bg-green-500 text-white shadow-[0_0_12px_rgba(34,197,94,0.5)] animate-pulse-subtle">
                                       WON
                                     </span>
                                     {movement > 0 && (
-                                      <span className="text-[11px] font-bold text-green-600 mt-1">
-                                        +${movement >= 1000 ? `${(movement / 1000).toFixed(0)}K` : movement.toLocaleString()}
+                                      <span className="text-sm font-black text-green-400 mt-1.5 tabular-nums">
+                                        +${movement >= 1000 ? `${(movement / 1000).toFixed(1)}K` : movement.toLocaleString()}
                                       </span>
                                     )}
                                   </div>

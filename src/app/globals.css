@@ -120,3 +120,25 @@ body {
   background-size: 200% 100%;
   animation: shimmer 1.5s infinite;
 }
+
+/* Robinhood-style win animations */
+@keyframes gradient-shift {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+.animate-gradient-shift {
+  background-size: 200% 200%;
+  animation: gradient-shift 6s ease infinite;
+}
+
+@keyframes won-glow {
+  0%, 100% { background-color: rgba(34, 197, 94, 0.08); }
+  50% { background-color: rgba(34, 197, 94, 0.15); }
+}
+.animate-won-glow { animation: won-glow 3s ease-in-out infinite; }
+
+@keyframes pulse-subtle {
+  0%, 100% { box-shadow: 0 0 12px rgba(34, 197, 94, 0.5); }
+  50% { box-shadow: 0 0 20px rgba(34, 197, 94, 0.8); }
+}
+.animate-pulse-subtle { animation: pulse-subtle 2s ease-in-out infinite; }
