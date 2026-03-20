@@ -69,8 +69,8 @@ export function FileUploadZone({
       <p className="text-xs text-[var(--gray-muted)] mb-2">{description}</p>
 
       {largeFiles.length > 0 && (
-        <div className="bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
-          <p className="text-xs text-amber-700 font-medium">
+        <div className="bg-amber-500/10 border border-amber-500/20 rounded-lg px-3 py-2">
+          <p className="text-xs text-amber-400 font-medium">
             {largeFiles.length === 1
               ? `"${largeFiles[0].name}" is ${(largeFiles[0].size / 1024 / 1024).toFixed(0)}MB.`
               : `${largeFiles.length} files exceed ${FILE_SIZE_WARNING_MB}MB.`}{" "}
@@ -88,10 +88,10 @@ export function FileUploadZone({
         onDrop={handleDrop}
         className={`relative border-2 border-dashed rounded-xl p-6 text-center transition-colors cursor-pointer ${
           isDragging
-            ? "border-[var(--red)] bg-red-50/50"
+            ? "border-[var(--red)] bg-[var(--pink)]/10"
             : files.length > 0
-              ? "border-green-300 bg-green-50/30"
-              : "border-[var(--border-glass)] hover:border-[var(--border-glass)] bg-white"
+              ? "border-green-300 bg-green-500/10"
+              : "border-[var(--border-glass)] hover:border-[var(--border-glass)] bg-[var(--bg-glass)]"
         }`}
       >
         <input

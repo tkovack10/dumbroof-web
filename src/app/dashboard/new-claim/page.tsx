@@ -175,7 +175,7 @@ export default function NewClaimPage() {
         </nav>
 
         <div className="max-w-xl mx-auto px-6 py-20 text-center">
-          <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-6">
+          <div className="w-16 h-16 rounded-full bg-green-500/10 flex items-center justify-center mx-auto mb-6">
             <svg
               className="w-8 h-8 text-green-600"
               fill="none"
@@ -364,7 +364,7 @@ export default function NewClaimPage() {
                 type="button"
                 onClick={scanForStorms}
                 disabled={!propertyAddress.trim() || scanningStorms}
-                className="px-4 py-3 text-sm bg-blue-500/10 text-blue-700 border border-blue-500/30 rounded-lg hover:bg-blue-500/20 disabled:opacity-50 disabled:cursor-not-allowed transition-colors whitespace-nowrap"
+                className="px-4 py-3 text-sm bg-blue-500/10 text-blue-400 border border-blue-500/30 rounded-lg hover:bg-blue-500/20 disabled:opacity-50 disabled:cursor-not-allowed transition-colors whitespace-nowrap"
               >
                 {scanningStorms ? (
                   <span className="flex items-center gap-2">
@@ -417,8 +417,8 @@ export default function NewClaimPage() {
                     }}
                     className="block w-full text-left text-xs px-3 py-2 bg-amber-500/10 border border-amber-500/30 rounded-lg hover:bg-amber-500/20 transition-colors"
                   >
-                    <span className="font-semibold text-amber-800">{storm.date}</span>
-                    <span className="text-amber-600 ml-2">
+                    <span className="font-semibold text-amber-400">{storm.date}</span>
+                    <span className="text-amber-400 ml-2">
                       {storm.type}
                       {storm.details ? ` — ${storm.details}` : ""}
                     </span>
@@ -619,8 +619,8 @@ export default function NewClaimPage() {
               <div
                 className={`w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold ${
                   hasScope
-                    ? "bg-blue-100 text-blue-700"
-                    : "bg-amber-100 text-amber-700"
+                    ? "bg-blue-500/10 text-blue-400"
+                    : "bg-amber-500/10 text-amber-400"
                 }`}
               >
                 {hasScope ? "5" : "3"}
@@ -628,7 +628,7 @@ export default function NewClaimPage() {
               <div>
                 <p
                   className={`text-sm font-semibold ${
-                    hasScope ? "text-blue-800" : "text-amber-800"
+                    hasScope ? "text-blue-400" : "text-amber-400"
                   }`}
                 >
                   {hasScope
@@ -637,7 +637,7 @@ export default function NewClaimPage() {
                 </p>
                 <p
                   className={`text-xs ${
-                    hasScope ? "text-blue-600" : "text-amber-600"
+                    hasScope ? "text-blue-400" : "text-amber-400"
                   }`}
                 >
                   {hasScope
@@ -650,7 +650,7 @@ export default function NewClaimPage() {
 
           {/* Error */}
           {status === "error" && (
-            <div className="bg-red-500/10 border border-red-500/30 text-red-700 text-sm rounded-lg px-4 py-3">
+            <div className="bg-red-500/10 border border-red-500/30 text-red-400 text-sm rounded-lg px-4 py-3">
               {errorMsg}
             </div>
           )}

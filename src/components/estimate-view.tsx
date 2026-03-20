@@ -33,9 +33,9 @@ interface Props {
 type Tab = "estimate" | "damage" | "codes";
 
 const SEVERITY_STYLES: Record<string, { bg: string; text: string; icon: string }> = {
-  critical: { bg: "bg-red-100", text: "text-red-800", icon: "!!!" },
-  severe: { bg: "bg-red-500/10", text: "text-red-700", icon: "!!" },
-  moderate: { bg: "bg-amber-500/10", text: "text-amber-700", icon: "!" },
+  critical: { bg: "bg-red-500/10", text: "text-red-400", icon: "!!!" },
+  severe: { bg: "bg-red-500/10", text: "text-red-400", icon: "!!" },
+  moderate: { bg: "bg-amber-500/10", text: "text-amber-400", icon: "!" },
   minor: { bg: "bg-yellow-500/10", text: "text-yellow-700", icon: "~" },
 };
 
@@ -124,12 +124,12 @@ export function EstimateView({ claimId }: Props) {
           <h2 className="text-sm font-semibold text-[var(--white)]">Estimate &amp; Damage Assessment</h2>
           <span className="text-xs text-[var(--gray-dim)]">{grouped.length} items, {trades.length} trades</span>
           {damagePhotos.length > 0 && (
-            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-100 text-red-700">
+            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-500/10 text-red-400">
               {damagePhotos.length} damage findings
             </span>
           )}
           {uniqueCitations.length > 0 && (
-            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-blue-700">
+            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-500/10 text-blue-400">
               {uniqueCitations.length} code citations
             </span>
           )}
@@ -214,7 +214,7 @@ function LineItemsTable({ items, lineTotal, trades }: { items: LineItem[]; lineT
               <Fragment key={item.id}>
                 {showHeader && (
                   <tr>
-                    <td colSpan={8} className="px-3 py-2 bg-blue-500/10 font-bold text-blue-800 text-xs">
+                    <td colSpan={8} className="px-3 py-2 bg-blue-500/10 font-bold text-blue-400 text-xs">
                       {cat}
                     </td>
                   </tr>
@@ -382,7 +382,7 @@ function CodeCompliance({ citations }: { citations: { desc: string; citation: Co
                 {/* Code Requirement */}
                 {cit.requirement && (
                   <div className="bg-amber-500/10 border-l-4 border-amber-400 px-3 py-2 rounded-r">
-                    <p className="text-[10px] font-bold text-amber-700 uppercase mb-1">Code Requirement</p>
+                    <p className="text-[10px] font-bold text-amber-400 uppercase mb-1">Code Requirement</p>
                     <p className="text-xs text-[var(--gray)] leading-relaxed">{cit.requirement}</p>
                   </div>
                 )}
@@ -390,7 +390,7 @@ function CodeCompliance({ citations }: { citations: { desc: string; citation: Co
                 {/* Supplement Argument */}
                 {cit.supplement_argument && (
                   <div className="bg-green-500/10 border-l-4 border-green-400 px-3 py-2 rounded-r">
-                    <p className="text-[10px] font-bold text-green-700 uppercase mb-1">Supplement Argument</p>
+                    <p className="text-[10px] font-bold text-green-400 uppercase mb-1">Supplement Argument</p>
                     <p className="text-xs text-[var(--gray)] leading-relaxed">{cit.supplement_argument}</p>
                   </div>
                 )}
@@ -401,7 +401,7 @@ function CodeCompliance({ citations }: { citations: { desc: string; citation: Co
                     {cit.manufacturer_specs.map((spec, j) => (
                       <div key={j} className="bg-blue-500/10 border-l-4 border-blue-400 px-3 py-2 rounded-r">
                         <div className="flex items-center gap-2 mb-1">
-                          <span className="text-xs font-bold text-blue-800">{spec.manufacturer}</span>
+                          <span className="text-xs font-bold text-blue-400">{spec.manufacturer}</span>
                           <span className="text-[10px] text-[var(--gray-muted)]">{spec.document}</span>
                         </div>
                         <p className="text-xs text-[var(--gray)] leading-relaxed">{spec.requirement}</p>

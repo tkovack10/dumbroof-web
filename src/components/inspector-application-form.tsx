@@ -61,8 +61,8 @@ export function InspectorApplicationForm({ className }: InspectorApplicationForm
 
   if (submitted) {
     return (
-      <div className={`bg-[var(--gray-50)] rounded-2xl p-8 border border-white/[0.04] text-center ${className || ""}`}>
-        <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-6">
+      <div className={`bg-white/[0.03] rounded-2xl p-8 border border-white/[0.04] text-center ${className || ""}`}>
+        <div className="w-16 h-16 rounded-full bg-green-500/10 flex items-center justify-center mx-auto mb-6">
           <svg className="w-8 h-8 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
@@ -79,7 +79,7 @@ export function InspectorApplicationForm({ className }: InspectorApplicationForm
   }
 
   return (
-    <form onSubmit={handleSubmit} className={`bg-[var(--gray-50)] rounded-2xl p-8 border border-white/[0.04] space-y-5 ${className || ""}`}>
+    <form onSubmit={handleSubmit} className={`bg-white/[0.03] rounded-2xl p-8 border border-white/[0.04] space-y-5 ${className || ""}`}>
       <h3 className="text-lg font-bold text-[var(--navy)]">Apply to Join</h3>
 
       <div className="grid grid-cols-2 gap-4">
@@ -166,7 +166,7 @@ export function InspectorApplicationForm({ className }: InspectorApplicationForm
       </div>
 
       {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3">
+        <div className="bg-red-500/10 border border-red-500/20 text-red-400 text-sm rounded-lg px-4 py-3">
           {error}
         </div>
       )}

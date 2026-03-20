@@ -7,7 +7,7 @@ export const metadata: Metadata = {
 
 export default function TermsPage() {
   return (
-    <main className="min-h-screen bg-white">
+    <main className="min-h-screen">
       {/* Nav */}
       <nav className="bg-[var(--navy)] border-b border-white/10">
         <div className="max-w-4xl mx-auto px-6 py-4 flex items-center justify-between">
@@ -30,14 +30,14 @@ export default function TermsPage() {
 
       {/* Content */}
       <article className="max-w-3xl mx-auto px-6 py-12">
-        <h1 className="text-3xl font-bold text-[var(--navy)] mb-2">
+        <h1 className="text-3xl font-bold text-[var(--white)] mb-2">
           Terms of Service
         </h1>
         <p className="text-[var(--gray-dim)] text-sm mb-10">
           Effective Date: March 18, 2026 &middot; Last Updated: March 18, 2026
         </p>
 
-        <div className="prose prose-gray max-w-none text-[15px] leading-relaxed [&_h2]:text-xl [&_h2]:font-bold [&_h2]:text-[var(--navy)] [&_h2]:mt-10 [&_h2]:mb-4 [&_h3]:text-base [&_h3]:font-semibold [&_h3]:text-[var(--navy)] [&_h3]:mt-6 [&_h3]:mb-2 [&_p]:mb-4 [&_p]:text-[var(--gray)]">
+        <div className="prose prose-invert max-w-none text-[15px] leading-relaxed [&_h2]:text-xl [&_h2]:font-bold [&_h2]:text-[var(--white)] [&_h2]:mt-10 [&_h2]:mb-4 [&_h3]:text-base [&_h3]:font-semibold [&_h3]:text-[var(--white)] [&_h3]:mt-6 [&_h3]:mb-2 [&_p]:mb-4 [&_p]:text-[var(--gray)]">
           <h2>1. Acceptance of Terms</h2>
           <p>
             By accessing or using the DumbRoof.ai platform (&ldquo;Platform&rdquo;)

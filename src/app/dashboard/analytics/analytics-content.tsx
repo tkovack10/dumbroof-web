@@ -79,9 +79,9 @@ function winRateColor(rate: number): string {
 }
 
 function winRateBadge(rate: number): string {
-  if (rate >= 50) return "bg-green-100 text-green-700";
-  if (rate >= 25) return "bg-amber-100 text-amber-700";
-  return "bg-red-100 text-red-700";
+  if (rate >= 50) return "bg-green-500/10 text-green-400";
+  if (rate >= 25) return "bg-amber-500/10 text-amber-400";
+  return "bg-red-500/10 text-red-400";
 }
 
 export function AnalyticsContent({ user }: { user: User }) {
@@ -220,30 +220,30 @@ export function AnalyticsContent({ user }: { user: User }) {
 
       <div className="max-w-6xl mx-auto px-6 py-10">
         <div className="mb-8">
-          <h1 className="text-2xl font-bold text-[var(--navy)]">Analytics</h1>
+          <h1 className="text-2xl font-bold text-[var(--white)]">Analytics</h1>
           <p className="text-[var(--gray-muted)] mt-1">
             Carrier win rates, pricing intelligence, and argument effectiveness.
           </p>
         </div>
 
         {error && (
-          <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-6">
-            <p className="text-sm text-red-700">{error}</p>
+          <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-4 mb-6">
+            <p className="text-sm text-red-400">{error}</p>
           </div>
         )}
 
         {loading ? (
-          <div className="bg-white rounded-2xl border border-[var(--border-glass)] text-center py-16">
+          <div className="glass-card text-center py-16">
             <p className="text-[var(--gray-dim)] text-sm">Loading analytics...</p>
           </div>
         ) : outcomes.length === 0 ? (
-          <div className="bg-white rounded-2xl border border-[var(--border-glass)] text-center py-16 px-8">
+          <div className="glass-card text-center py-16 px-8">
             <div className="w-16 h-16 rounded-2xl bg-white/[0.04] border-2 border-dashed border-[var(--border-glass)] flex items-center justify-center mx-auto mb-5">
               <svg className="w-8 h-8 text-[var(--gray-dim)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" />
               </svg>
             </div>
-            <h3 className="text-lg font-semibold text-[var(--navy)] mb-2">No analytics data yet</h3>
+            <h3 className="text-lg font-semibold text-[var(--white)] mb-2">No analytics data yet</h3>
             <p className="text-[var(--gray-muted)] text-sm mb-6 max-w-md mx-auto">
               Submit your first claim to start building carrier intelligence and pricing analytics.
             </p>
@@ -255,32 +255,32 @@ export function AnalyticsContent({ user }: { user: User }) {
           <div className="space-y-8">
             {/* Section 1: Portfolio KPIs */}
             <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-              <div className="bg-white rounded-xl border border-[var(--border-glass)] p-5 text-center">
+              <div className="glass-card p-5 text-center">
                 <p className="text-xs text-[var(--gray-dim)] font-medium uppercase">Total Claims</p>
-                <p className="text-2xl font-bold text-[var(--navy)] mt-1">{totalClaims}</p>
+                <p className="text-2xl font-bold text-[var(--white)] mt-1">{totalClaims}</p>
               </div>
-              <div className="bg-white rounded-xl border border-[var(--border-glass)] p-5 text-center">
+              <div className="glass-card p-5 text-center">
                 <p className="text-xs text-[var(--gray-dim)] font-medium uppercase">Win Rate</p>
-                <p className="text-2xl font-bold text-green-600 mt-1">{winRate}%</p>
+                <p className="text-2xl font-bold text-green-400 mt-1">{winRate}%</p>
               </div>
-              <div className="bg-white rounded-xl border border-[var(--border-glass)] p-5 text-center">
+              <div className="glass-card p-5 text-center">
                 <p className="text-xs text-[var(--gray-dim)] font-medium uppercase">Carrier Movement</p>
-                <p className="text-2xl font-bold text-[var(--navy)] mt-1">{fmtMoney(totalMovement)}</p>
+                <p className="text-2xl font-bold text-[var(--white)] mt-1">{fmtMoney(totalMovement)}</p>
               </div>
-              <div className="bg-white rounded-xl border border-[var(--border-glass)] p-5 text-center">
+              <div className="glass-card p-5 text-center">
                 <p className="text-xs text-[var(--gray-dim)] font-medium uppercase">Avg Claim Size</p>
-                <p className="text-2xl font-bold text-[var(--navy)] mt-1">{fmtMoney(avgClaimSize)}</p>
+                <p className="text-2xl font-bold text-[var(--white)] mt-1">{fmtMoney(avgClaimSize)}</p>
               </div>
-              <div className="bg-white rounded-xl border border-[var(--border-glass)] p-5 text-center col-span-2 md:col-span-1">
+              <div className="glass-card p-5 text-center col-span-2 md:col-span-1">
                 <p className="text-xs text-[var(--gray-dim)] font-medium uppercase">Total USARM RCV</p>
-                <p className="text-2xl font-bold text-[var(--navy)] mt-1">{fmtMoney(totalUsarmRcv)}</p>
+                <p className="text-2xl font-bold text-[var(--white)] mt-1">{fmtMoney(totalUsarmRcv)}</p>
               </div>
             </div>
 
             {/* Section 2: Carrier Scoreboard */}
-            <div className="bg-white rounded-2xl border border-[var(--border-glass)] overflow-hidden">
-              <div className="px-6 py-4 border-b border-white/[0.04]">
-                <h2 className="text-sm font-semibold text-[var(--navy)]">Carrier Scoreboard</h2>
+            <div className="glass-card overflow-hidden">
+              <div className="px-6 py-4 border-b border-[var(--border-glass)]">
+                <h2 className="text-sm font-semibold text-[var(--white)]">Carrier Scoreboard</h2>
               </div>
               {carriers.length === 0 ? (
                 <p className="text-[var(--gray-dim)] text-sm text-center py-8">No data available</p>
@@ -300,7 +300,7 @@ export function AnalyticsContent({ user }: { user: User }) {
                     <tbody className="divide-y divide-white/[0.06]">
                       {carriers.map((c) => (
                         <tr key={c.carrier} className="hover:bg-white/[0.04]">
-                          <td className="px-6 py-3 font-medium text-[var(--navy)]">{c.carrier}</td>
+                          <td className="px-6 py-3 font-medium text-[var(--white)]">{c.carrier}</td>
                           <td className="px-4 py-3 text-right text-[var(--gray)]">{c.total_claims}</td>
                           <td className="px-4 py-3 text-right text-[var(--gray)]">{c.wins}</td>
                           <td className="px-4 py-3 text-center">
@@ -320,16 +320,16 @@ export function AnalyticsContent({ user }: { user: User }) {
 
             {/* Section 3: Win Rate Chart */}
             {chartData.length > 0 && (
-              <div className="bg-white rounded-2xl border border-[var(--border-glass)] overflow-hidden">
-                <div className="px-6 py-4 border-b border-white/[0.04]">
-                  <h2 className="text-sm font-semibold text-[var(--navy)]">Win Rate by Carrier</h2>
+              <div className="glass-card overflow-hidden">
+                <div className="px-6 py-4 border-b border-[var(--border-glass)]">
+                  <h2 className="text-sm font-semibold text-[var(--white)]">Win Rate by Carrier</h2>
                 </div>
                 <div className="p-6">
                   <ResponsiveContainer width="100%" height={Math.max(200, chartData.length * 48)}>
                     <BarChart data={chartData} layout="vertical" margin={{ left: 20, right: 30 }}>
-                      <XAxis type="number" domain={[0, 100]} tickFormatter={(v) => `${v}%`} fontSize={12} />
-                      <YAxis type="category" dataKey="name" width={120} fontSize={12} />
-                      <Tooltip formatter={(value) => [`${Number(value).toFixed(1)}%`, "Win Rate"]} />
+                      <XAxis type="number" domain={[0, 100]} tickFormatter={(v) => `${v}%`} fontSize={12} tick={{ fill: '#8892a8', fontSize: 12 }} stroke="rgba(255,255,255,0.06)" />
+                      <YAxis type="category" dataKey="name" width={120} fontSize={12} tick={{ fill: '#8892a8', fontSize: 12 }} stroke="rgba(255,255,255,0.06)" />
+                      <Tooltip formatter={(value) => [`${Number(value).toFixed(1)}%`, "Win Rate"]} contentStyle={{ background: 'rgba(15,18,35,0.95)', backdropFilter: 'blur(20px)', border: '1px solid rgba(255,255,255,0.14)', borderRadius: '12px', color: '#f0f0f5' }} />
                       <Bar dataKey="winRate" radius={[0, 4, 4, 0]} barSize={24}>
                         {chartData.map((entry, idx) => (
                           <Cell key={idx} fill={winRateColor(entry.winRate)} />
@@ -344,9 +344,9 @@ export function AnalyticsContent({ user }: { user: User }) {
             {/* Section 4: Photo Intelligence */}
             {(damageByType.length > 0 || damageByMaterial.length > 0) && (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="bg-white rounded-2xl border border-[var(--border-glass)] overflow-hidden">
-                  <div className="px-6 py-4 border-b border-white/[0.04]">
-                    <h2 className="text-sm font-semibold text-[var(--navy)]">Damage Types</h2>
+                <div className="glass-card overflow-hidden">
+                  <div className="px-6 py-4 border-b border-[var(--border-glass)]">
+                    <h2 className="text-sm font-semibold text-[var(--white)]">Damage Types</h2>
                   </div>
                   {damageByType.length === 0 ? (
                     <p className="text-[var(--gray-dim)] text-sm text-center py-8">No data available</p>
@@ -354,9 +354,9 @@ export function AnalyticsContent({ user }: { user: User }) {
                     <div className="p-6">
                       <ResponsiveContainer width="100%" height={Math.max(200, damageByType.length * 36)}>
                         <BarChart data={damageByType} layout="vertical" margin={{ left: 10, right: 20 }}>
-                          <XAxis type="number" fontSize={12} />
-                          <YAxis type="category" dataKey="name" width={130} fontSize={11} />
-                          <Tooltip formatter={(value) => [Number(value), "Photos"]} />
+                          <XAxis type="number" fontSize={12} tick={{ fill: '#8892a8', fontSize: 12 }} stroke="rgba(255,255,255,0.06)" />
+                          <YAxis type="category" dataKey="name" width={130} fontSize={11} tick={{ fill: '#8892a8', fontSize: 12 }} stroke="rgba(255,255,255,0.06)" />
+                          <Tooltip formatter={(value) => [Number(value), "Photos"]} contentStyle={{ background: 'rgba(15,18,35,0.95)', backdropFilter: 'blur(20px)', border: '1px solid rgba(255,255,255,0.14)', borderRadius: '12px', color: '#f0f0f5' }} />
                           <Bar dataKey="count" fill="#0d2137" radius={[0, 4, 4, 0]} barSize={20} />
                         </BarChart>
                       </ResponsiveContainer>
@@ -364,9 +364,9 @@ export function AnalyticsContent({ user }: { user: User }) {
                   )}
                 </div>
 
-                <div className="bg-white rounded-2xl border border-[var(--border-glass)] overflow-hidden">
-                  <div className="px-6 py-4 border-b border-white/[0.04]">
-                    <h2 className="text-sm font-semibold text-[var(--navy)]">Material Breakdown</h2>
+                <div className="glass-card overflow-hidden">
+                  <div className="px-6 py-4 border-b border-[var(--border-glass)]">
+                    <h2 className="text-sm font-semibold text-[var(--white)]">Material Breakdown</h2>
                   </div>
                   {damageByMaterial.length === 0 ? (
                     <p className="text-[var(--gray-dim)] text-sm text-center py-8">No data available</p>
@@ -374,9 +374,9 @@ export function AnalyticsContent({ user }: { user: User }) {
                     <div className="p-6">
                       <ResponsiveContainer width="100%" height={Math.max(200, damageByMaterial.length * 36)}>
                         <BarChart data={damageByMaterial} layout="vertical" margin={{ left: 10, right: 20 }}>
-                          <XAxis type="number" fontSize={12} />
-                          <YAxis type="category" dataKey="name" width={130} fontSize={11} />
-                          <Tooltip formatter={(value) => [Number(value), "Photos"]} />
+                          <XAxis type="number" fontSize={12} tick={{ fill: '#8892a8', fontSize: 12 }} stroke="rgba(255,255,255,0.06)" />
+                          <YAxis type="category" dataKey="name" width={130} fontSize={11} tick={{ fill: '#8892a8', fontSize: 12 }} stroke="rgba(255,255,255,0.06)" />
+                          <Tooltip formatter={(value) => [Number(value), "Photos"]} contentStyle={{ background: 'rgba(15,18,35,0.95)', backdropFilter: 'blur(20px)', border: '1px solid rgba(255,255,255,0.14)', borderRadius: '12px', color: '#f0f0f5' }} />
                           <Bar dataKey="count" fill="#c8102e" radius={[0, 4, 4, 0]} barSize={20} />
                         </BarChart>
                       </ResponsiveContainer>
@@ -387,9 +387,9 @@ export function AnalyticsContent({ user }: { user: User }) {
             )}
 
             {/* Section 5: Pricing Intelligence */}
-            <div className="bg-white rounded-2xl border border-[var(--border-glass)] overflow-hidden">
-              <div className="px-6 py-4 border-b border-white/[0.04]">
-                <h2 className="text-sm font-semibold text-[var(--navy)]">Pricing Intelligence — Top Gaps</h2>
+            <div className="glass-card overflow-hidden">
+              <div className="px-6 py-4 border-b border-[var(--border-glass)]">
+                <h2 className="text-sm font-semibold text-[var(--white)]">Pricing Intelligence — Top Gaps</h2>
               </div>
               {pricing.length === 0 ? (
                 <p className="text-[var(--gray-dim)] text-sm text-center py-8">No data available</p>
@@ -409,11 +409,11 @@ export function AnalyticsContent({ user }: { user: User }) {
                     <tbody className="divide-y divide-white/[0.06]">
                       {pricing.map((p, i) => (
                         <tr key={i} className="hover:bg-white/[0.04]">
-                          <td className="px-6 py-3 text-[var(--navy)] font-medium max-w-[280px] truncate">{p.description}</td>
+                          <td className="px-6 py-3 text-[var(--white)] font-medium max-w-[280px] truncate">{p.description}</td>
                           <td className="px-4 py-3 text-center text-[var(--gray-muted)]">{p.unit}</td>
                           <td className="px-4 py-3 text-right text-[var(--gray)]">${(p.avg_usarm_price ?? 0).toFixed(2)}</td>
                           <td className="px-4 py-3 text-right text-[var(--gray)]">${(p.avg_carrier_price ?? 0).toFixed(2)}</td>
-                          <td className="px-4 py-3 text-right font-medium text-green-600">+${(p.price_gap ?? 0).toFixed(2)}</td>
+                          <td className="px-4 py-3 text-right font-medium text-green-400">+${(p.price_gap ?? 0).toFixed(2)}</td>
                           <td className="px-6 py-3 text-right text-[var(--gray-muted)]">{p.usarm_count}</td>
                         </tr>
                       ))}
@@ -424,9 +424,9 @@ export function AnalyticsContent({ user }: { user: User }) {
             </div>
 
             {/* Section 6: Top Arguments */}
-            <div className="bg-white rounded-2xl border border-[var(--border-glass)] overflow-hidden">
-              <div className="px-6 py-4 border-b border-white/[0.04]">
-                <h2 className="text-sm font-semibold text-[var(--navy)]">Top Arguments by Impact</h2>
+            <div className="glass-card overflow-hidden">
+              <div className="px-6 py-4 border-b border-[var(--border-glass)]">
+                <h2 className="text-sm font-semibold text-[var(--white)]">Top Arguments by Impact</h2>
               </div>
               {arguments_.length === 0 ? (
                 <p className="text-[var(--gray-dim)] text-sm text-center py-8">No data available</p>
@@ -436,7 +436,7 @@ export function AnalyticsContent({ user }: { user: User }) {
                     <div key={i} className="px-6 py-4">
                       <div className="flex items-start gap-3">
                         <div className="flex items-center gap-2 shrink-0 mt-0.5">
-                          <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-blue-50 text-blue-700">
+                          <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-blue-500/10 text-blue-400">
                             {arg.carrier}
                           </span>
                           <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-white/[0.06] text-[var(--gray)]">
@@ -452,7 +452,7 @@ export function AnalyticsContent({ user }: { user: User }) {
                         <span className="text-xs text-[var(--gray-dim)]">
                           {(arg.effectiveness_pct ?? 0).toFixed(0)}% effective
                         </span>
-                        <span className="text-xs font-medium text-green-600">
+                        <span className="text-xs font-medium text-green-400">
                           Avg impact {fmtMoney(arg.avg_dollar_impact ?? 0)}
                         </span>
                       </div>

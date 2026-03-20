@@ -93,12 +93,12 @@ export default function CorrespondencePage() {
 
   const stanceBadge = (stance: string) => {
     const configs: Record<string, { bg: string; text: string; label: string }> = {
-      full_denial: { bg: "bg-red-100", text: "text-red-700", label: "Full Denial" },
-      partial_denial: { bg: "bg-orange-100", text: "text-orange-700", label: "Partial Denial" },
-      underpayment: { bg: "bg-amber-100", text: "text-amber-700", label: "Underpayment" },
-      request_for_info: { bg: "bg-blue-100", text: "text-blue-700", label: "Info Request" },
-      reinspection_offer: { bg: "bg-purple-100", text: "text-purple-700", label: "Reinspection" },
-      acceptance: { bg: "bg-green-100", text: "text-green-700", label: "Acceptance" },
+      full_denial: { bg: "bg-red-500/10", text: "text-red-400", label: "Full Denial" },
+      partial_denial: { bg: "bg-orange-500/10", text: "text-orange-400", label: "Partial Denial" },
+      underpayment: { bg: "bg-amber-500/10", text: "text-amber-400", label: "Underpayment" },
+      request_for_info: { bg: "bg-blue-500/10", text: "text-blue-400", label: "Info Request" },
+      reinspection_offer: { bg: "bg-purple-500/10", text: "text-purple-400", label: "Reinspection" },
+      acceptance: { bg: "bg-green-500/10", text: "text-green-400", label: "Acceptance" },
     };
     const c = configs[stance] || { bg: "bg-white/[0.06]", text: "text-[var(--gray)]", label: stance || "Pending" };
     return <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${c.bg} ${c.text}`}>{c.label}</span>;
@@ -106,10 +106,10 @@ export default function CorrespondencePage() {
 
   const statusBadge = (status: string) => {
     const configs: Record<string, { bg: string; text: string }> = {
-      unmatched: { bg: "bg-yellow-100", text: "text-yellow-700" },
-      matched: { bg: "bg-blue-100", text: "text-blue-700" },
-      response_drafted: { bg: "bg-purple-100", text: "text-purple-700" },
-      response_sent: { bg: "bg-green-100", text: "text-green-700" },
+      unmatched: { bg: "bg-yellow-500/10", text: "text-yellow-400" },
+      matched: { bg: "bg-blue-500/10", text: "text-blue-400" },
+      response_drafted: { bg: "bg-purple-500/10", text: "text-purple-400" },
+      response_sent: { bg: "bg-green-500/10", text: "text-green-400" },
       archived: { bg: "bg-white/[0.06]", text: "text-[var(--gray-muted)]" },
     };
     const c = configs[status] || { bg: "bg-white/[0.06]", text: "text-[var(--gray-muted)]" };
@@ -156,7 +156,7 @@ export default function CorrespondencePage() {
 
       <div className="max-w-6xl mx-auto px-6 py-10">
         <div className="mb-8">
-          <h1 className="text-2xl font-bold text-[var(--navy)]">Carrier Correspondence</h1>
+          <h1 className="text-2xl font-bold text-[var(--white)]">Carrier Correspondence</h1>
           <p className="text-[var(--gray-muted)] mt-1">
             All inbound carrier emails across your claims. Forward carrier emails to <strong>claims@dumbroof.ai</strong> to auto-ingest.
           </p>
@@ -171,7 +171,7 @@ export default function CorrespondencePage() {
               className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors border ${
                 filter === f
                   ? "bg-[var(--navy)] text-white border-[var(--navy)]"
-                  : "bg-white text-[var(--gray)] border-[var(--border-glass)] hover:border-[var(--border-glass)]"
+                  : "bg-white/[0.03] text-[var(--gray)] border-[var(--border-glass)] hover:border-[var(--border-glass)]"
               }`}
             >
               {f === "all" ? "All" : f.replace(/_/g, " ")}
@@ -186,13 +186,13 @@ export default function CorrespondencePage() {
 
         {/* Correspondence list */}
         {filtered.length === 0 ? (
-          <div className="bg-white rounded-2xl border border-[var(--border-glass)] text-center py-16 px-8">
+          <div className="glass-card text-center py-16 px-8">
             <div className="w-16 h-16 rounded-2xl bg-white/[0.04] border-2 border-dashed border-[var(--border-glass)] flex items-center justify-center mx-auto mb-5">
               <svg className="w-8 h-8 text-[var(--gray-dim)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75" />
               </svg>
             </div>
-            <h3 className="text-lg font-semibold text-[var(--navy)] mb-2">
+            <h3 className="text-lg font-semibold text-[var(--white)] mb-2">
               {filter === "all" ? "No correspondence yet" : `No ${filter.replace(/_/g, " ")} emails`}
             </h3>
             <p className="text-[var(--gray-muted)] text-sm max-w-md mx-auto">
@@ -208,7 +208,7 @@ export default function CorrespondencePage() {
               const isMatchingThis = matchingId === item.id;
 
               return (
-                <div key={item.id} className="bg-white rounded-xl border border-[var(--border-glass)] px-5 py-4">
+                <div key={item.id} className="glass-card px-5 py-4">
                   <div className="flex items-start justify-between gap-4">
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2 mb-1 flex-wrap">
@@ -218,7 +218,7 @@ export default function CorrespondencePage() {
                           <span className="text-xs text-[var(--gray-dim)]">{item.carrier_name}</span>
                         )}
                       </div>
-                      <p className="text-sm font-medium text-[var(--navy)] truncate">
+                      <p className="text-sm font-medium text-[var(--white)] truncate">
                         {item.original_subject || "No subject"}
                       </p>
                       <p className="text-xs text-[var(--gray-muted)] mt-0.5">

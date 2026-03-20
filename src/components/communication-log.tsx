@@ -19,11 +19,11 @@ interface Props {
 }
 
 const TYPE_STYLES: Record<string, { bg: string; label: string }> = {
-  supplement: { bg: "bg-red-100 text-red-700", label: "Supplement" },
-  custom: { bg: "bg-blue-100 text-blue-700", label: "Email" },
-  invoice: { bg: "bg-green-100 text-green-700", label: "Invoice" },
-  coc: { bg: "bg-purple-100 text-purple-700", label: "COC" },
-  aob: { bg: "bg-amber-100 text-amber-700", label: "AOB" },
+  supplement: { bg: "bg-red-500/10 text-red-400", label: "Supplement" },
+  custom: { bg: "bg-blue-500/10 text-blue-400", label: "Email" },
+  invoice: { bg: "bg-green-500/10 text-green-400", label: "Invoice" },
+  coc: { bg: "bg-purple-500/10 text-purple-400", label: "COC" },
+  aob: { bg: "bg-amber-500/10 text-amber-400", label: "AOB" },
 };
 
 export function CommunicationLog({ claimId }: Props) {
@@ -59,7 +59,7 @@ export function CommunicationLog({ claimId }: Props) {
       >
         <div className="flex items-center gap-3">
           <h2 className="text-sm font-semibold text-[var(--white)]">Communication Log</h2>
-          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-blue-700">
+          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-500/10 text-blue-400">
             {emails.length} sent
           </span>
         </div>

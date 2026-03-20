@@ -109,18 +109,13 @@ function LoginPageContent() {
         {/* Logo */}
         <div className="text-center mb-8">
           <a href="/" className="inline-flex items-center gap-3">
-            <div className="w-12 h-12 rounded-xl bg-[var(--red)] flex items-center justify-center font-bold text-white text-xl">
-              DR
-            </div>
-            <span className="text-white font-bold text-2xl tracking-tight">
-              dumb roof<sup className="text-[10px] font-medium align-super ml-0.5">™</sup>
-            </span>
+            <img src="/logo-glassmorphism.png" alt="dumb roof" className="h-14 w-auto rounded-xl" />
           </a>
         </div>
 
         {/* Card */}
-        <div className="bg-white rounded-2xl p-8 shadow-xl">
-          <h2 className="text-xl font-bold text-[var(--navy)] mb-1">
+        <div className="glass-card p-8">
+          <h2 className="text-xl font-bold text-[var(--white)] mb-1">
             {isForgotPassword
               ? "Reset your password"
               : isSignUp
@@ -145,7 +140,7 @@ function LoginPageContent() {
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full px-4 py-3 rounded-lg border border-[var(--border-glass)] focus:border-[var(--navy)] focus:ring-1 focus:ring-[var(--navy)] outline-none transition-colors text-sm"
+                className="w-full px-4 py-3 rounded-lg bg-[var(--bg-input)] border border-[var(--border-glass)] text-[var(--white)] placeholder:text-[var(--gray-dim)] focus:border-[var(--red)] focus:ring-1 focus:ring-[var(--red)] outline-none transition-colors text-sm"
                 placeholder="you@company.com"
               />
             </div>
@@ -160,7 +155,7 @@ function LoginPageContent() {
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full px-4 py-3 rounded-lg border border-[var(--border-glass)] focus:border-[var(--navy)] focus:ring-1 focus:ring-[var(--navy)] outline-none transition-colors text-sm"
+                  className="w-full px-4 py-3 rounded-lg bg-[var(--bg-input)] border border-[var(--border-glass)] text-[var(--white)] placeholder:text-[var(--gray-dim)] focus:border-[var(--red)] focus:ring-1 focus:ring-[var(--red)] outline-none transition-colors text-sm"
                   placeholder="••••••••"
                   minLength={6}
                 />
@@ -168,13 +163,13 @@ function LoginPageContent() {
             )}
 
             {error && (
-              <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3">
+              <div className="bg-red-500/10 border border-red-500/20 text-red-400 text-sm rounded-lg px-4 py-3">
                 {error}
               </div>
             )}
 
             {message && (
-              <div className="bg-green-50 border border-green-200 text-green-700 text-sm rounded-lg px-4 py-3">
+              <div className="bg-green-500/10 border border-green-500/20 text-green-400 text-sm rounded-lg px-4 py-3">
                 {message}
               </div>
             )}

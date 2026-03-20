@@ -37,7 +37,7 @@ function PricingContent() {
   const planOrder: PlanId[] = ["starter", "pro", "growth", "enterprise"];
 
   return (
-    <main className="min-h-screen bg-white">
+    <main className="min-h-screen">
       {/* Nav */}
       <nav className="bg-[var(--navy)] border-b border-white/10">
         <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
@@ -65,7 +65,7 @@ function PricingContent() {
 
       {/* Header */}
       <section className="pt-20 pb-10 px-6 text-center">
-        <h1 className="text-4xl sm:text-5xl font-bold text-[var(--navy)] mb-4">
+        <h1 className="text-4xl sm:text-5xl font-bold text-[var(--white)] mb-4">
           Simple, Transparent Pricing
         </h1>
         <p className="text-[var(--gray-muted)] max-w-xl mx-auto text-lg">
@@ -85,8 +85,8 @@ function PricingContent() {
                 key={id}
                 className={`relative rounded-2xl p-6 border flex flex-col ${
                   isPopular
-                    ? "border-[var(--red)] bg-red-50/30 shadow-lg"
-                    : "border-[var(--border-glass)] bg-white"
+                    ? "border-[var(--red)] bg-[var(--red)]/10 shadow-[var(--shadow-card)]"
+                    : "glass-card"
                 }`}
               >
                 {isPopular && (
@@ -94,11 +94,11 @@ function PricingContent() {
                     Most Popular
                   </div>
                 )}
-                <h3 className="text-lg font-bold text-[var(--navy)]">
+                <h3 className="text-lg font-bold text-[var(--white)]">
                   {plan.name}
                 </h3>
                 <div className="mt-3 mb-4">
-                  <span className="text-4xl font-bold text-[var(--navy)]">
+                  <span className="text-4xl font-bold text-[var(--white)]">
                     ${plan.price}
                   </span>
                   {plan.price > 0 && (

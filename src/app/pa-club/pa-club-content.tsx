@@ -81,13 +81,13 @@ function PAApplicationForm() {
 
   if (submitted) {
     return (
-      <div className="bg-[var(--gray-50)] rounded-2xl p-8 border border-white/[0.04] text-center">
-        <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-6">
-          <svg className="w-8 h-8 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <div className="glass-card p-8 text-center">
+        <div className="w-16 h-16 rounded-full bg-green-500/20 flex items-center justify-center mx-auto mb-6">
+          <svg className="w-8 h-8 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
         </div>
-        <h3 className="text-xl font-bold text-[var(--navy)] mb-2">Application Received</h3>
+        <h3 className="text-xl font-bold text-[var(--white)] mb-2">Application Received</h3>
         <p className="text-[var(--gray-muted)] mb-1">We&apos;ll review your application and reach out within 48 hours.</p>
         <p className="text-sm text-[var(--gray-dim)]">Welcome to the club, {form.name.split(" ")[0] || "Partner"}.</p>
       </div>
@@ -95,19 +95,19 @@ function PAApplicationForm() {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="bg-[var(--gray-50)] rounded-2xl p-8 border border-white/[0.04] space-y-5">
-      <h3 className="text-lg font-bold text-[var(--navy)]">Apply to Join</h3>
+    <form onSubmit={handleSubmit} className="glass-card p-8 space-y-5">
+      <h3 className="text-lg font-bold text-[var(--white)]">Apply to Join</h3>
 
       <div className="grid grid-cols-2 gap-4">
         <div>
           <label className="block text-xs font-semibold text-[var(--gray-muted)] uppercase tracking-wider mb-1.5">Full Name</label>
           <input type="text" required value={form.name} onChange={(e) => update("name", e.target.value)}
-            className="w-full px-4 py-3 rounded-lg border border-[var(--border-glass)] focus:border-[var(--navy)] focus:ring-1 focus:ring-[var(--navy)] outline-none text-sm" />
+            className="w-full px-4 py-3 rounded-lg bg-[var(--bg-input)] border border-[var(--border-glass)] text-[var(--white)] placeholder:text-[var(--gray-dim)] focus:border-[var(--red)] focus:ring-1 focus:ring-[var(--red)] outline-none text-sm" />
         </div>
         <div>
           <label className="block text-xs font-semibold text-[var(--gray-muted)] uppercase tracking-wider mb-1.5">Phone</label>
           <input type="tel" value={form.phone} onChange={(e) => update("phone", e.target.value)}
-            className="w-full px-4 py-3 rounded-lg border border-[var(--border-glass)] focus:border-[var(--navy)] focus:ring-1 focus:ring-[var(--navy)] outline-none text-sm" />
+            className="w-full px-4 py-3 rounded-lg bg-[var(--bg-input)] border border-[var(--border-glass)] text-[var(--white)] placeholder:text-[var(--gray-dim)] focus:border-[var(--red)] focus:ring-1 focus:ring-[var(--red)] outline-none text-sm" />
         </div>
       </div>
 
@@ -121,20 +121,20 @@ function PAApplicationForm() {
         <div>
           <label className="block text-xs font-semibold text-[var(--gray-muted)] uppercase tracking-wider mb-1.5">Company Name</label>
           <input type="text" value={form.company_name} onChange={(e) => update("company_name", e.target.value)}
-            className="w-full px-4 py-3 rounded-lg border border-[var(--border-glass)] focus:border-[var(--navy)] focus:ring-1 focus:ring-[var(--navy)] outline-none text-sm" />
+            className="w-full px-4 py-3 rounded-lg bg-[var(--bg-input)] border border-[var(--border-glass)] text-[var(--white)] placeholder:text-[var(--gray-dim)] focus:border-[var(--red)] focus:ring-1 focus:ring-[var(--red)] outline-none text-sm" />
         </div>
         <div>
           <label className="block text-xs font-semibold text-[var(--gray-muted)] uppercase tracking-wider mb-1.5">License Number</label>
           <input type="text" value={form.license_number} onChange={(e) => update("license_number", e.target.value)}
             placeholder="PA license #"
-            className="w-full px-4 py-3 rounded-lg border border-[var(--border-glass)] focus:border-[var(--navy)] focus:ring-1 focus:ring-[var(--navy)] outline-none text-sm" />
+            className="w-full px-4 py-3 rounded-lg bg-[var(--bg-input)] border border-[var(--border-glass)] text-[var(--white)] placeholder:text-[var(--gray-dim)] focus:border-[var(--red)] focus:ring-1 focus:ring-[var(--red)] outline-none text-sm" />
         </div>
       </div>
 
       <div>
         <label className="block text-xs font-semibold text-[var(--gray-muted)] uppercase tracking-wider mb-1.5">Experience</label>
         <select value={form.experience} onChange={(e) => update("experience", e.target.value)}
-          className="w-full px-4 py-3 rounded-lg border border-[var(--border-glass)] focus:border-[var(--navy)] focus:ring-1 focus:ring-[var(--navy)] outline-none text-sm bg-white">
+          className="w-full px-4 py-3 rounded-lg bg-[var(--bg-input)] border border-[var(--border-glass)] text-[var(--white)] focus:border-[var(--red)] focus:ring-1 focus:ring-[var(--red)] outline-none text-sm">
           <option value="">Select</option>
           <option value="1-3">1 - 3 years</option>
           <option value="3-5">3 - 5 years</option>
@@ -147,7 +147,7 @@ function PAApplicationForm() {
         <label className="block text-xs font-semibold text-[var(--gray-muted)] uppercase tracking-wider mb-1.5">
           States Covered <span className="text-[var(--red)]">*</span>
         </label>
-        <div className="flex flex-wrap gap-1.5 max-h-32 overflow-y-auto p-3 bg-white rounded-lg border border-[var(--border-glass)]">
+        <div className="flex flex-wrap gap-1.5 max-h-32 overflow-y-auto p-3 bg-[var(--bg-input)] rounded-lg border border-[var(--border-glass)]">
           {US_STATES.map((st) => (
             <button
               key={st}
@@ -192,11 +192,11 @@ function PAApplicationForm() {
         <label className="block text-xs font-semibold text-[var(--gray-muted)] uppercase tracking-wider mb-1.5">Notes</label>
         <textarea value={form.notes} onChange={(e) => update("notes", e.target.value)}
           rows={3} placeholder="Tell us about your practice, certifications, or anything else."
-          className="w-full px-4 py-3 rounded-lg border border-[var(--border-glass)] focus:border-[var(--navy)] focus:ring-1 focus:ring-[var(--navy)] outline-none text-sm resize-none" />
+          className="w-full px-4 py-3 rounded-lg bg-[var(--bg-input)] border border-[var(--border-glass)] text-[var(--white)] placeholder:text-[var(--gray-dim)] focus:border-[var(--red)] focus:ring-1 focus:ring-[var(--red)] outline-none text-sm resize-none" />
       </div>
 
       {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3">{error}</div>
+        <div className="bg-red-500/10 border border-red-500/20 text-red-400 text-sm rounded-lg px-4 py-3">{error}</div>
       )}
 
       <button type="submit" disabled={submitting}
@@ -219,7 +219,7 @@ function PAApplicationForm() {
 
 export function PAClubContent({ activeStates, isLoggedIn }: Props) {
   return (
-    <main className="min-h-screen bg-white">
+    <main className="min-h-screen">
       {/* Nav */}
       <nav className="bg-[var(--navy)] border-b border-white/10">
         <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
@@ -260,9 +260,9 @@ export function PAClubContent({ activeStates, isLoggedIn }: Props) {
       </section>
 
       {/* The Marketplace */}
-      <section className="py-16 px-6 bg-[var(--gray-50)]">
+      <section className="py-16 px-6 bg-white/[0.03]">
         <div className="max-w-5xl mx-auto">
-          <h2 className="text-3xl font-bold text-[var(--navy)] text-center mb-12">How the Marketplace Works</h2>
+          <h2 className="text-3xl font-bold text-[var(--white)] text-center mb-12">How the Marketplace Works</h2>
           <div className="grid md:grid-cols-4 gap-6">
             {[
               { step: "01", title: "Sign Up", desc: "Tell us which states you cover, your specialties, and your license info." },
@@ -270,9 +270,9 @@ export function PAClubContent({ activeStates, isLoggedIn }: Props) {
               { step: "03", title: "Handle Advocacy", desc: "You handle the insurance advocacy side. The contractor handles the physical work." },
               { step: "04", title: "AI Pipeline", desc: "DumbRoof processes the claim through the AI pipeline — forensic reports make your job easier." },
             ].map((item) => (
-              <div key={item.step} className="relative bg-white rounded-2xl p-6 border border-white/[0.04]">
+              <div key={item.step} className="glass-card p-6 relative">
                 <span className="absolute top-4 right-4 text-4xl font-bold text-[var(--gray-dim)]">{item.step}</span>
-                <h3 className="text-lg font-bold text-[var(--navy)] mb-2">{item.title}</h3>
+                <h3 className="text-lg font-bold text-[var(--white)] mb-2">{item.title}</h3>
                 <p className="text-[var(--gray)] text-sm leading-relaxed">{item.desc}</p>
               </div>
             ))}
@@ -281,9 +281,9 @@ export function PAClubContent({ activeStates, isLoggedIn }: Props) {
       </section>
 
       {/* Why Join */}
-      <section className="py-16 px-6 bg-white">
+      <section className="py-16 px-6">
         <div className="max-w-5xl mx-auto">
-          <h2 className="text-3xl font-bold text-[var(--navy)] text-center mb-12">Why Join</h2>
+          <h2 className="text-3xl font-bold text-[var(--white)] text-center mb-12">Why Join</h2>
           <div className="grid md:grid-cols-2 gap-6">
             {[
               { title: "Free leads from the platform", desc: "Contractors using DumbRoof need PAs and appraisers. We connect them to you — no cold calling, no marketing spend." },
@@ -291,14 +291,14 @@ export function PAClubContent({ activeStates, isLoggedIn }: Props) {
               { title: "Free to join", desc: "No upfront cost. No monthly fee. Join the network and start receiving match requests in your coverage area." },
               { title: "Platform supports PA compliance mode", desc: "DumbRoof already generates documents with full advocacy language for PAs and attorneys. No compliance worries." },
             ].map((item) => (
-              <div key={item.title} className="flex items-start gap-3 bg-purple-50 rounded-xl p-6 border border-purple-100">
-                <div className="w-6 h-6 rounded-full bg-purple-100 flex items-center justify-center shrink-0 mt-0.5">
-                  <svg className="w-3.5 h-3.5 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+              <div key={item.title} className="flex items-start gap-3 bg-purple-500/10 rounded-xl p-6 border border-purple-500/20">
+                <div className="w-6 h-6 rounded-full bg-purple-500/20 flex items-center justify-center shrink-0 mt-0.5">
+                  <svg className="w-3.5 h-3.5 text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                   </svg>
                 </div>
                 <div>
-                  <p className="font-bold text-[var(--navy)] mb-1">{item.title}</p>
+                  <p className="font-bold text-[var(--white)] mb-1">{item.title}</p>
                   <p className="text-[var(--gray)] text-sm leading-relaxed">{item.desc}</p>
                 </div>
               </div>
@@ -312,7 +312,7 @@ export function PAClubContent({ activeStates, isLoggedIn }: Props) {
         <div className="max-w-4xl mx-auto">
           <h2 className="text-3xl font-bold text-white text-center mb-10">The Three-Way Marketplace</h2>
           <div className="flex flex-wrap justify-center items-center gap-4 mb-6">
-            <div className="w-28 h-28 rounded-full bg-blue-100 border-[3px] border-blue-500 flex flex-col items-center justify-center text-xs font-bold text-blue-700 text-center">
+            <div className="w-28 h-28 rounded-full bg-blue-500/10 border-[3px] border-blue-500 flex flex-col items-center justify-center text-xs font-bold text-blue-400 text-center">
               Contractor
               <span className="text-[9px] font-normal mt-0.5">Uploads claims</span>
             </div>
@@ -322,14 +322,14 @@ export function PAClubContent({ activeStates, isLoggedIn }: Props) {
               <span className="text-[9px] text-amber-400 font-semibold">AI Pipeline</span>
             </div>
             <span className="text-2xl text-white/40">&harr;</span>
-            <div className="w-28 h-28 rounded-full bg-purple-100 border-[3px] border-purple-500 flex flex-col items-center justify-center text-xs font-bold text-purple-700 text-center">
+            <div className="w-28 h-28 rounded-full bg-purple-500/10 border-[3px] border-purple-500 flex flex-col items-center justify-center text-xs font-bold text-purple-400 text-center">
               Public Adj.
               <span className="text-[9px] font-normal mt-0.5">Advocacy</span>
             </div>
           </div>
           <div className="text-center text-white/40 text-xl mb-4">&uarr;</div>
           <div className="flex justify-center mb-6">
-            <div className="w-28 h-28 rounded-full bg-amber-100 border-[3px] border-amber-500 flex flex-col items-center justify-center text-xs font-bold text-amber-800 text-center">
+            <div className="w-28 h-28 rounded-full bg-amber-500/10 border-[3px] border-amber-500 flex flex-col items-center justify-center text-xs font-bold text-amber-400 text-center">
               Inspector
               <span className="text-[9px] font-normal mt-0.5">$300/job</span>
             </div>
@@ -339,9 +339,9 @@ export function PAClubContent({ activeStates, isLoggedIn }: Props) {
       </section>
 
       {/* Coverage Map */}
-      <section className="py-16 px-6 bg-[var(--gray-50)]">
+      <section className="py-16 px-6 bg-white/[0.03]">
         <div className="max-w-4xl mx-auto">
-          <h2 className="text-3xl font-bold text-[var(--navy)] text-center mb-8">PA Coverage Map</h2>
+          <h2 className="text-3xl font-bold text-[var(--white)] text-center mb-8">PA Coverage Map</h2>
           <CoverageMap activeStates={activeStates} />
           <p className="text-center text-sm text-[var(--gray-muted)] mt-4">
             {activeStates.length > 0
@@ -352,9 +352,9 @@ export function PAClubContent({ activeStates, isLoggedIn }: Props) {
       </section>
 
       {/* For Contractors */}
-      <section className="py-16 px-6 bg-white">
+      <section className="py-16 px-6">
         <div className="max-w-3xl mx-auto text-center">
-          <h2 className="text-3xl font-bold text-[var(--navy)] mb-4">For Contractors</h2>
+          <h2 className="text-3xl font-bold text-[var(--white)] mb-4">For Contractors</h2>
           <p className="text-[var(--gray)] leading-relaxed mb-8">
             Need a PA for your claim? We&apos;ll connect you with a licensed public adjuster
             in the homeowner&apos;s state. They handle the insurance advocacy while you handle
@@ -367,14 +367,14 @@ export function PAClubContent({ activeStates, isLoggedIn }: Props) {
       </section>
 
       {/* Sign Up CTA */}
-      <section id="apply" className="py-16 px-6 bg-[var(--gray-50)] scroll-mt-20">
+      <section id="apply" className="py-16 px-6 bg-white/[0.03] scroll-mt-20">
         <div className="max-w-xl mx-auto">
-          <h2 className="text-3xl font-bold text-[var(--navy)] text-center mb-8">Join the Club</h2>
+          <h2 className="text-3xl font-bold text-[var(--white)] text-center mb-8">Join the Club</h2>
           {isLoggedIn ? (
             <PAApplicationForm />
           ) : (
-            <div className="bg-white rounded-2xl p-8 border border-white/[0.04] text-center">
-              <h3 className="text-lg font-bold text-[var(--navy)] mb-3">Create an account to apply</h3>
+            <div className="glass-card p-8 text-center">
+              <h3 className="text-lg font-bold text-[var(--white)] mb-3">Create an account to apply</h3>
               <p className="text-[var(--gray-muted)] text-sm mb-6">Sign up for a free DumbRoof account, then come back to submit your PA application.</p>
               <a
                 href="/login?mode=signup&redirect=/pa-club"
@@ -383,7 +383,7 @@ export function PAClubContent({ activeStates, isLoggedIn }: Props) {
                 Create Account
               </a>
               <p className="text-sm text-[var(--gray-dim)] mt-4">
-                Already have an account? <a href="/login?redirect=/pa-club" className="text-[var(--navy)] hover:underline">Sign in</a>
+                Already have an account? <a href="/login?redirect=/pa-club" className="text-[var(--white)] hover:underline">Sign in</a>
               </p>
             </div>
           )}

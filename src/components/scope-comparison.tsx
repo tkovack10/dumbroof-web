@@ -78,17 +78,17 @@ export function ScopeComparison({ claimId, carrierName }: Props) {
           <h2 className="text-sm font-semibold text-[var(--white)]">Scope Comparison</h2>
           <span className="text-xs text-[var(--gray-dim)]">{carrierName}</span>
           {summary.missing_count > 0 && (
-            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-100 text-red-700">
+            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-500/10 text-red-400">
               {summary.missing_count} Missing
             </span>
           )}
           {summary.under_count > 0 && (
-            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-orange-100 text-orange-700">
+            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-orange-500/10 text-orange-400">
               {summary.under_count} Under
             </span>
           )}
           {summary.tricks_detected.length > 0 && (
-            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800">
+            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/10 text-amber-400">
               {summary.tricks_detected.length} Trick{summary.tricks_detected.length > 1 ? "s" : ""}
             </span>
           )}
@@ -146,7 +146,7 @@ function SummaryCards({ financials: fin, summary }: { financials: ScopeCompariso
     <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 px-6 py-4">
       <div className="bg-blue-500/10 rounded-lg p-3">
         <p className="text-[10px] uppercase text-blue-600 font-semibold tracking-wide">Carrier RCV</p>
-        <p className="text-lg font-bold text-blue-700">{fmt(fin.carrier_rcv)}</p>
+        <p className="text-lg font-bold text-blue-400">{fmt(fin.carrier_rcv)}</p>
       </div>
       <div className="bg-white/[0.04] rounded-lg p-3">
         <p className="text-[10px] uppercase text-[var(--gray-muted)] font-semibold tracking-wide">USARM RCV</p>
@@ -154,13 +154,13 @@ function SummaryCards({ financials: fin, summary }: { financials: ScopeCompariso
       </div>
       <div className={`rounded-lg p-3 ${variance > 0 ? "bg-green-500/10" : "bg-red-500/10"}`}>
         <p className="text-[10px] uppercase text-[var(--gray-muted)] font-semibold tracking-wide">Variance</p>
-        <p className={`text-lg font-bold ${variance > 0 ? "text-green-700" : "text-red-600"}`}>
+        <p className={`text-lg font-bold ${variance > 0 ? "text-green-400" : "text-red-400"}`}>
           {variance > 0 ? "+" : "-"}{fmt(variance)}
         </p>
       </div>
       <div className="bg-red-500/10 rounded-lg p-3">
         <p className="text-[10px] uppercase text-red-600 font-semibold tracking-wide">Supplement Opportunity</p>
-        <p className="text-lg font-bold text-red-700">{fmt(fin.supplement_opportunity)}+</p>
+        <p className="text-lg font-bold text-red-400">{fmt(fin.supplement_opportunity)}+</p>
       </div>
       <div className="bg-white/[0.04] rounded-lg p-3">
         <p className="text-[10px] uppercase text-[var(--gray-muted)] font-semibold tracking-wide">Items</p>
@@ -204,7 +204,7 @@ function ComparisonTable({ rows }: { rows: ScopeComparisonRow[] }) {
               <td className="px-3 py-2 max-w-[200px]">
                 <p className="font-medium text-[var(--white)] truncate">{desc}</p>
                 {row.irc_code && (
-                  <span className="inline-block mt-0.5 px-1.5 py-0.5 rounded text-[9px] font-semibold bg-green-100 text-green-700">
+                  <span className="inline-block mt-0.5 px-1.5 py-0.5 rounded text-[9px] font-semibold bg-green-500/10 text-green-400">
                     {row.irc_code}
                   </span>
                 )}
@@ -233,7 +233,7 @@ function ComparisonTable({ rows }: { rows: ScopeComparisonRow[] }) {
               </td>
               <td className="px-3 py-2 max-w-[250px]">
                 {row.trick_flag && (
-                  <p className="text-[10px] font-bold text-amber-700 mb-0.5">
+                  <p className="text-[10px] font-bold text-amber-400 mb-0.5">
                     TRICK: {row.trick_flag}
                   </p>
                 )}
@@ -269,7 +269,7 @@ function MissingItems({ rows }: { rows: ScopeComparisonRow[] }) {
                 <p className="text-sm font-bold text-[var(--white)]">
                   {i + 1}. {row.checklist_desc || row.usarm_desc}
                   {row.irc_code && (
-                    <span className="ml-2 inline-block px-1.5 py-0.5 rounded text-[10px] font-semibold bg-green-100 text-green-700">
+                    <span className="ml-2 inline-block px-1.5 py-0.5 rounded text-[10px] font-semibold bg-green-500/10 text-green-400">
                       {row.irc_code}
                     </span>
                   )}
@@ -282,10 +282,10 @@ function MissingItems({ rows }: { rows: ScopeComparisonRow[] }) {
                 {citation && (
                   <div className="mt-2 space-y-1">
                     <p className="text-[10px] text-[var(--gray)]">
-                      <span className="font-bold text-blue-700">{citation.code_tag}:</span> {citation.title}
+                      <span className="font-bold text-blue-400">{citation.code_tag}:</span> {citation.title}
                     </p>
                     {citation.supplement_argument && (
-                      <p className="text-[10px] text-green-700 bg-green-500/10 px-2 py-1 rounded leading-tight">
+                      <p className="text-[10px] text-green-400 bg-green-500/10 px-2 py-1 rounded leading-tight">
                         {citation.supplement_argument}
                       </p>
                     )}
@@ -296,16 +296,16 @@ function MissingItems({ rows }: { rows: ScopeComparisonRow[] }) {
                 )}
               </div>
               <div className="shrink-0 text-right">
-                <p className="text-lg font-bold text-red-700">${amt.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</p>
+                <p className="text-lg font-bold text-red-400">${amt.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</p>
                 <p className="text-[10px] text-[var(--gray-dim)]">Not in carrier scope</p>
               </div>
             </div>
           </div>
         );
       })}
-      <div className="bg-red-100 rounded-lg px-4 py-3 flex items-center justify-between mt-4">
-        <p className="text-sm font-bold text-red-800">Total Missing Items</p>
-        <p className="text-lg font-bold text-red-800">
+      <div className="bg-red-500/10 rounded-lg px-4 py-3 flex items-center justify-between mt-4">
+        <p className="text-sm font-bold text-red-400">Total Missing Items</p>
+        <p className="text-lg font-bold text-red-400">
           ${rows.reduce((s, r) => s + (r.usarm_amount || r.ev_qty * (r.xact_unit_price || 0)), 0).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
         </p>
       </div>
@@ -400,14 +400,14 @@ function FinancialSummary({ rows, financials: fin }: { rows: ScopeComparisonRow[
                       {r.status === "missing" ? "MISSING" : "UNDER"}
                     </span>
                   </td>
-                  <td className="px-3 py-2 text-right font-mono font-bold text-red-700">${r.value.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</td>
+                  <td className="px-3 py-2 text-right font-mono font-bold text-red-400">${r.value.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</td>
                 </tr>
               ))}
             </tbody>
             <tfoot>
               <tr className="bg-red-500/10 font-bold">
                 <td colSpan={2} className="px-3 py-2">Total Supplement Value</td>
-                <td className="px-3 py-2 text-right font-mono text-red-700">${supplementTotal.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</td>
+                <td className="px-3 py-2 text-right font-mono text-red-400">${supplementTotal.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</td>
               </tr>
               <tr className="bg-blue-500/10">
                 <td colSpan={2} className="px-3 py-2 text-[var(--gray)]">+ Tax ({(fin.tax_rate * 100).toFixed(0)}%)</td>

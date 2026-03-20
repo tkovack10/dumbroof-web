@@ -371,7 +371,7 @@ function SettingsPageContent() {
           </p>
 
           {billingSuccess && (
-            <div className="bg-green-500/10 border border-green-500/30 text-green-700 text-sm rounded-lg px-4 py-3 mb-4">
+            <div className="bg-green-500/10 border border-green-500/30 text-green-400 text-sm rounded-lg px-4 py-3 mb-4">
               Subscription activated! Your plan has been upgraded.
             </div>
           )}
@@ -392,9 +392,9 @@ function SettingsPageContent() {
                 <span
                   className={`px-2.5 py-1 rounded-full text-xs font-bold ${
                     billing.status === "active"
-                      ? "bg-green-100 text-green-700"
+                      ? "bg-green-500/10 text-green-400"
                       : billing.status === "past_due"
-                      ? "bg-amber-100 text-amber-700"
+                      ? "bg-amber-500/10 text-amber-400"
                       : "bg-white/[0.06] text-[var(--gray)]"
                   }`}
                 >
@@ -545,7 +545,7 @@ function SettingsPageContent() {
           </p>
 
           {(gmailJustConnected && !gmailConnected) && (
-            <div className="bg-green-500/10 border border-green-500/30 text-green-700 text-sm rounded-lg px-4 py-3 mb-4">
+            <div className="bg-green-500/10 border border-green-500/30 text-green-400 text-sm rounded-lg px-4 py-3 mb-4">
               Gmail connected successfully! Reload to see the updated status.
             </div>
           )}
@@ -554,7 +554,7 @@ function SettingsPageContent() {
             {gmailConnected ? (
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
+                  <div className="w-10 h-10 bg-green-500/10 rounded-lg flex items-center justify-center">
                     <svg className="w-5 h-5 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                     </svg>
@@ -585,7 +585,7 @@ function SettingsPageContent() {
                     setGmailDisconnecting(false);
                   }}
                   disabled={gmailDisconnecting}
-                  className="text-red-500 hover:text-red-700 text-sm font-medium transition-colors disabled:opacity-50"
+                  className="text-red-400 hover:text-red-300 text-sm font-medium transition-colors disabled:opacity-50"
                 >
                   {gmailDisconnecting ? "Disconnecting..." : "Disconnect"}
                 </button>
@@ -761,12 +761,12 @@ function SettingsPageContent() {
             </div>
 
             {passwordError && (
-              <div className="bg-red-500/10 border border-red-500/30 text-red-700 text-sm rounded-lg px-4 py-3">
+              <div className="bg-red-500/10 border border-red-500/30 text-red-400 text-sm rounded-lg px-4 py-3">
                 {passwordError}
               </div>
             )}
             {passwordMessage && (
-              <div className="bg-green-500/10 border border-green-500/30 text-green-700 text-sm rounded-lg px-4 py-3">
+              <div className="bg-green-500/10 border border-green-500/30 text-green-400 text-sm rounded-lg px-4 py-3">
                 {passwordMessage}
               </div>
             )}

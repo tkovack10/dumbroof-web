@@ -10,7 +10,7 @@ interface Props {
 
 export function InspectionClubContent({ activeStates, isLoggedIn }: Props) {
   return (
-    <main className="min-h-screen bg-white">
+    <main className="min-h-screen">
       {/* Nav */}
       <nav className="bg-[var(--navy)] border-b border-white/10">
         <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
@@ -51,18 +51,18 @@ export function InspectionClubContent({ activeStates, isLoggedIn }: Props) {
       </section>
 
       {/* How It Works */}
-      <section className="py-16 px-6 bg-[var(--gray-50)]">
+      <section className="py-16 px-6 bg-white/[0.03]">
         <div className="max-w-5xl mx-auto">
-          <h2 className="text-3xl font-bold text-[var(--navy)] text-center mb-12">How It Works</h2>
+          <h2 className="text-3xl font-bold text-[var(--white)] text-center mb-12">How It Works</h2>
           <div className="grid md:grid-cols-3 gap-8">
             {[
               { step: "01", title: "Sign Up", desc: "Tell us your coverage area, experience level, and HAAG certification status. We review every application within 48 hours." },
               { step: "02", title: "Choose Inspections", desc: "Inspection requests appear in your area. Accept what works for your schedule. $300 per inspection — no quotas, no mandatory availability." },
               { step: "03", title: "Inspect & Upload", desc: "Follow the DumbRoof inspection template, take photos, document damage. Upload everything into dumbroof.ai — our AI generates the forensic report." },
             ].map((item) => (
-              <div key={item.step} className="relative bg-white rounded-2xl p-8 border border-white/[0.04]">
+              <div key={item.step} className="glass-card p-8 relative">
                 <span className="absolute top-6 right-6 text-5xl font-bold text-[var(--gray-dim)]">{item.step}</span>
-                <h3 className="text-xl font-bold text-[var(--navy)] mb-3">{item.title}</h3>
+                <h3 className="text-xl font-bold text-[var(--white)] mb-3">{item.title}</h3>
                 <p className="text-[var(--gray)] text-sm leading-relaxed">{item.desc}</p>
               </div>
             ))}
@@ -71,9 +71,9 @@ export function InspectionClubContent({ activeStates, isLoggedIn }: Props) {
       </section>
 
       {/* Why Join */}
-      <section className="py-16 px-6 bg-white">
+      <section className="py-16 px-6">
         <div className="max-w-5xl mx-auto">
-          <h2 className="text-3xl font-bold text-[var(--navy)] text-center mb-12">Why Join the Inspection Club</h2>
+          <h2 className="text-3xl font-bold text-[var(--white)] text-center mb-12">Why Join the Inspection Club</h2>
           <div className="grid md:grid-cols-2 gap-6">
             {[
               { title: "$300 per inspection", desc: "3x the market rate. Hancock pays $80-100. Seek Now pays $75-150. We pay $300 — because policyholder-side inspections deserve policyholder-side pay." },
@@ -81,14 +81,14 @@ export function InspectionClubContent({ activeStates, isLoggedIn }: Props) {
               { title: "No construction liability", desc: "You're not the contractor. You don't build anything, warranty anything, or manage crews. When the phone rings 6 months later — it's not your phone." },
               { title: "Free t-shirt", desc: "Every approved inspector gets a free DumbRoof Inspection Club t-shirt. Wear it on inspections. Wear it to the bar. We don't care." },
             ].map((item) => (
-              <div key={item.title} className="flex items-start gap-3 bg-[var(--gray-50)] rounded-xl p-6 border border-white/[0.04]">
-                <div className="w-6 h-6 rounded-full bg-green-100 flex items-center justify-center shrink-0 mt-0.5">
-                  <svg className="w-3.5 h-3.5 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+              <div key={item.title} className="flex items-start gap-3 bg-white/[0.05] rounded-xl p-6 border border-[var(--border-glass)]">
+                <div className="w-6 h-6 rounded-full bg-green-500/20 flex items-center justify-center shrink-0 mt-0.5">
+                  <svg className="w-3.5 h-3.5 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                   </svg>
                 </div>
                 <div>
-                  <p className="font-bold text-[var(--navy)] mb-1">{item.title}</p>
+                  <p className="font-bold text-[var(--white)] mb-1">{item.title}</p>
                   <p className="text-[var(--gray)] text-sm leading-relaxed">{item.desc}</p>
                 </div>
               </div>
@@ -98,10 +98,10 @@ export function InspectionClubContent({ activeStates, isLoggedIn }: Props) {
       </section>
 
       {/* Competitive Comparison */}
-      <section className="py-16 px-6 bg-[var(--gray-50)]">
+      <section className="py-16 px-6 bg-white/[0.03]">
         <div className="max-w-3xl mx-auto">
-          <h2 className="text-3xl font-bold text-[var(--navy)] text-center mb-8">Pay Comparison</h2>
-          <div className="bg-white rounded-2xl border border-[var(--border-glass)] overflow-hidden">
+          <h2 className="text-3xl font-bold text-[var(--white)] text-center mb-8">Pay Comparison</h2>
+          <div className="glass-card overflow-hidden">
             <table className="w-full text-sm">
               <thead>
                 <tr className="bg-white/[0.04] border-b border-white/[0.04]">
@@ -122,10 +122,10 @@ export function InspectionClubContent({ activeStates, isLoggedIn }: Props) {
                     <td className="px-6 py-3 text-[var(--gray-muted)]">{r.side}</td>
                   </tr>
                 ))}
-                <tr className="bg-amber-50 border-t-2 border-amber-300">
-                  <td className="px-6 py-3 font-bold text-[var(--navy)]">DumbRoof Inspection Club</td>
-                  <td className="px-6 py-3 font-extrabold text-amber-700 text-lg">$300</td>
-                  <td className="px-6 py-3 font-semibold text-green-700">Policyholder</td>
+                <tr className="bg-amber-500/10 border-t-2 border-amber-500/40">
+                  <td className="px-6 py-3 font-bold text-[var(--white)]">DumbRoof Inspection Club</td>
+                  <td className="px-6 py-3 font-extrabold text-amber-400 text-lg">$300</td>
+                  <td className="px-6 py-3 font-semibold text-green-400">Policyholder</td>
                 </tr>
               </tbody>
             </table>
@@ -134,9 +134,9 @@ export function InspectionClubContent({ activeStates, isLoggedIn }: Props) {
       </section>
 
       {/* Coverage Map */}
-      <section className="py-16 px-6 bg-white">
+      <section className="py-16 px-6">
         <div className="max-w-4xl mx-auto">
-          <h2 className="text-3xl font-bold text-[var(--navy)] text-center mb-8">Coverage Map</h2>
+          <h2 className="text-3xl font-bold text-[var(--white)] text-center mb-8">Coverage Map</h2>
           <CoverageMap activeStates={activeStates} />
           <p className="text-center text-sm text-[var(--gray-muted)] mt-4">
             {activeStates.length > 0
@@ -147,10 +147,10 @@ export function InspectionClubContent({ activeStates, isLoggedIn }: Props) {
       </section>
 
       {/* Requirements */}
-      <section className="py-16 px-6 bg-[var(--gray-50)]">
+      <section className="py-16 px-6 bg-white/[0.03]">
         <div className="max-w-3xl mx-auto">
-          <h2 className="text-3xl font-bold text-[var(--navy)] text-center mb-8">What We Expect</h2>
-          <div className="bg-white rounded-2xl border border-[var(--border-glass)] p-8 space-y-4">
+          <h2 className="text-3xl font-bold text-[var(--white)] text-center mb-8">What We Expect</h2>
+          <div className="glass-card p-8 space-y-4">
             {[
               "Follow the DumbRoof inspection template",
               "Upload photos and measurements into dumbroof.ai",
@@ -172,14 +172,14 @@ export function InspectionClubContent({ activeStates, isLoggedIn }: Props) {
       </section>
 
       {/* Sign Up CTA */}
-      <section id="apply" className="py-16 px-6 bg-white scroll-mt-20">
+      <section id="apply" className="py-16 px-6 scroll-mt-20">
         <div className="max-w-xl mx-auto">
-          <h2 className="text-3xl font-bold text-[var(--navy)] text-center mb-8">Join the Network</h2>
+          <h2 className="text-3xl font-bold text-[var(--white)] text-center mb-8">Join the Network</h2>
           {isLoggedIn ? (
             <InspectorApplicationForm />
           ) : (
-            <div className="bg-[var(--gray-50)] rounded-2xl p-8 border border-white/[0.04] text-center">
-              <h3 className="text-lg font-bold text-[var(--navy)] mb-3">Create an account to apply</h3>
+            <div className="glass-card p-8 text-center">
+              <h3 className="text-lg font-bold text-[var(--white)] mb-3">Create an account to apply</h3>
               <p className="text-[var(--gray-muted)] text-sm mb-6">Sign up for a free DumbRoof account, then come back to submit your inspector application.</p>
               <a
                 href="/login?mode=signup&redirect=/inspection-club"
@@ -188,7 +188,7 @@ export function InspectionClubContent({ activeStates, isLoggedIn }: Props) {
                 Create Account
               </a>
               <p className="text-sm text-[var(--gray-dim)] mt-4">
-                Already have an account? <a href="/login?redirect=/inspection-club" className="text-[var(--navy)] hover:underline">Sign in</a>
+                Already have an account? <a href="/login?redirect=/inspection-club" className="text-[var(--white)] hover:underline">Sign in</a>
               </p>
             </div>
           )}

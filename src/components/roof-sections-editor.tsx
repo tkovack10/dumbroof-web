@@ -79,7 +79,7 @@ export function RoofSectionsEditor({ claimId }: Props) {
 
   if (loading) {
     return (
-      <div className="bg-white rounded-2xl border border-[var(--border-glass)] p-6">
+      <div className="glass-card p-6">
         <p className="text-sm text-[var(--gray-dim)]">Loading roof sections...</p>
       </div>
     );
@@ -123,12 +123,12 @@ export function RoofSectionsEditor({ claimId }: Props) {
   const hasOverrides = data.sections.some((s) => s.user_material_override !== null);
 
   return (
-    <div className="bg-white rounded-2xl border border-[var(--border-glass)] overflow-hidden">
+    <div className="glass-card overflow-hidden">
       {/* Header */}
-      <div className="px-5 py-3 border-b border-white/[0.04] flex items-center justify-between">
+      <div className="px-5 py-3 border-b border-[var(--border-glass)] flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center">
-            <svg className="w-4 h-4 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <div className="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center">
+            <svg className="w-4 h-4 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
             </svg>
           </div>
@@ -140,7 +140,7 @@ export function RoofSectionsEditor({ claimId }: Props) {
           </div>
         </div>
         {hasOverrides && (
-          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-100 text-amber-700 border border-amber-200">
+          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/20">
             Modified
           </span>
         )}
@@ -148,7 +148,7 @@ export function RoofSectionsEditor({ claimId }: Props) {
 
       {error && (
         <div className="px-5 py-2">
-          <div className="bg-red-50 border border-red-200 text-red-700 text-xs rounded-lg px-3 py-2">
+          <div className="bg-red-500/10 border border-red-500/20 text-red-400 text-xs rounded-lg px-3 py-2">
             {error}
           </div>
         </div>
@@ -176,7 +176,7 @@ export function RoofSectionsEditor({ claimId }: Props) {
                 return (
                   <tr
                     key={globalIndex}
-                    className={`border-t border-white/[0.04] ${isOverridden ? "bg-amber-50/30" : ""}`}
+                    className={`border-t border-white/[0.04] ${isOverridden ? "bg-amber-500/[0.06]" : ""}`}
                   >
                     <td className="px-5 py-2.5 text-[var(--gray)]">
                       <span className="font-medium">{section.structure_name}</span>
@@ -199,7 +199,7 @@ export function RoofSectionsEditor({ claimId }: Props) {
                           disabled={isSaving}
                           className={`rounded-lg border px-2 py-1.5 text-sm min-w-[180px] ${
                             isOverridden
-                              ? "border-amber-300 bg-amber-50 text-amber-800 font-medium"
+                              ? "border-amber-500/20 bg-amber-500/10 text-amber-400 font-medium"
                               : "border-[var(--border-glass)] text-[var(--gray)]"
                           } disabled:opacity-50`}
                         >
@@ -212,7 +212,7 @@ export function RoofSectionsEditor({ claimId }: Props) {
                         {isOverridden && (
                           <button
                             onClick={() => handleMaterialChange(globalIndex, "")}
-                            className="text-xs text-amber-600 hover:text-amber-800 font-medium whitespace-nowrap"
+                            className="text-xs text-amber-400 hover:text-amber-300 font-medium whitespace-nowrap"
                             title="Reset to detected material"
                           >
                             Reset
@@ -236,11 +236,11 @@ export function RoofSectionsEditor({ claimId }: Props) {
 
       {/* Material impact summary */}
       {hasOverrides && (
-        <div className="px-5 py-3 border-t border-white/[0.04] bg-amber-50/30">
-          <p className="text-xs font-semibold text-amber-700 mb-1">Impact Preview</p>
+        <div className="px-5 py-3 border-t border-white/[0.04] bg-amber-500/[0.06]">
+          <p className="text-xs font-semibold text-amber-400 mb-1">Impact Preview</p>
           <div className="flex flex-wrap gap-2">
             {[...materialSummary.entries()].map(([mat, sq]) => (
-              <span key={mat} className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-white border border-[var(--border-glass)] text-[var(--gray)]">
+              <span key={mat} className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-white/[0.05] border border-[var(--border-glass)] text-[var(--gray)]">
                 {materialLabel(mat)}: {sq.toFixed(1)} SQ
               </span>
             ))}

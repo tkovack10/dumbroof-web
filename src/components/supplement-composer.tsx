@@ -191,7 +191,7 @@ export function SupplementComposer({ claimId, claimAddress, carrierName, compari
           <span className="text-xs text-[var(--gray-dim)]">Select items to include in your supplement email</span>
         </div>
         <div className="flex items-center gap-2">
-          <button onClick={selectAll} className="text-[10px] text-blue-600 hover:text-blue-800 font-medium">Select All</button>
+          <button onClick={selectAll} className="text-[10px] text-blue-400 hover:text-blue-300 font-medium">Select All</button>
           <span className="text-[var(--gray-dim)]">|</span>
           <button onClick={clearAll} className="text-[10px] text-[var(--gray-muted)] hover:text-[var(--gray)] font-medium">Clear</button>
         </div>
@@ -216,12 +216,12 @@ export function SupplementComposer({ claimId, claimAddress, carrierName, compari
               <p className="text-xs font-medium text-[var(--white)]">{item.label}</p>
               <p className="text-[10px] text-[var(--gray-muted)] mt-0.5">{item.detail}</p>
               {item.codeCitation && (
-                <span className="inline-block mt-1 px-1.5 py-0.5 rounded text-[9px] font-semibold bg-green-100 text-green-700">
+                <span className="inline-block mt-1 px-1.5 py-0.5 rounded text-[9px] font-semibold bg-green-500/10 text-green-400">
                   {item.codeCitation.code_tag}
                 </span>
               )}
             </div>
-            <span className="text-xs font-bold text-red-700 shrink-0">${item.amount.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</span>
+            <span className="text-xs font-bold text-red-400 shrink-0">${item.amount.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</span>
           </label>
         ))}
 
@@ -243,7 +243,7 @@ export function SupplementComposer({ claimId, claimAddress, carrierName, compari
               <p className="text-xs font-medium text-[var(--white)]">{item.label}</p>
               <p className="text-[10px] text-[var(--gray-muted)] mt-0.5">{item.detail}</p>
             </div>
-            <span className="text-xs font-bold text-orange-700 shrink-0">+${item.amount.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</span>
+            <span className="text-xs font-bold text-orange-400 shrink-0">+${item.amount.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</span>
           </label>
         ))}
 
@@ -265,7 +265,7 @@ export function SupplementComposer({ claimId, claimAddress, carrierName, compari
               <p className="text-xs font-medium text-[var(--white)]">{item.label}</p>
               <p className="text-[10px] text-[var(--gray-muted)] mt-0.5 line-clamp-2">{item.detail}</p>
               {item.codeCitation?.has_warranty_void && (
-                <span className="inline-block mt-1 px-1.5 py-0.5 rounded text-[9px] font-bold bg-red-100 text-red-700">WARRANTY VOID</span>
+                <span className="inline-block mt-1 px-1.5 py-0.5 rounded text-[9px] font-bold bg-red-500/10 text-red-400">WARRANTY VOID</span>
               )}
             </div>
           </label>
@@ -278,7 +278,7 @@ export function SupplementComposer({ claimId, claimAddress, carrierName, compari
           <p className="text-xs text-[var(--gray)]">
             <span className="font-bold">{selected.size}</span> items selected
             {selectedAmount > 0 && (
-              <span className="ml-2 font-bold text-red-700">
+              <span className="ml-2 font-bold text-red-400">
                 ${selectedAmount.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })} supplement value
               </span>
             )}
@@ -332,7 +332,7 @@ export function SupplementComposer({ claimId, claimAddress, carrierName, compari
               <pre className="text-xs text-[var(--gray)] whitespace-pre-wrap font-sans leading-relaxed">{generateEmail()}</pre>
             </div>
             {sendResult && (
-              <div className={`px-6 py-2 text-sm ${sendResult.ok ? "bg-green-500/10 text-green-700" : "bg-red-500/10 text-red-700"}`}>
+              <div className={`px-6 py-2 text-sm ${sendResult.ok ? "bg-green-500/10 text-green-400" : "bg-red-500/10 text-red-400"}`}>
                 {sendResult.message}
               </div>
             )}
