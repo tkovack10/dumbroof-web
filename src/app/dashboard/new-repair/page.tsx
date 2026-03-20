@@ -95,7 +95,7 @@ export default function NewRepairPage() {
 
   if (status === "success") {
     return (
-      <main className="min-h-screen bg-gray-50">
+      <main className="min-h-screen bg-white/[0.04]">
         <nav className="bg-[var(--navy)] border-b border-white/10">
           <div className="max-w-6xl mx-auto px-6 py-4 flex items-center gap-3">
             <div className="w-9 h-9 rounded-lg bg-[var(--red)] flex items-center justify-center font-bold text-white">
@@ -134,7 +134,7 @@ export default function NewRepairPage() {
   }
 
   return (
-    <main className="min-h-screen bg-gray-50">
+    <main className="min-h-screen bg-white/[0.04]">
       {/* Top Bar */}
       <nav className="bg-[var(--navy)] border-b border-white/10">
         <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
@@ -180,7 +180,7 @@ export default function NewRepairPage() {
                 value={propertyAddress}
                 onChange={setPropertyAddress}
                 placeholder="123 Main St, Bensalem, PA 19020"
-                className="w-full px-4 py-3 rounded-lg border border-gray-200 focus:border-[var(--navy)] focus:ring-1 focus:ring-[var(--navy)] outline-none transition-colors text-sm"
+                className="w-full px-4 py-3 rounded-lg border border-[var(--border-glass)] focus:border-[var(--navy)] focus:ring-1 focus:ring-[var(--navy)] outline-none transition-colors text-sm"
               />
             </div>
             <div>
@@ -193,7 +193,7 @@ export default function NewRepairPage() {
                 value={homeownerName}
                 onChange={(e) => setHomeownerName(e.target.value)}
                 placeholder="John Smith"
-                className="w-full px-4 py-3 rounded-lg border border-gray-200 focus:border-[var(--navy)] focus:ring-1 focus:ring-[var(--navy)] outline-none transition-colors text-sm"
+                className="w-full px-4 py-3 rounded-lg border border-[var(--border-glass)] focus:border-[var(--navy)] focus:ring-1 focus:ring-[var(--navy)] outline-none transition-colors text-sm"
               />
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -209,7 +209,7 @@ export default function NewRepairPage() {
                   value={homeownerPhone}
                   onChange={(e) => setHomeownerPhone(e.target.value)}
                   placeholder="267-555-0100"
-                  className="w-full px-4 py-3 rounded-lg border border-gray-200 focus:border-[var(--navy)] focus:ring-1 focus:ring-[var(--navy)] outline-none transition-colors text-sm"
+                  className="w-full px-4 py-3 rounded-lg border border-[var(--border-glass)] focus:border-[var(--navy)] focus:ring-1 focus:ring-[var(--navy)] outline-none transition-colors text-sm"
                 />
               </div>
               <div>
@@ -224,7 +224,7 @@ export default function NewRepairPage() {
                   value={homeownerEmail}
                   onChange={(e) => setHomeownerEmail(e.target.value)}
                   placeholder="john@email.com"
-                  className="w-full px-4 py-3 rounded-lg border border-gray-200 focus:border-[var(--navy)] focus:ring-1 focus:ring-[var(--navy)] outline-none transition-colors text-sm"
+                  className="w-full px-4 py-3 rounded-lg border border-[var(--border-glass)] focus:border-[var(--navy)] focus:ring-1 focus:ring-[var(--navy)] outline-none transition-colors text-sm"
                 />
                 <p className="text-[11px] text-gray-400 mt-1">
                   Adding email sends the homeowner their repair quote automatically.
@@ -250,7 +250,7 @@ export default function NewRepairPage() {
                 value={rooferName}
                 onChange={(e) => setRooferName(e.target.value)}
                 placeholder="Carlos Hernandez"
-                className="w-full px-4 py-3 rounded-lg border border-gray-200 focus:border-[var(--navy)] focus:ring-1 focus:ring-[var(--navy)] outline-none transition-colors text-sm"
+                className="w-full px-4 py-3 rounded-lg border border-[var(--border-glass)] focus:border-[var(--navy)] focus:ring-1 focus:ring-[var(--navy)] outline-none transition-colors text-sm"
               />
             </div>
 
@@ -262,7 +262,7 @@ export default function NewRepairPage() {
                 <select
                   value={skillLevel}
                   onChange={(e) => setSkillLevel(e.target.value)}
-                  className="w-full px-4 py-3 rounded-lg border border-gray-200 focus:border-[var(--navy)] focus:ring-1 focus:ring-[var(--navy)] outline-none transition-colors text-sm bg-white"
+                  className="w-full px-4 py-3 rounded-lg border border-[var(--border-glass)] focus:border-[var(--navy)] focus:ring-1 focus:ring-[var(--navy)] outline-none transition-colors text-sm bg-white"
                 >
                   <option value="laborer">Laborer (max detail)</option>
                   <option value="journeyman">Journeyman (standard)</option>
@@ -276,7 +276,7 @@ export default function NewRepairPage() {
                 <select
                   value={language}
                   onChange={(e) => setLanguage(e.target.value)}
-                  className="w-full px-4 py-3 rounded-lg border border-gray-200 focus:border-[var(--navy)] focus:ring-1 focus:ring-[var(--navy)] outline-none transition-colors text-sm bg-white"
+                  className="w-full px-4 py-3 rounded-lg border border-[var(--border-glass)] focus:border-[var(--navy)] focus:ring-1 focus:ring-[var(--navy)] outline-none transition-colors text-sm bg-white"
                 >
                   <option value="en">English (primary)</option>
                   <option value="es">Español (primary)</option>
@@ -303,7 +303,7 @@ export default function NewRepairPage() {
                 onChange={(e) => setLeakDescription(e.target.value)}
                 placeholder='e.g. "Water dripping from pipe boot area, visible on bathroom ceiling. Neoprene collar is cracked and lifted."'
                 rows={4}
-                className="w-full px-4 py-3 rounded-lg border border-gray-200 focus:border-[var(--navy)] focus:ring-1 focus:ring-[var(--navy)] outline-none transition-colors text-sm resize-none"
+                className="w-full px-4 py-3 rounded-lg border border-[var(--border-glass)] focus:border-[var(--navy)] focus:ring-1 focus:ring-[var(--navy)] outline-none transition-colors text-sm resize-none"
               />
             </div>
           </div>
@@ -325,7 +325,7 @@ export default function NewRepairPage() {
           </div>
 
           {/* Output Preview */}
-          <div className="rounded-xl px-5 py-4 border bg-blue-50 border-blue-200">
+          <div className="rounded-xl px-5 py-4 border bg-blue-500/10 border-blue-500/30">
             <div className="flex items-center gap-3">
               <div className="w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold bg-blue-100 text-blue-700">
                 2
@@ -343,7 +343,7 @@ export default function NewRepairPage() {
 
           {/* Error */}
           {status === "error" && (
-            <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3">
+            <div className="bg-red-500/10 border border-red-500/30 text-red-700 text-sm rounded-lg px-4 py-3">
               {errorMsg}
             </div>
           )}

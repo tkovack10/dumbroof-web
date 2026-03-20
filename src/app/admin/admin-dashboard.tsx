@@ -401,7 +401,7 @@ export function AdminDashboard() {
           >
             Repairs
             {repairErrorCount > 0 && (
-              <span className="bg-red-500 text-white text-xs font-bold w-5 h-5 rounded-full flex items-center justify-center">
+              <span className="bg-red-500/100 text-white text-xs font-bold w-5 h-5 rounded-full flex items-center justify-center">
                 {repairErrorCount}
               </span>
             )}
@@ -416,7 +416,7 @@ export function AdminDashboard() {
           >
             Inspector Applications
             {pendingCount > 0 && (
-              <span className="bg-amber-500 text-white text-xs font-bold w-5 h-5 rounded-full flex items-center justify-center">
+              <span className="bg-amber-500/100 text-white text-xs font-bold w-5 h-5 rounded-full flex items-center justify-center">
                 {pendingCount}
               </span>
             )}
@@ -431,7 +431,7 @@ export function AdminDashboard() {
           >
             Beta Signups
             {betaPendingCount > 0 && (
-              <span className="bg-amber-500 text-white text-xs font-bold w-5 h-5 rounded-full flex items-center justify-center">
+              <span className="bg-amber-500/100 text-white text-xs font-bold w-5 h-5 rounded-full flex items-center justify-center">
                 {betaPendingCount}
               </span>
             )}
@@ -491,7 +491,7 @@ export function AdminDashboard() {
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead>
-                      <tr className="bg-gray-50 text-left border-b border-white/[0.04]">
+                      <tr className="bg-white/[0.04] text-left border-b border-white/[0.04]">
                         <th className="px-3 py-3 text-[10px] font-semibold text-[var(--gray-dim)] uppercase w-8">#</th>
                         <th className="px-3 py-3 text-[10px] font-semibold text-[var(--gray-dim)] uppercase">Property</th>
                         <th className="px-3 py-3 text-[10px] font-semibold text-[var(--gray-dim)] uppercase">Carrier</th>
@@ -510,7 +510,7 @@ export function AdminDashboard() {
                       <tr
                         key={claim.id}
                         onClick={() => { window.location.href = `/admin/claim/${claim.id}`; }}
-                        className={`hover:bg-white/[0.04] transition-colors cursor-pointer ${claim.claim_outcome === "won" ? "bg-green-50/40" : ""}`}
+                        className={`hover:bg-white/[0.04] transition-colors cursor-pointer ${claim.claim_outcome === "won" ? "bg-green-500/10/40" : ""}`}
                       >
                         <td className="px-3 py-2.5 text-[var(--gray-dim)] text-xs">{claims.length - i}</td>
                         <td className="px-3 py-2.5">
@@ -555,7 +555,7 @@ export function AdminDashboard() {
                               <button
                                 onClick={(e) => { e.stopPropagation(); reprocessClaim(claim.id); }}
                                 disabled={reprocessing === claim.id}
-                                className="px-2 py-1 bg-blue-50 hover:bg-blue-100 disabled:opacity-50 text-blue-700 text-xs font-semibold rounded-lg transition-colors"
+                                className="px-2 py-1 bg-blue-500/10 hover:bg-blue-500/20 disabled:opacity-50 text-blue-700 text-xs font-semibold rounded-lg transition-colors"
                               >
                                 {reprocessing === claim.id ? "..." : "Reprocess"}
                               </button>
@@ -565,7 +565,7 @@ export function AdminDashboard() {
                         <td className="px-2 py-2.5">
                           <button
                             onClick={(e) => { e.stopPropagation(); setExpandedRow(expandedRow === claim.id ? null : claim.id); }}
-                            className="p-1 rounded hover:bg-gray-200 transition-colors"
+                            className="p-1 rounded hover:bg-white/[0.08] transition-colors"
                             title="Quick preview"
                           >
                             <svg className={`w-4 h-4 text-[var(--gray-dim)] transition-transform ${expandedRow === claim.id ? "rotate-180" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -580,19 +580,19 @@ export function AdminDashboard() {
                   {/* Expanded row detail panel */}
                   {claims.map((claim) => (
                     expandedRow === claim.id ? (
-                      <div key={`exp-${claim.id}`} className="px-6 pb-4 bg-gray-50/50 border-t border-[var(--border-glass)]">
+                      <div key={`exp-${claim.id}`} className="px-6 pb-4 bg-white/[0.04]/50 border-t border-[var(--border-glass)]">
                         {claim.error_message && (
-                          <p className="text-xs text-red-600 bg-red-50 rounded px-3 py-2 mt-2 mb-2 font-mono">
+                          <p className="text-xs text-red-600 bg-red-500/10 rounded px-3 py-2 mt-2 mb-2 font-mono">
                             {claim.error_message}
                           </p>
                         )}
                         {/* Source Files */}
                         <div className="grid grid-cols-5 gap-2 mt-3 mb-3">
                           {[
-                            { label: "Measurements", files: claim.measurement_files, color: "bg-blue-50 text-blue-700 border-blue-200" },
-                            { label: "Photos", files: claim.photo_files, color: "bg-purple-50 text-purple-700 border-purple-200" },
-                            { label: "Scope", files: claim.scope_files, color: "bg-amber-50 text-amber-700 border-amber-200" },
-                            { label: "Weather", files: claim.weather_files, color: "bg-teal-50 text-teal-700 border-teal-200" },
+                            { label: "Measurements", files: claim.measurement_files, color: "bg-blue-500/10 text-blue-700 border-blue-500/30" },
+                            { label: "Photos", files: claim.photo_files, color: "bg-purple-500/10 text-purple-700 border-purple-500/30" },
+                            { label: "Scope", files: claim.scope_files, color: "bg-amber-500/10 text-amber-700 border-amber-500/30" },
+                            { label: "Weather", files: claim.weather_files, color: "bg-teal-500/10 text-teal-700 border-teal-500/30" },
                             { label: "Other", files: claim.other_files, color: "bg-white/[0.06] text-[var(--gray)] border-[var(--border-glass)]" },
                           ].map(({ label, files, color }) => (
                             <div key={label} className={`rounded-lg px-3 py-2 border ${color}`}>
@@ -617,7 +617,7 @@ export function AdminDashboard() {
                                 key={file}
                                 onClick={() => handleDownload(claim.file_path, file)}
                                 disabled={downloading === `${claim.file_path}/${file}`}
-                                className="flex items-center gap-1.5 px-3 py-1.5 bg-green-50 hover:bg-green-100 disabled:opacity-50 text-green-700 text-xs font-semibold rounded-lg transition-colors border border-green-200"
+                                className="flex items-center gap-1.5 px-3 py-1.5 bg-green-500/10 hover:bg-green-500/20 disabled:opacity-50 text-green-700 text-xs font-semibold rounded-lg transition-colors border border-green-500/30"
                               >
                                 <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                                   <path strokeLinecap="round" strokeLinejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3M6 20h12a2 2 0 002-2V8l-6-6H6a2 2 0 00-2 2v14a2 2 0 002 2z" />
@@ -668,7 +668,7 @@ export function AdminDashboard() {
                 </div>
               ) : (
                 <div>
-                  <div className="px-6 py-3 bg-gray-50 grid grid-cols-12 gap-4 text-xs font-semibold text-[var(--gray-dim)] uppercase tracking-wider border-b border-white/[0.04]">
+                  <div className="px-6 py-3 bg-white/[0.04] grid grid-cols-12 gap-4 text-xs font-semibold text-[var(--gray-dim)] uppercase tracking-wider border-b border-white/[0.04]">
                     <div className="col-span-3">Address</div>
                     <div className="col-span-2">Homeowner</div>
                     <div className="col-span-1">Photos</div>
@@ -703,7 +703,7 @@ export function AdminDashboard() {
                                 {repair.error_message.slice(0, 80)}
                               </p>
                             ) : (
-                              <span className="text-xs text-gray-300">—</span>
+                              <span className="text-xs text-[var(--gray-dim)]">—</span>
                             )}
                           </div>
                           <div className="col-span-1 text-[var(--gray)] text-sm font-medium">
@@ -717,7 +717,7 @@ export function AdminDashboard() {
                               <button
                                 onClick={(e) => { e.stopPropagation(); reprocessRepair(repair.id); }}
                                 disabled={reprocessing === repair.id}
-                                className="px-2 py-1 bg-blue-50 hover:bg-blue-100 disabled:opacity-50 text-blue-700 text-xs font-semibold rounded-lg transition-colors"
+                                className="px-2 py-1 bg-blue-500/10 hover:bg-blue-500/20 disabled:opacity-50 text-blue-700 text-xs font-semibold rounded-lg transition-colors"
                               >
                                 {reprocessing === repair.id ? "..." : "Reprocess"}
                               </button>
@@ -725,9 +725,9 @@ export function AdminDashboard() {
                           </div>
                         </div>
                         {expandedRow === repair.id && (
-                          <div className="px-6 pb-4 bg-gray-50/50 border-t border-white/[0.04]">
+                          <div className="px-6 pb-4 bg-white/[0.04]/50 border-t border-white/[0.04]">
                             {repair.error_message && (
-                              <p className="text-xs text-red-600 bg-red-50 rounded px-3 py-2 mt-2 mb-2 font-mono">
+                              <p className="text-xs text-red-600 bg-red-500/10 rounded px-3 py-2 mt-2 mb-2 font-mono">
                                 {repair.error_message}
                               </p>
                             )}
@@ -738,7 +738,7 @@ export function AdminDashboard() {
                                     key={file}
                                     onClick={() => handleDownload(repair.file_path, file)}
                                     disabled={downloading === `${repair.file_path}/${file}`}
-                                    className="flex items-center gap-1.5 px-3 py-1.5 bg-green-50 hover:bg-green-100 disabled:opacity-50 text-green-700 text-xs font-semibold rounded-lg transition-colors border border-green-200"
+                                    className="flex items-center gap-1.5 px-3 py-1.5 bg-green-500/10 hover:bg-green-500/20 disabled:opacity-50 text-green-700 text-xs font-semibold rounded-lg transition-colors border border-green-500/30"
                                   >
                                     <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                                       <path strokeLinecap="round" strokeLinejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3M6 20h12a2 2 0 002-2V8l-6-6H6a2 2 0 00-2 2v14a2 2 0 002 2z" />
@@ -790,7 +790,7 @@ export function AdminDashboard() {
                 </div>
               ) : (
                 <div>
-                  <div className="px-6 py-3 bg-gray-50 grid grid-cols-12 gap-4 text-xs font-semibold text-[var(--gray-dim)] uppercase tracking-wider border-b border-white/[0.04]">
+                  <div className="px-6 py-3 bg-white/[0.04] grid grid-cols-12 gap-4 text-xs font-semibold text-[var(--gray-dim)] uppercase tracking-wider border-b border-white/[0.04]">
                     <div className="col-span-2">Name</div>
                     <div className="col-span-2">Contact</div>
                     <div className="col-span-2">Company</div>
@@ -842,13 +842,13 @@ export function AdminDashboard() {
                             <>
                               <button
                                 onClick={() => updateBetaStatus(signup.id, "approved")}
-                                className="px-3 py-1 bg-green-50 hover:bg-green-100 text-green-700 text-xs font-semibold rounded-lg transition-colors"
+                                className="px-3 py-1 bg-green-500/10 hover:bg-green-500/20 text-green-700 text-xs font-semibold rounded-lg transition-colors"
                               >
                                 Approve
                               </button>
                               <button
                                 onClick={() => updateBetaStatus(signup.id, "rejected")}
-                                className="px-3 py-1 bg-red-50 hover:bg-red-100 text-red-700 text-xs font-semibold rounded-lg transition-colors"
+                                className="px-3 py-1 bg-red-500/10 hover:bg-red-100 text-red-700 text-xs font-semibold rounded-lg transition-colors"
                               >
                                 Reject
                               </button>
@@ -858,7 +858,7 @@ export function AdminDashboard() {
                             <button
                               onClick={() => sendBetaInvite(signup.id)}
                               disabled={inviting === signup.id}
-                              className="px-3 py-1 bg-blue-50 hover:bg-blue-100 disabled:opacity-50 text-blue-700 text-xs font-semibold rounded-lg transition-colors"
+                              className="px-3 py-1 bg-blue-500/10 hover:bg-blue-500/20 disabled:opacity-50 text-blue-700 text-xs font-semibold rounded-lg transition-colors"
                             >
                               {inviting === signup.id ? "Sending..." : "Send Invite"}
                             </button>
@@ -866,7 +866,7 @@ export function AdminDashboard() {
                           {signup.status === "invited" && (
                             <button
                               onClick={() => updateBetaStatus(signup.id, "active")}
-                              className="px-3 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-xs font-semibold rounded-lg transition-colors"
+                              className="px-3 py-1 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-700 text-xs font-semibold rounded-lg transition-colors"
                             >
                               Mark Active
                             </button>
@@ -874,7 +874,7 @@ export function AdminDashboard() {
                           {(signup.status === "approved" || signup.status === "invited" || signup.status === "active" || signup.status === "rejected") && (
                             <button
                               onClick={() => updateBetaStatus(signup.id, "pending")}
-                              className="px-3 py-1 bg-gray-50 hover:bg-white/[0.06] text-[var(--gray)] text-xs font-semibold rounded-lg transition-colors"
+                              className="px-3 py-1 bg-white/[0.04] hover:bg-white/[0.06] text-[var(--gray)] text-xs font-semibold rounded-lg transition-colors"
                             >
                               Undo
                             </button>
@@ -918,7 +918,7 @@ export function AdminDashboard() {
                 </div>
               ) : (
                 <div>
-                  <div className="px-6 py-3 bg-gray-50 grid grid-cols-12 gap-4 text-xs font-semibold text-[var(--gray-dim)] uppercase tracking-wider border-b border-white/[0.04]">
+                  <div className="px-6 py-3 bg-white/[0.04] grid grid-cols-12 gap-4 text-xs font-semibold text-[var(--gray-dim)] uppercase tracking-wider border-b border-white/[0.04]">
                     <div className="col-span-2">Name</div>
                     <div className="col-span-2">Contact</div>
                     <div className="col-span-1">Location</div>
@@ -964,13 +964,13 @@ export function AdminDashboard() {
                             <>
                               <button
                                 onClick={() => updateInspectorStatus(app.id, "approved")}
-                                className="px-3 py-1 bg-green-50 hover:bg-green-100 text-green-700 text-xs font-semibold rounded-lg transition-colors"
+                                className="px-3 py-1 bg-green-500/10 hover:bg-green-500/20 text-green-700 text-xs font-semibold rounded-lg transition-colors"
                               >
                                 Approve
                               </button>
                               <button
                                 onClick={() => updateInspectorStatus(app.id, "rejected")}
-                                className="px-3 py-1 bg-red-50 hover:bg-red-100 text-red-700 text-xs font-semibold rounded-lg transition-colors"
+                                className="px-3 py-1 bg-red-500/10 hover:bg-red-100 text-red-700 text-xs font-semibold rounded-lg transition-colors"
                               >
                                 Reject
                               </button>
@@ -980,7 +980,7 @@ export function AdminDashboard() {
                             <button
                               onClick={() => sendInspectorInvite(app.id)}
                               disabled={invitingInspector === app.id}
-                              className="px-3 py-1 bg-blue-50 hover:bg-blue-100 disabled:opacity-50 text-blue-700 text-xs font-semibold rounded-lg transition-colors"
+                              className="px-3 py-1 bg-blue-500/10 hover:bg-blue-500/20 disabled:opacity-50 text-blue-700 text-xs font-semibold rounded-lg transition-colors"
                             >
                               {invitingInspector === app.id ? "Sending..." : "Send Invite"}
                             </button>
@@ -988,7 +988,7 @@ export function AdminDashboard() {
                           {app.status === "invited" && (
                             <button
                               onClick={() => updateInspectorStatus(app.id, "active")}
-                              className="px-3 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-xs font-semibold rounded-lg transition-colors"
+                              className="px-3 py-1 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-700 text-xs font-semibold rounded-lg transition-colors"
                             >
                               Mark Active
                             </button>
@@ -996,7 +996,7 @@ export function AdminDashboard() {
                           {(app.status === "approved" || app.status === "invited" || app.status === "active" || app.status === "rejected") && (
                             <button
                               onClick={() => updateInspectorStatus(app.id, "pending")}
-                              className="px-3 py-1 bg-gray-50 hover:bg-white/[0.06] text-[var(--gray)] text-xs font-semibold rounded-lg transition-colors"
+                              className="px-3 py-1 bg-white/[0.04] hover:bg-white/[0.06] text-[var(--gray)] text-xs font-semibold rounded-lg transition-colors"
                             >
                               Undo
                             </button>

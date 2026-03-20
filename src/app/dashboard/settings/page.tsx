@@ -282,14 +282,14 @@ function SettingsPageContent() {
 
   if (loading) {
     return (
-      <main className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <main className="min-h-screen bg-white/[0.04] flex items-center justify-center">
         <p className="text-gray-400">Loading...</p>
       </main>
     );
   }
 
   return (
-    <main className="min-h-screen bg-gray-50">
+    <main className="min-h-screen bg-white/[0.04]">
       <nav className="bg-[var(--navy)] border-b border-white/10">
         <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -313,17 +313,17 @@ function SettingsPageContent() {
           <div>
             <label className="block text-sm font-semibold text-[var(--navy)] mb-2">Company Logo</label>
             <div className="flex items-center gap-6">
-              <div className="w-20 h-20 rounded-xl bg-gray-100 border-2 border-dashed border-gray-300 flex items-center justify-center overflow-hidden">
+              <div className="w-20 h-20 rounded-xl bg-gray-100 border-2 border-dashed border-[var(--border-glass)] flex items-center justify-center overflow-hidden">
                 {logoPreview ? (
                   <img src={logoPreview} alt="Logo" className="w-full h-full object-contain" />
                 ) : (
-                  <svg className="w-8 h-8 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                  <svg className="w-8 h-8 text-[var(--gray-dim)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909M3.75 21h16.5A2.25 2.25 0 0022.5 18.75V5.25A2.25 2.25 0 0020.25 3H3.75A2.25 2.25 0 001.5 5.25v13.5A2.25 2.25 0 003.75 21z" />
                   </svg>
                 )}
               </div>
               <div>
-                <label className="cursor-pointer bg-white border border-gray-200 hover:border-gray-300 px-4 py-2 rounded-lg text-sm font-medium text-gray-700 transition-colors">
+                <label className="cursor-pointer bg-[var(--bg-glass)] border border-[var(--border-glass)] hover:border-[var(--border-glass)] px-4 py-2 rounded-lg text-sm font-medium text-[var(--gray)] transition-colors">
                   Upload Logo
                   <input type="file" accept=".jpg,.jpeg,.png,.svg" onChange={handleLogoChange} className="hidden" />
                 </label>
@@ -342,7 +342,7 @@ function SettingsPageContent() {
                   value={form[key as keyof typeof form]}
                   onChange={(e) => setForm({ ...form, [key]: e.target.value })}
                   placeholder={placeholder}
-                  className="w-full px-4 py-3 rounded-lg border border-gray-200 focus:border-[var(--navy)] focus:ring-1 focus:ring-[var(--navy)] outline-none transition-colors text-sm"
+                  className="w-full px-4 py-3 rounded-lg border border-[var(--border-glass)] focus:border-[var(--navy)] focus:ring-1 focus:ring-[var(--navy)] outline-none transition-colors text-sm"
                 />
               </div>
             ))}
@@ -364,20 +364,20 @@ function SettingsPageContent() {
         </form>
 
         {/* Billing */}
-        <div className="mt-12 pt-8 border-t border-gray-200">
+        <div className="mt-12 pt-8 border-t border-[var(--border-glass)]">
           <h2 className="text-xl font-bold text-[var(--navy)] mb-1">Billing & Subscription</h2>
           <p className="text-gray-500 text-sm mb-6">
             Manage your plan and claim quota.
           </p>
 
           {billingSuccess && (
-            <div className="bg-green-50 border border-green-200 text-green-700 text-sm rounded-lg px-4 py-3 mb-4">
+            <div className="bg-green-500/10 border border-green-500/30 text-green-700 text-sm rounded-lg px-4 py-3 mb-4">
               Subscription activated! Your plan has been upgraded.
             </div>
           )}
 
           {billing && (
-            <div className="bg-white border border-gray-200 rounded-xl p-6 space-y-4">
+            <div className="bg-[var(--bg-glass)] border border-[var(--border-glass)] rounded-xl p-6 space-y-4">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-semibold text-[var(--navy)]">
@@ -450,7 +450,7 @@ function SettingsPageContent() {
                         setPortalLoading(false);
                       }}
                       disabled={portalLoading}
-                      className="bg-white border border-gray-200 hover:border-gray-300 text-gray-700 px-5 py-2.5 rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
+                      className="bg-[var(--bg-glass)] border border-[var(--border-glass)] hover:border-[var(--border-glass)] text-[var(--gray)] px-5 py-2.5 rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
                     >
                       {portalLoading ? "Loading..." : "Manage Billing"}
                     </button>
@@ -462,7 +462,7 @@ function SettingsPageContent() {
         </div>
 
         {/* Authorized Forwarders */}
-        <div className="mt-12 pt-8 border-t border-gray-200">
+        <div className="mt-12 pt-8 border-t border-[var(--border-glass)]">
           <h2 className="text-xl font-bold text-[var(--navy)] mb-1">Email Forwarding</h2>
           <p className="text-gray-500 text-sm mb-6">
             Add team members authorized to forward carrier emails to <strong>claims@dumbroof.ai</strong>.
@@ -473,7 +473,7 @@ function SettingsPageContent() {
           {forwarders.length > 0 && (
             <div className="space-y-2 mb-6">
               {forwarders.map((fwd) => (
-                <div key={fwd.id} className="flex items-center justify-between bg-gray-50 rounded-lg px-4 py-3">
+                <div key={fwd.id} className="flex items-center justify-between bg-white/[0.04] rounded-lg px-4 py-3">
                   <div>
                     <p className="text-sm font-medium text-[var(--navy)]">
                       {fwd.name || fwd.email}
@@ -497,26 +497,26 @@ function SettingsPageContent() {
           )}
 
           {/* Add new forwarder */}
-          <div className="bg-white border border-gray-200 rounded-xl p-4 space-y-3">
+          <div className="bg-[var(--bg-glass)] border border-[var(--border-glass)] rounded-xl p-4 space-y-3">
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <input
                 type="email"
                 value={newForwarderEmail}
                 onChange={(e) => setNewForwarderEmail(e.target.value)}
                 placeholder="Email address"
-                className="px-3 py-2.5 rounded-lg border border-gray-200 focus:border-[var(--navy)] focus:ring-1 focus:ring-[var(--navy)] outline-none transition-colors text-sm"
+                className="px-3 py-2.5 rounded-lg border border-[var(--border-glass)] focus:border-[var(--navy)] focus:ring-1 focus:ring-[var(--navy)] outline-none transition-colors text-sm"
               />
               <input
                 type="text"
                 value={newForwarderName}
                 onChange={(e) => setNewForwarderName(e.target.value)}
                 placeholder="Name (optional)"
-                className="px-3 py-2.5 rounded-lg border border-gray-200 focus:border-[var(--navy)] focus:ring-1 focus:ring-[var(--navy)] outline-none transition-colors text-sm"
+                className="px-3 py-2.5 rounded-lg border border-[var(--border-glass)] focus:border-[var(--navy)] focus:ring-1 focus:ring-[var(--navy)] outline-none transition-colors text-sm"
               />
               <select
                 value={newForwarderRole}
                 onChange={(e) => setNewForwarderRole(e.target.value)}
-                className="px-3 py-2.5 rounded-lg border border-gray-200 focus:border-[var(--navy)] focus:ring-1 focus:ring-[var(--navy)] outline-none transition-colors text-sm"
+                className="px-3 py-2.5 rounded-lg border border-[var(--border-glass)] focus:border-[var(--navy)] focus:ring-1 focus:ring-[var(--navy)] outline-none transition-colors text-sm"
               >
                 <option value="sales_rep">Sales Rep</option>
                 <option value="team_member">Team Member</option>
@@ -537,7 +537,7 @@ function SettingsPageContent() {
         </div>
 
         {/* Email Integration (Claim Brain) */}
-        <div className="mt-12 pt-8 border-t border-gray-200">
+        <div className="mt-12 pt-8 border-t border-[var(--border-glass)]">
           <h2 className="text-xl font-bold text-[var(--navy)] mb-1">Email Integration</h2>
           <p className="text-gray-500 text-sm mb-6">
             Connect your Gmail to send emails from Claim Brain as yourself.
@@ -545,12 +545,12 @@ function SettingsPageContent() {
           </p>
 
           {(gmailJustConnected && !gmailConnected) && (
-            <div className="bg-green-50 border border-green-200 text-green-700 text-sm rounded-lg px-4 py-3 mb-4">
+            <div className="bg-green-500/10 border border-green-500/30 text-green-700 text-sm rounded-lg px-4 py-3 mb-4">
               Gmail connected successfully! Reload to see the updated status.
             </div>
           )}
 
-          <div className="bg-white border border-gray-200 rounded-xl p-6">
+          <div className="bg-[var(--bg-glass)] border border-[var(--border-glass)] rounded-xl p-6">
             {gmailConnected ? (
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
@@ -633,13 +633,13 @@ function SettingsPageContent() {
         </div>
 
         {/* Repair Pricing */}
-        <div className="mt-12 pt-8 border-t border-gray-200">
+        <div className="mt-12 pt-8 border-t border-[var(--border-glass)]">
           <h2 className="text-xl font-bold text-[var(--navy)] mb-1">Repair Pricing</h2>
           <p className="text-gray-500 text-sm mb-6">
             Set your default pricing for repair jobs. These values are used when AI generates repair quotes.
           </p>
 
-          <div className="bg-white border border-gray-200 rounded-xl p-6 space-y-4">
+          <div className="bg-[var(--bg-glass)] border border-[var(--border-glass)] rounded-xl p-6 space-y-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-semibold text-[var(--navy)] mb-1">Diagnostic Fee ($)</label>
@@ -649,7 +649,7 @@ function SettingsPageContent() {
                   min="0"
                   value={repairPricing.diagnostic_fee}
                   onChange={(e) => setRepairPricing({ ...repairPricing, diagnostic_fee: e.target.value })}
-                  className="w-full px-4 py-3 rounded-lg border border-gray-200 focus:border-[var(--navy)] focus:ring-1 focus:ring-[var(--navy)] outline-none transition-colors text-sm"
+                  className="w-full px-4 py-3 rounded-lg border border-[var(--border-glass)] focus:border-[var(--navy)] focus:ring-1 focus:ring-[var(--navy)] outline-none transition-colors text-sm"
                 />
                 <p className="text-[11px] text-gray-400 mt-1">Flat fee included in every repair</p>
               </div>
@@ -661,7 +661,7 @@ function SettingsPageContent() {
                   min="0"
                   value={repairPricing.labor_rate_per_hour}
                   onChange={(e) => setRepairPricing({ ...repairPricing, labor_rate_per_hour: e.target.value })}
-                  className="w-full px-4 py-3 rounded-lg border border-gray-200 focus:border-[var(--navy)] focus:ring-1 focus:ring-[var(--navy)] outline-none transition-colors text-sm"
+                  className="w-full px-4 py-3 rounded-lg border border-[var(--border-glass)] focus:border-[var(--navy)] focus:ring-1 focus:ring-[var(--navy)] outline-none transition-colors text-sm"
                 />
               </div>
               <div>
@@ -673,7 +673,7 @@ function SettingsPageContent() {
                   max="200"
                   value={repairPricing.markup_percent}
                   onChange={(e) => setRepairPricing({ ...repairPricing, markup_percent: e.target.value })}
-                  className="w-full px-4 py-3 rounded-lg border border-gray-200 focus:border-[var(--navy)] focus:ring-1 focus:ring-[var(--navy)] outline-none transition-colors text-sm"
+                  className="w-full px-4 py-3 rounded-lg border border-[var(--border-glass)] focus:border-[var(--navy)] focus:ring-1 focus:ring-[var(--navy)] outline-none transition-colors text-sm"
                 />
                 <p className="text-[11px] text-gray-400 mt-1">Applied on top of material cost (20 = 20% markup)</p>
               </div>
@@ -685,7 +685,7 @@ function SettingsPageContent() {
                   min="0"
                   value={repairPricing.minimum_job_charge}
                   onChange={(e) => setRepairPricing({ ...repairPricing, minimum_job_charge: e.target.value })}
-                  className="w-full px-4 py-3 rounded-lg border border-gray-200 focus:border-[var(--navy)] focus:ring-1 focus:ring-[var(--navy)] outline-none transition-colors text-sm"
+                  className="w-full px-4 py-3 rounded-lg border border-[var(--border-glass)] focus:border-[var(--navy)] focus:ring-1 focus:ring-[var(--navy)] outline-none transition-colors text-sm"
                 />
                 <p className="text-[11px] text-gray-400 mt-1">Floor price — no repair goes below this</p>
               </div>
@@ -724,7 +724,7 @@ function SettingsPageContent() {
         </div>
 
         {/* Password */}
-        <div ref={passwordRef} className="mt-12 pt-8 border-t border-gray-200">
+        <div ref={passwordRef} className="mt-12 pt-8 border-t border-[var(--border-glass)]">
           <h2 className="text-xl font-bold text-[var(--navy)] mb-1">
             {isPasswordReset ? "Set Your Password" : "Change Password"}
           </h2>
@@ -744,7 +744,7 @@ function SettingsPageContent() {
                 onChange={(e) => setNewPassword(e.target.value)}
                 placeholder="Enter new password"
                 minLength={6}
-                className="w-full px-4 py-3 rounded-lg border border-gray-200 focus:border-[var(--navy)] focus:ring-1 focus:ring-[var(--navy)] outline-none transition-colors text-sm"
+                className="w-full px-4 py-3 rounded-lg border border-[var(--border-glass)] focus:border-[var(--navy)] focus:ring-1 focus:ring-[var(--navy)] outline-none transition-colors text-sm"
               />
             </div>
             <div>
@@ -756,17 +756,17 @@ function SettingsPageContent() {
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 placeholder="Confirm new password"
                 minLength={6}
-                className="w-full px-4 py-3 rounded-lg border border-gray-200 focus:border-[var(--navy)] focus:ring-1 focus:ring-[var(--navy)] outline-none transition-colors text-sm"
+                className="w-full px-4 py-3 rounded-lg border border-[var(--border-glass)] focus:border-[var(--navy)] focus:ring-1 focus:ring-[var(--navy)] outline-none transition-colors text-sm"
               />
             </div>
 
             {passwordError && (
-              <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3">
+              <div className="bg-red-500/10 border border-red-500/30 text-red-700 text-sm rounded-lg px-4 py-3">
                 {passwordError}
               </div>
             )}
             {passwordMessage && (
-              <div className="bg-green-50 border border-green-200 text-green-700 text-sm rounded-lg px-4 py-3">
+              <div className="bg-green-500/10 border border-green-500/30 text-green-700 text-sm rounded-lg px-4 py-3">
                 {passwordMessage}
               </div>
             )}

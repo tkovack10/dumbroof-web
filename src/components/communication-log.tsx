@@ -83,7 +83,7 @@ export function CommunicationLog({ claimId }: Props) {
                   onClick={() => setExpandedEmail(isExpanded ? null : email.id)}
                   className="w-full flex items-center gap-3 px-6 py-3 hover:bg-white/[0.04] transition-colors text-left"
                 >
-                  <div className="w-8 h-8 rounded-full bg-blue-50 flex items-center justify-center shrink-0">
+                  <div className="w-8 h-8 rounded-full bg-blue-500/10 flex items-center justify-center shrink-0">
                     <svg className="w-4 h-4 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                     </svg>
@@ -105,12 +105,12 @@ export function CommunicationLog({ claimId }: Props) {
                     <p className="text-[10px] text-[var(--gray-dim)]">{timeStr}</p>
                   </div>
                   <div className="flex items-center gap-1 shrink-0">
-                    <span className={`text-[9px] font-medium px-1.5 py-0.5 rounded ${email.status === "sent" ? "bg-green-50 text-green-600" : "bg-red-50 text-red-600"}`}>
+                    <span className={`text-[9px] font-medium px-1.5 py-0.5 rounded ${email.status === "sent" ? "bg-green-500/10 text-green-600" : "bg-red-500/10 text-red-600"}`}>
                       {email.status === "sent" ? "Sent" : email.status}
                     </span>
                     <span className="text-[9px] text-[var(--gray-dim)]">via {email.send_method}</span>
                   </div>
-                  <svg className={`w-4 h-4 text-gray-300 transition-transform shrink-0 ${isExpanded ? "rotate-180" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <svg className={`w-4 h-4 text-[var(--gray-dim)] transition-transform shrink-0 ${isExpanded ? "rotate-180" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
                   </svg>
                 </button>

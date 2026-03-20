@@ -192,7 +192,7 @@ export function SupplementComposer({ claimId, claimAddress, carrierName, compari
         </div>
         <div className="flex items-center gap-2">
           <button onClick={selectAll} className="text-[10px] text-blue-600 hover:text-blue-800 font-medium">Select All</button>
-          <span className="text-gray-300">|</span>
+          <span className="text-[var(--gray-dim)]">|</span>
           <button onClick={clearAll} className="text-[10px] text-[var(--gray-muted)] hover:text-[var(--gray)] font-medium">Clear</button>
         </div>
       </div>
@@ -205,12 +205,12 @@ export function SupplementComposer({ claimId, claimAddress, carrierName, compari
           </div>
         )}
         {items.filter((i) => i.type === "missing").map((item) => (
-          <label key={item.id} className={`flex items-start gap-3 px-6 py-3 cursor-pointer hover:bg-white/[0.04] transition-colors ${selected.has(item.id) ? "bg-red-50/50" : ""}`}>
+          <label key={item.id} className={`flex items-start gap-3 px-6 py-3 cursor-pointer hover:bg-white/[0.04] transition-colors ${selected.has(item.id) ? "bg-red-500/10/50" : ""}`}>
             <input
               type="checkbox"
               checked={selected.has(item.id)}
               onChange={() => toggleItem(item.id)}
-              className="mt-0.5 rounded border-gray-300 text-red-600 focus:ring-red-500"
+              className="mt-0.5 rounded border-[var(--border-glass)] text-red-600 focus:ring-red-500"
             />
             <div className="flex-1 min-w-0">
               <p className="text-xs font-medium text-[var(--white)]">{item.label}</p>
@@ -232,12 +232,12 @@ export function SupplementComposer({ claimId, claimAddress, carrierName, compari
           </div>
         )}
         {items.filter((i) => i.type === "under").map((item) => (
-          <label key={item.id} className={`flex items-start gap-3 px-6 py-3 cursor-pointer hover:bg-white/[0.04] transition-colors ${selected.has(item.id) ? "bg-orange-50/50" : ""}`}>
+          <label key={item.id} className={`flex items-start gap-3 px-6 py-3 cursor-pointer hover:bg-white/[0.04] transition-colors ${selected.has(item.id) ? "bg-orange-500/10/50" : ""}`}>
             <input
               type="checkbox"
               checked={selected.has(item.id)}
               onChange={() => toggleItem(item.id)}
-              className="mt-0.5 rounded border-gray-300 text-orange-500 focus:ring-orange-500"
+              className="mt-0.5 rounded border-[var(--border-glass)] text-orange-500 focus:ring-orange-500"
             />
             <div className="flex-1 min-w-0">
               <p className="text-xs font-medium text-[var(--white)]">{item.label}</p>
@@ -254,12 +254,12 @@ export function SupplementComposer({ claimId, claimAddress, carrierName, compari
           </div>
         )}
         {codeItems.map((item) => (
-          <label key={item.id} className={`flex items-start gap-3 px-6 py-3 cursor-pointer hover:bg-white/[0.04] transition-colors ${selected.has(item.id) ? "bg-blue-50/50" : ""}`}>
+          <label key={item.id} className={`flex items-start gap-3 px-6 py-3 cursor-pointer hover:bg-white/[0.04] transition-colors ${selected.has(item.id) ? "bg-blue-500/10/50" : ""}`}>
             <input
               type="checkbox"
               checked={selected.has(item.id)}
               onChange={() => toggleItem(item.id)}
-              className="mt-0.5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+              className="mt-0.5 rounded border-[var(--border-glass)] text-blue-600 focus:ring-blue-500"
             />
             <div className="flex-1 min-w-0">
               <p className="text-xs font-medium text-[var(--white)]">{item.label}</p>
@@ -332,7 +332,7 @@ export function SupplementComposer({ claimId, claimAddress, carrierName, compari
               <pre className="text-xs text-[var(--gray)] whitespace-pre-wrap font-sans leading-relaxed">{generateEmail()}</pre>
             </div>
             {sendResult && (
-              <div className={`px-6 py-2 text-sm ${sendResult.ok ? "bg-green-50 text-green-700" : "bg-red-50 text-red-700"}`}>
+              <div className={`px-6 py-2 text-sm ${sendResult.ok ? "bg-green-500/10 text-green-700" : "bg-red-500/10 text-red-700"}`}>
                 {sendResult.message}
               </div>
             )}

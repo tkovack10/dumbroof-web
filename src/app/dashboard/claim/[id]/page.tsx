@@ -553,7 +553,7 @@ export default function ClaimDetailPage() {
             return (
               <div className="mt-4 grid grid-cols-2 gap-3">
                 {/* Damage Score — ring + grade */}
-                <div className="bg-gray-50 border border-[var(--border-glass)] rounded-xl px-4 py-3 flex items-center gap-3">
+                <div className="bg-white/[0.04] border border-[var(--border-glass)] rounded-xl px-4 py-3 flex items-center gap-3">
                   <div className="relative w-11 h-11 shrink-0">
                     <svg className="w-11 h-11 -rotate-90" viewBox="0 0 36 36">
                       <circle cx="18" cy="18" r="15.5" fill="none" className="stroke-gray-200" strokeWidth="3" />
@@ -565,7 +565,7 @@ export default function ClaimDetailPage() {
                     <p className="text-xs text-[var(--gray-muted)]">Damage Score</p>
                     <div className="flex items-center gap-1.5 mt-0.5">
                       <span className="text-sm font-bold text-[var(--white)]">{dsValue}/100</span>
-                      <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold border ${gradeColors[dsGrade] || "bg-white/[0.06] text-[var(--gray)] border-gray-300"}`}>
+                      <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold border ${gradeColors[dsGrade] || "bg-white/[0.06] text-[var(--gray)] border-[var(--border-glass)]"}`}>
                         {dsGrade}
                       </span>
                     </div>
@@ -574,7 +574,7 @@ export default function ClaimDetailPage() {
                 </div>
                 {/* Tech Boost — green positive indicator */}
                 {techBoost > 0 && (
-                  <div className="bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-3 flex items-center gap-3">
+                  <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-xl px-4 py-3 flex items-center gap-3">
                     <div className="w-11 h-11 shrink-0 rounded-full bg-emerald-100 flex items-center justify-center">
                       <span className="text-emerald-600 text-lg font-bold">&#9650;</span>
                     </div>
@@ -591,7 +591,7 @@ export default function ClaimDetailPage() {
 
           {/* Photo Integrity Badge */}
           {integrity && (
-            <div className="mt-4 inline-flex items-center gap-2 bg-emerald-50 border border-emerald-200 rounded-lg px-4 py-2">
+            <div className="mt-4 inline-flex items-center gap-2 bg-emerald-500/10 border border-emerald-500/30 rounded-lg px-4 py-2">
               <svg className="w-5 h-5 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
               </svg>
@@ -612,7 +612,7 @@ export default function ClaimDetailPage() {
             w === "PROPERTY_OWNER_REPORT_NO_MEASUREMENTS" ||
             w === "MEASUREMENTS_FROM_CARRIER_FALLBACK"
           ) && (
-            <div className="mt-4 bg-amber-50 border border-amber-300 rounded-lg px-4 py-3">
+            <div className="mt-4 bg-amber-500/10 border border-amber-300 rounded-lg px-4 py-3">
               <div className="flex items-start gap-3">
                 <svg className="w-5 h-5 text-amber-600 mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
@@ -649,7 +649,7 @@ export default function ClaimDetailPage() {
 
         {/* Processing indicator */}
         {isReprocessingState && (
-          <div className="bg-amber-50 border border-amber-100 rounded-2xl p-5">
+          <div className="bg-amber-500/10 border border-amber-100 rounded-2xl p-5">
             <div className="flex items-center gap-3">
               <svg
                 className="animate-spin w-5 h-5 text-amber-600"
@@ -691,7 +691,7 @@ export default function ClaimDetailPage() {
 
         {/* Needs Improvement — Coaching Card */}
         {claim.status === "needs_improvement" && claim.improvement_guidance && (
-          <div className="bg-orange-50 border border-orange-200 rounded-2xl p-6">
+          <div className="bg-orange-500/10 border border-orange-500/30 rounded-2xl p-6">
             <div className="flex items-start gap-3 mb-4">
               <div className="w-10 h-10 rounded-full bg-orange-100 flex items-center justify-center shrink-0">
                 <svg className="w-5 h-5 text-orange-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -711,7 +711,7 @@ export default function ClaimDetailPage() {
               {claim.improvement_guidance.tips.map((tip, i) => (
                 <div key={i} className="bg-[var(--bg-glass)] border border-orange-100 rounded-xl px-4 py-3">
                   <div className="flex items-center gap-2 mb-1">
-                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-orange-100 text-orange-700 border border-orange-200">
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-orange-100 text-orange-700 border border-orange-500/30">
                       {tip.category}
                     </span>
                     <span className="text-sm font-semibold text-[var(--white)]">{tip.title}</span>
@@ -742,7 +742,7 @@ export default function ClaimDetailPage() {
               <div className="flex gap-3">
                 <a
                   href="/pricing?coupon=FIRSTCLAIM50"
-                  className="bg-[var(--bg-glass)] text-red-600 px-5 py-3 rounded-xl font-bold text-sm hover:bg-orange-50 transition-colors"
+                  className="bg-[var(--bg-glass)] text-red-600 px-5 py-3 rounded-xl font-bold text-sm hover:bg-orange-500/150/10 transition-colors"
                 >
                   Pro — $249/mo
                 </a>
@@ -769,7 +769,7 @@ export default function ClaimDetailPage() {
                   key={file}
                   onClick={() => handleDownload(file)}
                   disabled={downloading === file}
-                  className="flex items-center gap-3 bg-green-50 border border-green-200 rounded-xl px-4 py-3 text-left hover:bg-green-100 transition-colors disabled:opacity-50"
+                  className="flex items-center gap-3 bg-green-500/10 border border-green-500/30 rounded-xl px-4 py-3 text-left hover:bg-green-500/20 transition-colors disabled:opacity-50"
                 >
                   <svg
                     className="w-5 h-5 text-green-600 shrink-0"
@@ -821,7 +821,7 @@ export default function ClaimDetailPage() {
 
         {/* Error state */}
         {claim.status === "error" && (
-          <div className="bg-red-50 border border-red-100 rounded-2xl p-5">
+          <div className="bg-red-500/10 border border-red-100 rounded-2xl p-5">
             <p className="text-sm font-medium text-red-800 mb-1">
               Processing failed
             </p>
@@ -870,7 +870,7 @@ export default function ClaimDetailPage() {
 
           {/* Review Photos button — visible when claim has photos and is ready */}
           {isReady && (claim.photo_files?.length ?? 0) > 0 && (
-            <div className="bg-purple-50 border border-purple-200 rounded-lg px-4 py-3 mb-4 flex items-center justify-between">
+            <div className="bg-purple-500/10 border border-purple-500/30 rounded-lg px-4 py-3 mb-4 flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-purple-800">
                   Review photo annotations for this claim
@@ -893,7 +893,7 @@ export default function ClaimDetailPage() {
 
           {/* Review Scope button — visible when claim is ready and has contractor_rcv */}
           {isReady && (claim.contractor_rcv ?? 0) > 0 && (
-            <div className="bg-teal-50 border border-teal-200 rounded-lg px-4 py-3 mb-4 flex items-center justify-between">
+            <div className="bg-teal-500/10 border border-teal-500/30 rounded-lg px-4 py-3 mb-4 flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-teal-800">
                   Review AI-generated line items
@@ -916,7 +916,7 @@ export default function ClaimDetailPage() {
 
           {/* Reprocess button — visible when claim is ready/needs_improvement and user may have uploaded new docs */}
           {(isReady || claim.status === "needs_improvement") && !showUpload && !isReprocessingState && (
-            <div className={`${claim.status === "needs_improvement" ? "bg-orange-50 border-orange-200" : "bg-blue-50 border-blue-200"} border rounded-lg px-4 py-3 mb-4 flex items-center justify-between`}>
+            <div className={`${claim.status === "needs_improvement" ? "bg-orange-500/10 border-orange-500/30" : "bg-blue-500/10 border-blue-500/30"} border rounded-lg px-4 py-3 mb-4 flex items-center justify-between`}>
               <div>
                 <p className={`text-sm font-medium ${claim.status === "needs_improvement" ? "text-orange-800" : "text-blue-800"}`}>
                   {claim.status === "needs_improvement"
@@ -941,12 +941,12 @@ export default function ClaimDetailPage() {
 
           {/* Success/Error messages */}
           {uploadSuccess && (
-            <div className="bg-green-50 border border-green-200 text-green-700 text-sm rounded-lg px-4 py-3 mb-4">
+            <div className="bg-green-500/10 border border-green-500/30 text-green-700 text-sm rounded-lg px-4 py-3 mb-4">
               {uploadSuccess}
             </div>
           )}
           {uploadError && (
-            <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3 mb-4">
+            <div className="bg-red-500/10 border border-red-500/30 text-red-700 text-sm rounded-lg px-4 py-3 mb-4">
               {uploadError}
             </div>
           )}
@@ -970,7 +970,7 @@ export default function ClaimDetailPage() {
                     className={`px-3 py-2 rounded-lg text-xs font-medium transition-colors border ${
                       selectedCategory === key
                         ? "bg-[var(--navy)] text-white border-[var(--navy)]"
-                        : "bg-[var(--bg-glass)] text-[var(--gray)] border-[var(--border-glass)] hover:border-gray-300"
+                        : "bg-[var(--bg-glass)] text-[var(--gray)] border-[var(--border-glass)] hover:border-[var(--border-glass)]"
                     }`}
                   >
                     {config.label.split(" / ")[0]}
@@ -1043,7 +1043,7 @@ export default function ClaimDetailPage() {
         {editRequests.filter((r) => r.status === "pending").length > 0 && (
           <div className="bg-[var(--bg-glass)] rounded-2xl border-2 border-amber-300 p-6">
             <div className="flex items-center gap-2 mb-4">
-              <div className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+              <div className="w-2 h-2 rounded-full bg-amber-500/100 animate-pulse" />
               <h2 className="text-sm font-semibold text-[var(--white)]">
                 Edit Requests
               </h2>
@@ -1064,7 +1064,7 @@ export default function ClaimDetailPage() {
                   return (
                     <div
                       key={req.id}
-                      className="border border-amber-200 bg-amber-50/50 rounded-xl p-4"
+                      className="border border-amber-500/30 bg-amber-500/10/50 rounded-xl p-4"
                     >
                       <div className="flex items-start justify-between mb-2">
                         <div>
@@ -1318,10 +1318,10 @@ export default function ClaimDetailPage() {
           const isRegenerating = regenerating === draft.id;
 
           return (
-            <div key={draft.id} className="bg-[var(--bg-glass)] rounded-2xl border-2 border-red-200 p-6">
+            <div key={draft.id} className="bg-[var(--bg-glass)] rounded-2xl border-2 border-red-500/30 p-6">
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+                  <div className="w-2 h-2 rounded-full bg-red-500/100 animate-pulse" />
                   <h2 className="text-sm font-semibold text-[var(--white)]">
                     Draft Response Pending Review
                   </h2>
@@ -1333,7 +1333,7 @@ export default function ClaimDetailPage() {
 
               {/* AI Strategy Notes */}
               {weaknesses.length > 0 && (
-                <div className="bg-amber-50 border border-amber-100 rounded-lg p-3 mb-4">
+                <div className="bg-amber-500/10 border border-amber-100 rounded-lg p-3 mb-4">
                   <p className="text-xs font-semibold text-amber-800 mb-1">AI Strategy Notes</p>
                   <ul className="space-y-1">
                     {weaknesses.map((w: { weakness: string; suggested_question: string }, i: number) => (
@@ -1353,7 +1353,7 @@ export default function ClaimDetailPage() {
                   </p>
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                     {photos.map((photo: { description: string; reasons: string[]; score: number }, i: number) => (
-                      <div key={i} className="bg-gray-50 border border-[var(--border-glass)] rounded-lg p-2">
+                      <div key={i} className="bg-white/[0.04] border border-[var(--border-glass)] rounded-lg p-2">
                         <p className="text-xs font-medium text-[var(--white)] truncate">
                           Photo {i + 1}
                         </p>
@@ -1412,7 +1412,7 @@ export default function ClaimDetailPage() {
                   </div>
                 ) : (
                   <div
-                    className="bg-gray-50 border border-[var(--border-glass)] rounded-lg p-4 text-sm text-[var(--gray)] max-h-80 overflow-y-auto prose prose-sm"
+                    className="bg-white/[0.04] border border-[var(--border-glass)] rounded-lg p-4 text-sm text-[var(--gray)] max-h-80 overflow-y-auto prose prose-sm"
                     dangerouslySetInnerHTML={{
                       __html: draft.edited_body_html || draft.body_html,
                     }}
@@ -1442,7 +1442,7 @@ export default function ClaimDetailPage() {
                 <button
                   onClick={() => handleRegenerateDraft(draft.id)}
                   disabled={isRegenerating}
-                  className="bg-[var(--bg-glass)] border border-[var(--border-glass)] hover:border-gray-300 text-[var(--gray)] px-4 py-2.5 rounded-xl font-medium transition-colors text-sm disabled:opacity-50"
+                  className="bg-[var(--bg-glass)] border border-[var(--border-glass)] hover:border-[var(--border-glass)] text-[var(--gray)] px-4 py-2.5 rounded-xl font-medium transition-colors text-sm disabled:opacity-50"
                 >
                   {isRegenerating ? "Regenerating..." : "Regenerate"}
                 </button>

@@ -14,11 +14,11 @@ interface Props {
 }
 
 const STATUS_STYLES: Record<string, { chip: string; row: string; label: string }> = {
-  missing: { chip: "bg-red-600 text-white", row: "bg-red-50", label: "MISSING" },
-  under: { chip: "bg-orange-500 text-white", row: "bg-amber-50", label: "UNDER" },
-  match: { chip: "bg-green-600 text-white", row: "bg-green-50", label: "MATCH" },
-  over: { chip: "bg-blue-600 text-white", row: "bg-blue-50", label: "OVER" },
-  carrier_only: { chip: "bg-purple-600 text-white", row: "bg-blue-50", label: "CARRIER" },
+  missing: { chip: "bg-red-600 text-white", row: "bg-red-500/10", label: "MISSING" },
+  under: { chip: "bg-orange-500/100 text-white", row: "bg-amber-500/10", label: "UNDER" },
+  match: { chip: "bg-green-600 text-white", row: "bg-green-500/10", label: "MATCH" },
+  over: { chip: "bg-blue-600 text-white", row: "bg-blue-500/10", label: "OVER" },
+  carrier_only: { chip: "bg-purple-600 text-white", row: "bg-blue-500/10", label: "CARRIER" },
 };
 
 type Tab = "roofing" | "siding" | "missing" | "financial";
@@ -144,7 +144,7 @@ function SummaryCards({ financials: fin, summary }: { financials: ScopeCompariso
 
   return (
     <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 px-6 py-4">
-      <div className="bg-blue-50 rounded-lg p-3">
+      <div className="bg-blue-500/10 rounded-lg p-3">
         <p className="text-[10px] uppercase text-blue-600 font-semibold tracking-wide">Carrier RCV</p>
         <p className="text-lg font-bold text-blue-700">{fmt(fin.carrier_rcv)}</p>
       </div>
@@ -152,13 +152,13 @@ function SummaryCards({ financials: fin, summary }: { financials: ScopeCompariso
         <p className="text-[10px] uppercase text-[var(--gray-muted)] font-semibold tracking-wide">USARM RCV</p>
         <p className="text-lg font-bold text-[var(--white)]">{fmt(fin.contractor_rcv)}</p>
       </div>
-      <div className={`rounded-lg p-3 ${variance > 0 ? "bg-green-50" : "bg-red-50"}`}>
+      <div className={`rounded-lg p-3 ${variance > 0 ? "bg-green-500/10" : "bg-red-500/10"}`}>
         <p className="text-[10px] uppercase text-[var(--gray-muted)] font-semibold tracking-wide">Variance</p>
         <p className={`text-lg font-bold ${variance > 0 ? "text-green-700" : "text-red-600"}`}>
           {variance > 0 ? "+" : "-"}{fmt(variance)}
         </p>
       </div>
-      <div className="bg-red-50 rounded-lg p-3">
+      <div className="bg-red-500/10 rounded-lg p-3">
         <p className="text-[10px] uppercase text-red-600 font-semibold tracking-wide">Supplement Opportunity</p>
         <p className="text-lg font-bold text-red-700">{fmt(fin.supplement_opportunity)}+</p>
       </div>
@@ -263,7 +263,7 @@ function MissingItems({ rows }: { rows: ScopeComparisonRow[] }) {
         const amt = row.usarm_amount || row.ev_qty * (row.xact_unit_price || 0);
         const citation = row.code_citation;
         return (
-          <div key={i} className="border-l-4 border-red-500 bg-red-50 rounded-r-lg px-4 py-3">
+          <div key={i} className="border-l-4 border-red-500 bg-red-500/10 rounded-r-lg px-4 py-3">
             <div className="flex items-start justify-between gap-4">
               <div className="min-w-0">
                 <p className="text-sm font-bold text-[var(--white)]">
@@ -285,7 +285,7 @@ function MissingItems({ rows }: { rows: ScopeComparisonRow[] }) {
                       <span className="font-bold text-blue-700">{citation.code_tag}:</span> {citation.title}
                     </p>
                     {citation.supplement_argument && (
-                      <p className="text-[10px] text-green-700 bg-green-50 px-2 py-1 rounded leading-tight">
+                      <p className="text-[10px] text-green-700 bg-green-500/10 px-2 py-1 rounded leading-tight">
                         {citation.supplement_argument}
                       </p>
                     )}
@@ -393,10 +393,10 @@ function FinancialSummary({ rows, financials: fin }: { rows: ScopeComparisonRow[
             </thead>
             <tbody>
               {supplementRows.map((r, i) => (
-                <tr key={i} className={`border-b border-white/[0.04] ${r.status === "missing" ? "bg-red-50" : "bg-amber-50"}`}>
+                <tr key={i} className={`border-b border-white/[0.04] ${r.status === "missing" ? "bg-red-500/10" : "bg-amber-500/10"}`}>
                   <td className="px-3 py-2 font-medium">{r.desc}</td>
                   <td className="px-3 py-2 text-center">
-                    <span className={`inline-block px-2 py-0.5 rounded-full text-[9px] font-bold ${r.status === "missing" ? "bg-red-600 text-white" : "bg-orange-500 text-white"}`}>
+                    <span className={`inline-block px-2 py-0.5 rounded-full text-[9px] font-bold ${r.status === "missing" ? "bg-red-600 text-white" : "bg-orange-500/100 text-white"}`}>
                       {r.status === "missing" ? "MISSING" : "UNDER"}
                     </span>
                   </td>
@@ -405,11 +405,11 @@ function FinancialSummary({ rows, financials: fin }: { rows: ScopeComparisonRow[
               ))}
             </tbody>
             <tfoot>
-              <tr className="bg-red-50 font-bold">
+              <tr className="bg-red-500/10 font-bold">
                 <td colSpan={2} className="px-3 py-2">Total Supplement Value</td>
                 <td className="px-3 py-2 text-right font-mono text-red-700">${supplementTotal.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</td>
               </tr>
-              <tr className="bg-blue-50">
+              <tr className="bg-blue-500/10">
                 <td colSpan={2} className="px-3 py-2 text-[var(--gray)]">+ Tax ({(fin.tax_rate * 100).toFixed(0)}%)</td>
                 <td className="px-3 py-2 text-right font-mono">${supplementTax.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</td>
               </tr>

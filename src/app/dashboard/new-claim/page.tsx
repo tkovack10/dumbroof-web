@@ -162,7 +162,7 @@ export default function NewClaimPage() {
 
   if (status === "success") {
     return (
-      <main className="min-h-screen bg-gray-50">
+      <main className="min-h-screen bg-white/[0.04]">
         <nav className="bg-[var(--navy)] border-b border-white/10">
           <div className="max-w-6xl mx-auto px-6 py-4 flex items-center gap-3">
             <div className="w-9 h-9 rounded-lg bg-[var(--red)] flex items-center justify-center font-bold text-white">
@@ -221,7 +221,7 @@ export default function NewClaimPage() {
   }
 
   return (
-    <main className="min-h-screen bg-gray-50">
+    <main className="min-h-screen bg-white/[0.04]">
       {/* Top Bar */}
       <nav className="bg-[var(--navy)] border-b border-white/10">
         <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
@@ -258,7 +258,7 @@ export default function NewClaimPage() {
             <h3 className="text-xl font-bold mb-2">
               You&apos;ve used your {quota.limit} free claims
             </h3>
-            <p className="text-gray-300 text-sm mb-6">
+            <p className="text-[var(--gray-dim)] text-sm mb-6">
               Upgrade to keep submitting claims and generating revenue.
             </p>
             <div className="flex items-center justify-center gap-4 flex-wrap">
@@ -280,7 +280,7 @@ export default function NewClaimPage() {
         )}
 
         {quota && quota.allowed && (
-          <div className="mb-6 flex items-center justify-between bg-gray-50 rounded-lg px-4 py-2.5 border border-gray-200">
+          <div className="mb-6 flex items-center justify-between bg-white/[0.04] rounded-lg px-4 py-2.5 border border-[var(--border-glass)]">
             <span className="text-xs text-gray-500">
               <span className="font-semibold text-[var(--navy)]">{quota.planName}</span> plan
             </span>
@@ -305,7 +305,7 @@ export default function NewClaimPage() {
                 value={propertyAddress}
                 onChange={setPropertyAddress}
                 placeholder="123 Main St, Binghamton, NY 13901"
-                className="w-full px-4 py-3 rounded-lg border border-gray-200 focus:border-[var(--navy)] focus:ring-1 focus:ring-[var(--navy)] outline-none transition-colors text-sm"
+                className="w-full px-4 py-3 rounded-lg border border-[var(--border-glass)] focus:border-[var(--navy)] focus:ring-1 focus:ring-[var(--navy)] outline-none transition-colors text-sm"
               />
             </div>
             <div>
@@ -320,7 +320,7 @@ export default function NewClaimPage() {
                 value={homeownerName}
                 onChange={(e) => setHomeownerName(e.target.value)}
                 placeholder="e.g. John Smith"
-                className="w-full px-4 py-3 rounded-lg border border-gray-200 focus:border-[var(--navy)] focus:ring-1 focus:ring-[var(--navy)] outline-none transition-colors text-sm"
+                className="w-full px-4 py-3 rounded-lg border border-[var(--border-glass)] focus:border-[var(--navy)] focus:ring-1 focus:ring-[var(--navy)] outline-none transition-colors text-sm"
               />
             </div>
             <div>
@@ -335,7 +335,7 @@ export default function NewClaimPage() {
                 value={insuranceCarrier}
                 onChange={(e) => setInsuranceCarrier(e.target.value)}
                 placeholder="e.g. State Farm, Allstate, Erie..."
-                className="w-full px-4 py-3 rounded-lg border border-gray-200 focus:border-[var(--navy)] focus:ring-1 focus:ring-[var(--navy)] outline-none transition-colors text-sm"
+                className="w-full px-4 py-3 rounded-lg border border-[var(--border-glass)] focus:border-[var(--navy)] focus:ring-1 focus:ring-[var(--navy)] outline-none transition-colors text-sm"
               />
               <p className="text-xs text-gray-400 mt-1">
                 {hasScope
@@ -358,13 +358,13 @@ export default function NewClaimPage() {
                 type="date"
                 value={dateOfLoss}
                 onChange={(e) => setDateOfLoss(e.target.value)}
-                className="flex-1 px-4 py-3 rounded-lg border border-gray-200 focus:border-[var(--navy)] focus:ring-1 focus:ring-[var(--navy)] outline-none transition-colors text-sm"
+                className="flex-1 px-4 py-3 rounded-lg border border-[var(--border-glass)] focus:border-[var(--navy)] focus:ring-1 focus:ring-[var(--navy)] outline-none transition-colors text-sm"
               />
               <button
                 type="button"
                 onClick={scanForStorms}
                 disabled={!propertyAddress.trim() || scanningStorms}
-                className="px-4 py-3 text-sm bg-blue-50 text-blue-700 border border-blue-200 rounded-lg hover:bg-blue-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors whitespace-nowrap"
+                className="px-4 py-3 text-sm bg-blue-500/10 text-blue-700 border border-blue-500/30 rounded-lg hover:bg-blue-500/20 disabled:opacity-50 disabled:cursor-not-allowed transition-colors whitespace-nowrap"
               >
                 {scanningStorms ? (
                   <span className="flex items-center gap-2">
@@ -398,7 +398,7 @@ export default function NewClaimPage() {
               Enter the storm date, or click &quot;Scan for storms&quot; to find recent events near this address.
             </p>
             {stormResults !== null && stormResults.length === 0 && !scanningStorms && (
-              <p className="text-xs text-gray-500 mt-2 bg-gray-50 rounded-lg px-3 py-2">
+              <p className="text-xs text-gray-500 mt-2 bg-white/[0.04] rounded-lg px-3 py-2">
                 No recent storm events found in NOAA records for this area.
               </p>
             )}
@@ -415,7 +415,7 @@ export default function NewClaimPage() {
                       setDateOfLoss(storm.date);
                       setStormResults(null);
                     }}
-                    className="block w-full text-left text-xs px-3 py-2 bg-amber-50 border border-amber-200 rounded-lg hover:bg-amber-100 transition-colors"
+                    className="block w-full text-left text-xs px-3 py-2 bg-amber-500/10 border border-amber-500/30 rounded-lg hover:bg-amber-500/20 transition-colors"
                   >
                     <span className="font-semibold text-amber-800">{storm.date}</span>
                     <span className="text-amber-600 ml-2">
@@ -488,7 +488,7 @@ export default function NewClaimPage() {
                 required
                 value={roofMaterial}
                 onChange={(e) => setRoofMaterial(e.target.value)}
-                className="w-full px-4 py-3 rounded-lg border border-gray-200 focus:border-[var(--navy)] focus:ring-1 focus:ring-[var(--navy)] outline-none transition-colors text-sm"
+                className="w-full px-4 py-3 rounded-lg border border-[var(--border-glass)] focus:border-[var(--navy)] focus:ring-1 focus:ring-[var(--navy)] outline-none transition-colors text-sm"
               >
                 <option value="">Select roof material...</option>
                 <option value="3-Tab">3-Tab</option>
@@ -513,7 +513,7 @@ export default function NewClaimPage() {
                   className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors ${
                     includeGutters
                       ? "border-[var(--navy)] bg-[var(--navy)]"
-                      : "border-gray-300 bg-white group-hover:border-gray-400"
+                      : "border-[var(--border-glass)] bg-[var(--bg-glass)] group-hover:border-gray-400"
                   }`}
                 >
                   {includeGutters && (
@@ -529,7 +529,7 @@ export default function NewClaimPage() {
                   <select
                     value={gutterType}
                     onChange={(e) => setGutterType(e.target.value)}
-                    className="w-full px-4 py-3 rounded-lg border border-gray-200 focus:border-[var(--navy)] focus:ring-1 focus:ring-[var(--navy)] outline-none transition-colors text-sm"
+                    className="w-full px-4 py-3 rounded-lg border border-[var(--border-glass)] focus:border-[var(--navy)] focus:ring-1 focus:ring-[var(--navy)] outline-none transition-colors text-sm"
                   >
                     <option value="">Select gutter type...</option>
                     <option value="5K Gutters and Downspouts">5K Gutters and Downspouts</option>
@@ -552,7 +552,7 @@ export default function NewClaimPage() {
                   className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors ${
                     includeSiding
                       ? "border-[var(--navy)] bg-[var(--navy)]"
-                      : "border-gray-300 bg-white group-hover:border-gray-400"
+                      : "border-[var(--border-glass)] bg-[var(--bg-glass)] group-hover:border-gray-400"
                   }`}
                 >
                   {includeSiding && (
@@ -568,7 +568,7 @@ export default function NewClaimPage() {
                   <select
                     value={sidingType}
                     onChange={(e) => setSidingType(e.target.value)}
-                    className="w-full px-4 py-3 rounded-lg border border-gray-200 focus:border-[var(--navy)] focus:ring-1 focus:ring-[var(--navy)] outline-none transition-colors text-sm"
+                    className="w-full px-4 py-3 rounded-lg border border-[var(--border-glass)] focus:border-[var(--navy)] focus:ring-1 focus:ring-[var(--navy)] outline-none transition-colors text-sm"
                   >
                     <option value="">Select siding type...</option>
                     <option value="Vinyl Siding">Vinyl Siding</option>
@@ -602,7 +602,7 @@ export default function NewClaimPage() {
                 onChange={(e) => setUserNotes(e.target.value)}
                 placeholder='e.g. "Shingle roof, standing seam metal on rear slope, aluminum siding" or "Adjuster said wear and tear during inspection"'
                 rows={3}
-                className="w-full px-4 py-3 rounded-lg border border-gray-200 focus:border-[var(--navy)] focus:ring-1 focus:ring-[var(--navy)] outline-none transition-colors text-sm resize-none"
+                className="w-full px-4 py-3 rounded-lg border border-[var(--border-glass)] focus:border-[var(--navy)] focus:ring-1 focus:ring-[var(--navy)] outline-none transition-colors text-sm resize-none"
               />
             </div>
           </div>
@@ -611,8 +611,8 @@ export default function NewClaimPage() {
           <div
             className={`rounded-xl px-5 py-4 border ${
               hasScope
-                ? "bg-blue-50 border-blue-200"
-                : "bg-amber-50 border-amber-200"
+                ? "bg-blue-500/10 border-blue-500/30"
+                : "bg-amber-500/10 border-amber-500/30"
             }`}
           >
             <div className="flex items-center gap-3">
@@ -650,7 +650,7 @@ export default function NewClaimPage() {
 
           {/* Error */}
           {status === "error" && (
-            <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3">
+            <div className="bg-red-500/10 border border-red-500/30 text-red-700 text-sm rounded-lg px-4 py-3">
               {errorMsg}
             </div>
           )}

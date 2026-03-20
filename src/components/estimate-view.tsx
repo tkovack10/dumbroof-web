@@ -34,9 +34,9 @@ type Tab = "estimate" | "damage" | "codes";
 
 const SEVERITY_STYLES: Record<string, { bg: string; text: string; icon: string }> = {
   critical: { bg: "bg-red-100", text: "text-red-800", icon: "!!!" },
-  severe: { bg: "bg-red-50", text: "text-red-700", icon: "!!" },
-  moderate: { bg: "bg-amber-50", text: "text-amber-700", icon: "!" },
-  minor: { bg: "bg-yellow-50", text: "text-yellow-700", icon: "~" },
+  severe: { bg: "bg-red-500/10", text: "text-red-700", icon: "!!" },
+  moderate: { bg: "bg-amber-500/10", text: "text-amber-700", icon: "!" },
+  minor: { bg: "bg-yellow-500/10", text: "text-yellow-700", icon: "~" },
 };
 
 const SECTION_ORDER: Record<string, number> = {
@@ -214,7 +214,7 @@ function LineItemsTable({ items, lineTotal, trades }: { items: LineItem[]; lineT
               <Fragment key={item.id}>
                 {showHeader && (
                   <tr>
-                    <td colSpan={8} className="px-3 py-2 bg-blue-50 font-bold text-blue-800 text-xs">
+                    <td colSpan={8} className="px-3 py-2 bg-blue-500/10 font-bold text-blue-800 text-xs">
                       {cat}
                     </td>
                   </tr>
@@ -235,19 +235,19 @@ function LineItemsTable({ items, lineTotal, trades }: { items: LineItem[]; lineT
         </tbody>
         <tfoot>
           {Object.entries(tradeSubtotals).map(([cat, subtotal]) => (
-            <tr key={cat} className="bg-amber-50 font-bold">
+            <tr key={cat} className="bg-amber-500/10 font-bold">
               <td colSpan={6}></td>
               <td className="px-3 py-2 text-xs">{cat} Subtotal</td>
               <td className="px-3 py-2 text-right font-mono text-xs">${subtotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
             </tr>
           ))}
-          <tr className="bg-green-50 font-bold">
+          <tr className="bg-green-500/10 font-bold">
             <td colSpan={6}></td>
             <td className="px-3 py-2 text-xs">Line Item Total</td>
             <td className="px-3 py-2 text-right font-mono">${lineTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
           </tr>
           {trades.length >= 3 && (
-            <tr className="bg-amber-50 font-bold">
+            <tr className="bg-amber-500/10 font-bold">
               <td colSpan={6}></td>
               <td className="px-3 py-2 text-xs">O&amp;P (21%) — {trades.length} trades</td>
               <td className="px-3 py-2 text-right font-mono">${(lineTotal * 0.21).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
@@ -369,7 +369,7 @@ function CodeCompliance({ citations }: { citations: { desc: string; citation: Co
                 {c.desc}
               </span>
               {cit.has_warranty_void && (
-                <span className="text-[9px] font-bold text-red-600 bg-red-50 px-1.5 py-0.5 rounded shrink-0">WARRANTY</span>
+                <span className="text-[9px] font-bold text-red-600 bg-red-500/10 px-1.5 py-0.5 rounded shrink-0">WARRANTY</span>
               )}
               <svg className={`w-4 h-4 text-[var(--gray-dim)] transition-transform shrink-0 ${isExpanded ? "rotate-180" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
@@ -381,7 +381,7 @@ function CodeCompliance({ citations }: { citations: { desc: string; citation: Co
               <div className="px-4 py-4 space-y-3">
                 {/* Code Requirement */}
                 {cit.requirement && (
-                  <div className="bg-amber-50 border-l-4 border-amber-400 px-3 py-2 rounded-r">
+                  <div className="bg-amber-500/10 border-l-4 border-amber-400 px-3 py-2 rounded-r">
                     <p className="text-[10px] font-bold text-amber-700 uppercase mb-1">Code Requirement</p>
                     <p className="text-xs text-[var(--gray)] leading-relaxed">{cit.requirement}</p>
                   </div>
@@ -389,7 +389,7 @@ function CodeCompliance({ citations }: { citations: { desc: string; citation: Co
 
                 {/* Supplement Argument */}
                 {cit.supplement_argument && (
-                  <div className="bg-green-50 border-l-4 border-green-400 px-3 py-2 rounded-r">
+                  <div className="bg-green-500/10 border-l-4 border-green-400 px-3 py-2 rounded-r">
                     <p className="text-[10px] font-bold text-green-700 uppercase mb-1">Supplement Argument</p>
                     <p className="text-xs text-[var(--gray)] leading-relaxed">{cit.supplement_argument}</p>
                   </div>
@@ -399,7 +399,7 @@ function CodeCompliance({ citations }: { citations: { desc: string; citation: Co
                 {cit.manufacturer_specs && cit.manufacturer_specs.length > 0 && (
                   <div className="space-y-2">
                     {cit.manufacturer_specs.map((spec, j) => (
-                      <div key={j} className="bg-blue-50 border-l-4 border-blue-400 px-3 py-2 rounded-r">
+                      <div key={j} className="bg-blue-500/10 border-l-4 border-blue-400 px-3 py-2 rounded-r">
                         <div className="flex items-center gap-2 mb-1">
                           <span className="text-xs font-bold text-blue-800">{spec.manufacturer}</span>
                           <span className="text-[10px] text-[var(--gray-muted)]">{spec.document}</span>

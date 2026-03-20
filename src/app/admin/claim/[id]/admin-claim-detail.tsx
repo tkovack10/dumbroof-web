@@ -292,7 +292,7 @@ export function AdminClaimDetail({ claim: initialClaim, userInfo }: Props) {
                 })()}
               </div>
               {claim.claim_outcome === "won" && (
-                <div className="bg-green-50 rounded-lg px-3 py-2">
+                <div className="bg-green-500/10 rounded-lg px-3 py-2">
                   <p className="text-xs text-green-600">Movement</p>
                   {(() => {
                     const orig = claim.original_carrier_rcv ?? 0;
@@ -333,7 +333,7 @@ export function AdminClaimDetail({ claim: initialClaim, userInfo }: Props) {
             return (
               <div className="mt-4 grid grid-cols-2 gap-3">
                 {/* Damage Score — ring + grade */}
-                <div className="bg-gray-50 border border-[var(--border-glass)] rounded-xl px-4 py-3 flex items-center gap-3">
+                <div className="bg-white/[0.04] border border-[var(--border-glass)] rounded-xl px-4 py-3 flex items-center gap-3">
                   <div className="relative w-11 h-11 shrink-0">
                     <svg className="w-11 h-11 -rotate-90" viewBox="0 0 36 36">
                       <circle cx="18" cy="18" r="15.5" fill="none" className="stroke-gray-200" strokeWidth="3" />
@@ -345,7 +345,7 @@ export function AdminClaimDetail({ claim: initialClaim, userInfo }: Props) {
                     <p className="text-xs text-[var(--gray-muted)]">Damage Score</p>
                     <div className="flex items-center gap-1.5 mt-0.5">
                       <span className="text-sm font-bold text-[var(--white)]">{dsValue}/100</span>
-                      <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold border ${gradeColors[dsGrade] || "bg-white/[0.06] text-[var(--gray)] border-gray-300"}`}>
+                      <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold border ${gradeColors[dsGrade] || "bg-white/[0.06] text-[var(--gray)] border-[var(--border-glass)]"}`}>
                         {dsGrade}
                       </span>
                     </div>
@@ -354,7 +354,7 @@ export function AdminClaimDetail({ claim: initialClaim, userInfo }: Props) {
                 </div>
                 {/* Tech Boost — green positive indicator */}
                 {techBoost > 0 && (
-                  <div className="bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-3 flex items-center gap-3">
+                  <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-xl px-4 py-3 flex items-center gap-3">
                     <div className="w-11 h-11 shrink-0 rounded-full bg-emerald-100 flex items-center justify-center">
                       <span className="text-emerald-600 text-lg font-bold">&#9650;</span>
                     </div>
@@ -371,7 +371,7 @@ export function AdminClaimDetail({ claim: initialClaim, userInfo }: Props) {
 
           {/* Photo Integrity Badge */}
           {integrity && (
-            <div className="mt-4 inline-flex items-center gap-2 bg-emerald-50 border border-emerald-200 rounded-lg px-4 py-2">
+            <div className="mt-4 inline-flex items-center gap-2 bg-emerald-500/10 border border-emerald-500/30 rounded-lg px-4 py-2">
               <svg className="w-5 h-5 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
               </svg>
@@ -399,7 +399,7 @@ export function AdminClaimDetail({ claim: initialClaim, userInfo }: Props) {
 
         {/* Processing indicator */}
         {isReprocessingState && (
-          <div className="bg-amber-50 border border-amber-100 rounded-2xl p-5">
+          <div className="bg-amber-500/10 border border-amber-100 rounded-2xl p-5">
             <div className="flex items-center gap-3">
               <svg className="animate-spin w-5 h-5 text-amber-600" fill="none" viewBox="0 0 24 24">
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
@@ -417,7 +417,7 @@ export function AdminClaimDetail({ claim: initialClaim, userInfo }: Props) {
 
         {/* Needs Improvement — Coaching Card */}
         {claim.status === "needs_improvement" && claim.improvement_guidance && (
-          <div className="bg-orange-50 border border-orange-200 rounded-2xl p-6">
+          <div className="bg-orange-500/10 border border-orange-500/30 rounded-2xl p-6">
             <div className="flex items-start gap-3 mb-4">
               <div className="w-10 h-10 rounded-full bg-orange-100 flex items-center justify-center shrink-0">
                 <svg className="w-5 h-5 text-orange-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -433,7 +433,7 @@ export function AdminClaimDetail({ claim: initialClaim, userInfo }: Props) {
               {claim.improvement_guidance.tips.map((tip: { category: string; title: string; detail: string }, i: number) => (
                 <div key={i} className="bg-[var(--bg-glass)] border border-orange-100 rounded-xl px-4 py-3">
                   <div className="flex items-center gap-2 mb-1">
-                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-orange-100 text-orange-700 border border-orange-200">
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-orange-100 text-orange-700 border border-orange-500/30">
                       {tip.category}
                     </span>
                     <span className="text-sm font-semibold text-[var(--white)]">{tip.title}</span>
@@ -455,7 +455,7 @@ export function AdminClaimDetail({ claim: initialClaim, userInfo }: Props) {
                   key={file}
                   onClick={() => handleDownloadOutput(file)}
                   disabled={downloading === file}
-                  className="flex items-center gap-3 bg-green-50 border border-green-200 rounded-xl px-4 py-3 text-left hover:bg-green-100 transition-colors disabled:opacity-50"
+                  className="flex items-center gap-3 bg-green-500/10 border border-green-500/30 rounded-xl px-4 py-3 text-left hover:bg-green-500/20 transition-colors disabled:opacity-50"
                 >
                   <svg className="w-5 h-5 text-green-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -497,7 +497,7 @@ export function AdminClaimDetail({ claim: initialClaim, userInfo }: Props) {
 
         {/* Error state */}
         {claim.status === "error" && (
-          <div className="bg-red-50 border border-red-100 rounded-2xl p-5">
+          <div className="bg-red-500/10 border border-red-100 rounded-2xl p-5">
             <p className="text-sm font-medium text-red-800 mb-1">Processing failed</p>
             {claim.error_message ? (
               <p className="text-sm text-red-600 font-mono bg-red-100/50 rounded px-3 py-2 mt-2">
@@ -531,7 +531,7 @@ export function AdminClaimDetail({ claim: initialClaim, userInfo }: Props) {
 
           {/* Photo Review link */}
           {(claim.photo_files?.length ?? 0) > 0 && (
-            <div className="bg-purple-50 border border-purple-200 rounded-lg px-4 py-3 mb-4 flex items-center justify-between">
+            <div className="bg-purple-500/10 border border-purple-500/30 rounded-lg px-4 py-3 mb-4 flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-purple-800">Review photo annotations</p>
                 <p className="text-xs text-purple-600 mt-0.5">
@@ -552,7 +552,7 @@ export function AdminClaimDetail({ claim: initialClaim, userInfo }: Props) {
 
           {/* Scope Review link */}
           {(claim.contractor_rcv ?? 0) > 0 && (
-            <div className="bg-teal-50 border border-teal-200 rounded-lg px-4 py-3 mb-4 flex items-center justify-between">
+            <div className="bg-teal-500/10 border border-teal-500/30 rounded-lg px-4 py-3 mb-4 flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-teal-800">Review AI-generated line items</p>
                 <p className="text-xs text-teal-600 mt-0.5">
@@ -573,7 +573,7 @@ export function AdminClaimDetail({ claim: initialClaim, userInfo }: Props) {
 
           {/* Reprocess button */}
           {(isReady || claim.status === "needs_improvement" || claim.status === "error") && !showUpload && !isReprocessingState && (
-            <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-3 mb-4 flex items-center justify-between">
+            <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg px-4 py-3 mb-4 flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-blue-800">Reprocess this claim</p>
                 <p className="text-xs text-blue-600 mt-0.5">Re-analyze all documents and regenerate the claim package</p>
@@ -590,12 +590,12 @@ export function AdminClaimDetail({ claim: initialClaim, userInfo }: Props) {
 
           {/* Success/Error messages */}
           {uploadSuccess && (
-            <div className="bg-green-50 border border-green-200 text-green-700 text-sm rounded-lg px-4 py-3 mb-4">
+            <div className="bg-green-500/10 border border-green-500/30 text-green-700 text-sm rounded-lg px-4 py-3 mb-4">
               {uploadSuccess}
             </div>
           )}
           {uploadError && (
-            <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3 mb-4">
+            <div className="bg-red-500/10 border border-red-500/30 text-red-700 text-sm rounded-lg px-4 py-3 mb-4">
               {uploadError}
             </div>
           )}
@@ -685,7 +685,7 @@ export function AdminClaimDetail({ claim: initialClaim, userInfo }: Props) {
                         return (
                           <div
                             key={filename}
-                            className="flex items-center gap-2 bg-gray-50 border border-[var(--border-glass)] rounded-lg px-3 py-2 group relative"
+                            className="flex items-center gap-2 bg-white/[0.04] border border-[var(--border-glass)] rounded-lg px-3 py-2 group relative"
                           >
                             {/* Download button */}
                             <button
@@ -713,7 +713,7 @@ export function AdminClaimDetail({ claim: initialClaim, userInfo }: Props) {
                                 </button>
                                 <button
                                   onClick={() => setDeleteConfirm(null)}
-                                  className="text-xs bg-gray-200 text-[var(--gray)] px-2 py-0.5 rounded hover:bg-gray-300 transition-colors"
+                                  className="text-xs bg-gray-200 text-[var(--gray)] px-2 py-0.5 rounded hover:bg-white/[0.10] transition-colors"
                                 >
                                   No
                                 </button>
