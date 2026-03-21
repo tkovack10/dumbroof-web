@@ -2248,75 +2248,8 @@ def _build_assoc_logos_footer():
 # ===================================================================
 
 # Tom's prescribed Xactimate build order — shared between estimate and scope comparison
-CANONICAL_ORDER = [
-    # 1. Roof removal (any material)
-    "remove", "tear off", "tear out", "detach",
-    # 2. Roof material install (with waste)
-    "shingle", "comp shingle", "laminated", "3-tab", "3 tab",
-    "slate", "tile", "wood shake", "cedar shake", "metal roof",
-    "modified bitumen", "synthetic composite",
-    # 3. Underlayments (code-required)
-    "ice & water", "ice and water", "i&w",
-    "felt", "underlayment", "synthetic underlayment",
-    "starter", "starter course", "starter strip",
-    # 4. Flashings
-    "drip edge",
-    "step flashing",
-    "counter flashing", "counterflashing", "apron flashing",
-    "chimney flashing",
-    "valley flashing", "valley metal",
-    # 5. Ridge cap / ridge vent
-    "hip & ridge", "hip and ridge", "ridge cap",
-    "ridge vent", "continuous ridge",
-    # 6. Vents
-    "pipe collar", "pipe jack", "plumbing vent", "flashing - pipe",
-    "exhaust cap",
-    "box vent", "roof vent",
-    "power fan", "power vent",
-    "turtle vent",
-    "snow guard",
-    "skylight", "skylight flashing",
-    "gable cornice",
-    # 7. Steep roof charges
-    "steep", "7/12", "9/12", "10/12", "12/12",
-    # 8. High roof charges
-    "high roof", "2 stor", "two stor", "3 stor",
-    # 9. Labor / dumpster / protection
-    "tarp", "protect",
-    "roofer", "roofing labor", "labor minimum",
-    "equipment operator", "administrative",
-    "fall protection",
-    "fuel surcharge",
-    "dumpster", "debris", "haul",
-    "scaffold", "scaffolding",
-    "mask", "masking",
-    "permit",
-    "clean", "cleanup", "final cleaning",
-    # 10. Gutters
-    "gutter", "downspout", "gutter guard", "gutter screen",
-    # 11. Siding (R&R material first, then components)
-    "siding",
-    "house wrap", "housewrap", "air/moisture barrier",
-    "insulation board", "foam board", "fanfold",
-    "inside corner", "inside cnr", "interior corner",
-    "outside corner", "outside cnr", "exterior corner",
-    "window wrap", "window trim", "wrap wood window",
-    "door trim",
-    "wall flashing",
-    "shutter",
-    "seal", "prime", "paint siding",
-    "siding labor",
-    # 12. Interior / misc (last)
-    "drywall", "tape joint",
-    "paint", "texture",
-    "insulation", "batt insulation",
-    "door", "window well", "window drapery",
-    "hvac", "ductless", "split",
-    "speaker", "register",
-    "content", "move out",
-    "masonry",
-    "landscap",
-]
+# CANONICAL_ORDER removed — replaced by regex-based _ROOFING_ORDER + _SIDING_ORDER
+# inside canonical_sort_key() below.
 
 
 def canonical_sort_key(item_name):
