@@ -4,31 +4,13 @@
       <stop offset="0%" stop-color="#0a0e27"/>
       <stop offset="100%" stop-color="#060918"/>
     </linearGradient>
-    <linearGradient id="glass" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="rgba(255,255,255,0.12)"/>
-      <stop offset="100%" stop-color="rgba(255,255,255,0.04)"/>
-    </linearGradient>
-    <linearGradient id="border" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="rgba(255,255,255,0.2)"/>
-      <stop offset="100%" stop-color="rgba(255,255,255,0.05)"/>
-    </linearGradient>
     <linearGradient id="text-grad" x1="0%" y1="0%" x2="100%" y2="100%">
       <stop offset="0%" stop-color="#ff3cac"/>
       <stop offset="50%" stop-color="#784ba0"/>
       <stop offset="100%" stop-color="#2b86c5"/>
     </linearGradient>
-    <filter id="glow">
-      <feGaussianBlur stdDeviation="2" result="blur"/>
-      <feMerge>
-        <feMergeNode in="blur"/>
-        <feMergeNode in="SourceGraphic"/>
-      </feMerge>
-    </filter>
   </defs>
-  <!-- Dark background -->
   <rect width="100" height="100" rx="18" fill="url(#bg)"/>
-  <!-- Glass card -->
-  <rect x="6" y="6" width="88" height="88" rx="14" fill="url(#glass)" stroke="url(#border)" stroke-width="1"/>
-  <!-- DR text with gradient -->
-  <text x="50" y="62" text-anchor="middle" font-family="Inter, -apple-system, sans-serif" font-weight="800" font-size="42" fill="url(#text-grad)" filter="url(#glow)">DR</text>
+  <rect x="6" y="6" width="88" height="88" rx="14" fill="#ffffff" fill-opacity="0.08" stroke="#ffffff" stroke-opacity="0.15" stroke-width="1"/>
+  <text x="50" y="62" text-anchor="middle" font-family="Inter, -apple-system, sans-serif" font-weight="800" font-size="42" fill="url(#text-grad)">DR</text>
 </svg>
