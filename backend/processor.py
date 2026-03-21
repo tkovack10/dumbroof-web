@@ -3860,21 +3860,17 @@ async def process_claim(claim_id: str):
         # 9a. Attach evidence photos to carrier line items for PDF scope comparison
         attach_evidence_photos(config, sb, claim_id)
 
-        # 9b. Apply user scope review edits (excluded line items + user-added items)
-        excluded_item_ids = claim.get("excluded_line_items") or []
-        if excluded_item_ids and sb:
+        # 9b. excluded_line_items is a FRONTEND display concern only.
+        # The processor always generates ALL items. The dashboard hides excluded items.
+        # Previously this filtered config by description match, which broke multi-structure
+        # claims (excluding one "Metal roofing" removed ALL structures' installs).
+        # Clear stale excluded_line_items on reprocess (old UUIDs won't match new items).
+        if sb:
             try:
-                # Read descriptions of excluded items BEFORE warehouse cleanup deletes them
-                excl_result = sb.table("line_items").select("description").in_("id", [str(eid) for eid in excluded_item_ids]).execute()
-                excluded_descs = {r["description"] for r in (excl_result.data or [])}
-                if excluded_descs:
-                    before = len(config.get("line_items", []))
-                    config["line_items"] = [li for li in config.get("line_items", []) if li.get("description") not in excluded_descs]
-                    removed = before - len(config["line_items"])
-                    if removed:
-                        print(f"[SCOPE REVIEW] Excluded {removed} line items per user review")
-            except Exception as e:
-                print(f"[SCOPE REVIEW] excluded_line_items filter failed (non-fatal): {e}")
+                sb.table("claims").update({"excluded_line_items": []}).eq("id", claim_id).execute()
+                print("[SCOPE REVIEW] Cleared stale excluded_line_items (fresh items on reprocess)")
+            except Exception:
+                pass
 
         # 9c. Inject user-added line items (survive reprocess)
         if sb:
