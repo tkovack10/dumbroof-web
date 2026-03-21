@@ -104,7 +104,7 @@ function LoginPageContent() {
   };
 
   return (
-    <main className="min-h-screen bg-[var(--navy)] flex items-center justify-center px-6">
+    <main className="min-h-screen bg-[var(--bg-deep)] flex items-center justify-center px-6">
       <div className="w-full max-w-sm">
         {/* Logo */}
         <div className="text-center mb-8">
@@ -177,7 +177,7 @@ function LoginPageContent() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-[var(--red)] hover:bg-[var(--red-dark)] disabled:opacity-50 text-white py-3 rounded-lg font-semibold transition-colors text-sm"
+              className="w-full bg-gradient-to-r from-[var(--pink)] via-[var(--purple)] to-[var(--blue)] hover:shadow-[var(--shadow-glow-pink)] disabled:opacity-50 text-white py-3 rounded-lg font-semibold transition-colors text-sm"
             >
               {loading
                 ? "..."
@@ -212,7 +212,7 @@ function LoginPageContent() {
                 setError("");
                 setMessage("");
               }}
-              className="text-sm text-[var(--gray-muted)] hover:text-[var(--navy)] transition-colors"
+              className="text-sm text-[var(--gray-muted)] hover:text-[var(--white)] transition-colors"
             >
               {isForgotPassword
                 ? "Back to sign in"

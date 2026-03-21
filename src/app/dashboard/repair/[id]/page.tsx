@@ -205,10 +205,10 @@ export default function RepairDetailPage() {
   return (
     <main className="min-h-screen bg-white/[0.04]">
       {/* Top Bar */}
-      <nav className="bg-[var(--navy)] border-b border-white/10">
+      <nav className="bg-[rgba(6,9,24,0.85)] backdrop-blur-[20px] border-b border-[var(--border-glass)] sticky top-0 z-50">
         <div className="max-w-4xl mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-lg bg-[var(--red)] flex items-center justify-center font-bold text-white">
+            <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-[var(--pink)] to-[var(--blue)] flex items-center justify-center font-bold text-white text-xs">
               DR
             </div>
             <span className="text-white font-bold text-lg tracking-tight">
@@ -250,7 +250,7 @@ export default function RepairDetailPage() {
                   </span>
                 ) : null}
               </div>
-              <h1 className="text-xl font-bold text-[var(--navy)]">
+              <h1 className="text-xl font-bold text-[var(--white)]">
                 {repair.address}
               </h1>
               <p className="text-sm text-[var(--gray-muted)] mt-1">
@@ -292,7 +292,7 @@ export default function RepairDetailPage() {
           {/* Repair Details */}
           <div className="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-3">
             {repair.total_price ? (
-              <div className="bg-[var(--navy)] rounded-lg px-4 py-3 text-center">
+              <div className="bg-[var(--bg-glass)] rounded-lg px-4 py-3 text-center">
                 <p className="text-xs text-[var(--gray-dim)]">Price</p>
                 <p className="text-lg font-bold text-white">
                   $
@@ -304,20 +304,20 @@ export default function RepairDetailPage() {
             ) : null}
             <div className="bg-white/[0.04] rounded-lg px-4 py-3">
               <p className="text-xs text-[var(--gray-dim)]">Skill Level</p>
-              <p className="text-sm font-semibold text-[var(--navy)] capitalize">
+              <p className="text-sm font-semibold text-[var(--white)] capitalize">
                 {repair.skill_level || "Journeyman"}
               </p>
             </div>
             <div className="bg-white/[0.04] rounded-lg px-4 py-3">
               <p className="text-xs text-[var(--gray-dim)]">Language</p>
-              <p className="text-sm font-semibold text-[var(--navy)]">
+              <p className="text-sm font-semibold text-[var(--white)]">
                 {repair.preferred_language === "es" ? "Spanish" : "English"}
               </p>
             </div>
             {repair.roofer_name && (
               <div className="bg-white/[0.04] rounded-lg px-4 py-3">
                 <p className="text-xs text-[var(--gray-dim)]">Roofer</p>
-                <p className="text-sm font-semibold text-[var(--navy)]">
+                <p className="text-sm font-semibold text-[var(--white)]">
                   {repair.roofer_name}
                 </p>
               </div>
@@ -373,7 +373,7 @@ export default function RepairDetailPage() {
         {/* ========== REPAIR TIMELINE ========== */}
         {hasCheckpoints && (
           <div className="bg-white rounded-2xl border border-[var(--border-glass)] p-6">
-            <h2 className="text-sm font-semibold text-[var(--navy)] mb-5">
+            <h2 className="text-sm font-semibold text-[var(--white)] mb-5">
               Repair Timeline
             </h2>
 
@@ -522,7 +522,7 @@ export default function RepairDetailPage() {
                             <button
                               onClick={() => handleCheckpointUpload(cp)}
                               disabled={uploading || uploadFiles.length === 0}
-                              className="w-full bg-[var(--red)] hover:bg-[var(--red-dark)] disabled:opacity-50 disabled:cursor-not-allowed text-white px-4 py-2.5 rounded-xl font-semibold text-sm transition-colors"
+                              className="w-full bg-gradient-to-r from-[var(--pink)] via-[var(--purple)] to-[var(--blue)] hover:shadow-[var(--shadow-glow-pink)] disabled:opacity-50 disabled:cursor-not-allowed text-white px-4 py-2.5 rounded-xl font-semibold text-sm transition-colors"
                             >
                               {uploading
                                 ? "Uploading..."
@@ -579,7 +579,7 @@ export default function RepairDetailPage() {
         {/* Output Files */}
         {repair.output_files && repair.output_files.length > 0 && (
           <div className="bg-white rounded-2xl border border-[var(--border-glass)] p-6">
-            <h2 className="text-sm font-semibold text-[var(--navy)] mb-4">
+            <h2 className="text-sm font-semibold text-[var(--white)] mb-4">
               {isReady ? "Repair Documents Ready" : "Preliminary Documents"}
             </h2>
             <div className="grid sm:grid-cols-2 gap-3">
@@ -703,7 +703,7 @@ function TimelineItem({
       {/* Content */}
       <div className="pb-2">
         <h3
-          className={`text-sm font-semibold mb-1 ${status === "pending" ? "text-[var(--gray-dim)]" : "text-[var(--navy)]"}`}
+          className={`text-sm font-semibold mb-1 ${status === "pending" ? "text-[var(--gray-dim)]" : "text-[var(--white)]"}`}
         >
           {title}
         </h3>

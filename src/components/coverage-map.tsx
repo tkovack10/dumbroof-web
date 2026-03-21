@@ -66,7 +66,7 @@ export function CoverageMap({ activeStates, title }: CoverageMapProps) {
   return (
     <div className="bg-white rounded-2xl border border-[var(--border-glass)] p-6">
       {title && (
-        <h3 className="text-lg font-bold text-[var(--navy)] mb-4 text-center">{title}</h3>
+        <h3 className="text-lg font-bold text-[var(--white)] mb-4 text-center">{title}</h3>
       )}
       <svg viewBox="100 100 810 520" className="w-full max-w-2xl mx-auto">
         {Object.entries(STATE_PATHS).map(([code, path]) => (
@@ -85,7 +85,7 @@ export function CoverageMap({ activeStates, title }: CoverageMapProps) {
       </svg>
       <div className="flex items-center justify-center gap-6 mt-4">
         <div className="flex items-center gap-2">
-          <div className="w-4 h-3 rounded-sm bg-[var(--navy)] opacity-80" />
+          <div className="w-4 h-3 rounded-sm bg-[var(--bg-glass)] opacity-80" />
           <span className="text-xs text-[var(--gray)]">Active coverage</span>
         </div>
         <div className="flex items-center gap-2">

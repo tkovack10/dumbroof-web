@@ -182,10 +182,10 @@ export function AnalyticsContent({ user }: { user: User }) {
   return (
     <main className="min-h-screen bg-white/[0.04]">
       {/* Top Bar */}
-      <nav className="bg-[var(--navy)] border-b border-white/10">
+      <nav className="bg-[rgba(6,9,24,0.85)] backdrop-blur-[20px] border-b border-[var(--border-glass)] sticky top-0 z-50">
         <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-lg bg-[var(--red)] flex items-center justify-center font-bold text-white">
+            <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-[var(--pink)] to-[var(--blue)] flex items-center justify-center font-bold text-white text-xs">
               DR
             </div>
             <span className="text-white font-bold text-lg tracking-tight">
@@ -247,7 +247,7 @@ export function AnalyticsContent({ user }: { user: User }) {
             <p className="text-[var(--gray-muted)] text-sm mb-6 max-w-md mx-auto">
               Submit your first claim to start building carrier intelligence and pricing analytics.
             </p>
-            <a href="/dashboard/new-claim" className="inline-block bg-[var(--red)] hover:bg-[var(--red-dark)] text-white px-8 py-3 rounded-xl font-semibold transition-colors text-sm">
+            <a href="/dashboard/new-claim" className="inline-block bg-gradient-to-r from-[var(--pink)] via-[var(--purple)] to-[var(--blue)] hover:shadow-[var(--shadow-glow-pink)] text-white px-8 py-3 rounded-xl font-semibold transition-colors text-sm">
               Submit First Claim
             </a>
           </div>

@@ -96,9 +96,9 @@ export default function NewRepairPage() {
   if (status === "success") {
     return (
       <main className="min-h-screen bg-white/[0.04]">
-        <nav className="bg-[var(--navy)] border-b border-white/10">
+        <nav className="bg-[rgba(6,9,24,0.85)] backdrop-blur-[20px] border-b border-[var(--border-glass)] sticky top-0 z-50">
           <div className="max-w-6xl mx-auto px-6 py-4 flex items-center gap-3">
-            <div className="w-9 h-9 rounded-lg bg-[var(--red)] flex items-center justify-center font-bold text-white">
+            <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-[var(--pink)] to-[var(--blue)] flex items-center justify-center font-bold text-white text-xs">
               DR
             </div>
             <span className="text-white font-bold text-lg tracking-tight">
@@ -113,7 +113,7 @@ export default function NewRepairPage() {
               <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
           </div>
-          <h2 className="text-2xl font-bold text-[var(--navy)] mb-2">
+          <h2 className="text-2xl font-bold text-[var(--white)] mb-2">
             Repair Request Submitted
           </h2>
           <p className="text-[var(--gray-muted)] mb-2">
@@ -124,7 +124,7 @@ export default function NewRepairPage() {
           </p>
           <a
             href="/dashboard"
-            className="bg-[var(--navy)] hover:bg-[var(--navy-light)] text-white px-8 py-3 rounded-xl font-semibold transition-colors text-sm"
+            className="bg-gradient-to-r from-[var(--pink)] via-[var(--purple)] to-[var(--blue)] hover:shadow-[var(--shadow-glow-pink)] text-white px-8 py-3 rounded-xl font-semibold transition-colors text-sm"
           >
             Back to Dashboard
           </a>
@@ -136,10 +136,10 @@ export default function NewRepairPage() {
   return (
     <main className="min-h-screen bg-white/[0.04]">
       {/* Top Bar */}
-      <nav className="bg-[var(--navy)] border-b border-white/10">
+      <nav className="bg-[rgba(6,9,24,0.85)] backdrop-blur-[20px] border-b border-[var(--border-glass)] sticky top-0 z-50">
         <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-lg bg-[var(--red)] flex items-center justify-center font-bold text-white">
+            <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-[var(--pink)] to-[var(--blue)] flex items-center justify-center font-bold text-white text-xs">
               DR
             </div>
             <span className="text-white font-bold text-lg tracking-tight">
@@ -157,7 +157,7 @@ export default function NewRepairPage() {
 
       <div className="max-w-xl mx-auto px-6 py-10">
         <div className="mb-8">
-          <h1 className="text-2xl font-bold text-[var(--navy)]">
+          <h1 className="text-2xl font-bold text-[var(--white)]">
             New Repair Request
           </h1>
           <p className="text-[var(--gray-muted)] mt-1">
@@ -172,7 +172,7 @@ export default function NewRepairPage() {
               Property & Homeowner
             </h3>
             <div>
-              <label className="block text-sm font-semibold text-[var(--navy)] mb-1">
+              <label className="block text-sm font-semibold text-[var(--white)] mb-1">
                 Property Address
               </label>
               <AddressAutocomplete
@@ -180,11 +180,11 @@ export default function NewRepairPage() {
                 value={propertyAddress}
                 onChange={setPropertyAddress}
                 placeholder="123 Main St, Bensalem, PA 19020"
-                className="w-full px-4 py-3 rounded-lg border border-[var(--border-glass)] focus:border-[var(--navy)] focus:ring-1 focus:ring-[var(--navy)] outline-none transition-colors text-sm"
+                className="w-full px-4 py-3 rounded-lg border border-[var(--border-glass)] focus:border-[var(--cyan)] focus:ring-1 focus:ring-[var(--cyan)] outline-none transition-colors text-sm"
               />
             </div>
             <div>
-              <label className="block text-sm font-semibold text-[var(--navy)] mb-1">
+              <label className="block text-sm font-semibold text-[var(--white)] mb-1">
                 Homeowner Name
               </label>
               <input
@@ -193,13 +193,13 @@ export default function NewRepairPage() {
                 value={homeownerName}
                 onChange={(e) => setHomeownerName(e.target.value)}
                 placeholder="John Smith"
-                className="w-full px-4 py-3 rounded-lg border border-[var(--border-glass)] focus:border-[var(--navy)] focus:ring-1 focus:ring-[var(--navy)] outline-none transition-colors text-sm"
+                className="w-full px-4 py-3 rounded-lg border border-[var(--border-glass)] focus:border-[var(--cyan)] focus:ring-1 focus:ring-[var(--cyan)] outline-none transition-colors text-sm"
               />
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <div className="flex items-baseline gap-2 mb-1">
-                  <label className="block text-sm font-semibold text-[var(--navy)]">
+                  <label className="block text-sm font-semibold text-[var(--white)]">
                     Phone
                   </label>
                   <span className="text-xs text-[var(--gray-dim)] font-medium">Optional</span>
@@ -209,12 +209,12 @@ export default function NewRepairPage() {
                   value={homeownerPhone}
                   onChange={(e) => setHomeownerPhone(e.target.value)}
                   placeholder="267-555-0100"
-                  className="w-full px-4 py-3 rounded-lg border border-[var(--border-glass)] focus:border-[var(--navy)] focus:ring-1 focus:ring-[var(--navy)] outline-none transition-colors text-sm"
+                  className="w-full px-4 py-3 rounded-lg border border-[var(--border-glass)] focus:border-[var(--cyan)] focus:ring-1 focus:ring-[var(--cyan)] outline-none transition-colors text-sm"
                 />
               </div>
               <div>
                 <div className="flex items-baseline gap-2 mb-1">
-                  <label className="block text-sm font-semibold text-[var(--navy)]">
+                  <label className="block text-sm font-semibold text-[var(--white)]">
                     Email
                   </label>
                   <span className="text-xs text-[var(--gray-dim)] font-medium">Optional</span>
@@ -224,7 +224,7 @@ export default function NewRepairPage() {
                   value={homeownerEmail}
                   onChange={(e) => setHomeownerEmail(e.target.value)}
                   placeholder="john@email.com"
-                  className="w-full px-4 py-3 rounded-lg border border-[var(--border-glass)] focus:border-[var(--navy)] focus:ring-1 focus:ring-[var(--navy)] outline-none transition-colors text-sm"
+                  className="w-full px-4 py-3 rounded-lg border border-[var(--border-glass)] focus:border-[var(--cyan)] focus:ring-1 focus:ring-[var(--cyan)] outline-none transition-colors text-sm"
                 />
                 <p className="text-[11px] text-[var(--gray-dim)] mt-1">
                   Adding email sends the homeowner their repair quote automatically.
@@ -240,7 +240,7 @@ export default function NewRepairPage() {
             </h3>
             <div>
               <div className="flex items-baseline gap-2 mb-1">
-                <label className="block text-sm font-semibold text-[var(--navy)]">
+                <label className="block text-sm font-semibold text-[var(--white)]">
                   Roofer Name
                 </label>
                 <span className="text-xs text-[var(--gray-dim)] font-medium">Optional</span>
@@ -250,19 +250,19 @@ export default function NewRepairPage() {
                 value={rooferName}
                 onChange={(e) => setRooferName(e.target.value)}
                 placeholder="Carlos Hernandez"
-                className="w-full px-4 py-3 rounded-lg border border-[var(--border-glass)] focus:border-[var(--navy)] focus:ring-1 focus:ring-[var(--navy)] outline-none transition-colors text-sm"
+                className="w-full px-4 py-3 rounded-lg border border-[var(--border-glass)] focus:border-[var(--cyan)] focus:ring-1 focus:ring-[var(--cyan)] outline-none transition-colors text-sm"
               />
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-semibold text-[var(--navy)] mb-1">
+                <label className="block text-sm font-semibold text-[var(--white)] mb-1">
                   Skill Level
                 </label>
                 <select
                   value={skillLevel}
                   onChange={(e) => setSkillLevel(e.target.value)}
-                  className="w-full px-4 py-3 rounded-lg border border-[var(--border-glass)] focus:border-[var(--navy)] focus:ring-1 focus:ring-[var(--navy)] outline-none transition-colors text-sm bg-white"
+                  className="w-full px-4 py-3 rounded-lg border border-[var(--border-glass)] focus:border-[var(--cyan)] focus:ring-1 focus:ring-[var(--cyan)] outline-none transition-colors text-sm bg-white"
                 >
                   <option value="laborer">Laborer (max detail)</option>
                   <option value="journeyman">Journeyman (standard)</option>
@@ -270,13 +270,13 @@ export default function NewRepairPage() {
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-semibold text-[var(--navy)] mb-1">
+                <label className="block text-sm font-semibold text-[var(--white)] mb-1">
                   Language
                 </label>
                 <select
                   value={language}
                   onChange={(e) => setLanguage(e.target.value)}
-                  className="w-full px-4 py-3 rounded-lg border border-[var(--border-glass)] focus:border-[var(--navy)] focus:ring-1 focus:ring-[var(--navy)] outline-none transition-colors text-sm bg-white"
+                  className="w-full px-4 py-3 rounded-lg border border-[var(--border-glass)] focus:border-[var(--cyan)] focus:ring-1 focus:ring-[var(--cyan)] outline-none transition-colors text-sm bg-white"
                 >
                   <option value="en">English (primary)</option>
                   <option value="es">Español (primary)</option>
@@ -291,7 +291,7 @@ export default function NewRepairPage() {
               The Leak
             </h3>
             <div>
-              <label className="block text-sm font-semibold text-[var(--navy)] mb-1">
+              <label className="block text-sm font-semibold text-[var(--white)] mb-1">
                 Where is water showing up? What do you see on the roof?
               </label>
               <p className="text-xs text-[var(--gray-muted)] mb-2">
@@ -303,7 +303,7 @@ export default function NewRepairPage() {
                 onChange={(e) => setLeakDescription(e.target.value)}
                 placeholder='e.g. "Water dripping from pipe boot area, visible on bathroom ceiling. Neoprene collar is cracked and lifted."'
                 rows={4}
-                className="w-full px-4 py-3 rounded-lg border border-[var(--border-glass)] focus:border-[var(--navy)] focus:ring-1 focus:ring-[var(--navy)] outline-none transition-colors text-sm resize-none"
+                className="w-full px-4 py-3 rounded-lg border border-[var(--border-glass)] focus:border-[var(--cyan)] focus:ring-1 focus:ring-[var(--cyan)] outline-none transition-colors text-sm resize-none"
               />
             </div>
           </div>
@@ -352,7 +352,7 @@ export default function NewRepairPage() {
           <button
             type="submit"
             disabled={!canSubmit || status === "uploading"}
-            className="w-full bg-[var(--red)] hover:bg-[var(--red-dark)] disabled:opacity-50 disabled:cursor-not-allowed text-white py-4 rounded-xl font-semibold transition-colors"
+            className="w-full bg-gradient-to-r from-[var(--pink)] via-[var(--purple)] to-[var(--blue)] hover:shadow-[var(--shadow-glow-pink)] disabled:opacity-50 disabled:cursor-not-allowed text-white py-4 rounded-xl font-semibold transition-colors"
           >
             {status === "uploading" ? (
               <span className="flex items-center justify-center gap-2">

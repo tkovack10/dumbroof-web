@@ -49,7 +49,7 @@ export default async function Home() {
   return (
     <main className="min-h-screen">
       {/* Nav */}
-      <nav className="fixed top-0 left-0 right-0 z-50 bg-[var(--navy)]/95 backdrop-blur-sm border-b border-white/10">
+      <nav className="fixed top-0 left-0 right-0 z-50 bg-[var(--bg-glass)]/95 backdrop-blur-sm border-b border-white/10">
         <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
           <a href="/" className="flex items-center gap-3">
             <span className="text-2xl font-extrabold tracking-tight gradient-text">dumbroof<span className="font-normal opacity-70">.ai</span></span>
@@ -78,7 +78,7 @@ export default async function Home() {
             </a>
             <a
               href="/login?mode=signup"
-              className="bg-[var(--red)] hover:bg-[var(--red-dark)] text-white px-5 py-2 rounded-lg text-sm font-semibold transition-colors"
+              className="bg-gradient-to-r from-[var(--pink)] via-[var(--purple)] to-[var(--blue)] hover:shadow-[var(--shadow-glow-pink)] text-white px-5 py-2 rounded-lg text-sm font-semibold transition-colors"
             >
               Try Free
             </a>
@@ -110,7 +110,7 @@ export default async function Home() {
           <div className="flex flex-col sm:flex-row gap-4 justify-center mb-16">
             <a
               href="/login?mode=signup"
-              className="bg-[var(--red)] hover:bg-[var(--red-dark)] text-white px-8 py-4 rounded-xl text-lg font-semibold transition-colors shadow-lg shadow-red-900/30"
+              className="bg-gradient-to-r from-[var(--pink)] via-[var(--purple)] to-[var(--blue)] hover:shadow-[var(--shadow-glow-pink)] text-white px-8 py-4 rounded-xl text-lg font-semibold transition-colors shadow-lg shadow-red-900/30"
             >
               Create Your Account
             </a>
@@ -222,7 +222,7 @@ export default async function Home() {
             </div>
 
             {/* PE Problem */}
-            <div className="bg-[var(--navy)] rounded-2xl p-8 text-white">
+            <div className="bg-[var(--bg-glass)] rounded-2xl p-8 text-white">
               <h3 className="text-xl font-bold mb-4">
                 Why Private Equity Hates Insurance Work
               </h3>
@@ -387,7 +387,7 @@ export default async function Home() {
       </section>
 
       {/* The 5 Documents */}
-      <section className="py-20 px-6 bg-[var(--navy)]">
+      <section className="py-20 px-6 bg-[var(--bg-glass)]">
         <div className="max-w-5xl mx-auto">
           <h2 className="text-3xl sm:text-4xl font-bold text-white text-center mb-4">
             The 5-Document Package
@@ -599,7 +599,7 @@ export default async function Home() {
           </div>
 
           {/* Why nothing like this exists */}
-          <div className="bg-[var(--navy)] rounded-2xl p-8 text-white">
+          <div className="bg-[var(--bg-glass)] rounded-2xl p-8 text-white">
             <h3 className="text-xl font-bold mb-4">Why Nothing Like This Exists</h3>
             <p className="text-[var(--gray-dim)] mb-6 leading-relaxed">
               Every service department runs the same play: diagnose, quote, follow up, schedule, return,
@@ -684,7 +684,7 @@ export default async function Home() {
                 </div>
               </div>
 
-              <div className="bg-[var(--navy)] rounded-2xl p-8">
+              <div className="bg-[var(--bg-glass)] rounded-2xl p-8">
                 <h4 className="text-white font-bold mb-4">Two Tiers. Same Respect.</h4>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="bg-white/10 border border-white/10 rounded-xl p-5">
@@ -720,7 +720,7 @@ export default async function Home() {
       </section>
 
       {/* Get Started CTA */}
-      <section id="get-started" className="py-20 px-6 bg-[var(--navy)] scroll-mt-20">
+      <section id="get-started" className="py-20 px-6 bg-[var(--bg-glass)] scroll-mt-20">
         <div className="max-w-xl mx-auto text-center">
           <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">
             Ready to Get Started?
@@ -731,7 +731,7 @@ export default async function Home() {
           </p>
           <a
             href="/login?mode=signup"
-            className="inline-block bg-[var(--red)] hover:bg-[var(--red-dark)] text-white px-8 py-4 rounded-xl text-lg font-semibold transition-colors shadow-lg shadow-red-900/30"
+            className="inline-block bg-gradient-to-r from-[var(--pink)] via-[var(--purple)] to-[var(--blue)] hover:shadow-[var(--shadow-glow-pink)] text-white px-8 py-4 rounded-xl text-lg font-semibold transition-colors shadow-lg shadow-red-900/30"
           >
             Try 3 Free Claims
           </a>
@@ -746,10 +746,10 @@ export default async function Home() {
       </section>
 
       {/* Footer */}
-      <footer className="bg-[var(--navy)] border-t border-white/10 py-8 px-6">
+      <footer className="bg-[rgba(6,9,24,0.85)] backdrop-blur-[20px] border-t border-white/10 py-8 px-6">
         <div className="max-w-5xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-[var(--red)] flex items-center justify-center font-bold text-white text-sm">DR</div>
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[var(--pink)] to-[var(--blue)] flex items-center justify-center font-bold text-white text-xs text-sm">DR</div>
             <span className="text-[var(--gray-dim)] text-sm">Dumb Roof Technologies™</span>
           </div>
           <div className="flex items-center gap-6">

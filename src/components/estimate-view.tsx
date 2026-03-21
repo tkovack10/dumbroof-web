@@ -361,7 +361,7 @@ function CodeCompliance({ citations }: { citations: { desc: string; citation: Co
               onClick={() => setExpandedIdx(isExpanded ? null : i)}
               className="w-full flex items-center gap-3 px-4 py-3 bg-white/[0.04] hover:bg-white/[0.06] transition-colors text-left"
             >
-              <span className="inline-block px-2.5 py-1 rounded text-[10px] font-bold font-mono bg-[var(--navy)] text-white shrink-0">
+              <span className="inline-block px-2.5 py-1 rounded text-[10px] font-bold font-mono bg-gradient-to-r from-[var(--pink)] to-[var(--blue)] text-white shrink-0">
                 {cit.code_tag}
               </span>
               <span className="text-sm font-semibold text-[var(--white)]">{cit.title}</span>

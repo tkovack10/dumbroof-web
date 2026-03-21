@@ -133,7 +133,7 @@ export function RoofSectionsEditor({ claimId }: Props) {
             </svg>
           </div>
           <div>
-            <h3 className="text-sm font-semibold text-[var(--navy)]">Roof Sections</h3>
+            <h3 className="text-sm font-semibold text-[var(--white)]">Roof Sections</h3>
             <p className="text-xs text-[var(--gray-dim)]">
               {data.total_area_sq.toFixed(1)} SQ total &middot; {data.sections.length} slope{data.sections.length > 1 ? "s" : ""} &middot; {data.provider}
             </p>

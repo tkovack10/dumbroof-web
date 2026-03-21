@@ -443,10 +443,10 @@ export default function ClaimDetailPage() {
   return (
     <main className="min-h-screen">
       {/* Top Bar */}
-      <nav className="bg-[var(--navy)] border-b border-white/10">
+      <nav className="bg-[rgba(6,9,24,0.85)] backdrop-blur-[20px] border-b border-[var(--border-glass)] sticky top-0 z-50">
         <div className="max-w-4xl mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-lg bg-[var(--red)] flex items-center justify-center font-bold text-white">
+            <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-[var(--pink)] to-[var(--blue)] flex items-center justify-center font-bold text-white text-xs">
               DR
             </div>
             <span className="text-white font-bold text-lg tracking-tight">
@@ -847,7 +847,7 @@ export default function ClaimDetailPage() {
                     100
                   );
                 }}
-                className="bg-[var(--navy)] hover:bg-[var(--navy-light)] text-white px-5 py-2 rounded-lg text-sm font-medium transition-colors"
+                className="bg-gradient-to-r from-[var(--pink)] via-[var(--purple)] to-[var(--blue)] hover:shadow-[var(--shadow-glow-pink)] text-white px-5 py-2 rounded-lg text-sm font-medium transition-colors"
               >
                 + Upload Files
               </button>
@@ -955,7 +955,7 @@ export default function ClaimDetailPage() {
                     }}
                     className={`px-3 py-2 rounded-lg text-xs font-medium transition-colors border ${
                       selectedCategory === key
-                        ? "bg-[var(--navy)] text-white border-[var(--navy)]"
+                        ? "bg-gradient-to-r from-[var(--pink)] to-[var(--blue)] text-white border-[var(--navy)]"
                         : "bg-[var(--bg-glass)] text-[var(--gray)] border-[var(--border-glass)] hover:border-[var(--border-glass)]"
                     }`}
                   >
@@ -979,7 +979,7 @@ export default function ClaimDetailPage() {
                 <button
                   onClick={handleUploadDocuments}
                   disabled={newFiles.length === 0 || uploading}
-                  className="bg-[var(--red)] hover:bg-[var(--red-dark)] disabled:opacity-50 disabled:cursor-not-allowed text-white px-6 py-2.5 rounded-xl font-semibold transition-colors text-sm"
+                  className="bg-gradient-to-r from-[var(--pink)] via-[var(--purple)] to-[var(--blue)] hover:shadow-[var(--shadow-glow-pink)] disabled:opacity-50 disabled:cursor-not-allowed text-white px-6 py-2.5 rounded-xl font-semibold transition-colors text-sm"
                 >
                   {uploading ? (
                     <span className="flex items-center gap-2">
@@ -1275,7 +1275,7 @@ export default function ClaimDetailPage() {
                         {email.analysis_status === "pending" && email.status === "matched" && (
                           <button
                             onClick={() => handleTriggerAnalysis(email.id)}
-                            className="mt-3 bg-[var(--navy)] hover:bg-[var(--navy-light)] text-white px-4 py-2 rounded-lg text-xs font-medium transition-colors"
+                            className="mt-3 bg-gradient-to-r from-[var(--pink)] via-[var(--purple)] to-[var(--blue)] hover:shadow-[var(--shadow-glow-pink)] text-white px-4 py-2 rounded-lg text-xs font-medium transition-colors"
                           >
                             Analyze & Draft Response
                           </button>
@@ -1379,12 +1379,12 @@ export default function ClaimDetailPage() {
                     <textarea
                       value={editedHtml}
                       onChange={(e) => setEditedHtml(e.target.value)}
-                      className="w-full h-64 px-3 py-2 text-sm border border-[var(--border-glass)] rounded-lg font-mono focus:border-[var(--navy)] focus:ring-1 focus:ring-[var(--navy)] outline-none"
+                      className="w-full h-64 px-3 py-2 text-sm border border-[var(--border-glass)] rounded-lg font-mono focus:border-[var(--cyan)] focus:ring-1 focus:ring-[var(--cyan)] outline-none"
                     />
                     <div className="flex items-center gap-2 mt-2">
                       <button
                         onClick={() => handleSaveDraftEdits(draft.id)}
-                        className="bg-[var(--navy)] text-white px-3 py-1.5 rounded-lg text-xs font-medium"
+                        className="bg-gradient-to-r from-[var(--pink)] to-[var(--blue)] text-white px-3 py-1.5 rounded-lg text-xs font-medium"
                       >
                         Save Edits
                       </button>
@@ -1411,7 +1411,7 @@ export default function ClaimDetailPage() {
                 <button
                   onClick={() => handleApproveSend(draft)}
                   disabled={isSending}
-                  className="bg-[var(--red)] hover:bg-[var(--red-dark)] disabled:opacity-50 text-white px-5 py-2.5 rounded-xl font-semibold transition-colors text-sm flex items-center gap-2"
+                  className="bg-gradient-to-r from-[var(--pink)] via-[var(--purple)] to-[var(--blue)] hover:shadow-[var(--shadow-glow-pink)] disabled:opacity-50 text-white px-5 py-2.5 rounded-xl font-semibold transition-colors text-sm flex items-center gap-2"
                 >
                   {isSending ? (
                     <>

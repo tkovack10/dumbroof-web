@@ -12,10 +12,10 @@ export function InspectionClubContent({ activeStates, isLoggedIn }: Props) {
   return (
     <main className="min-h-screen">
       {/* Nav */}
-      <nav className="bg-[var(--navy)] border-b border-white/10">
+      <nav className="bg-[rgba(6,9,24,0.85)] backdrop-blur-[20px] border-b border-[var(--border-glass)] sticky top-0 z-50">
         <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
           <a href="/" className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-[var(--red)] flex items-center justify-center font-bold text-white text-lg">DR</div>
+            <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-[var(--pink)] to-[var(--blue)] flex items-center justify-center font-bold text-white text-xs text-lg">DR</div>
             <span className="text-white font-bold text-xl tracking-tight">
               dumb roof<sup className="text-[10px] font-medium align-super ml-0.5">&trade;</sup>
             </span>
@@ -159,7 +159,7 @@ export function InspectionClubContent({ activeStates, isLoggedIn }: Props) {
               "Professional communication with homeowners",
             ].map((req) => (
               <div key={req} className="flex items-center gap-3">
-                <div className="w-5 h-5 rounded-full bg-[var(--navy)] flex items-center justify-center shrink-0">
+                <div className="w-5 h-5 rounded-full bg-[var(--bg-deep)] flex items-center justify-center shrink-0">
                   <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                   </svg>
@@ -183,7 +183,7 @@ export function InspectionClubContent({ activeStates, isLoggedIn }: Props) {
               <p className="text-[var(--gray-muted)] text-sm mb-6">Sign up for a free DumbRoof account, then come back to submit your inspector application.</p>
               <a
                 href="/login?mode=signup&redirect=/inspection-club"
-                className="inline-block bg-[var(--red)] hover:bg-[var(--red-dark)] text-white px-8 py-3 rounded-xl font-semibold transition-colors"
+                className="inline-block bg-gradient-to-r from-[var(--pink)] via-[var(--purple)] to-[var(--blue)] hover:shadow-[var(--shadow-glow-pink)] text-white px-8 py-3 rounded-xl font-semibold transition-colors"
               >
                 Create Account
               </a>
@@ -196,10 +196,10 @@ export function InspectionClubContent({ activeStates, isLoggedIn }: Props) {
       </section>
 
       {/* Footer */}
-      <footer className="bg-[var(--navy)] border-t border-white/10 py-8 px-6">
+      <footer className="bg-[rgba(6,9,24,0.85)] backdrop-blur-[20px] border-t border-white/10 py-8 px-6">
         <div className="max-w-5xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-[var(--red)] flex items-center justify-center font-bold text-white text-sm">DR</div>
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[var(--pink)] to-[var(--blue)] flex items-center justify-center font-bold text-white text-xs text-sm">DR</div>
             <span className="text-[var(--gray-dim)] text-sm">Dumb Roof Technologies&trade;</span>
           </div>
           <div className="text-center sm:text-right">

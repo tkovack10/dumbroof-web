@@ -114,7 +114,7 @@ function PAApplicationForm() {
       <div>
         <label className="block text-xs font-semibold text-[var(--gray-muted)] uppercase tracking-wider mb-1.5">Email</label>
         <input type="email" required value={form.email} onChange={(e) => update("email", e.target.value)}
-          className="w-full px-4 py-3 rounded-lg border border-[var(--border-glass)] focus:border-[var(--navy)] focus:ring-1 focus:ring-[var(--navy)] outline-none text-sm" />
+          className="w-full px-4 py-3 rounded-lg border border-[var(--border-glass)] focus:border-[var(--cyan)] focus:ring-1 focus:ring-[var(--cyan)] outline-none text-sm" />
       </div>
 
       <div className="grid grid-cols-2 gap-4">
@@ -155,7 +155,7 @@ function PAApplicationForm() {
               onClick={() => toggleState(st)}
               className={`px-2.5 py-1 rounded text-xs font-semibold transition-colors ${
                 form.states_covered.includes(st)
-                  ? "bg-[var(--navy)] text-white"
+                  ? "bg-gradient-to-r from-[var(--pink)] to-[var(--blue)] text-white"
                   : "bg-white/[0.06] text-[var(--gray)] hover:bg-white/[0.04]"
               }`}
             >
@@ -221,10 +221,10 @@ export function PAClubContent({ activeStates, isLoggedIn }: Props) {
   return (
     <main className="min-h-screen">
       {/* Nav */}
-      <nav className="bg-[var(--navy)] border-b border-white/10">
+      <nav className="bg-[rgba(6,9,24,0.85)] backdrop-blur-[20px] border-b border-[var(--border-glass)] sticky top-0 z-50">
         <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
           <a href="/" className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-[var(--red)] flex items-center justify-center font-bold text-white text-lg">DR</div>
+            <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-[var(--pink)] to-[var(--blue)] flex items-center justify-center font-bold text-white text-xs text-lg">DR</div>
             <span className="text-white font-bold text-xl tracking-tight">
               dumb roof<sup className="text-[10px] font-medium align-super ml-0.5">&trade;</sup>
             </span>
@@ -308,7 +308,7 @@ export function PAClubContent({ activeStates, isLoggedIn }: Props) {
       </section>
 
       {/* Three-Way Marketplace */}
-      <section className="py-16 px-6 bg-[var(--navy)]">
+      <section className="py-16 px-6 bg-[var(--bg-glass)]">
         <div className="max-w-4xl mx-auto">
           <h2 className="text-3xl font-bold text-white text-center mb-10">The Three-Way Marketplace</h2>
           <div className="flex flex-wrap justify-center items-center gap-4 mb-6">
@@ -360,7 +360,7 @@ export function PAClubContent({ activeStates, isLoggedIn }: Props) {
             in the homeowner&apos;s state. They handle the insurance advocacy while you handle
             the physical work. DumbRoof processes the claim through the AI pipeline — everyone wins.
           </p>
-          <a href="/login?mode=signup" className="inline-block bg-[var(--red)] hover:bg-[var(--red-dark)] text-white px-8 py-3 rounded-xl font-semibold transition-colors">
+          <a href="/login?mode=signup" className="inline-block bg-gradient-to-r from-[var(--pink)] via-[var(--purple)] to-[var(--blue)] hover:shadow-[var(--shadow-glow-pink)] text-white px-8 py-3 rounded-xl font-semibold transition-colors">
             Get Started
           </a>
         </div>
@@ -391,10 +391,10 @@ export function PAClubContent({ activeStates, isLoggedIn }: Props) {
       </section>
 
       {/* Footer */}
-      <footer className="bg-[var(--navy)] border-t border-white/10 py-8 px-6">
+      <footer className="bg-[rgba(6,9,24,0.85)] backdrop-blur-[20px] border-t border-white/10 py-8 px-6">
         <div className="max-w-5xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-[var(--red)] flex items-center justify-center font-bold text-white text-sm">DR</div>
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[var(--pink)] to-[var(--blue)] flex items-center justify-center font-bold text-white text-xs text-sm">DR</div>
             <span className="text-[var(--gray-dim)] text-sm">Dumb Roof Technologies&trade;</span>
           </div>
           <div className="text-center sm:text-right">

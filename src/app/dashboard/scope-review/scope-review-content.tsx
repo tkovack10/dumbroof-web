@@ -221,10 +221,10 @@ export function ScopeReviewContent() {
   return (
     <main className="min-h-screen bg-white/[0.04]">
       {/* Nav */}
-      <nav className="bg-[var(--navy)] border-b border-white/10">
+      <nav className="bg-[rgba(6,9,24,0.85)] backdrop-blur-[20px] border-b border-[var(--border-glass)] sticky top-0 z-50">
         <div className="max-w-5xl mx-auto px-6 py-4 flex items-center justify-between">
           <a href="/dashboard" className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-lg bg-[var(--red)] flex items-center justify-center font-bold text-white">DR</div>
+            <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-[var(--pink)] to-[var(--blue)] flex items-center justify-center font-bold text-white text-xs">DR</div>
             <span className="text-white font-bold text-lg tracking-tight">Scope Review</span>
           </a>
           <div className="flex items-center gap-4 text-sm text-[var(--gray-dim)]">
@@ -255,7 +255,7 @@ export function ScopeReviewContent() {
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
               <p className="text-xs text-[var(--gray-dim)]">Contractor RCV</p>
-              <p className="text-2xl font-bold text-[var(--navy)]">${Math.round(liveTotal).toLocaleString()}</p>
+              <p className="text-2xl font-bold text-[var(--white)]">${Math.round(liveTotal).toLocaleString()}</p>
               {contractorRcv > 0 && Math.abs(liveTotal - contractorRcv) > 1 && (
                 <p className="text-xs text-[var(--gray-dim)] mt-0.5">
                   Original: ${Math.round(contractorRcv).toLocaleString()}
@@ -264,14 +264,14 @@ export function ScopeReviewContent() {
             </div>
             <div>
               <p className="text-xs text-[var(--gray-dim)]">Line Items</p>
-              <p className="text-2xl font-bold text-[var(--navy)]">{activeItems.length}</p>
+              <p className="text-2xl font-bold text-[var(--white)]">{activeItems.length}</p>
               {items.length !== activeItems.length && (
                 <p className="text-xs text-[var(--gray-dim)] mt-0.5">{items.length - activeItems.length} removed</p>
               )}
             </div>
             <div>
               <p className="text-xs text-[var(--gray-dim)]">Reviewed</p>
-              <p className="text-2xl font-bold text-[var(--navy)]">{reviewedCount} / {items.length}</p>
+              <p className="text-2xl font-bold text-[var(--white)]">{reviewedCount} / {items.length}</p>
             </div>
           </div>
         </div>
@@ -298,7 +298,7 @@ export function ScopeReviewContent() {
                   <span className="text-sm text-[var(--gray-muted)]">{catItems.length} items</span>
                 </div>
                 <div className="flex items-center gap-3">
-                  <span className="text-sm font-semibold text-[var(--navy)]">${Math.round(catSubtotal).toLocaleString()}</span>
+                  <span className="text-sm font-semibold text-[var(--white)]">${Math.round(catSubtotal).toLocaleString()}</span>
                   <svg className={`w-4 h-4 text-[var(--gray-dim)] transition-transform ${isCollapsed ? "" : "rotate-180"}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
                   </svg>
@@ -504,7 +504,7 @@ export function ScopeReviewContent() {
           {claimId && (
             <a
               href={`/dashboard/claim/${claimId}`}
-              className="bg-[var(--red)] hover:bg-[var(--red-dark)] text-white px-8 py-3 rounded-xl font-semibold transition-colors inline-block"
+              className="bg-gradient-to-r from-[var(--pink)] via-[var(--purple)] to-[var(--blue)] hover:shadow-[var(--shadow-glow-pink)] text-white px-8 py-3 rounded-xl font-semibold transition-colors inline-block"
             >
               Review All Changes
             </a>
@@ -512,7 +512,7 @@ export function ScopeReviewContent() {
           <button
             onClick={handleRegenerate}
             disabled={regenerating}
-            className="text-sm text-[var(--gray-muted)] hover:text-[var(--navy)] font-medium transition-colors disabled:opacity-50"
+            className="text-sm text-[var(--gray-muted)] hover:text-[var(--white)] font-medium transition-colors disabled:opacity-50"
           >
             {regenerating ? "Resubmitting..." : "Resubmit Now"}
           </button>
@@ -520,7 +520,7 @@ export function ScopeReviewContent() {
 
         {/* Back link */}
         <div className="text-center pb-8">
-          <a href="/dashboard" className="text-sm text-[var(--gray-muted)] hover:text-[var(--navy)]">Back to Dashboard</a>
+          <a href="/dashboard" className="text-sm text-[var(--gray-muted)] hover:text-[var(--white)]">Back to Dashboard</a>
         </div>
       </div>
     </main>

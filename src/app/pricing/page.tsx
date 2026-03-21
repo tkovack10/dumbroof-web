@@ -39,10 +39,10 @@ function PricingContent() {
   return (
     <main className="min-h-screen">
       {/* Nav */}
-      <nav className="bg-[var(--navy)] border-b border-white/10">
+      <nav className="bg-[rgba(6,9,24,0.85)] backdrop-blur-[20px] border-b border-[var(--border-glass)] sticky top-0 z-50">
         <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
           <a href="/" className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-[var(--red)] flex items-center justify-center font-bold text-white text-lg">
+            <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-[var(--pink)] to-[var(--blue)] flex items-center justify-center font-bold text-white text-xs text-lg">
               DR
             </div>
             <span className="text-white font-bold text-xl tracking-tight">
@@ -55,7 +55,7 @@ function PricingContent() {
             </a>
             <a
               href="/login?mode=signup"
-              className="bg-[var(--red)] hover:bg-[var(--red-dark)] text-white px-5 py-2 rounded-lg text-sm font-semibold transition-colors"
+              className="bg-gradient-to-r from-[var(--pink)] via-[var(--purple)] to-[var(--blue)] hover:shadow-[var(--shadow-glow-pink)] text-white px-5 py-2 rounded-lg text-sm font-semibold transition-colors"
             >
               Create Account
             </a>
@@ -133,7 +133,7 @@ function PricingContent() {
                 {id === "starter" ? (
                   <a
                     href="/login?mode=signup"
-                    className="block text-center bg-[var(--navy)] hover:bg-[var(--navy-light)] text-white py-3 rounded-xl font-semibold transition-colors text-sm"
+                    className="block text-center bg-gradient-to-r from-[var(--pink)] via-[var(--purple)] to-[var(--blue)] hover:shadow-[var(--shadow-glow-pink)] text-white py-3 rounded-xl font-semibold transition-colors text-sm"
                   >
                     Try 3 Free Claims
                   </a>
@@ -143,8 +143,8 @@ function PricingContent() {
                     disabled={loading === id}
                     className={`w-full py-3 rounded-xl font-semibold transition-colors text-sm disabled:opacity-50 ${
                       isPopular
-                        ? "bg-[var(--red)] hover:bg-[var(--red-dark)] text-white"
-                        : "bg-[var(--navy)] hover:bg-[var(--navy-light)] text-white"
+                        ? "bg-gradient-to-r from-[var(--pink)] via-[var(--purple)] to-[var(--blue)] hover:shadow-[var(--shadow-glow-pink)] text-white"
+                        : "bg-gradient-to-r from-[var(--pink)] via-[var(--purple)] to-[var(--blue)] hover:shadow-[var(--shadow-glow-pink)] text-white"
                     }`}
                   >
                     {loading === id ? "Redirecting..." : "Subscribe"}
@@ -169,10 +169,10 @@ function PricingContent() {
       </section>
 
       {/* Footer */}
-      <footer className="bg-[var(--navy)] border-t border-white/10 py-8 px-6">
+      <footer className="bg-[rgba(6,9,24,0.85)] backdrop-blur-[20px] border-t border-white/10 py-8 px-6">
         <div className="max-w-5xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-[var(--red)] flex items-center justify-center font-bold text-white text-sm">DR</div>
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[var(--pink)] to-[var(--blue)] flex items-center justify-center font-bold text-white text-xs text-sm">DR</div>
             <span className="text-[var(--gray-dim)] text-sm">Dumb Roof Technologies&trade;</span>
           </div>
           <p className="text-[var(--gray-muted)] text-sm">

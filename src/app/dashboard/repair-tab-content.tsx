@@ -46,11 +46,11 @@ export function RepairTabContent({
             <path strokeLinecap="round" strokeLinejoin="round" d="M11.42 15.17l-5.66-5.66a8 8 0 1111.31 0l-5.65 5.66zm0 0L12 21" />
           </svg>
         </div>
-        <h3 className="text-lg font-semibold text-[var(--navy)] mb-2">No repairs yet</h3>
+        <h3 className="text-lg font-semibold text-[var(--white)] mb-2">No repairs yet</h3>
         <p className="text-[var(--gray-muted)] text-sm mb-6 max-w-md mx-auto">
           Upload photos of a roof leak and AI will diagnose it, generate repair instructions for your crew, and a professional repair ticket for the homeowner.
         </p>
-        <a href="/dashboard/new-repair" className="inline-block bg-[var(--red)] hover:bg-[var(--red-dark)] text-white px-8 py-3 rounded-xl font-semibold transition-colors text-sm">
+        <a href="/dashboard/new-repair" className="inline-block bg-gradient-to-r from-[var(--pink)] via-[var(--purple)] to-[var(--blue)] hover:shadow-[var(--shadow-glow-pink)] text-white px-8 py-3 rounded-xl font-semibold transition-colors text-sm">
           Submit First Repair
         </a>
       </div>
@@ -62,7 +62,7 @@ export function RepairTabContent({
       {/* Repair KPIs */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
         <div className="bg-white rounded-xl border border-[var(--border-glass)] px-5 py-4 text-center">
-          <p className="text-2xl font-bold text-[var(--navy)]">{totalRepairs}</p>
+          <p className="text-2xl font-bold text-[var(--white)]">{totalRepairs}</p>
           <p className="text-xs text-[var(--gray-muted)] mt-1">Total Repairs</p>
         </div>
         <div className="bg-white rounded-xl border border-[var(--border-glass)] px-5 py-4 text-center">
@@ -70,7 +70,7 @@ export function RepairTabContent({
           <p className="text-xs text-[var(--gray-muted)] mt-1">Completed</p>
         </div>
         <div className="bg-white rounded-xl border border-[var(--border-glass)] px-5 py-4 text-center">
-          <p className="text-2xl font-bold text-[var(--navy)]">{fmtMoney(totalRevenue)}</p>
+          <p className="text-2xl font-bold text-[var(--white)]">{fmtMoney(totalRevenue)}</p>
           <p className="text-xs text-[var(--gray-muted)] mt-1">Total Revenue</p>
         </div>
       </div>
@@ -93,11 +93,11 @@ export function RepairTabContent({
                 <a href={`/dashboard/repair/${repair.id}`} className="flex items-center gap-4 hover:opacity-80 transition-opacity min-w-0">
                   <div className="min-w-0">
                     <div className="flex items-center gap-2 mb-0.5">
-                      <h3 className="text-sm font-semibold text-[var(--navy)] truncate">
+                      <h3 className="text-sm font-semibold text-[var(--white)] truncate">
                         {repair.address}
                       </h3>
                       {repair.total_price ? (
-                        <span className="text-xs font-bold text-[var(--navy)] bg-white/[0.06] px-2 py-0.5 rounded shrink-0">
+                        <span className="text-xs font-bold text-[var(--white)] bg-white/[0.06] px-2 py-0.5 rounded shrink-0">
                           ${repair.total_price.toLocaleString("en-US", { minimumFractionDigits: 0 })}
                         </span>
                       ) : null}
@@ -135,7 +135,7 @@ export function RepairTabContent({
                   {isReady && (
                     <button
                       onClick={() => onDownloadAll(repair)}
-                      className="bg-[var(--navy)] hover:bg-[var(--navy-light)] text-white px-4 py-1.5 rounded-lg text-xs font-medium transition-colors"
+                      className="bg-gradient-to-r from-[var(--pink)] via-[var(--purple)] to-[var(--blue)] hover:shadow-[var(--shadow-glow-pink)] text-white px-4 py-1.5 rounded-lg text-xs font-medium transition-colors"
                     >
                       Download All
                     </button>

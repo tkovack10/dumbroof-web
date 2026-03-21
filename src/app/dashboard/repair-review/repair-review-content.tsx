@@ -90,10 +90,10 @@ export function RepairReviewContent() {
 
   return (
     <main className="min-h-screen bg-white/[0.04]">
-      <nav className="bg-[var(--navy)] border-b border-white/10">
+      <nav className="bg-[rgba(6,9,24,0.85)] backdrop-blur-[20px] border-b border-[var(--border-glass)] sticky top-0 z-50">
         <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-lg bg-[var(--red)] flex items-center justify-center font-bold text-white">DR</div>
+            <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-[var(--pink)] to-[var(--blue)] flex items-center justify-center font-bold text-white text-xs">DR</div>
             <span className="text-white font-bold text-lg tracking-tight">dumb roof<sup className="text-[9px] font-medium align-super ml-0.5">&trade;</sup></span>
           </div>
           <a href="/dashboard" className="text-[var(--gray-dim)] hover:text-white text-sm transition-colors">Back to Dashboard</a>
@@ -103,13 +103,13 @@ export function RepairReviewContent() {
       <div className="max-w-4xl mx-auto px-6 py-10">
         <div className="flex items-center justify-between mb-8">
           <div>
-            <h1 className="text-2xl font-bold text-[var(--navy)]">Repair Review</h1>
+            <h1 className="text-2xl font-bold text-[var(--white)]">Repair Review</h1>
             <p className="text-[var(--gray-muted)] mt-1 text-sm">
               Review AI diagnoses to improve accuracy over time.
             </p>
           </div>
           <div className="text-right">
-            <p className="text-sm font-semibold text-[var(--navy)]">{reviewed} / {total} reviewed</p>
+            <p className="text-sm font-semibold text-[var(--white)]">{reviewed} / {total} reviewed</p>
             {total > 0 && (
               <div className="w-32 bg-white/[0.06] rounded-full h-1.5 mt-1">
                 <div
@@ -123,7 +123,7 @@ export function RepairReviewContent() {
 
         {repairs.length === 0 ? (
           <div className="bg-white rounded-2xl border border-[var(--border-glass)] text-center py-16 px-8">
-            <h3 className="text-lg font-semibold text-[var(--navy)] mb-2">No repairs to review</h3>
+            <h3 className="text-lg font-semibold text-[var(--white)] mb-2">No repairs to review</h3>
             <p className="text-[var(--gray-muted)] text-sm">Completed repairs will appear here for diagnosis review.</p>
           </div>
         ) : (
@@ -150,7 +150,7 @@ export function RepairReviewContent() {
                     {/* Repair info */}
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1">
-                        <h3 className="text-sm font-semibold text-[var(--navy)] truncate">{repair.address}</h3>
+                        <h3 className="text-sm font-semibold text-[var(--white)] truncate">{repair.address}</h3>
                         {statusBadge && (
                           <span className={`px-2 py-0.5 rounded text-xs font-medium ${statusBadge.color}`}>
                             {statusBadge.label}
@@ -164,7 +164,7 @@ export function RepairReviewContent() {
                       {/* AI Diagnosis */}
                       <div className="flex items-center gap-2 mb-2">
                         <span className="text-xs font-semibold text-[var(--gray-dim)]">AI Diagnosis:</span>
-                        <span className="text-xs font-medium text-[var(--navy)]">
+                        <span className="text-xs font-medium text-[var(--white)]">
                           {repair.repair_type ? (REPAIR_TYPE_LABELS[repair.repair_type] || repair.repair_type) : "Unknown"}
                         </span>
                         {severityColor && (
@@ -173,7 +173,7 @@ export function RepairReviewContent() {
                           </span>
                         )}
                         {repair.total_price ? (
-                          <span className="text-xs font-bold text-[var(--navy)]">
+                          <span className="text-xs font-bold text-[var(--white)]">
                             ${repair.total_price.toLocaleString("en-US", { minimumFractionDigits: 0 })}
                           </span>
                         ) : null}
@@ -283,7 +283,7 @@ export function RepairReviewContent() {
                             editForm,
                           )}
                           disabled={submitting === repair.id}
-                          className="bg-[var(--navy)] hover:bg-[var(--navy-light)] text-white px-5 py-2 rounded-lg text-xs font-semibold transition-colors disabled:opacity-50"
+                          className="bg-gradient-to-r from-[var(--pink)] via-[var(--purple)] to-[var(--blue)] hover:shadow-[var(--shadow-glow-pink)] text-white px-5 py-2 rounded-lg text-xs font-semibold transition-colors disabled:opacity-50"
                         >
                           {submitting === repair.id ? "Saving..." : "Submit Feedback"}
                         </button>

@@ -116,7 +116,7 @@ export default function AuthCallbackPage() {
 
   if (mode === "loading") {
     return (
-      <main className="min-h-screen bg-[var(--navy)] flex items-center justify-center">
+      <main className="min-h-screen bg-[var(--bg-deep)] flex items-center justify-center">
         <p className="text-white text-lg">Processing...</p>
       </main>
     );
@@ -124,14 +124,14 @@ export default function AuthCallbackPage() {
 
   if (mode === "error") {
     return (
-      <main className="min-h-screen bg-[var(--navy)] flex items-center justify-center px-6">
+      <main className="min-h-screen bg-[var(--bg-deep)] flex items-center justify-center px-6">
         <div className="w-full max-w-sm bg-white rounded-2xl p-8 shadow-xl text-center">
           <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3 mb-6">
             {errorMsg}
           </div>
           <a
             href="/login"
-            className="text-sm text-[var(--gray-muted)] hover:text-[var(--navy)] transition-colors"
+            className="text-sm text-[var(--gray-muted)] hover:text-[var(--white)] transition-colors"
           >
             Back to sign in
           </a>
@@ -142,7 +142,7 @@ export default function AuthCallbackPage() {
 
   // Recovery mode — show password form right here
   return (
-    <main className="min-h-screen bg-[var(--navy)] flex items-center justify-center px-6">
+    <main className="min-h-screen bg-[var(--bg-deep)] flex items-center justify-center px-6">
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
           <a href="/" className="inline-flex items-center gap-3">
@@ -151,7 +151,7 @@ export default function AuthCallbackPage() {
         </div>
 
         <div className="bg-white rounded-2xl p-8 shadow-xl">
-          <h2 className="text-xl font-bold text-[var(--navy)] mb-1">Set your password</h2>
+          <h2 className="text-xl font-bold text-[var(--white)] mb-1">Set your password</h2>
           <p className="text-[var(--gray-muted)] text-sm mb-6">
             Choose a password to finish setting up your account.
           </p>
@@ -173,7 +173,7 @@ export default function AuthCallbackPage() {
                   onChange={(e) => setNewPassword(e.target.value)}
                   placeholder="Enter new password"
                   minLength={6}
-                  className="w-full px-4 py-3 rounded-lg border border-[var(--border-glass)] focus:border-[var(--navy)] focus:ring-1 focus:ring-[var(--navy)] outline-none transition-colors text-sm"
+                  className="w-full px-4 py-3 rounded-lg border border-[var(--border-glass)] focus:border-[var(--cyan)] focus:ring-1 focus:ring-[var(--cyan)] outline-none transition-colors text-sm"
                 />
               </div>
               <div>
@@ -187,7 +187,7 @@ export default function AuthCallbackPage() {
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   placeholder="Confirm new password"
                   minLength={6}
-                  className="w-full px-4 py-3 rounded-lg border border-[var(--border-glass)] focus:border-[var(--navy)] focus:ring-1 focus:ring-[var(--navy)] outline-none transition-colors text-sm"
+                  className="w-full px-4 py-3 rounded-lg border border-[var(--border-glass)] focus:border-[var(--cyan)] focus:ring-1 focus:ring-[var(--cyan)] outline-none transition-colors text-sm"
                 />
               </div>
 
@@ -200,7 +200,7 @@ export default function AuthCallbackPage() {
               <button
                 type="submit"
                 disabled={saving}
-                className="w-full bg-[var(--red)] hover:bg-[var(--red-dark)] disabled:opacity-50 text-white py-3 rounded-lg font-semibold transition-colors text-sm"
+                className="w-full bg-gradient-to-r from-[var(--pink)] via-[var(--purple)] to-[var(--blue)] hover:shadow-[var(--shadow-glow-pink)] disabled:opacity-50 text-white py-3 rounded-lg font-semibold transition-colors text-sm"
               >
                 {saving ? "Setting password..." : "Set Password"}
               </button>

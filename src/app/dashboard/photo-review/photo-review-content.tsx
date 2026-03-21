@@ -260,10 +260,10 @@ export function PhotoReviewContent() {
 
   // Shared nav bar
   const navBar = (
-    <nav className="bg-[var(--navy)] border-b border-white/10">
+    <nav className="bg-[rgba(6,9,24,0.85)] backdrop-blur-[20px] border-b border-[var(--border-glass)] sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
         <a href="/dashboard" className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-lg bg-[var(--red)] flex items-center justify-center font-bold text-white">DR</div>
+          <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-[var(--pink)] to-[var(--blue)] flex items-center justify-center font-bold text-white text-xs">DR</div>
           <span className="text-white font-bold text-lg tracking-tight">Photo Review</span>
         </a>
         <div className="flex items-center gap-4 text-sm text-[var(--gray-dim)]">
@@ -308,9 +308,9 @@ export function PhotoReviewContent() {
         {navBar}
         <div className="max-w-lg mx-auto mt-20 text-center">
           <div className="text-5xl mb-4">&#128247;</div>
-          <h2 className="text-2xl font-bold text-[var(--navy)] mb-2">No photos found</h2>
+          <h2 className="text-2xl font-bold text-[var(--white)] mb-2">No photos found</h2>
           <p className="text-[var(--gray-muted)] mb-6">This claim doesn&apos;t have any photos to review yet.</p>
-          <a href="/dashboard" className="text-sm text-[var(--gray-muted)] hover:text-[var(--navy)]">Back to Dashboard</a>
+          <a href="/dashboard" className="text-sm text-[var(--gray-muted)] hover:text-[var(--white)]">Back to Dashboard</a>
         </div>
       </main>
     );
@@ -325,7 +325,7 @@ export function PhotoReviewContent() {
         {errorBanner}
         <div className="max-w-lg mx-auto mt-20 text-center">
           <div className="text-5xl mb-4">&#10003;</div>
-          <h2 className="text-2xl font-bold text-[var(--navy)] mb-2">Review complete!</h2>
+          <h2 className="text-2xl font-bold text-[var(--white)] mb-2">Review complete!</h2>
           <p className="text-[var(--gray-muted)] mb-6">
             {unreviewedCount > 0
               ? `${unreviewedCount} photo${unreviewedCount > 1 ? "s" : ""} skipped — you can go back and review them.`
@@ -360,12 +360,12 @@ export function PhotoReviewContent() {
             {claimId && (
               <a
                 href={`/dashboard/scope-review?claim=${claimId}`}
-                className="bg-[var(--red)] hover:bg-[var(--red-dark)] text-white px-8 py-3 rounded-xl font-semibold transition-colors"
+                className="bg-gradient-to-r from-[var(--pink)] via-[var(--purple)] to-[var(--blue)] hover:shadow-[var(--shadow-glow-pink)] text-white px-8 py-3 rounded-xl font-semibold transition-colors"
               >
                 Continue to Scope Review
               </a>
             )}
-            <a href={claimId ? `/dashboard/claim/${claimId}` : "/dashboard"} className="text-sm text-[var(--gray-muted)] hover:text-[var(--navy)]">
+            <a href={claimId ? `/dashboard/claim/${claimId}` : "/dashboard"} className="text-sm text-[var(--gray-muted)] hover:text-[var(--white)]">
               Back to Claim
             </a>
           </div>
@@ -429,7 +429,7 @@ export function PhotoReviewContent() {
 
       {/* Progress bar — two-tone */}
       <div className="h-1.5 bg-white/[0.04] flex">
-        <div className="h-full bg-[var(--red)] transition-all duration-300" style={{ width: `${progress}%` }} />
+        <div className="h-full bg-gradient-to-r from-[var(--pink)] to-[var(--blue)] transition-all duration-300" style={{ width: `${progress}%` }} />
       </div>
 
       {errorBanner}
@@ -441,7 +441,7 @@ export function PhotoReviewContent() {
             {/* Header */}
             <div className="px-5 py-3 border-b border-white/[0.04] flex items-center justify-between">
               <div>
-                <p className="text-sm font-semibold text-[var(--navy)]">{currentPhoto.address}</p>
+                <p className="text-sm font-semibold text-[var(--white)]">{currentPhoto.address}</p>
                 <p className="text-xs text-[var(--gray-dim)]">{currentPhoto.annotation_key}</p>
               </div>
               {getEffectiveStatus(currentPhoto) && (

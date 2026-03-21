@@ -287,7 +287,7 @@ export function SupplementComposer({ claimId, claimAddress, carrierName, compari
         <button
           onClick={() => setShowComposer(true)}
           disabled={selected.size === 0}
-          className="bg-[var(--navy)] hover:bg-[var(--navy-light)] disabled:opacity-40 disabled:cursor-not-allowed text-white px-5 py-2 rounded-lg text-sm font-semibold transition-colors"
+          className="bg-gradient-to-r from-[var(--pink)] via-[var(--purple)] to-[var(--blue)] hover:shadow-[var(--shadow-glow-pink)] disabled:opacity-40 disabled:cursor-not-allowed text-white px-5 py-2 rounded-lg text-sm font-semibold transition-colors"
         >
           Compose Supplement Email
         </button>

@@ -314,13 +314,13 @@ export function DashboardContent({ user }: { user: User }) {
           <div className="flex items-center gap-3">
             <a
               href="/dashboard/new-repair"
-              className="bg-[var(--navy)] hover:bg-[var(--navy-light)] text-white px-5 py-3 rounded-xl font-semibold transition-colors text-sm"
+              className="bg-gradient-to-r from-[var(--pink)] via-[var(--purple)] to-[var(--blue)] hover:shadow-[var(--shadow-glow-pink)] text-white px-5 py-3 rounded-xl font-semibold transition-colors text-sm"
             >
               + New Repair
             </a>
             <a
               href="/dashboard/new-claim"
-              className="bg-[var(--red)] hover:bg-[var(--red-dark)] text-white px-6 py-3 rounded-xl font-semibold transition-colors text-sm"
+              className="bg-gradient-to-r from-[var(--pink)] via-[var(--purple)] to-[var(--blue)] hover:shadow-[var(--shadow-glow-pink)] text-white px-6 py-3 rounded-xl font-semibold transition-colors text-sm"
             >
               + New Claim
             </a>
@@ -333,7 +333,7 @@ export function DashboardContent({ user }: { user: User }) {
             onClick={() => setActiveTab("claims")}
             className={`px-5 py-2.5 rounded-xl text-sm font-semibold transition-colors ${
               activeTab === "claims"
-                ? "bg-[var(--navy)] text-white"
+                ? "bg-gradient-to-r from-[var(--pink)] to-[var(--blue)] text-white"
                 : "bg-transparent text-[var(--gray)] border border-[var(--border-glass)] hover:bg-white/[0.04]"
             }`}
           >
@@ -348,7 +348,7 @@ export function DashboardContent({ user }: { user: User }) {
             onClick={() => setActiveTab("repairs")}
             className={`px-5 py-2.5 rounded-xl text-sm font-semibold transition-colors ${
               activeTab === "repairs"
-                ? "bg-[var(--navy)] text-white"
+                ? "bg-gradient-to-r from-[var(--pink)] to-[var(--blue)] text-white"
                 : "bg-transparent text-[var(--gray)] border border-[var(--border-glass)] hover:bg-white/[0.04]"
             }`}
           >
@@ -486,7 +486,7 @@ export function DashboardContent({ user }: { user: User }) {
                     onClick={() => setViewMode("table")}
                     className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
                       viewMode === "table"
-                        ? "bg-[var(--navy)] text-white"
+                        ? "bg-gradient-to-r from-[var(--pink)] to-[var(--blue)] text-white"
                         : "bg-transparent text-[var(--gray)] border border-[var(--border-glass)] hover:bg-white/[0.04]"
                     }`}
                   >
@@ -496,7 +496,7 @@ export function DashboardContent({ user }: { user: User }) {
                     onClick={() => setViewMode("map")}
                     className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
                       viewMode === "map"
-                        ? "bg-[var(--navy)] text-white"
+                        ? "bg-gradient-to-r from-[var(--pink)] to-[var(--blue)] text-white"
                         : "bg-transparent text-[var(--gray)] border border-[var(--border-glass)] hover:bg-white/[0.04]"
                     }`}
                   >
@@ -513,7 +513,7 @@ export function DashboardContent({ user }: { user: User }) {
                     onClick={() => setStatusFilter(tab.key)}
                     className={`px-4 py-2 rounded-full text-xs font-semibold transition-colors ${
                       statusFilter === tab.key
-                        ? "bg-[var(--navy)] text-white"
+                        ? "bg-gradient-to-r from-[var(--pink)] to-[var(--blue)] text-white"
                         : "bg-transparent text-[var(--gray)] border border-[var(--border-glass)] hover:bg-white/[0.04]"
                     }`}
                   >
@@ -547,11 +547,11 @@ export function DashboardContent({ user }: { user: User }) {
                     <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
                   </svg>
                 </div>
-                <h3 className="text-lg font-semibold text-[var(--navy)] mb-2">No claims yet</h3>
+                <h3 className="text-lg font-semibold text-[var(--white)] mb-2">No claims yet</h3>
                 <p className="text-[var(--gray-muted)] text-sm mb-6 max-w-md mx-auto">
                   Upload your measurements, inspection photos, and carrier scope to generate your first claim package.
                 </p>
-                <a href="/dashboard/new-claim" className="inline-block bg-[var(--red)] hover:bg-[var(--red-dark)] text-white px-8 py-3 rounded-xl font-semibold transition-colors text-sm">
+                <a href="/dashboard/new-claim" className="inline-block bg-gradient-to-r from-[var(--pink)] via-[var(--purple)] to-[var(--blue)] hover:shadow-[var(--shadow-glow-pink)] text-white px-8 py-3 rounded-xl font-semibold transition-colors text-sm">
                   Upload Documents
                 </a>
               </div>
@@ -677,7 +677,7 @@ export function DashboardContent({ user }: { user: User }) {
                             <p className="text-xs font-semibold text-green-800">Your claim package is ready</p>
                             <button
                               onClick={() => handleDownloadAllClaims(claim)}
-                              className="bg-[var(--navy)] hover:bg-[var(--navy-light)] text-white px-3 py-1 rounded-lg text-[10px] font-medium transition-colors"
+                              className="bg-gradient-to-r from-[var(--pink)] via-[var(--purple)] to-[var(--blue)] hover:shadow-[var(--shadow-glow-pink)] text-white px-3 py-1 rounded-lg text-[10px] font-medium transition-colors"
                             >
                               Download All
                             </button>

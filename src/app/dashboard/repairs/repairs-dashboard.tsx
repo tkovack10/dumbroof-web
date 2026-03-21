@@ -73,10 +73,10 @@ export function RepairsDashboard({ user }: { user: User }) {
   return (
     <main className="min-h-screen bg-white/[0.04]">
       {/* Top Bar */}
-      <nav className="bg-[var(--navy)] border-b border-white/10">
+      <nav className="bg-[rgba(6,9,24,0.85)] backdrop-blur-[20px] border-b border-[var(--border-glass)] sticky top-0 z-50">
         <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-lg bg-[var(--red)] flex items-center justify-center font-bold text-white">
+            <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-[var(--pink)] to-[var(--blue)] flex items-center justify-center font-bold text-white text-xs">
               DR
             </div>
             <span className="text-white font-bold text-lg tracking-tight">
@@ -110,14 +110,14 @@ export function RepairsDashboard({ user }: { user: User }) {
       <div className="max-w-6xl mx-auto px-6 py-10">
         <div className="flex items-center justify-between mb-8">
           <div>
-            <h1 className="text-2xl font-bold text-[var(--navy)]">Repairs Dashboard</h1>
+            <h1 className="text-2xl font-bold text-[var(--white)]">Repairs Dashboard</h1>
             <p className="text-[var(--gray-muted)] mt-1">
               Diagnose leaks, generate repair instructions and homeowner tickets.
             </p>
           </div>
           <a
             href="/dashboard/new-repair"
-            className="bg-[var(--red)] hover:bg-[var(--red-dark)] text-white px-6 py-3 rounded-xl font-semibold transition-colors text-sm"
+            className="bg-gradient-to-r from-[var(--pink)] via-[var(--purple)] to-[var(--blue)] hover:shadow-[var(--shadow-glow-pink)] text-white px-6 py-3 rounded-xl font-semibold transition-colors text-sm"
           >
             + New Repair
           </a>
@@ -128,7 +128,7 @@ export function RepairsDashboard({ user }: { user: User }) {
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
             <div className="bg-white rounded-xl border border-[var(--border-glass)] px-5 py-4">
               <p className="text-xs text-[var(--gray-dim)] font-medium uppercase">Total Repairs</p>
-              <p className="text-2xl font-bold text-[var(--navy)] mt-1">{totalRepairs}</p>
+              <p className="text-2xl font-bold text-[var(--white)] mt-1">{totalRepairs}</p>
             </div>
             <div className="bg-white rounded-xl border border-[var(--border-glass)] px-5 py-4">
               <p className="text-xs text-[var(--gray-dim)] font-medium uppercase">Completed</p>
@@ -136,7 +136,7 @@ export function RepairsDashboard({ user }: { user: User }) {
             </div>
             <div className="bg-white rounded-xl border border-[var(--border-glass)] px-5 py-4">
               <p className="text-xs text-[var(--gray-dim)] font-medium uppercase">Total Revenue</p>
-              <p className="text-2xl font-bold text-[var(--navy)] mt-1">
+              <p className="text-2xl font-bold text-[var(--white)] mt-1">
                 ${totalRevenue.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
               </p>
             </div>
@@ -155,11 +155,11 @@ export function RepairsDashboard({ user }: { user: User }) {
                 <path strokeLinecap="round" strokeLinejoin="round" d="M11.42 15.17l-5.66-5.66a8 8 0 1111.31 0l-5.65 5.66zm0 0L12 21" />
               </svg>
             </div>
-            <h3 className="text-lg font-semibold text-[var(--navy)] mb-2">No repairs yet</h3>
+            <h3 className="text-lg font-semibold text-[var(--white)] mb-2">No repairs yet</h3>
             <p className="text-[var(--gray-muted)] text-sm mb-6 max-w-md mx-auto">
               Upload photos of a roof leak and AI will diagnose it, generate repair instructions for your crew, and a professional repair ticket for the homeowner.
             </p>
-            <a href="/dashboard/new-repair" className="inline-block bg-[var(--red)] hover:bg-[var(--red-dark)] text-white px-8 py-3 rounded-xl font-semibold transition-colors text-sm">
+            <a href="/dashboard/new-repair" className="inline-block bg-gradient-to-r from-[var(--pink)] via-[var(--purple)] to-[var(--blue)] hover:shadow-[var(--shadow-glow-pink)] text-white px-8 py-3 rounded-xl font-semibold transition-colors text-sm">
               Submit First Repair
             </a>
           </div>
@@ -178,11 +178,11 @@ export function RepairsDashboard({ user }: { user: User }) {
                     <a href={`/dashboard/repair/${repair.id}`} className="flex items-center gap-4 hover:opacity-80 transition-opacity">
                       <div>
                         <div className="flex items-center gap-2 mb-0.5">
-                          <h3 className="text-sm font-semibold text-[var(--navy)]">
+                          <h3 className="text-sm font-semibold text-[var(--white)]">
                             {repair.address}
                           </h3>
                           {repair.total_price ? (
-                            <span className="text-xs font-bold text-[var(--navy)] bg-white/[0.06] px-2 py-0.5 rounded">
+                            <span className="text-xs font-bold text-[var(--white)] bg-white/[0.06] px-2 py-0.5 rounded">
                               ${repair.total_price.toLocaleString("en-US", { minimumFractionDigits: 0 })}
                             </span>
                           ) : null}
@@ -214,7 +214,7 @@ export function RepairsDashboard({ user }: { user: User }) {
                       {isReady && (
                         <button
                           onClick={() => handleDownloadAll(repair)}
-                          className="bg-[var(--navy)] hover:bg-[var(--navy-light)] text-white px-4 py-1.5 rounded-lg text-xs font-medium transition-colors"
+                          className="bg-gradient-to-r from-[var(--pink)] via-[var(--purple)] to-[var(--blue)] hover:shadow-[var(--shadow-glow-pink)] text-white px-4 py-1.5 rounded-lg text-xs font-medium transition-colors"
                         >
                           Download All
                         </button>

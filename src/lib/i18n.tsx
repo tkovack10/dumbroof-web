@@ -167,11 +167,11 @@ export function LanguageToggle() {
   return (
     <button
       onClick={() => setLocale(locale === "en" ? "es" : "en")}
-      className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium hover:bg-gray-100 transition-colors border border-gray-200"
+      className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium hover:bg-white/[0.06] transition-colors border border-[var(--border-glass)]"
       title={locale === "en" ? "Cambiar a Español" : "Switch to English"}
     >
       <span className="text-sm">{locale === "en" ? "🇺🇸" : "🇲🇽"}</span>
-      <span className="text-gray-600">{locale === "en" ? "EN" : "ES"}</span>
+      <span className="text-[var(--gray)]">{locale === "en" ? "EN" : "ES"}</span>
     </button>
   );
 }

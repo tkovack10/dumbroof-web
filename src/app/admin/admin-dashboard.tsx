@@ -823,7 +823,7 @@ export function AdminDashboard() {
                         <div className="col-span-2">
                           <div className="flex flex-wrap gap-1">
                             {(signup.products || []).map((p) => (
-                              <span key={p} className="inline-block px-2 py-0.5 rounded-full text-xs font-medium bg-[var(--navy)]/10 text-[var(--white)]">
+                              <span key={p} className="inline-block px-2 py-0.5 rounded-full text-xs font-medium bg-white/[0.06] text-[var(--white)]">
                                 {p === "claims_ai" ? "Claims" : p === "repair_ai" ? "Repair" : p}
                               </span>
                             ))}

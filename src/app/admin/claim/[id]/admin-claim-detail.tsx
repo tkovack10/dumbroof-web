@@ -522,7 +522,7 @@ export function AdminClaimDetail({ claim: initialClaim, userInfo }: Props) {
                   setShowUpload(true);
                   setTimeout(() => formRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }), 100);
                 }}
-                className="bg-[var(--navy)] hover:bg-[var(--navy-light)] text-white px-5 py-2 rounded-lg text-sm font-medium transition-colors"
+                className="bg-gradient-to-r from-[var(--pink)] via-[var(--purple)] to-[var(--blue)] hover:shadow-[var(--shadow-glow-pink)] text-white px-5 py-2 rounded-lg text-sm font-medium transition-colors"
               >
                 + Upload Files
               </button>
@@ -614,7 +614,7 @@ export function AdminClaimDetail({ claim: initialClaim, userInfo }: Props) {
                       }}
                       className={`px-3 py-2 rounded-lg text-xs font-medium transition-colors border ${
                         selectedCategory === key
-                          ? "bg-[var(--navy)] text-white border-[var(--navy)]"
+                          ? "bg-gradient-to-r from-[var(--pink)] to-[var(--blue)] text-white border-[var(--navy)]"
                           : "bg-[var(--bg-glass)] text-[var(--gray)] border-[var(--border-glass)] hover:bg-white/[0.04]"
                       }`}
                     >
@@ -646,7 +646,7 @@ export function AdminClaimDetail({ claim: initialClaim, userInfo }: Props) {
                 <button
                   onClick={handleUploadDocuments}
                   disabled={uploading || newFiles.length === 0}
-                  className="bg-[var(--red)] hover:bg-[var(--red-dark)] disabled:opacity-50 text-white px-6 py-2 rounded-lg text-sm font-semibold transition-colors"
+                  className="bg-gradient-to-r from-[var(--pink)] via-[var(--purple)] to-[var(--blue)] hover:shadow-[var(--shadow-glow-pink)] disabled:opacity-50 text-white px-6 py-2 rounded-lg text-sm font-semibold transition-colors"
                 >
                   {uploading ? "Uploading..." : `Upload ${newFiles.length} File${newFiles.length !== 1 ? "s" : ""}`}
                 </button>

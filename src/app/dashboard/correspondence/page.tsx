@@ -140,10 +140,10 @@ export default function CorrespondencePage() {
   return (
     <main className="min-h-screen bg-white/[0.04]">
       {/* Top Bar */}
-      <nav className="bg-[var(--navy)] border-b border-white/10">
+      <nav className="bg-[rgba(6,9,24,0.85)] backdrop-blur-[20px] border-b border-[var(--border-glass)] sticky top-0 z-50">
         <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-lg bg-[var(--red)] flex items-center justify-center font-bold text-white">DR</div>
+            <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-[var(--pink)] to-[var(--blue)] flex items-center justify-center font-bold text-white text-xs">DR</div>
             <span className="text-white font-bold text-lg tracking-tight">
               dumb roof<sup className="text-[9px] font-medium align-super ml-0.5">™</sup>
             </span>
@@ -170,7 +170,7 @@ export default function CorrespondencePage() {
               onClick={() => setFilter(f)}
               className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors border ${
                 filter === f
-                  ? "bg-[var(--navy)] text-white border-[var(--navy)]"
+                  ? "bg-gradient-to-r from-[var(--pink)] to-[var(--blue)] text-white border-[var(--navy)]"
                   : "bg-white/[0.03] text-[var(--gray)] border-[var(--border-glass)] hover:border-[var(--border-glass)]"
               }`}
             >
@@ -235,7 +235,7 @@ export default function CorrespondencePage() {
                       {item.claim_id ? (
                         <a
                           href={`/dashboard/claim/${item.claim_id}`}
-                          className="bg-[var(--navy)] hover:bg-[var(--navy-light)] text-white px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
+                          className="bg-gradient-to-r from-[var(--pink)] via-[var(--purple)] to-[var(--blue)] hover:shadow-[var(--shadow-glow-pink)] text-white px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
                         >
                           View Claim
                         </a>
@@ -259,7 +259,7 @@ export default function CorrespondencePage() {
                       <select
                         value={selectedClaimId}
                         onChange={(e) => setSelectedClaimId(e.target.value)}
-                        className="flex-1 px-3 py-2 rounded-lg border border-[var(--border-glass)] text-sm focus:border-[var(--navy)] focus:ring-1 focus:ring-[var(--navy)] outline-none"
+                        className="flex-1 px-3 py-2 rounded-lg border border-[var(--border-glass)] text-sm focus:border-[var(--cyan)] focus:ring-1 focus:ring-[var(--cyan)] outline-none"
                       >
                         <option value="">Select a claim...</option>
                         {claims.map((c) => (
@@ -271,7 +271,7 @@ export default function CorrespondencePage() {
                       <button
                         onClick={() => handleManualMatch(item.id)}
                         disabled={!selectedClaimId}
-                        className="bg-[var(--navy)] hover:bg-[var(--navy-light)] disabled:opacity-50 text-white px-4 py-2 rounded-lg text-xs font-medium transition-colors"
+                        className="bg-gradient-to-r from-[var(--pink)] via-[var(--purple)] to-[var(--blue)] hover:shadow-[var(--shadow-glow-pink)] disabled:opacity-50 text-white px-4 py-2 rounded-lg text-xs font-medium transition-colors"
                       >
                         Match
                       </button>

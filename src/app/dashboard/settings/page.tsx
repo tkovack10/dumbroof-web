@@ -290,10 +290,10 @@ function SettingsPageContent() {
 
   return (
     <main className="min-h-screen bg-white/[0.04]">
-      <nav className="bg-[var(--navy)] border-b border-white/10">
+      <nav className="bg-[rgba(6,9,24,0.85)] backdrop-blur-[20px] border-b border-[var(--border-glass)] sticky top-0 z-50">
         <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-lg bg-[var(--red)] flex items-center justify-center font-bold text-white">DR</div>
+            <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-[var(--pink)] to-[var(--blue)] flex items-center justify-center font-bold text-white text-xs">DR</div>
             <span className="text-white font-bold text-lg tracking-tight">dumb roof<sup className="text-[9px] font-medium align-super ml-0.5">™</sup></span>
           </div>
           <a href="/dashboard" className="text-[var(--gray-dim)] hover:text-white text-sm transition-colors">Back to Dashboard</a>
@@ -302,7 +302,7 @@ function SettingsPageContent() {
 
       <div className="max-w-xl mx-auto px-6 py-10">
         <div className="mb-8">
-          <h1 className="text-2xl font-bold text-[var(--navy)]">Company Profile</h1>
+          <h1 className="text-2xl font-bold text-[var(--white)]">Company Profile</h1>
           <p className="text-[var(--gray-muted)] mt-1">
             Your company info and logo will appear on all generated claim documents.
           </p>
@@ -311,7 +311,7 @@ function SettingsPageContent() {
         <form onSubmit={handleSave} className="space-y-8">
           {/* Logo Upload */}
           <div>
-            <label className="block text-sm font-semibold text-[var(--navy)] mb-2">Company Logo</label>
+            <label className="block text-sm font-semibold text-[var(--white)] mb-2">Company Logo</label>
             <div className="flex items-center gap-6">
               <div className="w-20 h-20 rounded-xl bg-white/[0.06] border-2 border-dashed border-[var(--border-glass)] flex items-center justify-center overflow-hidden">
                 {logoPreview ? (
@@ -336,13 +336,13 @@ function SettingsPageContent() {
           <div className="space-y-4">
             {fields.map(({ key, label, placeholder }) => (
               <div key={key}>
-                <label className="block text-sm font-semibold text-[var(--navy)] mb-1">{label}</label>
+                <label className="block text-sm font-semibold text-[var(--white)] mb-1">{label}</label>
                 <input
                   type="text"
                   value={form[key as keyof typeof form]}
                   onChange={(e) => setForm({ ...form, [key]: e.target.value })}
                   placeholder={placeholder}
-                  className="w-full px-4 py-3 rounded-lg border border-[var(--border-glass)] focus:border-[var(--navy)] focus:ring-1 focus:ring-[var(--navy)] outline-none transition-colors text-sm"
+                  className="w-full px-4 py-3 rounded-lg border border-[var(--border-glass)] focus:border-[var(--cyan)] focus:ring-1 focus:ring-[var(--cyan)] outline-none transition-colors text-sm"
                 />
               </div>
             ))}
@@ -353,7 +353,7 @@ function SettingsPageContent() {
             <button
               type="submit"
               disabled={saving}
-              className="bg-[var(--red)] hover:bg-[var(--red-dark)] disabled:opacity-50 text-white px-8 py-3 rounded-xl font-semibold transition-colors text-sm"
+              className="bg-gradient-to-r from-[var(--pink)] via-[var(--purple)] to-[var(--blue)] hover:shadow-[var(--shadow-glow-pink)] disabled:opacity-50 text-white px-8 py-3 rounded-xl font-semibold transition-colors text-sm"
             >
               {saving ? "Saving..." : "Save Profile"}
             </button>
@@ -365,7 +365,7 @@ function SettingsPageContent() {
 
         {/* Billing */}
         <div className="mt-12 pt-8 border-t border-[var(--border-glass)]">
-          <h2 className="text-xl font-bold text-[var(--navy)] mb-1">Billing & Subscription</h2>
+          <h2 className="text-xl font-bold text-[var(--white)] mb-1">Billing & Subscription</h2>
           <p className="text-[var(--gray-muted)] text-sm mb-6">
             Manage your plan and claim quota.
           </p>
@@ -380,7 +380,7 @@ function SettingsPageContent() {
             <div className="bg-[var(--bg-glass)] border border-[var(--border-glass)] rounded-xl p-6 space-y-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-semibold text-[var(--navy)]">
+                  <p className="text-sm font-semibold text-[var(--white)]">
                     {billing.planName} Plan
                   </p>
                   <p className="text-xs text-[var(--gray-muted)] mt-0.5">
@@ -405,7 +405,7 @@ function SettingsPageContent() {
               {/* Usage bar */}
               <div className="w-full bg-white/[0.06] rounded-full h-2">
                 <div
-                  className="bg-[var(--navy)] h-2 rounded-full transition-all"
+                  className="bg-gradient-to-r from-[var(--pink)] to-[var(--blue)] h-2 rounded-full transition-all"
                   style={{
                     width: `${Math.min(
                       100,
@@ -423,7 +423,7 @@ function SettingsPageContent() {
                 {billing.planId === "starter" ? (
                   <a
                     href="/pricing"
-                    className="bg-[var(--red)] hover:bg-[var(--red-dark)] text-white px-5 py-2.5 rounded-lg text-sm font-medium transition-colors"
+                    className="bg-gradient-to-r from-[var(--pink)] via-[var(--purple)] to-[var(--blue)] hover:shadow-[var(--shadow-glow-pink)] text-white px-5 py-2.5 rounded-lg text-sm font-medium transition-colors"
                   >
                     Upgrade Plan
                   </a>
@@ -431,7 +431,7 @@ function SettingsPageContent() {
                   <>
                     <a
                       href="/pricing"
-                      className="bg-[var(--navy)] hover:bg-[var(--navy-light)] text-white px-5 py-2.5 rounded-lg text-sm font-medium transition-colors"
+                      className="bg-gradient-to-r from-[var(--pink)] via-[var(--purple)] to-[var(--blue)] hover:shadow-[var(--shadow-glow-pink)] text-white px-5 py-2.5 rounded-lg text-sm font-medium transition-colors"
                     >
                       Change Plan
                     </a>
@@ -463,7 +463,7 @@ function SettingsPageContent() {
 
         {/* Authorized Forwarders */}
         <div className="mt-12 pt-8 border-t border-[var(--border-glass)]">
-          <h2 className="text-xl font-bold text-[var(--navy)] mb-1">Email Forwarding</h2>
+          <h2 className="text-xl font-bold text-[var(--white)] mb-1">Email Forwarding</h2>
           <p className="text-[var(--gray-muted)] text-sm mb-6">
             Add team members authorized to forward carrier emails to <strong>claims@dumbroof.ai</strong>.
             The system will match forwarded emails to their account.
@@ -475,7 +475,7 @@ function SettingsPageContent() {
               {forwarders.map((fwd) => (
                 <div key={fwd.id} className="flex items-center justify-between bg-white/[0.04] rounded-lg px-4 py-3">
                   <div>
-                    <p className="text-sm font-medium text-[var(--navy)]">
+                    <p className="text-sm font-medium text-[var(--white)]">
                       {fwd.name || fwd.email}
                     </p>
                     <p className="text-xs text-[var(--gray-muted)]">
@@ -504,19 +504,19 @@ function SettingsPageContent() {
                 value={newForwarderEmail}
                 onChange={(e) => setNewForwarderEmail(e.target.value)}
                 placeholder="Email address"
-                className="px-3 py-2.5 rounded-lg border border-[var(--border-glass)] focus:border-[var(--navy)] focus:ring-1 focus:ring-[var(--navy)] outline-none transition-colors text-sm"
+                className="px-3 py-2.5 rounded-lg border border-[var(--border-glass)] focus:border-[var(--cyan)] focus:ring-1 focus:ring-[var(--cyan)] outline-none transition-colors text-sm"
               />
               <input
                 type="text"
                 value={newForwarderName}
                 onChange={(e) => setNewForwarderName(e.target.value)}
                 placeholder="Name (optional)"
-                className="px-3 py-2.5 rounded-lg border border-[var(--border-glass)] focus:border-[var(--navy)] focus:ring-1 focus:ring-[var(--navy)] outline-none transition-colors text-sm"
+                className="px-3 py-2.5 rounded-lg border border-[var(--border-glass)] focus:border-[var(--cyan)] focus:ring-1 focus:ring-[var(--cyan)] outline-none transition-colors text-sm"
               />
               <select
                 value={newForwarderRole}
                 onChange={(e) => setNewForwarderRole(e.target.value)}
-                className="px-3 py-2.5 rounded-lg border border-[var(--border-glass)] focus:border-[var(--navy)] focus:ring-1 focus:ring-[var(--navy)] outline-none transition-colors text-sm"
+                className="px-3 py-2.5 rounded-lg border border-[var(--border-glass)] focus:border-[var(--cyan)] focus:ring-1 focus:ring-[var(--cyan)] outline-none transition-colors text-sm"
               >
                 <option value="sales_rep">Sales Rep</option>
                 <option value="team_member">Team Member</option>
@@ -529,7 +529,7 @@ function SettingsPageContent() {
             <button
               onClick={handleAddForwarder}
               disabled={!newForwarderEmail.trim() || addingForwarder}
-              className="bg-[var(--navy)] hover:bg-[var(--navy-light)] disabled:opacity-50 text-white px-5 py-2.5 rounded-lg text-sm font-medium transition-colors"
+              className="bg-gradient-to-r from-[var(--pink)] via-[var(--purple)] to-[var(--blue)] hover:shadow-[var(--shadow-glow-pink)] disabled:opacity-50 text-white px-5 py-2.5 rounded-lg text-sm font-medium transition-colors"
             >
               {addingForwarder ? "Adding..." : "Add Forwarder"}
             </button>
@@ -538,7 +538,7 @@ function SettingsPageContent() {
 
         {/* Email Integration (Claim Brain) */}
         <div className="mt-12 pt-8 border-t border-[var(--border-glass)]">
-          <h2 className="text-xl font-bold text-[var(--navy)] mb-1">Email Integration</h2>
+          <h2 className="text-xl font-bold text-[var(--white)] mb-1">Email Integration</h2>
           <p className="text-[var(--gray-muted)] text-sm mb-6">
             Connect your Gmail to send emails from Claim Brain as yourself.
             Without Gmail, emails send via <strong>claims@dumbroof.ai</strong> with your company name.
@@ -560,7 +560,7 @@ function SettingsPageContent() {
                     </svg>
                   </div>
                   <div>
-                    <p className="text-sm font-semibold text-[var(--navy)]">Gmail Connected</p>
+                    <p className="text-sm font-semibold text-[var(--white)]">Gmail Connected</p>
                     <p className="text-xs text-[var(--gray-muted)]">
                       Sending from <strong>{gmailEmail}</strong>
                     </p>
@@ -599,7 +599,7 @@ function SettingsPageContent() {
                     </svg>
                   </div>
                   <div>
-                    <p className="text-sm font-semibold text-[var(--navy)]">Gmail Not Connected</p>
+                    <p className="text-sm font-semibold text-[var(--white)]">Gmail Not Connected</p>
                     <p className="text-xs text-[var(--gray-muted)]">
                       Emails currently send via <strong>claims@dumbroof.ai</strong>
                     </p>
@@ -623,7 +623,7 @@ function SettingsPageContent() {
                     }
                   }}
                   disabled={gmailConnecting}
-                  className="bg-[var(--navy)] hover:bg-[var(--navy-light)] disabled:opacity-50 text-white px-5 py-2.5 rounded-lg text-sm font-medium transition-colors"
+                  className="bg-gradient-to-r from-[var(--pink)] via-[var(--purple)] to-[var(--blue)] hover:shadow-[var(--shadow-glow-pink)] disabled:opacity-50 text-white px-5 py-2.5 rounded-lg text-sm font-medium transition-colors"
                 >
                   {gmailConnecting ? "Connecting..." : "Connect Gmail"}
                 </button>
@@ -634,7 +634,7 @@ function SettingsPageContent() {
 
         {/* Repair Pricing */}
         <div className="mt-12 pt-8 border-t border-[var(--border-glass)]">
-          <h2 className="text-xl font-bold text-[var(--navy)] mb-1">Repair Pricing</h2>
+          <h2 className="text-xl font-bold text-[var(--white)] mb-1">Repair Pricing</h2>
           <p className="text-[var(--gray-muted)] text-sm mb-6">
             Set your default pricing for repair jobs. These values are used when AI generates repair quotes.
           </p>
@@ -642,30 +642,30 @@ function SettingsPageContent() {
           <div className="bg-[var(--bg-glass)] border border-[var(--border-glass)] rounded-xl p-6 space-y-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-semibold text-[var(--navy)] mb-1">Diagnostic Fee ($)</label>
+                <label className="block text-sm font-semibold text-[var(--white)] mb-1">Diagnostic Fee ($)</label>
                 <input
                   type="number"
                   step="0.01"
                   min="0"
                   value={repairPricing.diagnostic_fee}
                   onChange={(e) => setRepairPricing({ ...repairPricing, diagnostic_fee: e.target.value })}
-                  className="w-full px-4 py-3 rounded-lg border border-[var(--border-glass)] focus:border-[var(--navy)] focus:ring-1 focus:ring-[var(--navy)] outline-none transition-colors text-sm"
+                  className="w-full px-4 py-3 rounded-lg border border-[var(--border-glass)] focus:border-[var(--cyan)] focus:ring-1 focus:ring-[var(--cyan)] outline-none transition-colors text-sm"
                 />
                 <p className="text-[11px] text-[var(--gray-dim)] mt-1">Flat fee included in every repair</p>
               </div>
               <div>
-                <label className="block text-sm font-semibold text-[var(--navy)] mb-1">Labor Rate ($/hr)</label>
+                <label className="block text-sm font-semibold text-[var(--white)] mb-1">Labor Rate ($/hr)</label>
                 <input
                   type="number"
                   step="0.01"
                   min="0"
                   value={repairPricing.labor_rate_per_hour}
                   onChange={(e) => setRepairPricing({ ...repairPricing, labor_rate_per_hour: e.target.value })}
-                  className="w-full px-4 py-3 rounded-lg border border-[var(--border-glass)] focus:border-[var(--navy)] focus:ring-1 focus:ring-[var(--navy)] outline-none transition-colors text-sm"
+                  className="w-full px-4 py-3 rounded-lg border border-[var(--border-glass)] focus:border-[var(--cyan)] focus:ring-1 focus:ring-[var(--cyan)] outline-none transition-colors text-sm"
                 />
               </div>
               <div>
-                <label className="block text-sm font-semibold text-[var(--navy)] mb-1">Material Markup (%)</label>
+                <label className="block text-sm font-semibold text-[var(--white)] mb-1">Material Markup (%)</label>
                 <input
                   type="number"
                   step="1"
@@ -673,19 +673,19 @@ function SettingsPageContent() {
                   max="200"
                   value={repairPricing.markup_percent}
                   onChange={(e) => setRepairPricing({ ...repairPricing, markup_percent: e.target.value })}
-                  className="w-full px-4 py-3 rounded-lg border border-[var(--border-glass)] focus:border-[var(--navy)] focus:ring-1 focus:ring-[var(--navy)] outline-none transition-colors text-sm"
+                  className="w-full px-4 py-3 rounded-lg border border-[var(--border-glass)] focus:border-[var(--cyan)] focus:ring-1 focus:ring-[var(--cyan)] outline-none transition-colors text-sm"
                 />
                 <p className="text-[11px] text-[var(--gray-dim)] mt-1">Applied on top of material cost (20 = 20% markup)</p>
               </div>
               <div>
-                <label className="block text-sm font-semibold text-[var(--navy)] mb-1">Minimum Job Charge ($)</label>
+                <label className="block text-sm font-semibold text-[var(--white)] mb-1">Minimum Job Charge ($)</label>
                 <input
                   type="number"
                   step="0.01"
                   min="0"
                   value={repairPricing.minimum_job_charge}
                   onChange={(e) => setRepairPricing({ ...repairPricing, minimum_job_charge: e.target.value })}
-                  className="w-full px-4 py-3 rounded-lg border border-[var(--border-glass)] focus:border-[var(--navy)] focus:ring-1 focus:ring-[var(--navy)] outline-none transition-colors text-sm"
+                  className="w-full px-4 py-3 rounded-lg border border-[var(--border-glass)] focus:border-[var(--cyan)] focus:ring-1 focus:ring-[var(--cyan)] outline-none transition-colors text-sm"
                 />
                 <p className="text-[11px] text-[var(--gray-dim)] mt-1">Floor price — no repair goes below this</p>
               </div>
@@ -712,7 +712,7 @@ function SettingsPageContent() {
                   setTimeout(() => setPricingSaved(false), 3000);
                 }}
                 disabled={pricingSaving}
-                className="bg-[var(--navy)] hover:bg-[var(--navy-light)] disabled:opacity-50 text-white px-6 py-2.5 rounded-lg text-sm font-medium transition-colors"
+                className="bg-gradient-to-r from-[var(--pink)] via-[var(--purple)] to-[var(--blue)] hover:shadow-[var(--shadow-glow-pink)] disabled:opacity-50 text-white px-6 py-2.5 rounded-lg text-sm font-medium transition-colors"
               >
                 {pricingSaving ? "Saving..." : "Save Pricing"}
               </button>
@@ -725,7 +725,7 @@ function SettingsPageContent() {
 
         {/* Password */}
         <div ref={passwordRef} className="mt-12 pt-8 border-t border-[var(--border-glass)]">
-          <h2 className="text-xl font-bold text-[var(--navy)] mb-1">
+          <h2 className="text-xl font-bold text-[var(--white)] mb-1">
             {isPasswordReset ? "Set Your Password" : "Change Password"}
           </h2>
           <p className="text-[var(--gray-muted)] text-sm mb-6">
@@ -736,7 +736,7 @@ function SettingsPageContent() {
 
           <form onSubmit={handlePasswordUpdate} className="space-y-4 max-w-sm">
             <div>
-              <label className="block text-sm font-semibold text-[var(--navy)] mb-1">New Password</label>
+              <label className="block text-sm font-semibold text-[var(--white)] mb-1">New Password</label>
               <input
                 type="password"
                 required
@@ -744,11 +744,11 @@ function SettingsPageContent() {
                 onChange={(e) => setNewPassword(e.target.value)}
                 placeholder="Enter new password"
                 minLength={6}
-                className="w-full px-4 py-3 rounded-lg border border-[var(--border-glass)] focus:border-[var(--navy)] focus:ring-1 focus:ring-[var(--navy)] outline-none transition-colors text-sm"
+                className="w-full px-4 py-3 rounded-lg border border-[var(--border-glass)] focus:border-[var(--cyan)] focus:ring-1 focus:ring-[var(--cyan)] outline-none transition-colors text-sm"
               />
             </div>
             <div>
-              <label className="block text-sm font-semibold text-[var(--navy)] mb-1">Confirm Password</label>
+              <label className="block text-sm font-semibold text-[var(--white)] mb-1">Confirm Password</label>
               <input
                 type="password"
                 required
@@ -756,7 +756,7 @@ function SettingsPageContent() {
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 placeholder="Confirm new password"
                 minLength={6}
-                className="w-full px-4 py-3 rounded-lg border border-[var(--border-glass)] focus:border-[var(--navy)] focus:ring-1 focus:ring-[var(--navy)] outline-none transition-colors text-sm"
+                className="w-full px-4 py-3 rounded-lg border border-[var(--border-glass)] focus:border-[var(--cyan)] focus:ring-1 focus:ring-[var(--cyan)] outline-none transition-colors text-sm"
               />
             </div>
 
@@ -774,7 +774,7 @@ function SettingsPageContent() {
             <button
               type="submit"
               disabled={passwordSaving}
-              className="bg-[var(--red)] hover:bg-[var(--red-dark)] disabled:opacity-50 text-white px-8 py-3 rounded-xl font-semibold transition-colors text-sm"
+              className="bg-gradient-to-r from-[var(--pink)] via-[var(--purple)] to-[var(--blue)] hover:shadow-[var(--shadow-glow-pink)] disabled:opacity-50 text-white px-8 py-3 rounded-xl font-semibold transition-colors text-sm"
             >
               {passwordSaving ? "Updating..." : "Update Password"}
             </button>
