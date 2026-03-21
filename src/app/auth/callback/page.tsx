@@ -146,12 +146,7 @@ export default function AuthCallbackPage() {
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
           <a href="/" className="inline-flex items-center gap-3">
-            <div className="w-12 h-12 rounded-xl bg-[var(--red)] flex items-center justify-center font-bold text-white text-xl">
-              DR
-            </div>
-            <span className="text-white font-bold text-2xl tracking-tight">
-              dumb roof<sup className="text-[10px] font-medium align-super ml-0.5">&trade;</sup>
-            </span>
+            <img src="/logo-glassmorphism.png" alt="dumb roof" className="h-14 w-auto rounded-xl" />
           </a>
         </div>
 

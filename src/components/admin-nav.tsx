@@ -27,12 +27,7 @@ export function AdminNav({ variant = "full" }: AdminNavProps) {
       <div className="px-6 py-4 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <a href="/" className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-[var(--pink)] to-[var(--blue)] flex items-center justify-center font-bold text-white text-xs">
-              DR
-            </div>
-            <span className="gradient-text font-bold text-lg tracking-tight">
-              dumb roof<sup className="text-[9px] font-medium align-super ml-0.5">&trade;</sup>
-            </span>
+            <img src="/logo-glassmorphism.png" alt="dumb roof" className="h-10 w-auto rounded-md" />
           </a>
           <span className="bg-amber-500/20 text-amber-400 text-xs font-semibold px-2 py-0.5 rounded-full ml-2">
             ADMIN
