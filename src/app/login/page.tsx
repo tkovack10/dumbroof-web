@@ -109,7 +109,7 @@ function LoginPageContent() {
         {/* Logo */}
         <div className="text-center mb-8">
           <a href="/" className="inline-flex items-center gap-3">
-            <img src="/logo-glassmorphism.png" alt="dumb roof" className="h-14 w-auto rounded-xl" />
+            <span className="text-3xl font-extrabold tracking-tight gradient-text">dumbroof<span className="font-normal opacity-70">.ai</span></span>
           </a>
         </div>
 

@@ -215,7 +215,7 @@ export function DashboardContent({ user }: { user: User }) {
       <nav className="bg-[rgba(6,9,24,0.85)] backdrop-blur-[20px] border-b border-[var(--border-glass)] sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
           <a href="/" className="flex items-center gap-3">
-            <img src="/logo-glassmorphism.png" alt="dumb roof" className="h-10 w-auto rounded-md" />
+            <span className="text-2xl font-extrabold tracking-tight gradient-text">dumbroof<span className="font-normal opacity-70">.ai</span></span>
           </a>
           <div className="flex items-center gap-4">
             {/* Desktop nav links */}

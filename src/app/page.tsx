@@ -52,7 +52,7 @@ export default async function Home() {
       <nav className="fixed top-0 left-0 right-0 z-50 bg-[var(--navy)]/95 backdrop-blur-sm border-b border-white/10">
         <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
           <a href="/" className="flex items-center gap-3">
-            <img src="/logo-glassmorphism.png" alt="dumb roof" className="h-10 w-auto rounded-md" />
+            <span className="text-2xl font-extrabold tracking-tight gradient-text">dumbroof<span className="font-normal opacity-70">.ai</span></span>
           </a>
           <div className="flex items-center gap-6">
             <a href="#problem" className="text-[var(--gray-dim)] hover:text-white text-sm transition-colors hidden sm:block">
