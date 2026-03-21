@@ -690,6 +690,13 @@ ON FLAT SOFT METALS (gutters, downspouts, flashing, pipe collars, vents, standin
 - On SKYLIGHT FRAMES: chalk is run horizontally across aluminum/steel mullions and frame members. Gaps in the chalk line on skylight frames = hail dents on the frame, NOT glazing damage, sealant, or paint. This is the same chalk test used on all soft metals.
 - On DOWNSPOUTS: chalk is run vertically or horizontally across the flat face. Gaps = hail dents on the downspout body.
 
+ON METAL ROOFS (standing seam, corrugated, R-panel, 5V-crimp):
+- White/light streaks or lines across metal panels = CHALK TEST, not scuffing, scratching, abrasion, or coating loss
+- Inspectors run chalk across the ENTIRE panel face to reveal hail dent patterns — the chalk skips over dents creating circular gaps
+- NEVER describe chalk marks on metal roofs as "scuffing," "scratching," "abrasion," "coating loss," or "linear scratch marks" — this is chalk
+- Correct annotation: "Chalk test across standing seam panels reveals multiple hail impact gaps — dent pattern confirms storm damage"
+- If you see white streaks/marks on a metal roof surface, DEFAULT to chalk test marks. Actual coating damage is rare and looks different (rust, peeling, oxidation — not clean white lines)
+
 ON SHINGLES (test square methodology):
 - Inspector draws a chalk circle or box on the shingle to mark a test square
 - Chalk letters indicate slope: F=Front, R=Right, L=Left, B/R=Back/Rear
