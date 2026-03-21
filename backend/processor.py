@@ -2634,8 +2634,8 @@ def build_multi_structure_line_items(measurements: dict, photo_analysis: dict, s
                     "stories": struct.get("stories", measurements.get("stories", 1)),
                     "total_roof_area_sf": area_sf,
                     "total_roof_area_sq": area_sq,
-                    # Walls/siding: only assign to first structure (property-level, not per-structure)
-                    "walls": struct.get("walls", measurements.get("walls", {})) if i == 0 else struct.get("walls", {}),
+                    # Walls/siding: each structure gets its own walls if available, fallback to property-level for first structure
+                    "walls": struct.get("walls") or (measurements.get("walls", {}) if i == 0 else {}),
                 }
 
                 # Map UI material names to estimate_request format
@@ -2657,8 +2657,8 @@ def build_multi_structure_line_items(measurements: dict, photo_analysis: dict, s
                 "stories": struct.get("stories", measurements.get("stories", 1)),
                 "total_roof_area_sf": struct.get("roof_area_sf", 0),
                 "total_roof_area_sq": struct.get("roof_area_sq", 0),
-                # Walls/siding: only assign to first structure (property-level, not per-structure)
-                "walls": struct.get("walls", measurements.get("walls", {})) if i == 0 else struct.get("walls", {}),
+                # Walls/siding: each structure gets its own walls if available, fallback to property-level for first structure
+                "walls": struct.get("walls") or (measurements.get("walls", {}) if i == 0 else {}),
             }
 
             # Per-structure material via shingle_type → user_notes (weight 3.0 in detector)
@@ -2710,7 +2710,16 @@ def build_multi_structure_line_items(measurements: dict, photo_analysis: dict, s
         all_items = deduped
 
     print(f"[LINE ITEMS] Total across {len(structs)} structures: {len(all_items)} items")
-    return _sort_line_items(all_items)
+
+    # Multi-structure: sort WITHIN each structure, preserve structure grouping.
+    # build_line_items() already sorts each structure's items (line 3213).
+    # Do NOT re-sort globally — that interleaves structures and destroys sections.
+    if len(structs) > 1:
+        # Items are already in structure order (house items, then garage, then shed).
+        # Each batch is already sorted by _sort_line_items inside build_line_items().
+        return all_items
+    else:
+        return _sort_line_items(all_items)
 
 
 def _extract_damage_triggers(photo_analysis: dict) -> dict:
