@@ -1427,13 +1427,22 @@ async def gmail_auth_disconnect(user_id: str = Body(..., embed=True)):
 # ===================================================================
 
 async def poll_for_claims():
-    """Background poller — checks for new claims every 10 seconds."""
+    """Background poller — checks for new claims every 10 seconds.
+    Uses atomic status update to prevent duplicate processing across workers.
+    """
     while True:
         try:
             sb = get_supabase_client()
             result = sb.table("claims").select("id").eq("status", "uploaded").execute()
             for claim in result.data:
-                print(f"[POLLER] Found new claim: {claim['id']}")
+                # Atomically claim this job by setting status to processing.
+                # If another worker already claimed it, the update returns 0 rows.
+                lock = sb.table("claims").update(
+                    {"status": "processing"}
+                ).eq("id", claim["id"]).eq("status", "uploaded").execute()
+                if not lock.data:
+                    continue  # Another worker already claimed it
+                print(f"[POLLER] Claimed and processing: {claim['id']}")
                 await run_processing(claim["id"])
         except Exception as e:
             print(f"[POLLER] Error: {e}")
