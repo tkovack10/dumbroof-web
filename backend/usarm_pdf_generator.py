@@ -24,7 +24,6 @@ import glob
 import base64
 import re
 import subprocess
-from difflib import SequenceMatcher
 
 # ===================================================================
 # RESOLVE PATHS FROM CONFIG
@@ -2495,10 +2494,8 @@ body {{ margin: 0; padding: 0; }}
 
 <h3>{lang['comparison_header']}</h3>
 <table>
-    <tr><th></th><th class="amt">{carrier['name']}</th><th class="amt">USA Roof Masters</th><th class="amt">Variance</th></tr>
-    <tr><td>RCV</td><td class="amt">{fmt_money(fin['carrier_rcv'])}</td><td class="amt">{fmt_money(fin['total_with_op'])}</td><td class="amt variance-positive">+{fmt_money(fin['variance'])}</td></tr>
-    <tr><td>Deductible</td><td class="amt">{fmt_money(fin['deductible'])}</td><td class="amt">{fmt_money(fin['deductible'])}</td><td class="amt">--</td></tr>
-    <tr class="section-total"><td><strong>Net Claim</strong></td><td class="amt">{fmt_money(fin['carrier_net'])}</td><td class="amt"><strong>{fmt_money(fin['net_claim'])}</strong></td><td class="amt variance-positive"><strong>+{fmt_money(fin['net_claim'] - fin['carrier_net'])}</strong></td></tr>
+    <tr><th></th><th class="amt">{carrier['name']}</th><th class="amt">{company['name']}</th><th class="amt">Variance</th></tr>
+    <tr class="section-total"><td><strong>RCV</strong></td><td class="amt"><strong>{fmt_money(fin['carrier_rcv'])}</strong></td><td class="amt"><strong>{fmt_money(fin['total_with_op'])}</strong></td><td class="amt variance-positive"><strong>+{fmt_money(fin['variance'])}</strong></td></tr>
 </table>
 
 <div class="highlight-box">
@@ -2585,9 +2582,13 @@ def build_supplement_report(config):
         if ev_qty and ev_unit:
             contractor_col += f" ({ev_qty} {ev_unit})"
 
+        # Dollar amounts
+        usarm_amt_str = fmt_money(usarm_amt) if usarm_amt else "&mdash;"
+
         # Carrier column
         carrier_desc = row.get("carrier_desc", "")
         carrier_amt = row.get("carrier_amount", 0) or 0
+        carrier_amt_str = fmt_money(carrier_amt) if carrier_amt else "&mdash;"
         carrier_qty = row.get("carrier_qty", "")
         carrier_unit = row.get("carrier_unit", "")
 
@@ -2620,6 +2621,7 @@ def build_supplement_report(config):
         elif status == "carrier_only":
             var_class = ''
             contractor_col = "&mdash;"
+            usarm_amt_str = "&mdash;"
             note = row.get("note", "Carrier-only item")
         else:
             var_class = ""
@@ -2628,7 +2630,9 @@ def build_supplement_report(config):
             <td>{row_num}</td>
             <td><strong>{item_desc}</strong></td>
             <td>{carrier_col}</td>
+            <td class="amt">{carrier_amt_str}</td>
             <td>{contractor_col}</td>
+            <td class="amt">{usarm_amt_str}</td>
             <td{var_class}>{note}</td>
         </tr>\n"""
 
@@ -2682,10 +2686,8 @@ def build_supplement_report(config):
         # Build a simple variance summary
         variance_summary_html += f"""<h2>VARIANCE SUMMARY</h2>
 <table>
-    <tr><th></th><th class="amt">{carrier['name']}</th><th class="amt">USA Roof Masters</th><th class="amt">Variance</th></tr>
-    <tr><td>RCV</td><td class="amt">{fmt_money(fin['carrier_rcv'])}</td><td class="amt">{fmt_money(fin['total_with_op'])}</td><td class="amt variance-positive">+{fmt_money(fin['variance'])}</td></tr>
-    <tr><td>Deductible</td><td class="amt">{fmt_money(fin['deductible'])}</td><td class="amt">{fmt_money(fin['deductible'])}</td><td class="amt">--</td></tr>
-    <tr class="section-total"><td><strong>Net Claim</strong></td><td class="amt">{fmt_money(fin['carrier_net'])}</td><td class="amt"><strong>{fmt_money(fin['net_claim'])}</strong></td><td class="amt variance-positive"><strong>+{fmt_money(fin['net_claim'] - fin['carrier_net'])}</strong></td></tr>
+    <tr><th></th><th class="amt">{carrier['name']}</th><th class="amt">{company['name']}</th><th class="amt">Variance</th></tr>
+    <tr class="section-total"><td><strong>RCV</strong></td><td class="amt"><strong>{fmt_money(fin['carrier_rcv'])}</strong></td><td class="amt"><strong>{fmt_money(fin['total_with_op'])}</strong></td><td class="amt variance-positive"><strong>+{fmt_money(fin['variance'])}</strong></td></tr>
 </table>
 """
 
@@ -2791,7 +2793,7 @@ td.var-pos {{ color: #c8102e; font-weight: 700; }}
 
 <h2>LINE-BY-LINE VARIANCE</h2>
 <table style="font-size:8pt;">
-    <tr><th style="width:4%">#</th><th style="width:18%">Line Item</th><th style="width:28%">{carrier['name']}</th><th style="width:28%">Contractor</th><th style="width:22%">Variance &amp; Justification</th></tr>
+    <tr><th style="width:3%">#</th><th style="width:16%">Line Item</th><th style="width:20%">{carrier['name']}</th><th style="width:8%" class="amt">{carrier['name']} $</th><th style="width:20%">{company['name']}</th><th style="width:8%" class="amt">{company['name']} $</th><th style="width:25%">Variance &amp; Justification</th></tr>
     {variance_rows}
 </table>
 
