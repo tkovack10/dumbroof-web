@@ -1861,6 +1861,49 @@ def build_claim_config(
             stats_str = " ".join(f"{k}={v}" for k, v in sorted(by_method.items()))
             print(f"[SCOPE MATCH] EagleView-first: {stats_str} total={len(scope_comparison_matched)}", flush=True)
 
+            # Run UP001-UP008 underpayment pattern detection from scope_comparison/rules.py
+            try:
+                from scope_comparison.rules import run_all_rules
+                eagleview_data = {
+                    "total_area_sf": scope_meas.get("total_roof_area_sf", 0),
+                    "total_squares": scope_meas.get("total_roof_area_sq", 0),
+                    "eave_lf": scope_meas.get("eave", 0),
+                    "valley_lf": scope_meas.get("valley", 0),
+                    "ridge_lf": scope_meas.get("ridge", 0),
+                    "rake_lf": scope_meas.get("rake", 0),
+                    "ridge_hip_lf": scope_meas.get("ridge", 0) + scope_meas.get("hip", 0),
+                    "step_flashing_lf": scope_meas.get("step_flashing", 0),
+                    "facets": scope_meas.get("facets", 0),
+                    "stories": scope_meas.get("stories", 1),
+                }
+                carrier_items_for_rules = carrier_data.get("carrier_line_items", [])
+                rules_result = run_all_rules(
+                    carrier_data={"line_items": carrier_items_for_rules},
+                    eagleview_data=eagleview_data,
+                    state=state
+                )
+                if rules_result and rules_result.findings:
+                    # Enrich comparison rows with rule findings
+                    for finding in rules_result.findings:
+                        # Find matching comparison row by description overlap
+                        for row in scope_comparison_matched:
+                            row_desc = (row.get("checklist_desc") or row.get("usarm_desc") or "").lower()
+                            finding_desc = finding.item_description.lower()
+                            if finding_desc in row_desc or row_desc in finding_desc:
+                                existing_note = row.get("note", "")
+                                rule_note = f"[{finding.rule_id}] {finding.detail}"
+                                if rule_note not in existing_note:
+                                    row["note"] = f"{existing_note} | {rule_note}" if existing_note else rule_note
+                                if finding.code_reference and not row.get("code_citation"):
+                                    row["irc_code"] = finding.code_reference
+                                break
+                    print(f"[RULES] UP pattern detection: {len(rules_result.findings)} findings, "
+                          f"${rules_result.total_supplement:,.0f} total supplement value")
+            except ImportError:
+                print("[RULES] scope_comparison/rules.py not available — skipping UP detection")
+            except Exception as e:
+                print(f"[RULES] UP pattern detection failed (non-fatal): {e}")
+
         except Exception as e:
             print(f"[SCOPE MATCH] XactRegistry matching failed: {e}", flush=True)
             import traceback as _tb
