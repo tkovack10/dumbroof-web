@@ -2320,15 +2320,66 @@ CANONICAL_ORDER = [
 
 
 def canonical_sort_key(item_name):
-    """Return sort index for canonical line item ordering.
-    Remove items sort before install items within the same category."""
-    name_lower = item_name.lower().strip()
-    is_remove = bool(re.search(r'\b(?:remove|tear\s*off|tear\s*out|detach)\b', name_lower))
-    clean = re.sub(r'^(r&r|remove|tear\s*off|tear\s*out|install|replace|r/r)\s+', '', name_lower).strip()
-    for idx, canon in enumerate(CANONICAL_ORDER):
-        if canon in clean or clean in canon:
-            return idx - 0.5 if is_remove and idx > 3 else idx
-    return len(CANONICAL_ORDER)
+    """Return sort index for canonical Xactimate build order.
+    Uses Tom's prescribed order — specific keyword patterns checked
+    in priority order so 'starter strip' matches before 'shingle'."""
+    desc = item_name.lower().strip()
+
+    # Roofing items — check most specific patterns first
+    _ROOFING_ORDER = [
+        (0, [r"\bremove\b", r"\btear\s*(off|out)\b", r"\bdetach\b"]),  # Remove roof
+        (1, [r"\bcomp\s*shingle\b", r"\blaminated\b.*roofing", r"\b3[- ]tab\b.*roofing",
+             r"\bslate\s+roofing\b", r"\btile\s+roofing\b", r"\bmetal\s+roof",
+             r"\bbitumen\b", r"\bwood\s+shake\b", r"\bcedar\s+shake\b"]),  # Install roof material
+        (2, [r"\bunderlayment\b", r"\bfelt\b"]),  # Underlayment / felt
+        (3, [r"\bice\s*[&and]+\s*water\b", r"\bi&w\b", r"\bi ?w ?s\b"]),  # I&W
+        (4, [r"\bdrip\s+edge\b"]),
+        (5, [r"\bstarter\s*(strip|course)?\b"]),
+        (6, [r"\bridge\s+cap\b", r"\bhip\s*[&and]+\s*ridge\b"]),
+        (7, [r"\bridge\s+vent\b"]),
+        (8, [r"\bvalley\s+(flash|metal)\b"]),
+        (9, [r"\bstep\s+flash\b"]),
+        (10, [r"\bcounter\s*flash\b", r"\bapron\s+flash\b"]),
+        (11, [r"\bchimney\s+flash\b"]),
+        (12, [r"\bpipe\s+(boot|jack|collar)\b", r"\bplumbing\s+vent\b"]),
+        (13, [r"\bexhaust\s+(vent|cap)\b", r"\bbox\s+vent\b", r"\broof\s+vent\b",
+              r"\bpower\s+(fan|vent)\b", r"\bturtle\s+vent\b"]),
+        (14, [r"\bskylight\b"]),
+        (15, [r"\bsteep\b", r"\b[79]\/?12\b", r"\b1[0-2]\/?12\b"]),
+        (16, [r"\bhigh\s+roof\b", r"\b[23]\s*stor"]),
+        (17, [r"\broofer\b", r"\broofing\s+labor\b", r"(?<!siding\s)\blabor\s+min"]),
+        (18, [r"\bequipment\s+operator\b"]),
+        (19, [r"\bgable\s+cornice\b"]),
+        (20, [r"\bdumpster\b", r"\bdebris\b", r"\bhaul\b"]),
+        (21, [r"\bgutter\b", r"\bdownspout\b"]),
+    ]
+
+    _SIDING_ORDER = [
+        (30, [r"\bsiding\b(?!.*labor)"]),  # R&R siding material (not siding labor)
+        (31, [r"\bhouse\s*wrap\b", r"\btyvek\b", r"\bair.moisture\b"]),
+        (32, [r"\bfanfold\b", r"\binsulation\s+board\b", r"\bfoam\s+board\b"]),
+        (33, [r"\bwindow\s*(wrap|trim)\b", r"\bwrap\s+wood\s+window\b"]),
+        (34, [r"\bdoor\s*(frame\s+)?wrap\b", r"\bdoor\s+trim\b"]),
+        (35, [r"\bwall\s+flash\b"]),
+        (36, [r"\bshutter\b"]),
+        (37, [r"\bsiding\s+labor\b", r"\bsiding.*labor\s+min"]),
+        (38, [r"\bscaffold"]),
+    ]
+
+    # Check roofing patterns — skip remove patterns for siding/gutter/window removes
+    for order, patterns in _ROOFING_ORDER:
+        if order == 0:  # Remove — only for roofing removes
+            if any(s in desc for s in ["siding", "gutter", "window", "door"]):
+                continue
+        for pat in patterns:
+            if re.search(pat, desc):
+                return order
+    # Check siding patterns
+    for order, patterns in _SIDING_ORDER:
+        for pat in patterns:
+            if re.search(pat, desc):
+                return order
+    return 50  # Unknown items sort to the middle
 
 
 # ===================================================================
