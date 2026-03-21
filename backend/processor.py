@@ -1736,6 +1736,7 @@ def build_claim_config(
                                                   zip_code=_zip, city=_city)
 
     # Enrich line items with Xactimate codes, IRC citations, supplement arguments, AND correct prices
+    registry = None
     try:
         registry = _get_registry(state, city=claim.get("address", "").split(",")[-2].strip() if "," in claim.get("address", "") else None)
         enriched_count = 0
@@ -1793,6 +1794,74 @@ def build_claim_config(
 
     # Build deterministic code violations based on state + scope
     deterministic_violations = _build_code_violations(state, line_items, trades)
+
+    # ═══════════════════════════════════════════════════════════════════════════
+    # SCOPE COMPARISON — Tom's methodology: Measurements → Carrier → Contractor
+    #   Step 1 ✅ COMPLETE (above): Line items determined from measurements + photos
+    #   Step 2: Compare determined line items against carrier scope
+    #   Step 3: Carrier-informed data available for config building below
+    # ═══════════════════════════════════════════════════════════════════════════
+
+    # Detect roof material (from photos/notes/carrier — used for comparison hints)
+    detected_material = _detect_roof_material(photo_analysis, user_notes or "",
+                                               carrier_data, estimate_request=claim.get("estimate_request"))
+    shingle_type = "3tab" if detected_material == "3tab" else "laminated"
+
+    # Build scope measurements dict from EagleView data (ground truth)
+    _meas_inner = measurements.get("measurements", {})
+    _pens_inner = measurements.get("penetrations", {})
+    scope_meas = {
+        "remove_sq": sum(s.get("roof_area_sq", 0) for s in structs),
+        "install_sq": sum(s.get("roof_area_sq", 0) for s in structs),
+        "ridge_lf": _meas_inner.get("ridge", 0),
+        "eave_lf": _meas_inner.get("eave", 0),
+        "rake_lf": _meas_inner.get("rake", 0),
+        "valley_lf": _meas_inner.get("valley", 0),
+        "step_lf": _meas_inner.get("step_flashing", 0),
+        "gutter_lf": _meas_inner.get("gutter", 0),
+        "penetrations": _pens_inner.get("pipes", 0),
+        "chimneys": _pens_inner.get("chimneys", 0),
+        "pitch": 4,
+        "stories": measurements.get("stories", 1),
+    }
+
+    # Step 2: Run scope comparison BEFORE building config (carrier examined AFTER measurements)
+    scope_comparison_matched = None
+    _has_carrier = bool(carrier_data)
+    _has_cli = bool(carrier_data.get("carrier_line_items")) if carrier_data else False
+    print(f"[SCOPE DEBUG] Guard check: carrier_data={_has_carrier}, carrier_line_items={_has_cli}", flush=True)
+    if carrier_data and carrier_data.get("carrier_line_items"):
+        try:
+            if not registry:
+                registry = _get_registry(state, city=prop.get("city"))
+
+            # Debug: verify measurements are populated before scope comparison
+            _meas_vals = {k: v for k, v in scope_meas.items() if v}
+            print(f"[SCOPE DEBUG] scope_meas keys with values: {list(_meas_vals.keys())}", flush=True)
+            print(f"[SCOPE DEBUG] carrier_items={len(carrier_data['carrier_line_items'])}, usarm_items={len(line_items)}, state={state}, shingle={shingle_type}", flush=True)
+
+            scope_comparison_matched = registry.pre_match_scope_comparison(
+                carrier_data["carrier_line_items"], line_items,
+                measurements=scope_meas,
+                state=state,
+                config_hints={"shingle_type": shingle_type}
+            )
+            # Log match statistics
+            by_method = {}
+            for m in scope_comparison_matched:
+                method = m.get("matched_by", "unknown")
+                by_method[method] = by_method.get(method, 0) + 1
+            stats_str = " ".join(f"{k}={v}" for k, v in sorted(by_method.items()))
+            print(f"[SCOPE MATCH] EagleView-first: {stats_str} total={len(scope_comparison_matched)}", flush=True)
+
+        except Exception as e:
+            print(f"[SCOPE MATCH] XactRegistry matching failed: {e}", flush=True)
+            import traceback as _tb
+            _tb.print_exc()
+            sys.stdout.flush()
+
+    # Step 3: Carrier-informed data is now available — config building below uses comparison results
+    # scope_comparison_matched replaces raw carrier_line_items in config["carrier"]
 
     # Filter photo_filenames to match filtered annotations (fix off-by-one when stock images removed)
     # photo_tags is ALREADY FILTERED by analyze_photos() — missing keys = removed non-inspection images
@@ -1879,7 +1948,7 @@ def build_claim_config(
             "inspector_company": carrier_data["carrier"].get("inspector_company", "") if carrier_data else "",
             "inspector_name": carrier_data["carrier"].get("inspector_name", "") if carrier_data else "",
             "inspection_date": carrier_data["carrier"].get("inspection_date", "") if carrier_data else "",
-            "carrier_line_items": carrier_data.get("carrier_line_items", []) if carrier_data else [],
+            "carrier_line_items": scope_comparison_matched or (carrier_data.get("carrier_line_items", []) if carrier_data else []),
             "carrier_arguments": carrier_data.get("carrier_arguments", []) if carrier_data else [],
         },
         "dates": {
@@ -2022,9 +2091,7 @@ def build_claim_config(
     }
 
     # Propagate detected roof material into structures[0].shingle_type
-    # Photo analysis identifies the material visually; this ensures it's in the config
-    detected_material = _detect_roof_material(photo_analysis, user_notes or "", config.get("carrier"),
-                                               estimate_request=claim.get("estimate_request"))
+    # detected_material already computed above during scope comparison setup (measurements-first order)
     material_labels = {
         "laminated": "Architectural Laminated Comp Shingle",
         "3tab": "3-Tab 25yr Comp Shingle",
@@ -2075,66 +2142,8 @@ def build_claim_config(
         if reasoning:
             config.setdefault("forensic_findings", {}).setdefault("key_arguments", []).append(reasoning)
 
-    # Cross-reference carrier line items against USARM line items using XactRegistry
-    _has_carrier = bool(carrier_data)
-    _has_cli = bool(config.get("carrier", {}).get("carrier_line_items"))
-    print(f"[SCOPE DEBUG] Guard check: carrier_data={_has_carrier}, carrier_line_items={_has_cli}, carrier keys={list(config.get('carrier', {}).keys())[:5]}", flush=True)
-    if carrier_data and config.get("carrier", {}).get("carrier_line_items"):
-        try:
-            registry = _get_registry(state, city=config.get("property", {}).get("city"))
-            carrier_items = config["carrier"]["carrier_line_items"]
-            usarm_items = config.get("line_items", [])
-            # Build measurements dict for ground-truth validation in scope comparison
-            _meas_inner = config.get("measurements", {})
-            _pens_inner = measurements.get("penetrations", {}) if measurements else {}
-            scope_meas = {
-                "remove_sq": sum(s.get("roof_area_sq", 0) for s in config.get("structures", [{}])),
-                "install_sq": sum(s.get("roof_area_sq", 0) for s in config.get("structures", [{}])),
-                "ridge_lf": _meas_inner.get("ridge", 0),
-                "eave_lf": _meas_inner.get("eave", 0),
-                "rake_lf": _meas_inner.get("rake", 0),
-                "valley_lf": _meas_inner.get("valley", 0),
-                "step_lf": _meas_inner.get("step_flashing", 0),
-                "gutter_lf": _meas_inner.get("gutter", 0),
-                "penetrations": _pens_inner.get("pipes", 0),
-                "chimneys": _pens_inner.get("chimneys", 0),
-                "pitch": 4,
-                "stories": measurements.get("stories", 1) if measurements else 1,
-            }
-            # Get shingle_type from photo analysis (ground truth, NOT carrier assumption)
-            shingle_type = "laminated"  # default
-            structs = config.get("structures", [{}])
-            if structs:
-                st = (structs[0].get("shingle_type") or "").lower()
-                if "3-tab" in st or "three-tab" in st or "3 tab" in st:
-                    shingle_type = "3tab"
-
-            # Debug: verify measurements are populated before scope comparison
-            _meas_vals = {k: v for k, v in scope_meas.items() if v}
-            print(f"[SCOPE DEBUG] scope_meas keys with values: {list(_meas_vals.keys())}", flush=True)
-            print(f"[SCOPE DEBUG] carrier_items={len(carrier_items)}, usarm_items={len(usarm_items)}, state={state}, shingle={shingle_type}", flush=True)
-
-            matched = registry.pre_match_scope_comparison(
-                carrier_items, usarm_items,
-                measurements=scope_meas,
-                state=state,
-                config_hints={"shingle_type": shingle_type}
-            )
-            config["carrier"]["carrier_line_items"] = matched
-            # Log match statistics
-            by_method = {}
-            for m in matched:
-                method = m.get("matched_by", "unknown")
-                by_method[method] = by_method.get(method, 0) + 1
-            stats_str = " ".join(f"{k}={v}" for k, v in sorted(by_method.items()))
-            print(f"[SCOPE MATCH] EagleView-first: {stats_str} total={len(matched)}", flush=True)
-            # Missing items now detected naturally by checklist walk — no separate find_missing_items needed
-
-        except Exception as e:
-            print(f"[SCOPE MATCH] XactRegistry matching failed: {e}", flush=True)
-            import traceback as _tb
-            _tb.print_exc()
-            sys.stdout.flush()
+    # Scope comparison already completed above (measurements-first methodology).
+    # config["carrier"]["carrier_line_items"] contains comparison results, not raw carrier items.
 
     return config
 

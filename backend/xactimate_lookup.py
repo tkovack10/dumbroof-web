@@ -979,14 +979,14 @@ class XactRegistry:
                                     measurements=None, state=None, config_hints=None):
         """EagleView ground-truth-first scope comparison (Tom's Co-work methodology).
 
-        Algorithm:
-          Pass 0: Aggregate carrier tear-out/supply/install triples
-          Pass 1: Build EagleView checklist from measurements (ground truth)
-          Pass 2: Build USARM lookup for pricing enrichment
-          Pass 3: FOR EACH checklist item, search carrier by INTENT
+        CORRECT ORDER (measurements first → carrier second → contractor third):
+          Pass 1: Build EagleView checklist from measurements (ground truth — FIRST)
+          Pass 2: Aggregate carrier tear-out/supply/install triples (carrier — SECOND)
+          Pass 3: Build USARM lookup for pricing enrichment
+          Pass 4: FOR EACH checklist item, search carrier by INTENT
                   Search order: notes → description keywords → code → fuzzy
-          Pass 4: USARM extras (items not in measurement checklist)
-          Pass 5: Carrier-only items
+          Pass 5: USARM extras (items not in measurement checklist)
+          Pass 6: Carrier-only items
 
         Args:
             carrier_line_items: Carrier's scope line items (with notes field)
@@ -997,15 +997,14 @@ class XactRegistry:
 
         Returns list of comparison rows with full data model.
         """
-        # ── PASS 0: Aggregate carrier triples ──
-        carrier_items = self._aggregate_carrier_triples(carrier_line_items)
-
         meas = measurements or {}
         tricks_detected = []
         used_carrier_indices = set()
         comparison_rows = []
 
-        # ── PASS 1: Build EagleView checklist (ground truth) ──
+        # ── PASS 1: Build EagleView checklist from measurements (ground truth — MUST be first) ──
+        # Tom's methodology: measurements determine what line items SHOULD exist.
+        # Carrier data is NOT consulted until after the checklist is established.
         if meas and any(v for v in meas.values() if v):
             checklist = self.build_line_items(meas, config_hints=config_hints, state=state)
             # Enrich with 4-layer code citations (IRC/RCNYS + manufacturer specs)
@@ -1016,19 +1015,23 @@ class XactRegistry:
                 pass  # code_compliance not available (standalone testing)
             # ev_formula is stamped on each item inside build_line_items() at computation time
             print(f"[SCOPE MATCH] EagleView checklist: {len(checklist)} expected items from measurements", flush=True)
-            # Debug: show first items from each side to verify matching inputs
+            # Debug: show first items from checklist
             for _i, _cl in enumerate(checklist[:5]):
                 print(f"[SCOPE DEBUG] Checklist[{_i}]: {_cl.get('description','')[:60]}", flush=True)
-            for _i, _ci in enumerate(carrier_items[:8]):
-                _cd = _ci.get('carrier_desc') or _ci.get('item','')
-                _cn = _ci.get('notes','')
-                print(f"[SCOPE DEBUG] Carrier[{_i}]: desc={_cd[:60]} notes={_cn[:40]}", flush=True)
         else:
             # Fallback: use USARM items as checklist when no measurements
             checklist = list(usarm_line_items)
             print(f"[SCOPE MATCH] WARNING: No measurements — falling back to USARM items as checklist. meas={meas}", flush=True)
 
-        # ── PASS 2: Build USARM lookup for pricing enrichment ──
+        # ── PASS 2: Aggregate carrier triples (processed AFTER measurements checklist) ──
+        carrier_items = self._aggregate_carrier_triples(carrier_line_items)
+        # Debug: show carrier items after checklist is established
+        for _i, _ci in enumerate(carrier_items[:8]):
+            _cd = _ci.get('carrier_desc') or _ci.get('item','')
+            _cn = _ci.get('notes','')
+            print(f"[SCOPE DEBUG] Carrier[{_i}]: desc={_cd[:60]} notes={_cn[:40]}", flush=True)
+
+        # ── PASS 3: Build USARM lookup for pricing enrichment ──
         usarm_by_clean_desc = {}
         for li in usarm_line_items:
             key = _clean_desc(li.get("description", ""))
@@ -1037,7 +1040,7 @@ class XactRegistry:
         # Track which USARM items were matched to checklist items
         used_usarm_clean_descs = set()
 
-        # ── PASS 3: FOR EACH checklist item, search carrier by INTENT ──
+        # ── PASS 4: FOR EACH checklist item, search carrier by INTENT ──
         for expected_item in checklist:
             expected_desc = expected_item.get("description", "")
             expected_code = (expected_item.get("code") or "").upper().strip()
@@ -1276,7 +1279,7 @@ class XactRegistry:
         if tricks_detected:
             print(f"[SCOPE MATCH] Carrier tricks detected: {tricks_detected}", flush=True)
 
-        # ── PASS 4: USARM extras (items not in measurement checklist) ──
+        # ── PASS 5: USARM extras (items not in measurement checklist) ──
         # Only add items genuinely NOT covered by the checklist.
         # Build a set of cleaned checklist descriptions for fuzzy dedup.
         _checklist_clean_descs = set()
@@ -1364,7 +1367,7 @@ class XactRegistry:
                 extra_row["note"] = note
             comparison_rows.append(extra_row)
 
-        # ── PASS 5: Carrier-only items ──
+        # ── PASS 6: Carrier-only items ──
         for ci_idx, ci in enumerate(carrier_items):
             if ci_idx in used_carrier_indices:
                 continue
