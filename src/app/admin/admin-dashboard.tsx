@@ -75,6 +75,7 @@ export function AdminDashboard() {
   const [reprocessing, setReprocessing] = useState<string | null>(null);
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
   const [downloading, setDownloading] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
   const [stats, setStats] = useState<Stats>({
     total: 0, uploaded: 0, processing: 0, ready: 0, error: 0, uniqueUsers: 0
   });
@@ -371,12 +372,46 @@ export function AdminDashboard() {
   const pendingCount = inspectors.filter(i => i.status === "pending").length;
   const betaPendingCount = betaSignups.filter(s => s.status === "pending").length;
 
+  const filteredClaims = searchQuery
+    ? claims.filter(c => {
+        const q = searchQuery.toLowerCase();
+        return (c.address || "").toLowerCase().includes(q)
+          || (c.carrier || "").toLowerCase().includes(q)
+          || (userMap[c.user_id]?.name || "").toLowerCase().includes(q)
+          || (userMap[c.user_id]?.email || "").toLowerCase().includes(q);
+      })
+    : claims;
+
   return (
     <main className="min-h-screen">
       <div className="max-w-7xl mx-auto px-6 py-10">
-        <div className="mb-8">
-          <h1 className="text-2xl font-bold text-[var(--white)]">Admin Dashboard</h1>
-          <p className="text-[var(--gray-muted)] mt-1">Manage claims and inspector applications.</p>
+        <div className="mb-8 flex items-start justify-between gap-6">
+          <div>
+            <h1 className="text-2xl font-bold text-[var(--white)]">Admin Dashboard</h1>
+            <p className="text-[var(--gray-muted)] mt-1">Manage claims and inspector applications.</p>
+          </div>
+          <div className="relative w-full max-w-md">
+            <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--gray-dim)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search by address, carrier, or user..."
+              className="w-full pl-10 pr-4 py-2.5 bg-[var(--bg-input)] border border-[var(--border-glass)] rounded-xl text-sm text-[var(--white)] placeholder-[var(--gray-dim)] focus:border-[var(--cyan)] focus:outline-none focus:ring-1 focus:ring-[var(--cyan)] backdrop-blur-sm transition-colors"
+            />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery("")}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--gray-dim)] hover:text-[var(--white)] transition-colors"
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Tabs */}
@@ -506,7 +541,7 @@ export function AdminDashboard() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-white/[0.04]">
-                    {claims.map((claim, i) => (
+                    {filteredClaims.map((claim, i) => (
                       <tr
                         key={claim.id}
                         onClick={() => { window.location.href = `/admin/claim/${claim.id}`; }}
@@ -578,7 +613,7 @@ export function AdminDashboard() {
                     </tbody>
                   </table>
                   {/* Expanded row detail panel */}
-                  {claims.map((claim) => (
+                  {filteredClaims.map((claim) => (
                     expandedRow === claim.id ? (
                       <div key={`exp-${claim.id}`} className="px-6 pb-4 bg-white/[0.04]/50 border-t border-[var(--border-glass)]">
                         {claim.error_message && (
