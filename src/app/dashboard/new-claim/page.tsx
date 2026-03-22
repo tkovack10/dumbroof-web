@@ -155,6 +155,11 @@ export default function NewClaimPage() {
 
       window.fbq?.("track", "Lead");
       window.ttq?.track("SubmitForm");
+      window.ttq?.track("Lead", {
+        contents: [{ content_id: slug, content_type: "product", content_name: "Claim Package" }],
+        value: 499,
+        currency: "USD",
+      });
       setStatus("success");
     } catch (err) {
       setStatus("error");

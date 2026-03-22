@@ -79,9 +79,15 @@ function LoginPageContent() {
       } else if (data.session) {
         // Auto-confirmed (email confirmation disabled) — go straight to dashboard
         window.fbq?.("track", "CompleteRegistration");
+        window.ttq?.track("CompleteRegistration", {
+          contents: [{ content_id: "signup", content_type: "product", content_name: "dumbroof.ai Account" }],
+        });
         window.location.href = "/dashboard/new-claim";
       } else {
         window.fbq?.("track", "CompleteRegistration");
+        window.ttq?.track("CompleteRegistration", {
+          contents: [{ content_id: "signup", content_type: "product", content_name: "dumbroof.ai Account" }],
+        });
         setMessage("Account created! Check your email for a confirmation link, then come back and sign in.");
       }
     } else {
