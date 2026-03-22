@@ -3468,8 +3468,8 @@ async def process_claim(claim_id: str):
     _TELEMETRY_CLAIM_ID = claim_id
 
     # 1. Get claim from database
-    result = sb.table("claims").select("*").eq("id", claim_id).single().execute()
-    claim = result.data
+    result = sb.table("claims").select("*").eq("id", claim_id).limit(1).execute()
+    claim = result.data[0] if result.data else None
     if not claim:
         raise ValueError(f"Claim {claim_id} not found")
 
@@ -3944,8 +3944,8 @@ async def process_claim(claim_id: str):
             if roof_sections and sb:
                 # Check for existing user overrides and preserve them
                 try:
-                    existing = sb.table("claims").select("roof_sections").eq("id", claim_id).single().execute()
-                    existing_sections = (existing.data or {}).get("roof_sections")
+                    existing = sb.table("claims").select("roof_sections").eq("id", claim_id).limit(1).execute()
+                    existing_sections = (existing.data[0] if existing.data else {}).get("roof_sections")
                     if existing_sections and existing_sections.get("sections"):
                         # Preserve user_material_override from previous run
                         old_by_key = {}

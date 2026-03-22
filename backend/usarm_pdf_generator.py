@@ -952,7 +952,8 @@ def _build_repairability_section(config):
     if mfr or product_name or is_three_tab or is_laminate:
         id_parts = []
         if mfr and product_name:
-            id_parts.append(f"Based on visual characteristics observed during the USARM field inspection, the existing roof system appears to be a <strong>{mfr} {product_name}</strong> {product_type_label} shingle")
+            _co_name = config.get("company", {}).get("name", "our")
+            id_parts.append(f"Based on visual characteristics observed during the {_co_name} field inspection, the existing roof system appears to be a <strong>{mfr} {product_name}</strong> {product_type_label} shingle")
         elif is_three_tab:
             id_parts.append(f"The existing roof system consists of <strong>three-tab asphalt shingles</strong>")
         elif is_laminate:
@@ -1840,8 +1841,8 @@ def build_forensic_report(config):
     <tr><td><strong>Policy Number</strong></td><td>{carrier.get('policy_number','')}</td></tr>
     <tr><td><strong>Date of Loss</strong></td><td>{dates['date_of_loss']}</td></tr>
     <tr><td><strong>Carrier Inspection</strong></td><td>{dates.get('carrier_inspection_date','')}</td></tr>
-    <tr><td><strong>USARM Inspection</strong></td><td>{insp_dates_str}</td></tr>
-    <tr><td><strong>USARM Inspector(s)</strong></td><td>{inspector_lines}</td></tr>
+    <tr><td><strong>{company['name']} Inspection</strong></td><td>{insp_dates_str}</td></tr>
+    <tr><td><strong>{company['name']} Inspector(s)</strong></td><td>{inspector_lines}</td></tr>
     <tr><td><strong>Report Date</strong></td><td>{dates['report_date']}</td></tr>
 </table>
 
@@ -2675,7 +2676,7 @@ def build_supplement_report(config):
     variance_summary_html = ""
     if config.get("supplement_variance_summary"):
         variance_summary_html += '<h2>VARIANCE SUMMARY</h2>\n<table>\n'
-        variance_summary_html += '<tr><th>Category</th><th class="amt">Carrier RCV</th><th class="amt">USARM RCV</th><th class="amt">Variance</th></tr>\n'
+        variance_summary_html += f'<tr><th>Category</th><th class="amt">Carrier RCV</th><th class="amt">{company["name"]} RCV</th><th class="amt">Variance</th></tr>\n'
         for vs in config["supplement_variance_summary"]:
             var_amt = vs.get("variance", 0)
             var_class = ' class="amt var-pos"' if var_amt > 0 else ' class="amt"'
@@ -3308,7 +3309,7 @@ body {{ font-size: 11pt; line-height: 1.7; max-width: 600pt; margin: 0 auto; }}
 
 <p>Good afternoon,</p>
 
-<p>{"USA Roof Masters represents the insured, <strong>" + ins['name'] + "</strong>, under an Assignment of Benefits" if lang["role"] == "advocate" else "We are the licensed contractor retained by <strong>" + ins['name'] + "</strong> for storm damage repairs"} for the property at <strong>{prop['address']}, {prop['city']}, {prop['state']} {prop['zip']}</strong> (Claim #{carrier.get('claim_number','pending')}, Date of Loss: {dates['date_of_loss']}).</p>
+<p>{company['name'] + " represents the insured, <strong>" + ins['name'] + "</strong>, under an Assignment of Benefits" if lang["role"] == "advocate" else "We are the licensed contractor retained by <strong>" + ins['name'] + "</strong> for storm damage repairs"} for the property at <strong>{prop['address']}, {prop['city']}, {prop['state']} {prop['zip']}</strong> (Claim #{carrier.get('claim_number','pending')}, Date of Loss: {dates['date_of_loss']}).</p>
 
 <p>We are submitting our forensic inspection documentation and detailed repair estimate in advance of the carrier's adjuster inspection. Our documentation confirms {storm_summary}.</p>
 

@@ -154,6 +154,7 @@ export default function NewClaimPage() {
       await fetch("/api/billing/check-quota", { method: "POST" });
 
       window.fbq?.("track", "Lead");
+      window.ttq?.track("SubmitForm");
       setStatus("success");
     } catch (err) {
       setStatus("error");
