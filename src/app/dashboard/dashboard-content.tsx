@@ -36,6 +36,7 @@ export function DashboardContent({ user }: { user: User }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [showConfetti, setShowConfetti] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [showDetailStats, setShowDetailStats] = useState(false);
   const prevWinCountRef = useRef(0);
   const menuRef = useRef<HTMLDivElement>(null);
   const billing = useBillingQuota();
@@ -410,44 +411,59 @@ export function DashboardContent({ user }: { user: User }) {
         {/* === CLAIMS TAB === */}
         {activeTab === "claims" && (
           <>
-            {/* KPI Stats Bar */}
+            {/* KPI Stats Bar — 3 primary + expandable details */}
             {!loading && claims.length > 0 && (
-              <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-4 mb-6">
-                <div className="glass-card p-4 text-center">
-                  <p className="text-2xl font-bold gradient-text">{claims.length}</p>
-                  <p className="text-xs text-[var(--gray-muted)] mt-1">Total Claims</p>
-                </div>
-                <div className="glass-card p-4 text-center">
-                  <p className="text-2xl font-bold text-green-600">{readyCount}</p>
-                  <p className="text-xs text-[var(--gray-muted)] mt-1">Ready</p>
-                </div>
-                <div className="glass-card p-4 text-center">
-                  <p className="text-2xl font-bold text-amber-600">{processingCount}</p>
-                  <p className="text-xs text-[var(--gray-muted)] mt-1">Processing</p>
-                </div>
-                <div className="glass-card p-4 text-center">
-                  <p className="text-2xl font-bold text-green-600">{wonClaims.length}</p>
-                  <p className="text-xs text-[var(--gray-muted)] mt-1">Wins</p>
-                </div>
-                <div className="glass-card p-4 text-center">
-                  <p className="text-2xl font-bold gradient-text">{fmtMoney(totalContractorRcv)}</p>
-                  <p className="text-xs text-[var(--gray-muted)] mt-1">Contractor RCV</p>
-                </div>
-                <div className="glass-card p-4 text-center">
-                  <p className="text-2xl font-bold gradient-text">{fmtMoney(totalCarrierRcv)}</p>
-                  <p className="text-xs text-[var(--gray-muted)] mt-1">Carrier RCV</p>
-                </div>
-                {totalMovement > 0 ? (
-                  <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl border-2 border-green-300 p-4 text-center col-span-2">
-                    <p className="text-3xl font-black text-green-600">+{fmtMoney(totalMovement)}</p>
-                    <p className="text-xs font-semibold text-green-600 mt-1">Carrier Movement</p>
+              <div className="mb-6">
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="glass-card p-4 text-center">
+                    <p className="text-2xl font-bold gradient-text">{claims.length}</p>
+                    <p className="text-xs text-[var(--gray-muted)] mt-1">Total Claims</p>
                   </div>
-                ) : (
-                  <div className="glass-card p-4 text-center col-span-2">
-                    <p className={`text-2xl font-bold ${totalContractorRcv - totalCarrierRcv > 0 ? "text-green-600" : "text-[var(--gray)]"}`}>
-                      {fmtMoney(Math.abs(totalContractorRcv - totalCarrierRcv))}
-                    </p>
-                    <p className="text-xs text-[var(--gray-muted)] mt-1">Variance</p>
+                  <div className="glass-card p-4 text-center">
+                    <p className="text-2xl font-bold text-green-600">{readyCount}</p>
+                    <p className="text-xs text-[var(--gray-muted)] mt-1">Ready</p>
+                  </div>
+                  <div className="glass-card p-4 text-center">
+                    <p className="text-2xl font-bold text-green-600">{wonClaims.length}</p>
+                    <p className="text-xs text-[var(--gray-muted)] mt-1">Wins</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setShowDetailStats(!showDetailStats)}
+                  className="mt-3 flex items-center gap-1.5 mx-auto text-xs text-[var(--gray-dim)] hover:text-[var(--white)] transition-colors"
+                >
+                  {showDetailStats ? "Hide Details" : "Show Details"}
+                  <svg className={`w-3.5 h-3.5 transition-transform ${showDetailStats ? "rotate-180" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
+                {showDetailStats && (
+                  <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mt-3">
+                    <div className="glass-card p-4 text-center">
+                      <p className="text-2xl font-bold text-amber-600">{processingCount}</p>
+                      <p className="text-xs text-[var(--gray-muted)] mt-1">Processing</p>
+                    </div>
+                    <div className="glass-card p-4 text-center">
+                      <p className="text-2xl font-bold gradient-text">{fmtMoney(totalContractorRcv)}</p>
+                      <p className="text-xs text-[var(--gray-muted)] mt-1">Contractor RCV</p>
+                    </div>
+                    <div className="glass-card p-4 text-center">
+                      <p className="text-2xl font-bold gradient-text">{fmtMoney(totalCarrierRcv)}</p>
+                      <p className="text-xs text-[var(--gray-muted)] mt-1">Carrier RCV</p>
+                    </div>
+                    {totalMovement > 0 ? (
+                      <div className="bg-gradient-to-br from-green-500/10 to-emerald-500/10 rounded-xl border-2 border-green-500/30 p-4 text-center col-span-2">
+                        <p className="text-3xl font-black text-green-500">+{fmtMoney(totalMovement)}</p>
+                        <p className="text-xs font-semibold text-green-500 mt-1">Carrier Movement</p>
+                      </div>
+                    ) : (
+                      <div className="glass-card p-4 text-center col-span-2">
+                        <p className={`text-2xl font-bold ${totalContractorRcv - totalCarrierRcv > 0 ? "text-green-600" : "text-[var(--gray)]"}`}>
+                          {fmtMoney(Math.abs(totalContractorRcv - totalCarrierRcv))}
+                        </p>
+                        <p className="text-xs text-[var(--gray-muted)] mt-1">Variance</p>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
@@ -519,7 +535,7 @@ export function DashboardContent({ user }: { user: User }) {
                 <div className="flex gap-2">
                   <button
                     onClick={() => setViewMode("table")}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+                    className={`px-4 py-2.5 min-h-[44px] rounded-lg text-xs font-semibold transition-colors ${
                       viewMode === "table"
                         ? "bg-gradient-to-r from-[var(--pink)] to-[var(--blue)] text-white"
                         : "bg-transparent text-[var(--gray)] border border-[var(--border-glass)] hover:bg-white/[0.04]"
@@ -529,7 +545,7 @@ export function DashboardContent({ user }: { user: User }) {
                   </button>
                   <button
                     onClick={() => setViewMode("map")}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+                    className={`px-4 py-2.5 min-h-[44px] rounded-lg text-xs font-semibold transition-colors ${
                       viewMode === "map"
                         ? "bg-gradient-to-r from-[var(--pink)] to-[var(--blue)] text-white"
                         : "bg-transparent text-[var(--gray)] border border-[var(--border-glass)] hover:bg-white/[0.04]"
@@ -541,12 +557,12 @@ export function DashboardContent({ user }: { user: User }) {
               </div>
             )}
             {!loading && claims.length > 0 && (
-              <div className="flex gap-2 mb-6">
+              <div className="flex flex-wrap gap-2 mb-6">
                 {filterTabs.map(tab => (
                   <button
                     key={tab.key}
                     onClick={() => setStatusFilter(tab.key)}
-                    className={`px-4 py-2 rounded-full text-xs font-semibold transition-colors ${
+                    className={`px-4 py-2.5 min-h-[44px] rounded-full text-xs font-semibold transition-colors ${
                       statusFilter === tab.key
                         ? "bg-gradient-to-r from-[var(--pink)] to-[var(--blue)] text-white"
                         : "bg-transparent text-[var(--gray)] border border-[var(--border-glass)] hover:bg-white/[0.04]"
@@ -586,13 +602,28 @@ export function DashboardContent({ user }: { user: User }) {
                 <p className="text-[var(--gray-muted)] text-sm mb-6 max-w-md mx-auto">
                   Upload your measurements, inspection photos, and carrier scope to generate your first claim package.
                 </p>
-                <a href="/dashboard/new-claim" className="inline-block bg-gradient-to-r from-[var(--pink)] via-[var(--purple)] to-[var(--blue)] hover:shadow-[var(--shadow-glow-pink)] text-white px-8 py-3 rounded-xl font-semibold transition-colors text-sm">
-                  Upload Documents
-                </a>
+                <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+                  <a href="/dashboard/new-claim" className="inline-block bg-gradient-to-r from-[var(--pink)] via-[var(--purple)] to-[var(--blue)] hover:shadow-[var(--shadow-glow-pink)] text-white px-8 py-3 rounded-xl font-semibold transition-colors text-sm">
+                    Upload Documents
+                  </a>
+                  <a
+                    href="https://tkovack10.github.io/USARM-Claims-Platform/"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 text-sm text-[var(--cyan)] hover:text-white transition-colors"
+                  >
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                    </svg>
+                    View Example Package
+                  </a>
+                </div>
               </div>
             ) : (
               <div className="glass-card overflow-hidden">
-                <div className="overflow-x-auto">
+                {/* Desktop table — hidden on mobile */}
+                <div className="hidden md:block overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="bg-white/[0.06] text-left border-b border-[var(--border-glass)]">
@@ -602,6 +633,7 @@ export function DashboardContent({ user }: { user: User }) {
                         <th className="px-3 py-3 text-[10px] font-semibold text-[var(--gray-dim)] uppercase text-right">Original Carrier</th>
                         <th className="px-3 py-3 text-[10px] font-semibold text-[var(--gray-dim)] uppercase text-right">Updated Carrier</th>
                         <th className="px-3 py-3 text-[10px] font-semibold text-[var(--gray-dim)] uppercase text-center">Status</th>
+                        <th className="px-2 py-3 w-8"></th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-white/[0.04]">
@@ -678,6 +710,11 @@ export function DashboardContent({ user }: { user: User }) {
                                 )}
                               </div>
                             </td>
+                            <td className="px-2 py-2.5">
+                              <svg className={`w-4 h-4 text-[var(--gray-dim)] transition-transform ${expandedRow === claim.id ? "rotate-180" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                              </svg>
+                            </td>
                           </tr>
                         );
                       })}
@@ -685,17 +722,80 @@ export function DashboardContent({ user }: { user: User }) {
                   </table>
                 </div>
 
+                {/* Mobile card view — visible below md */}
+                <div className="md:hidden divide-y divide-white/[0.04]">
+                  {filteredClaims.map((claim) => {
+                    const cRcv = claim.contractor_rcv ?? 0;
+                    const isWon = claim.claim_outcome === "won";
+                    const iRcv = claim.original_carrier_rcv ?? 0;
+                    const currentCarrier = claim.settlement_amount ?? 0;
+                    const movement = isWon && currentCarrier > iRcv ? currentCarrier - iRcv : 0;
+                    const isProcessing = claim.status === "processing";
+
+                    return (
+                      <div
+                        key={claim.id}
+                        onClick={() => setExpandedRow(expandedRow === claim.id ? null : claim.id)}
+                        className={`p-4 cursor-pointer transition-colors hover:bg-white/[0.04] ${isWon ? "bg-green-500/10 border-l-4 border-l-green-500" : ""}`}
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex-1 min-w-0">
+                            <a href={`/dashboard/claim/${claim.id}`} className="hover:underline" onClick={e => e.stopPropagation()}>
+                              <p className="font-medium text-[var(--white)] text-sm truncate">{claim.address}</p>
+                            </a>
+                            <p className="text-[11px] text-[var(--gray-dim)] mt-0.5">
+                              {claim.carrier || "No carrier"} &middot; {new Date(claim.created_at).toLocaleDateString()}
+                            </p>
+                          </div>
+                          <div className="flex items-center gap-2 shrink-0">
+                            {isWon ? (
+                              <span className="inline-block px-3 py-1 rounded-full text-[10px] font-black bg-green-500 text-white">
+                                WON
+                              </span>
+                            ) : (
+                              <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-medium ${statusColors[claim.status] || "bg-white/[0.06] text-[var(--gray)]"}`}>
+                                {isProcessing && (
+                                  <svg className="animate-spin w-3 h-3" fill="none" viewBox="0 0 24 24">
+                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                                  </svg>
+                                )}
+                                {claim.status === "needs_improvement" ? "Attention" : claim.status.charAt(0).toUpperCase() + claim.status.slice(1)}
+                              </span>
+                            )}
+                            <svg className={`w-4 h-4 text-[var(--gray-dim)] transition-transform ${expandedRow === claim.id ? "rotate-180" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                            </svg>
+                          </div>
+                        </div>
+                        {/* Financial summary row */}
+                        <div className="flex items-center gap-4 mt-2 text-xs">
+                          {cRcv > 0 && (
+                            <span className="tabular-nums font-medium text-[var(--white)]">${cRcv.toLocaleString()}</span>
+                          )}
+                          {isWon && movement > 0 && (
+                            <span className="font-bold text-green-500 tabular-nums">+${movement.toLocaleString()}</span>
+                          )}
+                          {(claim.pending_edits ?? 0) > 0 && (
+                            <span className="text-amber-600 font-medium">{claim.pending_edits} edit{(claim.pending_edits ?? 0) > 1 ? "s" : ""}</span>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
                 {/* Expanded row detail panels */}
                 {filteredClaims.map((claim) => (
                   expandedRow === claim.id ? (
-                    <div key={`exp-${claim.id}`} className="px-6 pb-4 bg-white/[0.04]/50 border-t border-[var(--border-glass)]">
+                    <div key={`exp-${claim.id}`} className="px-4 md:px-6 pb-4 bg-white/[0.04] border-t border-[var(--border-glass)]">
                       {/* Source Files */}
-                      <div className="grid grid-cols-5 gap-2 mt-3 mb-3">
+                      <div className="grid grid-cols-3 md:grid-cols-5 gap-2 mt-3 mb-3">
                         {[
-                          { label: "Measurements", files: claim.measurement_files, color: "bg-blue-500/10 text-blue-700 border-blue-500/30" },
-                          { label: "Photos", files: claim.photo_files, color: "bg-purple-500/10 text-purple-700 border-purple-500/30" },
-                          { label: "Scope", files: claim.scope_files, color: "bg-amber-500/10 text-amber-700 border-amber-500/30" },
-                          { label: "Weather", files: claim.weather_files, color: "bg-teal-500/10 text-teal-700 border-teal-500/30" },
+                          { label: "Measurements", files: claim.measurement_files, color: "bg-blue-500/10 text-blue-400 border-blue-500/30" },
+                          { label: "Photos", files: claim.photo_files, color: "bg-purple-500/10 text-purple-400 border-purple-500/30" },
+                          { label: "Scope", files: claim.scope_files, color: "bg-amber-500/10 text-amber-400 border-amber-500/30" },
+                          { label: "Weather", files: claim.weather_files, color: "bg-teal-500/10 text-teal-400 border-teal-500/30" },
                           { label: "Other", files: claim.other_files, color: "bg-white/[0.06] text-[var(--gray)] border-[var(--border-glass)]" },
                         ].map(({ label, files, color }) => (
                           <div key={label} className={`rounded-lg px-3 py-2 border ${color}`}>
@@ -709,7 +809,7 @@ export function DashboardContent({ user }: { user: User }) {
                       {claim.output_files && claim.output_files.length > 0 ? (
                         <div>
                           <div className="flex items-center gap-2 mb-2">
-                            <p className="text-xs font-semibold text-green-800">Your claim package is ready</p>
+                            <p className="text-xs font-semibold text-green-400">Your claim package is ready</p>
                             <button
                               onClick={() => handleDownloadAllClaims(claim)}
                               className="bg-gradient-to-r from-[var(--pink)] via-[var(--purple)] to-[var(--blue)] hover:shadow-[var(--shadow-glow-pink)] text-white px-3 py-1 rounded-lg text-[10px] font-medium transition-colors"
@@ -723,7 +823,7 @@ export function DashboardContent({ user }: { user: User }) {
                                 key={file}
                                 onClick={() => handleDownloadClaim(claim, file)}
                                 disabled={downloading === file}
-                                className="flex items-center gap-1.5 px-3 py-1.5 bg-green-500/10 hover:bg-green-500/20 disabled:opacity-50 text-green-700 text-xs font-semibold rounded-lg transition-colors border border-green-500/30"
+                                className="flex items-center gap-1.5 px-3 py-1.5 bg-green-500/10 hover:bg-green-500/20 disabled:opacity-50 text-green-400 text-xs font-semibold rounded-lg transition-colors border border-green-500/30"
                               >
                                 <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                                   <path strokeLinecap="round" strokeLinejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3M6 20h12a2 2 0 002-2V8l-6-6H6a2 2 0 00-2 2v14a2 2 0 002 2z" />
@@ -735,14 +835,14 @@ export function DashboardContent({ user }: { user: User }) {
                         </div>
                       ) : claim.status === "processing" ? (
                         <div className="flex items-center gap-3 py-2">
-                          <svg className="animate-spin w-4 h-4 text-amber-600" fill="none" viewBox="0 0 24 24">
+                          <svg className="animate-spin w-4 h-4 text-amber-500" fill="none" viewBox="0 0 24 24">
                             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                           </svg>
-                          <p className="text-xs text-amber-700">Analyzing documents... typically 2-5 minutes</p>
+                          <p className="text-xs text-amber-400">Analyzing documents... typically 2-5 minutes</p>
                         </div>
                       ) : claim.status === "error" ? (
-                        <p className="text-xs text-red-600 py-2">Processing failed. Our team has been notified.</p>
+                        <p className="text-xs text-red-400 py-2">Processing failed. Our team has been notified.</p>
                       ) : (
                         <p className="text-xs text-[var(--gray-dim)] py-2">No output files yet.</p>
                       )}

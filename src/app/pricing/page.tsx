@@ -105,11 +105,15 @@ function PricingContent() {
                     <span className="text-[var(--gray-muted)] text-sm">/mo</span>
                   )}
                 </div>
-                <p className="text-sm text-[var(--gray-muted)] mb-6">
+                <p className="text-sm text-[var(--gray-muted)] mb-2">
                   {id === "starter"
                     ? "3 claims, free forever"
                     : `${plan.claimsPerMonth} claims per month`}
                 </p>
+                {id === "starter" && (
+                  <p className="text-xs text-green-400 font-semibold mb-4">No credit card required</p>
+                )}
+                {id !== "starter" && <div className="mb-4" />}
                 <ul className="space-y-2 mb-8 flex-1">
                   {plan.features.map((f) => (
                     <li key={f} className="flex items-start gap-2 text-sm text-[var(--gray)]">
@@ -165,6 +169,42 @@ function PricingContent() {
               Contact us
             </a>.
           </p>
+        </div>
+
+        {/* FAQ */}
+        <div className="max-w-2xl mx-auto mt-16">
+          <h2 className="text-2xl font-bold text-[var(--white)] text-center mb-8">
+            Frequently Asked Questions
+          </h2>
+          <div className="space-y-4">
+            {[
+              {
+                q: "Do I need an Xactimate license?",
+                a: "No. Our AI generates Xactimate-style line items with current regional pricing. You upload your documents, we handle the rest.",
+              },
+              {
+                q: "What documents do I need to get started?",
+                a: "At minimum: roof measurements (EagleView, HOVER, etc.) and inspection photos. If you have a carrier scope, upload that too for a full supplement package.",
+              },
+              {
+                q: "How long does it take?",
+                a: "Most claim packages are ready in 2-5 minutes after upload. Complex claims with 100+ photos may take slightly longer.",
+              },
+              {
+                q: "Can I cancel anytime?",
+                a: "Yes. Cancel directly from your dashboard settings. No contracts, no cancellation fees.",
+              },
+              {
+                q: "Is my data secure?",
+                a: "All documents are encrypted in transit and at rest. We never share your claim data with carriers or third parties.",
+              },
+            ].map((faq) => (
+              <div key={faq.q} className="glass-card p-5">
+                <h3 className="text-sm font-semibold text-[var(--white)] mb-2">{faq.q}</h3>
+                <p className="text-sm text-[var(--gray-muted)] leading-relaxed">{faq.a}</p>
+              </div>
+            ))}
+          </div>
         </div>
       </section>
 

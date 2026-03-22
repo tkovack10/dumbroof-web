@@ -29,6 +29,7 @@ export default function NewClaimPage() {
   const [stormResults, setStormResults] = useState<
     Array<{ date: string; type: string; details: string }> | null
   >(null);
+  const [showAdvanced, setShowAdvanced] = useState(false);
   const [status, setStatus] = useState<UploadStatus>("idle");
   const [errorMsg, setErrorMsg] = useState("");
   const [uploadProgress, setUploadProgress] = useState("");
@@ -197,6 +198,23 @@ export default function NewClaimPage() {
             Your {phase === "pre-scope" ? "pre-scope" : "supplement"} package is
             being prepared.
           </p>
+          <div className="bg-blue-500/10 border border-blue-500/30 rounded-xl px-5 py-4 mb-4 text-left max-w-md mx-auto">
+            <p className="text-sm text-blue-400 font-semibold mb-1">What happens next?</p>
+            <ul className="text-xs text-[var(--gray)] space-y-1.5">
+              <li className="flex items-start gap-2">
+                <span className="text-blue-400 mt-0.5 shrink-0">1.</span>
+                Our AI is analyzing every photo and document now
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="text-blue-400 mt-0.5 shrink-0">2.</span>
+                Your documents will be ready in 2-5 minutes
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="text-blue-400 mt-0.5 shrink-0">3.</span>
+                They&apos;ll appear on your dashboard for download
+              </li>
+            </ul>
+          </div>
           <div className="inline-block bg-white/[0.06] rounded-lg px-4 py-2 mb-8">
             <span className="text-sm text-[var(--gray)]">
               Phase:{" "}
@@ -345,6 +363,21 @@ export default function NewClaimPage() {
             </div>
           </div>
 
+          {/* Advanced Options Toggle */}
+          <button
+            type="button"
+            onClick={() => setShowAdvanced(!showAdvanced)}
+            className="flex items-center gap-2 text-sm text-[var(--gray-dim)] hover:text-[var(--white)] transition-colors"
+          >
+            <svg className={`w-4 h-4 transition-transform ${showAdvanced ? "rotate-180" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+            </svg>
+            Advanced Options
+            <span className="text-xs text-[var(--gray-dim)]">(date of loss, storm scan, notes)</span>
+          </button>
+
+          {showAdvanced && (
+            <>
           {/* Date of Loss */}
           <div>
             <div className="flex items-baseline gap-2 mb-1">
@@ -606,6 +639,8 @@ export default function NewClaimPage() {
               />
             </div>
           </div>
+            </>
+          )}
 
           {/* Phase Indicator */}
           <div

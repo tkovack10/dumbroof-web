@@ -327,8 +327,8 @@ def send_claim_email(
     Logs the email to the claim_emails table.
     """
     # Load user's company profile + email config
-    profile_result = sb.table("company_profiles").select("*").eq("user_id", user_id).single().execute()
-    profile = profile_result.data or {}
+    profile_result = sb.table("company_profiles").select("*").eq("user_id", user_id).limit(1).execute()
+    profile = (profile_result.data[0] if profile_result.data else {}) or {}
 
     company_name = profile.get("company_name", "Roofing Company")
     gmail_refresh_token = profile.get("gmail_refresh_token")
@@ -343,17 +343,30 @@ def send_claim_email(
     result = {}
 
     if gmail_refresh_token:
-        # Send via user's Gmail
-        result = send_via_gmail(
-            refresh_token=gmail_refresh_token,
-            from_email=f"{company_name} <{sending_email}>",
-            to_email=to_email,
-            subject=subject,
-            body_html=body_html,
-            cc=cc,
-            attachments=attachments,
-        )
-        send_method = "gmail"
+        # Send via user's Gmail — fall through to Resend on failure
+        try:
+            result = send_via_gmail(
+                refresh_token=gmail_refresh_token,
+                from_email=f"{company_name} <{sending_email}>",
+                to_email=to_email,
+                subject=subject,
+                body_html=body_html,
+                cc=cc,
+                attachments=attachments,
+            )
+            send_method = "gmail"
+        except Exception as e:
+            print(f"[WARN] Gmail send failed, falling back to Resend: {e}", flush=True)
+            result = send_via_resend(
+                company_name=company_name,
+                to_email=to_email,
+                subject=subject,
+                body_html=body_html,
+                reply_to=reply_to,
+                cc=cc,
+                attachments=attachments,
+            )
+            send_method = "resend (gmail fallback)"
     else:
         # Fallback: Resend with company branding
         result = send_via_resend(

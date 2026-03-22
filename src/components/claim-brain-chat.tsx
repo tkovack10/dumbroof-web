@@ -38,13 +38,17 @@ interface ClaimBrainChatProps {
 // Minimal markdown → HTML (no dependencies)
 function renderMarkdown(text: string): string {
   if (!text) return "";
+  // Headers BEFORE HTML escaping so # markup is preserved
   let html = text
+    .replace(/^### (.+)$/gm, '<!--h3-->$1<!--/h3-->')
+    .replace(/^## (.+)$/gm, '<!--h2-->$1<!--/h2-->')
+    // Then escape HTML entities
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
-    // Headers
-    .replace(/^### (.+)$/gm, '<h3 class="text-sm font-bold text-blue-400 mt-3 mb-1">$1</h3>')
-    .replace(/^## (.+)$/gm, '<h2 class="text-sm font-bold text-blue-300 mt-3 mb-1">$1</h2>')
+    // Restore headers
+    .replace(/&lt;!--h3--&gt;(.+?)&lt;!--\/h3--&gt;/g, '<h3 class="text-sm font-bold text-blue-400 mt-3 mb-1">$1</h3>')
+    .replace(/&lt;!--h2--&gt;(.+?)&lt;!--\/h2--&gt;/g, '<h2 class="text-sm font-bold text-blue-300 mt-3 mb-1">$1</h2>')
     // Bold & italic
     .replace(/\*\*(.+?)\*\*/g, '<strong class="text-white">$1</strong>')
     .replace(/\*(.+?)\*/g, "<em>$1</em>")
@@ -442,16 +446,21 @@ export function ClaimBrainChat({
     console.log(`Tool action ${approvalId}: ${status}`);
   };
 
-  // Floating button when closed
+  // Floating button when closed — with first-time tooltip
   if (!isOpen) {
     return (
-      <button
-        onClick={() => setIsOpen(true)}
-        className="fixed bottom-6 right-6 z-50 bg-[#0f1729] hover:bg-[#1a2540] text-white w-14 h-14 rounded-full shadow-lg flex items-center justify-center transition-all hover:scale-105 border border-white/10"
-        title="Open Claim Brain"
-      >
-        <span className="text-2xl">🧠</span>
-      </button>
+      <div className="fixed bottom-6 right-6 z-50 group">
+        <div className="absolute bottom-full right-0 mb-2 w-52 bg-[rgb(15,18,35)] border border-[var(--border-glass)] rounded-xl px-3 py-2 text-xs text-[var(--gray)] opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none shadow-xl">
+          AI assistant that knows everything about this claim. Ask it anything.
+        </div>
+        <button
+          onClick={() => setIsOpen(true)}
+          className="bg-[#0f1729] hover:bg-[#1a2540] text-white w-14 h-14 rounded-full shadow-lg flex items-center justify-center transition-all hover:scale-105 border border-white/10"
+          title="Open Claim Brain"
+        >
+          <span className="text-2xl">🧠</span>
+        </button>
+      </div>
     );
   }
 

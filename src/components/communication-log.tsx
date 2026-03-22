@@ -2,6 +2,18 @@
 
 import { useEffect, useState } from "react";
 
+// Sanitize HTML to prevent XSS — strip script tags, event handlers, and dangerous URIs
+function sanitizeHtml(html: string): string {
+  return html
+    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, "")
+    .replace(/<iframe\b[^>]*>.*?<\/iframe>/gi, "")
+    .replace(/<object\b[^>]*>.*?<\/object>/gi, "")
+    .replace(/<embed\b[^>]*\/?>/gi, "")
+    .replace(/\bon\w+\s*=\s*("[^"]*"|'[^']*'|[^\s>]*)/gi, "")
+    .replace(/href\s*=\s*["']?\s*javascript:/gi, 'href="')
+    .replace(/src\s*=\s*["']?\s*javascript:/gi, 'src="');
+}
+
 interface ClaimEmail {
   id: string;
   email_type: string;
@@ -117,7 +129,7 @@ export function CommunicationLog({ claimId }: Props) {
 
                 {isExpanded && (
                   <div className="px-6 pb-4 pt-1">
-                    <div className="bg-white/[0.04] rounded-lg p-4 text-xs text-[var(--gray)] leading-relaxed" dangerouslySetInnerHTML={{ __html: email.body_html || "" }} />
+                    <div className="bg-white/[0.04] rounded-lg p-4 text-xs text-[var(--gray)] leading-relaxed" dangerouslySetInnerHTML={{ __html: sanitizeHtml(email.body_html || "") }} />
                   </div>
                 )}
               </div>

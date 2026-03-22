@@ -1,5 +1,6 @@
 import { InspectorApplicationForm } from "@/components/inspector-application-form";
 import { supabaseAdmin } from "@/lib/supabase/admin";
+import { HomeNav } from "@/components/home-nav";
 
 // Revalidate homepage stats every 5 minutes
 export const revalidate = 300;
@@ -49,42 +50,7 @@ export default async function Home() {
   return (
     <main className="min-h-screen">
       {/* Nav */}
-      <nav className="fixed top-0 left-0 right-0 z-50 bg-[var(--bg-glass)]/95 backdrop-blur-sm border-b border-white/10">
-        <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
-          <a href="/" className="flex items-center gap-3">
-            <span className="text-2xl font-extrabold tracking-tight gradient-text">dumbroof<span className="font-normal opacity-70">.ai</span></span>
-          </a>
-          <div className="flex items-center gap-6">
-            <a href="#problem" className="text-[var(--gray-dim)] hover:text-white text-sm transition-colors hidden sm:block">
-              The Problem
-            </a>
-            <a href="#how-it-works" className="text-[var(--gray-dim)] hover:text-white text-sm transition-colors hidden sm:block">
-              How It Works
-            </a>
-            <a href="#repair" className="text-[var(--gray-dim)] hover:text-white text-sm transition-colors hidden sm:block">
-              Repair
-            </a>
-            <a href="#results" className="text-[var(--gray-dim)] hover:text-white text-sm transition-colors hidden sm:block">
-              Results
-            </a>
-            <a href="#inspectors" className="text-[var(--gray-dim)] hover:text-white text-sm transition-colors hidden sm:block">
-              Inspectors
-            </a>
-            <a href="/pricing" className="text-[var(--gray-dim)] hover:text-white text-sm transition-colors hidden sm:block">
-              Pricing
-            </a>
-            <a href="/login" className="text-[var(--gray-dim)] hover:text-white text-sm font-medium transition-colors">
-              Sign In
-            </a>
-            <a
-              href="/login?mode=signup"
-              className="bg-gradient-to-r from-[var(--pink)] via-[var(--purple)] to-[var(--blue)] hover:shadow-[var(--shadow-glow-pink)] text-white px-5 py-2 rounded-lg text-sm font-semibold transition-colors"
-            >
-              Try Free
-            </a>
-          </div>
-        </div>
-      </nav>
+      <HomeNav />
 
       {/* Hero */}
       <section className="relative pt-32 pb-20 px-6 bg-gradient-to-b from-[var(--navy)] via-[var(--navy-light)] to-[var(--navy)]">
@@ -101,10 +67,14 @@ export default async function Home() {
             <span className="text-[var(--red)]">Show them.</span>
           </h1>
 
-          <p className="text-lg sm:text-xl text-[var(--gray-dim)] max-w-2xl mx-auto mb-10 leading-relaxed">
-            Generate forensic-grade claim documentation that would impress
-            the best carrier litigation attorney in the country. Upload your
-            docs, get back a 5-document appeal package in 15 minutes.
+          <p className="text-lg sm:text-xl text-[var(--gray-dim)] max-w-2xl mx-auto mb-4 leading-relaxed">
+            Upload your photos and measurements. Get 5 professional PDFs
+            ready to send to the carrier in 15 minutes. No Xactimate
+            license needed.
+          </p>
+          <p className="text-sm text-[var(--gray-muted)] max-w-xl mx-auto mb-10 leading-relaxed">
+            Forensic causation report, code-cited estimate, carrier comparison,
+            supplement letter, and cover email &mdash; all branded with your company logo.
           </p>
 
           <div className="flex flex-col sm:flex-row gap-4 justify-center mb-16">
@@ -112,7 +82,7 @@ export default async function Home() {
               href="/login?mode=signup"
               className="bg-gradient-to-r from-[var(--pink)] via-[var(--purple)] to-[var(--blue)] hover:shadow-[var(--shadow-glow-pink)] text-white px-8 py-4 rounded-xl text-lg font-semibold transition-colors shadow-lg shadow-red-900/30"
             >
-              Create Your Account
+              Try 3 Free Claims
             </a>
             <a
               href="#problem"
@@ -392,17 +362,31 @@ export default async function Home() {
           <h2 className="text-3xl sm:text-4xl font-bold text-white text-center mb-4">
             The 5-Document Package
           </h2>
-          <p className="text-[var(--gray-dim)] text-center mb-14 max-w-xl mx-auto">
+          <p className="text-[var(--gray-dim)] text-center mb-4 max-w-xl mx-auto">
             Every document forensic-grade, code-cited, and branded
             with your company logo.
           </p>
+          <div className="text-center mb-14">
+            <a
+              href="https://tkovack10.github.io/USARM-Claims-Platform/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 text-sm text-[var(--cyan)] hover:text-white transition-colors"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+              </svg>
+              View Example Package
+            </a>
+          </div>
 
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {[
-              { num: "01", title: "Forensic Causation Report", desc: "Photo-annotated damage analysis with clinical observations. Every finding tied to HAAG engineering standards." },
-              { num: "02", title: "X Style Build Scope", desc: "Line-item scope at current regional pricing. Every line item backed by building code citations and photo evidence." },
-              { num: "03", title: "Supplement Report", desc: "Line-by-line carrier vs. your scope. Exposes every underpayment, missed item, and pricing discrepancy." },
-              { num: "04", title: "Appeal Letter", desc: "Formal demand citing building codes, insurance regulations, and forensic evidence. Written to move adjusters." },
+              { num: "01", title: "Damage Analysis", desc: "Photo-annotated damage report with clinical observations. Every finding tied to HAAG engineering standards." },
+              { num: "02", title: "Your Estimate", desc: "Line-item scope at current regional pricing. Every line item backed by building code citations and photo evidence." },
+              { num: "03", title: "Carrier Comparison", desc: "Line-by-line carrier vs. your scope. Exposes every underpayment, missed item, and pricing discrepancy." },
+              { num: "04", title: "Supplement Letter", desc: "Formal response citing building codes, insurance regulations, and forensic evidence. Written to move adjusters." },
               { num: "05", title: "Cover Email", desc: "Ready-to-send email with professional tone, attachment summary, and regulatory response deadline." },
               { num: "++", title: "Carrier Intelligence", desc: "Every claim feeds self-learning carrier playbooks. By claim #20, the system knows your carrier's tactics before you do." },
             ].map((doc) => (
