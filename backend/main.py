@@ -1590,6 +1590,124 @@ async def companycam_photos(project_id: str, user_id: str):
     return {"photos": enriched}
 
 
+@app.post("/api/integrations/companycam/projects/{project_id}/import")
+async def companycam_import(project_id: str, user_id: str = Body(...), slug: str = Body(...)):
+    """Download photos from CompanyCam and upload to Supabase storage.
+
+    Returns list of uploaded file paths for the frontend to use.
+    """
+    from integrations.companycam import CompanyCamClient
+    import hashlib
+
+    client = await _get_user_integration_client(user_id, "companycam")
+    photos = await client.get_all_project_photos(project_id)
+
+    sb = get_supabase_client()
+    uploaded = []
+
+    for i, photo in enumerate(photos[:50]):  # Cap at 50 photos
+        url = CompanyCamClient.get_photo_url(photo)
+        if not url:
+            continue
+        try:
+            data = await client.download_photo(url)
+            if not data:
+                continue
+            # Generate safe filename
+            ext = ".jpg"
+            if url.lower().endswith(".png"):
+                ext = ".png"
+            fname = f"companycam_{i+1:03d}{ext}"
+            storage_path = f"{user_id}/{slug}/photos/{fname}"
+            sb.storage.from_("claim-documents").upload(
+                storage_path, data,
+                file_options={"content-type": f"image/{ext.strip('.')}", "upsert": "true"}
+            )
+            uploaded.append({"name": fname, "path": storage_path})
+        except Exception as e:
+            print(f"[CRM-IMPORT] Failed to import photo {i}: {e}")
+            continue
+
+    return {"uploaded": uploaded, "count": len(uploaded)}
+
+
+@app.post("/api/integrations/acculynx/jobs/{job_id}/import")
+async def acculynx_import(job_id: str, user_id: str = Body(...), slug: str = Body(...)):
+    """Fetch job details + photos from AccuLynx and upload photos to Supabase storage.
+
+    Returns job metadata (address, contacts, insurance) plus uploaded file paths.
+    """
+    client = await _get_user_integration_client(user_id, "acculynx")
+
+    # Fetch job details in parallel-ish
+    job = await client.get_job(job_id)
+    contacts = await client.get_job_contacts(job_id)
+    insurance = await client.get_job_insurance(job_id)
+    photos = await client.get_job_photos(job_id)
+
+    # Extract useful metadata
+    homeowner = ""
+    for c in contacts:
+        if c.get("type", "").lower() in ("homeowner", "property owner", "customer", ""):
+            name_parts = [c.get("firstName", ""), c.get("lastName", "")]
+            homeowner = " ".join(p for p in name_parts if p).strip()
+            if homeowner:
+                break
+
+    carrier = ""
+    if insurance and isinstance(insurance, dict):
+        carrier = insurance.get("insuranceCompany", "") or insurance.get("company", "")
+
+    address = ""
+    if job:
+        parts = [job.get("streetAddress", "")]
+        city = job.get("city", "")
+        state = job.get("state", "")
+        zip_code = job.get("zip", "")
+        if city:
+            parts.append(city)
+        if state:
+            parts.append(state)
+        if zip_code:
+            parts.append(zip_code)
+        address = ", ".join(p for p in parts if p)
+
+    # Upload photos to Supabase storage (if any have download URLs)
+    sb = get_supabase_client()
+    uploaded = []
+    for i, photo in enumerate(photos[:50]):
+        url = photo.get("url") or photo.get("uri") or photo.get("href")
+        if not url:
+            continue
+        try:
+            import httpx as hx
+            async with hx.AsyncClient(timeout=60) as http:
+                resp = await http.get(url)
+                if resp.status_code != 200:
+                    continue
+                data = resp.content
+            ext = ".jpg"
+            fname = f"acculynx_{i+1:03d}{ext}"
+            storage_path = f"{user_id}/{slug}/photos/{fname}"
+            sb.storage.from_("claim-documents").upload(
+                storage_path, data,
+                file_options={"content-type": "image/jpeg", "upsert": "true"}
+            )
+            uploaded.append({"name": fname, "path": storage_path})
+        except Exception as e:
+            print(f"[CRM-IMPORT] Failed to import AccuLynx photo {i}: {e}")
+            continue
+
+    return {
+        "address": address,
+        "homeowner": homeowner,
+        "carrier": carrier,
+        "uploaded_photos": uploaded,
+        "photo_count": len(uploaded),
+        "job": job,
+    }
+
+
 # ===================================================================
 # BACKGROUND POLLERS
 # ===================================================================

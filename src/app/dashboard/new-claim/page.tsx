@@ -1,11 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { FileUploadZone } from "@/components/file-upload-zone";
 import { AddressAutocomplete } from "@/components/address-autocomplete";
 import { useBillingQuota } from "@/hooks/use-billing-quota";
 import { uploadFilesBatched } from "@/lib/upload-utils";
+import { CrmImportModal } from "@/components/crm-import-modal";
 
 type UploadStatus = "idle" | "uploading" | "success" | "error";
 
@@ -33,8 +34,30 @@ export default function NewClaimPage() {
   const [status, setStatus] = useState<UploadStatus>("idle");
   const [errorMsg, setErrorMsg] = useState("");
   const [uploadProgress, setUploadProgress] = useState("");
+  const [showCrmModal, setShowCrmModal] = useState(false);
+  const [crmIntegrations, setCrmIntegrations] = useState<{ acculynx: boolean; companycam: boolean }>({ acculynx: false, companycam: false });
+  const [crmUserId, setCrmUserId] = useState("");
+  const [importedPhotoNote, setImportedPhotoNote] = useState("");
   const BACKEND_URL =
     process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000";
+
+  // Check CRM integration status on mount
+  useEffect(() => {
+    async function checkIntegrations() {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      setCrmUserId(user.id);
+      try {
+        const res = await fetch(`${BACKEND_URL}/api/integrations/status?user_id=${user.id}`);
+        if (res.ok) {
+          const data = await res.json();
+          setCrmIntegrations({ acculynx: !!data.acculynx, companycam: !!data.companycam });
+        }
+      } catch { /* ignore — CRM import just won't show */ }
+    }
+    checkIntegrations();
+  }, [BACKEND_URL]);
 
   const hasScope = scopeFiles.length > 0;
   const phase = hasScope ? "post-scope" : "pre-scope";
@@ -275,6 +298,56 @@ export default function NewClaimPage() {
             Upload your documents and we&apos;ll generate your appeal package.
           </p>
         </div>
+
+        {/* Import from CRM */}
+        {(crmIntegrations.acculynx || crmIntegrations.companycam) && (
+          <div className="mb-6 p-4 rounded-xl bg-white/[0.04] border border-[var(--border-glass)] flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-[var(--cyan)]/10 rounded-lg flex items-center justify-center">
+                <svg className="w-5 h-5 text-[var(--cyan)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
+                </svg>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-[var(--white)]">Import from CRM</p>
+                <p className="text-xs text-[var(--gray-muted)]">
+                  Pull photos and job data from {[crmIntegrations.acculynx && "AccuLynx", crmIntegrations.companycam && "CompanyCam"].filter(Boolean).join(" or ")}
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={() => setShowCrmModal(true)}
+              className="bg-white/[0.08] hover:bg-white/[0.12] border border-[var(--border-glass)] text-[var(--white)] px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+            >
+              Import
+            </button>
+          </div>
+        )}
+
+        {importedPhotoNote && (
+          <div className="mb-4 bg-green-500/10 border border-green-500/30 text-green-400 text-sm rounded-lg px-4 py-3">
+            {importedPhotoNote}
+          </div>
+        )}
+
+        <CrmImportModal
+          open={showCrmModal}
+          onClose={() => setShowCrmModal(false)}
+          integrations={crmIntegrations}
+          backendUrl={BACKEND_URL}
+          userId={crmUserId}
+          onImport={(data) => {
+            if (data.address) setPropertyAddress(data.address);
+            if (data.homeownerName) setHomeownerName(data.homeownerName);
+            if (data.carrier) setInsuranceCarrier(data.carrier);
+            if (data.importedPhotoCount > 0) {
+              setImportedPhotoNote(
+                `Imported ${data.importedPhotoCount} photos from CRM. They've been uploaded to storage and will be included in your claim.`
+              );
+              setShowAdvanced(true);
+            }
+          }}
+        />
 
         {/* Quota Gate — Upgrade */}
         {quota && !quota.allowed && (
