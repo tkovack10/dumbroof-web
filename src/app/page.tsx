@@ -1,6 +1,7 @@
 import { InspectorApplicationForm } from "@/components/inspector-application-form";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { HomeNav } from "@/components/home-nav";
+import { Footer } from "@/components/footer";
 
 // Revalidate homepage stats every 5 minutes
 export const revalidate = 300;
@@ -107,6 +108,36 @@ export default async function Home() {
                 <div className="text-sm text-[var(--gray-dim)] mt-1">{stat.label}</div>
               </div>
             ))}
+          </div>
+
+          {/* Integration Badges */}
+          <div className="mt-14 pt-10 border-t border-white/10">
+            <p className="text-[var(--gray-dim)] text-sm mb-5">
+              Works with the tools you already use
+            </p>
+            <div className="flex flex-wrap items-center justify-center gap-6">
+              {[
+                { name: "AccuLynx", live: true },
+                { name: "CompanyCam", live: true },
+                { name: "EagleView", live: false },
+                { name: "JobNimbus", live: false },
+              ].map((tool) => (
+                <a
+                  key={tool.name}
+                  href="/integrations"
+                  className="flex items-center gap-2 px-4 py-2 rounded-lg bg-white/[0.06] border border-white/10 hover:border-white/25 transition-colors group"
+                >
+                  <span className={`text-sm font-medium ${tool.live ? "text-white" : "text-[var(--gray-dim)]"}`}>
+                    {tool.name}
+                  </span>
+                  {tool.live ? (
+                    <span className="w-2 h-2 rounded-full bg-green-400" />
+                  ) : (
+                    <span className="text-[10px] text-[var(--gray-muted)] uppercase tracking-wider">Soon</span>
+                  )}
+                </a>
+              ))}
+            </div>
           </div>
         </div>
       </section>
@@ -729,28 +760,7 @@ export default async function Home() {
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="bg-[rgba(6,9,24,0.85)] backdrop-blur-[20px] border-t border-white/10 py-8 px-6">
-        <div className="max-w-5xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[var(--pink)] to-[var(--blue)] flex items-center justify-center font-bold text-white text-xs text-sm">DR</div>
-            <span className="text-[var(--gray-dim)] text-sm">Dumb Roof Technologies™</span>
-          </div>
-          <div className="flex items-center gap-6">
-            <a href="/login" className="text-[var(--gray-muted)] hover:text-[var(--gray-dim)] text-sm transition-colors">
-              Sign In
-            </a>
-            <div className="text-center sm:text-right">
-              <p className="text-[var(--gray-muted)] text-sm">
-                &copy; {new Date().getFullYear()} Dumb Roof Technologies. All rights reserved.
-              </p>
-              <p className="text-[var(--gray)] text-xs mt-1">
-                Patent Pending
-              </p>
-            </div>
-          </div>
-        </div>
-      </footer>
+      <Footer />
     </main>
   );
 }

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { LearnPhotoGallery } from "@/components/learn-photo-gallery";
+import { Footer } from "@/components/footer";
 
 export const metadata: Metadata = {
   title: "Hail Damage to TPO Roofing: Identification Signs & Commercial Claim Guide",
@@ -345,6 +346,7 @@ export default function TPOHailDamagePage() {
             <p>Last updated: March 22, 2026 &middot; All statistics based on industry research and FM/UL standards</p>
           </div>
         </article>
+        <Footer />
       </main>
     </>
   );

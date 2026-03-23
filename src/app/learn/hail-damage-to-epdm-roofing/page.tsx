@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { LearnPhotoGallery } from "@/components/learn-photo-gallery";
+import { Footer } from "@/components/footer";
 
 export const metadata: Metadata = {
   title: "Hail Damage to EPDM Roofing: Detection, Documentation & Insurance Claims",
@@ -367,6 +368,7 @@ export default function EPDMHailDamagePage() {
             <p>Last updated: March 22, 2026 &middot; All statistics based on professional inspection data and ASTM standards</p>
           </div>
         </article>
+        <Footer />
       </main>
     </>
   );

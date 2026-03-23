@@ -193,6 +193,20 @@ function LoginPageContent() {
                     ? "Create Account"
                     : "Sign In"}
             </button>
+
+            {isSignUp && (
+              <p className="text-[var(--gray-dim)] text-xs text-center mt-3">
+                By creating an account, you agree to our{" "}
+                <a href="/terms" className="text-[var(--gray-muted)] hover:text-white underline transition-colors">
+                  Terms of Service
+                </a>{" "}
+                and{" "}
+                <a href="/privacy" className="text-[var(--gray-muted)] hover:text-white underline transition-colors">
+                  Privacy Policy
+                </a>
+                .
+              </p>
+            )}
           </form>
 
           <div className="mt-6 text-center space-y-2">

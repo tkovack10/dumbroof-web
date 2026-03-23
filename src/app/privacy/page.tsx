@@ -1,4 +1,5 @@
 import { Metadata } from "next";
+import { Footer } from "@/components/footer";
 
 export const metadata: Metadata = {
   title: "Privacy Policy — DumbRoof.ai",
@@ -291,11 +292,7 @@ export default function PrivacyPage() {
         </div>
       </article>
 
-      {/* Footer */}
-      <footer className="border-t border-white/[0.04] py-8 text-center text-sm text-[var(--gray-dim)]">
-        &copy; {new Date().getFullYear()} Dumb Roof Technologies, LLC. All rights
-        reserved.
-      </footer>
+      <Footer />
     </main>
   );
 }

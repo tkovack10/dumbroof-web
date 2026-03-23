@@ -1423,6 +1423,174 @@ async def gmail_auth_disconnect(user_id: str = Body(..., embed=True)):
 
 
 # ===================================================================
+# CRM INTEGRATIONS
+# ===================================================================
+
+class IntegrationConnectRequest(BaseModel):
+    provider: str  # "acculynx" or "companycam"
+    api_key: str
+    user_id: str
+
+class IntegrationDisconnectRequest(BaseModel):
+    provider: str
+    user_id: str
+
+
+@app.post("/api/integrations/connect")
+async def integration_connect(req: IntegrationConnectRequest):
+    """Connect a CRM integration — test the key, then save to company_profiles."""
+    from integrations.acculynx import AccuLynxClient
+    from integrations.companycam import CompanyCamClient
+    from datetime import datetime, timezone
+
+    if req.provider == "acculynx":
+        client = AccuLynxClient(req.api_key)
+        ok, msg = await client.test_connection()
+        key_col, ts_col = "acculynx_api_key", "acculynx_connected_at"
+    elif req.provider == "companycam":
+        client = CompanyCamClient(req.api_key)
+        ok, msg = await client.test_connection()
+        key_col, ts_col = "companycam_api_key", "companycam_connected_at"
+    else:
+        raise HTTPException(status_code=400, detail=f"Unknown provider: {req.provider}")
+
+    if not ok:
+        return JSONResponse(status_code=400, content={"ok": False, "message": msg})
+
+    sb = get_supabase_client()
+    try:
+        sb.table("company_profiles").upsert({
+            "user_id": req.user_id,
+            key_col: req.api_key,
+            ts_col: datetime.now(timezone.utc).isoformat(),
+        }, on_conflict="user_id").execute()
+        return {"ok": True, "message": msg}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/integrations/disconnect")
+async def integration_disconnect(req: IntegrationDisconnectRequest):
+    """Disconnect a CRM integration — clear the API key."""
+    if req.provider == "acculynx":
+        key_col, ts_col = "acculynx_api_key", "acculynx_connected_at"
+    elif req.provider == "companycam":
+        key_col, ts_col = "companycam_api_key", "companycam_connected_at"
+    else:
+        raise HTTPException(status_code=400, detail=f"Unknown provider: {req.provider}")
+
+    sb = get_supabase_client()
+    try:
+        sb.table("company_profiles").update({
+            key_col: None,
+            ts_col: None,
+        }).eq("user_id", req.user_id).execute()
+        return {"ok": True, "message": f"{req.provider} disconnected"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/integrations/status")
+async def integration_status(user_id: str):
+    """Check which CRM integrations are connected for a user."""
+    sb = get_supabase_client()
+    try:
+        result = sb.table("company_profiles").select(
+            "acculynx_api_key, acculynx_connected_at, "
+            "companycam_api_key, companycam_connected_at"
+        ).eq("user_id", user_id).limit(1).execute()
+
+        if not result.data:
+            return {"acculynx": False, "companycam": False}
+
+        profile = result.data[0]
+        return {
+            "acculynx": bool(profile.get("acculynx_api_key")),
+            "acculynx_connected_at": profile.get("acculynx_connected_at"),
+            "companycam": bool(profile.get("companycam_api_key")),
+            "companycam_connected_at": profile.get("companycam_connected_at"),
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+async def _get_user_integration_client(user_id: str, provider: str):
+    """Helper: fetch the user's API key and return the appropriate client."""
+    from integrations.acculynx import AccuLynxClient
+    from integrations.companycam import CompanyCamClient
+
+    sb = get_supabase_client()
+    col = f"{provider}_api_key"
+    result = sb.table("company_profiles").select(col).eq("user_id", user_id).limit(1).execute()
+    if not result.data or not result.data[0].get(col):
+        raise HTTPException(status_code=400, detail=f"{provider} not connected")
+
+    api_key = result.data[0][col]
+    if provider == "acculynx":
+        return AccuLynxClient(api_key)
+    return CompanyCamClient(api_key)
+
+
+@app.get("/api/integrations/acculynx/jobs")
+async def acculynx_jobs(user_id: str, search: str = "", page: int = 0):
+    """Search/list jobs from the user's AccuLynx account."""
+    client = await _get_user_integration_client(user_id, "acculynx")
+    jobs = await client.search_jobs(search=search, page=page)
+    return {"jobs": jobs}
+
+
+@app.get("/api/integrations/acculynx/jobs/{job_id}")
+async def acculynx_job_detail(job_id: str, user_id: str):
+    """Get full job details including contacts and insurance."""
+    client = await _get_user_integration_client(user_id, "acculynx")
+    job = await client.get_job(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+
+    contacts = await client.get_job_contacts(job_id)
+    insurance = await client.get_job_insurance(job_id)
+    photos = await client.get_job_photos(job_id)
+    documents = await client.get_job_documents(job_id)
+
+    return {
+        "job": job,
+        "contacts": contacts,
+        "insurance": insurance,
+        "photos": photos,
+        "documents": documents,
+    }
+
+
+@app.get("/api/integrations/companycam/projects")
+async def companycam_projects(user_id: str, query: str = "", page: int = 1):
+    """Search CompanyCam projects by address."""
+    client = await _get_user_integration_client(user_id, "companycam")
+    projects = await client.search_projects(query=query, page=page)
+    return {"projects": projects}
+
+
+@app.get("/api/integrations/companycam/projects/{project_id}/photos")
+async def companycam_photos(project_id: str, user_id: str):
+    """Get all photos for a CompanyCam project."""
+    from integrations.companycam import CompanyCamClient
+    client = await _get_user_integration_client(user_id, "companycam")
+    photos = await client.get_all_project_photos(project_id)
+
+    # Enrich with best download URL for each photo
+    enriched = []
+    for photo in photos:
+        url = CompanyCamClient.get_photo_url(photo)
+        enriched.append({
+            "id": photo.get("id"),
+            "url": url,
+            "created_at": photo.get("created_at"),
+            "coordinates": photo.get("coordinates"),
+            "photo_url": photo.get("photo_url"),  # thumbnail
+        })
+    return {"photos": enriched}
+
+
+# ===================================================================
 # BACKGROUND POLLERS
 # ===================================================================
 

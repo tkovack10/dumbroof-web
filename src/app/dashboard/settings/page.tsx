@@ -51,6 +51,16 @@ function SettingsPageContent() {
   const [gmailEmail, setGmailEmail] = useState("");
   const [gmailConnecting, setGmailConnecting] = useState(false);
   const [gmailDisconnecting, setGmailDisconnecting] = useState(false);
+  // CRM integration state
+  const [acculynxKey, setAcculynxKey] = useState("");
+  const [acculynxConnected, setAcculynxConnected] = useState(false);
+  const [acculynxConnectedAt, setAcculynxConnectedAt] = useState<string | null>(null);
+  const [acculynxConnecting, setAcculynxConnecting] = useState(false);
+  const [companycamKey, setCompanycamKey] = useState("");
+  const [companycamConnected, setCompanycamConnected] = useState(false);
+  const [companycamConnectedAt, setCompanycamConnectedAt] = useState<string | null>(null);
+  const [companycamConnecting, setCompanycamConnecting] = useState(false);
+  const [crmError, setCrmError] = useState("");
   // Repair pricing state
   const [repairPricing, setRepairPricing] = useState({
     diagnostic_fee: "250.00",
@@ -130,6 +140,15 @@ function SettingsPageContent() {
         if (data.gmail_refresh_token) {
           setGmailConnected(true);
           setGmailEmail(data.sending_email || data.email || "");
+        }
+        // Check CRM connections
+        if (data.acculynx_api_key) {
+          setAcculynxConnected(true);
+          setAcculynxConnectedAt(data.acculynx_connected_at);
+        }
+        if (data.companycam_api_key) {
+          setCompanycamConnected(true);
+          setCompanycamConnectedAt(data.companycam_connected_at);
         }
         if (data.logo_path) {
           const { data: logoData } = supabase.storage
@@ -629,6 +648,217 @@ function SettingsPageContent() {
                 </button>
               </div>
             )}
+          </div>
+        </div>
+
+        {/* CRM Integrations */}
+        <div className="mt-12 pt-8 border-t border-[var(--border-glass)]">
+          <h2 className="text-xl font-bold text-[var(--white)] mb-1">CRM Integrations</h2>
+          <p className="text-[var(--gray-muted)] text-sm mb-6">
+            Connect your CRM to import jobs, photos, and documents directly into claims.
+          </p>
+
+          {crmError && (
+            <div className="bg-red-500/10 border border-red-500/30 text-red-400 text-sm rounded-lg px-4 py-3 mb-4">
+              {crmError}
+            </div>
+          )}
+
+          <div className="space-y-4">
+            {/* AccuLynx */}
+            <div className="bg-[var(--bg-glass)] border border-[var(--border-glass)] rounded-xl p-6">
+              {acculynxConnected ? (
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-green-500/10 rounded-lg flex items-center justify-center">
+                      <svg className="w-5 h-5 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                      </svg>
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-[var(--white)]">AccuLynx Connected</p>
+                      <p className="text-xs text-[var(--gray-muted)]">
+                        Connected {acculynxConnectedAt ? new Date(acculynxConnectedAt).toLocaleDateString() : ""}
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={async () => {
+                      const { data: { user } } = await supabase.auth.getUser();
+                      if (!user) return;
+                      setCrmError("");
+                      try {
+                        await fetch(`${BACKEND_URL}/api/integrations/disconnect`, {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({ provider: "acculynx", user_id: user.id }),
+                        });
+                        setAcculynxConnected(false);
+                        setAcculynxConnectedAt(null);
+                        setAcculynxKey("");
+                      } catch { /* ignore */ }
+                    }}
+                    className="text-red-400 hover:text-red-300 text-sm font-medium transition-colors"
+                  >
+                    Disconnect
+                  </button>
+                </div>
+              ) : (
+                <div>
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="w-10 h-10 bg-white/[0.06] rounded-lg flex items-center justify-center">
+                      <svg className="w-5 h-5 text-[var(--gray-dim)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M20.25 14.15v4.25c0 1.094-.787 2.036-1.872 2.18-2.087.277-4.216.42-6.378.42s-4.291-.143-6.378-.42c-1.085-.144-1.872-1.086-1.872-2.18v-4.25m16.5 0a2.18 2.18 0 00.75-1.661V8.706c0-1.081-.768-2.015-1.837-2.175a48.114 48.114 0 00-3.413-.387m4.5 8.006c-.194.165-.42.295-.673.38A23.978 23.978 0 0112 15.75c-2.648 0-5.195-.429-7.577-1.22a2.016 2.016 0 01-.673-.38m0 0A2.18 2.18 0 013 12.489V8.706c0-1.081.768-2.015 1.837-2.175a48.111 48.111 0 013.413-.387m7.5 0V5.25A2.25 2.25 0 0013.5 3h-3a2.25 2.25 0 00-2.25 2.25v.894m7.5 0a48.667 48.667 0 00-7.5 0M12 12.75h.008v.008H12v-.008z" />
+                      </svg>
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-[var(--white)]">AccuLynx</p>
+                      <p className="text-xs text-[var(--gray-muted)]">Import jobs, contacts, and insurance info</p>
+                    </div>
+                  </div>
+                  <div className="flex gap-3">
+                    <input
+                      type="password"
+                      value={acculynxKey}
+                      onChange={(e) => setAcculynxKey(e.target.value)}
+                      placeholder="Paste your AccuLynx API key"
+                      className="flex-1 px-4 py-2.5 rounded-lg bg-[var(--bg-input)] border border-[var(--border-glass)] text-[var(--white)] placeholder:text-[var(--gray-dim)] focus:border-[var(--cyan)] focus:ring-1 focus:ring-[var(--cyan)] outline-none transition-colors text-sm"
+                    />
+                    <button
+                      onClick={async () => {
+                        if (!acculynxKey.trim()) return;
+                        setAcculynxConnecting(true);
+                        setCrmError("");
+                        const { data: { user } } = await supabase.auth.getUser();
+                        if (!user) return;
+                        try {
+                          const res = await fetch(`${BACKEND_URL}/api/integrations/connect`, {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ provider: "acculynx", api_key: acculynxKey.trim(), user_id: user.id }),
+                          });
+                          const data = await res.json();
+                          if (data.ok) {
+                            setAcculynxConnected(true);
+                            setAcculynxConnectedAt(new Date().toISOString());
+                          } else {
+                            setCrmError(data.message || "Failed to connect AccuLynx");
+                          }
+                        } catch {
+                          setCrmError("Failed to connect to AccuLynx");
+                        }
+                        setAcculynxConnecting(false);
+                      }}
+                      disabled={acculynxConnecting || !acculynxKey.trim()}
+                      className="bg-gradient-to-r from-[var(--pink)] via-[var(--purple)] to-[var(--blue)] hover:shadow-[var(--shadow-glow-pink)] disabled:opacity-50 text-white px-5 py-2.5 rounded-lg text-sm font-medium transition-colors whitespace-nowrap"
+                    >
+                      {acculynxConnecting ? "Testing..." : "Connect"}
+                    </button>
+                  </div>
+                  <p className="text-[11px] text-[var(--gray-dim)] mt-2">
+                    Find your API key in AccuLynx under Settings &rarr; API &amp; Integrations
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {/* CompanyCam */}
+            <div className="bg-[var(--bg-glass)] border border-[var(--border-glass)] rounded-xl p-6">
+              {companycamConnected ? (
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-green-500/10 rounded-lg flex items-center justify-center">
+                      <svg className="w-5 h-5 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                      </svg>
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-[var(--white)]">CompanyCam Connected</p>
+                      <p className="text-xs text-[var(--gray-muted)]">
+                        Connected {companycamConnectedAt ? new Date(companycamConnectedAt).toLocaleDateString() : ""}
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={async () => {
+                      const { data: { user } } = await supabase.auth.getUser();
+                      if (!user) return;
+                      setCrmError("");
+                      try {
+                        await fetch(`${BACKEND_URL}/api/integrations/disconnect`, {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({ provider: "companycam", user_id: user.id }),
+                        });
+                        setCompanycamConnected(false);
+                        setCompanycamConnectedAt(null);
+                        setCompanycamKey("");
+                      } catch { /* ignore */ }
+                    }}
+                    className="text-red-400 hover:text-red-300 text-sm font-medium transition-colors"
+                  >
+                    Disconnect
+                  </button>
+                </div>
+              ) : (
+                <div>
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="w-10 h-10 bg-white/[0.06] rounded-lg flex items-center justify-center">
+                      <svg className="w-5 h-5 text-[var(--gray-dim)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.774 48.774 0 00-5.232 0 2.192 2.192 0 00-1.736 1.039l-.821 1.316z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 12.75a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0z" />
+                      </svg>
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-[var(--white)]">CompanyCam</p>
+                      <p className="text-xs text-[var(--gray-muted)]">Import inspection photos with GPS and damage tags</p>
+                    </div>
+                  </div>
+                  <div className="flex gap-3">
+                    <input
+                      type="password"
+                      value={companycamKey}
+                      onChange={(e) => setCompanycamKey(e.target.value)}
+                      placeholder="Paste your CompanyCam API key"
+                      className="flex-1 px-4 py-2.5 rounded-lg bg-[var(--bg-input)] border border-[var(--border-glass)] text-[var(--white)] placeholder:text-[var(--gray-dim)] focus:border-[var(--cyan)] focus:ring-1 focus:ring-[var(--cyan)] outline-none transition-colors text-sm"
+                    />
+                    <button
+                      onClick={async () => {
+                        if (!companycamKey.trim()) return;
+                        setCompanycamConnecting(true);
+                        setCrmError("");
+                        const { data: { user } } = await supabase.auth.getUser();
+                        if (!user) return;
+                        try {
+                          const res = await fetch(`${BACKEND_URL}/api/integrations/connect`, {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ provider: "companycam", api_key: companycamKey.trim(), user_id: user.id }),
+                          });
+                          const data = await res.json();
+                          if (data.ok) {
+                            setCompanycamConnected(true);
+                            setCompanycamConnectedAt(new Date().toISOString());
+                          } else {
+                            setCrmError(data.message || "Failed to connect CompanyCam");
+                          }
+                        } catch {
+                          setCrmError("Failed to connect to CompanyCam");
+                        }
+                        setCompanycamConnecting(false);
+                      }}
+                      disabled={companycamConnecting || !companycamKey.trim()}
+                      className="bg-gradient-to-r from-[var(--pink)] via-[var(--purple)] to-[var(--blue)] hover:shadow-[var(--shadow-glow-pink)] disabled:opacity-50 text-white px-5 py-2.5 rounded-lg text-sm font-medium transition-colors whitespace-nowrap"
+                    >
+                      {companycamConnecting ? "Testing..." : "Connect"}
+                    </button>
+                  </div>
+                  <p className="text-[11px] text-[var(--gray-dim)] mt-2">
+                    Find your API key in CompanyCam under Settings &rarr; Integrations &rarr; API
+                  </p>
+                </div>
+              )}
+            </div>
           </div>
         </div>
 

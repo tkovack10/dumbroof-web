@@ -1,4 +1,5 @@
 import { Metadata } from "next";
+import { Footer } from "@/components/footer";
 
 export const metadata: Metadata = {
   title: "Terms of Service — DumbRoof.ai",
@@ -225,11 +226,7 @@ export default function TermsPage() {
         </div>
       </article>
 
-      {/* Footer */}
-      <footer className="border-t border-white/[0.04] py-8 text-center text-sm text-[var(--gray-dim)]">
-        &copy; {new Date().getFullYear()} Dumb Roof Technologies, LLC. All rights
-        reserved.
-      </footer>
+      <Footer />
     </main>
   );
 }
