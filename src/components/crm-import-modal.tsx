@@ -17,7 +17,7 @@ interface CrmImportModalProps {
 }
 
 type Tab = "acculynx" | "companycam";
-type Step = "search" | "preview" | "importing";
+type Step = "search" | "preview" | "photos" | "importing";
 
 interface AccuLynxJob {
   id: string;
@@ -33,6 +33,13 @@ interface CompanyCamProject {
   name?: string;
   address?: { street_address_1?: string; city?: string; state?: string };
   photo_count?: number;
+}
+
+interface PhotoItem {
+  id: string;
+  url: string | null;
+  photo_url: string | null; // thumbnail
+  created_at?: string;
 }
 
 export function CrmImportModal({
@@ -57,11 +64,12 @@ export function CrmImportModal({
   // CompanyCam state
   const [projects, setProjects] = useState<CompanyCamProject[]>([]);
   const [selectedProject, setSelectedProject] = useState<CompanyCamProject | null>(null);
-  const [photoCount, setPhotoCount] = useState(0);
+  const [photos, setPhotos] = useState<PhotoItem[]>([]);
+  const [selectedPhotoIndices, setSelectedPhotoIndices] = useState<Set<number>>(new Set());
+  const [loadingPhotos, setLoadingPhotos] = useState(false);
 
   // Import state
   const [importProgress, setImportProgress] = useState("");
-  const [slug, setSlug] = useState("");
 
   if (!open) return null;
 
@@ -123,17 +131,43 @@ export function CrmImportModal({
 
   const selectCompanyCamProject = async (project: CompanyCamProject) => {
     setSelectedProject(project);
-    // Fetch photo count
+    setLoadingPhotos(true);
+    setError("");
     try {
       const res = await fetch(
         `${backendUrl}/api/integrations/companycam/projects/${project.id}/photos?user_id=${userId}`
       );
       const data = await res.json();
-      setPhotoCount((data.photos || []).length);
+      const photoList = data.photos || [];
+      setPhotos(photoList);
+      // Pre-select first 100 photos
+      const initial = new Set<number>();
+      for (let i = 0; i < Math.min(photoList.length, 100); i++) initial.add(i);
+      setSelectedPhotoIndices(initial);
     } catch {
-      setPhotoCount(project.photo_count || 0);
+      setPhotos([]);
     }
-    setStep("preview");
+    setLoadingPhotos(false);
+    setStep("photos");
+  };
+
+  const togglePhoto = (idx: number) => {
+    setSelectedPhotoIndices((prev) => {
+      const next = new Set(prev);
+      if (next.has(idx)) next.delete(idx);
+      else if (next.size < 100) next.add(idx);
+      return next;
+    });
+  };
+
+  const selectAllPhotos = () => {
+    const all = new Set<number>();
+    for (let i = 0; i < Math.min(photos.length, 100); i++) all.add(i);
+    setSelectedPhotoIndices(all);
+  };
+
+  const deselectAllPhotos = () => {
+    setSelectedPhotoIndices(new Set());
   };
 
   const importAccuLynx = async () => {
@@ -146,7 +180,6 @@ export function CrmImportModal({
       .filter(Boolean)
       .join(", ");
     const newSlug = generateSlug(addr || "import");
-    setSlug(newSlug);
 
     try {
       const res = await fetch(
@@ -177,9 +210,9 @@ export function CrmImportModal({
   };
 
   const importCompanyCam = async () => {
-    if (!selectedProject) return;
+    if (!selectedProject || selectedPhotoIndices.size === 0) return;
     setStep("importing");
-    setImportProgress("Downloading photos from CompanyCam...");
+    setImportProgress(`Downloading ${selectedPhotoIndices.size} photos from CompanyCam...`);
     setError("");
 
     const addr =
@@ -187,7 +220,6 @@ export function CrmImportModal({
       selectedProject.name ||
       "import";
     const newSlug = generateSlug(addr);
-    setSlug(newSlug);
 
     try {
       const res = await fetch(
@@ -195,7 +227,11 @@ export function CrmImportModal({
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ user_id: userId, slug: newSlug }),
+          body: JSON.stringify({
+            user_id: userId,
+            slug: newSlug,
+            selected_indices: Array.from(selectedPhotoIndices).sort((a, b) => a - b),
+          }),
         }
       );
       const data = await res.json();
@@ -219,7 +255,7 @@ export function CrmImportModal({
       setTimeout(() => onClose(), 1000);
     } catch {
       setError("Failed to import from CompanyCam");
-      setStep("preview");
+      setStep("photos");
     }
   };
 
@@ -230,23 +266,22 @@ export function CrmImportModal({
     setProjects([]);
     setSelectedJob(null);
     setSelectedProject(null);
+    setPhotos([]);
+    setSelectedPhotoIndices(new Set());
     setError("");
     setImportProgress("");
   };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm px-4">
-      <div className="w-full max-w-lg bg-[rgb(15,18,35)] border border-[var(--border-glass)] rounded-2xl shadow-2xl overflow-hidden">
+      <div className="w-full max-w-2xl bg-[rgb(15,18,35)] border border-[var(--border-glass)] rounded-2xl shadow-2xl overflow-hidden">
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--border-glass)]">
           <h2 className="text-lg font-bold text-[var(--white)]">
             Import from CRM
           </h2>
           <button
-            onClick={() => {
-              reset();
-              onClose();
-            }}
+            onClick={() => { reset(); onClose(); }}
             className="text-[var(--gray-dim)] hover:text-white transition-colors"
           >
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -286,7 +321,7 @@ export function CrmImportModal({
         )}
 
         {/* Body */}
-        <div className="p-6 max-h-[60vh] overflow-y-auto">
+        <div className="p-6 max-h-[70vh] overflow-y-auto">
           {/* Search Step */}
           {step === "search" && (
             <>
@@ -308,7 +343,7 @@ export function CrmImportModal({
                   disabled={searching}
                   className="bg-gradient-to-r from-[var(--pink)] via-[var(--purple)] to-[var(--blue)] hover:shadow-[var(--shadow-glow-pink)] disabled:opacity-50 text-white px-5 py-2.5 rounded-lg text-sm font-medium transition-colors whitespace-nowrap"
                 >
-                  {searching ? "..." : "Search"}
+                  {searching ? "Searching..." : "Search"}
                 </button>
               </div>
 
@@ -332,9 +367,7 @@ export function CrmImportModal({
                       </p>
                       <p className="text-xs text-[var(--gray-muted)] mt-0.5">
                         {job.jobNumber ? `#${job.jobNumber}` : ""}
-                        {job.currentMilestone
-                          ? ` — ${job.currentMilestone}`
-                          : ""}
+                        {job.currentMilestone ? ` — ${job.currentMilestone}` : ""}
                       </p>
                     </button>
                   ))}
@@ -351,14 +384,10 @@ export function CrmImportModal({
                       className="w-full text-left p-3 rounded-lg bg-white/[0.04] border border-[var(--border-glass)] hover:border-[var(--cyan)] transition-colors"
                     >
                       <p className="text-sm font-medium text-[var(--white)]">
-                        {project.address?.street_address_1 ||
-                          project.name ||
-                          "Unnamed project"}
+                        {project.address?.street_address_1 || project.name || "Unnamed project"}
                       </p>
                       <p className="text-xs text-[var(--gray-muted)] mt-0.5">
-                        {project.photo_count
-                          ? `${project.photo_count} photos`
-                          : ""}
+                        {project.photo_count ? `${project.photo_count} photos` : ""}
                       </p>
                     </button>
                   ))}
@@ -367,8 +396,8 @@ export function CrmImportModal({
             </>
           )}
 
-          {/* Preview Step */}
-          {step === "preview" && (
+          {/* AccuLynx Preview Step */}
+          {step === "preview" && tab === "acculynx" && selectedJob && (
             <>
               <button
                 onClick={reset}
@@ -380,95 +409,151 @@ export function CrmImportModal({
                 Back to search
               </button>
 
-              {tab === "acculynx" && selectedJob && (
-                <div className="space-y-4">
-                  <div className="p-4 rounded-xl bg-white/[0.04] border border-[var(--border-glass)]">
-                    <h3 className="text-sm font-semibold text-[var(--white)] mb-2">
-                      Job Details
-                    </h3>
-                    <div className="space-y-1 text-sm text-[var(--gray)]">
-                      <p>
-                        <span className="text-[var(--gray-muted)]">Address:</span>{" "}
-                        {selectedJob.streetAddress}
-                        {selectedJob.city ? `, ${selectedJob.city}` : ""}
-                        {selectedJob.state ? ` ${selectedJob.state}` : ""}
-                      </p>
-                      {selectedJob.jobNumber && (
-                        <p>
-                          <span className="text-[var(--gray-muted)]">Job #:</span>{" "}
-                          {selectedJob.jobNumber}
-                        </p>
-                      )}
-                      {selectedJob.currentMilestone && (
-                        <p>
-                          <span className="text-[var(--gray-muted)]">Status:</span>{" "}
-                          {selectedJob.currentMilestone}
-                        </p>
-                      )}
-                    </div>
+              <div className="space-y-4">
+                <div className="p-4 rounded-xl bg-white/[0.04] border border-[var(--border-glass)]">
+                  <h3 className="text-sm font-semibold text-[var(--white)] mb-2">Job Details</h3>
+                  <div className="space-y-1 text-sm text-[var(--gray)]">
+                    <p>
+                      <span className="text-[var(--gray-muted)]">Address:</span>{" "}
+                      {selectedJob.streetAddress}
+                      {selectedJob.city ? `, ${selectedJob.city}` : ""}
+                      {selectedJob.state ? ` ${selectedJob.state}` : ""}
+                    </p>
+                    {selectedJob.jobNumber && (
+                      <p><span className="text-[var(--gray-muted)]">Job #:</span> {selectedJob.jobNumber}</p>
+                    )}
+                    {selectedJob.currentMilestone && (
+                      <p><span className="text-[var(--gray-muted)]">Status:</span> {selectedJob.currentMilestone}</p>
+                    )}
                   </div>
+                </div>
 
-                  <div className="p-4 rounded-xl bg-blue-500/10 border border-blue-500/30">
-                    <p className="text-sm text-blue-400">
-                      This will import the job address, homeowner name, carrier info, and any available photos into your new claim form.
+                <div className="p-4 rounded-xl bg-blue-500/10 border border-blue-500/30">
+                  <p className="text-sm text-blue-400">
+                    This will import the job address, homeowner name, carrier info, and any available photos.
+                  </p>
+                </div>
+
+                {error && (
+                  <div className="bg-red-500/10 border border-red-500/30 text-red-400 text-sm rounded-lg px-4 py-3">
+                    {error}
+                  </div>
+                )}
+
+                <button
+                  onClick={importAccuLynx}
+                  className="w-full bg-gradient-to-r from-[var(--pink)] via-[var(--purple)] to-[var(--blue)] hover:shadow-[var(--shadow-glow-pink)] text-white py-3 rounded-lg font-semibold transition-colors text-sm"
+                >
+                  Import from AccuLynx
+                </button>
+              </div>
+            </>
+          )}
+
+          {/* CompanyCam Photo Picker Step */}
+          {step === "photos" && tab === "companycam" && selectedProject && (
+            <>
+              <button
+                onClick={reset}
+                className="text-sm text-[var(--gray-dim)] hover:text-white transition-colors mb-4 flex items-center gap-1"
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+                </svg>
+                Back to search
+              </button>
+
+              <div className="mb-4">
+                <div className="flex items-center justify-between mb-3">
+                  <div>
+                    <h3 className="text-sm font-semibold text-[var(--white)]">
+                      Select Photos to Import
+                    </h3>
+                    <p className="text-xs text-[var(--gray-muted)] mt-0.5">
+                      {selectedPhotoIndices.size} of {photos.length} selected (max 100)
                     </p>
                   </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={selectAllPhotos}
+                      className="text-xs text-[var(--cyan)] hover:text-white transition-colors"
+                    >
+                      Select All
+                    </button>
+                    <span className="text-[var(--gray-dim)]">|</span>
+                    <button
+                      onClick={deselectAllPhotos}
+                      className="text-xs text-[var(--gray-muted)] hover:text-white transition-colors"
+                    >
+                      Deselect All
+                    </button>
+                  </div>
+                </div>
 
-                  {error && (
-                    <div className="bg-red-500/10 border border-red-500/30 text-red-400 text-sm rounded-lg px-4 py-3">
-                      {error}
-                    </div>
-                  )}
+                {loadingPhotos ? (
+                  <div className="text-center py-8">
+                    <div className="w-8 h-8 border-2 border-[var(--cyan)] border-t-transparent rounded-full animate-spin mx-auto mb-2" />
+                    <p className="text-xs text-[var(--gray-muted)]">Loading photos...</p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-4 sm:grid-cols-5 gap-2 max-h-[40vh] overflow-y-auto pr-1">
+                    {photos.map((photo, idx) => {
+                      const isSelected = selectedPhotoIndices.has(idx);
+                      const thumbUrl = photo.photo_url || photo.url;
+                      return (
+                        <button
+                          key={photo.id || idx}
+                          onClick={() => togglePhoto(idx)}
+                          className={`relative aspect-square rounded-lg overflow-hidden border-2 transition-all ${
+                            isSelected
+                              ? "border-[var(--cyan)] ring-1 ring-[var(--cyan)]"
+                              : "border-transparent hover:border-white/20"
+                          }`}
+                        >
+                          {thumbUrl ? (
+                            <img
+                              src={thumbUrl}
+                              alt={`Photo ${idx + 1}`}
+                              className="w-full h-full object-cover"
+                              loading="lazy"
+                            />
+                          ) : (
+                            <div className="w-full h-full bg-white/[0.06] flex items-center justify-center">
+                              <svg className="w-6 h-6 text-[var(--gray-dim)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909M3.75 21h16.5" />
+                              </svg>
+                            </div>
+                          )}
+                          {isSelected && (
+                            <div className="absolute top-1 right-1 w-5 h-5 bg-[var(--cyan)] rounded-full flex items-center justify-center">
+                              <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                              </svg>
+                            </div>
+                          )}
+                          <div className="absolute bottom-0 left-0 right-0 bg-black/60 text-[10px] text-white text-center py-0.5">
+                            {idx + 1}
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
 
-                  <button
-                    onClick={importAccuLynx}
-                    className="w-full bg-gradient-to-r from-[var(--pink)] via-[var(--purple)] to-[var(--blue)] hover:shadow-[var(--shadow-glow-pink)] text-white py-3 rounded-lg font-semibold transition-colors text-sm"
-                  >
-                    Import from AccuLynx
-                  </button>
+              {error && (
+                <div className="bg-red-500/10 border border-red-500/30 text-red-400 text-sm rounded-lg px-4 py-3 mb-4">
+                  {error}
                 </div>
               )}
 
-              {tab === "companycam" && selectedProject && (
-                <div className="space-y-4">
-                  <div className="p-4 rounded-xl bg-white/[0.04] border border-[var(--border-glass)]">
-                    <h3 className="text-sm font-semibold text-[var(--white)] mb-2">
-                      Project Details
-                    </h3>
-                    <div className="space-y-1 text-sm text-[var(--gray)]">
-                      <p>
-                        <span className="text-[var(--gray-muted)]">Address:</span>{" "}
-                        {selectedProject.address?.street_address_1 ||
-                          selectedProject.name ||
-                          "—"}
-                      </p>
-                      <p>
-                        <span className="text-[var(--gray-muted)]">Photos:</span>{" "}
-                        {photoCount} available (max 50 imported)
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="p-4 rounded-xl bg-blue-500/10 border border-blue-500/30">
-                    <p className="text-sm text-blue-400">
-                      This will download up to 50 photos from this CompanyCam project and upload them to your claim.
-                    </p>
-                  </div>
-
-                  {error && (
-                    <div className="bg-red-500/10 border border-red-500/30 text-red-400 text-sm rounded-lg px-4 py-3">
-                      {error}
-                    </div>
-                  )}
-
-                  <button
-                    onClick={importCompanyCam}
-                    className="w-full bg-gradient-to-r from-[var(--pink)] via-[var(--purple)] to-[var(--blue)] hover:shadow-[var(--shadow-glow-pink)] text-white py-3 rounded-lg font-semibold transition-colors text-sm"
-                  >
-                    Import {photoCount} Photos
-                  </button>
-                </div>
-              )}
+              <button
+                onClick={importCompanyCam}
+                disabled={selectedPhotoIndices.size === 0}
+                className="w-full bg-gradient-to-r from-[var(--pink)] via-[var(--purple)] to-[var(--blue)] hover:shadow-[var(--shadow-glow-pink)] disabled:opacity-50 text-white py-3 rounded-lg font-semibold transition-colors text-sm"
+              >
+                Import {selectedPhotoIndices.size} Selected Photos
+              </button>
             </>
           )}
 

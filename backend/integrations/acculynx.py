@@ -149,3 +149,47 @@ class AccuLynxClient:
                 break
             await asyncio.sleep(API_DELAY)
         return all_jobs
+
+    async def search_jobs_by_address(
+        self, query: str, max_pages: int = 20
+    ) -> list[dict]:
+        """Search jobs by address — client-side filter.
+
+        AccuLynx's search= parameter only matches job number/customer name,
+        NOT street address. So we paginate jobs and filter locally.
+        Caps at max_pages * 25 = 500 jobs scanned.
+        """
+        query_lower = query.lower().strip()
+        if not query_lower:
+            return await self.search_jobs()
+
+        # First try the native search (works for job numbers and names)
+        native = await self.search_jobs(search=query)
+        native_matches = [
+            j for j in native
+            if query_lower in (j.get("streetAddress", "") or "").lower()
+            or query_lower in (j.get("city", "") or "").lower()
+            or query_lower in str(j.get("jobNumber", "")).lower()
+        ]
+        if native_matches:
+            return native_matches
+
+        # Native search didn't match by address — paginate and filter
+        all_jobs: list[dict] = []
+        for page in range(max_pages):
+            jobs = await self.search_jobs(page=page)
+            if not jobs:
+                break
+            for job in jobs:
+                addr = (job.get("streetAddress", "") or "").lower()
+                city = (job.get("city", "") or "").lower()
+                full = f"{addr} {city}"
+                if query_lower in full:
+                    all_jobs.append(job)
+            if len(jobs) < MAX_PAGE_SIZE:
+                break
+            await asyncio.sleep(API_DELAY)
+            # Stop early if we found enough matches
+            if len(all_jobs) >= 25:
+                break
+        return all_jobs[:25]

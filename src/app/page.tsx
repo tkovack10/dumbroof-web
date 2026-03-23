@@ -120,6 +120,8 @@ export default async function Home() {
                 { name: "AccuLynx", live: true },
                 { name: "CompanyCam", live: true },
                 { name: "EagleView", live: false },
+                { name: "HOVER", live: false },
+                { name: "GAF QuickMeasure", live: false },
                 { name: "JobNimbus", live: false },
               ].map((tool) => (
                 <a

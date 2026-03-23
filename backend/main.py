@@ -1533,9 +1533,16 @@ async def _get_user_integration_client(user_id: str, provider: str):
 
 @app.get("/api/integrations/acculynx/jobs")
 async def acculynx_jobs(user_id: str, search: str = "", page: int = 0):
-    """Search/list jobs from the user's AccuLynx account."""
+    """Search/list jobs from the user's AccuLynx account.
+
+    Uses address-aware search: AccuLynx's native search= only matches
+    job number/customer name, so we paginate and filter by address client-side.
+    """
     client = await _get_user_integration_client(user_id, "acculynx")
-    jobs = await client.search_jobs(search=search, page=page)
+    if search:
+        jobs = await client.search_jobs_by_address(search)
+    else:
+        jobs = await client.search_jobs(page=page)
     return {"jobs": jobs}
 
 
@@ -1591,21 +1598,32 @@ async def companycam_photos(project_id: str, user_id: str):
 
 
 @app.post("/api/integrations/companycam/projects/{project_id}/import")
-async def companycam_import(project_id: str, user_id: str = Body(...), slug: str = Body(...)):
+async def companycam_import(
+    project_id: str,
+    user_id: str = Body(...),
+    slug: str = Body(...),
+    selected_indices: list[int] | None = Body(None),
+):
     """Download photos from CompanyCam and upload to Supabase storage.
 
-    Returns list of uploaded file paths for the frontend to use.
+    If selected_indices is provided, only those photos are imported.
+    Otherwise imports up to 100 photos.
     """
     from integrations.companycam import CompanyCamClient
-    import hashlib
 
     client = await _get_user_integration_client(user_id, "companycam")
     photos = await client.get_all_project_photos(project_id)
 
+    # Filter to selected photos if indices provided
+    if selected_indices is not None:
+        photos = [photos[i] for i in selected_indices if i < len(photos)]
+    else:
+        photos = photos[:100]
+
     sb = get_supabase_client()
     uploaded = []
 
-    for i, photo in enumerate(photos[:50]):  # Cap at 50 photos
+    for i, photo in enumerate(photos):
         url = CompanyCamClient.get_photo_url(photo)
         if not url:
             continue
