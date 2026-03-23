@@ -110,36 +110,38 @@ export default async function Home() {
             ))}
           </div>
 
-          {/* Integration Badges */}
+          {/* Integration Logos */}
           <div className="mt-14 pt-10 border-t border-white/10">
-            <p className="text-[var(--gray-dim)] text-sm mb-5">
-              Works with the tools you already use
+            <p className="text-[var(--gray-muted)] text-xs uppercase tracking-widest mb-6">
+              Integrates with
             </p>
-            <div className="flex flex-wrap items-center justify-center gap-6">
+            <a
+              href="/integrations"
+              className="flex flex-wrap items-center justify-center gap-6 sm:gap-8"
+            >
               {[
-                { name: "AccuLynx", live: true },
-                { name: "CompanyCam", live: true },
-                { name: "EagleView", live: false },
-                { name: "HOVER", live: false },
-                { name: "GAF QuickMeasure", live: false },
-                { name: "JobNimbus", live: false },
+                { name: "AccuLynx", color: "#2196F3", letter: "A" },
+                { name: "CompanyCam", color: "#43A047", letter: "C" },
+                { name: "JobNimbus", color: "#FF6F00", letter: "J" },
+                { name: "EagleView", color: "#0288D1", letter: "E" },
+                { name: "HOVER", color: "#7C3AED", letter: "H" },
               ].map((tool) => (
-                <a
+                <span
                   key={tool.name}
-                  href="/integrations"
-                  className="flex items-center gap-2 px-4 py-2 rounded-lg bg-white/[0.06] border border-white/10 hover:border-white/25 transition-colors group"
+                  className="flex items-center gap-2 opacity-60 hover:opacity-100 transition-opacity"
                 >
-                  <span className={`text-sm font-medium ${tool.live ? "text-white" : "text-[var(--gray-dim)]"}`}>
+                  <span
+                    className="w-6 h-6 rounded-md flex items-center justify-center text-white text-xs font-bold shrink-0"
+                    style={{ backgroundColor: tool.color }}
+                  >
+                    {tool.letter}
+                  </span>
+                  <span className="text-sm font-medium text-white/80">
                     {tool.name}
                   </span>
-                  {tool.live ? (
-                    <span className="w-2 h-2 rounded-full bg-green-400" />
-                  ) : (
-                    <span className="text-[10px] text-[var(--gray-muted)] uppercase tracking-wider">Soon</span>
-                  )}
-                </a>
+                </span>
               ))}
-            </div>
+            </a>
           </div>
         </div>
       </section>
