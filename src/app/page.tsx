@@ -117,29 +117,21 @@ export default async function Home() {
             </p>
             <a
               href="/integrations"
-              className="flex flex-wrap items-center justify-center gap-6 sm:gap-8"
+              className="flex flex-wrap items-center justify-center gap-8 sm:gap-12"
             >
               {[
-                { name: "AccuLynx", color: "#2196F3", letter: "A" },
-                { name: "CompanyCam", color: "#43A047", letter: "C" },
-                { name: "JobNimbus", color: "#FF6F00", letter: "J" },
-                { name: "EagleView", color: "#0288D1", letter: "E" },
-                { name: "HOVER", color: "#7C3AED", letter: "H" },
+                { name: "AccuLynx", logo: "/integrations/acculynx.svg" },
+                { name: "CompanyCam", logo: "/integrations/companycam.svg" },
+                { name: "JobNimbus", logo: "/integrations/jobnimbus.svg" },
+                { name: "EagleView", logo: "/integrations/eagleview.svg" },
+                { name: "HOVER", logo: "/integrations/hover.svg" },
               ].map((tool) => (
-                <span
+                <img
                   key={tool.name}
-                  className="flex items-center gap-2 opacity-60 hover:opacity-100 transition-opacity"
-                >
-                  <span
-                    className="w-6 h-6 rounded-md flex items-center justify-center text-white text-xs font-bold shrink-0"
-                    style={{ backgroundColor: tool.color }}
-                  >
-                    {tool.letter}
-                  </span>
-                  <span className="text-sm font-medium text-white/80">
-                    {tool.name}
-                  </span>
-                </span>
+                  src={tool.logo}
+                  alt={tool.name}
+                  className="h-6 sm:h-7 w-auto opacity-60 hover:opacity-100 transition-opacity"
+                />
               ))}
             </a>
           </div>

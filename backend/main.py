@@ -1583,16 +1583,17 @@ async def companycam_photos(project_id: str, user_id: str):
     client = await _get_user_integration_client(user_id, "companycam")
     photos = await client.get_all_project_photos(project_id)
 
-    # Enrich with best download URL for each photo
+    # Enrich with download URL + thumbnail URL for each photo
     enriched = []
     for photo in photos:
-        url = CompanyCamClient.get_photo_url(photo)
+        url = CompanyCamClient.get_photo_url(photo, size="web")
+        thumb = CompanyCamClient.get_photo_url(photo, size="thumb") or CompanyCamClient.get_photo_url(photo, size="small") or url
         enriched.append({
             "id": photo.get("id"),
             "url": url,
             "created_at": photo.get("created_at"),
             "coordinates": photo.get("coordinates"),
-            "photo_url": photo.get("photo_url"),  # thumbnail
+            "photo_url": thumb,
         })
     return {"photos": enriched}
 

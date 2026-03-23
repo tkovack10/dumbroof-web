@@ -42,9 +42,9 @@ export async function GET(req: NextRequest) {
   const photosWithUrls = await Promise.all(
     (photos || []).slice(0, 30).map(async (photo) => {
       let signedUrl = "";
-      // Try the file_path from photos table first, then construct from annotation_key
-      const storagePath = photo.file_path || `${claimFilePath}/photos/${photo.annotation_key}.jpg`;
-      if (storagePath && claimFilePath) {
+      // Try the file_path from photos table first, then construct from claim file_path + annotation_key
+      const storagePath = photo.file_path || (claimFilePath ? `${claimFilePath}/photos/${photo.annotation_key}.jpg` : "");
+      if (storagePath) {
         const { data } = await supabaseAdmin.storage
           .from("claim-documents")
           .createSignedUrl(storagePath, 3600);
