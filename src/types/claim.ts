@@ -60,6 +60,10 @@ export interface Claim {
   trade_count?: number | null;
   // Line item corrections
   excluded_line_items?: string[] | null;
+  // Lifecycle (install → complete → invoice → paid)
+  lifecycle_phase?: string | null;
+  install_supplement_total?: number | null;
+  completion_date?: string | null;
   // Admin enrichment
   user_email?: string;
 }

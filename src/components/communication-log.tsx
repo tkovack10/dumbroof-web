@@ -36,6 +36,7 @@ const TYPE_STYLES: Record<string, { bg: string; label: string }> = {
   invoice: { bg: "bg-green-500/10 text-green-400", label: "Invoice" },
   coc: { bg: "bg-purple-500/10 text-purple-400", label: "COC" },
   aob: { bg: "bg-amber-500/10 text-amber-400", label: "AOB" },
+  install_supplement: { bg: "bg-orange-500/10 text-orange-400", label: "Install Supplement" },
 };
 
 export function CommunicationLog({ claimId }: Props) {

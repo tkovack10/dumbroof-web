@@ -8,6 +8,7 @@ import { PendingChangesBanner } from "@/components/pending-changes-banner";
 import { ScopeComparison } from "@/components/scope-comparison";
 import { EstimateView } from "@/components/estimate-view";
 import { SupplementComposer } from "@/components/supplement-composer";
+import { InstallSupplementBuilder } from "@/components/install-supplement-builder";
 import type { ScopeComparisonRow } from "@/types/scope-comparison";
 
 import type { Claim } from "@/types/claim";
@@ -802,6 +803,17 @@ export default function ClaimDetailPage() {
             userName={userProfile.name}
             companyName={userProfile.company}
             companyPhone={userProfile.phone}
+          />
+        )}
+
+        {/* Install Supplements — items discovered during installation */}
+        {isReady && (
+          <InstallSupplementBuilder
+            claimId={claim.id}
+            claimAddress={claim.address}
+            carrierName={claim.carrier}
+            userId={currentUserId}
+            filePath={claim.file_path}
           />
         )}
 
