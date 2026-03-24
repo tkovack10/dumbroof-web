@@ -231,6 +231,78 @@ export default async function Home() {
             </p>
           </div>
 
+          {/* The Solution - Don't Tell. Prove. */}
+          <div className="mb-10">
+            <div className="text-center mb-6">
+              <div className="inline-block mb-4 px-4 py-1.5 rounded-full bg-[var(--red)]/10 border border-[var(--red)]/20">
+                <span className="text-[var(--red)] text-sm font-semibold">Patent Pending</span>
+              </div>
+              <h3 className="text-2xl sm:text-3xl font-bold text-[var(--white)] mb-3">
+                Don&apos;t Tell. Prove.
+              </h3>
+              <p className="text-[var(--gray-muted)] max-w-2xl mx-auto text-sm">
+                Homeowners don&apos;t trust storm chasers. Carriers dismiss sloppy supplements.
+                So we built documentation so thorough, so forensic, so code-cited that
+                it speaks for itself.
+              </p>
+            </div>
+
+            <div className="grid md:grid-cols-2 gap-6 mb-6">
+              <div className="bg-white/[0.03] rounded-2xl p-8 border border-[var(--border-glass)]">
+                <h4 className="text-lg font-bold text-[var(--white)] mb-4">What Estimate Services Do</h4>
+                <ul className="space-y-3 text-[var(--gray)] text-sm">
+                  <li className="flex items-start gap-2">
+                    <span className="text-[var(--red)] mt-0.5 shrink-0">&#x2715;</span>
+                    Write numbers on a spreadsheet
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-[var(--red)] mt-0.5 shrink-0">&#x2715;</span>
+                    No photos, no code citations, no forensic analysis
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-[var(--red)] mt-0.5 shrink-0">&#x2715;</span>
+                    No carrier-specific strategy or intelligence
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-[var(--red)] mt-0.5 shrink-0">&#x2715;</span>
+                    Adjuster sees it, ignores it, moves on
+                  </li>
+                </ul>
+              </div>
+              <div className="bg-white/[0.03] rounded-2xl p-8 border border-[var(--border-glass)]">
+                <h4 className="text-lg font-bold text-[var(--white)] mb-4">What Dumb Roof Generates</h4>
+                <ul className="space-y-3 text-[var(--gray)] text-sm">
+                  <li className="flex items-start gap-2">
+                    <span className="text-green-600 mt-0.5 shrink-0">&#x2713;</span>
+                    Forensic report with annotated photos tied to specific damage
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-green-600 mt-0.5 shrink-0">&#x2713;</span>
+                    Every line item paired with building code + photo evidence
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-green-600 mt-0.5 shrink-0">&#x2713;</span>
+                    Carrier-specific playbooks that learn from every claim
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-green-600 mt-0.5 shrink-0">&#x2713;</span>
+                    Package so thorough it would hold up in front of a carrier litigation attorney
+                  </li>
+                </ul>
+              </div>
+            </div>
+
+            <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-6">
+              <p className="text-amber-400 text-sm leading-relaxed">
+                <span className="font-bold">The real difference:</span> Other services write estimates.
+                We build forensic evidence chains &mdash; pairing specific building code citations to specific
+                photos to specific line items. That&apos;s what makes carriers move. That&apos;s what makes
+                adjusters take you seriously. That&apos;s what separates you from every other contractor
+                knocking on doors after a storm.
+              </p>
+            </div>
+          </div>
+
           {/* The Real Problems */}
           <div className="space-y-6">
             <div className="glass-card p-8">
@@ -335,80 +407,6 @@ export default async function Home() {
                 ))}
               </div>
             </div>
-          </div>
-        </div>
-      </section>
-
-      {/* The Solution */}
-      <section className="py-20 px-6">
-        <div className="max-w-5xl mx-auto">
-          <div className="text-center">
-            <div className="inline-block mb-4 px-4 py-1.5 rounded-full bg-[var(--red)]/10 border border-[var(--red)]/20">
-              <span className="text-[var(--red)] text-sm font-semibold">Patent Pending</span>
-            </div>
-          </div>
-          <h2 className="text-3xl sm:text-4xl font-bold text-[var(--white)] text-center mb-4">
-            Don&apos;t Tell. Prove.
-          </h2>
-          <p className="text-[var(--gray-muted)] text-center mb-14 max-w-2xl mx-auto">
-            Homeowners don&apos;t trust storm chasers. Carriers dismiss sloppy supplements.
-            So we built documentation so thorough, so forensic, so code-cited that
-            it speaks for itself.
-          </p>
-
-          <div className="grid md:grid-cols-2 gap-8">
-            <div className="bg-white/[0.03] rounded-2xl p-8 border border-[var(--border-glass)]">
-              <h3 className="text-lg font-bold text-[var(--white)] mb-4">What Estimate Services Do</h3>
-              <ul className="space-y-3 text-[var(--gray)] text-sm">
-                <li className="flex items-start gap-2">
-                  <span className="text-[var(--red)] mt-0.5 shrink-0">&#x2715;</span>
-                  Write numbers on a spreadsheet
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="text-[var(--red)] mt-0.5 shrink-0">&#x2715;</span>
-                  No photos, no code citations, no forensic analysis
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="text-[var(--red)] mt-0.5 shrink-0">&#x2715;</span>
-                  No carrier-specific strategy or intelligence
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="text-[var(--red)] mt-0.5 shrink-0">&#x2715;</span>
-                  Adjuster sees it, ignores it, moves on
-                </li>
-              </ul>
-            </div>
-            <div className="bg-white/[0.03] rounded-2xl p-8 border border-[var(--border-glass)]">
-              <h3 className="text-lg font-bold text-[var(--white)] mb-4">What Dumb Roof Generates</h3>
-              <ul className="space-y-3 text-[var(--gray)] text-sm">
-                <li className="flex items-start gap-2">
-                  <span className="text-green-600 mt-0.5 shrink-0">&#x2713;</span>
-                  Forensic report with annotated photos tied to specific damage
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="text-green-600 mt-0.5 shrink-0">&#x2713;</span>
-                  Every line item paired with building code + photo evidence
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="text-green-600 mt-0.5 shrink-0">&#x2713;</span>
-                  Carrier-specific playbooks that learn from every claim
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="text-green-600 mt-0.5 shrink-0">&#x2713;</span>
-                  Package so thorough it would hold up in front of a carrier litigation attorney
-                </li>
-              </ul>
-            </div>
-          </div>
-
-          <div className="mt-8 bg-amber-500/10 border border-amber-500/20 rounded-xl p-6">
-            <p className="text-amber-400 text-sm leading-relaxed">
-              <span className="font-bold">The real difference:</span> Other services write estimates.
-              We build forensic evidence chains &mdash; pairing specific building code citations to specific
-              photos to specific line items. That&apos;s what makes carriers move. That&apos;s what makes
-              adjusters take you seriously. That&apos;s what separates you from every other contractor
-              knocking on doors after a storm.
-            </p>
           </div>
         </div>
       </section>
