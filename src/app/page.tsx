@@ -549,14 +549,16 @@ export default async function Home() {
                 <h3 className="text-xl font-bold text-[var(--white)]">Damage Scores</h3>
               </div>
               <p className="text-[var(--gray)] text-sm leading-relaxed mb-4">
-                Every inspection gets a damage score and an approval score. Know which claims
+                Every inspection gets a damage score and a technical boost score. Know which claims
                 show the most damage. Focus your team on areas with the best opportunities.
                 Catch weak claims before your customers submit them.
+                If your photos don&apos;t show damage &mdash; <span className="text-[var(--white)] font-semibold">we will tell you there&apos;s no damage.</span> We
+                don&apos;t fabricate claims. We document what&apos;s there.
               </p>
               <div className="grid grid-cols-2 gap-3">
                 {[
                   { label: "Damage Score", desc: "How severe is the actual damage?" },
-                  { label: "Approval Score", desc: "How likely is the carrier to approve?" },
+                  { label: "Technical Boost", desc: "Discontinued products, code compliance requirements, and factors that strengthen the claim" },
                 ].map((item) => (
                   <div key={item.label} className="bg-white/5 rounded-xl p-3 border border-white/10">
                     <p className="text-xs font-semibold text-[var(--cyan)] mb-1">{item.label}</p>
@@ -952,7 +954,7 @@ export default async function Home() {
                     },
                     {
                       prompt: "\u201CRichard, what\u2019s the status on 42 Oak Street?\u201D",
-                      result: "Carrier received the supplement 6 days ago. No response. Auto-escalation email goes out tomorrow. Damage score: 82. Approval score: 71.",
+                      result: "Carrier received the supplement 6 days ago. No response. Auto-escalation email goes out tomorrow. Damage score: 82. Technical boost: 71.",
                     },
                     {
                       prompt: "\u201CRichard, draft an invoice for the Martinez build.\u201D",
