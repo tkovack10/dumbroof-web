@@ -430,7 +430,7 @@ export function CrmImportModal({
 
                 <div className="p-4 rounded-xl bg-blue-500/10 border border-blue-500/30">
                   <p className="text-sm text-blue-400">
-                    This will import the job address, homeowner name, carrier info, and any available photos.
+                    This will auto-fill the address, homeowner name, and carrier from AccuLynx. You&#39;ll still upload photos and measurements separately.
                   </p>
                 </div>
 

@@ -1532,17 +1532,14 @@ async def _get_user_integration_client(user_id: str, provider: str):
 
 
 @app.get("/api/integrations/acculynx/jobs")
-async def acculynx_jobs(user_id: str, search: str = "", page: int = 0):
+async def acculynx_jobs(user_id: str, search: str = ""):
     """Search/list jobs from the user's AccuLynx account.
 
-    Uses address-aware search: AccuLynx's native search= only matches
-    job number/customer name, so we paginate and filter by address client-side.
+    Paginates v2 API and filters by address/city/state client-side.
+    AccuLynx search= param is unreliable (doesn't filter by address).
     """
     client = await _get_user_integration_client(user_id, "acculynx")
-    if search:
-        jobs = await client.search_jobs_by_address(search)
-    else:
-        jobs = await client.search_jobs(page=page)
+    jobs = await client.search_jobs(query=search)
     return {"jobs": jobs}
 
 
@@ -1554,17 +1551,26 @@ async def acculynx_job_detail(job_id: str, user_id: str):
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
 
-    contacts = await client.get_job_contacts(job_id)
+    # Try to get primary contact name via contact _link
+    homeowner = ""
+    contact_link = job.get("contactLink", "")
+    if contact_link:
+        contact = await client.get_contact(contact_link)
+        if contact:
+            parts = [contact.get("firstName", ""), contact.get("lastName", "")]
+            homeowner = " ".join(p for p in parts if p).strip()
+
+    # Try to get insurance info
     insurance = await client.get_job_insurance(job_id)
-    photos = await client.get_job_photos(job_id)
-    documents = await client.get_job_documents(job_id)
+    carrier = ""
+    if insurance and isinstance(insurance, dict):
+        carrier = insurance.get("insuranceCompany", "") or insurance.get("company", "")
 
     return {
         "job": job,
-        "contacts": contacts,
+        "homeowner": homeowner,
+        "carrier": carrier,
         "insurance": insurance,
-        "photos": photos,
-        "documents": documents,
     }
 
 
@@ -1652,77 +1658,50 @@ async def companycam_import(
 
 @app.post("/api/integrations/acculynx/jobs/{job_id}/import")
 async def acculynx_import(job_id: str, user_id: str = Body(...), slug: str = Body(...)):
-    """Fetch job details + photos from AccuLynx and upload photos to Supabase storage.
+    """Fetch job details from AccuLynx and return metadata for claim form.
 
-    Returns job metadata (address, contacts, insurance) plus uploaded file paths.
+    Note: AccuLynx v2 API does NOT support document/photo download (D-022).
+    This endpoint returns job metadata only (address, homeowner, carrier).
+    Users must upload EagleViews and photos separately.
     """
     client = await _get_user_integration_client(user_id, "acculynx")
 
-    # Fetch job details in parallel-ish
+    # Fetch normalized job
     job = await client.get_job(job_id)
-    contacts = await client.get_job_contacts(job_id)
-    insurance = await client.get_job_insurance(job_id)
-    photos = await client.get_job_photos(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
 
-    # Extract useful metadata
+    # Get homeowner name from contact _link
     homeowner = ""
-    for c in contacts:
-        if c.get("type", "").lower() in ("homeowner", "property owner", "customer", ""):
-            name_parts = [c.get("firstName", ""), c.get("lastName", "")]
-            homeowner = " ".join(p for p in name_parts if p).strip()
-            if homeowner:
-                break
+    contact_link = job.get("contactLink", "")
+    if contact_link:
+        contact = await client.get_contact(contact_link)
+        if contact:
+            parts = [contact.get("firstName", ""), contact.get("lastName", "")]
+            homeowner = " ".join(p for p in parts if p).strip()
 
+    # Get carrier from insurance
     carrier = ""
+    insurance = await client.get_job_insurance(job_id)
     if insurance and isinstance(insurance, dict):
-        carrier = insurance.get("insuranceCompany", "") or insurance.get("company", "")
+        ins_co = insurance.get("insuranceCompany")
+        if isinstance(ins_co, dict):
+            carrier = ins_co.get("name", "")
+        elif isinstance(ins_co, str):
+            carrier = ins_co
 
-    address = ""
-    if job:
-        parts = [job.get("streetAddress", "")]
-        city = job.get("city", "")
-        state = job.get("state", "")
-        zip_code = job.get("zip", "")
-        if city:
-            parts.append(city)
-        if state:
-            parts.append(state)
-        if zip_code:
-            parts.append(zip_code)
-        address = ", ".join(p for p in parts if p)
-
-    # Upload photos to Supabase storage (if any have download URLs)
-    sb = get_supabase_client()
-    uploaded = []
-    for i, photo in enumerate(photos[:50]):
-        url = photo.get("url") or photo.get("uri") or photo.get("href")
-        if not url:
-            continue
-        try:
-            import httpx as hx
-            async with hx.AsyncClient(timeout=60) as http:
-                resp = await http.get(url)
-                if resp.status_code != 200:
-                    continue
-                data = resp.content
-            ext = ".jpg"
-            fname = f"acculynx_{i+1:03d}{ext}"
-            storage_path = f"{user_id}/{slug}/photos/{fname}"
-            sb.storage.from_("claim-documents").upload(
-                storage_path, data,
-                file_options={"content-type": "image/jpeg", "upsert": "true"}
-            )
-            uploaded.append({"name": fname, "path": storage_path})
-        except Exception as e:
-            print(f"[CRM-IMPORT] Failed to import AccuLynx photo {i}: {e}")
-            continue
+    address = ", ".join(filter(None, [
+        job.get("streetAddress", ""),
+        job.get("city", ""),
+        job.get("state", ""),
+        job.get("zip", ""),
+    ]))
 
     return {
         "address": address,
         "homeowner": homeowner,
         "carrier": carrier,
-        "uploaded_photos": uploaded,
-        "photo_count": len(uploaded),
+        "photo_count": 0,  # v2 API can't download photos
         "job": job,
     }
 
