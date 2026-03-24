@@ -68,14 +68,11 @@ export default async function Home() {
             <span className="text-[var(--red)]">Show them.</span>
           </h1>
 
-          <p className="text-lg sm:text-xl text-[var(--gray-dim)] max-w-2xl mx-auto mb-4 leading-relaxed">
-            Upload your photos and measurements. Get 5 professional PDFs
-            ready to send to the carrier in 15 minutes. No Xactimate
-            license needed.
-          </p>
-          <p className="text-sm text-[var(--gray-muted)] max-w-xl mx-auto mb-10 leading-relaxed">
-            Forensic causation report, code-cited estimate, carrier comparison,
-            supplement letter, and cover email &mdash; all branded with your company logo.
+          <p className="text-lg sm:text-xl text-[var(--gray-dim)] max-w-2xl mx-auto mb-10 leading-relaxed">
+            Upload photos and measurements. Get 5 forensic-grade PDFs in 15 minutes.
+            Every line item backed by building codes, photo evidence, and carrier-specific
+            intelligence. Sophisticated automation is available from there at the click
+            of a button. No onboarding required.
           </p>
 
           <div className="flex flex-col sm:flex-row gap-4 justify-center mb-16">
