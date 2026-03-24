@@ -179,11 +179,10 @@ export default async function Home() {
               <h3 className="text-xl font-bold text-[var(--white)] mb-4">
                 Insurance Adjusters Don&apos;t Trust You
               </h3>
-              <div className="space-y-4">
+              <div className="space-y-4 mb-5">
                 {[
-                  { stat: "90%", text: "of contractors submit hail and wind claims without any inspection report or evidence packet" },
-                  { stat: "4x", text: "Contractors who submit detailed damage documentation get 4x more claims approved from the start" },
-                  { stat: "$0", text: "is what most contractors invest in proving their case &mdash; then wonder why the adjuster sides with the carrier" },
+                  { stat: "90%", text: "of hail and wind claims are submitted without any inspection report or evidence package" },
+                  { stat: "4x", text: "Claims submitted with a detailed evidence package are 4x more likely to be approved from the start" },
                 ].map((item, i) => (
                   <div key={i} className="flex items-start gap-3">
                     <span className="text-2xl font-bold text-[var(--red)] shrink-0 w-14 text-right">{item.stat}</span>
@@ -191,6 +190,15 @@ export default async function Home() {
                   </div>
                 ))}
               </div>
+              <p className="text-sm text-[var(--gray)] leading-relaxed mb-3">
+                Show the adjuster the damage <span className="text-[var(--white)] font-semibold">before they even
+                step foot on the property.</span> Code citations, forensic annotations, NOAA storm data &mdash;
+                already compiled and waiting in their inbox.
+              </p>
+              <p className="text-sm text-[var(--white)] font-semibold leading-relaxed">
+                You already did the hard part &mdash; getting the lead and inspecting the roof.
+                Why not 4x the results?
+              </p>
             </div>
           </div>
 
