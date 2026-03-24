@@ -346,7 +346,7 @@ export function InstallSupplementBuilder({ claimId, claimAddress, carrierName, u
                   </div>
                   {/* Photo evidence note */}
                   <div className="mt-3 flex items-center gap-2">
-                    {item.photo_paths.length > 0 ? (
+                    {(item.photo_paths || []).length > 0 ? (
                       <span className="text-[10px] text-green-400 flex items-center gap-1">
                         <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                           <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
@@ -439,10 +439,9 @@ export function InstallSupplementBuilder({ claimId, claimAddress, carrierName, u
                     await fetch("/api/install-supplements", {
                       method: "PUT",
                       headers: { "Content-Type": "application/json" },
-                      body: JSON.stringify({ id: item.id }),
+                      body: JSON.stringify({ id: item.id, status: "submitted" }),
                     });
                   }
-                  // TODO: Phase 2 — compose and send email to carrier
                   await fetchItems();
                   setSubmitting(false);
                 }}

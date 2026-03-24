@@ -89,7 +89,7 @@ export async function PUT(req: NextRequest) {
   const userId = auth.user.id;
 
   const body = await req.json();
-  const { id, qty, unit_price, reason, photo_paths } = body;
+  const { id, qty, unit_price, reason, photo_paths, status: newStatus } = body;
 
   if (!id) {
     return NextResponse.json({ error: "id required" }, { status: 400 });
@@ -106,7 +106,8 @@ export async function PUT(req: NextRequest) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
-  if (existing.status !== "draft") {
+  // Only allow editing drafts (unless transitioning status)
+  if (existing.status !== "draft" && !newStatus) {
     return NextResponse.json({ error: "Cannot edit submitted supplement" }, { status: 400 });
   }
 
@@ -120,6 +121,10 @@ export async function PUT(req: NextRequest) {
   if (unit_price != null) updates.unit_price = unit_price;
   if (reason !== undefined) updates.reason = reason;
   if (photo_paths !== undefined) updates.photo_paths = photo_paths;
+  if (newStatus === "submitted") {
+    updates.status = "submitted";
+    updates.submitted_at = new Date().toISOString();
+  }
 
   const { data, error } = await supabaseAdmin
     .from("install_supplements")
