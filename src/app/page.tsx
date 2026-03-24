@@ -140,7 +140,7 @@ export default async function Home() {
         </div>
       </section>
 
-      {/* The Trust Problem */}
+      {/* The Trust Problem — Trust Cards + Hard Truth + Don't Tell. Prove. */}
       <section id="problem" className="py-20 px-6 bg-white/[0.03] scroll-mt-20">
         <div className="max-w-5xl mx-auto">
           <h2 className="text-3xl sm:text-4xl font-bold text-[var(--white)] text-center mb-4">
@@ -302,117 +302,11 @@ export default async function Home() {
               </p>
             </div>
           </div>
-
-          {/* The Real Problems */}
-          <div className="space-y-6">
-            <div className="glass-card p-8">
-              <h3 className="text-xl font-bold text-[var(--white)] mb-4">
-                The Contractor&apos;s Impossible Choice
-              </h3>
-              <div className="grid md:grid-cols-2 gap-8">
-                <div className="space-y-4">
-                  <div className="flex items-start gap-3">
-                    <span className="text-[var(--red)] text-lg mt-0.5 shrink-0">01</span>
-                    <div>
-                      <p className="font-semibold text-[var(--white)]">Train reps for years on insurance</p>
-                      <p className="text-sm text-[var(--gray-muted)] mt-1">
-                        It takes years to learn the full insurance process &mdash; building codes, Xactimate,
-                        supplement negotiations, carrier tactics. Just when they hit their stride...
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex items-start gap-3">
-                    <span className="text-[var(--red)] text-lg mt-0.5 shrink-0">02</span>
-                    <div>
-                      <p className="font-semibold text-[var(--white)]">They leave and start their own company</p>
-                      <p className="text-sm text-[var(--gray-muted)] mt-1">
-                        They take every skill you trained them on. Average roofing employee tenure: 16 months.
-                        You just funded your next competitor.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-                <div className="space-y-4">
-                  <div className="flex items-start gap-3">
-                    <span className="text-[var(--red)] text-lg mt-0.5 shrink-0">03</span>
-                    <div>
-                      <p className="font-semibold text-[var(--white)]">Or don&apos;t train them enough</p>
-                      <p className="text-sm text-[var(--gray-muted)] mt-1">
-                        Untrained reps miss supplements and line items. One photo could add a $5,000 line item
-                        to a claim &mdash; but they don&apos;t know to take it. Money left on every roof.
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex items-start gap-3">
-                    <span className="text-[var(--red)] text-lg mt-0.5 shrink-0">04</span>
-                    <div>
-                      <p className="font-semibold text-[var(--white)]">Or skip insurance work entirely</p>
-                      <p className="text-sm text-[var(--gray-muted)] mt-1">
-                        Most contractors avoid insurance claims because the process is too frustrating.
-                        That&apos;s by design &mdash; carriers built it that way.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* New Hires - No Problem */}
-            <div className="glass-card p-8 border-l-4 border-l-[var(--green,#22c55e)]">
-              <h3 className="text-xl font-bold text-[var(--white)] mb-3">
-                New Hires? No Worries.
-              </h3>
-              <p className="text-[var(--gray)] leading-relaxed mb-4">
-                If they can take photos, they can present reports that give your company a truly
-                competitive advantage in your market. Hire a rep today and they present your company
-                in the manner you want, <span className="text-[var(--white)] font-semibold">from day one.</span>
-              </p>
-              <div className="grid sm:grid-cols-3 gap-4">
-                {[
-                  { label: "Training Time", before: "2+ years", after: "Day 1" },
-                  { label: "Skill Required", before: "Xactimate + codes + negotiation", after: "Take photos & upload" },
-                  { label: "Output Quality", before: "Depends on the rep", after: "Forensic-grade, every time" },
-                ].map((item) => (
-                  <div key={item.label} className="bg-white/5 rounded-xl p-4 border border-white/10">
-                    <p className="text-xs text-[var(--gray-dim)] font-semibold uppercase tracking-wider mb-2">{item.label}</p>
-                    <p className="text-sm text-[var(--gray-muted)] line-through decoration-[var(--red)]/50">{item.before}</p>
-                    <p className="text-sm text-[var(--white)] font-semibold mt-1">{item.after}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* PE Problem */}
-            <div className="bg-[var(--bg-glass)] rounded-2xl p-8 text-white">
-              <h3 className="text-xl font-bold mb-4">
-                Why Private Equity Hates Insurance Work
-              </h3>
-              <p className="text-[var(--gray-dim)] mb-6 leading-relaxed">
-                PE firms don&apos;t hate the money insurance claims generate &mdash; they hate the
-                inconsistency. They hate the complexity. They hate that it takes years to train
-                a rep who might leave in 16 months. With 25+ PE rollups now operating in roofing,
-                the firms doing $100M-$400M/year need a system that makes insurance claims
-                predictable, repeatable, and scalable. That&apos;s what this is.
-              </p>
-              <div className="grid sm:grid-cols-3 gap-4">
-                {[
-                  { label: "The Problem", value: "Inconsistent claim outcomes across 50+ reps" },
-                  { label: "The Cost", value: "25-50% revenue leakage from missed supplements" },
-                  { label: "The Fix", value: "World-class system that plugs directly into your company" },
-                ].map((item) => (
-                  <div key={item.label} className="bg-white/10 rounded-xl p-4 border border-white/10">
-                    <p className="text-xs text-[var(--gray-dim)] font-semibold uppercase tracking-wider">{item.label}</p>
-                    <p className="text-sm text-[var(--gray-dim)] mt-2">{item.value}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
         </div>
       </section>
 
       {/* How It Works */}
-      <section id="how-it-works" className="py-20 px-6 bg-white/[0.03] scroll-mt-20">
+      <section id="how-it-works" className="py-20 px-6 scroll-mt-20">
         <div className="max-w-5xl mx-auto">
           <h2 className="text-3xl sm:text-4xl font-bold text-[var(--white)] text-center mb-4">
             How It Works
@@ -484,7 +378,7 @@ export default async function Home() {
       </section>
 
       {/* The 5 Documents */}
-      <section className="py-20 px-6 bg-[var(--bg-glass)]">
+      <section className="py-20 px-6 bg-white/[0.03]">
         <div className="max-w-5xl mx-auto">
           <h2 className="text-3xl sm:text-4xl font-bold text-white text-center mb-4">
             The 5-Document Package
@@ -527,123 +421,239 @@ export default async function Home() {
         </div>
       </section>
 
-      {/* Who This Is For */}
-      <section className="py-20 px-6">
+      {/* Results */}
+      <section id="results" className="py-20 px-6 bg-[var(--bg-glass)] scroll-mt-20">
         <div className="max-w-5xl mx-auto">
-          <h2 className="text-3xl sm:text-4xl font-bold text-[var(--white)] text-center mb-14">
-            Built For Companies That Are Tired of Leaving Money on the Table
+          <h2 className="text-3xl sm:text-4xl font-bold text-[var(--white)] text-center mb-4">
+            Real Results. Real Claims. Real Carrier Movement.
           </h2>
+          <p className="text-[var(--gray-muted)] text-center mb-14 max-w-xl mx-auto">
+            Not projections. Documented carrier movement from actual claims.
+          </p>
 
-          <div className="grid md:grid-cols-3 gap-6">
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-14">
             {[
-              {
-                title: "Roofing Contractors",
-                desc: "You have 50 reps. Maybe 5 know insurance. This makes all 50 perform like your best insurance specialist. Every claim, every time.",
-              },
-              {
-                title: "PE Rollup Platforms",
-                desc: "You're acquiring contractors doing $100-400M/year. 40% is storm-related. This standardizes insurance claims across every location you own.",
-              },
-              {
-                title: "Restoration Companies",
-                desc: "Supplements are your biggest profit leak. One missed photo costs you $5,000. This catches every line item, every code citation, every time.",
-              },
-            ].map((item) => (
-              <div key={item.title} className="glass-card p-8">
-                <h3 className="text-lg font-bold text-[var(--white)] mb-3">{item.title}</h3>
-                <p className="text-[var(--gray)] text-sm leading-relaxed">{item.desc}</p>
+              { carrier: "Church Mutual", before: "$20,408", after: "$943,233", increase: "4,522%" },
+              { carrier: "Allstate", before: "$81,170", after: "$120,312", increase: "48%" },
+              { carrier: "Erie Insurance", before: "$32,048", after: "$72,145", increase: "125%" },
+              { carrier: "Nationwide", before: "$77,019", after: "$122,155", increase: "59%" },
+              { carrier: "Hanover", before: "$33,394", after: "$56,769", increase: "70%" },
+              { carrier: "State Farm", before: "$37,669", after: "$80,963", increase: "115%" },
+            ].map((result) => (
+              <div key={result.carrier} className="glass-card p-6">
+                <div className="text-sm font-semibold text-[var(--gray-muted)] mb-3">{result.carrier}</div>
+                <div className="flex items-baseline gap-3 mb-1">
+                  <span className="text-[var(--gray-dim)] line-through text-sm">{result.before}</span>
+                  <span className="text-[var(--white)] font-bold text-xl">{result.after}</span>
+                </div>
+                <div className="text-[var(--red)] font-bold text-sm">+{result.increase}</div>
               </div>
             ))}
+          </div>
+
+          {/* Comparison Table */}
+          <div className="glass-card p-8">
+            <h3 className="text-xl font-bold text-[var(--white)] mb-6 text-center">
+              Dumb Roof vs. The Old Way
+            </h3>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left">
+                <thead>
+                  <tr className="border-b border-[var(--border-glass)]">
+                    <th className="pb-3 text-sm text-[var(--gray-muted)] font-medium"></th>
+                    <th className="pb-3 text-sm text-[var(--gray-muted)] font-medium">Traditional</th>
+                    <th className="pb-3 text-sm text-[var(--red)] font-bold">Dumb Roof</th>
+                  </tr>
+                </thead>
+                <tbody className="text-sm">
+                  {[
+                    ["Time per claim", "1-3 months", "15 minutes"],
+                    ["Cost per claim", "Xactimate license + hours of labor", "Pennies per claim"],
+                    ["Documents generated", "1 estimate (maybe)", "5 forensic-grade PDFs"],
+                    ["Code citations", "Rarely included", "Every line item cited"],
+                    ["Photo evidence", "Unlabeled photos", "Forensic annotations tied to line items"],
+                    ["Carrier intelligence", "Start from scratch every time", "Self-learning playbooks"],
+                    ["Training required", "Years of insurance experience", "Upload and click"],
+                    ["Rep turnover risk", "Knowledge walks out the door", "System stays. Forever."],
+                  ].map(([label, old, dr]) => (
+                    <tr key={label} className="border-b border-white/[0.04]">
+                      <td className="py-3 font-medium text-[var(--gray)]">{label}</td>
+                      <td className="py-3 text-[var(--gray-muted)]">{old}</td>
+                      <td className="py-3 font-semibold text-[var(--white)]">{dr}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
       </section>
 
-      {/* Company Intelligence */}
-      <section className="py-20 px-6 bg-white/[0.03]">
+      {/* Meet RICHARD */}
+      <section id="richard" className="py-20 px-6 scroll-mt-20">
         <div className="max-w-5xl mx-auto">
-          <h2 className="text-3xl sm:text-4xl font-bold text-[var(--white)] text-center mb-4">
-            Your Reps Inspect. <span className="text-[var(--red)]">You See Everything.</span>
-          </h2>
-          <p className="text-[var(--gray-muted)] text-center mb-14 max-w-2xl mx-auto">
-            Every inspection your team runs feeds your company dashboard with real-time
-            damage intelligence, fraud alerts, and claim quality scores.
-          </p>
-
-          <div className="grid md:grid-cols-2 gap-6 mb-8">
-            {/* Damage Scores */}
-            <div className="glass-card p-8">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-10 h-10 rounded-full bg-[var(--cyan)]/10 flex items-center justify-center shrink-0">
-                  <svg className="w-5 h-5 text-[var(--cyan)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" />
-                  </svg>
-                </div>
-                <h3 className="text-xl font-bold text-[var(--white)]">Damage Scores</h3>
+          <div className="glass-card p-8 mb-8 border border-[var(--cyan)]/20">
+            <div className="flex items-center gap-4 mb-6">
+              <div className="w-14 h-14 rounded-2xl bg-[var(--cyan)]/10 flex items-center justify-center shrink-0">
+                <svg className="w-7 h-7 text-[var(--cyan)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 18.75a6 6 0 006-6v-1.5m-6 7.5a6 6 0 01-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 01-3-3V4.5a3 3 0 116 0v8.25a3 3 0 01-3 3z" />
+                </svg>
               </div>
-              <p className="text-[var(--gray)] text-sm leading-relaxed mb-4">
-                Every inspection gets a damage score and a technical boost score. Know which claims
-                show the most damage. Focus your team on areas with the best opportunities.
-                Catch weak claims before your customers submit them.
-                If your photos don&apos;t show damage &mdash; <span className="text-[var(--white)] font-semibold">we will tell you there&apos;s no damage.</span> We
-                don&apos;t fabricate claims. We document what&apos;s there.
-              </p>
-              <div className="grid grid-cols-2 gap-3">
-                {[
-                  { label: "Damage Score", desc: "How severe is the actual damage?" },
-                  { label: "Technical Boost", desc: "Discontinued products, code compliance requirements, and factors that strengthen the claim" },
-                ].map((item) => (
-                  <div key={item.label} className="bg-white/5 rounded-xl p-3 border border-white/10">
-                    <p className="text-xs font-semibold text-[var(--cyan)] mb-1">{item.label}</p>
-                    <p className="text-xs text-[var(--gray-muted)]">{item.desc}</p>
-                  </div>
-                ))}
+              <div>
+                <h3 className="text-2xl font-bold text-[var(--white)]">
+                  Meet <span className="text-[var(--cyan)]">RICHARD</span>
+                </h3>
+                <p className="text-sm text-[var(--gray-muted)]">
+                  Your AI Claims Assistant &mdash; Voice-Activated, Always On
+                </p>
               </div>
             </div>
 
-            {/* Fraud Detection */}
-            <div className="glass-card p-8">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-10 h-10 rounded-full bg-[var(--red)]/10 flex items-center justify-center shrink-0">
-                  <svg className="w-5 h-5 text-[var(--red)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" />
-                  </svg>
-                </div>
-                <h3 className="text-xl font-bold text-[var(--white)]">Fraud Detection</h3>
-              </div>
-              <p className="text-[var(--gray)] text-sm leading-relaxed mb-4">
-                Our custom fraud detection scan analyzes every photo for EXIF manipulation, GPS
-                inconsistencies, duplicate images, and editing artifacts. Sleep well knowing your
-                reps are not creating or exaggerating damage.
-              </p>
-              <div className="grid grid-cols-2 gap-3">
-                {[
-                  { label: "EXIF Analysis", desc: "Detects edited or manipulated metadata" },
-                  { label: "GPS Verification", desc: "Confirms photos match the job site" },
-                  { label: "Duplicate Scan", desc: "Flags reused photos across claims" },
-                  { label: "Integrity Score", desc: "Pass/fail confidence for every photo" },
-                ].map((item) => (
-                  <div key={item.label} className="bg-white/5 rounded-xl p-3 border border-white/10">
-                    <p className="text-xs font-semibold text-[var(--red)] mb-1">{item.label}</p>
-                    <p className="text-xs text-[var(--gray-muted)]">{item.desc}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          {/* Bottom callout */}
-          <div className="rounded-2xl bg-white/[0.04] border border-white/10 p-6 text-center">
-            <p className="text-[var(--gray)] text-sm leading-relaxed max-w-3xl mx-auto">
-              Your dashboard shows every claim, every score, every flag &mdash; across every rep in your company.
-              <span className="text-[var(--white)] font-semibold"> Stop guessing which jobs are worth pursuing.
-              Start knowing.</span>
+            <p className="text-[var(--gray)] text-sm leading-relaxed mb-6">
+              RICHARD knows every detail of every claim your company has ever processed. Every photo,
+              every line item, every carrier response, every code citation. And he takes orders
+              by <span className="text-[var(--white)] font-semibold">voice</span>.
             </p>
+
+            <div className="grid md:grid-cols-2 gap-6 mb-6">
+              {/* Voice Commands */}
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wider text-[var(--cyan)] mb-3">Talk to RICHARD</p>
+                <div className="space-y-3">
+                  {[
+                    {
+                      prompt: "\u201CRichard, send the supplement to Erie on the Johnson claim.\u201D",
+                      result: "Supplement package compiled from your photos, estimate, and code citations. Sent to the adjuster on file. Follow-up sequence activated.",
+                    },
+                    {
+                      prompt: "\u201CRichard, what\u2019s the status on 42 Oak Street?\u201D",
+                      result: "Carrier received the supplement 6 days ago. No response. Auto-escalation email goes out tomorrow. Damage score: 82. Technical boost: 71.",
+                    },
+                    {
+                      prompt: "\u201CRichard, draft an invoice for the Martinez build.\u201D",
+                      result: "Invoice generated from the approved scope. Certificate of completion attached. Sent to the homeowner and carrier. Payment follow-up scheduled for Day 7.",
+                    },
+                    {
+                      prompt: "\u201CRichard, what code requires ice & water shield on this roof?\u201D",
+                      result: "RCNYS R905.1.2 \u2014 ice barrier required from eave edge to min. 24\u201D past interior wall line. Your photos show it\u2019s missing. Already cited in the forensic report.",
+                    },
+                  ].map((item, i) => (
+                    <div key={i} className="bg-white/5 rounded-xl p-3 border border-white/10">
+                      <p className="text-xs text-[var(--cyan)] font-mono leading-relaxed">{item.prompt}</p>
+                      <p className="text-xs text-[var(--gray-muted)] mt-2 leading-relaxed">{item.result}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* What RICHARD Knows */}
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wider text-[var(--cyan)] mb-3">What RICHARD Knows</p>
+                <div className="space-y-3">
+                  {[
+                    { title: "Every Claim", desc: "Full history \u2014 photos, line items, carrier responses, scope comparisons, damage scores, email threads" },
+                    { title: "Every Code", desc: "Building codes by state, county, and municipality. RCNYS, IRC, IECC \u2014 cited automatically when relevant" },
+                    { title: "Every Carrier", desc: "Self-learning playbooks that track how each carrier responds, what they deny, and what arguments win" },
+                    { title: "Every Photo", desc: "140,000+ training photos. Knows the difference between hail hits on 3-tab vs. architectural vs. EPDM vs. slate" },
+                    { title: "Your Schedule", desc: "Knows which follow-ups are overdue, which installs are pending, which invoices are unpaid" },
+                    { title: "Your Voice", desc: "Understands natural speech from a truck cab, a rooftop, or a job site. No typing. No app. Just talk." },
+                  ].map((item) => (
+                    <div key={item.title} className="flex items-start gap-3">
+                      <div className="w-1.5 h-1.5 rounded-full bg-[var(--cyan)] mt-1.5 shrink-0" />
+                      <div>
+                        <p className="text-sm font-semibold text-[var(--white)]">{item.title}</p>
+                        <p className="text-xs text-[var(--gray-muted)] leading-relaxed">{item.desc}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* RICHARD Coaches Your Reps */}
+            <div className="mb-6">
+              <p className="text-xs font-semibold uppercase tracking-wider text-[var(--gold,#f59e0b)] mb-4">RICHARD Coaches Your Reps in the Field</p>
+              <p className="text-sm text-[var(--gray)] leading-relaxed mb-4">
+                If your photos aren&apos;t showcasing the damage, RICHARD tells your rep exactly what
+                to go back and get. No guessing. No missed documentation. No money left on the roof.
+              </p>
+              <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                {[
+                  {
+                    prompt: "\u201CGet closer photos of the north slope eave line.\u201D",
+                    why: "RICHARD detected potential ice dam damage but your wide shots don\u2019t show it. He needs 3 close-ups within 2 feet of the eave.",
+                  },
+                  {
+                    prompt: "\u201CDo a chalk test on the counter flashing at the chimney.\u201D",
+                    why: "The metal flashing shows possible impact marks but RICHARD can\u2019t confirm severity from a photo alone. A chalk circle test proves functional damage the carrier can\u2019t deny.",
+                  },
+                  {
+                    prompt: "\u201CPhotograph the drip edge from below \u2014 I need to see the fastener pattern.\u201D",
+                    why: "RICHARD found a code violation \u2014 the drip edge appears face-nailed instead of top-nailed. One photo confirms a code-required replacement the carrier is currently excluding.",
+                  },
+                  {
+                    prompt: "\u201CGet a shot of the shingle exposure with a tape measure.\u201D",
+                    why: "Exposure looks under 5\u201D which makes individual shingle repair impossible. That one photo changes the entire claim from repair to full replacement.",
+                  },
+                  {
+                    prompt: "\u201CPhotograph both layers at the tear-off edge.\u201D",
+                    why: "The carrier scoped for one layer. Your crew just found two. RICHARD needs the photo to auto-generate the supplement before the dumpster leaves.",
+                  },
+                  {
+                    prompt: "\u201CGet a wide shot showing the missing house wrap at the corner.\u201D",
+                    why: "Code R703.1 requires a weather-resistant barrier. This single photo adds house wrap, corner boards, and wall flashing to the scope \u2014 potentially $3,000+ the carrier excluded.",
+                  },
+                ].map((item, i) => (
+                  <div key={i} className="bg-white/5 rounded-xl p-3 border border-white/10">
+                    <p className="text-xs text-[var(--gold,#f59e0b)] font-mono leading-relaxed mb-2">{item.prompt}</p>
+                    <p className="text-xs text-[var(--gray-muted)] leading-relaxed">{item.why}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Damage Thresholds */}
+            <div className="mb-6">
+              <p className="text-xs font-semibold uppercase tracking-wider text-[var(--red)] mb-4">Automatic Damage Thresholds</p>
+              <p className="text-sm text-[var(--gray)] leading-relaxed mb-4">
+                RICHARD doesn&apos;t just look at your photos &mdash; he cross-references NOAA storm data
+                for your exact location. If the National Weather Service recorded 1.5&quot; hail in your
+                county on the date of loss, RICHARD already knows what damage to expect and flags
+                anything your photos are missing.
+              </p>
+              <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                {[
+                  { threshold: "< 1\u201D Hail", impact: "Cosmetic damage likely. Soft metals (vents, gutters) show first. Shingles may show granule displacement only.", action: "Document soft metal impacts + gutters. Chalk test all vents." },
+                  { threshold: "1\u201D \u2013 1.5\u201D Hail", impact: "Functional damage threshold. Shingles show mat fracture. Collateral damage to siding, window screens, AC fins.", action: "Full roof + all elevations. Shingle close-ups with quarter reference." },
+                  { threshold: "1.5\u201D \u2013 2\u201D Hail", impact: "Severe functional damage. Cracked shingles, split felt, bruised decking. Ridge caps and pipe boots compromised.", action: "Document everything. Ridge cap pulls, pipe boot close-ups, attic photos if accessible." },
+                  { threshold: "> 2\u201D Hail", impact: "Catastrophic. Full replacement expected. Interior damage likely. Gutters destroyed, fascia cracked, window damage.", action: "Interior + exterior full documentation. Measure dents for diameter. Get hail stone photos if available." },
+                ].map((item) => (
+                  <div key={item.threshold} className="bg-white/5 rounded-xl p-3 border border-white/10">
+                    <p className="text-sm font-bold text-[var(--red)] mb-1">{item.threshold}</p>
+                    <p className="text-xs text-[var(--gray-muted)] leading-relaxed mb-2">{item.impact}</p>
+                    <p className="text-xs text-[var(--cyan)] leading-relaxed">{item.action}</p>
+                  </div>
+                ))}
+              </div>
+              <p className="text-xs text-[var(--gray-dim)] mt-3 text-center">
+                Thresholds auto-calibrated by NOAA Storm Events Database. Wind speed, hail diameter, and event duration
+                are pulled for your exact county and date of loss.
+              </p>
+            </div>
+
+            <div className="rounded-xl bg-[var(--cyan)]/[0.08] border border-[var(--cyan)]/20 p-4 text-center">
+              <p className="text-sm text-[var(--gray)] leading-relaxed">
+                Your best insurance rep took years to build. RICHARD has all of that knowledge on day one &mdash;
+                and he never leaves, never forgets, and never stops following up.
+                <span className="text-[var(--white)] font-semibold"> He just needs your voice.</span>
+              </p>
+            </div>
           </div>
         </div>
       </section>
 
       {/* Automation */}
-      <section className="py-20 px-6">
+      <section className="py-20 px-6 bg-white/[0.03]">
         <div className="max-w-5xl mx-auto">
           <h2 className="text-3xl sm:text-4xl font-bold text-[var(--white)] text-center mb-4">
             You&apos;re Not Working From a <span className="text-[var(--red)]">Desk</span>
@@ -754,7 +764,7 @@ export default async function Home() {
                 <div className="flex-1 h-px bg-[var(--cyan)]/20" />
               </div>
 
-              {/* Step 3: Evidence Recall */}
+              {/* Step 3: Evidence Recall — Fixed Photo Cards */}
               <div className="mb-6">
                 <p className="text-[10px] font-semibold uppercase tracking-wider text-[var(--cyan)] mb-2">Evidence Recall &mdash; Left Elevation Siding &mdash; 4 Photos Matched</p>
                 <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
@@ -764,31 +774,72 @@ export default async function Home() {
                       tag: "Hail Impact \u2014 Left Elevation",
                       desc: "3/4\u201D diameter impact fracture on vinyl siding panel, 6ft from grade. Circular pattern inconsistent with weathering.",
                       score: "Damage Score: 78",
+                      gradient: "from-red-900/40 to-red-700/20",
+                      iconColor: "text-red-400",
+                      iconLabel: "Hail Impact",
+                      icon: (
+                        <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                          <circle cx="12" cy="12" r="3" />
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M12 2v4m0 12v4m10-10h-4M6 12H2m15.07-7.07l-2.83 2.83M9.76 14.24l-2.83 2.83m0-10.14l2.83 2.83m4.48 4.48l2.83 2.83" />
+                        </svg>
+                      ),
                     },
                     {
                       label: "IMG_0849.jpg",
                       tag: "Chalk Test \u2014 Left Elevation",
                       desc: "Chalk circle test on J-channel showing dent displacement of 2mm+. Functional damage confirmed.",
                       score: "Damage Score: 84",
+                      gradient: "from-blue-900/40 to-blue-700/20",
+                      iconColor: "text-blue-400",
+                      iconLabel: "Chalk Test",
+                      icon: (
+                        <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                          <circle cx="12" cy="12" r="8" strokeDasharray="4 2" />
+                          <circle cx="12" cy="12" r="3" />
+                        </svg>
+                      ),
                     },
                     {
                       label: "IMG_0852.jpg",
                       tag: "Pattern Density \u2014 Left Elevation",
                       desc: "Wide shot showing 8+ impacts per 10 SF test square. Exceeds carrier\u2019s own threshold for replacement.",
                       score: "Damage Score: 91",
+                      gradient: "from-purple-900/40 to-purple-700/20",
+                      iconColor: "text-purple-400",
+                      iconLabel: "Pattern Density",
+                      icon: (
+                        <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                          <circle cx="6" cy="6" r="1.5" fill="currentColor" />
+                          <circle cx="12" cy="6" r="1.5" fill="currentColor" />
+                          <circle cx="18" cy="6" r="1.5" fill="currentColor" />
+                          <circle cx="6" cy="12" r="1.5" fill="currentColor" />
+                          <circle cx="12" cy="12" r="1.5" fill="currentColor" />
+                          <circle cx="18" cy="12" r="1.5" fill="currentColor" />
+                          <circle cx="6" cy="18" r="1.5" fill="currentColor" />
+                          <circle cx="12" cy="18" r="1.5" fill="currentColor" />
+                          <circle cx="18" cy="18" r="1.5" fill="currentColor" />
+                        </svg>
+                      ),
                     },
                     {
                       label: "IMG_0855.jpg",
                       tag: "Code Violation \u2014 House Wrap",
                       desc: "Missing WRB visible behind cracked panel. R703.1 requires weather-resistant barrier. Adds house wrap + flashing to scope.",
                       score: "Code: RCNYS R703.1",
+                      gradient: "from-amber-900/40 to-amber-700/20",
+                      iconColor: "text-amber-400",
+                      iconLabel: "Code Violation",
+                      icon: (
+                        <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+                        </svg>
+                      ),
                     },
                   ].map((photo) => (
                     <div key={photo.label} className="rounded-xl overflow-hidden border border-white/10">
-                      <div className="h-24 bg-gradient-to-br from-white/[0.08] to-white/[0.02] flex items-center justify-center">
-                        <svg className="w-8 h-8 text-[var(--gray-dim)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909M3.75 21h16.5A2.25 2.25 0 0022.5 18.75V5.25A2.25 2.25 0 0020.25 3H3.75A2.25 2.25 0 001.5 5.25v13.5A2.25 2.25 0 003.75 21z" />
-                        </svg>
+                      <div className={`h-24 bg-gradient-to-br ${photo.gradient} flex flex-col items-center justify-center gap-1.5`}>
+                        <span className={photo.iconColor}>{photo.icon}</span>
+                        <span className={`text-[10px] font-semibold uppercase tracking-wider ${photo.iconColor}`}>{photo.iconLabel}</span>
                       </div>
                       <div className="p-3 bg-white/[0.03]">
                         <p className="text-[10px] font-mono text-[var(--gray-dim)]">{photo.label}</p>
@@ -950,165 +1001,6 @@ export default async function Home() {
             </div>
           </div>
 
-          {/* RICHARD */}
-          <div className="glass-card p-8 mb-8 border border-[var(--cyan)]/20">
-            <div className="flex items-center gap-4 mb-6">
-              <div className="w-14 h-14 rounded-2xl bg-[var(--cyan)]/10 flex items-center justify-center shrink-0">
-                <svg className="w-7 h-7 text-[var(--cyan)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 18.75a6 6 0 006-6v-1.5m-6 7.5a6 6 0 01-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 01-3-3V4.5a3 3 0 116 0v8.25a3 3 0 01-3 3z" />
-                </svg>
-              </div>
-              <div>
-                <h3 className="text-2xl font-bold text-[var(--white)]">
-                  Meet <span className="text-[var(--cyan)]">RICHARD</span>
-                </h3>
-                <p className="text-sm text-[var(--gray-muted)]">
-                  Your AI Claims Assistant &mdash; Voice-Activated, Always On
-                </p>
-              </div>
-            </div>
-
-            <p className="text-[var(--gray)] text-sm leading-relaxed mb-6">
-              RICHARD knows every detail of every claim your company has ever processed. Every photo,
-              every line item, every carrier response, every code citation. And he takes orders
-              by <span className="text-[var(--white)] font-semibold">voice</span>.
-            </p>
-
-            <div className="grid md:grid-cols-2 gap-6 mb-6">
-              {/* Voice Commands */}
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-wider text-[var(--cyan)] mb-3">Talk to RICHARD</p>
-                <div className="space-y-3">
-                  {[
-                    {
-                      prompt: "\u201CRichard, send the supplement to Erie on the Johnson claim.\u201D",
-                      result: "Supplement package compiled from your photos, estimate, and code citations. Sent to the adjuster on file. Follow-up sequence activated.",
-                    },
-                    {
-                      prompt: "\u201CRichard, what\u2019s the status on 42 Oak Street?\u201D",
-                      result: "Carrier received the supplement 6 days ago. No response. Auto-escalation email goes out tomorrow. Damage score: 82. Technical boost: 71.",
-                    },
-                    {
-                      prompt: "\u201CRichard, draft an invoice for the Martinez build.\u201D",
-                      result: "Invoice generated from the approved scope. Certificate of completion attached. Sent to the homeowner and carrier. Payment follow-up scheduled for Day 7.",
-                    },
-                    {
-                      prompt: "\u201CRichard, what code requires ice & water shield on this roof?\u201D",
-                      result: "RCNYS R905.1.2 \u2014 ice barrier required from eave edge to min. 24\u201D past interior wall line. Your photos show it\u2019s missing. Already cited in the forensic report.",
-                    },
-                  ].map((item, i) => (
-                    <div key={i} className="bg-white/5 rounded-xl p-3 border border-white/10">
-                      <p className="text-xs text-[var(--cyan)] font-mono leading-relaxed">{item.prompt}</p>
-                      <p className="text-xs text-[var(--gray-muted)] mt-2 leading-relaxed">{item.result}</p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* What RICHARD Knows */}
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-wider text-[var(--cyan)] mb-3">What RICHARD Knows</p>
-                <div className="space-y-3">
-                  {[
-                    { title: "Every Claim", desc: "Full history \u2014 photos, line items, carrier responses, scope comparisons, damage scores, email threads" },
-                    { title: "Every Code", desc: "Building codes by state, county, and municipality. RCNYS, IRC, IECC \u2014 cited automatically when relevant" },
-                    { title: "Every Carrier", desc: "Self-learning playbooks that track how each carrier responds, what they deny, and what arguments win" },
-                    { title: "Every Photo", desc: "140,000+ training photos. Knows the difference between hail hits on 3-tab vs. architectural vs. EPDM vs. slate" },
-                    { title: "Your Schedule", desc: "Knows which follow-ups are overdue, which installs are pending, which invoices are unpaid" },
-                    { title: "Your Voice", desc: "Understands natural speech from a truck cab, a rooftop, or a job site. No typing. No app. Just talk." },
-                  ].map((item) => (
-                    <div key={item.title} className="flex items-start gap-3">
-                      <div className="w-1.5 h-1.5 rounded-full bg-[var(--cyan)] mt-1.5 shrink-0" />
-                      <div>
-                        <p className="text-sm font-semibold text-[var(--white)]">{item.title}</p>
-                        <p className="text-xs text-[var(--gray-muted)] leading-relaxed">{item.desc}</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            {/* RICHARD Coaches Your Reps */}
-            <div className="mb-6">
-              <p className="text-xs font-semibold uppercase tracking-wider text-[var(--gold,#f59e0b)] mb-4">RICHARD Coaches Your Reps in the Field</p>
-              <p className="text-sm text-[var(--gray)] leading-relaxed mb-4">
-                If your photos aren&apos;t showcasing the damage, RICHARD tells your rep exactly what
-                to go back and get. No guessing. No missed documentation. No money left on the roof.
-              </p>
-              <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                {[
-                  {
-                    prompt: "\u201CGet closer photos of the north slope eave line.\u201D",
-                    why: "RICHARD detected potential ice dam damage but your wide shots don\u2019t show it. He needs 3 close-ups within 2 feet of the eave.",
-                  },
-                  {
-                    prompt: "\u201CDo a chalk test on the counter flashing at the chimney.\u201D",
-                    why: "The metal flashing shows possible impact marks but RICHARD can\u2019t confirm severity from a photo alone. A chalk circle test proves functional damage the carrier can\u2019t deny.",
-                  },
-                  {
-                    prompt: "\u201CPhotograph the drip edge from below \u2014 I need to see the fastener pattern.\u201D",
-                    why: "RICHARD found a code violation \u2014 the drip edge appears face-nailed instead of top-nailed. One photo confirms a code-required replacement the carrier is currently excluding.",
-                  },
-                  {
-                    prompt: "\u201CGet a shot of the shingle exposure with a tape measure.\u201D",
-                    why: "Exposure looks under 5\u201D which makes individual shingle repair impossible. That one photo changes the entire claim from repair to full replacement.",
-                  },
-                  {
-                    prompt: "\u201CPhotograph both layers at the tear-off edge.\u201D",
-                    why: "The carrier scoped for one layer. Your crew just found two. RICHARD needs the photo to auto-generate the supplement before the dumpster leaves.",
-                  },
-                  {
-                    prompt: "\u201CGet a wide shot showing the missing house wrap at the corner.\u201D",
-                    why: "Code R703.1 requires a weather-resistant barrier. This single photo adds house wrap, corner boards, and wall flashing to the scope \u2014 potentially $3,000+ the carrier excluded.",
-                  },
-                ].map((item, i) => (
-                  <div key={i} className="bg-white/5 rounded-xl p-3 border border-white/10">
-                    <p className="text-xs text-[var(--gold,#f59e0b)] font-mono leading-relaxed mb-2">{item.prompt}</p>
-                    <p className="text-xs text-[var(--gray-muted)] leading-relaxed">{item.why}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Damage Thresholds */}
-            <div className="mb-6">
-              <p className="text-xs font-semibold uppercase tracking-wider text-[var(--red)] mb-4">Automatic Damage Thresholds</p>
-              <p className="text-sm text-[var(--gray)] leading-relaxed mb-4">
-                RICHARD doesn&apos;t just look at your photos &mdash; he cross-references NOAA storm data
-                for your exact location. If the National Weather Service recorded 1.5&quot; hail in your
-                county on the date of loss, RICHARD already knows what damage to expect and flags
-                anything your photos are missing.
-              </p>
-              <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
-                {[
-                  { threshold: "< 1\u201D Hail", impact: "Cosmetic damage likely. Soft metals (vents, gutters) show first. Shingles may show granule displacement only.", action: "Document soft metal impacts + gutters. Chalk test all vents." },
-                  { threshold: "1\u201D \u2013 1.5\u201D Hail", impact: "Functional damage threshold. Shingles show mat fracture. Collateral damage to siding, window screens, AC fins.", action: "Full roof + all elevations. Shingle close-ups with quarter reference." },
-                  { threshold: "1.5\u201D \u2013 2\u201D Hail", impact: "Severe functional damage. Cracked shingles, split felt, bruised decking. Ridge caps and pipe boots compromised.", action: "Document everything. Ridge cap pulls, pipe boot close-ups, attic photos if accessible." },
-                  { threshold: "> 2\u201D Hail", impact: "Catastrophic. Full replacement expected. Interior damage likely. Gutters destroyed, fascia cracked, window damage.", action: "Interior + exterior full documentation. Measure dents for diameter. Get hail stone photos if available." },
-                ].map((item) => (
-                  <div key={item.threshold} className="bg-white/5 rounded-xl p-3 border border-white/10">
-                    <p className="text-sm font-bold text-[var(--red)] mb-1">{item.threshold}</p>
-                    <p className="text-xs text-[var(--gray-muted)] leading-relaxed mb-2">{item.impact}</p>
-                    <p className="text-xs text-[var(--cyan)] leading-relaxed">{item.action}</p>
-                  </div>
-                ))}
-              </div>
-              <p className="text-xs text-[var(--gray-dim)] mt-3 text-center">
-                Thresholds auto-calibrated by NOAA Storm Events Database. Wind speed, hail diameter, and event duration
-                are pulled for your exact county and date of loss.
-              </p>
-            </div>
-
-            <div className="rounded-xl bg-[var(--cyan)]/[0.08] border border-[var(--cyan)]/20 p-4 text-center">
-              <p className="text-sm text-[var(--gray)] leading-relaxed">
-                Your best insurance rep took years to build. RICHARD has all of that knowledge on day one &mdash;
-                and he never leaves, never forgets, and never stops following up.
-                <span className="text-[var(--white)] font-semibold"> He just needs your voice.</span>
-              </p>
-            </div>
-          </div>
-
           {/* Bottom callout */}
           <div className="rounded-2xl border border-[var(--green)]/30 bg-[var(--green)]/[0.06] p-6 text-center">
             <p className="text-[var(--gray)] text-sm leading-relaxed max-w-3xl mx-auto">
@@ -1119,76 +1011,229 @@ export default async function Home() {
         </div>
       </section>
 
-      {/* Results */}
-      <section id="results" className="py-20 px-6 bg-white/[0.03] scroll-mt-20">
+      {/* Company Intelligence */}
+      <section className="py-20 px-6 bg-[var(--bg-glass)]">
         <div className="max-w-5xl mx-auto">
           <h2 className="text-3xl sm:text-4xl font-bold text-[var(--white)] text-center mb-4">
-            Real Results. Real Claims. Real Carrier Movement.
+            Your Reps Inspect. <span className="text-[var(--red)]">You See Everything.</span>
           </h2>
-          <p className="text-[var(--gray-muted)] text-center mb-14 max-w-xl mx-auto">
-            Not projections. Documented carrier movement from actual claims.
+          <p className="text-[var(--gray-muted)] text-center mb-14 max-w-2xl mx-auto">
+            Every inspection your team runs feeds your company dashboard with real-time
+            damage intelligence, fraud alerts, and claim quality scores.
           </p>
 
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-14">
-            {[
-              { carrier: "Church Mutual", before: "$20,408", after: "$943,233", increase: "4,522%" },
-              { carrier: "Allstate", before: "$81,170", after: "$120,312", increase: "48%" },
-              { carrier: "Erie Insurance", before: "$32,048", after: "$72,145", increase: "125%" },
-              { carrier: "Nationwide", before: "$77,019", after: "$122,155", increase: "59%" },
-              { carrier: "Hanover", before: "$33,394", after: "$56,769", increase: "70%" },
-              { carrier: "State Farm", before: "$37,669", after: "$80,963", increase: "115%" },
-            ].map((result) => (
-              <div key={result.carrier} className="glass-card p-6">
-                <div className="text-sm font-semibold text-[var(--gray-muted)] mb-3">{result.carrier}</div>
-                <div className="flex items-baseline gap-3 mb-1">
-                  <span className="text-[var(--gray-dim)] line-through text-sm">{result.before}</span>
-                  <span className="text-[var(--white)] font-bold text-xl">{result.after}</span>
+          <div className="grid md:grid-cols-2 gap-6 mb-8">
+            {/* Damage Scores */}
+            <div className="glass-card p-8">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 rounded-full bg-[var(--cyan)]/10 flex items-center justify-center shrink-0">
+                  <svg className="w-5 h-5 text-[var(--cyan)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" />
+                  </svg>
                 </div>
-                <div className="text-[var(--red)] font-bold text-sm">+{result.increase}</div>
+                <h3 className="text-xl font-bold text-[var(--white)]">Damage Scores</h3>
+              </div>
+              <p className="text-[var(--gray)] text-sm leading-relaxed mb-4">
+                Every inspection gets a damage score and a technical boost score. Know which claims
+                show the most damage. Focus your team on areas with the best opportunities.
+                Catch weak claims before your customers submit them.
+                If your photos don&apos;t show damage &mdash; <span className="text-[var(--white)] font-semibold">we will tell you there&apos;s no damage.</span> We
+                don&apos;t fabricate claims. We document what&apos;s there.
+              </p>
+              <div className="grid grid-cols-2 gap-3">
+                {[
+                  { label: "Damage Score", desc: "How severe is the actual damage?" },
+                  { label: "Technical Boost", desc: "Discontinued products, code compliance requirements, and factors that strengthen the claim" },
+                ].map((item) => (
+                  <div key={item.label} className="bg-white/5 rounded-xl p-3 border border-white/10">
+                    <p className="text-xs font-semibold text-[var(--cyan)] mb-1">{item.label}</p>
+                    <p className="text-xs text-[var(--gray-muted)]">{item.desc}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Fraud Detection */}
+            <div className="glass-card p-8">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 rounded-full bg-[var(--red)]/10 flex items-center justify-center shrink-0">
+                  <svg className="w-5 h-5 text-[var(--red)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" />
+                  </svg>
+                </div>
+                <h3 className="text-xl font-bold text-[var(--white)]">Fraud Detection</h3>
+              </div>
+              <p className="text-[var(--gray)] text-sm leading-relaxed mb-4">
+                Our custom fraud detection scan analyzes every photo for EXIF manipulation, GPS
+                inconsistencies, duplicate images, and editing artifacts. Sleep well knowing your
+                reps are not creating or exaggerating damage.
+              </p>
+              <div className="grid grid-cols-2 gap-3">
+                {[
+                  { label: "EXIF Analysis", desc: "Detects edited or manipulated metadata" },
+                  { label: "GPS Verification", desc: "Confirms photos match the job site" },
+                  { label: "Duplicate Scan", desc: "Flags reused photos across claims" },
+                  { label: "Integrity Score", desc: "Pass/fail confidence for every photo" },
+                ].map((item) => (
+                  <div key={item.label} className="bg-white/5 rounded-xl p-3 border border-white/10">
+                    <p className="text-xs font-semibold text-[var(--red)] mb-1">{item.label}</p>
+                    <p className="text-xs text-[var(--gray-muted)]">{item.desc}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Bottom callout */}
+          <div className="rounded-2xl bg-white/[0.04] border border-white/10 p-6 text-center">
+            <p className="text-[var(--gray)] text-sm leading-relaxed max-w-3xl mx-auto">
+              Your dashboard shows every claim, every score, every flag &mdash; across every rep in your company.
+              <span className="text-[var(--white)] font-semibold"> Stop guessing which jobs are worth pursuing.
+              Start knowing.</span>
+            </p>
+          </div>
+        </div>
+      </section>
+
+      {/* Who This Is For */}
+      <section className="py-20 px-6">
+        <div className="max-w-5xl mx-auto">
+          <h2 className="text-3xl sm:text-4xl font-bold text-[var(--white)] text-center mb-14">
+            Built For Companies That Are Tired of Leaving Money on the Table
+          </h2>
+
+          <div className="grid md:grid-cols-3 gap-6 mb-10">
+            {[
+              {
+                title: "Roofing Contractors",
+                desc: "You have 50 reps. Maybe 5 know insurance. This makes all 50 perform like your best insurance specialist. Every claim, every time.",
+              },
+              {
+                title: "PE Rollup Platforms",
+                desc: "You're acquiring contractors doing $100-400M/year. 40% is storm-related. This standardizes insurance claims across every location you own.",
+              },
+              {
+                title: "Restoration Companies",
+                desc: "Supplements are your biggest profit leak. One missed photo costs you $5,000. This catches every line item, every code citation, every time.",
+              },
+            ].map((item) => (
+              <div key={item.title} className="glass-card p-8">
+                <h3 className="text-lg font-bold text-[var(--white)] mb-3">{item.title}</h3>
+                <p className="text-[var(--gray)] text-sm leading-relaxed">{item.desc}</p>
               </div>
             ))}
           </div>
 
-          {/* Comparison Table */}
-          <div className="glass-card p-8">
-            <h3 className="text-xl font-bold text-[var(--white)] mb-6 text-center">
-              Dumb Roof vs. The Old Way
-            </h3>
-            <div className="overflow-x-auto">
-              <table className="w-full text-left">
-                <thead>
-                  <tr className="border-b border-[var(--border-glass)]">
-                    <th className="pb-3 text-sm text-[var(--gray-muted)] font-medium"></th>
-                    <th className="pb-3 text-sm text-[var(--gray-muted)] font-medium">Traditional</th>
-                    <th className="pb-3 text-sm text-[var(--red)] font-bold">Dumb Roof</th>
-                  </tr>
-                </thead>
-                <tbody className="text-sm">
-                  {[
-                    ["Time per claim", "1-3 months", "15 minutes"],
-                    ["Cost per claim", "Xactimate license + hours of labor", "Pennies per claim"],
-                    ["Documents generated", "1 estimate (maybe)", "5 forensic-grade PDFs"],
-                    ["Code citations", "Rarely included", "Every line item cited"],
-                    ["Photo evidence", "Unlabeled photos", "Forensic annotations tied to line items"],
-                    ["Carrier intelligence", "Start from scratch every time", "Self-learning playbooks"],
-                    ["Training required", "Years of insurance experience", "Upload and click"],
-                    ["Rep turnover risk", "Knowledge walks out the door", "System stays. Forever."],
-                  ].map(([label, old, dr]) => (
-                    <tr key={label} className="border-b border-white/[0.04]">
-                      <td className="py-3 font-medium text-[var(--gray)]">{label}</td>
-                      <td className="py-3 text-[var(--gray-muted)]">{old}</td>
-                      <td className="py-3 font-semibold text-[var(--white)]">{dr}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+          {/* The Real Problems — moved from trust section */}
+          <div className="space-y-6">
+            <div className="glass-card p-8">
+              <h3 className="text-xl font-bold text-[var(--white)] mb-4">
+                The Contractor&apos;s Impossible Choice
+              </h3>
+              <div className="grid md:grid-cols-2 gap-8">
+                <div className="space-y-4">
+                  <div className="flex items-start gap-3">
+                    <span className="text-[var(--red)] text-lg mt-0.5 shrink-0">01</span>
+                    <div>
+                      <p className="font-semibold text-[var(--white)]">Train reps for years on insurance</p>
+                      <p className="text-sm text-[var(--gray-muted)] mt-1">
+                        It takes years to learn the full insurance process &mdash; building codes, Xactimate,
+                        supplement negotiations, carrier tactics. Just when they hit their stride...
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <span className="text-[var(--red)] text-lg mt-0.5 shrink-0">02</span>
+                    <div>
+                      <p className="font-semibold text-[var(--white)]">They leave and start their own company</p>
+                      <p className="text-sm text-[var(--gray-muted)] mt-1">
+                        They take every skill you trained them on. Average roofing employee tenure: 16 months.
+                        You just funded your next competitor.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+                <div className="space-y-4">
+                  <div className="flex items-start gap-3">
+                    <span className="text-[var(--red)] text-lg mt-0.5 shrink-0">03</span>
+                    <div>
+                      <p className="font-semibold text-[var(--white)]">Or don&apos;t train them enough</p>
+                      <p className="text-sm text-[var(--gray-muted)] mt-1">
+                        Untrained reps miss supplements and line items. One photo could add a $5,000 line item
+                        to a claim &mdash; but they don&apos;t know to take it. Money left on every roof.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <span className="text-[var(--red)] text-lg mt-0.5 shrink-0">04</span>
+                    <div>
+                      <p className="font-semibold text-[var(--white)]">Or skip insurance work entirely</p>
+                      <p className="text-sm text-[var(--gray-muted)] mt-1">
+                        Most contractors avoid insurance claims because the process is too frustrating.
+                        That&apos;s by design &mdash; carriers built it that way.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* New Hires - No Problem */}
+            <div className="glass-card p-8 border-l-4 border-l-[var(--green,#22c55e)]">
+              <h3 className="text-xl font-bold text-[var(--white)] mb-3">
+                New Hires? No Worries.
+              </h3>
+              <p className="text-[var(--gray)] leading-relaxed mb-4">
+                If they can take photos, they can present reports that give your company a truly
+                competitive advantage in your market. Hire a rep today and they present your company
+                in the manner you want, <span className="text-[var(--white)] font-semibold">from day one.</span>
+              </p>
+              <div className="grid sm:grid-cols-3 gap-4">
+                {[
+                  { label: "Training Time", before: "2+ years", after: "Day 1" },
+                  { label: "Skill Required", before: "Xactimate + codes + negotiation", after: "Take photos & upload" },
+                  { label: "Output Quality", before: "Depends on the rep", after: "Forensic-grade, every time" },
+                ].map((item) => (
+                  <div key={item.label} className="bg-white/5 rounded-xl p-4 border border-white/10">
+                    <p className="text-xs text-[var(--gray-dim)] font-semibold uppercase tracking-wider mb-2">{item.label}</p>
+                    <p className="text-sm text-[var(--gray-muted)] line-through decoration-[var(--red)]/50">{item.before}</p>
+                    <p className="text-sm text-[var(--white)] font-semibold mt-1">{item.after}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* PE Problem */}
+            <div className="bg-[var(--bg-glass)] rounded-2xl p-8 text-white">
+              <h3 className="text-xl font-bold mb-4">
+                Why Private Equity Hates Insurance Work
+              </h3>
+              <p className="text-[var(--gray-dim)] mb-6 leading-relaxed">
+                PE firms don&apos;t hate the money insurance claims generate &mdash; they hate the
+                inconsistency. They hate the complexity. They hate that it takes years to train
+                a rep who might leave in 16 months. With 25+ PE rollups now operating in roofing,
+                the firms doing $100M-$400M/year need a system that makes insurance claims
+                predictable, repeatable, and scalable. That&apos;s what this is.
+              </p>
+              <div className="grid sm:grid-cols-3 gap-4">
+                {[
+                  { label: "The Problem", value: "Inconsistent claim outcomes across 50+ reps" },
+                  { label: "The Cost", value: "25-50% revenue leakage from missed supplements" },
+                  { label: "The Fix", value: "World-class system that plugs directly into your company" },
+                ].map((item) => (
+                  <div key={item.label} className="bg-white/10 rounded-xl p-4 border border-white/10">
+                    <p className="text-xs text-[var(--gray-dim)] font-semibold uppercase tracking-wider">{item.label}</p>
+                    <p className="text-sm text-[var(--gray-dim)] mt-2">{item.value}</p>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         </div>
       </section>
 
       {/* Dumb Roof Repair */}
-      <section id="repair" className="py-20 px-6 scroll-mt-20">
+      <section id="repair" className="py-20 px-6 bg-white/[0.03] scroll-mt-20">
         <div className="max-w-5xl mx-auto">
           <div className="text-center mb-14">
             <div className="inline-block mb-4 px-4 py-1.5 rounded-full bg-[var(--red)]/10 border border-[var(--red)]/20">
@@ -1297,7 +1342,7 @@ export default async function Home() {
       </section>
 
       {/* Inspector Network */}
-      <section id="inspectors" className="py-20 px-6 bg-white/[0.03] scroll-mt-20">
+      <section id="inspectors" className="py-20 px-6 bg-[var(--bg-glass)] scroll-mt-20">
         <div className="max-w-5xl mx-auto">
           <div className="text-center mb-14">
             <div className="inline-block mb-4 px-4 py-1.5 rounded-full bg-white/[0.05] border border-[var(--border-glass)]">
@@ -1392,7 +1437,7 @@ export default async function Home() {
       </section>
 
       {/* Get Started CTA */}
-      <section id="get-started" className="py-20 px-6 bg-[var(--bg-glass)] scroll-mt-20">
+      <section id="get-started" className="py-20 px-6 scroll-mt-20">
         <div className="max-w-xl mx-auto text-center">
           <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">
             Ready to Get Started?
