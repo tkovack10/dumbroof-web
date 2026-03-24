@@ -126,6 +126,7 @@ export default async function Home() {
                 { name: "EagleView", logo: "/integrations/eagleview.svg" },
                 { name: "HOVER", logo: "/integrations/hover.svg" },
                 { name: "RoofLink", logo: "/integrations/rooflink.svg" },
+                { name: "ServiceTitan", logo: "/integrations/servicetitan.svg" },
               ].map((tool) => (
                 <img
                   key={tool.name}

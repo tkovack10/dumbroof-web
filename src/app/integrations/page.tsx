@@ -205,6 +205,33 @@ const INTEGRATIONS = [
       </svg>
     ),
   },
+  {
+    name: "ServiceTitan",
+    status: "coming_soon" as const,
+    description:
+      "Connect ServiceTitan to import jobs, customer records, and project data. Full V2 API with 70+ pre-built integrations.",
+    features: [
+      "Import jobs and customer records",
+      "Sync insurance and billing data",
+      "Full REST API with developer portal",
+    ],
+    color: "from-amber-500 to-amber-700",
+    icon: (
+      <svg
+        className="w-7 h-7 text-white"
+        fill="none"
+        viewBox="0 0 24 24"
+        stroke="currentColor"
+        strokeWidth={1.5}
+      >
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          d="M11.42 15.17l-5.384-3.19A1.282 1.282 0 005.25 13.08V18.9c0 .472.26.906.672 1.13l5.383 3.19a1.282 1.282 0 001.392 0l5.384-3.19c.412-.224.671-.658.671-1.13v-5.82c0-.472-.26-.907-.671-1.13L12.812 8.63a1.282 1.282 0 00-1.392 0L6.037 11.82M17.25 5.11L12 8.27 6.75 5.11M12 2.25l5.25 2.86v5.72L12 13.69 6.75 10.83V5.11L12 2.25z"
+        />
+      </svg>
+    ),
+  },
 ];
 
 export default function IntegrationsPage() {
