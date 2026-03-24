@@ -159,17 +159,33 @@ export default async function Home() {
               <h3 className="text-xl font-bold text-[var(--white)] mb-4">
                 Homeowners Don&apos;t Trust You
               </h3>
-              <div className="space-y-4">
-                {[
-                  { stat: "#1", text: "Roofing is the #1 most-complained industry on the BBB &mdash; 3,392 complaints in a single year" },
-                  { stat: "70%", text: "of consumers won&apos;t return to a contractor after one bad experience" },
-                  { stat: "40%", text: "of homeowners say poor communication is their #1 frustration with contractors" },
-                ].map((item, i) => (
-                  <div key={i} className="flex items-start gap-3">
-                    <span className="text-2xl font-bold text-[var(--red)] shrink-0 w-14 text-right" dangerouslySetInnerHTML={{ __html: item.stat }} />
-                    <p className="text-sm text-[var(--gray)] leading-relaxed pt-1" dangerouslySetInnerHTML={{ __html: item.text }} />
-                  </div>
-                ))}
+              <div className="space-y-4 mb-5">
+                <div className="flex items-start gap-3">
+                  <span className="text-2xl font-bold text-[var(--red)] shrink-0 w-14 text-right">#1</span>
+                  <p className="text-sm text-[var(--gray)] leading-relaxed pt-1">
+                    Roofing is the #1 most-complained industry on the BBB &mdash; 3,392 complaints in a single year
+                  </p>
+                </div>
+                <div className="flex items-start gap-3">
+                  <span className="text-2xl font-bold text-[var(--red)] shrink-0 w-14 text-right">40%</span>
+                  <p className="text-sm text-[var(--gray)] leading-relaxed pt-1">
+                    of homeowners say poor communication is their #1 frustration with contractors
+                  </p>
+                </div>
+              </div>
+              <div className="rounded-xl bg-white/[0.04] border border-white/10 p-4">
+                <p className="text-sm text-[var(--gray)] leading-relaxed">
+                  7 contractors knocked on Mrs. Jones&apos; door this week. 4 of them told her they saw damage
+                  but didn&apos;t show her anything. 1 texted her a couple photos. 1 told her he&apos;d be sending
+                  something &mdash; she hasn&apos;t received it yet.
+                </p>
+                <p className="text-sm text-[var(--gray)] leading-relaxed mt-3">
+                  And then <span className="text-[var(--white)] font-semibold">you</span> provided her a highly detailed
+                  forensic report and an itemized scope of work.
+                </p>
+                <p className="text-sm text-[var(--white)] font-bold mt-3">
+                  Who do you think Mrs. Jones is going to work with?
+                </p>
               </div>
             </div>
 
