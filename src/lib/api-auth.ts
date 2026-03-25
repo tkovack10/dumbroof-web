@@ -85,3 +85,66 @@ export async function canAccessRepair(userId: string, repairId: string): Promise
 export function isAuthError(result: AuthResult | AuthError): result is AuthError {
   return "response" in result;
 }
+
+/**
+ * Get the effective company profile for a user.
+ *
+ * Company settings are ADMIN-ONLY. Regular users never enter API keys,
+ * logos, or company branding. Everything cascades from the company admin.
+ *
+ * Resolution order:
+ * 1. company_id → find admin profile for that company
+ * 2. Email domain → find admin profile with matching email domain
+ * 3. User's own profile (for admins, or fallback)
+ */
+export async function getCompanyProfile(userId: string) {
+  // Get the user's own profile
+  const { data: userRows } = await supabaseAdmin
+    .from("company_profiles")
+    .select("*")
+    .eq("user_id", userId)
+    .limit(1);
+
+  const userProfile = userRows?.[0] || null;
+
+  // If user IS the admin, return their profile directly
+  if (userProfile?.is_admin) {
+    return userProfile;
+  }
+
+  // 1. If user has a company_id, get the admin's profile (source of truth)
+  if (userProfile?.company_id) {
+    const { data: adminRows } = await supabaseAdmin
+      .from("company_profiles")
+      .select("*")
+      .eq("company_id", userProfile.company_id)
+      .eq("is_admin", true)
+      .limit(1);
+
+    if (adminRows?.[0]) {
+      return { ...adminRows[0], user_id: userId };
+    }
+  }
+
+  // 2. Domain-based lookup — find admin with same email domain
+  const { data: authUser } = await supabaseAdmin.auth.admin.getUserById(userId);
+  const userEmail = authUser?.user?.email;
+  if (userEmail) {
+    const domain = userEmail.split("@")[1];
+    const { data: adminProfiles } = await supabaseAdmin
+      .from("company_profiles")
+      .select("*")
+      .eq("is_admin", true);
+
+    if (adminProfiles) {
+      for (const profile of adminProfiles) {
+        if (profile.email?.endsWith(`@${domain}`)) {
+          return { ...profile, user_id: userId };
+        }
+      }
+    }
+  }
+
+  // 3. Fallback — return user's own profile
+  return userProfile;
+}

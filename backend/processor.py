@@ -3555,6 +3555,37 @@ async def process_claim(claim_id: str):
                     print(f"[PROCESS] REST fallback: no profile found", flush=True)
         except Exception as e2:
             print(f"[PROCESS] REST fallback failed: {e2}", flush=True)
+    # Company-level profile resolution: users always inherit from company admin
+    # Admin profile is the source of truth for API keys, logo, branding, W9
+    if company_profile and not company_profile.get("is_admin"):
+        _company_id = company_profile.get("company_id")
+        _resolved = False
+        # Try company_id first
+        if _company_id:
+            try:
+                admin_result = sb.table("company_profiles").select("*").eq("company_id", _company_id).eq("is_admin", True).limit(1).execute()
+                if admin_result.data:
+                    company_profile = {**admin_result.data[0], "user_id": _uid}
+                    _resolved = True
+                    print(f"[PROCESS] Using company admin profile (company_id={_company_id})", flush=True)
+            except Exception as e:
+                print(f"[PROCESS] Company admin lookup failed: {e}", flush=True)
+        # Fall back to domain matching
+        if not _resolved:
+            try:
+                admin_profiles = sb.table("company_profiles").select("*").eq("is_admin", True).execute()
+                user_result = sb.auth.admin.get_user_by_id(_uid)
+                user_email = getattr(user_result, 'user', {}).email if hasattr(user_result, 'user') else ""
+                if user_email and admin_profiles.data:
+                    domain = user_email.split("@")[-1]
+                    for ap in admin_profiles.data:
+                        if ap.get("email", "").endswith(f"@{domain}"):
+                            company_profile = {**ap, "user_id": _uid}
+                            print(f"[PROCESS] Using domain-matched admin profile ({domain})", flush=True)
+                            break
+            except Exception as e:
+                print(f"[PROCESS] Domain admin lookup failed: {e}", flush=True)
+
     _usarm_defaults = {
         "company_name": "USA ROOF MASTERS",
         "address": "3070 Bristol Pike, Building 1, Suite 122",

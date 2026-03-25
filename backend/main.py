@@ -1655,17 +1655,26 @@ async def integration_status(user_id: str):
 
 
 async def _get_user_integration_client(user_id: str, provider: str):
-    """Helper: fetch the user's API key and return the appropriate client."""
+    """Helper: fetch the user's API key, falling back to company admin's key."""
     from integrations.acculynx import AccuLynxClient
     from integrations.companycam import CompanyCamClient
 
     sb = get_supabase_client()
     col = f"{provider}_api_key"
-    result = sb.table("company_profiles").select(col).eq("user_id", user_id).limit(1).execute()
-    if not result.data or not result.data[0].get(col):
-        raise HTTPException(status_code=400, detail=f"{provider} not connected")
 
-    api_key = result.data[0][col]
+    # Try user's own profile first
+    result = sb.table("company_profiles").select(f"{col}, company_id").eq("user_id", user_id).limit(1).execute()
+    api_key = result.data[0].get(col) if result.data else None
+
+    # Fall back to company admin's key if user doesn't have one
+    if not api_key and result.data and result.data[0].get("company_id"):
+        company_id = result.data[0]["company_id"]
+        admin_result = sb.table("company_profiles").select(col).eq("company_id", company_id).eq("is_admin", True).limit(1).execute()
+        api_key = admin_result.data[0].get(col) if admin_result.data else None
+
+    if not api_key:
+        raise HTTPException(status_code=400, detail=f"{provider} not connected. Ask your company admin to connect it in Settings.")
+
     if provider == "acculynx":
         return AccuLynxClient(api_key)
     return CompanyCamClient(api_key)
