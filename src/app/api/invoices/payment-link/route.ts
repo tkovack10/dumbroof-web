@@ -20,13 +20,14 @@ export async function POST(req: NextRequest) {
   }
 
   // Get the invoice
-  const { data: invoice, error: invErr } = await supabaseAdmin
+  const { data: invoiceRows } = await supabaseAdmin
     .from("invoices")
     .select("*")
     .eq("id", invoice_id)
-    .single();
+    .limit(1);
 
-  if (invErr || !invoice) {
+  const invoice = invoiceRows?.[0] || null;
+  if (!invoice) {
     return NextResponse.json({ error: "Invoice not found" }, { status: 404 });
   }
 
@@ -43,13 +44,13 @@ export async function POST(req: NextRequest) {
     const stripe = getStripe();
 
     // Get claim address for the description
-    const { data: claim } = await supabaseAdmin
+    const { data: claimRows } = await supabaseAdmin
       .from("claims")
       .select("address")
       .eq("id", invoice.claim_id)
-      .single();
+      .limit(1);
 
-    const address = claim?.address || "Property";
+    const address = claimRows?.[0]?.address || "Property";
 
     // Create a Stripe Payment Link via a Price (one-time)
     const price = await stripe.prices.create({

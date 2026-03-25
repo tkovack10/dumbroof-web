@@ -100,7 +100,8 @@ export async function PUT(req: NextRequest) {
     .from("install_supplements")
     .select("claim_id, status")
     .eq("id", id)
-    .single();
+    .limit(1)
+    .then(r => ({ ...r, data: r.data?.[0] || null }));
 
   if (!existing) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
@@ -156,7 +157,8 @@ export async function DELETE(req: NextRequest) {
     .from("install_supplements")
     .select("claim_id, status")
     .eq("id", id)
-    .single();
+    .limit(1)
+    .then(r => ({ ...r, data: r.data?.[0] || null }));
 
   if (!existing) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });

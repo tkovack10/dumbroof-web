@@ -52,12 +52,13 @@ export async function POST(req: NextRequest) {
   }
 
   // Get claim financial data
-  const { data: claim } = await supabaseAdmin
+  const { data: claimRows } = await supabaseAdmin
     .from("claims")
     .select("contractor_rcv, original_carrier_rcv, current_carrier_rcv, settlement_amount, o_and_p_enabled, tax_rate, excluded_line_items, address, slug")
     .eq("id", claim_id)
-    .single();
+    .limit(1);
 
+  const claim = claimRows?.[0] || null;
   if (!claim) {
     return NextResponse.json({ error: "Claim not found" }, { status: 404 });
   }
@@ -66,12 +67,12 @@ export async function POST(req: NextRequest) {
   const excludedIds = new Set<string>((claim.excluded_line_items as string[]) || []);
   const { data: lineItems } = await supabaseAdmin
     .from("line_items")
-    .select("description, qty, unit, unit_price")
+    .select("id, description, qty, unit, unit_price")
     .eq("claim_id", claim_id)
     .in("source", ["usarm", "user_added"]);
 
   const items = (lineItems || [])
-    .filter((li) => !excludedIds.has((li as { id?: string }).id || ""))
+    .filter((li) => !excludedIds.has(li.id))
     .map((li) => ({
       description: li.description,
       qty: li.qty,
@@ -153,12 +154,13 @@ export async function PUT(req: NextRequest) {
     return NextResponse.json({ error: "id required" }, { status: 400 });
   }
 
-  const { data: existing } = await supabaseAdmin
+  const { data: existingRows } = await supabaseAdmin
     .from("invoices")
     .select("claim_id")
     .eq("id", id)
-    .single();
+    .limit(1);
 
+  const existing = existingRows?.[0] || null;
   if (!existing) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }

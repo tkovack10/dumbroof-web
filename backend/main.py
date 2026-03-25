@@ -1474,7 +1474,6 @@ async def send_coc_endpoint(body: CocSendRequest):
         # Update lifecycle phase
         sb.table("claims").update({
             "lifecycle_phase": "completed",
-            "completion_date": body.completion_date if hasattr(body, "completion_date") else None,
         }).eq("id", body.claim_id).execute()
 
         return result
