@@ -252,16 +252,17 @@ def generate_coc_pdf(
     completion_date: Optional[str] = None,
     work_description: Optional[str] = None,
     warranty_terms: Optional[str] = None,
+    completion_photos: Optional[list[bytes]] = None,
 ) -> bytes:
     """
-    Generate a Certificate of Completion PDF.
+    Generate a Certificate of Substantial Completion PDF.
     All fields optional — missing data gracefully skipped.
+    completion_photos: list of image bytes (1-2 photos) to embed.
     """
     from reportlab.lib.pagesizes import letter
     from reportlab.lib import colors
     from reportlab.lib.units import inch
-    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, HRFlowable, Table, TableStyle
-    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, HRFlowable, Table, TableStyle, Image
 
     buf = io.BytesIO()
     doc = SimpleDocTemplate(buf, pagesize=letter, topMargin=0.75*inch, bottomMargin=0.75*inch)
@@ -301,7 +302,7 @@ def generate_coc_pdf(
     story.append(Spacer(1, 12))
 
     # ── Title ──
-    story.append(Paragraph("CERTIFICATE OF COMPLETION", title_style))
+    story.append(Paragraph("CERTIFICATE OF SUBSTANTIAL COMPLETION", title_style))
     story.append(Paragraph("Storm Damage Restoration", subtitle_style))
     story.append(Spacer(1, 16))
 
@@ -348,36 +349,107 @@ def generate_coc_pdf(
         ))
     story.append(Spacer(1, 12))
 
-    # ── Financial Summary ──
+    # ── Completion Photos ──
+    if completion_photos:
+        story.append(Paragraph("<b>Completion Photos:</b>", bold_style))
+        story.append(Spacer(1, 6))
+        photo_cells = []
+        for photo_bytes in completion_photos[:2]:  # Max 2 photos
+            try:
+                img_buf = io.BytesIO(photo_bytes)
+                img = Image(img_buf)
+                # Scale to fit: max 3 inches wide, maintain aspect ratio
+                aspect = img.imageWidth / img.imageHeight if img.imageHeight else 1
+                max_w = 3 * inch
+                max_h = 2.5 * inch
+                if aspect > 1:
+                    w = min(max_w, img.imageWidth)
+                    h = w / aspect
+                    if h > max_h:
+                        h = max_h
+                        w = h * aspect
+                else:
+                    h = min(max_h, img.imageHeight)
+                    w = h * aspect
+                    if w > max_w:
+                        w = max_w
+                        h = w / aspect
+                img.drawWidth = w
+                img.drawHeight = h
+                photo_cells.append(img)
+            except Exception:
+                pass  # Skip unreadable photos
+
+        if len(photo_cells) == 2:
+            photo_table = Table([[photo_cells[0], photo_cells[1]]], colWidths=[3.25*inch, 3.25*inch])
+            photo_table.setStyle(TableStyle([
+                ("ALIGN", (0, 0), (-1, -1), "CENTER"),
+                ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                ("LEFTPADDING", (0, 0), (-1, -1), 4),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 4),
+            ]))
+            story.append(photo_table)
+        elif len(photo_cells) == 1:
+            photo_table = Table([[photo_cells[0]]], colWidths=[6.5*inch])
+            photo_table.setStyle(TableStyle([
+                ("ALIGN", (0, 0), (-1, -1), "CENTER"),
+            ]))
+            story.append(photo_table)
+        story.append(Spacer(1, 12))
+
+    # ── Financial Summary with Depreciation ──
     contractor_rcv = float(_safe(claim_data.get("contractor_rcv"), 0))
-    if contractor_rcv:
+    carrier_rcv = float(_safe(claim_data.get("current_carrier_rcv", claim_data.get("original_carrier_rcv")), 0))
+    settlement = float(_safe(claim_data.get("settlement_amount"), 0))
+
+    if contractor_rcv or carrier_rcv:
         story.append(Paragraph("<b>Financial Summary:</b>", bold_style))
         story.append(Spacer(1, 4))
-        fin_rows = [
-            ["Total Contract Amount:", _fmt_currency(contractor_rcv)],
-        ]
-        carrier_rcv = float(_safe(claim_data.get("current_carrier_rcv", claim_data.get("original_carrier_rcv")), 0))
-        if carrier_rcv:
-            fin_rows.append(["Insurance Approved:", _fmt_currency(carrier_rcv)])
-        settlement = float(_safe(claim_data.get("settlement_amount"), 0))
-        if settlement:
-            fin_rows.append(["Settlement Amount:", _fmt_currency(settlement)])
 
-        fin_table = Table(fin_rows, colWidths=[2.5*inch, 2*inch])
-        fin_table.setStyle(TableStyle([
+        fin_rows = []
+        if carrier_rcv:
+            fin_rows.append(["Replacement Cost Value (RCV):", _fmt_currency(carrier_rcv)])
+
+        # Depreciation = RCV - ACV (settlement is the ACV / amount actually paid)
+        if carrier_rcv and settlement and settlement < carrier_rcv:
+            depreciation = carrier_rcv - settlement
+            fin_rows.append(["Less: Depreciation Held:", f"({_fmt_currency(depreciation)})"])
+            fin_rows.append(["Actual Cash Value (ACV):", _fmt_currency(settlement)])
+        elif settlement:
+            fin_rows.append(["Amount Approved:", _fmt_currency(settlement)])
+
+        if contractor_rcv and contractor_rcv != carrier_rcv:
+            fin_rows.append(["Contractor Scope (RCV):", _fmt_currency(contractor_rcv)])
+
+        if carrier_rcv and settlement and settlement < carrier_rcv:
+            depreciation = carrier_rcv - settlement
+            story.append(Spacer(1, 2))
+            fin_rows.append(["", ""])  # spacer row
+            fin_rows.append(["Depreciation Recoverable Upon Completion:", _fmt_currency(depreciation)])
+
+        fin_table = Table(fin_rows, colWidths=[3.2*inch, 2*inch])
+        fin_style = [
             ("FONTSIZE", (0, 0), (-1, -1), 10),
             ("FONTNAME", (1, 0), (1, -1), "Helvetica-Bold"),
             ("ALIGN", (1, 0), (1, -1), "RIGHT"),
             ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
-        ]))
+        ]
+        # Bold the depreciation recoverable row (last row)
+        if len(fin_rows) > 0:
+            last_idx = len(fin_rows) - 1
+            fin_style.append(("FONTNAME", (0, last_idx), (-1, last_idx), "Helvetica-Bold"))
+            fin_style.append(("TEXTCOLOR", (0, last_idx), (-1, last_idx), green))
+        fin_table.setStyle(TableStyle(fin_style))
         story.append(fin_table)
-        story.append(Spacer(1, 12))
+        story.append(Spacer(1, 8))
 
-    # ── Warranty ──
-    if warranty_terms:
-        story.append(Paragraph("<b>Warranty:</b>", bold_style))
-        story.append(Spacer(1, 4))
-        story.append(Paragraph(warranty_terms, normal))
+        if carrier_rcv and settlement and settlement < carrier_rcv:
+            depreciation = carrier_rcv - settlement
+            story.append(Paragraph(
+                f"Upon submission of this Certificate of Substantial Completion, the recoverable depreciation "
+                f"of <b>{_fmt_currency(depreciation)}</b> is due and payable per the terms of the insurance policy.",
+                ParagraphStyle("DepNote", parent=normal, fontSize=9, leading=12),
+            ))
         story.append(Spacer(1, 12))
 
     # ── Certification Statement ──
@@ -385,8 +457,9 @@ def generate_coc_pdf(
     story.append(HRFlowable(width="100%", color=colors.HexColor("#e0e0e0"), thickness=0.5))
     story.append(Spacer(1, 8))
     story.append(Paragraph(
-        f"I hereby certify that all work described above has been completed in a workmanlike manner "
-        f"and in compliance with applicable building codes and insurance scope of work.",
+        f"I hereby certify that all substantial work described above has been completed in a workmanlike manner "
+        f"and in compliance with applicable building codes and the approved insurance scope of work. "
+        f"Minor punch-list items, if any, do not affect the functional performance of the completed work.",
         ParagraphStyle("Cert", parent=normal, fontSize=9, textColor=colors.gray, leading=12),
     ))
     story.append(Spacer(1, 20))
