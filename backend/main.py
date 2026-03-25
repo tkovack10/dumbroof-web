@@ -1343,6 +1343,147 @@ async def send_supplement_email_direct(body: DirectEmailRequest):
 
 
 # ===================================================================
+# CERTIFICATE OF COMPLETION — Generate & Send
+# ===================================================================
+
+class CocRequest(BaseModel):
+    claim_id: str
+    user_id: str | None = None
+    completion_date: str | None = None
+    work_description: str | None = None
+    warranty_terms: str | None = None
+
+class CocSendRequest(BaseModel):
+    claim_id: str
+    user_id: str | None = None
+    pdf_path: str
+    to_email: str
+    cc: str | None = None
+
+@app.post("/api/coc/generate")
+async def generate_coc_endpoint(body: CocRequest):
+    """Generate a Certificate of Completion PDF and upload to storage."""
+    from claim_brain_pdfs import generate_coc_pdf
+
+    sb = get_supabase_client()
+
+    # Get claim data
+    claim_result = sb.table("claims").select("*").eq("id", body.claim_id).limit(1).execute()
+    if not claim_result.data:
+        return {"status": "error", "message": "Claim not found"}
+    claim_data = claim_result.data[0]
+
+    user_id = body.user_id or claim_data.get("user_id", "")
+
+    # Get company profile
+    company_profile = {}
+    try:
+        cp_result = sb.table("company_profiles").select("*").eq("user_id", user_id).limit(1).execute()
+        if cp_result.data:
+            cp = cp_result.data[0]
+            company_profile = {
+                "company_name": cp.get("company_name", ""),
+                "address": cp.get("address", ""),
+                "city_state_zip": cp.get("city_state_zip", ""),
+                "phone": cp.get("phone", ""),
+                "email": cp.get("email", ""),
+                "license_number": cp.get("license_number", ""),
+                "contact_name": cp.get("contact_name", ""),
+            }
+    except Exception:
+        pass
+
+    try:
+        pdf_bytes = generate_coc_pdf(
+            claim_data, company_profile,
+            completion_date=body.completion_date,
+            work_description=body.work_description,
+            warranty_terms=body.warranty_terms,
+        )
+
+        from datetime import datetime
+        file_path = f"{claim_data.get('file_path', body.claim_id)}/brain/coc_{datetime.now().strftime('%Y%m%d_%H%M')}.pdf"
+        sb.storage.from_("claim-documents").upload(file_path, pdf_bytes, {"content-type": "application/pdf"})
+
+        # Get signed URL for download
+        signed = sb.storage.from_("claim-documents").create_signed_url(file_path, 3600)
+        download_url = signed.get("signedURL") or signed.get("signedUrl") or ""
+
+        return {
+            "status": "ok",
+            "pdf_path": file_path,
+            "download_url": download_url,
+        }
+    except Exception as e:
+        print(f"[COC ERROR] {e}", flush=True)
+        return {"status": "error", "message": str(e)}
+
+
+@app.post("/api/coc/send")
+async def send_coc_endpoint(body: CocSendRequest):
+    """Send the COC PDF via email to carrier/homeowner."""
+    from claim_brain_email import send_claim_email
+
+    sb = get_supabase_client()
+
+    user_id = body.user_id
+    if not user_id:
+        claim_result = sb.table("claims").select("user_id, address, carrier").eq("id", body.claim_id).limit(1).execute()
+        if claim_result.data:
+            user_id = claim_result.data[0]["user_id"]
+            address = claim_result.data[0].get("address", "the property")
+            carrier = claim_result.data[0].get("carrier", "Insurance Carrier")
+        else:
+            return {"status": "error", "message": "Claim not found"}
+    else:
+        claim_result = sb.table("claims").select("address, carrier").eq("id", body.claim_id).limit(1).execute()
+        address = claim_result.data[0].get("address", "the property") if claim_result.data else "the property"
+        carrier = claim_result.data[0].get("carrier", "Insurance Carrier") if claim_result.data else "Insurance Carrier"
+
+    # Get company name
+    company_name = "Your Roofing Company"
+    try:
+        cp_result = sb.table("company_profiles").select("company_name").eq("user_id", user_id).limit(1).execute()
+        if cp_result.data:
+            company_name = cp_result.data[0].get("company_name", company_name)
+    except Exception:
+        pass
+
+    body_html = (
+        f"<p>Dear {carrier} Claims Department,</p>"
+        f"<p>Please find attached the Certificate of Completion for storm damage restoration "
+        f"work at {address}. All work has been completed in accordance with the approved scope "
+        f"and applicable building codes.</p>"
+        f"<p>Please process final payment at your earliest convenience.</p>"
+        f"<p>Respectfully,<br/>{company_name}</p>"
+    )
+
+    try:
+        result = send_claim_email(
+            sb=sb,
+            user_id=user_id,
+            claim_id=body.claim_id,
+            to_email=body.to_email,
+            subject=f"Certificate of Completion — {address}",
+            body_html=body_html,
+            cc=body.cc,
+            email_type="coc",
+            attachments=[{"path": body.pdf_path, "filename": "Certificate_of_Completion.pdf"}],
+        )
+
+        # Update lifecycle phase
+        sb.table("claims").update({
+            "lifecycle_phase": "completed",
+            "completion_date": body.completion_date if hasattr(body, "completion_date") else None,
+        }).eq("id", body.claim_id).execute()
+
+        return result
+    except Exception as e:
+        print(f"[COC SEND ERROR] {e}", flush=True)
+        return {"status": "error", "message": str(e)}
+
+
+# ===================================================================
 # GMAIL OAUTH — Connect user's Gmail for sending
 # ===================================================================
 

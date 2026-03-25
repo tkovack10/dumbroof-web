@@ -9,6 +9,7 @@ import { ScopeComparison } from "@/components/scope-comparison";
 import { EstimateView } from "@/components/estimate-view";
 import { SupplementComposer } from "@/components/supplement-composer";
 import { InstallSupplementBuilder } from "@/components/install-supplement-builder";
+import { CocBuilder } from "@/components/coc-builder";
 import type { ScopeComparisonRow } from "@/types/scope-comparison";
 
 import type { Claim } from "@/types/claim";
@@ -814,6 +815,16 @@ export default function ClaimDetailPage() {
             carrierName={claim.carrier}
             userId={currentUserId}
             filePath={claim.file_path}
+          />
+        )}
+
+        {/* Certificate of Completion */}
+        {isReady && (
+          <CocBuilder
+            claimId={claim.id}
+            claimAddress={claim.address}
+            carrierName={claim.carrier}
+            userId={currentUserId}
           />
         )}
 

@@ -1,0 +1,173 @@
+import { NextRequest, NextResponse } from "next/server";
+import { supabaseAdmin } from "@/lib/supabase/admin";
+import { requireAuth, isAuthError, canAccessClaim } from "@/lib/api-auth";
+
+const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000";
+
+/** GET — fetch existing COC record for a claim */
+export async function GET(req: NextRequest) {
+  const auth = await requireAuth();
+  if (isAuthError(auth)) return auth.response;
+  const userId = auth.user.id;
+
+  const { searchParams } = new URL(req.url);
+  const claimId = searchParams.get("claim_id");
+
+  if (!claimId) {
+    return NextResponse.json({ error: "claim_id required" }, { status: 400 });
+  }
+
+  const authorized = await canAccessClaim(userId, claimId);
+  if (!authorized) {
+    return NextResponse.json({ error: "Not authorized" }, { status: 403 });
+  }
+
+  const { data, error } = await supabaseAdmin
+    .from("certificates_of_completion")
+    .select("*")
+    .eq("claim_id", claimId)
+    .order("created_at", { ascending: false })
+    .limit(1);
+
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+
+  return NextResponse.json({ coc: data?.[0] || null });
+}
+
+/** POST — generate a COC PDF via Railway backend */
+export async function POST(req: NextRequest) {
+  const auth = await requireAuth();
+  if (isAuthError(auth)) return auth.response;
+  const userId = auth.user.id;
+
+  const body = await req.json();
+  const { claim_id, completion_date, work_summary, warranty_terms } = body;
+
+  if (!claim_id) {
+    return NextResponse.json({ error: "claim_id required" }, { status: 400 });
+  }
+
+  const authorized = await canAccessClaim(userId, claim_id);
+  if (!authorized) {
+    return NextResponse.json({ error: "Not authorized" }, { status: 403 });
+  }
+
+  // Call Railway backend to generate PDF
+  try {
+    const res = await fetch(`${BACKEND_URL}/api/coc/generate`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        claim_id,
+        user_id: userId,
+        completion_date,
+        work_description: work_summary,
+        warranty_terms,
+      }),
+    });
+
+    const result = await res.json();
+
+    if (result.status === "error") {
+      return NextResponse.json({ error: result.message }, { status: 500 });
+    }
+
+    // Upsert COC record in Supabase
+    const { data: existingCoc } = await supabaseAdmin
+      .from("certificates_of_completion")
+      .select("id")
+      .eq("claim_id", claim_id)
+      .limit(1);
+
+    if (existingCoc && existingCoc.length > 0) {
+      await supabaseAdmin
+        .from("certificates_of_completion")
+        .update({
+          completion_date: completion_date || new Date().toISOString().split("T")[0],
+          work_summary: work_summary || null,
+          warranty_terms: warranty_terms || "10-year manufacturer warranty. 5-year workmanship.",
+          pdf_path: result.pdf_path,
+        })
+        .eq("id", existingCoc[0].id);
+    } else {
+      await supabaseAdmin
+        .from("certificates_of_completion")
+        .insert({
+          claim_id,
+          user_id: userId,
+          completion_date: completion_date || new Date().toISOString().split("T")[0],
+          work_summary: work_summary || null,
+          warranty_terms: warranty_terms || "10-year manufacturer warranty. 5-year workmanship.",
+          pdf_path: result.pdf_path,
+        });
+    }
+
+    return NextResponse.json({
+      ok: true,
+      pdf_path: result.pdf_path,
+      download_url: result.download_url,
+    });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Failed to generate COC";
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
+}
+
+/** PUT — send COC email via Railway backend */
+export async function PUT(req: NextRequest) {
+  const auth = await requireAuth();
+  if (isAuthError(auth)) return auth.response;
+  const userId = auth.user.id;
+
+  const body = await req.json();
+  const { claim_id, pdf_path, to_email, cc, recipient_type } = body;
+
+  if (!claim_id || !pdf_path || !to_email) {
+    return NextResponse.json({ error: "claim_id, pdf_path, and to_email required" }, { status: 400 });
+  }
+
+  const authorized = await canAccessClaim(userId, claim_id);
+  if (!authorized) {
+    return NextResponse.json({ error: "Not authorized" }, { status: 403 });
+  }
+
+  try {
+    const res = await fetch(`${BACKEND_URL}/api/coc/send`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        claim_id,
+        user_id: userId,
+        pdf_path,
+        to_email,
+        cc: cc || null,
+      }),
+    });
+
+    const result = await res.json();
+
+    if (result.status === "error") {
+      return NextResponse.json({ error: result.message }, { status: 500 });
+    }
+
+    // Update COC record
+    const updateField = recipient_type === "homeowner" ? "sent_to_homeowner" : "sent_to_carrier";
+    await supabaseAdmin
+      .from("certificates_of_completion")
+      .update({ [updateField]: true, sent_at: new Date().toISOString() })
+      .eq("claim_id", claim_id);
+
+    // Update lifecycle phase
+    await supabaseAdmin
+      .from("claims")
+      .update({ lifecycle_phase: "completed" })
+      .eq("id", claim_id);
+
+    return NextResponse.json({ ok: true, ...result });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Failed to send COC";
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
+}
