@@ -10,6 +10,7 @@ import { EstimateView } from "@/components/estimate-view";
 import { SupplementComposer } from "@/components/supplement-composer";
 import { InstallSupplementBuilder } from "@/components/install-supplement-builder";
 import { CocBuilder } from "@/components/coc-builder";
+import { InvoiceBuilder } from "@/components/invoice-builder";
 import type { ScopeComparisonRow } from "@/types/scope-comparison";
 
 import type { Claim } from "@/types/claim";
@@ -821,6 +822,16 @@ export default function ClaimDetailPage() {
         {/* Certificate of Completion */}
         {isReady && (
           <CocBuilder
+            claimId={claim.id}
+            claimAddress={claim.address}
+            carrierName={claim.carrier}
+            userId={currentUserId}
+          />
+        )}
+
+        {/* Invoicing */}
+        {isReady && (
+          <InvoiceBuilder
             claimId={claim.id}
             claimAddress={claim.address}
             carrierName={claim.carrier}
