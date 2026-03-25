@@ -27,6 +27,7 @@ export function InvoiceBuilder({ claimId, claimAddress, carrierName, userId }: P
   const [notes, setNotes] = useState("");
   const [sending, setSending] = useState<string | null>(null);
   const [sendEmail, setSendEmail] = useState("");
+  const [generatingLink, setGeneratingLink] = useState(false);
 
   const fetchInvoices = useCallback(async () => {
     try {
@@ -82,6 +83,21 @@ export function InvoiceBuilder({ claimId, claimAddress, carrierName, userId }: P
       }
     } catch { /* ignore */ }
     setSending(null);
+  };
+
+  const generatePaymentLink = async (invoiceId: string) => {
+    setGeneratingLink(true);
+    try {
+      const res = await fetch("/api/invoices/payment-link", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ invoice_id: invoiceId }),
+      });
+      if (res.ok) {
+        await fetchInvoices();
+      }
+    } catch { /* ignore */ }
+    setGeneratingLink(false);
   };
 
   if (loading) return null;
@@ -260,6 +276,46 @@ export function InvoiceBuilder({ claimId, claimAddress, carrierName, userId }: P
                   <span className="text-green-400">${inv.amount_due.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
                 </div>
               </div>
+
+              {/* Payment link */}
+              {(inv.invoice_type === "homeowner_deductible" || inv.invoice_type === "homeowner_balance" || inv.invoice_type === "custom") && inv.amount_due > 0 && (
+                <div className="mb-4 rounded-xl bg-[var(--cyan)]/[0.06] border border-[var(--cyan)]/20 p-3">
+                  {inv.payment_link ? (
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <svg className="w-4 h-4 text-[var(--cyan)] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757m9.86-2.31a4.5 4.5 0 00-1.242-7.244l-4.5-4.5a4.5 4.5 0 00-6.364 6.364L4.757 8.12" />
+                        </svg>
+                        <a
+                          href={inv.payment_link as string}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-xs text-[var(--cyan)] hover:text-white truncate transition-colors"
+                        >
+                          {inv.payment_link as string}
+                        </a>
+                      </div>
+                      <button
+                        onClick={() => navigator.clipboard.writeText(inv.payment_link as string)}
+                        className="text-[10px] text-[var(--gray-muted)] hover:text-[var(--white)] shrink-0 ml-2"
+                      >
+                        Copy
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => generatePaymentLink(inv.id)}
+                      disabled={generatingLink}
+                      className="flex items-center gap-2 text-xs text-[var(--cyan)] font-semibold hover:text-white transition-colors disabled:opacity-50"
+                    >
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 8.25h19.5M2.25 9h19.5m-16.5 5.25h6m-6 2.25h3m-3.75 3h15a2.25 2.25 0 002.25-2.25V6.75A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25v10.5A2.25 2.25 0 004.5 19.5z" />
+                      </svg>
+                      {generatingLink ? "Generating Stripe Link..." : "Generate Stripe Payment Link"}
+                    </button>
+                  )}
+                </div>
+              )}
 
               {/* Actions */}
               {inv.status === "draft" && (

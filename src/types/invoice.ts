@@ -23,6 +23,7 @@ export interface Invoice {
   notes: string | null;
   due_date: string | null;
   pdf_path: string | null;
+  payment_link: string | null;
   status: "draft" | "sent" | "paid" | "overdue";
   sent_at: string | null;
   paid_at: string | null;
