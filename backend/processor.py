@@ -4237,6 +4237,7 @@ async def process_claim(claim_id: str):
 
         # 9c. REVISION DIFF — if this is a reprocess with prior carrier data, diff and record
         revision_data = None
+        diff_result = {}
         if is_revision and previous_carrier_data and carrier_data:
             try:
                 print(f"[PROCESS] Running scope revision analysis...")
@@ -4277,6 +4278,10 @@ async def process_claim(claim_id: str):
             except Exception as e:
                 print(f"[REVISION] Scope diff failed (non-fatal): {e}")
                 traceback.print_exc()
+        elif is_revision and not previous_carrier_data and carrier_data:
+            # Pre-scope → post-scope: first carrier scope on a revised claim
+            # No diff possible, but carrier RCV will be persisted in the split writes below
+            print(f"[REVISION] First scope upload on revised claim — carrier RCV ${carrier_data.get('carrier_rcv', 0):,.2f} recorded as baseline")
 
         # 9d. Resize oversized photos before PDF generation
         # Raw iPhone/camera photos (8-18 MB each) cause Chrome headless to timeout
@@ -4453,8 +4458,18 @@ async def process_claim(claim_id: str):
         _adjuster_name = _carrier_cfg.get("adjuster_name", "")
         _adjuster_email = _carrier_cfg.get("adjuster_email", "")
         _claim_number = _carrier_cfg.get("claim_number", "")
-        # Store adjuster info in previous_carrier_data (already has carrier_line_items)
-        # These will be visible to Claim Brain via the system prompt
+
+        # Write carrier info extracted from scope to top-level columns
+        # (fills in blanks from pre-scope claims, critical for email subject lines + supplement routing)
+        _carrier_name_val = _carrier_cfg.get("name", "")
+        if _carrier_name_val and _carrier_name_val.lower() not in ("the carrier", "unknown"):
+            update_data["carrier"] = _carrier_name_val
+        if _claim_number and _claim_number.lower() not in ("pending", "unknown", "n/a"):
+            update_data["claim_number"] = _claim_number
+        if _adjuster_name:
+            update_data["adjuster_name"] = _adjuster_name
+        if _adjuster_email:
+            update_data["adjuster_email"] = _adjuster_email
 
         # Save scores (already computed above)
         if ds and tas:
@@ -4479,12 +4494,7 @@ async def process_claim(claim_id: str):
         # Core update (status + output_files + photo_integrity — always works)
         sb.table("claims").update(update_data).eq("id", claim_id).execute()
 
-        # Save revision data to DB (columns may not exist yet — separate call so core update isn't blocked)
-        revision_update = {}
-        # Always write the current carrier RCV so the dashboard shows the latest scope price
-        if carrier_data:
-            revision_update["current_carrier_rcv"] = carrier_data.get("carrier_rcv", 0)
-        # Extract adjuster + homeowner contact info from carrier data
+        # Save revision data to DB — split into isolated writes so one failure doesn't kill the others
         _carrier_info = carrier_data.get("carrier", {}) if carrier_data else {}
         _contact_fields = {
             "adjuster_name": _carrier_info.get("adjuster_name", ""),
@@ -4493,33 +4503,68 @@ async def process_claim(claim_id: str):
             "insured_name": _carrier_info.get("insured_name", ""),
             "inspector_name": _carrier_info.get("inspector_name", ""),
         }
-        if revision_data:
-            revision_update["scope_revisions"] = config.get("scope_revisions", [])
-            if diff_result.get("is_win"):
-                revision_update["claim_outcome"] = "won"
-                revision_update["settlement_amount"] = revision_data["new_rcv"]
-            revision_update["previous_carrier_data"] = {
-                "carrier_rcv": carrier_data.get("carrier_rcv", 0),
-                "carrier_line_items": carrier_data.get("carrier_line_items", []),
-                "carrier_arguments": carrier_data.get("carrier_arguments", []),
-                **_contact_fields,
-            }
-            if not original_carrier_rcv:
-                revision_update["original_carrier_rcv"] = previous_carrier_data.get("carrier_rcv", 0)
-        elif carrier_data and not is_revision:
-            revision_update["previous_carrier_data"] = {
-                "carrier_rcv": carrier_data.get("carrier_rcv", 0),
-                "carrier_line_items": carrier_data.get("carrier_line_items", []),
-                "carrier_arguments": carrier_data.get("carrier_arguments", []),
-                **_contact_fields,
-            }
-            revision_update["original_carrier_rcv"] = carrier_data.get("carrier_rcv", 0)
 
-        if revision_update:
+        # A) ALWAYS write current_carrier_rcv when we have carrier data (regardless of revision status)
+        if carrier_data:
             try:
-                sb.table("claims").update(revision_update).eq("id", claim_id).execute()
+                sb.table("claims").update({
+                    "current_carrier_rcv": carrier_data.get("carrier_rcv", 0),
+                }).eq("id", claim_id).execute()
             except Exception as e:
-                print(f"[DB] Revision columns not available yet (non-fatal): {e}", flush=True)
+                print(f"[DB] current_carrier_rcv write failed: {e}", flush=True)
+
+        # B) Write original_carrier_rcv (baseline — never overwrite if already set)
+        if carrier_data:
+            _orig = original_carrier_rcv or (
+                previous_carrier_data.get("carrier_rcv", 0) if previous_carrier_data
+                else carrier_data.get("carrier_rcv", 0)
+            )
+            if _orig:
+                try:
+                    existing = sb.table("claims").select("original_carrier_rcv").eq("id", claim_id).limit(1).execute()
+                    if not (existing.data and existing.data[0].get("original_carrier_rcv")):
+                        sb.table("claims").update({"original_carrier_rcv": _orig}).eq("id", claim_id).execute()
+                        print(f"[DB] Set original_carrier_rcv baseline: ${_orig:,.2f}")
+                except Exception as e:
+                    print(f"[DB] original_carrier_rcv write failed: {e}", flush=True)
+
+        # C) Write win status separately — most critical field
+        if revision_data and diff_result.get("is_win"):
+            try:
+                sb.table("claims").update({
+                    "claim_outcome": "won",
+                    "settlement_amount": revision_data["new_rcv"],
+                }).eq("id", claim_id).execute()
+                print(f"[DB] WIN persisted: claim_outcome=won, settlement=${revision_data['new_rcv']:,.2f}")
+            except Exception as e:
+                print(f"[DB] CRITICAL — Win status write FAILED: {e}", flush=True)
+
+        # D) Write revision metadata (scope_revisions + previous_carrier_data)
+        if revision_data:
+            try:
+                sb.table("claims").update({
+                    "scope_revisions": config.get("scope_revisions", []),
+                    "previous_carrier_data": {
+                        "carrier_rcv": carrier_data.get("carrier_rcv", 0),
+                        "carrier_line_items": carrier_data.get("carrier_line_items", []),
+                        "carrier_arguments": carrier_data.get("carrier_arguments", []),
+                        **_contact_fields,
+                    },
+                }).eq("id", claim_id).execute()
+            except Exception as e:
+                print(f"[DB] Revision metadata write failed (non-fatal): {e}", flush=True)
+        elif carrier_data and not is_revision:
+            try:
+                sb.table("claims").update({
+                    "previous_carrier_data": {
+                        "carrier_rcv": carrier_data.get("carrier_rcv", 0),
+                        "carrier_line_items": carrier_data.get("carrier_line_items", []),
+                        "carrier_arguments": carrier_data.get("carrier_arguments", []),
+                        **_contact_fields,
+                    },
+                }).eq("id", claim_id).execute()
+            except Exception as e:
+                print(f"[DB] First carrier data write failed (non-fatal): {e}", flush=True)
 
         # Track winning arguments for compound learning (which arguments recovered money)
         if revision_data and diff_result.get("is_win") and sb:

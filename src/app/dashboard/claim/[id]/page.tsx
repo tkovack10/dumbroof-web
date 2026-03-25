@@ -486,10 +486,18 @@ export default function ClaimDetailPage() {
                 {claim.address}
               </h1>
               <p className="text-sm text-[var(--gray-muted)] mt-1">
-                {claim.carrier} &middot;{" "}
+                {claim.carrier || "No carrier"} &middot;{" "}
                 {claim.phase === "pre-scope" ? "Pre-Scope" : "Supplement"} &middot;{" "}
                 {new Date(claim.created_at).toLocaleDateString()}
               </p>
+              {(claim.claim_number || claim.adjuster_name || claim.adjuster_email) && (
+                <p className="text-xs text-[var(--gray-dim)] mt-1">
+                  {claim.claim_number && <span>Claim #{claim.claim_number}</span>}
+                  {claim.claim_number && claim.adjuster_name && <span> &middot; </span>}
+                  {claim.adjuster_name && <span>{claim.adjuster_name}</span>}
+                  {claim.adjuster_email && <span className="ml-1 text-[var(--cyan)]">({claim.adjuster_email})</span>}
+                </p>
+              )}
             </div>
             <span
               className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium ${sc.bg} ${sc.color}`}

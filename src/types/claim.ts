@@ -27,6 +27,9 @@ export interface Claim {
   current_carrier_rcv?: number | null;
   settlement_amount?: number | null;
   claim_outcome?: string | null; // pending | won | lost
+  claim_number?: string | null;
+  adjuster_name?: string | null;
+  adjuster_email?: string | null;
   // Communication
   correspondence_count?: number;
   pending_drafts?: number;

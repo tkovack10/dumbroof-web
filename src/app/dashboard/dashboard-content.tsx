@@ -640,9 +640,10 @@ export function DashboardContent({ user }: { user: User }) {
                       {filteredClaims.map((claim) => {
                         const cRcv = claim.contractor_rcv ?? 0;
                         const iRcv = claim.original_carrier_rcv ?? 0;
-                        const currentCarrier = claim.settlement_amount ?? 0;
+                        const currentCarrier = claim.current_carrier_rcv ?? claim.settlement_amount ?? 0;
                         const isWon = claim.claim_outcome === "won";
-                        const movement = isWon && currentCarrier > iRcv ? currentCarrier - iRcv : 0;
+                        const winAmount = isWon ? (claim.settlement_amount ?? currentCarrier) : 0;
+                        const movement = isWon && winAmount > iRcv ? winAmount - iRcv : 0;
                         const movementPct = iRcv > 0 && movement > 0 ? Math.round((movement / iRcv) * 100) : 0;
                         const isProcessing = claim.status === "processing";
 
@@ -728,8 +729,9 @@ export function DashboardContent({ user }: { user: User }) {
                     const cRcv = claim.contractor_rcv ?? 0;
                     const isWon = claim.claim_outcome === "won";
                     const iRcv = claim.original_carrier_rcv ?? 0;
-                    const currentCarrier = claim.settlement_amount ?? 0;
-                    const movement = isWon && currentCarrier > iRcv ? currentCarrier - iRcv : 0;
+                    const currentCarrier = claim.current_carrier_rcv ?? claim.settlement_amount ?? 0;
+                    const winAmount = isWon ? (claim.settlement_amount ?? currentCarrier) : 0;
+                    const movement = isWon && winAmount > iRcv ? winAmount - iRcv : 0;
                     const isProcessing = claim.status === "processing";
 
                     return (
