@@ -1780,7 +1780,7 @@ async def integration_status(user_id: str):
 
 
 async def _get_user_integration_client(user_id: str, provider: str):
-    """Helper: fetch the user's API key, falling back to company admin's key."""
+    """Helper: fetch the user's API key, falling back to company admin's key via company_id or domain."""
     from integrations.acculynx import AccuLynxClient
     from integrations.companycam import CompanyCamClient
 
@@ -1788,14 +1788,34 @@ async def _get_user_integration_client(user_id: str, provider: str):
     col = f"{provider}_api_key"
 
     # Try user's own profile first
-    result = sb.table("company_profiles").select(f"{col}, company_id").eq("user_id", user_id).limit(1).execute()
-    api_key = result.data[0].get(col) if result.data else None
+    result = sb.table("company_profiles").select(f"{col}, company_id, email").eq("user_id", user_id).limit(1).execute()
+    profile = result.data[0] if result.data else None
+    api_key = profile.get(col) if profile else None
 
-    # Fall back to company admin's key if user doesn't have one
-    if not api_key and result.data and result.data[0].get("company_id"):
-        company_id = result.data[0]["company_id"]
+    # Fall back 1: company_id → admin profile
+    if not api_key and profile and profile.get("company_id"):
+        company_id = profile["company_id"]
         admin_result = sb.table("company_profiles").select(col).eq("company_id", company_id).eq("is_admin", True).limit(1).execute()
         api_key = admin_result.data[0].get(col) if admin_result.data else None
+
+    # Fall back 2: domain matching → find admin with same email domain who has the key
+    if not api_key:
+        user_email = profile.get("email") if profile else None
+        if not user_email:
+            try:
+                user_result = sb.auth.admin.get_user_by_id(user_id)
+                if hasattr(user_result, 'user') and user_result.user:
+                    user_email = user_result.user.email
+            except Exception:
+                pass
+        if user_email and "@" in user_email:
+            domain = user_email.split("@")[-1].lower()
+            admin_profiles = sb.table("company_profiles").select(f"{col}, email").eq("is_admin", True).execute()
+            for ap in (admin_profiles.data or []):
+                ap_email = (ap.get("email") or "").lower()
+                if ap_email.endswith(f"@{domain}") and ap.get(col):
+                    api_key = ap[col]
+                    break
 
     if not api_key:
         raise HTTPException(status_code=400, detail=f"{provider} not connected. Ask your company admin to connect it in Settings.")
