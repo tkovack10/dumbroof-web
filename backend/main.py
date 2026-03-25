@@ -1731,23 +1731,40 @@ async def integration_status(user_id: str):
             if admin_result.data:
                 admin_profile = admin_result.data[0]
 
-        # Try domain matching if no company_id
+        # Try domain matching — get user's email from their profile or auth
         if not admin_profile:
-            try:
-                user_result = sb.auth.admin.get_user_by_id(user_id)
-                user_email = user_result.user.email if hasattr(user_result, 'user') and user_result.user else None
-                if user_email and "@" in user_email:
-                    domain = user_email.split("@")[-1]
-                    admin_profiles = sb.table("company_profiles").select(
-                        "acculynx_api_key, acculynx_connected_at, "
-                        "companycam_api_key, companycam_connected_at, email"
-                    ).eq("is_admin", True).execute()
-                    for ap in (admin_profiles.data or []):
-                        if ap.get("email", "").endswith(f"@{domain}"):
-                            admin_profile = ap
-                            break
-            except Exception:
-                pass
+            user_email = None
+            # First try: get email from the user's own profile
+            if profile and profile.get("email"):
+                user_email = profile["email"]
+            # Second try: check company_profiles by user_id for email
+            if not user_email:
+                try:
+                    email_result = sb.table("company_profiles").select("email").eq("user_id", user_id).limit(1).execute()
+                    if email_result.data and email_result.data[0].get("email"):
+                        user_email = email_result.data[0]["email"]
+                except Exception:
+                    pass
+            # Third try: get from auth.users
+            if not user_email:
+                try:
+                    user_result = sb.auth.admin.get_user_by_id(user_id)
+                    if hasattr(user_result, 'user') and user_result.user:
+                        user_email = user_result.user.email
+                except Exception:
+                    pass
+
+            if user_email and "@" in user_email:
+                domain = user_email.split("@")[-1].lower()
+                admin_profiles_result = sb.table("company_profiles").select(
+                    "acculynx_api_key, acculynx_connected_at, "
+                    "companycam_api_key, companycam_connected_at, email"
+                ).eq("is_admin", True).execute()
+                for ap in (admin_profiles_result.data or []):
+                    ap_email = (ap.get("email") or "").lower()
+                    if ap_email.endswith(f"@{domain}") and (ap.get("acculynx_api_key") or ap.get("companycam_api_key")):
+                        admin_profile = ap
+                        break
 
         if admin_profile:
             return {
