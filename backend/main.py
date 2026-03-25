@@ -1697,24 +1697,67 @@ async def integration_disconnect(req: IntegrationDisconnectRequest):
 
 @app.get("/api/integrations/status")
 async def integration_status(user_id: str):
-    """Check which CRM integrations are connected for a user."""
+    """Check which CRM integrations are connected for a user.
+    Cascades to company admin profile if user doesn't have their own keys."""
     sb = get_supabase_client()
     try:
+        # Get user's own profile
         result = sb.table("company_profiles").select(
             "acculynx_api_key, acculynx_connected_at, "
-            "companycam_api_key, companycam_connected_at"
+            "companycam_api_key, companycam_connected_at, "
+            "company_id, is_admin"
         ).eq("user_id", user_id).limit(1).execute()
 
-        if not result.data:
-            return {"acculynx": False, "companycam": False}
+        profile = result.data[0] if result.data else None
 
-        profile = result.data[0]
-        return {
-            "acculynx": bool(profile.get("acculynx_api_key")),
-            "acculynx_connected_at": profile.get("acculynx_connected_at"),
-            "companycam": bool(profile.get("companycam_api_key")),
-            "companycam_connected_at": profile.get("companycam_connected_at"),
-        }
+        # If user has keys, return them directly
+        if profile and (profile.get("acculynx_api_key") or profile.get("companycam_api_key")):
+            return {
+                "acculynx": bool(profile.get("acculynx_api_key")),
+                "acculynx_connected_at": profile.get("acculynx_connected_at"),
+                "companycam": bool(profile.get("companycam_api_key")),
+                "companycam_connected_at": profile.get("companycam_connected_at"),
+            }
+
+        # Cascade: look up company admin's profile
+        admin_profile = None
+
+        # Try company_id first
+        if profile and profile.get("company_id"):
+            admin_result = sb.table("company_profiles").select(
+                "acculynx_api_key, acculynx_connected_at, "
+                "companycam_api_key, companycam_connected_at"
+            ).eq("company_id", profile["company_id"]).eq("is_admin", True).limit(1).execute()
+            if admin_result.data:
+                admin_profile = admin_result.data[0]
+
+        # Try domain matching if no company_id
+        if not admin_profile:
+            try:
+                user_result = sb.auth.admin.get_user_by_id(user_id)
+                user_email = user_result.user.email if hasattr(user_result, 'user') and user_result.user else None
+                if user_email and "@" in user_email:
+                    domain = user_email.split("@")[-1]
+                    admin_profiles = sb.table("company_profiles").select(
+                        "acculynx_api_key, acculynx_connected_at, "
+                        "companycam_api_key, companycam_connected_at, email"
+                    ).eq("is_admin", True).execute()
+                    for ap in (admin_profiles.data or []):
+                        if ap.get("email", "").endswith(f"@{domain}"):
+                            admin_profile = ap
+                            break
+            except Exception:
+                pass
+
+        if admin_profile:
+            return {
+                "acculynx": bool(admin_profile.get("acculynx_api_key")),
+                "acculynx_connected_at": admin_profile.get("acculynx_connected_at"),
+                "companycam": bool(admin_profile.get("companycam_api_key")),
+                "companycam_connected_at": admin_profile.get("companycam_connected_at"),
+            }
+
+        return {"acculynx": False, "companycam": False}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
