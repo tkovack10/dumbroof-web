@@ -94,7 +94,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
     // Decode base64 signature image and embed as PNG
     const sigBase64 = signature_image.replace(/^data:image\/png;base64,/, "");
-    const sigBytes = Uint8Array.from(atob(sigBase64), (c) => c.charCodeAt(0));
+    const sigBytes = Buffer.from(sigBase64, "base64");
     const sigImage = await pdfDoc.embedPng(sigBytes);
 
     // Place signature (bottom-left area, typical signature block location)

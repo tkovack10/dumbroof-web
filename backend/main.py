@@ -1360,6 +1360,71 @@ class CocSendRequest(BaseModel):
     to_email: str
     cc: str | None = None
 
+class GenerateAobRequest(BaseModel):
+    claim_id: str
+    user_id: str | None = None
+    document_type: str = "aob"
+    homeowner_name: str | None = None
+
+@app.post("/api/generate-aob")
+async def generate_aob_endpoint(body: GenerateAobRequest):
+    """Generate an unsigned AOB/contingency PDF and upload to storage."""
+    from claim_brain_aob import generate_aob_pdf
+
+    sb = get_supabase_client()
+
+    # Get claim data
+    claim_result = sb.table("claims").select("*").eq("id", body.claim_id).limit(1).execute()
+    if not claim_result.data:
+        return {"status": "error", "message": "Claim not found"}
+    claim_data = claim_result.data[0]
+
+    user_id = body.user_id or claim_data.get("user_id", "")
+
+    # Resolve company profile (admin cascade)
+    company_profile = {}
+    try:
+        cp_result = sb.table("company_profiles").select("*").eq("user_id", user_id).limit(1).execute()
+        profile = cp_result.data[0] if cp_result.data else None
+
+        # If not admin, look up admin profile
+        if profile and not profile.get("is_admin"):
+            company_id = profile.get("company_id")
+            if company_id:
+                admin_result = sb.table("company_profiles").select("*").eq("company_id", company_id).eq("is_admin", True).limit(1).execute()
+                if admin_result.data:
+                    profile = admin_result.data[0]
+
+        if profile:
+            company_profile = {
+                "company_name": profile.get("company_name", ""),
+                "address": profile.get("address", ""),
+                "city_state_zip": profile.get("city_state_zip", ""),
+                "phone": profile.get("phone", ""),
+                "email": profile.get("email", ""),
+                "license_number": profile.get("license_number", ""),
+                "contact_name": profile.get("contact_name", ""),
+            }
+    except Exception:
+        pass
+
+    # Override homeowner name if provided
+    if body.homeowner_name:
+        claim_data["homeowner_name"] = body.homeowner_name
+
+    try:
+        pdf_bytes = generate_aob_pdf(claim_data, company_profile)
+
+        from datetime import datetime
+        file_path = f"{claim_data.get('file_path', body.claim_id)}/aob/unsigned_{body.document_type}_{datetime.now().strftime('%Y%m%d_%H%M')}.pdf"
+        sb.storage.from_("claim-documents").upload(file_path, pdf_bytes, {"content-type": "application/pdf"})
+
+        return {"status": "ok", "pdf_path": file_path}
+    except Exception as e:
+        print(f"[AOB GENERATE ERROR] {e}", flush=True)
+        return {"status": "error", "message": str(e)}
+
+
 @app.post("/api/coc/generate")
 async def generate_coc_endpoint(body: CocRequest):
     """Generate a Certificate of Completion PDF and upload to storage."""

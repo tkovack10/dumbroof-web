@@ -33,8 +33,8 @@ export async function isAdmin(userId: string): Promise<boolean> {
     .from("admins")
     .select("user_id")
     .eq("user_id", userId)
-    .single();
-  return !!data;
+    .limit(1);
+  return !!(data && data.length > 0);
 }
 
 /**
@@ -42,12 +42,13 @@ export async function isAdmin(userId: string): Promise<boolean> {
  */
 export async function canAccessClaim(userId: string, claimId: string): Promise<boolean> {
   // Check ownership first (cheapest)
-  const { data: claim } = await supabaseAdmin
+  const { data: claimRows } = await supabaseAdmin
     .from("claims")
     .select("user_id")
     .eq("id", claimId)
-    .single();
+    .limit(1);
 
+  const claim = claimRows?.[0] || null;
   if (claim?.user_id === userId) return true;
 
   // Check domain sharing (same email domain = same company)
@@ -70,12 +71,13 @@ export async function canAccessClaim(userId: string, claimId: string): Promise<b
  * Verify user owns the repair OR is an admin. Returns true if authorized.
  */
 export async function canAccessRepair(userId: string, repairId: string): Promise<boolean> {
-  const { data: repair } = await supabaseAdmin
+  const { data: repairRows } = await supabaseAdmin
     .from("repairs")
     .select("user_id")
     .eq("id", repairId)
-    .single();
+    .limit(1);
 
+  const repair = repairRows?.[0] || null;
   if (repair?.user_id === userId) return true;
 
   return isAdmin(userId);
@@ -127,22 +129,27 @@ export async function getCompanyProfile(userId: string) {
   }
 
   // 2. Domain-based lookup — find admin with same email domain
-  const { data: authUser } = await supabaseAdmin.auth.admin.getUserById(userId);
-  const userEmail = authUser?.user?.email;
-  if (userEmail) {
-    const domain = userEmail.split("@")[1];
-    const { data: adminProfiles } = await supabaseAdmin
-      .from("company_profiles")
-      .select("*")
-      .eq("is_admin", true);
+  try {
+    const { data: authUser } = await supabaseAdmin.auth.admin.getUserById(userId);
+    const userEmail = authUser?.user?.email;
+    if (userEmail && userEmail.includes("@")) {
+      const domain = userEmail.split("@")[1];
+      const { data: adminProfiles } = await supabaseAdmin
+        .from("company_profiles")
+        .select("*")
+        .eq("is_admin", true)
+        .limit(100);
 
-    if (adminProfiles) {
-      for (const profile of adminProfiles) {
-        if (profile.email?.endsWith(`@${domain}`)) {
-          return { ...profile, user_id: userId };
+      if (adminProfiles) {
+        for (const profile of adminProfiles) {
+          if (profile.email?.endsWith(`@${domain}`)) {
+            return { ...profile, user_id: userId };
+          }
         }
       }
     }
+  } catch {
+    // Auth service failure — graceful fallback
   }
 
   // 3. Fallback — return user's own profile
