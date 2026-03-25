@@ -119,7 +119,11 @@ export function InstallSupplementBuilder({ claimId, claimAddress, carrierName, u
     : INSTALL_SUPPLEMENT_CATALOG.filter((c) => c.category === catalogFilter);
 
   // Don't render anything while loading
-  if (loading) return null;
+  if (loading) return (
+    <div className="glass-card p-6 animate-pulse">
+      <div className="h-5 w-48 bg-white/5 rounded" />
+    </div>
+  );
 
   return (
     <div className="glass-card overflow-hidden">
@@ -154,9 +158,9 @@ export function InstallSupplementBuilder({ claimId, claimAddress, carrierName, u
       </button>
 
       {expanded && (
-        <div className="px-6 pb-6 border-t border-white/[0.06]">
+        <div className="px-4 sm:px-6 pb-6 border-t border-white/[0.06]">
           {/* Action buttons */}
-          <div className="flex gap-3 mt-4 mb-4">
+          <div className="flex flex-col sm:flex-row gap-3 mt-4 mb-4">
             <button
               onClick={() => { setCatalogOpen(!catalogOpen); setShowCustomForm(false); }}
               className="flex items-center gap-2 px-4 py-2 rounded-lg bg-orange-500/10 text-orange-400 text-sm font-semibold hover:bg-orange-500/20 transition-colors"
@@ -195,7 +199,7 @@ export function InstallSupplementBuilder({ claimId, claimAddress, carrierName, u
                   ))}
                 </select>
               </div>
-              <div className="space-y-2 max-h-64 overflow-y-auto">
+              <div className="space-y-2 max-h-48 sm:max-h-64 lg:max-h-96 overflow-y-auto">
                 {filteredCatalog.map((item) => (
                   <div
                     key={item.code}
@@ -231,12 +235,12 @@ export function InstallSupplementBuilder({ claimId, claimAddress, carrierName, u
           {showCustomForm && (
             <div className="mb-4 rounded-xl bg-white/[0.03] border border-white/10 p-4">
               <p className="text-xs font-semibold uppercase tracking-wider text-[var(--gray-muted)] mb-3">Add Custom Item</p>
-              <div className="grid grid-cols-2 gap-3 mb-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
                 <input
                   placeholder="Description"
                   value={customItem.description}
                   onChange={(e) => setCustomItem({ ...customItem, description: e.target.value })}
-                  className="col-span-2 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-[var(--white)] placeholder:text-[var(--gray-dim)]"
+                  className="sm:col-span-2 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-[var(--white)] placeholder:text-[var(--gray-dim)]"
                 />
                 <input
                   placeholder="Qty"
@@ -275,7 +279,7 @@ export function InstallSupplementBuilder({ claimId, claimAddress, carrierName, u
                   placeholder="Reason (e.g., 3 layers found during tear-off)"
                   value={customItem.reason}
                   onChange={(e) => setCustomItem({ ...customItem, reason: e.target.value })}
-                  className="col-span-2 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-[var(--white)] placeholder:text-[var(--gray-dim)]"
+                  className="sm:col-span-2 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-[var(--white)] placeholder:text-[var(--gray-dim)]"
                 />
               </div>
               <button
@@ -422,7 +426,7 @@ export function InstallSupplementBuilder({ claimId, claimAddress, carrierName, u
 
           {/* Submit bar */}
           {draftItems.length > 0 && (
-            <div className="flex items-center justify-between p-4 rounded-xl bg-orange-500/[0.06] border border-orange-500/20">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between p-4 rounded-xl bg-orange-500/[0.06] border border-orange-500/20">
               <div>
                 <p className="text-sm font-semibold text-[var(--white)]">
                   {draftItems.length} item{draftItems.length !== 1 ? "s" : ""} ready to submit

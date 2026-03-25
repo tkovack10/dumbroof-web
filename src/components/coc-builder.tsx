@@ -108,7 +108,11 @@ export function CocBuilder({ claimId, claimAddress, carrierName, userId }: Props
     setSending(null);
   };
 
-  if (loading) return null;
+  if (loading) return (
+    <div className="glass-card p-6 animate-pulse">
+      <div className="h-5 w-48 bg-white/5 rounded" />
+    </div>
+  );
 
   return (
     <div className="glass-card overflow-hidden">
@@ -148,7 +152,7 @@ export function CocBuilder({ claimId, claimAddress, carrierName, userId }: Props
       </button>
 
       {expanded && (
-        <div className="px-6 pb-6 border-t border-white/[0.06]">
+        <div className="px-4 sm:px-6 pb-6 border-t border-white/[0.06]">
           {/* Form fields */}
           <div className="space-y-4 mt-4">
             {/* Completion date */}
@@ -160,7 +164,7 @@ export function CocBuilder({ claimId, claimAddress, carrierName, userId }: Props
                 type="date"
                 value={completionDate}
                 onChange={(e) => setCompletionDate(e.target.value)}
-                className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-[var(--white)] w-48"
+                className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-[var(--white)] w-full sm:w-48"
               />
             </div>
 
@@ -253,7 +257,7 @@ export function CocBuilder({ claimId, claimAddress, carrierName, userId }: Props
                   />
                 </div>
 
-                <div className="flex gap-3">
+                <div className="flex flex-col sm:flex-row gap-3">
                   <button
                     onClick={() => sendCoc("carrier")}
                     disabled={!sendEmail || sending === "carrier"}
