@@ -1,12 +1,15 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { FileUploadZone } from "@/components/file-upload-zone";
+import { directUpload } from "@/lib/upload-utils";
 
 interface Props {
   claimId: string;
   claimAddress: string;
   carrierName: string;
   userId: string;
+  filePath: string;
 }
 
 interface SignatureRecord {
@@ -28,7 +31,7 @@ const DOC_TYPE_LABELS: Record<string, string> = {
   contingency: "Contingency Agreement",
 };
 
-export function SignatureManager({ claimId, claimAddress, carrierName, userId }: Props) {
+export function SignatureManager({ claimId, claimAddress, carrierName, userId, filePath }: Props) {
   const [expanded, setExpanded] = useState(false);
   const [loading, setLoading] = useState(true);
   const [signatures, setSignatures] = useState<SignatureRecord[]>([]);
@@ -40,6 +43,8 @@ export function SignatureManager({ claimId, claimAddress, carrierName, userId }:
   const [carrierEmail, setCarrierEmail] = useState("");
   const [notifying, setNotifying] = useState<string | null>(null);
   const [uploadMode, setUploadMode] = useState(false);
+  const [signedPdfFile, setSignedPdfFile] = useState<File[]>([]);
+  const [uploadingSigned, setUploadingSigned] = useState(false);
 
   const fetchSignatures = useCallback(async () => {
     try {
@@ -326,9 +331,63 @@ export function SignatureManager({ claimId, claimAddress, carrierName, userId }:
                     className="bg-white/5 border border-white/10 rounded-lg px-3 py-2.5 text-sm text-[var(--white)] placeholder:text-[var(--gray-dim)]"
                   />
                 </div>
-                <p className="text-[10px] text-[var(--gray-dim)]">
-                  Upload coming soon — for now, use the digital signature option above to send for signing.
-                </p>
+                <FileUploadZone
+                  label="Signed Document"
+                  description="Upload the pre-signed PDF"
+                  accept=".pdf"
+                  files={signedPdfFile}
+                  onFilesChange={setSignedPdfFile}
+                />
+                <button
+                  onClick={async () => {
+                    if (!homeownerName || !homeownerEmail || signedPdfFile.length === 0) return;
+                    setUploadingSigned(true);
+                    try {
+                      // Upload the PDF
+                      const file = signedPdfFile[0];
+                      const signRes = await fetch("/api/storage/sign-upload", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                          folder: "aob",
+                          fileName: `signed_${docType}_${Date.now()}.pdf`,
+                          claimPath: filePath,
+                        }),
+                      });
+                      const signData = await signRes.json();
+                      if (!signRes.ok) throw new Error(signData.error || "Failed to get upload URL");
+                      await directUpload(signData.signedUrl, file);
+
+                      // Create signature record with upload_mode flag
+                      const res = await fetch("/api/signatures", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                          claim_id: claimId,
+                          document_type: docType,
+                          homeowner_name: homeownerName,
+                          homeowner_email: homeownerEmail,
+                          upload_mode: true,
+                          signed_pdf_path: signData.path,
+                        }),
+                      });
+
+                      if (res.ok) {
+                        setSignedPdfFile([]);
+                        setHomeownerName("");
+                        setHomeownerEmail("");
+                        await fetchSignatures();
+                      }
+                    } catch {
+                      /* ignore */
+                    }
+                    setUploadingSigned(false);
+                  }}
+                  disabled={!homeownerName || !homeownerEmail || signedPdfFile.length === 0 || uploadingSigned}
+                  className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-blue-500 to-blue-600 text-white text-sm font-semibold hover:shadow-lg hover:shadow-blue-500/20 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  {uploadingSigned ? "Uploading & Saving..." : "Upload & Save"}
+                </button>
               </div>
             )}
           </div>

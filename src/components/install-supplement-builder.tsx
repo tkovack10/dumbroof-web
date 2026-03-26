@@ -3,6 +3,10 @@
 import { useState, useEffect, useCallback } from "react";
 import type { InstallSupplement } from "@/types/install-supplement";
 import { INSTALL_SUPPLEMENT_CATALOG, CATALOG_CATEGORIES } from "@/lib/install-supplement-catalog";
+import { FileUploadZone } from "@/components/file-upload-zone";
+import { directUpload } from "@/lib/upload-utils";
+
+const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000";
 
 interface Props {
   claimId: string;
@@ -24,6 +28,51 @@ export function InstallSupplementBuilder({ claimId, claimAddress, carrierName, u
   const [submitting, setSubmitting] = useState(false);
   const [showCustomForm, setShowCustomForm] = useState(false);
   const [customItem, setCustomItem] = useState({ description: "", category: "ROOFING", qty: "1", unit: "EA", unit_price: "", reason: "" });
+  const [uploadingPhotos, setUploadingPhotos] = useState<string | null>(null);
+  const [pendingFiles, setPendingFiles] = useState<Record<string, File[]>>({});
+  const [carrierEmail, setCarrierEmail] = useState("");
+
+  const uploadFile = async (file: File, folder: string): Promise<string> => {
+    const res = await fetch("/api/storage/sign-upload", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ folder, fileName: file.name, claimPath: filePath }),
+    });
+    const { signedUrl, path } = await res.json();
+    if (!res.ok) throw new Error("Failed to get signed upload URL");
+    await directUpload(signedUrl, file);
+    return path;
+  };
+
+  const uploadPhotosForItem = async (itemId: string) => {
+    const files = pendingFiles[itemId];
+    if (!files || files.length === 0) return;
+    setUploadingPhotos(itemId);
+    try {
+      const item = items.find((i) => i.id === itemId);
+      const existingPaths = item?.photo_paths || [];
+      const newPaths: string[] = [];
+      for (const file of files) {
+        const path = await uploadFile(file, "install-photos");
+        newPaths.push(path);
+      }
+      const allPaths = [...existingPaths, ...newPaths];
+      await fetch("/api/install-supplements", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: itemId, photo_paths: allPaths }),
+      });
+      setPendingFiles((prev) => {
+        const next = { ...prev };
+        delete next[itemId];
+        return next;
+      });
+      await fetchItems();
+    } catch {
+      /* ignore */
+    }
+    setUploadingPhotos(null);
+  };
 
   const fetchItems = useCallback(async () => {
     try {
@@ -348,42 +397,63 @@ export function InstallSupplementBuilder({ claimId, claimAddress, carrierName, u
                       )}
                     </div>
                   </div>
-                  {/* Photo evidence note */}
-                  <div className="mt-3 flex items-center gap-2">
-                    {(item.photo_paths || []).length > 0 ? (
+                  {/* Photo evidence */}
+                  <div className="mt-3 space-y-2">
+                    {(item.photo_paths || []).length > 0 && (
                       <span className="text-[10px] text-green-400 flex items-center gap-1">
                         <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                           <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                         </svg>
                         {item.photo_paths.length} photo{item.photo_paths.length !== 1 ? "s" : ""} attached
                       </span>
-                    ) : (
-                      <span className="text-[10px] text-[var(--gray-dim)]">No photos attached yet</span>
                     )}
-                    <div className="flex-1" />
-                    {editingId !== item.id && (
-                      <div className="flex gap-2">
+                    <div className="rounded-lg border border-white/[0.06] p-2">
+                      <FileUploadZone
+                        label="Evidence Photos"
+                        description="Attach photos showing the issue discovered during install"
+                        accept="image/*,.heic,.heif"
+                        multiple
+                        files={pendingFiles[item.id] || []}
+                        onFilesChange={(files) => setPendingFiles((prev) => ({ ...prev, [item.id]: files }))}
+                      />
+                      {(pendingFiles[item.id]?.length ?? 0) > 0 && (
                         <button
-                          onClick={() => {
-                            setEditingId(item.id);
-                            setEditState({
-                              qty: String(item.qty),
-                              unit_price: String(item.unit_price),
-                              reason: item.reason || "",
-                            });
-                          }}
-                          className="text-[10px] text-[var(--gray-muted)] hover:text-[var(--white)]"
+                          onClick={() => uploadPhotosForItem(item.id)}
+                          disabled={uploadingPhotos === item.id}
+                          className="mt-2 px-3 py-1.5 rounded-lg bg-orange-500/10 text-orange-400 text-xs font-semibold hover:bg-orange-500/20 transition-colors disabled:opacity-50"
                         >
-                          Edit
+                          {uploadingPhotos === item.id
+                            ? `Uploading ${pendingFiles[item.id]?.length} photo${(pendingFiles[item.id]?.length ?? 0) !== 1 ? "s" : ""}...`
+                            : `Upload ${pendingFiles[item.id]?.length} Photo${(pendingFiles[item.id]?.length ?? 0) !== 1 ? "s" : ""}`}
                         </button>
-                        <button
-                          onClick={() => deleteItem(item.id)}
-                          className="text-[10px] text-red-400 hover:text-red-300"
-                        >
-                          Remove
-                        </button>
-                      </div>
-                    )}
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="flex-1" />
+                      {editingId !== item.id && (
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => {
+                              setEditingId(item.id);
+                              setEditState({
+                                qty: String(item.qty),
+                                unit_price: String(item.unit_price),
+                                reason: item.reason || "",
+                              });
+                            }}
+                            className="text-[10px] text-[var(--gray-muted)] hover:text-[var(--white)]"
+                          >
+                            Edit
+                          </button>
+                          <button
+                            onClick={() => deleteItem(item.id)}
+                            className="text-[10px] text-red-400 hover:text-red-300"
+                          >
+                            Remove
+                          </button>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
               ))}
@@ -426,33 +496,70 @@ export function InstallSupplementBuilder({ claimId, claimAddress, carrierName, u
 
           {/* Submit bar */}
           {draftItems.length > 0 && (
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between p-4 rounded-xl bg-orange-500/[0.06] border border-orange-500/20">
+            <div className="p-4 rounded-xl bg-orange-500/[0.06] border border-orange-500/20 space-y-3">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <p className="text-sm font-semibold text-[var(--white)]">
+                    {draftItems.length} item{draftItems.length !== 1 ? "s" : ""} ready to submit
+                  </p>
+                  <p className="text-xs text-[var(--gray-muted)]">
+                    Total: ${draftItems.reduce((s, i) => s + i.qty * i.unit_price, 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                  </p>
+                </div>
+              </div>
               <div>
-                <p className="text-sm font-semibold text-[var(--white)]">
-                  {draftItems.length} item{draftItems.length !== 1 ? "s" : ""} ready to submit
-                </p>
-                <p className="text-xs text-[var(--gray-muted)]">
-                  Total: ${draftItems.reduce((s, i) => s + i.qty * i.unit_price, 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                </p>
+                <label className="text-[10px] font-semibold uppercase tracking-wider text-[var(--gray-muted)] block mb-1">
+                  Carrier / Adjuster Email
+                </label>
+                <input
+                  placeholder="adjuster@carrier.com"
+                  value={carrierEmail}
+                  onChange={(e) => setCarrierEmail(e.target.value)}
+                  className="w-full sm:w-72 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-[var(--white)] placeholder:text-[var(--gray-dim)]"
+                />
               </div>
               <button
                 onClick={async () => {
                   setSubmitting(true);
-                  // Mark all draft items as submitted
-                  for (const item of draftItems) {
-                    await fetch("/api/install-supplements", {
-                      method: "PUT",
-                      headers: { "Content-Type": "application/json" },
-                      body: JSON.stringify({ id: item.id, status: "submitted" }),
-                    });
+                  try {
+                    // Mark all draft items as submitted
+                    for (const item of draftItems) {
+                      await fetch("/api/install-supplements", {
+                        method: "PUT",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ id: item.id, status: "submitted" }),
+                      });
+                    }
+                    // Send email to carrier if address provided
+                    if (carrierEmail) {
+                      const allPhotoPaths = draftItems.flatMap((i) => i.photo_paths || []);
+                      const itemLines = draftItems.map(
+                        (i) => `<tr><td style="padding:4px 8px;border:1px solid #ddd;">${i.description}</td><td style="padding:4px 8px;border:1px solid #ddd;">${i.qty} ${i.unit}</td><td style="padding:4px 8px;border:1px solid #ddd;">$${(i.qty * i.unit_price).toFixed(2)}</td><td style="padding:4px 8px;border:1px solid #ddd;">${i.reason || ""}</td></tr>`
+                      ).join("");
+                      const emailBody = `<p>Please find the install supplement for <strong>${claimAddress}</strong>.</p><table style="border-collapse:collapse;width:100%;margin:16px 0;"><thead><tr><th style="padding:4px 8px;border:1px solid #ddd;text-align:left;">Description</th><th style="padding:4px 8px;border:1px solid #ddd;text-align:left;">Qty</th><th style="padding:4px 8px;border:1px solid #ddd;text-align:left;">Total</th><th style="padding:4px 8px;border:1px solid #ddd;text-align:left;">Reason</th></tr></thead><tbody>${itemLines}</tbody></table><p><strong>Total: $${draftItems.reduce((s, i) => s + i.qty * i.unit_price, 0).toFixed(2)}</strong></p>${allPhotoPaths.length > 0 ? `<p>${allPhotoPaths.length} evidence photo${allPhotoPaths.length !== 1 ? "s" : ""} attached.</p>` : ""}`;
+                      await fetch(`${BACKEND_URL}/api/supplement-email/send`, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                          claim_id: claimId,
+                          to_email: carrierEmail,
+                          subject: `Install Supplement — ${claimAddress}`,
+                          body_html: emailBody,
+                          attachment_paths: allPhotoPaths,
+                          email_type: "install_supplement",
+                        }),
+                      });
+                    }
+                    await fetchItems();
+                  } catch {
+                    /* ignore */
                   }
-                  await fetchItems();
                   setSubmitting(false);
                 }}
                 disabled={submitting}
                 className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-orange-500 to-orange-600 text-white text-sm font-semibold hover:shadow-lg hover:shadow-orange-500/20 transition-all disabled:opacity-50"
               >
-                {submitting ? "Submitting..." : "Submit to Carrier"}
+                {submitting ? "Submitting..." : carrierEmail ? "Submit & Email to Carrier" : "Submit to Carrier"}
               </button>
             </div>
           )}

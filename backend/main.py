@@ -1307,11 +1307,13 @@ class DirectEmailRequest(BaseModel):
     subject: str
     body_html: str
     cc: str | None = None
+    attachment_paths: list[str] | None = None  # Supabase storage paths to attach
+    email_type: str = "supplement"  # supplement | install_supplement | coc | aob | invoice
 
 
 @app.post("/api/supplement-email/send")
 async def send_supplement_email_direct(body: DirectEmailRequest):
-    """Send a supplement email directly (not through Claim Brain tool loop)."""
+    """Send an email with optional file attachments from Supabase Storage."""
     from claim_brain_email import send_claim_email
 
     sb = get_supabase_client()
@@ -1325,6 +1327,19 @@ async def send_supplement_email_direct(body: DirectEmailRequest):
     if not user_id:
         return {"status": "error", "message": "Could not determine user"}
 
+    # Download attachments from Supabase Storage
+    attachments = []
+    if body.attachment_paths:
+        for path in body.attachment_paths:
+            try:
+                data = sb.storage.from_("claim-documents").download(path)
+                if data:
+                    filename = path.split("/")[-1]
+                    attachments.append({"filename": filename, "content": data})
+                    print(f"[EMAIL] Attached: {filename} ({len(data)} bytes)", flush=True)
+            except Exception as e:
+                print(f"[EMAIL] Failed to download attachment {path}: {e}", flush=True)
+
     try:
         result = send_claim_email(
             sb=sb,
@@ -1334,7 +1349,8 @@ async def send_supplement_email_direct(body: DirectEmailRequest):
             subject=body.subject,
             body_html=body.body_html,
             cc=body.cc,
-            email_type="supplement",
+            email_type=body.email_type,
+            attachments=attachments if attachments else None,
         )
         return result
     except Exception as e:

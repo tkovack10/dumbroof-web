@@ -1024,6 +1024,7 @@ export default function ClaimDetailPage() {
             claimAddress={claim.address}
             carrierName={claim.carrier}
             userId={currentUserId}
+            filePath={claim.file_path}
           />
         )}
 
@@ -1045,6 +1046,7 @@ export default function ClaimDetailPage() {
             claimAddress={claim.address}
             carrierName={claim.carrier}
             userId={currentUserId}
+            filePath={claim.file_path}
           />
         )}
 

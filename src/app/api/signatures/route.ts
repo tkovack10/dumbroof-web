@@ -43,7 +43,7 @@ export async function POST(req: NextRequest) {
   const userId = auth.user.id;
 
   const body = await req.json();
-  const { claim_id, document_type, homeowner_name, homeowner_email } = body;
+  const { claim_id, document_type, homeowner_name, homeowner_email, upload_mode, signed_pdf_path } = body;
 
   if (!claim_id || !homeowner_name || !homeowner_email) {
     return NextResponse.json({ error: "claim_id, homeowner_name, and homeowner_email required" }, { status: 400 });
@@ -76,7 +76,43 @@ export async function POST(req: NextRequest) {
   const company = cpRows?.[0] || null;
   const companyName = company?.company_name || "Your Contractor";
 
-  // Generate unsigned AOB/contingency PDF via Railway backend
+  // Upload mode: pre-signed document, skip PDF generation and email
+  if (upload_mode && signed_pdf_path) {
+    try {
+      const { data: sig, error: sigError } = await supabaseAdmin
+        .from("aob_signatures")
+        .insert({
+          claim_id,
+          user_id: userId,
+          homeowner_name,
+          homeowner_email,
+          document_type: document_type || "aob",
+          unsigned_pdf_path: signed_pdf_path,
+          signed_pdf_path: signed_pdf_path,
+          company_name: companyName,
+          claim_address: claim.address,
+          status: "signed",
+          signed_at: new Date().toISOString(),
+        })
+        .select("id")
+        .single();
+
+      if (sigError) {
+        return NextResponse.json({ error: sigError.message }, { status: 500 });
+      }
+
+      return NextResponse.json({
+        ok: true,
+        signature_id: sig.id,
+        upload_mode: true,
+      });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to save uploaded signature";
+      return NextResponse.json({ error: message }, { status: 500 });
+    }
+  }
+
+  // Standard flow: generate unsigned PDF and send for digital signature
   try {
     const res = await fetch(`${BACKEND_URL}/api/generate-aob`, {
       method: "POST",

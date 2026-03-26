@@ -1,12 +1,15 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { FileUploadZone } from "@/components/file-upload-zone";
+import { directUpload } from "@/lib/upload-utils";
 
 interface Props {
   claimId: string;
   claimAddress: string;
   carrierName: string;
   userId: string;
+  filePath: string;
 }
 
 interface CocRecord {
@@ -20,7 +23,7 @@ interface CocRecord {
   sent_at: string | null;
 }
 
-export function CocBuilder({ claimId, claimAddress, carrierName, userId }: Props) {
+export function CocBuilder({ claimId, claimAddress, carrierName, userId, filePath }: Props) {
   const [expanded, setExpanded] = useState(false);
   const [loading, setLoading] = useState(true);
   const [existing, setExisting] = useState<CocRecord | null>(null);
@@ -34,6 +37,54 @@ export function CocBuilder({ claimId, claimAddress, carrierName, userId }: Props
   const [sendEmail, setSendEmail] = useState("");
   const [sendCc, setSendCc] = useState("");
   const [sent, setSent] = useState<{ carrier: boolean; homeowner: boolean }>({ carrier: false, homeowner: false });
+  const [completionPhotos, setCompletionPhotos] = useState<File[]>([]);
+  const [completionPhotoPaths, setCompletionPhotoPaths] = useState<string[]>([]);
+  const [uploadingPhotos, setUploadingPhotos] = useState(false);
+  const [cocMode, setCocMode] = useState<"generate" | "upload">("generate");
+  const [ownCocFile, setOwnCocFile] = useState<File[]>([]);
+  const [uploadingCoc, setUploadingCoc] = useState(false);
+
+  const uploadFile = async (file: File, folder: string): Promise<string> => {
+    const res = await fetch("/api/storage/sign-upload", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ folder, fileName: file.name, claimPath: filePath }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "Failed to get signed upload URL");
+    await directUpload(data.signedUrl, file);
+    return data.path;
+  };
+
+  const uploadCompletionPhotos = async () => {
+    if (completionPhotos.length === 0) return;
+    setUploadingPhotos(true);
+    try {
+      const paths: string[] = [];
+      for (const file of completionPhotos) {
+        const path = await uploadFile(file, "completion-photos");
+        paths.push(path);
+      }
+      setCompletionPhotoPaths((prev) => [...prev, ...paths]);
+      setCompletionPhotos([]);
+    } catch {
+      /* ignore */
+    }
+    setUploadingPhotos(false);
+  };
+
+  const uploadOwnCoc = async () => {
+    if (ownCocFile.length === 0) return;
+    setUploadingCoc(true);
+    try {
+      const path = await uploadFile(ownCocFile[0], "coc");
+      setPdfPath(path);
+      setOwnCocFile([]);
+    } catch {
+      /* ignore */
+    }
+    setUploadingCoc(false);
+  };
 
   const fetchExisting = useCallback(async () => {
     try {
@@ -69,6 +120,7 @@ export function CocBuilder({ claimId, claimAddress, carrierName, userId }: Props
           completion_date: completionDate,
           work_summary: workSummary || null,
           warranty_terms: warrantyTerms,
+          completion_photo_paths: completionPhotoPaths.length > 0 ? completionPhotoPaths : undefined,
         }),
       });
 
@@ -153,68 +205,149 @@ export function CocBuilder({ claimId, claimAddress, carrierName, userId }: Props
 
       {expanded && (
         <div className="px-4 sm:px-6 pb-6 border-t border-white/[0.06]">
-          {/* Form fields */}
-          <div className="space-y-4 mt-4">
-            {/* Completion date */}
-            <div>
-              <label className="text-xs font-semibold uppercase tracking-wider text-[var(--gray-muted)] block mb-1.5">
-                Completion Date
-              </label>
-              <input
-                type="date"
-                value={completionDate}
-                onChange={(e) => setCompletionDate(e.target.value)}
-                className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-[var(--white)] w-full sm:w-48"
-              />
-            </div>
-
-            {/* Work summary */}
-            <div>
-              <label className="text-xs font-semibold uppercase tracking-wider text-[var(--gray-muted)] block mb-1.5">
-                Work Summary
-              </label>
-              <textarea
-                rows={4}
-                value={workSummary}
-                onChange={(e) => setWorkSummary(e.target.value)}
-                placeholder="Describe the work completed (auto-populated from approved scope if left blank)..."
-                className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-[var(--white)] placeholder:text-[var(--gray-dim)] resize-none"
-              />
-            </div>
-
-            {/* Warranty terms */}
-            <div>
-              <label className="text-xs font-semibold uppercase tracking-wider text-[var(--gray-muted)] block mb-1.5">
-                Warranty Terms
-              </label>
-              <input
-                value={warrantyTerms}
-                onChange={(e) => setWarrantyTerms(e.target.value)}
-                className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-[var(--white)]"
-              />
-            </div>
-
-            {/* Generate button */}
+          {/* Mode toggle */}
+          <div className="flex gap-2 mt-4 mb-4">
             <button
-              onClick={generatePdf}
-              disabled={generating}
-              className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-purple-500 to-purple-600 text-white text-sm font-semibold hover:shadow-lg hover:shadow-purple-500/20 transition-all disabled:opacity-50"
+              onClick={() => setCocMode("generate")}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+                cocMode === "generate" ? "bg-purple-500/10 text-purple-400" : "bg-white/5 text-[var(--gray-muted)]"
+              }`}
             >
-              {generating ? (
-                <>
-                  <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                  </svg>
-                  Generating PDF...
-                </>
-              ) : pdfPath ? (
-                "Regenerate PDF"
-              ) : (
-                "Generate Certificate of Completion"
-              )}
+              Generate COC
+            </button>
+            <button
+              onClick={() => setCocMode("upload")}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+                cocMode === "upload" ? "bg-purple-500/10 text-purple-400" : "bg-white/5 text-[var(--gray-muted)]"
+              }`}
+            >
+              Upload Your Own COC
             </button>
           </div>
+
+          {cocMode === "upload" ? (
+            /* Upload own COC */
+            <div className="space-y-4">
+              <FileUploadZone
+                label="Certificate of Completion PDF"
+                description="Upload your own COC document"
+                accept=".pdf"
+                files={ownCocFile}
+                onFilesChange={setOwnCocFile}
+              />
+              {ownCocFile.length > 0 && !pdfPath && (
+                <button
+                  onClick={uploadOwnCoc}
+                  disabled={uploadingCoc}
+                  className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-purple-500 to-purple-600 text-white text-sm font-semibold hover:shadow-lg hover:shadow-purple-500/20 transition-all disabled:opacity-50"
+                >
+                  {uploadingCoc ? "Uploading..." : "Upload COC"}
+                </button>
+              )}
+              {pdfPath && cocMode === "upload" && (
+                <p className="text-xs text-green-400 flex items-center gap-1">
+                  <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                  </svg>
+                  COC uploaded — ready to send below
+                </p>
+              )}
+            </div>
+          ) : (
+            /* Generate COC form */
+            <div className="space-y-4">
+              {/* Completion date */}
+              <div>
+                <label className="text-xs font-semibold uppercase tracking-wider text-[var(--gray-muted)] block mb-1.5">
+                  Completion Date
+                </label>
+                <input
+                  type="date"
+                  value={completionDate}
+                  onChange={(e) => setCompletionDate(e.target.value)}
+                  className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-[var(--white)] w-full sm:w-48"
+                />
+              </div>
+
+              {/* Work summary */}
+              <div>
+                <label className="text-xs font-semibold uppercase tracking-wider text-[var(--gray-muted)] block mb-1.5">
+                  Work Summary
+                </label>
+                <textarea
+                  rows={4}
+                  value={workSummary}
+                  onChange={(e) => setWorkSummary(e.target.value)}
+                  placeholder="Describe the work completed (auto-populated from approved scope if left blank)..."
+                  className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-[var(--white)] placeholder:text-[var(--gray-dim)] resize-none"
+                />
+              </div>
+
+              {/* Warranty terms */}
+              <div>
+                <label className="text-xs font-semibold uppercase tracking-wider text-[var(--gray-muted)] block mb-1.5">
+                  Warranty Terms
+                </label>
+                <input
+                  value={warrantyTerms}
+                  onChange={(e) => setWarrantyTerms(e.target.value)}
+                  className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-[var(--white)]"
+                />
+              </div>
+
+              {/* Completion photos */}
+              <div className="space-y-2">
+                <FileUploadZone
+                  label="Completion Photos"
+                  description="Attach photos showing the completed work"
+                  accept="image/*,.heic,.heif"
+                  multiple
+                  files={completionPhotos}
+                  onFilesChange={setCompletionPhotos}
+                />
+                {completionPhotos.length > 0 && (
+                  <button
+                    onClick={uploadCompletionPhotos}
+                    disabled={uploadingPhotos}
+                    className="px-3 py-1.5 rounded-lg bg-purple-500/10 text-purple-400 text-xs font-semibold hover:bg-purple-500/20 transition-colors disabled:opacity-50"
+                  >
+                    {uploadingPhotos
+                      ? `Uploading ${completionPhotos.length} photo${completionPhotos.length !== 1 ? "s" : ""}...`
+                      : `Upload ${completionPhotos.length} Photo${completionPhotos.length !== 1 ? "s" : ""}`}
+                  </button>
+                )}
+                {completionPhotoPaths.length > 0 && (
+                  <p className="text-[10px] text-green-400 flex items-center gap-1">
+                    <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                    </svg>
+                    {completionPhotoPaths.length} completion photo{completionPhotoPaths.length !== 1 ? "s" : ""} ready
+                  </p>
+                )}
+              </div>
+
+              {/* Generate button */}
+              <button
+                onClick={generatePdf}
+                disabled={generating}
+                className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-purple-500 to-purple-600 text-white text-sm font-semibold hover:shadow-lg hover:shadow-purple-500/20 transition-all disabled:opacity-50"
+              >
+                {generating ? (
+                  <>
+                    <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                    </svg>
+                    Generating PDF...
+                  </>
+                ) : pdfPath ? (
+                  "Regenerate PDF"
+                ) : (
+                  "Generate Certificate of Completion"
+                )}
+              </button>
+            </div>
+          )}
 
           {/* PDF preview / download */}
           {pdfPath && (
