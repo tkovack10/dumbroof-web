@@ -1920,11 +1920,15 @@ async def companycam_import(
     user_id: str = Body(...),
     slug: str = Body(...),
     selected_indices: list[int] | None = Body(None),
+    target_path: str | None = Body(None),
+    target_folder: str | None = Body(None),
 ):
     """Download photos from CompanyCam and upload to Supabase storage.
 
     If selected_indices is provided, only those photos are imported.
     Otherwise imports up to 100 photos.
+    target_path: override full storage base path (e.g., "user_id/claim-slug/")
+    target_folder: subfolder within target_path (e.g., "install-photos", "completion-photos")
     """
     from integrations.companycam import CompanyCamClient
 
@@ -1953,7 +1957,12 @@ async def companycam_import(
             if url.lower().endswith(".png"):
                 ext = ".png"
             fname = f"companycam_{i+1:03d}{ext}"
-            storage_path = f"{user_id}/{slug}/photos/{fname}"
+            # Use target_path override if provided (for install supplements, COC, etc.)
+            if target_path:
+                folder = target_folder or "photos"
+                storage_path = f"{target_path}/{folder}/{fname}"
+            else:
+                storage_path = f"{user_id}/{slug}/photos/{fname}"
             sb.storage.from_("claim-documents").upload(
                 storage_path, data,
                 file_options={"content-type": f"image/{ext.strip('.')}", "upsert": "true"}
@@ -1963,7 +1972,7 @@ async def companycam_import(
             print(f"[CRM-IMPORT] Failed to import photo {i}: {e}")
             continue
 
-    return {"uploaded": uploaded, "count": len(uploaded)}
+    return {"uploaded": uploaded, "count": len(uploaded), "paths": [u["path"] for u in uploaded]}
 
 
 @app.post("/api/integrations/acculynx/jobs/{job_id}/import")

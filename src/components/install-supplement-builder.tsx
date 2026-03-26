@@ -5,6 +5,7 @@ import type { InstallSupplement } from "@/types/install-supplement";
 import { INSTALL_SUPPLEMENT_CATALOG, CATALOG_CATEGORIES } from "@/lib/install-supplement-catalog";
 import { FileUploadZone } from "@/components/file-upload-zone";
 import { directUpload } from "@/lib/upload-utils";
+import { CrmImportModal } from "@/components/crm-import-modal";
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000";
 
@@ -14,9 +15,10 @@ interface Props {
   carrierName: string;
   userId: string;
   filePath: string;
+  claimNumber?: string;
 }
 
-export function InstallSupplementBuilder({ claimId, claimAddress, carrierName, userId, filePath }: Props) {
+export function InstallSupplementBuilder({ claimId, claimAddress, carrierName, userId, filePath, claimNumber }: Props) {
   const [items, setItems] = useState<InstallSupplement[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -31,6 +33,9 @@ export function InstallSupplementBuilder({ claimId, claimAddress, carrierName, u
   const [uploadingPhotos, setUploadingPhotos] = useState<string | null>(null);
   const [pendingFiles, setPendingFiles] = useState<Record<string, File[]>>({});
   const [carrierEmail, setCarrierEmail] = useState("");
+  const [showCrmModal, setShowCrmModal] = useState(false);
+  const [crmIntegrations, setCrmIntegrations] = useState<{ acculynx: boolean; companycam: boolean }>({ acculynx: false, companycam: false });
+  const [claimNum, setClaimNum] = useState(claimNumber || "");
 
   const uploadFile = async (file: File, folder: string): Promise<string> => {
     const res = await fetch("/api/storage/sign-upload", {
@@ -87,6 +92,13 @@ export function InstallSupplementBuilder({ claimId, claimAddress, carrierName, u
   }, [claimId]);
 
   useEffect(() => { fetchItems(); }, [fetchItems]);
+
+  useEffect(() => {
+    fetch(`${BACKEND_URL}/api/integrations/status?user_id=${userId}`)
+      .then(r => r.ok ? r.json() : null)
+      .then(data => { if (data) setCrmIntegrations({ acculynx: !!data.acculynx, companycam: !!data.companycam }); })
+      .catch(() => {});
+  }, [userId]);
 
   const addFromCatalog = async (code: string) => {
     const catalogItem = INSTALL_SUPPLEMENT_CATALOG.find((c) => c.code === code);
@@ -228,6 +240,17 @@ export function InstallSupplementBuilder({ claimId, claimAddress, carrierName, u
               </svg>
               Custom Item
             </button>
+            {(crmIntegrations.acculynx || crmIntegrations.companycam) && (
+              <button
+                onClick={() => setShowCrmModal(true)}
+                className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[var(--cyan)]/10 text-[var(--cyan)] text-sm font-semibold hover:bg-[var(--cyan)]/20 transition-colors"
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
+                </svg>
+                Import from CRM
+              </button>
+            )}
           </div>
 
           {/* Catalog browser */}
@@ -509,6 +532,17 @@ export function InstallSupplementBuilder({ claimId, claimAddress, carrierName, u
               </div>
               <div>
                 <label className="text-[10px] font-semibold uppercase tracking-wider text-[var(--gray-muted)] block mb-1">
+                  Claim Number
+                </label>
+                <input
+                  placeholder="Auto-populated from claim"
+                  value={claimNum}
+                  onChange={(e) => setClaimNum(e.target.value)}
+                  className="w-full sm:w-48 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-[var(--white)] placeholder:text-[var(--gray-dim)]"
+                />
+              </div>
+              <div>
+                <label className="text-[10px] font-semibold uppercase tracking-wider text-[var(--gray-muted)] block mb-1">
                   Carrier / Adjuster Email
                 </label>
                 <input
@@ -543,7 +577,7 @@ export function InstallSupplementBuilder({ claimId, claimAddress, carrierName, u
                         body: JSON.stringify({
                           claim_id: claimId,
                           to_email: carrierEmail,
-                          subject: `Install Supplement — ${claimAddress}`,
+                          subject: claimNum ? `Claim #${claimNum} — Install Supplement` : `Install Supplement — ${claimAddress}`,
                           body_html: emailBody,
                           attachment_paths: allPhotoPaths,
                           email_type: "install_supplement",
@@ -565,6 +599,21 @@ export function InstallSupplementBuilder({ claimId, claimAddress, carrierName, u
           )}
         </div>
       )}
+
+      <CrmImportModal
+        open={showCrmModal}
+        onClose={() => setShowCrmModal(false)}
+        integrations={crmIntegrations}
+        backendUrl={BACKEND_URL}
+        userId={userId}
+        targetPath={filePath}
+        targetFolder="install-photos"
+        onImport={() => {}}
+        onPhotoPaths={async (paths) => {
+          // Refresh items to pick up any changes
+          await fetchItems();
+        }}
+      />
     </div>
   );
 }

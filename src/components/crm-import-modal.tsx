@@ -8,6 +8,9 @@ interface CrmImportModalProps {
   integrations: { acculynx: boolean; companycam: boolean };
   backendUrl: string;
   userId: string;
+  targetPath?: string;     // Override storage base path (claim's file_path)
+  targetFolder?: string;   // Subfolder (e.g., "install-photos")
+  onPhotoPaths?: (paths: string[]) => void;  // Callback with imported storage paths
   onImport: (data: {
     address?: string;
     homeownerName?: string;
@@ -48,6 +51,9 @@ export function CrmImportModal({
   integrations,
   backendUrl,
   userId,
+  targetPath,
+  targetFolder,
+  onPhotoPaths,
   onImport,
 }: CrmImportModalProps) {
   const defaultTab: Tab = integrations.acculynx ? "acculynx" : "companycam";
@@ -231,6 +237,7 @@ export function CrmImportModal({
             user_id: userId,
             slug: newSlug,
             selected_indices: Array.from(selectedPhotoIndices).sort((a, b) => a - b),
+            ...(targetPath ? { target_path: targetPath, target_folder: targetFolder || "photos" } : {}),
           }),
         }
       );
@@ -238,6 +245,8 @@ export function CrmImportModal({
       setImportProgress(
         `Imported ${data.count || 0} photos. Populating form...`
       );
+
+      onPhotoPaths?.(data.paths || []);
 
       const projectAddr = [
         selectedProject.address?.street_address_1,

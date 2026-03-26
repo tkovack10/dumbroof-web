@@ -3,6 +3,9 @@
 import { useState, useEffect, useCallback } from "react";
 import { FileUploadZone } from "@/components/file-upload-zone";
 import { directUpload } from "@/lib/upload-utils";
+import { CrmImportModal } from "@/components/crm-import-modal";
+
+const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000";
 
 interface Props {
   claimId: string;
@@ -10,6 +13,7 @@ interface Props {
   carrierName: string;
   userId: string;
   filePath: string;
+  claimNumber?: string;
 }
 
 interface CocRecord {
@@ -23,7 +27,7 @@ interface CocRecord {
   sent_at: string | null;
 }
 
-export function CocBuilder({ claimId, claimAddress, carrierName, userId, filePath }: Props) {
+export function CocBuilder({ claimId, claimAddress, carrierName, userId, filePath, claimNumber }: Props) {
   const [expanded, setExpanded] = useState(false);
   const [loading, setLoading] = useState(true);
   const [existing, setExisting] = useState<CocRecord | null>(null);
@@ -43,6 +47,9 @@ export function CocBuilder({ claimId, claimAddress, carrierName, userId, filePat
   const [cocMode, setCocMode] = useState<"generate" | "upload">("generate");
   const [ownCocFile, setOwnCocFile] = useState<File[]>([]);
   const [uploadingCoc, setUploadingCoc] = useState(false);
+  const [showCrmModal, setShowCrmModal] = useState(false);
+  const [crmIntegrations, setCrmIntegrations] = useState<{ acculynx: boolean; companycam: boolean }>({ acculynx: false, companycam: false });
+  const [claimNum, setClaimNum] = useState(claimNumber || "");
 
   const uploadFile = async (file: File, folder: string): Promise<string> => {
     const res = await fetch("/api/storage/sign-upload", {
@@ -108,6 +115,13 @@ export function CocBuilder({ claimId, claimAddress, carrierName, userId, filePat
   }, [claimId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => { fetchExisting(); }, [fetchExisting]);
+
+  useEffect(() => {
+    fetch(`${BACKEND_URL}/api/integrations/status?user_id=${userId}`)
+      .then(r => r.ok ? r.json() : null)
+      .then(data => { if (data) setCrmIntegrations({ acculynx: !!data.acculynx, companycam: !!data.companycam }); })
+      .catch(() => {});
+  }, [userId]);
 
   const generatePdf = async () => {
     setGenerating(true);
@@ -316,6 +330,17 @@ export function CocBuilder({ claimId, claimAddress, carrierName, userId, filePat
                       : `Upload ${completionPhotos.length} Photo${completionPhotos.length !== 1 ? "s" : ""}`}
                   </button>
                 )}
+                {(crmIntegrations.acculynx || crmIntegrations.companycam) && (
+                  <button
+                    onClick={() => setShowCrmModal(true)}
+                    className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[var(--cyan)]/10 text-[var(--cyan)] text-sm font-semibold hover:bg-[var(--cyan)]/20 transition-colors"
+                  >
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
+                    </svg>
+                    Import from CRM
+                  </button>
+                )}
                 {completionPhotoPaths.length > 0 && (
                   <p className="text-[10px] text-green-400 flex items-center gap-1">
                     <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -375,6 +400,18 @@ export function CocBuilder({ claimId, claimAddress, carrierName, userId, filePat
               <div className="space-y-3">
                 <p className="text-xs font-semibold uppercase tracking-wider text-[var(--gray-muted)]">Send Certificate</p>
 
+                <div>
+                  <label className="text-[10px] font-semibold uppercase tracking-wider text-[var(--gray-muted)] block mb-1">
+                    Claim Number
+                  </label>
+                  <input
+                    placeholder="Auto-populated from claim"
+                    value={claimNum}
+                    onChange={(e) => setClaimNum(e.target.value)}
+                    className="w-full sm:w-48 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-[var(--white)] placeholder:text-[var(--gray-dim)]"
+                  />
+                </div>
+
                 <div className="grid sm:grid-cols-2 gap-3">
                   <input
                     placeholder="Recipient email address"
@@ -417,6 +454,20 @@ export function CocBuilder({ claimId, claimAddress, carrierName, userId, filePat
           )}
         </div>
       )}
+
+      <CrmImportModal
+        open={showCrmModal}
+        onClose={() => setShowCrmModal(false)}
+        integrations={crmIntegrations}
+        backendUrl={BACKEND_URL}
+        userId={userId}
+        targetPath={filePath}
+        targetFolder="completion-photos"
+        onImport={() => {}}
+        onPhotoPaths={(paths) => {
+          setCompletionPhotoPaths((prev) => [...prev, ...paths]);
+        }}
+      />
     </div>
   );
 }

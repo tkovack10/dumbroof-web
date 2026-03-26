@@ -10,6 +10,7 @@ interface Props {
   carrierName: string;
   userId: string;
   filePath: string;
+  claimNumber?: string;
 }
 
 interface SignatureRecord {
@@ -31,7 +32,7 @@ const DOC_TYPE_LABELS: Record<string, string> = {
   contingency: "Contingency Agreement",
 };
 
-export function SignatureManager({ claimId, claimAddress, carrierName, userId, filePath }: Props) {
+export function SignatureManager({ claimId, claimAddress, carrierName, userId, filePath, claimNumber }: Props) {
   const [expanded, setExpanded] = useState(false);
   const [loading, setLoading] = useState(true);
   const [signatures, setSignatures] = useState<SignatureRecord[]>([]);
@@ -92,7 +93,7 @@ export function SignatureManager({ claimId, claimAddress, carrierName, userId, f
       const res = await fetch("/api/signatures/notify-carrier", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ signature_id: sigId, carrier_email: carrierEmail }),
+        body: JSON.stringify({ signature_id: sigId, carrier_email: carrierEmail, claim_number: claimNumber || undefined }),
       });
       if (res.ok) {
         setCarrierEmail("");
