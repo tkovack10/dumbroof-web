@@ -817,65 +817,6 @@ export default function ClaimDetailPage() {
           />
         )}
 
-        {/* AOB / Contingency Agreement — digital signatures */}
-        {isReady && (
-          <SignatureManager
-            claimId={claim.id}
-            claimAddress={claim.address}
-            carrierName={claim.carrier}
-            userId={currentUserId}
-          />
-        )}
-
-        {/* Install Supplements — items discovered during installation */}
-        {isReady && (
-          <InstallSupplementBuilder
-            claimId={claim.id}
-            claimAddress={claim.address}
-            carrierName={claim.carrier}
-            userId={currentUserId}
-            filePath={claim.file_path}
-          />
-        )}
-
-        {/* Certificate of Completion */}
-        {isReady && (
-          <CocBuilder
-            claimId={claim.id}
-            claimAddress={claim.address}
-            carrierName={claim.carrier}
-            userId={currentUserId}
-          />
-        )}
-
-        {/* Invoicing */}
-        {isReady && (
-          <InvoiceBuilder
-            claimId={claim.id}
-            claimAddress={claim.address}
-            carrierName={claim.carrier}
-            userId={currentUserId}
-          />
-        )}
-
-        {/* Error state */}
-        {claim.status === "error" && (
-          <div className="bg-red-500/10 border border-red-100 rounded-2xl p-5">
-            <p className="text-sm font-medium text-red-800 mb-1">
-              Processing failed
-            </p>
-            {claim.error_message ? (
-              <p className="text-sm text-red-600 font-mono bg-red-100/50 rounded px-3 py-2 mt-2">
-                {claim.error_message}
-              </p>
-            ) : (
-              <p className="text-sm text-red-600">
-                Our team has been notified and will look into it.
-              </p>
-            )}
-          </div>
-        )}
-
         {/* Upload Additional Documents */}
         <div className="glass-card p-6">
           <div className="flex items-center justify-between mb-4">
@@ -1075,6 +1016,65 @@ export default function ClaimDetailPage() {
             </div>
           )}
         </div>
+
+        {/* AOB / Contingency Agreement — digital signatures */}
+        {isReady && (
+          <SignatureManager
+            claimId={claim.id}
+            claimAddress={claim.address}
+            carrierName={claim.carrier}
+            userId={currentUserId}
+          />
+        )}
+
+        {/* Install Supplements — items discovered during installation */}
+        {isReady && (
+          <InstallSupplementBuilder
+            claimId={claim.id}
+            claimAddress={claim.address}
+            carrierName={claim.carrier}
+            userId={currentUserId}
+            filePath={claim.file_path}
+          />
+        )}
+
+        {/* Certificate of Completion */}
+        {isReady && (
+          <CocBuilder
+            claimId={claim.id}
+            claimAddress={claim.address}
+            carrierName={claim.carrier}
+            userId={currentUserId}
+          />
+        )}
+
+        {/* Invoicing */}
+        {isReady && (
+          <InvoiceBuilder
+            claimId={claim.id}
+            claimAddress={claim.address}
+            carrierName={claim.carrier}
+            userId={currentUserId}
+          />
+        )}
+
+        {/* Error state */}
+        {claim.status === "error" && (
+          <div className="bg-red-500/10 border border-red-100 rounded-2xl p-5">
+            <p className="text-sm font-medium text-red-800 mb-1">
+              Processing failed
+            </p>
+            {claim.error_message ? (
+              <p className="text-sm text-red-600 font-mono bg-red-100/50 rounded px-3 py-2 mt-2">
+                {claim.error_message}
+              </p>
+            ) : (
+              <p className="text-sm text-red-600">
+                Our team has been notified and will look into it.
+              </p>
+            )}
+          </div>
+        )}
 
         {/* ============================================================ */}
         {/* EDIT REQUESTS PANEL                                          */}

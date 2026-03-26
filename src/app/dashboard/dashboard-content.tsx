@@ -411,8 +411,8 @@ export function DashboardContent({ user }: { user: User }) {
         {/* === CLAIMS TAB === */}
         {activeTab === "claims" && (
           <>
-            {/* KPI Stats Bar — 3 primary + expandable details */}
-            {!loading && claims.length > 0 && (
+            {/* KPI Stats Bar — 3 primary + expandable details (hidden during search) */}
+            {!loading && claims.length > 0 && !searchQuery && (
               <div className="mb-6">
                 <div className="grid grid-cols-3 gap-4">
                   <div className="glass-card p-4 text-center">
@@ -469,8 +469,8 @@ export function DashboardContent({ user }: { user: User }) {
               </div>
             )}
 
-            {/* Win Banner — Robinhood-style dopamine */}
-            {!loading && wonClaims.length > 0 && (
+            {/* Win Banner — Robinhood-style dopamine (hidden during search) */}
+            {!loading && wonClaims.length > 0 && !searchQuery && (
               <div className="relative overflow-hidden rounded-2xl mb-6 shadow-[0_0_40px_rgba(34,197,94,0.25)]">
                 {/* Animated gradient background */}
                 <div className="absolute inset-0 bg-gradient-to-br from-green-600 via-emerald-500 to-green-400 animate-gradient-shift" />

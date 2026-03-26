@@ -326,12 +326,12 @@ export function ScopeReviewContent() {
 
                     if (isEditing) {
                       return (
-                        <div key={item.id} className="px-5 py-3 border-t border-white/[0.04] bg-blue-50/30 min-w-[640px]">
+                        <div key={item.id} className="px-5 py-3 border-t border-white/[0.04] bg-white/[0.04] min-w-[640px]">
                           <div className="grid grid-cols-[1fr_70px_50px_80px] gap-2 mb-3">
                             <input
                               value={editState.description}
                               onChange={(e) => setEditState({ ...editState, description: e.target.value })}
-                              className="rounded-lg border border-[var(--border-glass)] px-2 py-1.5 text-sm"
+                              className="rounded-lg border border-[var(--border-glass)] bg-white/5 text-[var(--white)] px-2 py-1.5 text-sm"
                               placeholder="Description"
                             />
                             <input
@@ -339,13 +339,13 @@ export function ScopeReviewContent() {
                               onChange={(e) => setEditState({ ...editState, qty: e.target.value })}
                               type="number"
                               step="0.01"
-                              className="rounded-lg border border-[var(--border-glass)] px-2 py-1.5 text-sm text-right"
+                              className="rounded-lg border border-[var(--border-glass)] bg-white/5 text-[var(--white)] px-2 py-1.5 text-sm text-right"
                               placeholder="Qty"
                             />
                             <input
                               value={editState.unit}
                               onChange={(e) => setEditState({ ...editState, unit: e.target.value })}
-                              className="rounded-lg border border-[var(--border-glass)] px-2 py-1.5 text-sm text-center"
+                              className="rounded-lg border border-[var(--border-glass)] bg-white/5 text-[var(--white)] px-2 py-1.5 text-sm text-center"
                               placeholder="Unit"
                             />
                             <input
@@ -353,7 +353,7 @@ export function ScopeReviewContent() {
                               onChange={(e) => setEditState({ ...editState, unit_price: e.target.value })}
                               type="number"
                               step="0.01"
-                              className="rounded-lg border border-[var(--border-glass)] px-2 py-1.5 text-sm text-right"
+                              className="rounded-lg border border-[var(--border-glass)] bg-white/5 text-[var(--white)] px-2 py-1.5 text-sm text-right"
                               placeholder="Price"
                             />
                           </div>

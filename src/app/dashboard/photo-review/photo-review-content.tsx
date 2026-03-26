@@ -538,7 +538,7 @@ export function PhotoReviewContent() {
                     value={editAnnotation}
                     onChange={(e) => setEditAnnotation(e.target.value)}
                     rows={3}
-                    className="w-full rounded-lg border border-[var(--border-glass)] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full rounded-lg border border-[var(--border-glass)] bg-white/5 text-[var(--white)] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
                 <div className="grid grid-cols-2 gap-3">
