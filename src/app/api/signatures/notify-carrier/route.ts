@@ -11,7 +11,7 @@ export async function POST(req: NextRequest) {
   const userId = auth.user.id;
 
   const body = await req.json();
-  const { signature_id, carrier_email } = body;
+  const { signature_id, carrier_email, claim_number } = body;
 
   if (!signature_id || !carrier_email) {
     return NextResponse.json({ error: "signature_id and carrier_email required" }, { status: 400 });
@@ -90,7 +90,7 @@ export async function POST(req: NextRequest) {
         claim_id: sig.claim_id,
         user_id: userId,
         to_email: carrier_email,
-        subject: `${docLabel} — ${claim.address}${claim.claim_number ? ` — Claim #${claim.claim_number}` : ""}`,
+        subject: `${docLabel} — ${claim.address}${(claim_number || claim.claim_number) ? ` — Claim #${claim_number || claim.claim_number}` : ""}`,
         body_html: emailBody,
         cc: company?.email || null,
       }),

@@ -10,7 +10,7 @@ interface CrmImportModalProps {
   userId: string;
   targetPath?: string;     // Override storage base path (claim's file_path)
   targetFolder?: string;   // Subfolder (e.g., "install-photos")
-  onPhotoPaths?: (paths: string[]) => void;  // Callback with imported storage paths
+  onPhotoPaths?: (paths: string[]) => void | Promise<void>;  // Callback with imported storage paths
   onImport: (data: {
     address?: string;
     homeownerName?: string;
@@ -193,7 +193,11 @@ export function CrmImportModal({
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ user_id: userId, slug: newSlug }),
+          body: JSON.stringify({
+            user_id: userId,
+            slug: newSlug,
+            ...(targetPath ? { target_path: targetPath, target_folder: targetFolder || "photos" } : {}),
+          }),
         }
       );
       const data = await res.json();
@@ -207,6 +211,10 @@ export function CrmImportModal({
         carrier: data.carrier || "",
         importedPhotoCount: data.photo_count || 0,
       });
+
+      if (onPhotoPaths && data.paths) {
+        await onPhotoPaths(data.paths);
+      }
 
       setTimeout(() => onClose(), 1000);
     } catch {
