@@ -539,6 +539,11 @@ export default function ClaimDetailPage() {
               )}
               {isUploaded ? "Queued for Processing" : sc.label}
             </span>
+            {isForensicOnly && (
+              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-[var(--cyan)]/10 text-[var(--cyan)] border border-[var(--cyan)]/30">
+                Forensic Only
+              </span>
+            )}
           </div>
 
           {/* Damage Score + Tech Boost */}
