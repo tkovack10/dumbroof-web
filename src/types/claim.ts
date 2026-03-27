@@ -65,6 +65,23 @@ export interface Claim {
   excluded_line_items?: string[] | null;
   // Report mode (full = 5-doc package, forensic_only = quick forensic report)
   report_mode?: string | null;
+  // Weather / storm data (NOAA events, hail swaths)
+  weather_data?: {
+    events?: Array<{
+      event_type: string;
+      date: string;
+      hail_size?: number;
+      wind_speed?: number;
+      latitude: number;
+      longitude: number;
+      location: string;
+      distance_miles?: number;
+      source?: string;
+    }>;
+    max_hail_inches?: number;
+    max_wind_mph?: number;
+    event_count?: number;
+  } | null;
   // Lifecycle (install → complete → invoice → paid)
   lifecycle_phase?: string | null;
   install_supplement_total?: number | null;

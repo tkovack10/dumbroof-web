@@ -4047,6 +4047,34 @@ async def process_claim(claim_id: str):
                         noaa_apply_to_config(config, storm_data, analysis)
                         print(f"[NOAA] Found {storm_data.event_count} storm events, "
                               f"max hail: {storm_data.max_hail_inches}\"")
+
+                        # Persist weather data to claims table for map overlay
+                        if sb:
+                            try:
+                                weather_json = {
+                                    "events": [
+                                        {
+                                            "event_type": e.event_type,
+                                            "date": str(e.begin_date) if hasattr(e, 'begin_date') else str(getattr(e, 'date', '')),
+                                            "hail_size": getattr(e, 'hail_size_inches', None) or getattr(e, 'magnitude', None),
+                                            "wind_speed": getattr(e, 'wind_speed_mph', None),
+                                            "latitude": getattr(e, 'latitude', None) or getattr(e, 'begin_lat', None),
+                                            "longitude": getattr(e, 'longitude', None) or getattr(e, 'begin_lon', None),
+                                            "location": getattr(e, 'location', '') or getattr(e, 'begin_location', ''),
+                                            "distance_miles": getattr(e, 'distance_miles', None),
+                                            "source": getattr(e, 'source', ''),
+                                        }
+                                        for e in (storm_data.events if hasattr(storm_data, 'events') else [])
+                                        if getattr(e, 'latitude', None) or getattr(e, 'begin_lat', None)
+                                    ],
+                                    "max_hail_inches": storm_data.max_hail_inches,
+                                    "max_wind_mph": storm_data.max_wind_mph,
+                                    "event_count": storm_data.event_count,
+                                }
+                                sb.table("claims").update({"weather_data": weather_json}).eq("id", claim_id).execute()
+                                print(f"[NOAA] Persisted {len(weather_json['events'])} events to claims.weather_data")
+                            except Exception as we:
+                                print(f"[NOAA] Failed to persist weather data: {we}")
                     else:
                         print(f"[NOAA] No storm events found for {address_str} on {storm_date}")
                 else:
