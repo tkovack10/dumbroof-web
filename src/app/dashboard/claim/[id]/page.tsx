@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useEffect, useState, useCallback, useRef, useMemo } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useParams, useRouter } from "next/navigation";
 import { FileUploadZone } from "@/components/file-upload-zone";
@@ -24,6 +24,57 @@ import { useCountUp } from "@/hooks/use-count-up";
 import { Confetti } from "@/components/confetti";
 import { ClaimBrainChat } from "@/components/claim-brain-chat";
 import { CommunicationLog } from "@/components/communication-log";
+
+function EditableField({ value, placeholder, field, claimId, prefix, className, onSave }: {
+  value: string;
+  placeholder: string;
+  field: string;
+  claimId: string;
+  prefix?: string;
+  className?: string;
+  onSave: (value: string) => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [editValue, setEditValue] = useState(value);
+  const supabase = useMemo(() => createClient(), []);
+
+  const save = async () => {
+    const trimmed = editValue.trim();
+    if (trimmed !== value) {
+      await supabase.from("claims").update({ [field]: trimmed || null }).eq("id", claimId);
+      onSave(trimmed);
+    }
+    setEditing(false);
+  };
+
+  if (editing) {
+    return (
+      <input
+        autoFocus
+        value={editValue}
+        onChange={(e) => setEditValue(e.target.value)}
+        onBlur={save}
+        onKeyDown={(e) => { if (e.key === "Enter") save(); if (e.key === "Escape") { setEditValue(value); setEditing(false); } }}
+        placeholder={placeholder}
+        className="bg-white/5 border border-[var(--cyan)]/30 rounded px-2 py-0.5 text-sm text-[var(--white)] outline-none focus:ring-1 focus:ring-[var(--cyan)] min-w-[120px]"
+      />
+    );
+  }
+
+  return (
+    <button
+      onClick={() => { setEditValue(value); setEditing(true); }}
+      className={`hover:text-[var(--white)] transition-colors cursor-text ${className || "text-sm text-[var(--gray-muted)]"}`}
+      title="Click to edit"
+    >
+      {value ? (
+        <>{prefix}{value}</>
+      ) : (
+        <span className="text-[var(--gray-dim)] italic text-xs">{placeholder}</span>
+      )}
+    </button>
+  );
+}
 
 interface EditRequest {
   id: string;
@@ -502,18 +553,44 @@ export default function ClaimDetailPage() {
                 {claim.address}
               </h1>
               <p className="text-sm text-[var(--gray-muted)] mt-1">
-                {claim.carrier || "No carrier"} &middot;{" "}
+                <EditableField
+                  value={claim.carrier || ""}
+                  placeholder="Add insurance carrier"
+                  field="carrier"
+                  claimId={claim.id}
+                  onSave={(v) => setClaim({ ...claim, carrier: v })}
+                />
+                {" "}&middot;{" "}
                 {claim.phase === "pre-scope" ? "Pre-Scope" : "Supplement"} &middot;{" "}
                 {new Date(claim.created_at).toLocaleDateString()}
               </p>
-              {(claim.claim_number || claim.adjuster_name || claim.adjuster_email) && (
-                <p className="text-xs text-[var(--gray-dim)] mt-1">
-                  {claim.claim_number && <span>Claim #{claim.claim_number}</span>}
-                  {claim.claim_number && claim.adjuster_name && <span> &middot; </span>}
-                  {claim.adjuster_name && <span>{claim.adjuster_name}</span>}
-                  {claim.adjuster_email && <span className="ml-1 text-[var(--cyan)]">({claim.adjuster_email})</span>}
-                </p>
-              )}
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1">
+                <EditableField
+                  value={claim.claim_number || ""}
+                  placeholder="Add claim #"
+                  field="claim_number"
+                  claimId={claim.id}
+                  prefix="Claim #"
+                  className="text-xs text-[var(--gray-dim)]"
+                  onSave={(v) => setClaim({ ...claim, claim_number: v })}
+                />
+                <EditableField
+                  value={claim.adjuster_name || ""}
+                  placeholder="Add adjuster name"
+                  field="adjuster_name"
+                  claimId={claim.id}
+                  className="text-xs text-[var(--gray-dim)]"
+                  onSave={(v) => setClaim({ ...claim, adjuster_name: v })}
+                />
+                <EditableField
+                  value={claim.adjuster_email || ""}
+                  placeholder="Add adjuster email"
+                  field="adjuster_email"
+                  claimId={claim.id}
+                  className="text-xs text-[var(--cyan)]"
+                  onSave={(v) => setClaim({ ...claim, adjuster_email: v })}
+                />
+              </div>
             </div>
             <span
               className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium ${sc.bg} ${sc.color}`}
