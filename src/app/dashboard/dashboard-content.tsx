@@ -37,6 +37,7 @@ export function DashboardContent({ user }: { user: User }) {
   const [showConfetti, setShowConfetti] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [showDetailStats, setShowDetailStats] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
   const prevWinCountRef = useRef(0);
   const menuRef = useRef<HTMLDivElement>(null);
   const billing = useBillingQuota();
@@ -71,8 +72,15 @@ export function DashboardContent({ user }: { user: User }) {
   useEffect(() => {
     fetchAll();
     const interval = setInterval(fetchAll, 5000);
+    // Check admin status
+    (async () => {
+      try {
+        const { data } = await supabase.from("company_profiles").select("is_admin").eq("user_id", user.id).limit(1);
+        if (data?.[0]?.is_admin) setIsAdmin(true);
+      } catch { /* ignore */ }
+    })();
     return () => clearInterval(interval);
-  }, [fetchAll]);
+  }, [fetchAll, supabase, user.id]);
 
   // Auto-select repairs tab if user has repairs but no claims (e.g. Vlad)
   useEffect(() => {
@@ -348,6 +356,14 @@ export function DashboardContent({ user }: { user: User }) {
             </div>
           </div>
           <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
+            {isAdmin && (
+              <a
+                href="/dashboard/admin"
+                className="bg-white/5 hover:bg-white/10 border border-white/10 text-[var(--gray)] hover:text-[var(--white)] px-4 py-3 rounded-xl font-semibold transition-colors text-sm"
+              >
+                Admin
+              </a>
+            )}
             <a
               href="/dashboard/quick-report"
               className="bg-[var(--cyan)]/10 hover:bg-[var(--cyan)]/20 border border-[var(--cyan)]/30 text-[var(--cyan)] px-4 py-3 rounded-xl font-semibold transition-colors text-sm"
