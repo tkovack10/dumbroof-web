@@ -162,6 +162,7 @@ export function CocBuilder({ claimId, claimAddress, carrierName, userId, filePat
           to_email: sendEmail,
           cc: sendCc || null,
           recipient_type: recipientType,
+          completion_photo_paths: completionPhotoPaths.length > 0 ? completionPhotoPaths : undefined,
         }),
       });
 

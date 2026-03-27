@@ -3924,7 +3924,13 @@ async def process_claim(claim_id: str):
             config["carrier"] = config.get("carrier", {})
             if "carrier_line_items" in config.get("carrier", {}):
                 config["carrier"]["carrier_line_items"] = []
-            print("[PROCESS] forensic_only: cleared carrier data, ensured city/zip/line_items", flush=True)
+            # Zero out contractor_rcv for forensic-only (no real estimate)
+            if sb:
+                try:
+                    sb.table("claims").update({"contractor_rcv": 0}).eq("id", claim_id).execute()
+                except Exception:
+                    pass
+            print("[PROCESS] forensic_only: cleared carrier data, zeroed RCV, ensured city/zip/line_items", flush=True)
 
         # 9a. Attach evidence photos to carrier line items for PDF scope comparison
         if report_mode != "forensic_only":

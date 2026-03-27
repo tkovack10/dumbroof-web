@@ -37,6 +37,7 @@ export function InstallSupplementBuilder({ claimId, claimAddress, carrierName, u
   const [showCrmModal, setShowCrmModal] = useState(false);
   const [crmIntegrations, setCrmIntegrations] = useState<{ acculynx: boolean; companycam: boolean }>({ acculynx: false, companycam: false });
   const [claimNum, setClaimNum] = useState(claimNumber || "");
+  const [importedPhotoPaths, setImportedPhotoPaths] = useState<string[]>([]);
 
   const uploadFile = async (file: File, folder: string): Promise<string> => {
     const res = await fetch("/api/storage/sign-upload", {
@@ -553,6 +554,14 @@ export function InstallSupplementBuilder({ claimId, claimAddress, carrierName, u
                   className="w-full sm:w-72 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-[var(--white)] placeholder:text-[var(--gray-dim)]"
                 />
               </div>
+              {importedPhotoPaths.length > 0 && (
+                <p className="text-[10px] text-[var(--cyan)] flex items-center gap-1">
+                  <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                  </svg>
+                  {importedPhotoPaths.length} CRM photo{importedPhotoPaths.length !== 1 ? "s" : ""} will be attached to email
+                </p>
+              )}
               <button
                 onClick={async () => {
                   setSubmitting(true);
@@ -567,7 +576,7 @@ export function InstallSupplementBuilder({ claimId, claimAddress, carrierName, u
                     }
                     // Send email to carrier if address provided
                     if (carrierEmail) {
-                      const allPhotoPaths = draftItems.flatMap((i) => i.photo_paths || []);
+                      const allPhotoPaths = [...draftItems.flatMap((i) => i.photo_paths || []), ...importedPhotoPaths];
                       const itemLines = draftItems.map(
                         (i) => `<tr><td style="padding:4px 8px;border:1px solid #ddd;">${i.description}</td><td style="padding:4px 8px;border:1px solid #ddd;">${i.qty} ${i.unit}</td><td style="padding:4px 8px;border:1px solid #ddd;">$${(i.qty * i.unit_price).toFixed(2)}</td><td style="padding:4px 8px;border:1px solid #ddd;">${i.reason || ""}</td></tr>`
                       ).join("");
@@ -611,7 +620,10 @@ export function InstallSupplementBuilder({ claimId, claimAddress, carrierName, u
         targetFolder="install-photos"
         onImport={() => {}}
         onPhotoPaths={async (paths) => {
-          // Refresh items to pick up any changes
+          // Store imported paths for email attachments
+          if (paths && paths.length > 0) {
+            setImportedPhotoPaths(prev => [...prev, ...paths]);
+          }
           await fetchItems();
         }}
       />

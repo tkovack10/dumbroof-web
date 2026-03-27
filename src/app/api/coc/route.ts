@@ -122,7 +122,7 @@ export async function PUT(req: NextRequest) {
   const userId = auth.user.id;
 
   const body = await req.json();
-  const { claim_id, pdf_path, to_email, cc, recipient_type } = body;
+  const { claim_id, pdf_path, to_email, cc, recipient_type, completion_photo_paths } = body;
 
   if (!claim_id || !pdf_path || !to_email) {
     return NextResponse.json({ error: "claim_id, pdf_path, and to_email required" }, { status: 400 });
@@ -134,15 +134,24 @@ export async function PUT(req: NextRequest) {
   }
 
   try {
-    const res = await fetch(`${BACKEND_URL}/api/coc/send`, {
+    // Collect all attachment paths: COC PDF + completion photos
+    const allAttachments = [pdf_path];
+    if (completion_photo_paths && Array.isArray(completion_photo_paths)) {
+      allAttachments.push(...completion_photo_paths);
+    }
+
+    const res = await fetch(`${BACKEND_URL}/api/supplement-email/send`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         claim_id,
         user_id: userId,
-        pdf_path,
         to_email,
+        subject: `Certificate of Substantial Completion`,
+        body_html: `<p>Please find attached the Certificate of Substantial Completion for the referenced property.</p><p>All work has been completed in accordance with the approved scope and applicable building codes.</p>${(completion_photo_paths?.length || 0) > 0 ? `<p>${completion_photo_paths.length} completion photo${completion_photo_paths.length !== 1 ? "s" : ""} attached.</p>` : ""}<p>Please process final payment at your earliest convenience.</p>`,
         cc: cc || null,
+        attachment_paths: allAttachments,
+        email_type: "coc",
       }),
     });
 
