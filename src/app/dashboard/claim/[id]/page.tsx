@@ -13,6 +13,7 @@ import { InstallSupplementBuilder } from "@/components/install-supplement-builde
 import { CocBuilder } from "@/components/coc-builder";
 import { InvoiceBuilder } from "@/components/invoice-builder";
 import { SendDocumentsBlock } from "@/components/send-documents-block";
+import { UploadedDocuments } from "@/components/uploaded-documents";
 import type { ScopeComparisonRow } from "@/types/scope-comparison";
 
 import type { Claim } from "@/types/claim";
@@ -821,6 +822,15 @@ export default function ClaimDetailPage() {
             />
           </div>
         )}
+
+        {/* Source Documents — uploaded EagleView, carrier scope, weather reports */}
+        <UploadedDocuments
+          filePath={claim.file_path}
+          measurementFiles={claim.measurement_files}
+          scopeFiles={claim.scope_files}
+          weatherFiles={claim.weather_files}
+          otherFiles={claim.other_files}
+        />
 
         {/* Scope Comparison — only when scope_comparison data exists */}
         {isReady && claim.scope_comparison && !isForensicOnly && (
