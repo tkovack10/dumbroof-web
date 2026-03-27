@@ -1327,16 +1327,50 @@ async def send_supplement_email_direct(body: DirectEmailRequest):
     if not user_id:
         return {"status": "error", "message": "Could not determine user"}
 
-    # Download attachments from Supabase Storage
+    # Download attachments from Supabase Storage (compress images for email)
     attachments = []
     if body.attachment_paths:
         for path in body.attachment_paths:
             try:
                 data = sb.storage.from_("claim-documents").download(path)
-                if data:
-                    filename = path.split("/")[-1]
-                    attachments.append({"filename": filename, "content": data})
-                    print(f"[EMAIL] Attached: {filename} ({len(data)} bytes)", flush=True)
+                if not data:
+                    continue
+                filename = path.split("/")[-1]
+                ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
+
+                # Compress images to max 1200px wide, 80% JPEG quality (keeps email under 25MB)
+                if ext in ("jpg", "jpeg", "png", "heic", "heif", "webp"):
+                    try:
+                        from PIL import Image
+                        import io as _io
+                        img = Image.open(_io.BytesIO(data))
+                        # Auto-rotate based on EXIF
+                        from PIL import ImageOps
+                        img = ImageOps.exif_transpose(img)
+                        # Resize if wider than 1200px
+                        max_width = 1200
+                        if img.width > max_width:
+                            ratio = max_width / img.width
+                            new_size = (max_width, int(img.height * ratio))
+                            img = img.resize(new_size, Image.LANCZOS)
+                        # Convert to JPEG
+                        buf = _io.BytesIO()
+                        img = img.convert("RGB")
+                        img.save(buf, format="JPEG", quality=80, optimize=True)
+                        compressed = buf.getvalue()
+                        original_kb = len(data) / 1024
+                        compressed_kb = len(compressed) / 1024
+                        print(f"[EMAIL] Compressed {filename}: {original_kb:.0f}KB → {compressed_kb:.0f}KB", flush=True)
+                        # Use compressed version, change extension to .jpg
+                        jpg_name = filename.rsplit(".", 1)[0] + ".jpg" if "." in filename else filename + ".jpg"
+                        attachments.append({"filename": jpg_name, "content": compressed})
+                        continue
+                    except Exception as ce:
+                        print(f"[EMAIL] Image compression failed for {filename}, using original: {ce}", flush=True)
+
+                # Non-image files (PDFs, etc.) — attach as-is
+                attachments.append({"filename": filename, "content": data})
+                print(f"[EMAIL] Attached: {filename} ({len(data) / 1024:.0f}KB)", flush=True)
             except Exception as e:
                 print(f"[EMAIL] Failed to download attachment {path}: {e}", flush=True)
 
