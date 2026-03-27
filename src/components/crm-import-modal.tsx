@@ -513,7 +513,7 @@ export function CrmImportModal({
                     <p className="text-xs text-[var(--gray-muted)]">Loading photos...</p>
                   </div>
                 ) : (
-                  <div className="grid grid-cols-4 sm:grid-cols-5 gap-2 max-h-[40vh] overflow-y-auto pr-1">
+                  <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2 max-h-[50vh] overflow-y-auto pr-1">
                     {photos.map((photo, idx) => {
                       const isSelected = selectedPhotoIndices.has(idx);
                       const thumbUrl = photo.photo_url || photo.url;
@@ -521,34 +521,35 @@ export function CrmImportModal({
                         <button
                           key={photo.id || idx}
                           onClick={() => togglePhoto(idx)}
-                          className={`relative aspect-square rounded-lg overflow-hidden border-2 transition-all ${
+                          className={`relative rounded-lg overflow-hidden border-2 transition-all ${
                             isSelected
                               ? "border-[var(--cyan)] ring-1 ring-[var(--cyan)]"
                               : "border-transparent hover:border-white/20"
                           }`}
+                          style={{ paddingBottom: "100%", height: 0, position: "relative" }}
                         >
                           {thumbUrl ? (
                             <img
                               src={thumbUrl}
                               alt={`Photo ${idx + 1}`}
-                              className="w-full h-full object-cover"
+                              className="absolute inset-0 w-full h-full object-cover"
                               loading="lazy"
                             />
                           ) : (
-                            <div className="w-full h-full bg-white/[0.06] flex items-center justify-center">
+                            <div className="absolute inset-0 w-full h-full bg-white/[0.06] flex items-center justify-center">
                               <svg className="w-6 h-6 text-[var(--gray-dim)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                                 <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909M3.75 21h16.5" />
                               </svg>
                             </div>
                           )}
                           {isSelected && (
-                            <div className="absolute top-1 right-1 w-5 h-5 bg-[var(--cyan)] rounded-full flex items-center justify-center">
-                              <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                            <div className="absolute top-1 right-1 w-4 h-4 bg-[var(--cyan)] rounded-full flex items-center justify-center z-10">
+                              <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
                                 <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                               </svg>
                             </div>
                           )}
-                          <div className="absolute bottom-0 left-0 right-0 bg-black/60 text-[10px] text-white text-center py-0.5">
+                          <div className="absolute bottom-0 left-0 right-0 bg-black/60 text-[9px] text-white text-center py-px z-10">
                             {idx + 1}
                           </div>
                         </button>
