@@ -82,6 +82,11 @@ export async function POST(req: NextRequest) {
   `;
 
   try {
+    // Collect attachment paths: signed AOB + W9
+    const attachmentPaths: string[] = [];
+    if (sig.signed_pdf_path) attachmentPaths.push(sig.signed_pdf_path);
+    if (company?.w9_path) attachmentPaths.push(company.w9_path);
+
     // Send email with AOB + W9 attachments via backend
     await fetch(`${BACKEND_URL}/api/supplement-email/send`, {
       method: "POST",
@@ -93,6 +98,8 @@ export async function POST(req: NextRequest) {
         subject: `${docLabel} — ${claim.address}${(claim_number || claim.claim_number) ? ` — Claim #${claim_number || claim.claim_number}` : ""}`,
         body_html: emailBody,
         cc: company?.email || null,
+        attachment_paths: attachmentPaths.length > 0 ? attachmentPaths : undefined,
+        email_type: "aob",
       }),
     });
 

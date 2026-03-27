@@ -377,6 +377,7 @@ export function SupplementComposer({ claimId, claimAddress, carrierName, compari
                           to_email: toEmail,
                           subject: claimNumber,
                           body_html: bodyHtml,
+                          email_type: "supplement",
                         }),
                       });
                       const data = await res.json();

@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { requireAuth, isAuthError, canAccessClaim } from "@/lib/api-auth";
 
+const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000";
+
 /** GET — fetch invoices for a claim */
 export async function GET(req: NextRequest) {
   const auth = await requireAuth();
@@ -191,8 +193,72 @@ export async function PUT(req: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  // Update lifecycle phase if sent
-  if (status === "sent") {
+  // Update lifecycle phase + send email if marking as sent
+  if (status === "sent" && recipient_email && data) {
+    await supabaseAdmin
+      .from("claims")
+      .update({ lifecycle_phase: "invoiced" })
+      .eq("id", existing.claim_id);
+
+    // Get claim address for email
+    const { data: claimRows } = await supabaseAdmin
+      .from("claims")
+      .select("address, claim_number, file_path")
+      .eq("id", existing.claim_id)
+      .limit(1);
+    const claimInfo = claimRows?.[0] || { address: "", claim_number: "", file_path: "" };
+
+    // Build invoice email HTML
+    const lineItems = (data.line_items as Array<{ description: string; qty: number; unit: string; unit_price: number; total: number }>) || [];
+    const itemRows = lineItems.map((li) =>
+      `<tr><td style="padding:6px 8px;border:1px solid #ddd;">${li.description}</td><td style="padding:6px 8px;border:1px solid #ddd;text-align:right;">${li.qty} ${li.unit}</td><td style="padding:6px 8px;border:1px solid #ddd;text-align:right;">$${li.unit_price.toFixed(2)}</td><td style="padding:6px 8px;border:1px solid #ddd;text-align:right;">$${li.total.toFixed(2)}</td></tr>`
+    ).join("");
+
+    const invoiceHtml = `
+      <p>Please find the invoice for storm damage restoration work at <strong>${claimInfo.address}</strong>.</p>
+      <p><strong>Invoice #:</strong> ${data.invoice_number}<br/>
+      <strong>Due Date:</strong> ${data.due_date || "Upon receipt"}</p>
+      <table style="border-collapse:collapse;width:100%;margin:16px 0;">
+        <thead><tr style="background:#f3f4f6;">
+          <th style="padding:6px 8px;border:1px solid #ddd;text-align:left;">Description</th>
+          <th style="padding:6px 8px;border:1px solid #ddd;text-align:right;">Qty</th>
+          <th style="padding:6px 8px;border:1px solid #ddd;text-align:right;">Price</th>
+          <th style="padding:6px 8px;border:1px solid #ddd;text-align:right;">Total</th>
+        </tr></thead>
+        <tbody>${itemRows}</tbody>
+      </table>
+      <p><strong>Subtotal:</strong> $${(data.subtotal || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}<br/>
+      ${data.tax > 0 ? `<strong>Tax:</strong> $${data.tax.toLocaleString(undefined, { minimumFractionDigits: 2 })}<br/>` : ""}
+      ${data.o_and_p > 0 ? `<strong>O&amp;P:</strong> $${data.o_and_p.toLocaleString(undefined, { minimumFractionDigits: 2 })}<br/>` : ""}
+      <strong>Total:</strong> $${(data.total || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
+      <p style="font-size:18px;font-weight:bold;">Amount Due: $${(data.amount_due || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
+      ${data.payment_link ? `<p><a href="${data.payment_link}" style="background:#2563eb;color:white;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:bold;display:inline-block;">Pay Online</a></p>` : ""}
+      ${data.notes ? `<p><strong>Notes:</strong> ${data.notes}</p>` : ""}
+    `;
+
+    const subject = claimInfo.claim_number
+      ? `Claim #${claimInfo.claim_number} — Invoice ${data.invoice_number}`
+      : `Invoice ${data.invoice_number} — ${claimInfo.address}`;
+
+    // Send via backend email endpoint
+    try {
+      await fetch(`${BACKEND_URL}/api/supplement-email/send`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          claim_id: existing.claim_id,
+          user_id: userId,
+          to_email: recipient_email,
+          subject,
+          body_html: invoiceHtml,
+          email_type: "invoice",
+          attachment_paths: data.pdf_path ? [data.pdf_path] : undefined,
+        }),
+      });
+    } catch (emailErr) {
+      console.error("Invoice email send failed:", emailErr);
+    }
+  } else if (status === "sent") {
     await supabaseAdmin
       .from("claims")
       .update({ lifecycle_phase: "invoiced" })
