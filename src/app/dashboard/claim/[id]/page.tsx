@@ -443,6 +443,20 @@ export default function ClaimDetailPage() {
   const isUploaded = claim.status === "uploaded";
   const isReprocessingState = isProcessing || isUploaded;
   const integrity = claim.photo_integrity;
+  const isForensicOnly = claim.report_mode === "forensic_only";
+
+  const LockedCard = ({ title, description }: { title: string; description: string }) => (
+    <div className="glass-card p-6 text-center">
+      <div className="w-12 h-12 rounded-xl bg-white/5 flex items-center justify-center mx-auto mb-3">
+        <svg className="w-6 h-6 text-[var(--gray-dim)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
+        </svg>
+      </div>
+      <p className="text-sm font-semibold text-[var(--white)] mb-1">{title}</p>
+      <p className="text-xs text-[var(--gray-muted)] mb-3">{description}</p>
+      <p className="text-xs text-[var(--cyan)] font-semibold">Upload measurements to unlock this feature</p>
+    </div>
+  );
 
   return (
     <main className="min-h-screen">
@@ -792,17 +806,23 @@ export default function ClaimDetailPage() {
         )}
 
         {/* Scope Comparison — only when scope_comparison data exists */}
-        {isReady && claim.scope_comparison && (
+        {isReady && claim.scope_comparison && !isForensicOnly && (
           <ScopeComparison claimId={claim.id} carrierName={claim.carrier} />
+        )}
+        {isReady && isForensicOnly && (
+          <LockedCard title="Line-by-Line Carrier Comparison" description="Compare your scope against the carrier's to find every underpayment and missing item." />
         )}
 
         {/* Estimate & Damage Assessment */}
-        {isReady && (
+        {isReady && !isForensicOnly && (
           <EstimateView claimId={claim.id} />
+        )}
+        {isReady && isForensicOnly && (
+          <LockedCard title="Code-Cited Estimate" description="Every line item backed by building codes, photo evidence, and regional Xactimate pricing." />
         )}
 
         {/* Supplement Composer — only for post-scope claims with comparison data */}
-        {isReady && claim.scope_comparison && (
+        {isReady && claim.scope_comparison && !isForensicOnly && (
           <SupplementComposer
             claimId={claim.id}
             claimAddress={claim.address}
@@ -1030,7 +1050,7 @@ export default function ClaimDetailPage() {
         )}
 
         {/* Install Supplements — items discovered during installation */}
-        {isReady && (
+        {isReady && !isForensicOnly && (
           <InstallSupplementBuilder
             claimId={claim.id}
             claimAddress={claim.address}
@@ -1040,9 +1060,12 @@ export default function ClaimDetailPage() {
             claimNumber={claim.claim_number || ""}
           />
         )}
+        {isReady && isForensicOnly && (
+          <LockedCard title="Install Supplement Documentation" description="Document items discovered during installation — plywood, extra layers, hidden damage." />
+        )}
 
         {/* Certificate of Completion */}
-        {isReady && (
+        {isReady && !isForensicOnly && (
           <CocBuilder
             claimId={claim.id}
             claimAddress={claim.address}
@@ -1052,15 +1075,21 @@ export default function ClaimDetailPage() {
             claimNumber={claim.claim_number || ""}
           />
         )}
+        {isReady && isForensicOnly && (
+          <LockedCard title="Certificate of Substantial Completion" description="Generate and send completion documents with embedded photos." />
+        )}
 
         {/* Invoicing */}
-        {isReady && (
+        {isReady && !isForensicOnly && (
           <InvoiceBuilder
             claimId={claim.id}
             claimAddress={claim.address}
             carrierName={claim.carrier}
             userId={currentUserId}
           />
+        )}
+        {isReady && isForensicOnly && (
+          <LockedCard title="Invoice Builder" description="Generate and send invoices with Stripe payment links." />
         )}
 
         {/* Error state */}

@@ -3473,6 +3473,11 @@ async def process_claim(claim_id: str):
     if not claim:
         raise ValueError(f"Claim {claim_id} not found")
 
+    # Check report mode — forensic_only skips measurements, line items, estimate
+    report_mode = claim.get("report_mode", "full")
+    if report_mode == "forensic_only":
+        print(f"[PROCESS] FORENSIC ONLY mode — skipping measurements, line items, scope comparison", flush=True)
+
     # Detect if this is a REVISION (claim was already processed before)
     is_revision = bool(claim.get("output_files"))
     previous_carrier_data = None
@@ -3752,6 +3757,9 @@ async def process_claim(claim_id: str):
         _default_integrity = {"total": 0, "flagged": 0, "score": "N/A", "summary": "", "findings": []}
 
         async def _get_measurements():
+            # Forensic-only mode: skip measurements entirely
+            if report_mode == "forensic_only":
+                return {}
             # Check for measurement override (e.g., pre-pitch EagleView reports with manually calculated areas)
             meas_override = claim.get("measurement_override")
             if meas_override:
@@ -3886,8 +3894,17 @@ async def process_claim(claim_id: str):
             photo_integrity=photo_integrity,
         )
 
+        # Forensic-only: clear line items and scope data (keep forensic narrative)
+        if report_mode == "forensic_only":
+            config["line_items"] = []
+            config["carrier"] = config.get("carrier", {})
+            if "carrier_line_items" in config.get("carrier", {}):
+                config["carrier"]["carrier_line_items"] = []
+            print("[PROCESS] forensic_only: cleared line items + carrier data", flush=True)
+
         # 9a. Attach evidence photos to carrier line items for PDF scope comparison
-        attach_evidence_photos(config, sb, claim_id)
+        if report_mode != "forensic_only":
+            attach_evidence_photos(config, sb, claim_id)
 
         # 9b. excluded_line_items is a FRONTEND display concern only.
         # The processor always generates ALL items. The dashboard hides excluded items.
@@ -4396,7 +4413,13 @@ async def process_claim(claim_id: str):
         # 10b. Generate PDFs (quality gate passed)
         print(f"[PROCESS] Generating PDFs...")
         pdfs = generate_pdfs(config, work_dir)
-        print(f"[PROCESS] Generated {len(pdfs)} PDFs")
+
+        # Forensic-only: keep only the forensic causation report (01_*)
+        if report_mode == "forensic_only":
+            pdfs = [p for p in pdfs if os.path.basename(p).startswith("01_")]
+            print(f"[PROCESS] forensic_only: filtered to {len(pdfs)} PDFs (doc 01 only)")
+        else:
+            print(f"[PROCESS] Generated {len(pdfs)} PDFs")
 
         # 11. Upload PDFs to Supabase Storage
         uploaded_pdfs = []

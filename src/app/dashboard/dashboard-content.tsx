@@ -347,7 +347,13 @@ export function DashboardContent({ user }: { user: User }) {
               )}
             </div>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
+            <a
+              href="/dashboard/quick-report"
+              className="bg-[var(--cyan)]/10 hover:bg-[var(--cyan)]/20 border border-[var(--cyan)]/30 text-[var(--cyan)] px-4 py-3 rounded-xl font-semibold transition-colors text-sm"
+            >
+              Quick Report
+            </a>
             <a
               href="/dashboard/new-repair"
               className="bg-gradient-to-r from-[var(--pink)] via-[var(--purple)] to-[var(--blue)] hover:shadow-[var(--shadow-glow-pink)] text-white px-5 py-3 rounded-xl font-semibold transition-colors text-sm"

@@ -63,6 +63,8 @@ export interface Claim {
   trade_count?: number | null;
   // Line item corrections
   excluded_line_items?: string[] | null;
+  // Report mode (full = 5-doc package, forensic_only = quick forensic report)
+  report_mode?: string | null;
   // Lifecycle (install → complete → invoice → paid)
   lifecycle_phase?: string | null;
   install_supplement_total?: number | null;
