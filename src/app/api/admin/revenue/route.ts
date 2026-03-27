@@ -86,9 +86,10 @@ export async function GET() {
       // Outstanding = sent but not paid
       if (status === "sent" || status === "pending" || status === "overdue") {
         const sentDate = inv.sent_at || inv.created_at;
-        const daysSinceSent = Math.floor(
-          (now - new Date(String(sentDate)).getTime()) / 86400000
-        );
+        if (!sentDate) continue;
+        const parsedDate = new Date(String(sentDate)).getTime();
+        if (isNaN(parsedDate)) continue;
+        const daysSinceSent = Math.floor((now - parsedDate) / 86400000);
         const amount = Number(inv.amount_due) || 0;
 
         if (daysSinceSent <= 30) {

@@ -118,8 +118,17 @@ export async function GET() {
             )
           : 0;
 
-      // Average variance (contractor - carrier)
-      const avgVariance = avgContractorRcv - avgCarrierRcv;
+      // Average variance per claim (contractor - carrier, using paired data)
+      const pairedVariances = carrierClaims
+        .map((c) => {
+          const contractor = Number(c.contractor_rcv) || 0;
+          const carrier = Number(c.original_carrier_rcv) || 0;
+          return contractor > 0 && carrier > 0 ? contractor - carrier : null;
+        })
+        .filter((v): v is number => v !== null);
+      const avgVariance = pairedVariances.length > 0
+        ? Math.round(pairedVariances.reduce((a, b) => a + b, 0) / pairedVariances.length)
+        : 0;
 
       // Total movement (settlement - original for won claims)
       const totalMovement = carrierClaims

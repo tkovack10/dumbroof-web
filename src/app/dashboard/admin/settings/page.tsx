@@ -355,6 +355,7 @@ export default function AdminSettingsPage() {
         setLogoPath(uploadPath);
       }
 
+      setLogoFile(null);
       flashSaved(setLogoSaved);
     } catch (err) {
       console.error("Logo upload failed:", err);
@@ -366,6 +367,10 @@ export default function AdminSettingsPage() {
   const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      // Revoke old blob URL to prevent memory leak
+      if (logoPreview && logoPreview.startsWith("blob:")) {
+        URL.revokeObjectURL(logoPreview);
+      }
       setLogoFile(file);
       setLogoPreview(URL.createObjectURL(file));
     }

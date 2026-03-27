@@ -117,9 +117,9 @@ export async function GET() {
 
       const wins = repClaims.filter((c) => c.claim_outcome === "won").length;
 
-      // Win rate: wins / (claims with terminal status)
+      // Win rate: wins / (claims that have been processed)
       const terminalClaims = repClaims.filter(
-        (c) => c.status === "ready" || c.claim_outcome === "won"
+        (c) => c.status === "ready" || c.status === "needs_improvement" || c.claim_outcome === "won"
       ).length;
       const winRate = terminalClaims > 0 ? Math.round((wins / terminalClaims) * 100) : 0;
 
