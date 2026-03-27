@@ -12,6 +12,7 @@ import { SignatureManager } from "@/components/signature-manager";
 import { InstallSupplementBuilder } from "@/components/install-supplement-builder";
 import { CocBuilder } from "@/components/coc-builder";
 import { InvoiceBuilder } from "@/components/invoice-builder";
+import { SendDocumentsBlock } from "@/components/send-documents-block";
 import type { ScopeComparisonRow } from "@/types/scope-comparison";
 
 import type { Claim } from "@/types/claim";
@@ -774,13 +775,13 @@ export default function ClaimDetailPage() {
           </div>
         )}
 
-        {/* Output Files */}
+        {/* Output Files + Send */}
         {isReady && (
           <div className="glass-card p-6">
             <h2 className="text-sm font-semibold text-[var(--white)] mb-4">
               Generated Documents
             </h2>
-            <div className="grid sm:grid-cols-2 gap-3">
+            <div className="grid sm:grid-cols-2 gap-3 mb-4">
               {claim.output_files!.map((file) => (
                 <button
                   key={file}
@@ -807,6 +808,17 @@ export default function ClaimDetailPage() {
                 </button>
               ))}
             </div>
+
+            {/* Send Documents via Email */}
+            <SendDocumentsBlock
+              claimId={claim.id}
+              claimAddress={claim.address}
+              claimNumber={claim.claim_number || ""}
+              adjusterEmail={claim.adjuster_email || ""}
+              carrierName={claim.carrier || ""}
+              filePath={claim.file_path}
+              outputFiles={claim.output_files!}
+            />
           </div>
         )}
 
