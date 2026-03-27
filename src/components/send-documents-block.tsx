@@ -41,7 +41,7 @@ export function SendDocumentsBlock({ claimId, claimAddress, claimNumber, adjuste
     setSent(false);
 
     const selected = Array.from(selectedFiles);
-    const attachmentPaths = selected.map((f) => `${filePath}/pdfoutput/${f}`);
+    const attachmentPaths = selected.map((f) => `${filePath}/output/${f}`);
 
     const docNames = selected.map(friendlyName).join(", ");
 
