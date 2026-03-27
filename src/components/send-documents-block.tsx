@@ -14,32 +14,48 @@ interface Props {
   outputFiles: string[];
 }
 
+function friendlyName(file: string): string {
+  return file.replace(/_/g, " ").replace(".pdf", "").replace(/^\d+\s*/, "");
+}
+
 export function SendDocumentsBlock({ claimId, claimAddress, claimNumber, adjusterEmail, carrierName, filePath, outputFiles }: Props) {
   const [showSend, setShowSend] = useState(false);
   const [recipientEmail, setRecipientEmail] = useState("");
   const [recipientType, setRecipientType] = useState<"carrier" | "homeowner">("carrier");
+  const [selectedFiles, setSelectedFiles] = useState<Set<string>>(new Set());
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
 
+  const toggleFile = (file: string) => {
+    setSelectedFiles((prev) => {
+      const next = new Set(prev);
+      if (next.has(file)) next.delete(file);
+      else next.add(file);
+      return next;
+    });
+  };
+
   const handleSend = async () => {
-    if (!recipientEmail) return;
+    if (!recipientEmail || selectedFiles.size === 0) return;
     setSending(true);
     setSent(false);
 
-    // Build attachment paths from output files
-    const attachmentPaths = outputFiles.map((f) => `${filePath}/pdfoutput/${f}`);
+    const selected = Array.from(selectedFiles);
+    const attachmentPaths = selected.map((f) => `${filePath}/pdfoutput/${f}`);
+
+    const docNames = selected.map(friendlyName).join(", ");
 
     const subject = claimNumber
-      ? `Claim #${claimNumber} — ${recipientType === "carrier" ? "Inspection Report Package" : "Your Roof Inspection Report"}`
-      : `${recipientType === "carrier" ? "Inspection Report Package" : "Your Roof Inspection Report"} — ${claimAddress}`;
+      ? `Claim #${claimNumber}`
+      : `Inspection Report — ${claimAddress}`;
 
     const bodyHtml = recipientType === "carrier"
-      ? `<p>Please find attached the inspection report package for the property at <strong>${claimAddress}</strong>.</p>
-         <p>${outputFiles.length} document${outputFiles.length !== 1 ? "s" : ""} attached including forensic causation report${outputFiles.length > 1 ? ", estimate, and supporting documentation" : ""}.</p>
+      ? `<p>Please find the attached documentation for the property at <strong>${claimAddress}</strong>.</p>
+         <p>Attached: ${docNames}.</p>
          <p>Please review at your earliest convenience.</p>`
       : `<p>Thank you for allowing us to inspect your property at <strong>${claimAddress}</strong>.</p>
-         <p>Attached you will find ${outputFiles.length > 1 ? "your complete inspection report package" : "your forensic inspection report"}, which documents the findings from our inspection.</p>
-         <p>Please don&apos;t hesitate to reach out if you have any questions.</p>`;
+         <p>Attached you will find: ${docNames}.</p>
+         <p>Please don't hesitate to reach out if you have any questions.</p>`;
 
     try {
       await fetch(`${BACKEND_URL}/api/supplement-email/send`, {
@@ -67,6 +83,7 @@ export function SendDocumentsBlock({ claimId, claimAddress, claimNumber, adjuste
           onClick={() => {
             setShowSend(true);
             setRecipientEmail(adjusterEmail);
+            setSelectedFiles(new Set());
           }}
           className="flex items-center gap-2 text-sm text-[var(--cyan)] font-semibold hover:text-white transition-colors"
         >
@@ -103,6 +120,36 @@ export function SendDocumentsBlock({ claimId, claimAddress, claimNumber, adjuste
             </button>
           </div>
 
+          {/* Document selection */}
+          <div>
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-[var(--gray-muted)] mb-2">
+              Select documents to send
+            </p>
+            <div className="space-y-1.5">
+              {outputFiles.map((file) => (
+                <label
+                  key={file}
+                  className={`flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer transition-colors ${
+                    selectedFiles.has(file)
+                      ? "bg-[var(--cyan)]/[0.08] border border-[var(--cyan)]/20"
+                      : "bg-white/[0.03] border border-white/[0.06] hover:bg-white/[0.06]"
+                  }`}
+                >
+                  <input
+                    type="checkbox"
+                    checked={selectedFiles.has(file)}
+                    onChange={() => toggleFile(file)}
+                    className="w-4 h-4 rounded border-white/20 text-[var(--cyan)] focus:ring-[var(--cyan)] bg-white/5"
+                  />
+                  <svg className="w-4 h-4 text-[var(--gray-dim)] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
+                  </svg>
+                  <span className="text-sm text-[var(--gray)] font-medium">{friendlyName(file)}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+
           {/* Email input + send */}
           <div className="flex flex-col sm:flex-row gap-2">
             <input
@@ -113,10 +160,10 @@ export function SendDocumentsBlock({ claimId, claimAddress, claimNumber, adjuste
             />
             <button
               onClick={handleSend}
-              disabled={!recipientEmail || sending}
+              disabled={!recipientEmail || selectedFiles.size === 0 || sending}
               className="px-4 py-2 rounded-lg bg-[var(--cyan)]/10 text-[var(--cyan)] text-sm font-semibold hover:bg-[var(--cyan)]/20 transition-colors disabled:opacity-30 disabled:cursor-not-allowed whitespace-nowrap"
             >
-              {sending ? "Sending..." : `Send ${outputFiles.length} Document${outputFiles.length !== 1 ? "s" : ""}`}
+              {sending ? "Sending..." : `Send ${selectedFiles.size} Document${selectedFiles.size !== 1 ? "s" : ""}`}
             </button>
             <button
               onClick={() => setShowSend(false)}
@@ -135,11 +182,6 @@ export function SendDocumentsBlock({ claimId, claimAddress, claimNumber, adjuste
               Documents sent to {recipientEmail}
             </p>
           )}
-
-          {/* What's being sent */}
-          <p className="text-[10px] text-[var(--gray-dim)]">
-            {outputFiles.length} PDF{outputFiles.length !== 1 ? "s" : ""} will be attached: {outputFiles.map(f => f.replace(/_/g, " ").replace(".pdf", "")).join(", ")}
-          </p>
         </div>
       )}
     </div>
