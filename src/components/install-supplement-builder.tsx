@@ -595,6 +595,7 @@ export function InstallSupplementBuilder({ claimId, claimAddress, carrierName, u
                       });
                     }
                     await fetchItems();
+                    setImportedPhotoPaths([]);
                   } catch {
                     /* ignore */
                   }
