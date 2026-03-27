@@ -14,6 +14,7 @@ interface Props {
   userId: string;
   filePath: string;
   claimNumber?: string;
+  adjusterEmail?: string;
 }
 
 interface CocRecord {
@@ -27,7 +28,7 @@ interface CocRecord {
   sent_at: string | null;
 }
 
-export function CocBuilder({ claimId, claimAddress, carrierName, userId, filePath, claimNumber }: Props) {
+export function CocBuilder({ claimId, claimAddress, carrierName, userId, filePath, claimNumber, adjusterEmail }: Props) {
   const [expanded, setExpanded] = useState(false);
   const [loading, setLoading] = useState(true);
   const [existing, setExisting] = useState<CocRecord | null>(null);
@@ -38,7 +39,7 @@ export function CocBuilder({ claimId, claimAddress, carrierName, userId, filePat
   const [pdfPath, setPdfPath] = useState<string | null>(null);
   const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
   const [sending, setSending] = useState<string | null>(null); // "carrier" | "homeowner" | null
-  const [sendEmail, setSendEmail] = useState("");
+  const [sendEmail, setSendEmail] = useState(adjusterEmail || "");
   const [sendCc, setSendCc] = useState("");
   const [sent, setSent] = useState<{ carrier: boolean; homeowner: boolean }>({ carrier: false, homeowner: false });
   const [completionPhotos, setCompletionPhotos] = useState<File[]>([]);

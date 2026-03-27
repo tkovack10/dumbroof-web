@@ -866,11 +866,11 @@ def _build_claim_brain_prompt(claim_data: dict, photos: list, scope_comparison: 
     phase = claim_data.get("phase", "unknown")
     homeowner = claim_data.get("homeowner_name", "Unknown")
     date_of_loss = claim_data.get("date_of_loss", "Unknown")
-    # Adjuster + claim number from previous_carrier_data
+    # Adjuster + claim number — prefer direct columns, fall back to previous_carrier_data
     prev_data = claim_data.get("previous_carrier_data") or {}
-    adjuster_name = prev_data.get("adjuster_name", "") if isinstance(prev_data, dict) else ""
-    adjuster_email = prev_data.get("adjuster_email", "") if isinstance(prev_data, dict) else ""
-    claim_number = prev_data.get("claim_number", "") if isinstance(prev_data, dict) else ""
+    adjuster_name = claim_data.get("adjuster_name") or (prev_data.get("adjuster_name", "") if isinstance(prev_data, dict) else "")
+    adjuster_email = claim_data.get("adjuster_email") or (prev_data.get("adjuster_email", "") if isinstance(prev_data, dict) else "")
+    claim_number = claim_data.get("claim_number") or (prev_data.get("claim_number", "") if isinstance(prev_data, dict) else "")
     # Also check carrier_arguments for these (sometimes nested differently)
     if not claim_number:
         carrier_items = prev_data.get("carrier_line_items", []) if isinstance(prev_data, dict) else []

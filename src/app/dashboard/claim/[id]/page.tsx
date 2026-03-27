@@ -1051,6 +1051,7 @@ export default function ClaimDetailPage() {
             userId={currentUserId}
             filePath={claim.file_path}
             claimNumber={claim.claim_number || ""}
+            adjusterEmail={claim.adjuster_email || ""}
           />
         )}
 
@@ -1063,6 +1064,7 @@ export default function ClaimDetailPage() {
             userId={currentUserId}
             filePath={claim.file_path}
             claimNumber={claim.claim_number || ""}
+            adjusterEmail={claim.adjuster_email || ""}
           />
         )}
         {isReady && isForensicOnly && (
@@ -1078,6 +1080,7 @@ export default function ClaimDetailPage() {
             userId={currentUserId}
             filePath={claim.file_path}
             claimNumber={claim.claim_number || ""}
+            adjusterEmail={claim.adjuster_email || ""}
           />
         )}
         {isReady && isForensicOnly && (

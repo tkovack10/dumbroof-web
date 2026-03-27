@@ -16,9 +16,10 @@ interface Props {
   userId: string;
   filePath: string;
   claimNumber?: string;
+  adjusterEmail?: string;
 }
 
-export function InstallSupplementBuilder({ claimId, claimAddress, carrierName, userId, filePath, claimNumber }: Props) {
+export function InstallSupplementBuilder({ claimId, claimAddress, carrierName, userId, filePath, claimNumber, adjusterEmail }: Props) {
   const [items, setItems] = useState<InstallSupplement[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -32,7 +33,7 @@ export function InstallSupplementBuilder({ claimId, claimAddress, carrierName, u
   const [customItem, setCustomItem] = useState({ description: "", category: "ROOFING", qty: "1", unit: "EA", unit_price: "", reason: "" });
   const [uploadingPhotos, setUploadingPhotos] = useState<string | null>(null);
   const [pendingFiles, setPendingFiles] = useState<Record<string, File[]>>({});
-  const [carrierEmail, setCarrierEmail] = useState("");
+  const [carrierEmail, setCarrierEmail] = useState(adjusterEmail || "");
   const [showCrmModal, setShowCrmModal] = useState(false);
   const [crmIntegrations, setCrmIntegrations] = useState<{ acculynx: boolean; companycam: boolean }>({ acculynx: false, companycam: false });
   const [claimNum, setClaimNum] = useState(claimNumber || "");

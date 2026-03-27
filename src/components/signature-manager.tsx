@@ -11,6 +11,7 @@ interface Props {
   userId: string;
   filePath: string;
   claimNumber?: string;
+  adjusterEmail?: string;
 }
 
 interface SignatureRecord {
@@ -32,7 +33,7 @@ const DOC_TYPE_LABELS: Record<string, string> = {
   contingency: "Contingency Agreement",
 };
 
-export function SignatureManager({ claimId, claimAddress, carrierName, userId, filePath, claimNumber }: Props) {
+export function SignatureManager({ claimId, claimAddress, carrierName, userId, filePath, claimNumber, adjusterEmail }: Props) {
   const [expanded, setExpanded] = useState(false);
   const [loading, setLoading] = useState(true);
   const [signatures, setSignatures] = useState<SignatureRecord[]>([]);
@@ -41,7 +42,7 @@ export function SignatureManager({ claimId, claimAddress, carrierName, userId, f
   const [homeownerEmail, setHomeownerEmail] = useState("");
   const [sending, setSending] = useState(false);
   const [signLink, setSignLink] = useState<string | null>(null);
-  const [carrierEmail, setCarrierEmail] = useState("");
+  const [carrierEmail, setCarrierEmail] = useState(adjusterEmail || "");
   const [notifying, setNotifying] = useState<string | null>(null);
   const [uploadMode, setUploadMode] = useState(false);
   const [signedPdfFile, setSignedPdfFile] = useState<File[]>([]);
