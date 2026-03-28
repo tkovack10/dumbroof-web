@@ -126,15 +126,21 @@ export default function AuthCallbackPage() {
     return (
       <main className="min-h-screen bg-[var(--bg-deep)] flex items-center justify-center px-6">
         <div className="w-full max-w-sm bg-white rounded-2xl p-8 shadow-xl text-center">
-          <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3 mb-6">
+          <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3 mb-4">
             {errorMsg}
           </div>
+          <p className="text-gray-600 text-sm mb-6">
+            If you already confirmed your email, you can sign in directly with your email and password.
+          </p>
           <a
             href="/login"
-            className="text-sm text-[var(--gray-muted)] hover:text-[var(--white)] transition-colors"
+            className="block w-full bg-gradient-to-r from-[var(--pink)] via-[var(--purple)] to-[var(--blue)] text-white py-3 rounded-lg font-semibold text-sm transition-shadow hover:shadow-[var(--shadow-glow-pink)] mb-3"
           >
-            Back to sign in
+            Go to Sign In
           </a>
+          <p className="text-gray-400 text-xs">
+            Links can only be used once. If your link expired, sign in and request a new one.
+          </p>
         </div>
       </main>
     );

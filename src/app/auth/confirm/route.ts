@@ -27,6 +27,6 @@ export async function GET(request: Request) {
   }
 
   return NextResponse.redirect(
-    `${origin}/login?error=${encodeURIComponent("Invalid or expired link. Please try again.")}`
+    `${origin}/login?error=${encodeURIComponent("This link is invalid or has already been used. If you already confirmed your email, sign in with your password.")}`
   );
 }
