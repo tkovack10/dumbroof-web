@@ -17,6 +17,7 @@ export default function NewClaimPage() {
   const [insuranceCarrier, setInsuranceCarrier] = useState("");
   const [measurementFiles, setMeasurementFiles] = useState<File[]>([]);
   const [photoFiles, setPhotoFiles] = useState<File[]>([]);
+  const [crmPhotoCount, setCrmPhotoCount] = useState(0);
   const [scopeFiles, setScopeFiles] = useState<File[]>([]);
   const [weatherFiles, setWeatherFiles] = useState<File[]>([]);
   const [userNotes, setUserNotes] = useState("");
@@ -65,7 +66,7 @@ export default function NewClaimPage() {
   const canSubmit =
     propertyAddress.trim() !== "" &&
     measurementFiles.length > 0 &&
-    photoFiles.length > 0 &&
+    (photoFiles.length > 0 || crmPhotoCount > 0) &&
     roofMaterial !== "" &&
     (quota === null || quota.allowed);
 
@@ -345,6 +346,7 @@ export default function NewClaimPage() {
             if (data.homeownerName) setHomeownerName(data.homeownerName);
             if (data.carrier) setInsuranceCarrier(data.carrier);
             if (data.importedPhotoCount > 0) {
+              setCrmPhotoCount(data.importedPhotoCount);
               setImportedPhotoNote(
                 `Imported ${data.importedPhotoCount} photos from CRM. They've been uploaded to storage and will be included in your claim.`
               );
@@ -826,7 +828,7 @@ export default function NewClaimPage() {
               {[
                 !propertyAddress.trim() && "property address",
                 measurementFiles.length === 0 && "measurements",
-                photoFiles.length === 0 && "inspection photos",
+                photoFiles.length === 0 && crmPhotoCount === 0 && "inspection photos",
                 !roofMaterial && "roof material",
               ]
                 .filter(Boolean)

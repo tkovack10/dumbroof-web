@@ -33,6 +33,7 @@ export default function QuickReportPage() {
   const [homeownerName, setHomeownerName] = useState("");
   const [insuranceCarrier, setInsuranceCarrier] = useState("");
   const [photoFiles, setPhotoFiles] = useState<File[]>([]);
+  const [crmPhotoCount, setCrmPhotoCount] = useState(0);
   const [dateOfLoss, setDateOfLoss] = useState("");
   const [roofMaterial, setRoofMaterial] = useState("");
   const [scanningStorms, setScanningStorms] = useState(false);
@@ -68,7 +69,7 @@ export default function QuickReportPage() {
 
   const canSubmit =
     propertyAddress.trim() !== "" &&
-    photoFiles.length > 0 &&
+    (photoFiles.length > 0 || crmPhotoCount > 0) &&
     roofMaterial !== "" &&
     dateOfLoss !== "" &&
     (quota === null || quota.allowed);
@@ -228,6 +229,7 @@ export default function QuickReportPage() {
             if (data.homeownerName) setHomeownerName(data.homeownerName);
             if (data.carrier) setInsuranceCarrier(data.carrier);
             if (data.importedPhotoCount > 0) {
+              setCrmPhotoCount(data.importedPhotoCount);
               setImportedPhotoNote(
                 `Imported ${data.importedPhotoCount} photos from CRM. They'll be included in your forensic report.`
               );
