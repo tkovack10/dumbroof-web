@@ -39,6 +39,7 @@ export default function QuickReportPage() {
   const [stormResults, setStormResults] = useState<
     Array<{ date: string; type: string; details: string }> | null
   >(null);
+  const [stormReason, setStormReason] = useState<string | null>(null);
   const [status, setStatus] = useState<UploadStatus>("idle");
   const [errorMsg, setErrorMsg] = useState("");
   const [uploadProgress, setUploadProgress] = useState("");
@@ -75,6 +76,7 @@ export default function QuickReportPage() {
   const scanForStorms = async () => {
     setScanningStorms(true);
     setStormResults(null);
+    setStormReason(null);
     try {
       const res = await fetch(`${BACKEND_URL}/api/noaa-scan`, {
         method: "POST",
@@ -83,8 +85,10 @@ export default function QuickReportPage() {
       });
       const data = await res.json();
       setStormResults(data.storms || []);
+      setStormReason(data.reason || null);
     } catch {
       setStormResults([]);
+      setStormReason("noaa_unavailable");
     } finally {
       setScanningStorms(false);
     }
@@ -298,7 +302,23 @@ export default function QuickReportPage() {
                 </div>
               )}
               {stormResults && stormResults.length === 0 && (
-                <p className="text-xs text-[var(--gray-dim)] mt-2">No recent storm events found for this address.</p>
+                <div className="text-xs mt-2">
+                  {stormReason === "geocode_failed" && (
+                    <p className="text-amber-400">Could not locate this address. Try adding city, state, and ZIP.</p>
+                  )}
+                  {stormReason === "county_failed" && (
+                    <p className="text-amber-400">Could not determine county for this address.</p>
+                  )}
+                  {stormReason === "noaa_unavailable" && (
+                    <div className="flex items-center gap-2">
+                      <p className="text-amber-400">NOAA weather database temporarily unavailable.</p>
+                      <button type="button" onClick={scanForStorms} className="text-[var(--cyan)] hover:underline font-medium">Try again</button>
+                    </div>
+                  )}
+                  {(stormReason === "no_events" || !stormReason) && (
+                    <p className="text-[var(--gray-dim)]">No recent storm events found in NOAA records for this area.</p>
+                  )}
+                </div>
               )}
             </div>
 

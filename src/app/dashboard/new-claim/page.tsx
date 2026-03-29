@@ -30,6 +30,7 @@ export default function NewClaimPage() {
   const [stormResults, setStormResults] = useState<
     Array<{ date: string; type: string; details: string }> | null
   >(null);
+  const [stormReason, setStormReason] = useState<string | null>(null);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [status, setStatus] = useState<UploadStatus>("idle");
   const [errorMsg, setErrorMsg] = useState("");
@@ -71,6 +72,7 @@ export default function NewClaimPage() {
   const scanForStorms = async () => {
     setScanningStorms(true);
     setStormResults(null);
+    setStormReason(null);
     try {
       const res = await fetch(`${BACKEND_URL}/api/noaa-scan`, {
         method: "POST",
@@ -79,9 +81,11 @@ export default function NewClaimPage() {
       });
       const data = await res.json();
       setStormResults(data.storms || []);
+      setStormReason(data.reason || null);
     } catch (err) {
       console.error("Storm scan failed:", err);
       setStormResults([]);
+      setStormReason("noaa_unavailable");
     } finally {
       setScanningStorms(false);
     }
@@ -510,9 +514,23 @@ export default function NewClaimPage() {
               Enter the storm date, or click &quot;Scan for storms&quot; to find recent events near this address.
             </p>
             {stormResults !== null && stormResults.length === 0 && !scanningStorms && (
-              <p className="text-xs text-[var(--gray-muted)] mt-2 bg-white/[0.04] rounded-lg px-3 py-2">
-                No recent storm events found in NOAA records for this area.
-              </p>
+              <div className="text-xs mt-2 bg-white/[0.04] rounded-lg px-3 py-2">
+                {stormReason === "geocode_failed" && (
+                  <p className="text-amber-400">Could not locate this address. Try adding city, state, and ZIP.</p>
+                )}
+                {stormReason === "county_failed" && (
+                  <p className="text-amber-400">Could not determine county for this address.</p>
+                )}
+                {stormReason === "noaa_unavailable" && (
+                  <div className="flex items-center gap-2">
+                    <p className="text-amber-400">NOAA weather database temporarily unavailable.</p>
+                    <button type="button" onClick={scanForStorms} className="text-[var(--cyan)] hover:underline font-medium">Try again</button>
+                  </div>
+                )}
+                {(stormReason === "no_events" || !stormReason) && (
+                  <p className="text-[var(--gray-muted)]">No recent storm events found in NOAA records for this area.</p>
+                )}
+              </div>
             )}
             {stormResults && stormResults.length > 0 && (
               <div className="mt-2 space-y-1">

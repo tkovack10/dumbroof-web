@@ -440,21 +440,23 @@ async def noaa_scan(request: Request):
     body = await request.json()
     address = body.get("address", "")
     if not address:
-        return JSONResponse({"storms": [], "error": "No address provided"})
+        return JSONResponse({"storms": [], "reason": "no_address"})
 
     try:
         from noaa_weather.geocode import geocode_address
         from noaa_weather.api import NOAAClient, _lookup_county_fips
         from datetime import datetime, timedelta
-        import csv, io, urllib.parse
+        import csv, io, urllib.parse, time
 
         geo = geocode_address(address)
         if not geo:
-            return JSONResponse({"storms": [], "error": "Could not geocode address"})
+            print(f"[NOAA-SCAN] Geocode failed for: {address}")
+            return JSONResponse({"storms": [], "reason": "geocode_failed"})
 
         state_fips, county_fips, county_name = _lookup_county_fips(geo.latitude, geo.longitude)
         if not state_fips or not county_fips:
-            return JSONResponse({"storms": [], "error": "Could not determine county"})
+            print(f"[NOAA-SCAN] County FIPS lookup failed for ({geo.latitude}, {geo.longitude})")
+            return JSONResponse({"storms": [], "reason": "county_failed"})
 
         # Query last 18 months
         end = datetime.now()
@@ -487,11 +489,26 @@ async def noaa_scan(request: Request):
             query_parts.append(f"eventType={urllib.parse.quote(evt_type, safe='+')}")
 
         url = f"https://www.ncei.noaa.gov/stormevents/csv?{'&'.join(query_parts)}"
-        print(f"[NOAA-SCAN] Querying: {url}")
+        print(f"[NOAA-SCAN] Querying {county_clean} County: {url}")
 
-        content = _fetch_url(url)
-        if not content or "EVENT_ID" not in content.split("\n")[0]:
-            return JSONResponse({"storms": [], "note": "No NOAA data available for this area"})
+        # Retry once — NOAA Storm Events endpoint is intermittent
+        content = None
+        for attempt in range(2):
+            try:
+                content = _fetch_url(url)
+                if content and "EVENT_ID" in content.split("\n")[0]:
+                    break
+                print(f"[NOAA-SCAN] Attempt {attempt+1}: got non-CSV response ({len(content or '')} bytes), retrying...")
+                content = None
+            except Exception as fetch_err:
+                print(f"[NOAA-SCAN] Attempt {attempt+1} fetch failed: {fetch_err}")
+                content = None
+            if attempt == 0:
+                time.sleep(2)
+
+        if not content:
+            print(f"[NOAA-SCAN] NOAA unavailable after 2 attempts for {county_clean} County")
+            return JSONResponse({"storms": [], "reason": "noaa_unavailable"})
 
         reader = csv.DictReader(io.StringIO(content))
         storms = []
@@ -513,12 +530,13 @@ async def noaa_scan(request: Request):
 
         # Sort by date descending (most recent first)
         storms.sort(key=lambda s: s["date"], reverse=True)
-        return JSONResponse({"storms": storms[:15]})
+        reason = "no_events" if not storms else None
+        return JSONResponse({"storms": storms[:15], "reason": reason})
     except Exception as e:
         import traceback
         traceback.print_exc()
         print(f"[NOAA-SCAN] Error: {e}")
-        return JSONResponse({"storms": [], "error": str(e)})
+        return JSONResponse({"storms": [], "reason": "noaa_unavailable"})
 
 
 # ===================================================================
