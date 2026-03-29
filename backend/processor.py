@@ -3932,7 +3932,41 @@ async def process_claim(claim_id: str):
                     pass
             print("[PROCESS] forensic_only: cleared carrier data, zeroed RCV, ensured city/zip/line_items", flush=True)
 
-        # 9a. Attach evidence photos to carrier line items for PDF scope comparison
+        # 9a. Geocode fallback: if ZIP is still missing, resolve via Census Bureau geocoder
+        prop = config.get("property", {})
+        if not prop.get("zip"):
+            try:
+                from noaa_weather.geocode import geocode_address
+                geo = geocode_address(claim.get("address", ""))
+                if geo and geo.matched_address:
+                    # Census returns "8 ABERYSTWYTH PL, BINGHAMTON, NY, 13905"
+                    geo_parts = [p.strip() for p in geo.matched_address.split(",")]
+                    for gp in geo_parts:
+                        gp_clean = gp.strip()
+                        if gp_clean.isdigit() and len(gp_clean) == 5:
+                            prop["zip"] = gp_clean
+                            break
+                        gp_tokens = gp_clean.split()
+                        for token in gp_tokens:
+                            if token.isdigit() and len(token) == 5:
+                                prop["zip"] = token
+                                break
+                        if prop.get("zip"):
+                            break
+                    if not prop.get("city") and len(geo_parts) >= 3:
+                        prop["city"] = geo_parts[-3].strip()
+                    if not prop.get("state"):
+                        for gp in geo_parts:
+                            gp_clean = gp.strip()
+                            if len(gp_clean) == 2 and gp_clean.isalpha():
+                                prop["state"] = gp_clean.upper()
+                                break
+                    config["property"] = prop
+                    print(f"[PROCESS] geocode fallback: zip={prop.get('zip')}, city={prop.get('city')}, state={prop.get('state')} from '{geo.matched_address}'", flush=True)
+            except Exception as geo_err:
+                print(f"[PROCESS] geocode fallback failed (non-fatal): {geo_err}", flush=True)
+
+        # 9b. Attach evidence photos to carrier line items for PDF scope comparison
         if report_mode != "forensic_only":
             attach_evidence_photos(config, sb, claim_id)
 
