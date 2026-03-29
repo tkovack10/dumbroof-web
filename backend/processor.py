@@ -4507,10 +4507,15 @@ async def process_claim(claim_id: str):
         update_data["processing_warnings"] = config.get("warnings", [])
 
         # Store contractor RCV (our scope total) for dashboard display
-        _financials = compute_financials(config)
-        contractor_rcv = _financials.get("total", 0)
-        if contractor_rcv:
-            update_data["contractor_rcv"] = round(contractor_rcv, 2)
+        # Forensic-only claims have no real estimate — force to 0
+        if report_mode == "forensic_only":
+            contractor_rcv = 0
+            update_data["contractor_rcv"] = 0
+        else:
+            _financials = compute_financials(config)
+            contractor_rcv = _financials.get("total", 0)
+            if contractor_rcv:
+                update_data["contractor_rcv"] = round(contractor_rcv, 2)
 
         # Store O&P + tax metadata for frontend financial display
         _o_and_p = config.get("scope", {}).get("o_and_p", False)
