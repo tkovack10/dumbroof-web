@@ -16,6 +16,7 @@ interface CrmImportModalProps {
     homeownerName?: string;
     carrier?: string;
     importedPhotoCount: number;
+    slug?: string;
   }) => void;
 }
 
@@ -210,6 +211,7 @@ export function CrmImportModal({
         homeownerName: data.homeowner || "",
         carrier: data.carrier || "",
         importedPhotoCount: data.photo_count || 0,
+        slug: newSlug,
       });
 
       if (onPhotoPaths && data.paths) {
@@ -267,6 +269,7 @@ export function CrmImportModal({
       onImport({
         address: projectAddr || selectedProject.name || "",
         importedPhotoCount: data.count || 0,
+        slug: newSlug,
       });
 
       setTimeout(() => onClose(), 1000);

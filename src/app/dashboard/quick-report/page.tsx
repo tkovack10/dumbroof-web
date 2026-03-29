@@ -34,6 +34,7 @@ export default function QuickReportPage() {
   const [insuranceCarrier, setInsuranceCarrier] = useState("");
   const [photoFiles, setPhotoFiles] = useState<File[]>([]);
   const [crmPhotoCount, setCrmPhotoCount] = useState(0);
+  const [crmSlug, setCrmSlug] = useState("");
   const [dateOfLoss, setDateOfLoss] = useState("");
   const [roofMaterial, setRoofMaterial] = useState("");
   const [scanningStorms, setScanningStorms] = useState(false);
@@ -107,19 +108,25 @@ export default function QuickReportPage() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Not authenticated");
 
-      const slug =
-        propertyAddress
+      // Reuse CRM slug if photos were imported, otherwise generate new
+      const slug = crmSlug ||
+        (propertyAddress
           .toLowerCase()
           .replace(/[^a-z0-9]+/g, "-")
           .replace(/^-|-$/g, "") +
-        `-${Date.now()}`;
+        `-${Date.now()}`);
       const claimPath = `${user.id}/${slug}`;
 
-      setUploadProgress("Uploading photos...");
-      const pResult = await uploadFilesBatched(supabase, photoFiles, "photos", claimPath, {
-        concurrency: 3,
-        onProgress: (done, total) => setUploadProgress(`Uploading photos... ${done}/${total}`),
-      });
+      // Upload manual photos (skip if only CRM photos)
+      let uploadedPhotoNames: string[] = [];
+      if (photoFiles.length > 0) {
+        setUploadProgress("Uploading photos...");
+        const pResult = await uploadFilesBatched(supabase, photoFiles, "photos", claimPath, {
+          concurrency: 3,
+          onProgress: (done, total) => setUploadProgress(`Uploading photos... ${done}/${total}`),
+        });
+        uploadedPhotoNames = pResult.uploaded;
+      }
 
       const { error: dbError } = await supabase.from("claims").insert({
         user_id: user.id,
@@ -131,7 +138,7 @@ export default function QuickReportPage() {
         status: "uploaded",
         file_path: claimPath,
         measurement_files: [],
-        photo_files: pResult.uploaded,
+        photo_files: uploadedPhotoNames,
         scope_files: [],
         weather_files: [],
         date_of_loss: dateOfLoss,
@@ -230,6 +237,7 @@ export default function QuickReportPage() {
             if (data.carrier) setInsuranceCarrier(data.carrier);
             if (data.importedPhotoCount > 0) {
               setCrmPhotoCount(data.importedPhotoCount);
+              if (data.slug) setCrmSlug(data.slug);
               setImportedPhotoNote(
                 `Imported ${data.importedPhotoCount} photos from CRM. They'll be included in your forensic report.`
               );

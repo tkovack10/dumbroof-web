@@ -18,6 +18,7 @@ export default function NewClaimPage() {
   const [measurementFiles, setMeasurementFiles] = useState<File[]>([]);
   const [photoFiles, setPhotoFiles] = useState<File[]>([]);
   const [crmPhotoCount, setCrmPhotoCount] = useState(0);
+  const [crmSlug, setCrmSlug] = useState("");
   const [scopeFiles, setScopeFiles] = useState<File[]>([]);
   const [weatherFiles, setWeatherFiles] = useState<File[]>([]);
   const [userNotes, setUserNotes] = useState("");
@@ -106,13 +107,13 @@ export default function NewClaimPage() {
       } = await supabase.auth.getUser();
       if (!user) throw new Error("Not authenticated");
 
-      // Create a slug from the address — append timestamp to prevent collisions
-      const slug =
-        propertyAddress
+      // Reuse CRM slug if photos were imported, otherwise generate new
+      const slug = crmSlug ||
+        (propertyAddress
           .toLowerCase()
           .replace(/[^a-z0-9]+/g, "-")
           .replace(/^-|-$/g, "") +
-        `-${Date.now()}`;
+        `-${Date.now()}`);
       const claimPath = `${user.id}/${slug}`;
 
       // Upload all file categories with concurrent batching
@@ -347,6 +348,7 @@ export default function NewClaimPage() {
             if (data.carrier) setInsuranceCarrier(data.carrier);
             if (data.importedPhotoCount > 0) {
               setCrmPhotoCount(data.importedPhotoCount);
+              if (data.slug) setCrmSlug(data.slug);
               setImportedPhotoNote(
                 `Imported ${data.importedPhotoCount} photos from CRM. They've been uploaded to storage and will be included in your claim.`
               );
