@@ -1700,7 +1700,9 @@ def build_claim_config(
     prop = measurements.get("property", {})
     structs = measurements.get("structures", [{}])
     meas = measurements.get("measurements", {})
-    phase = "post-scope" if carrier_data else "pre-scope"
+    phase = "post-scope" if (carrier_data and carrier_data.get("carrier_line_items")) else "pre-scope"
+    if carrier_data and not carrier_data.get("carrier_line_items"):
+        print(f"[PROCESS] WARNING: Scope files uploaded but carrier extraction found 0 line items — falling back to pre-scope", flush=True)
 
     # Determine trades and O&P — siding/gutters are opt-in via estimate_request
     # O&P is VALIDATED later against actual line items (Phase 1 fix)
@@ -2237,7 +2239,7 @@ def _detect_roof_material(photo_analysis: dict, user_notes: str = "",
         material_map = {
             "3-Tab": "3tab",
             "Laminate Comp Shingle": "laminated",
-            "Premium Grade Laminate Comp Shingle": "laminated",
+            "Premium Grade Laminate Comp Shingle": "laminated_premium",
             "Slate": "slate",
             "Standing Seam Metal": "metal_standing_seam",
             "Tile": "tile",
@@ -2835,6 +2837,29 @@ def build_line_items(measurements: dict, photo_analysis: dict, state: str, user_
             penetrations[comp_key] = photo_count
             print(f"[DAMAGE BRIDGE] {comp_key}: EagleView=0, photos={photo_count} → using photo evidence")
 
+    # USER NOTES → SCOPE BRIDGE: Parse explicit component counts from user notes
+    # e.g., "7 skylights", "2 chimneys", "3 pipe boots"
+    if user_notes:
+        import re
+        _NOTES_COMPONENT_PATTERNS = {
+            r'(\d+)\s*skylight': "skylights",
+            r'(\d+)\s*chimney': "chimneys",
+            r'(\d+)\s*chimneys': "chimneys",
+            r'(\d+)\s*pipe': "pipes",
+            r'(\d+)\s*vent': "vents",
+            r'(\d+)\s*dormer': "dormers",
+            r'(\d+)\s*satellite': "satellite_dishes",
+        }
+        notes_lower = user_notes.lower()
+        for pattern, comp_key in _NOTES_COMPONENT_PATTERNS.items():
+            match = re.search(pattern, notes_lower)
+            if match:
+                count = int(match.group(1))
+                current = penetrations.get(comp_key, 0)
+                if count > current:
+                    penetrations[comp_key] = count
+                    print(f"[NOTES BRIDGE] {comp_key}: user_notes={count} (was {current}) → using user-specified count")
+
     material = _detect_roof_material(photo_analysis, user_notes, estimate_request=estimate_request)
 
     # Pitch correction: pre-pitch EagleView reports give 2D (flat) area at 0/12.
@@ -2926,6 +2951,10 @@ def build_line_items(measurements: dict, photo_analysis: dict, state: str, user_
         items.append({"category": "ROOFING", "description": "Remove metal roofing - standing seam", "qty": area_sq, "unit": "SQ", "unit_price": PRICING.get("metal_remove", 150.00)})
         items.append({"category": "ROOFING", "description": "Metal roofing - standing seam", "qty": install_sq, "unit": "SQ", "unit_price": PRICING.get("metal_install", 850.00)})
         items.append({"category": "ROOFING", "description": "Underlayment - felt 15# (deck area not covered by I&W)", "qty": felt_sq, "unit": "SQ", "unit_price": PRICING.get("metal_underlayment", 32.00)})
+    elif material == "laminated_premium":
+        items.append({"category": "ROOFING", "description": "Remove laminated comp shingle roofing", "qty": area_sq, "unit": "SQ", "unit_price": PRICING.get("laminated_remove", 74.00)})
+        items.append({"category": "ROOFING", "description": "Laminated - High grd - comp. shingle rfg. - w/out felt", "qty": install_sq, "unit": "SQ", "unit_price": PRICING.get("laminated_premium_install", 337.78)})
+        items.append({"category": "ROOFING", "description": "Underlayment - felt 15# (deck area not covered by I&W)", "qty": felt_sq, "unit": "SQ", "unit_price": PRICING.get("laminated_underlayment", 32.00)})
     elif material == "laminated":
         items.append({"category": "ROOFING", "description": "Remove laminated comp shingle roofing", "qty": area_sq, "unit": "SQ", "unit_price": PRICING.get("laminated_remove", 74.00)})
         items.append({"category": "ROOFING", "description": "Laminated comp shingle roofing - w/out felt", "qty": install_sq, "unit": "SQ", "unit_price": PRICING.get("laminated_install", 320.00)})
