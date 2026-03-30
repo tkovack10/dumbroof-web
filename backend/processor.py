@@ -4157,8 +4157,10 @@ async def process_claim(claim_id: str):
             from noaa_weather.report import apply_to_config as noaa_apply_to_config
 
             address_str = build_address_from_config(config)
-            storm_date = config.get("weather", {}).get("storm_date", "") or \
-                         config.get("dates", {}).get("date_of_loss", "")
+            # ALWAYS prefer date_of_loss over extracted storm_date — weather files
+            # can contain wrong dates (e.g., HailTrace for different property)
+            storm_date = config.get("dates", {}).get("date_of_loss", "") or \
+                         config.get("weather", {}).get("storm_date", "")
             if address_str and storm_date:
                 geo = geocode_address(address_str)
                 if geo:

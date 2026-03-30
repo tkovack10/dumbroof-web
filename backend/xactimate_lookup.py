@@ -95,6 +95,12 @@ NEGATIVE_EXCLUSIONS = [
     # Drip edge must NOT match step/counter flashing
     (re.compile(r"drip.edge", re.I), re.compile(r"step.flash|counter.flash", re.I)),
     (re.compile(r"step.flash|counter.flash", re.I), re.compile(r"drip.edge", re.I)),
+    # Felt/underlayment must NOT match shingle install/remove (different items entirely)
+    (re.compile(r"^(?:roofing )?felt|^synthetic.underlay", re.I), re.compile(r"(?:laminated|3.tab|comp).*(?:shingle|rfg)", re.I)),
+    (re.compile(r"(?:laminated|3.tab|comp).*(?:shingle|rfg)", re.I), re.compile(r"^(?:roofing )?felt|^synthetic.underlay", re.I)),
+    # Ice & water must NOT match shingle install
+    (re.compile(r"ice.*water|i&w|ice.shield", re.I), re.compile(r"(?:laminated|3.tab|comp).*(?:shingle|rfg)", re.I)),
+    (re.compile(r"(?:laminated|3.tab|comp).*(?:shingle|rfg)", re.I), re.compile(r"ice.*water|i&w|ice.shield", re.I)),
 ]
 
 # Module-level cache for all-markets.json (read once, reuse)
@@ -938,8 +944,16 @@ class XactRegistry:
     def _get_intent_keywords(usarm_desc: str) -> list[str]:
         """Get intent keywords for searching carrier scope given a USARM description."""
         desc_lower = usarm_desc.lower()
+        # Strip "w/out X" and "without X" phrases — these are NEGATIONS, not intent
+        # e.g., "comp. shingle rfg. - w/out felt" means WITHOUT felt
+        negated_terms = set()
+        for neg_match in re.finditer(r"(?:w/out|without|w/o|excluding)\s+(\w+)", desc_lower):
+            negated_terms.add(neg_match.group(1))
         keywords = []
         for category, kws in XactRegistry._INTENT_KEYWORDS.items():
+            # Skip category if its name is a negated term
+            if any(neg in category for neg in negated_terms):
+                continue
             # Match if category name appears in description OR first 2 keywords match
             if category in desc_lower or any(kw in desc_lower for kw in kws[:2]):
                 keywords.extend(kws)
