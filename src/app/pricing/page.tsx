@@ -35,7 +35,7 @@ function PricingContent() {
     setLoading(null);
   };
 
-  const planOrder: PlanId[] = ["starter", "pro", "growth", "enterprise"];
+  const planOrder: PlanId[] = ["starter", "sales_rep", "pro", "growth", "enterprise"];
 
   return (
     <main className="min-h-screen">
@@ -71,16 +71,17 @@ function PricingContent() {
         </h1>
         <p className="text-[var(--gray-muted)] max-w-xl mx-auto text-lg">
           Start free. Upgrade when you need more claims.
-          Every plan includes the full 5-document forensic package.
+          Every plan includes the full 6-document forensic package.
         </p>
       </section>
 
       {/* Plans Grid */}
       <section className="pb-20 px-6">
-        <div className="max-w-5xl mx-auto grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="max-w-6xl mx-auto grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
           {planOrder.map((id) => {
             const plan = PLANS[id];
             const isPopular = id === "growth";
+            const isLimitedOffer = id === "sales_rep";
             return (
               <div
                 key={id}
@@ -93,6 +94,11 @@ function PricingContent() {
                 {isPopular && (
                   <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-[var(--red)] text-white text-xs font-bold px-3 py-1 rounded-full">
                     Most Popular
+                  </div>
+                )}
+                {isLimitedOffer && (
+                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-gradient-to-r from-[var(--pink)] to-[var(--cyan)] text-white text-xs font-bold px-3 py-1 rounded-full whitespace-nowrap">
+                    Limited Time Offer
                   </div>
                 )}
                 <h3 className="text-lg font-bold text-[var(--white)]">
@@ -109,7 +115,9 @@ function PricingContent() {
                 <p className="text-sm text-[var(--gray-muted)] mb-2">
                   {id === "starter"
                     ? "3 claims, free forever"
-                    : `${plan.claimsPerMonth} claims per month`}
+                    : id === "sales_rep"
+                    ? "$25 per claim, pay as you go"
+                    : `${plan.claimsPerMonth} claims per month${plan.includedUsers ? ` · ${plan.includedUsers} users` : ""}`}
                 </p>
                 {id === "starter" && (
                   <p className="text-xs text-green-400 font-semibold mb-4">No credit card required</p>
@@ -163,7 +171,7 @@ function PricingContent() {
         {/* FAQ-ish note */}
         <div className="max-w-2xl mx-auto mt-12 text-center">
           <p className="text-[var(--gray-muted)] text-sm">
-            All plans include the full 5-document forensic package, AI photo analysis,
+            All plans include the full 6-document forensic package, AI photo analysis,
             and company branding. Cancel anytime from your dashboard.
             Need more than 100 claims/month?{" "}
             <a href="mailto:TKovack@USARoofMasters.com" className="text-[var(--red)] font-medium hover:underline">

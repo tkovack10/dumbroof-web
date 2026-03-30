@@ -32,6 +32,10 @@ export async function GET() {
     const cap = plan.lifetimeCap ?? 3;
     allowed = lifetimeUsed < cap;
     remaining = Math.max(0, cap - lifetimeUsed);
+  } else if (planId === "sales_rep") {
+    // Pay per claim — always allowed if subscription is active (billed per use)
+    allowed = sub?.status === "active";
+    remaining = 999; // unlimited, billed per claim
   } else {
     // Monthly cap
     allowed = sub?.status === "active" && periodUsed < plan.claimsPerMonth;
