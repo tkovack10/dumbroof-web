@@ -65,6 +65,8 @@ export interface Claim {
   excluded_line_items?: string[] | null;
   // Report mode (full = 5-doc package, forensic_only = quick forensic report)
   report_mode?: string | null;
+  // Estimate configuration (roof material, gutters, siding selections)
+  estimate_request?: Record<string, string> | null;
   // Weather / storm data (NOAA events, hail swaths)
   weather_data?: {
     events?: Array<{
