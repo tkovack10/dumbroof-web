@@ -703,6 +703,37 @@ class XactRegistry:
         return None, 0.0
 
     @staticmethod
+    def _classify_carrier_section(carrier_desc: str, carrier_notes: str = "") -> str:
+        """Classify a carrier line item into a section for section-restricted matching.
+        Returns: ROOFING, SIDING, GUTTERS, GENERAL, or UNKNOWN."""
+        text = f"{carrier_desc} {carrier_notes}".lower()
+        # SIDING indicators (check FIRST — "siding" is unambiguous)
+        if any(w in text for w in ("siding", "vinyl sid", "aluminum sid", "cedar sid",
+                                    "house wrap", "housewrap", "tyvek", "window wrap",
+                                    "window trim", "j-channel", "soffit", "fascia",
+                                    "insulation board", "fan fold", "fanfold",
+                                    "shutter", "door wrap", "door frame")):
+            return "SIDING"
+        # GUTTERS indicators
+        if any(w in text for w in ("gutter", "downspout", "splash block", "leader")):
+            return "GUTTERS"
+        # ROOFING indicators
+        if any(w in text for w in ("shingle", "rfg", "roofing", "felt", "underlayment",
+                                    "ice & water", "ice and water", "i&w", "ridge",
+                                    "drip edge", "starter", "flashing", "step flash",
+                                    "counter flash", "apron flash", "skylight",
+                                    "vent", "pipe collar", "chimney", "cricket",
+                                    "hip", "rake", "eave", "valley", "steep",
+                                    "roofer", "tear off", "tear-off", "deck",
+                                    "plywood", "osb")):
+            return "ROOFING"
+        # GENERAL
+        if any(w in text for w in ("dumpster", "debris", "permit", "scaffolding",
+                                    "labor", "equipment", "protection", "harness")):
+            return "GENERAL"
+        return "UNKNOWN"
+
+    @staticmethod
     def _check_negative_exclusion(carrier_desc, usarm_desc):
         """Check if a match should be rejected due to negative keyword exclusion."""
         carrier_lower = carrier_desc.lower()
@@ -1048,11 +1079,17 @@ class XactRegistry:
 
         # ── PASS 2: Aggregate carrier triples (processed AFTER measurements checklist) ──
         carrier_items = self._aggregate_carrier_triples(carrier_line_items)
+        # Classify each carrier item into a section for section-restricted matching
+        carrier_sections = {}
+        for ci_idx, ci in enumerate(carrier_items):
+            ci_desc = ci.get("carrier_desc") or ci.get("item") or ""
+            ci_notes = ci.get("notes") or ""
+            carrier_sections[ci_idx] = self._classify_carrier_section(ci_desc, ci_notes)
         # Debug: show carrier items after checklist is established
         for _i, _ci in enumerate(carrier_items[:8]):
             _cd = _ci.get('carrier_desc') or _ci.get('item','')
             _cn = _ci.get('notes','')
-            print(f"[SCOPE DEBUG] Carrier[{_i}]: desc={_cd[:60]} notes={_cn[:40]}", flush=True)
+            print(f"[SCOPE DEBUG] Carrier[{_i}]: desc={_cd[:60]} section={carrier_sections.get(_i,'?')} notes={_cn[:40]}", flush=True)
 
         # ── PASS 3: Build USARM lookup for pricing enrichment ──
         usarm_by_clean_desc = {}
@@ -1078,6 +1115,14 @@ class XactRegistry:
             found_carrier = None
             match_method = None
 
+            # Determine which section this checklist item belongs to
+            item_section = (expected_item.get("category") or "ROOFING").upper()
+            if item_section in ("CODE COMPLIANCE",):
+                item_section = "GENERAL"
+            # Map to the section classifier's output values
+            _section_map = {"ROOFING": "ROOFING", "SIDING": "SIDING", "GUTTERS": "GUTTERS", "GENERAL": "GENERAL"}
+            item_section = _section_map.get(item_section, item_section)
+
             # ── Search 1: Intent via NOTES (highest priority!) ──
             # Catches 3-tab-as-starter because notes say "starter course"
             # BUT: notes matches must pass description cross-check — a carrier item
@@ -1089,6 +1134,9 @@ class XactRegistry:
                 best_notes_hits = 0
                 for ci_idx, ci in enumerate(carrier_items):
                     if ci_idx in used_carrier_indices:
+                        continue
+                    # Section restriction: only match within the same section
+                    if carrier_sections.get(ci_idx, "UNKNOWN") != item_section and carrier_sections.get(ci_idx) != "UNKNOWN":
                         continue
                     ci_notes = (ci.get("notes") or "").lower()
                     if not ci_notes:
@@ -1120,6 +1168,8 @@ class XactRegistry:
                 for ci_idx, ci in enumerate(carrier_items):
                     if ci_idx in used_carrier_indices:
                         continue
+                    if carrier_sections.get(ci_idx, "UNKNOWN") != item_section and carrier_sections.get(ci_idx) != "UNKNOWN":
+                        continue
                     ci_desc = (ci.get("carrier_desc") or ci.get("item") or "").lower()
                     hits = sum(1 for kw in intent_kws if kw in ci_desc)
                     if hits > 0 and hits > best_desc_hits:
@@ -1138,6 +1188,8 @@ class XactRegistry:
                 for ci_idx, ci in enumerate(carrier_items):
                     if ci_idx in used_carrier_indices:
                         continue
+                    if carrier_sections.get(ci_idx, "UNKNOWN") != item_section and carrier_sections.get(ci_idx) != "UNKNOWN":
+                        continue
                     if (ci.get("xact_code") or "").upper().strip() == expected_code:
                         if self._action_compatible(expected_desc, ci):
                             found_carrier = (ci_idx, ci)
@@ -1152,6 +1204,8 @@ class XactRegistry:
                 best_fuzzy = None
                 for ci_idx, ci in enumerate(carrier_items):
                     if ci_idx in used_carrier_indices:
+                        continue
+                    if carrier_sections.get(ci_idx, "UNKNOWN") != item_section and carrier_sections.get(ci_idx) != "UNKNOWN":
                         continue
                     ci_desc = ci.get("carrier_desc", "") or ci.get("item", "")
                     if self._check_negative_exclusion(ci_desc, expected_desc):
@@ -1249,13 +1303,13 @@ class XactRegistry:
                 if carrier_unit and expected_unit_upper and carrier_unit != expected_unit_upper:
                     row["unit_mismatch"] = f"Carrier: {carrier_unit}, Expected: {expected_unit_upper}"
 
-                # QTY comparison: carrier qty vs EagleView qty (ground truth)
-                qty_variance_note = ""
-                if not row.get("unit_mismatch") and ev_qty > 0 and carrier_qty > 0:
-                    qty_diff = ev_qty - carrier_qty
-                    if abs(qty_diff) > 1:
-                        qty_variance_note = f"EagleView: {ev_qty:.0f} {ev_unit}, Carrier: {carrier_qty:.0f} {ev_unit}, Short {qty_diff:.0f} {ev_unit}"
-                        row["qty_variance"] = qty_variance_note
+                # ── QTY-FOCUSED COMPARISON (Tom's methodology) ──
+                # Focus on material, quantity, unit price, and code/manufacturer requirements.
+                # Dollar amounts appear only as supplement_value, not as the primary comparison.
+                qty_diff = ev_qty - carrier_qty if ev_qty > 0 else 0
+                compare_amount = row["usarm_amount"]
+                supplement_value = max(0, compare_amount - carrier_amt)
+                row["supplement_value"] = round(supplement_value, 2)
 
                 # Price comparison: carrier unit_price vs Xactimate price list
                 if carrier_up > 0 and xact_unit_price > 0:
@@ -1263,49 +1317,89 @@ class XactRegistry:
                     if abs(price_diff) > 0.50:
                         row["price_variance"] = f"Xact: ${xact_unit_price:.2f}, Carrier: ${carrier_up:.2f}"
 
-                # Amount variance (USARM amount vs carrier amount)
-                compare_amount = row["usarm_amount"]
-                diff = compare_amount - carrier_amt
                 trick_flag = row.get("trick_flag", "")
+                code_cit = row.get("code_citation")
                 supp_arg = row.get("supplement_argument", "")
+                ev_formula = row.get("ev_formula", "")
 
                 if row.get("unit_mismatch"):
                     row["status"] = "under"
-                    row["note"] = f"UNIT MISMATCH: {row['unit_mismatch']}"
+                    parts = [f"UNIT MISMATCH: {row['unit_mismatch']}"]
+                    if ev_formula:
+                        parts.append(f"Required: {ev_qty:.0f} {ev_unit} ({ev_formula})")
+                    if code_cit:
+                        parts.append(f"Per {code_cit['code_tag']}: {code_cit['requirement']}")
                     if trick_flag:
-                        row["note"] += f". {trick_flag}"
-                elif abs(diff) < 0.50 and not qty_variance_note:
+                        parts.append(trick_flag)
+                    row["note"] = ". ".join(parts)
+                elif not row.get("unit_mismatch") and ev_qty > 0 and carrier_qty > 0 and abs(qty_diff) > 1:
+                    # Quantity shortfall — PRIMARY comparison metric
+                    row["status"] = "under" if qty_diff > 0 else ("over" if qty_diff < -1 else "match")
+                    parts = []
+                    parts.append(f"Required: {ev_qty:.0f} {ev_unit} @ ${xact_unit_price:.2f}/{ev_unit}" if xact_unit_price else f"Required: {ev_qty:.0f} {ev_unit}")
+                    parts.append(f"Carrier: {carrier_qty:.0f} {ev_unit}" + (f" @ ${carrier_up:.2f}/{ev_unit}" if carrier_up else ""))
+                    if qty_diff > 0:
+                        parts.append(f"Carrier is {qty_diff:.0f} {ev_unit} short")
+                    if ev_formula:
+                        parts.append(f"Calculation: {ev_formula}")
+                    if code_cit:
+                        parts.append(f"Per {code_cit['code_tag']}: {code_cit['requirement']}")
+                        mfr_specs = code_cit.get("manufacturer_specs", [])
+                        for spec in mfr_specs[:2]:
+                            if spec.get("warranty_void"):
+                                parts.append(f"{spec['manufacturer']} warranty VOID: {spec.get('warranty_text', spec.get('requirement', ''))[:120]}")
+                    elif supp_arg:
+                        parts.append(supp_arg)
+                    if trick_flag:
+                        parts.append(trick_flag)
+                    row["note"] = ". ".join(parts)
+                    row["qty_variance"] = f"Short {qty_diff:.0f} {ev_unit}" if qty_diff > 0 else ""
+                elif abs(compare_amount - carrier_amt) < 0.50:
                     row["status"] = "match"
-                    row["note"] = "Amounts match"
-                elif diff > 0 or qty_variance_note:
+                    row["note"] = f"Carrier includes {carrier_qty:.0f} {ev_unit}" + (f" @ ${carrier_up:.2f}/{ev_unit}" if carrier_up else "")
+                elif compare_amount > carrier_amt:
                     row["status"] = "under"
-                    note = f"Underscoped ${diff:,.2f}" if diff > 0.50 else ""
-                    if qty_variance_note:
-                        note = f"{note}. {qty_variance_note}" if note else qty_variance_note
+                    parts = []
+                    if xact_unit_price and carrier_up and abs(xact_unit_price - carrier_up) > 0.50:
+                        parts.append(f"Unit price: Xact ${xact_unit_price:.2f} vs Carrier ${carrier_up:.2f}")
+                    if ev_formula:
+                        parts.append(f"Required: {ev_qty:.0f} {ev_unit} ({ev_formula})")
+                    if code_cit:
+                        parts.append(f"Per {code_cit['code_tag']}: {code_cit['requirement']}")
+                    elif supp_arg:
+                        parts.append(supp_arg)
                     if trick_flag:
-                        note = f"{note}. {trick_flag}" if note else trick_flag
-                    elif supp_arg and diff > 0.50:
-                        note += f". {supp_arg}"
-                    row["note"] = note.lstrip(". ")
+                        parts.append(trick_flag)
+                    row["note"] = ". ".join(parts) if parts else f"Carrier: {carrier_qty:.0f} {ev_unit}, Required: {ev_qty:.0f} {ev_unit}"
                 else:
                     row["status"] = "over"
-                    row["note"] = f"Overpaid ${abs(diff):,.2f}"
+                    row["note"] = f"Carrier includes {carrier_qty:.0f} {ev_unit}" + (f" @ ${carrier_up:.2f}/{ev_unit}" if carrier_up else "")
             else:
-                # MISSING — carrier didn't include this item
+                # MISSING — carrier didn't include this item (supplement opportunity)
                 row["item"] = expected_desc
                 row["carrier_desc"] = "NOT INCLUDED"
                 row["carrier_amount"] = 0
+                row["carrier_qty"] = 0
                 row["matched_by"] = "missing"
                 row["status"] = "missing"
-                note = "NOT INCLUDED in carrier scope"
+                row["supplement_value"] = round(ev_qty * xact_unit_price, 2) if xact_unit_price else row.get("usarm_amount", 0)
+
+                parts = [f"NOT INCLUDED — Required: {ev_qty:.0f} {ev_unit}" + (f" @ ${xact_unit_price:.2f}/{ev_unit}" if xact_unit_price else "")]
+                ev_formula = row.get("ev_formula", "")
+                if ev_formula:
+                    parts.append(f"Calculation: {ev_formula}")
                 code_cit = row.get("code_citation")
                 if code_cit:
-                    note += f" — required per {code_cit['code_tag']}: {code_cit['title']}"
+                    parts.append(f"Per {code_cit['code_tag']}: {code_cit['requirement']}")
+                    mfr_specs = code_cit.get("manufacturer_specs", [])
+                    for spec in mfr_specs[:2]:
+                        if spec.get("warranty_void"):
+                            parts.append(f"{spec['manufacturer']} warranty VOID: {spec.get('warranty_text', spec.get('requirement', ''))[:120]}")
                 elif row.get("irc_code"):
-                    note += f" — required per {row['irc_code']}"
+                    parts.append(f"Required per {row['irc_code']}")
                 if row.get("supplement_argument"):
-                    note += f". {row['supplement_argument']}"
-                row["note"] = note
+                    parts.append(row["supplement_argument"])
+                row["note"] = ". ".join(parts)
 
             comparison_rows.append(row)
 
@@ -1345,12 +1439,19 @@ class XactRegistry:
             ext = round(li.get("qty", 0) * li.get("unit_price", 0), 2)
             if ext < 10:
                 continue
-            # Search carrier for this USARM extra using same intent logic
+            # Search carrier for this USARM extra using same intent logic (section-restricted)
             usarm_desc = li.get("description", "")
+            usarm_section = (li.get("category") or "").upper()
+            if usarm_section in ("CODE COMPLIANCE",):
+                usarm_section = "GENERAL"
             intent_kws = self._get_intent_keywords(usarm_desc)
             found_ci = None
             for ci_idx, ci in enumerate(carrier_items):
                 if ci_idx in used_carrier_indices:
+                    continue
+                # Section restriction
+                ci_section = carrier_sections.get(ci_idx, "UNKNOWN")
+                if usarm_section and ci_section != usarm_section and ci_section != "UNKNOWN":
                     continue
                 ci_text = f"{ci.get('carrier_desc', '')} {ci.get('notes', '')}".lower()
                 if intent_kws and any(kw in ci_text for kw in intent_kws):
@@ -1373,34 +1474,59 @@ class XactRegistry:
                 ci_idx, ci = found_ci
                 used_carrier_indices.add(ci_idx)
                 carrier_amt = ci.get("carrier_amount", 0) or 0
+                carrier_qty = ci.get("qty", 0) or 0
+                carrier_up = ci.get("unit_price", 0) or 0
                 extra_row["item"] = ci.get("item") or ci.get("carrier_desc", "")
                 extra_row["carrier_desc"] = ci.get("carrier_desc") or ci.get("item", "")
                 extra_row["carrier_amount"] = carrier_amt
-                extra_row["carrier_qty"] = ci.get("qty", 0)
+                extra_row["carrier_qty"] = carrier_qty
+                extra_row["carrier_unit"] = ci.get("unit", "")
+                extra_row["carrier_unit_price"] = carrier_up
+                extra_row["carrier_notes"] = ci.get("notes", "") or ""
                 extra_row["matched_by"] = "usarm_extra"
                 diff = ext - carrier_amt
+                extra_row["supplement_value"] = round(max(0, diff), 2)
+                li_qty = li.get("qty", 0)
+                li_unit = li.get("unit", "")
+                li_up = li.get("unit_price", 0)
+                qty_diff = li_qty - carrier_qty if li_qty and carrier_qty else 0
                 if abs(diff) < 0.50:
                     extra_row["status"] = "match"
-                    extra_row["note"] = "Amounts match"
+                    extra_row["note"] = f"Carrier includes {carrier_qty:.0f} {li_unit}" + (f" @ ${carrier_up:.2f}/{li_unit}" if carrier_up else "")
                 elif diff > 0:
                     extra_row["status"] = "under"
-                    extra_row["note"] = f"Underscoped ${diff:,.2f}"
+                    parts = []
+                    if qty_diff > 1:
+                        parts.append(f"Required: {li_qty:.0f} {li_unit}, Carrier: {carrier_qty:.0f} {li_unit}, Short {qty_diff:.0f} {li_unit}")
+                    if li_up and carrier_up and abs(li_up - carrier_up) > 0.50:
+                        parts.append(f"Unit price: Xact ${li_up:.2f} vs Carrier ${carrier_up:.2f}")
+                    code_cit = li.get("code_citation")
+                    if code_cit:
+                        parts.append(f"Per {code_cit['code_tag']}: {code_cit.get('requirement', '')[:100]}")
+                    extra_row["note"] = ". ".join(parts) if parts else f"Required: {li_qty:.0f} {li_unit}, Carrier: {carrier_qty:.0f} {li_unit}"
                 else:
                     extra_row["status"] = "over"
-                    extra_row["note"] = f"Overpaid ${abs(diff):,.2f}"
+                    extra_row["note"] = f"Carrier includes {carrier_qty:.0f} {li_unit}" + (f" @ ${carrier_up:.2f}/{li_unit}" if carrier_up else "")
             else:
+                li_qty = li.get("qty", 0)
+                li_unit = li.get("unit", "")
+                li_up = li.get("unit_price", 0)
                 extra_row["carrier_desc"] = "NOT INCLUDED"
                 extra_row["carrier_amount"] = 0
+                extra_row["carrier_qty"] = 0
                 extra_row["matched_by"] = "missing"
                 extra_row["status"] = "missing"
-                note = "NOT INCLUDED in carrier scope"
+                extra_row["supplement_value"] = round(ext, 2)
+                parts = [f"NOT INCLUDED — Required: {li_qty:.0f} {li_unit}" + (f" @ ${li_up:.2f}/{li_unit}" if li_up else "")]
                 code_cit = li.get("code_citation")
                 if code_cit:
-                    note += f" — required per {code_cit['code_tag']}: {code_cit['title']}"
-                extra_row["note"] = note
+                    parts.append(f"Per {code_cit['code_tag']}: {code_cit.get('requirement', '')[:100]}")
+                elif li.get("supplement_argument"):
+                    parts.append(li["supplement_argument"])
+                extra_row["note"] = ". ".join(parts)
             comparison_rows.append(extra_row)
 
-        # ── PASS 6: Carrier-only items ──
+        # ── PASS 6: Carrier-only items (grouped by their section) ──
         for ci_idx, ci in enumerate(carrier_items):
             if ci_idx in used_carrier_indices:
                 continue
@@ -1408,26 +1534,32 @@ class XactRegistry:
             if carrier_amt < 5:
                 continue
             ci_desc = ci.get("carrier_desc") or ci.get("item", "")
+            ci_section = carrier_sections.get(ci_idx, "GENERAL")
+            carrier_qty = ci.get("qty", 0) or 0
+            carrier_unit = ci.get("unit", "")
             comparison_rows.append({
                 "item": ci.get("item") or ci_desc,
                 "carrier_desc": ci_desc,
                 "carrier_amount": carrier_amt,
-                "carrier_qty": ci.get("qty", 0),
-                "carrier_unit": ci.get("unit", ""),
+                "carrier_qty": carrier_qty,
+                "carrier_unit": carrier_unit,
                 "usarm_desc": "",
                 "usarm_amount": 0,
                 "matched_by": "carrier_only",
                 "status": "carrier_only",
-                "note": "Carrier-only item — not on EagleView checklist",
+                "category": ci_section,
+                "trade": ci_section.lower(),
+                "note": f"Carrier-only: {carrier_qty:.0f} {carrier_unit}" + (f" @ ${ci.get('unit_price', 0):.2f}/{carrier_unit}" if ci.get('unit_price') else "") + " — not on EagleView checklist",
                 "review_flag": "Verify: legitimate scope item or padding?",
                 "xact_code": ci.get("xact_code", ""),
+                "supplement_value": 0,
             })
 
-        # Sort by trade/category to prevent interleaved subtotals
-        _CAT_SORT = {"ROOFING": 0, "SIDING": 1, "GUTTERS": 2, "INTERIOR": 3, "GENERAL": 4, "DEBRIS": 5}
+        # Sort by section (ROOFING → GUTTERS → SIDING → GENERAL) with carrier-only at end of each section
+        _CAT_SORT = {"ROOFING": 0, "GUTTERS": 1, "SIDING": 2, "INTERIOR": 3, "GENERAL": 4, "CODE COMPLIANCE": 4, "DEBRIS": 5, "UNKNOWN": 6}
         comparison_rows.sort(key=lambda x: (
             _CAT_SORT.get((x.get("category") or "").upper(), 99),
-            0 if x.get("status") != "carrier_only" else 1,
+            0 if x.get("matched_by") not in ("carrier_only",) else 1,
         ))
 
         return comparison_rows
