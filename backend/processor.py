@@ -2983,7 +2983,7 @@ def build_line_items(measurements: dict, photo_analysis: dict, state: str, user_
         items.append({"category": "ROOFING", "description": "Underlayment - felt 15# (deck area not covered by I&W)", "qty": felt_sq, "unit": "SQ", "unit_price": PRICING.get("metal_underlayment", 32.00)})
     elif material == "laminated_premium":
         items.append({"category": "ROOFING", "description": "Remove laminated comp shingle roofing", "qty": area_sq, "unit": "SQ", "unit_price": PRICING.get("laminated_remove", 74.00)})
-        items.append({"category": "ROOFING", "description": "Laminated - High grd - comp. shingle rfg. - w/out felt", "qty": install_sq, "unit": "SQ", "unit_price": PRICING.get("laminated_premium_install", 337.78)})
+        items.append({"category": "ROOFING", "description": "Laminated - High grd - comp. shingle rfg. - w/out felt", "qty": install_sq, "unit": "SQ", "unit_price": PRICING.get("laminated_high_install", 383.17)})
         items.append({"category": "ROOFING", "description": "Underlayment - felt 15# (deck area not covered by I&W)", "qty": felt_sq, "unit": "SQ", "unit_price": PRICING.get("laminated_underlayment", 32.00)})
     elif material == "laminated":
         items.append({"category": "ROOFING", "description": "Remove laminated comp shingle roofing", "qty": area_sq, "unit": "SQ", "unit_price": PRICING.get("laminated_remove", 74.00)})
