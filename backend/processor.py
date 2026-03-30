@@ -1020,17 +1020,7 @@ def extract_carrier_scope(client: anthropic.Anthropic, pdf_path, extra_paths=Non
                 "source": {"type": "base64", "media_type": "application/pdf", "data": pdf_b64},
             })
 
-    response = _call_claude_with_retry(client,
-        _step_name="extract_carrier_scope",
-        model="claude-opus-4-6",
-        max_tokens=8192,
-        messages=[{
-            "role": "user",
-            "content": [
-                *file_blocks,
-                {
-                    "type": "text",
-                    "text": """Read this insurance carrier scope/estimate and extract ALL data into this exact JSON format. Return ONLY valid JSON.
+    extraction_prompt = """Read this insurance carrier scope/estimate and extract ALL data into this exact JSON format. Return ONLY valid JSON.
 
 CRITICAL: For each line item, capture any notes/descriptions that explain WHAT the item is for.
 Carriers sometimes use generic descriptions (e.g., "3-tab shingle") but include notes that reveal
@@ -1079,11 +1069,45 @@ the actual purpose (e.g., "starter course" or "cap shingles"). These notes are e
 }
 
 Extract every line item. Use 0 for values not found."""
-                }
+
+    response = _call_claude_with_retry(client,
+        _step_name="extract_carrier_scope",
+        model="claude-sonnet-4-6",
+        max_tokens=16384,
+        messages=[{
+            "role": "user",
+            "content": [
+                *file_blocks,
+                {"type": "text", "text": extraction_prompt}
             ]
         }]
     )
-    data = _parse_json_response(response.content[0].text)
+    raw_text = response.content[0].text
+    data = _parse_json_response(raw_text)
+
+    # Continuation retry: if JSON was truncated (parse failed + response hit token limit),
+    # ask Claude to continue from where it stopped
+    if not data and raw_text and len(raw_text) > 500:
+        print(f"[CARRIER EXTRACT] JSON truncated ({len(raw_text)} chars), attempting continuation...", flush=True)
+        try:
+            continuation = _call_claude_with_retry(client,
+                _step_name="extract_carrier_scope_continue",
+                model="claude-sonnet-4-6",
+                max_tokens=16384,
+                messages=[
+                    {"role": "user", "content": [*file_blocks, {"type": "text", "text": extraction_prompt}]},
+                    {"role": "assistant", "content": raw_text},
+                    {"role": "user", "content": "Your JSON response was truncated. Continue EXACTLY from where you stopped — output ONLY the remaining JSON to complete the response. Do not restart."}
+                ]
+            )
+            combined = raw_text + continuation.content[0].text
+            data = _parse_json_response(combined)
+            if data:
+                print(f"[CARRIER EXTRACT] Continuation succeeded — parsed {len(data.get('carrier_line_items', []))} line items", flush=True)
+            else:
+                print(f"[CARRIER EXTRACT] Continuation also failed to parse", flush=True)
+        except Exception as cont_err:
+            print(f"[CARRIER EXTRACT] Continuation retry failed: {cont_err}", flush=True)
 
     # Normalize carrier items — canonical field names so downstream code doesn't need fallback chains
     for ci in data.get("carrier_line_items", []):
