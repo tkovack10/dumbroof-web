@@ -3533,7 +3533,15 @@ async def process_claim(claim_id: str):
         raise ValueError(f"Claim {claim_id} not found")
 
     # Check report mode — forensic_only skips measurements, line items, estimate
+    # BUT: if measurements were uploaded to a forensic_only claim, auto-upgrade to full
     report_mode = claim.get("report_mode", "full")
+    if report_mode == "forensic_only" and claim.get("measurement_files"):
+        report_mode = "full"
+        try:
+            sb.table("claims").update({"report_mode": "full"}).eq("id", claim_id).execute()
+            print(f"[PROCESS] Auto-upgraded forensic_only → full (measurements uploaded)", flush=True)
+        except Exception:
+            pass
     if report_mode == "forensic_only":
         print(f"[PROCESS] FORENSIC ONLY mode — skipping measurements, line items, scope comparison", flush=True)
 
