@@ -3851,6 +3851,34 @@ async def process_claim(claim_id: str):
         async def _get_photo_analysis():
             if not photo_paths:
                 return _default_photo
+
+            # ── Cache check: skip re-analysis if photos haven't changed and no new corrections ──
+            import hashlib as _hl
+            photo_file_names = sorted(os.path.basename(p) for p in photo_paths)
+            photo_hash = _hl.md5(json.dumps(photo_file_names).encode()).hexdigest()
+            cached = claim.get("cached_photo_analysis")
+            cached_hash = claim.get("cached_photo_hash")
+
+            has_new_corrections = False
+            if sb and is_revision:
+                try:
+                    last_proc = claim.get("last_processed_at", "")
+                    if last_proc:
+                        _fb_check = sb.table("annotation_feedback") \
+                            .select("id") \
+                            .eq("claim_id", claim_id) \
+                            .gt("created_at", last_proc) \
+                            .limit(1) \
+                            .execute()
+                        has_new_corrections = bool(_fb_check.data)
+                except Exception:
+                    pass  # If check fails, re-analyze to be safe
+
+            if cached and cached_hash == photo_hash and not has_new_corrections and is_revision:
+                print(f"[PROCESS] Reusing cached photo analysis ({len(photo_file_names)} photos unchanged, no new corrections)")
+                return cached
+
+            # ── Fresh analysis needed ──
             # Load photo correction examples for few-shot learning (runs in parallel with other extractions)
             few_shot_corrections = []
             if sb:
@@ -3877,12 +3905,25 @@ async def process_claim(claim_id: str):
                         print(f"[INTEL] Loaded {len(few_shot_corrections)} photo corrections for few-shot learning (claim-specific + global)")
                 except Exception as e:
                     print(f"[INTEL] Photo corrections query failed (non-fatal): {e}")
-            print(f"[PROCESS] Analyzing {len(photo_paths)} photos...")
-            return await asyncio.to_thread(
+            print(f"[PROCESS] Analyzing {len(photo_paths)} photos (fresh)...")
+            result = await asyncio.to_thread(
                 analyze_photos, claude, photo_paths,
                 user_notes=claim.get("user_notes"),
                 corrections=few_shot_corrections,
             )
+
+            # ── Cache the result for future reprocesses ──
+            if sb and result:
+                try:
+                    sb.table("claims").update({
+                        "cached_photo_analysis": result,
+                        "cached_photo_hash": photo_hash,
+                    }).eq("id", claim_id).execute()
+                    print(f"[PROCESS] Cached photo analysis for future reprocesses (hash={photo_hash[:8]})")
+                except Exception as e:
+                    print(f"[PROCESS] Photo cache save failed (non-fatal): {e}")
+
+            return result
 
         async def _get_photo_integrity():
             if not photo_paths:
