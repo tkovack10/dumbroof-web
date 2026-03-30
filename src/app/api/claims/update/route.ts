@@ -42,7 +42,23 @@ export async function POST(request: Request) {
     }
 
     if (claim.user_id !== user.id) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
+      // Not the user's own claim — check if they're an admin
+      const { data: admin } = await supabaseAdmin
+        .from("admins")
+        .select("user_id")
+        .eq("user_id", user.id)
+        .single();
+
+      if (!admin) {
+        // Not admin — check domain sharing (same email domain = same company)
+        const { data: owner } = await supabaseAdmin.auth.admin.getUserById(claim.user_id);
+        const ownerDomain = owner?.user?.email?.split("@")[1];
+        const userDomain = user.email?.split("@")[1];
+
+        if (!ownerDomain || !userDomain || ownerDomain !== userDomain) {
+          return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
+        }
+      }
     }
 
     // Whitelist fields
