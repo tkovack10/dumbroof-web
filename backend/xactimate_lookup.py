@@ -86,6 +86,15 @@ NEGATIVE_EXCLUSIONS = [
     (re.compile(r"downspout", re.I), re.compile(r"window.*wrap|wrap.*window", re.I)),
     (re.compile(r"window.*wrap|wrap.*window", re.I), re.compile(r"downspout", re.I)),
     (re.compile(r"gutter guard", re.I), re.compile(r"^gutter(?!.*guard)", re.I)),
+    # Ridge/hip cap must NOT match shingle install/remove (different items, same trade)
+    (re.compile(r"ridge|hip.*cap", re.I), re.compile(r"(?:laminated|3.tab|comp).*(?:shingle|rfg)|(?:shingle|rfg).*(?:w/out felt)", re.I)),
+    (re.compile(r"(?:laminated|3.tab|comp).*(?:shingle|rfg)|(?:shingle|rfg).*(?:w/out felt)", re.I), re.compile(r"ridge|hip.*cap", re.I)),
+    # Starter strip must NOT match shingle install
+    (re.compile(r"starter", re.I), re.compile(r"(?:laminated|3.tab|comp).*(?:shingle|rfg)", re.I)),
+    (re.compile(r"(?:laminated|3.tab|comp).*(?:shingle|rfg)", re.I), re.compile(r"starter", re.I)),
+    # Drip edge must NOT match step/counter flashing
+    (re.compile(r"drip.edge", re.I), re.compile(r"step.flash|counter.flash", re.I)),
+    (re.compile(r"step.flash|counter.flash", re.I), re.compile(r"drip.edge", re.I)),
 ]
 
 # Module-level cache for all-markets.json (read once, reuse)
@@ -1057,6 +1066,9 @@ class XactRegistry:
 
             # ── Search 1: Intent via NOTES (highest priority!) ──
             # Catches 3-tab-as-starter because notes say "starter course"
+            # BUT: notes matches must pass description cross-check — a carrier item
+            # whose DESCRIPTION is from a different sub-category should not match
+            # just because its notes mention the keyword in passing context
             if intent_kws:
                 best_notes_ci = None
                 best_notes_idx = None
@@ -1072,9 +1084,16 @@ class XactRegistry:
                         ci_desc = ci.get("carrier_desc", "") or ci.get("item", "")
                         if not self._check_negative_exclusion(ci_desc, expected_desc):
                             if self._action_compatible(expected_desc, ci):
-                                best_notes_ci = ci
-                                best_notes_idx = ci_idx
-                                best_notes_hits = hits
+                                # Cross-check: also verify carrier description doesn't
+                                # belong to a clearly different item category.
+                                # Notes can mention other items in context ("for use with
+                                # shingles") without the item itself being that category.
+                                ci_desc_lower = ci_desc.lower()
+                                desc_also_matches = any(kw in ci_desc_lower for kw in intent_kws)
+                                if desc_also_matches or hits >= 2:
+                                    best_notes_ci = ci
+                                    best_notes_idx = ci_idx
+                                    best_notes_hits = hits
                 if best_notes_ci is not None:
                     found_carrier = (best_notes_idx, best_notes_ci)
                     match_method = "intent_notes"

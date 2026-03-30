@@ -1072,7 +1072,7 @@ Extract every line item. Use 0 for values not found."""
 
     response = _call_claude_with_retry(client,
         _step_name="extract_carrier_scope",
-        model="claude-sonnet-4-6",
+        model="claude-opus-4-6",
         max_tokens=16384,
         messages=[{
             "role": "user",
@@ -1092,7 +1092,7 @@ Extract every line item. Use 0 for values not found."""
         try:
             continuation = _call_claude_with_retry(client,
                 _step_name="extract_carrier_scope_continue",
-                model="claude-sonnet-4-6",
+                model="claude-opus-4-6",
                 max_tokens=16384,
                 messages=[
                     {"role": "user", "content": [*file_blocks, {"type": "text", "text": extraction_prompt}]},
@@ -1143,7 +1143,13 @@ def diff_carrier_scopes(
     old_rcv = old_carrier_data.get("carrier_rcv", 0) or 0
     new_rcv = new_carrier_data.get("carrier_rcv", 0) or 0
     movement = new_rcv - old_rcv
-    movement_pct = (movement / old_rcv * 100) if old_rcv > 0 else 0
+    # If old_rcv is 0 but new_rcv > 0, treat as 100% win (baseline was zero)
+    if old_rcv > 0:
+        movement_pct = movement / old_rcv * 100
+    elif new_rcv > 0 and movement > 0:
+        movement_pct = 100.0
+    else:
+        movement_pct = 0
 
     old_items = old_carrier_data.get("carrier_line_items", [])
     new_items = new_carrier_data.get("carrier_line_items", [])
@@ -4442,8 +4448,26 @@ async def process_claim(claim_id: str):
                 traceback.print_exc()
         elif is_revision and not previous_carrier_data and carrier_data:
             # Pre-scope → post-scope: first carrier scope on a revised claim
-            # No diff possible, but carrier RCV will be persisted in the split writes below
-            print(f"[REVISION] First scope upload on revised claim — carrier RCV ${carrier_data.get('carrier_rcv', 0):,.2f} recorded as baseline")
+            # No diff possible yet, but MUST save carrier data as previous_carrier_data
+            # so the NEXT revision can diff against this baseline
+            print(f"[REVISION] First scope upload on revised claim — saving carrier RCV ${carrier_data.get('carrier_rcv', 0):,.2f} as baseline for future diffs")
+            try:
+                _contact_fields_baseline = {}
+                for cf in ("adjuster_name", "adjuster_email", "adjuster_phone", "claim_number"):
+                    cv = carrier_data.get(cf) or config.get("carrier", {}).get(cf)
+                    if cv:
+                        _contact_fields_baseline[cf] = cv
+                sb.table("claims").update({
+                    "previous_carrier_data": {
+                        "carrier_rcv": carrier_data.get("carrier_rcv", 0),
+                        "carrier_line_items": carrier_data.get("carrier_line_items", []),
+                        "carrier_arguments": carrier_data.get("carrier_arguments", []),
+                        **_contact_fields_baseline,
+                    },
+                }).eq("id", claim_id).execute()
+                print(f"[REVISION] Saved previous_carrier_data baseline for future revision diffs")
+            except Exception as e:
+                print(f"[REVISION] Baseline carrier data save failed (non-fatal): {e}")
 
         # 9d. Resize oversized photos before PDF generation
         # Raw iPhone/camera photos (8-18 MB each) cause Chrome headless to timeout
