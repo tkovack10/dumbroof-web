@@ -480,6 +480,9 @@ function SettingsPageContent() {
           )}
         </div>
 
+        {/* Stripe Connect — Invoicing */}
+        <StripeConnectSection />
+
         {/* Authorized Forwarders */}
         <div className="mt-12 pt-8 border-t border-[var(--border-glass)]">
           <h2 className="text-xl font-bold text-[var(--white)] mb-1">Email Forwarding</h2>
@@ -1012,5 +1015,139 @@ function SettingsPageContent() {
         </div>
       </div>
     </main>
+  );
+}
+
+function StripeConnectSection() {
+  const [status, setStatus] = useState<{
+    connected: boolean;
+    status: string;
+    businessName?: string;
+    chargesEnabled?: boolean;
+    payoutsEnabled?: boolean;
+  } | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [connecting, setConnecting] = useState(false);
+
+  useEffect(() => {
+    fetch("/api/stripe-connect", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "status" }),
+    })
+      .then((r) => r.json())
+      .then(setStatus)
+      .catch(() => setStatus({ connected: false, status: "disconnected" }));
+  }, []);
+
+  const handleConnect = async () => {
+    setConnecting(true);
+    try {
+      const res = await fetch("/api/stripe-connect");
+      const data = await res.json();
+      if (data.url) window.location.href = data.url;
+    } catch {
+      // fall through
+    }
+    setConnecting(false);
+  };
+
+  const handleDisconnect = async () => {
+    if (!confirm("Disconnect your Stripe account? You won't be able to send invoices from DumbRoof until you reconnect.")) return;
+    setLoading(true);
+    await fetch("/api/stripe-connect", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "disconnect" }),
+    });
+    setStatus({ connected: false, status: "disconnected" });
+    setLoading(false);
+  };
+
+  return (
+    <div className="mt-12 pt-8 border-t border-[var(--border-glass)]">
+      <h2 className="text-xl font-bold text-[var(--white)] mb-1">Invoicing — Stripe Connect</h2>
+      <p className="text-[var(--gray-muted)] text-sm mb-6">
+        Connect your company&apos;s Stripe account to send invoices directly from DumbRoof.
+        Payments go to your account — DumbRoof never touches the funds.
+      </p>
+
+      <div className="bg-[var(--bg-glass)] border border-[var(--border-glass)] rounded-xl p-6">
+        {status === null ? (
+          <div className="text-sm text-[var(--gray-muted)]">Loading...</div>
+        ) : status.connected ? (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg bg-[#635bff]/20 flex items-center justify-center">
+                  <svg viewBox="0 0 24 24" className="w-5 h-5" fill="#635bff">
+                    <path d="M13.976 9.15c-2.172-.806-3.356-1.426-3.356-2.409 0-.831.683-1.305 1.901-1.305 2.227 0 4.515.858 6.09 1.631l.89-5.494C18.252.975 15.697 0 12.165 0 9.667 0 7.589.654 6.104 1.872 4.56 3.147 3.757 4.992 3.757 7.218c0 4.039 2.467 5.76 6.476 7.219 2.585.92 3.445 1.574 3.445 2.583 0 .98-.84 1.545-2.354 1.545-1.875 0-4.965-.921-6.99-2.109l-.9 5.555C5.175 22.99 8.385 24 11.714 24c2.641 0 4.843-.624 6.328-1.813 1.664-1.305 2.525-3.236 2.525-5.732 0-4.128-2.524-5.851-6.591-7.305z"/>
+                  </svg>
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-[var(--white)]">
+                    {status.businessName || "Connected Account"}
+                  </p>
+                  <p className="text-xs text-[var(--gray-muted)]">
+                    {status.chargesEnabled && status.payoutsEnabled
+                      ? "Ready to send invoices"
+                      : "Onboarding in progress — complete setup in Stripe"}
+                  </p>
+                </div>
+              </div>
+              <span className={`px-2.5 py-1 rounded-full text-xs font-bold ${
+                status.status === "active"
+                  ? "bg-green-500/10 text-green-400"
+                  : "bg-amber-500/10 text-amber-400"
+              }`}>
+                {status.status === "active" ? "Connected" : "Pending"}
+              </span>
+            </div>
+
+            <div className="flex gap-3">
+              {status.status !== "active" && (
+                <button
+                  onClick={handleConnect}
+                  disabled={connecting}
+                  className="bg-gradient-to-r from-[var(--pink)] via-[var(--purple)] to-[var(--blue)] hover:shadow-[var(--shadow-glow-pink)] text-white px-5 py-2.5 rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
+                >
+                  {connecting ? "Redirecting..." : "Complete Setup"}
+                </button>
+              )}
+              <button
+                onClick={handleDisconnect}
+                disabled={loading}
+                className="bg-[var(--bg-glass)] border border-[var(--border-glass)] text-[var(--gray)] px-5 py-2.5 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 hover:text-red-400 hover:border-red-400/30"
+              >
+                {loading ? "Disconnecting..." : "Disconnect"}
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg bg-white/[0.06] flex items-center justify-center">
+                <svg viewBox="0 0 24 24" className="w-5 h-5" fill="#94a3b8">
+                  <path d="M13.976 9.15c-2.172-.806-3.356-1.426-3.356-2.409 0-.831.683-1.305 1.901-1.305 2.227 0 4.515.858 6.09 1.631l.89-5.494C18.252.975 15.697 0 12.165 0 9.667 0 7.589.654 6.104 1.872 4.56 3.147 3.757 4.992 3.757 7.218c0 4.039 2.467 5.76 6.476 7.219 2.585.92 3.445 1.574 3.445 2.583 0 .98-.84 1.545-2.354 1.545-1.875 0-4.965-.921-6.99-2.109l-.9 5.555C5.175 22.99 8.385 24 11.714 24c2.641 0 4.843-.624 6.328-1.813 1.664-1.305 2.525-3.236 2.525-5.732 0-4.128-2.524-5.851-6.591-7.305z"/>
+                </svg>
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-[var(--white)]">No Stripe account connected</p>
+                <p className="text-xs text-[var(--gray-muted)]">
+                  Connect your Stripe account to send invoices with payment links from DumbRoof
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={handleConnect}
+              disabled={connecting}
+              className="bg-gradient-to-r from-[var(--pink)] via-[var(--purple)] to-[var(--blue)] hover:shadow-[var(--shadow-glow-pink)] text-white px-5 py-2.5 rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
+            >
+              {connecting ? "Redirecting to Stripe..." : "Connect Stripe Account"}
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
   );
 }

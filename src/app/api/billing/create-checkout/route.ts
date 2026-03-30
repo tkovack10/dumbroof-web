@@ -49,10 +49,21 @@ export async function POST(req: NextRequest) {
 
   const origin = req.headers.get("origin") || "https://www.dumbroof.ai";
 
+  // Build line items — sales_rep includes both base price + metered per-claim price
+  const lineItems: Array<{ price: string; quantity?: number }> = [
+    { price: plan.stripePriceId!, quantity: 1 },
+  ];
+  if (planId === "sales_rep") {
+    const meteredPriceId = process.env.STRIPE_SALES_REP_METERED_PRICE_ID;
+    if (meteredPriceId) {
+      lineItems.push({ price: meteredPriceId });
+    }
+  }
+
   const session = await getStripe().checkout.sessions.create({
     customer: customerId,
     mode: "subscription",
-    line_items: [{ price: plan.stripePriceId, quantity: 1 }],
+    line_items: lineItems,
     ...(coupon ? { discounts: [{ coupon }] } : {}),
     success_url: `${origin}/dashboard/settings?billing=success`,
     cancel_url: `${origin}/pricing`,
