@@ -15,13 +15,13 @@ export async function GET(req: NextRequest) {
 
   // Create a Stripe Connect account link (Standard Connect)
   try {
-    // Check if user already has a connected account
-    const { data: profile } = await supabaseAdmin
+    // Check if user already has a connected account (use .limit(1), NOT .single() — E099)
+    const { data: profileRows } = await supabaseAdmin
       .from("company_profiles")
       .select("stripe_connect_account_id")
       .eq("user_id", user.id)
-      .limit(1)
-      .single();
+      .limit(1);
+    const profile = profileRows?.[0] || null;
 
     let accountId = profile?.stripe_connect_account_id;
 
@@ -72,24 +72,24 @@ export async function POST(req: NextRequest) {
 
   if (action === "status") {
     // Check the status of the connected account
-    const { data: profile } = await supabaseAdmin
+    const { data: profileRows2 } = await supabaseAdmin
       .from("company_profiles")
       .select("stripe_connect_account_id, stripe_connect_status")
       .eq("user_id", user.id)
-      .limit(1)
-      .single();
+      .limit(1);
+    const profile2 = profileRows2?.[0] || null;
 
-    if (!profile?.stripe_connect_account_id) {
+    if (!profile2?.stripe_connect_account_id) {
       return NextResponse.json({ connected: false, status: "disconnected" });
     }
 
     try {
-      const account = await getStripe().accounts.retrieve(profile.stripe_connect_account_id);
+      const account = await getStripe().accounts.retrieve(profile2.stripe_connect_account_id);
       const isReady = account.charges_enabled && account.payouts_enabled;
       const status = isReady ? "active" : "pending";
 
       // Update status in DB if changed
-      if (status !== profile.stripe_connect_status) {
+      if (status !== profile2.stripe_connect_status) {
         await supabaseAdmin
           .from("company_profiles")
           .update({ stripe_connect_status: status })
@@ -99,7 +99,6 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({
         connected: true,
         status,
-        accountId: profile.stripe_connect_account_id,
         chargesEnabled: account.charges_enabled,
         payoutsEnabled: account.payouts_enabled,
         businessName: account.business_profile?.name || account.email,

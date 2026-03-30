@@ -34,10 +34,12 @@ export async function POST(req: NextRequest) {
       if (!userId) break;
 
       // Fetch subscription to get price info
+      // Iterate all items to find the plan (sales_rep has 2 items: base + metered)
       const sub = await getStripe().subscriptions.retrieve(subscriptionId);
       const item = sub.items.data[0];
-      const priceId = item?.price.id;
-      const plan = getPlanByPriceId(priceId);
+      const plan = sub.items.data
+        .map(si => getPlanByPriceId(si.price.id))
+        .find(p => p !== undefined) || null;
 
       await supabaseAdmin.from("subscriptions").upsert(
         {
@@ -60,8 +62,10 @@ export async function POST(req: NextRequest) {
       const sub = event.data.object as Stripe.Subscription;
       const customerId = sub.customer as string;
       const subItem = sub.items.data[0];
-      const priceId = subItem?.price.id;
-      const plan = getPlanByPriceId(priceId);
+      // Iterate all items to find the plan (sales_rep has 2 items: base + metered)
+      const plan = sub.items.data
+        .map(si => getPlanByPriceId(si.price.id))
+        .find(p => p !== undefined) || null;
 
       const updates: Record<string, unknown> = {
         status: sub.status === "active" ? "active" : sub.status === "past_due" ? "past_due" : "canceled",

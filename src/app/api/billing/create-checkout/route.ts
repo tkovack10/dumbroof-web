@@ -19,14 +19,14 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid plan" }, { status: 400 });
   }
 
-  // Check if user already has a Stripe customer ID
-  const { data: sub } = await supabaseAdmin
+  // Check if user already has a Stripe customer ID (use .limit(1), NOT .single() — E099)
+  const { data: subRows } = await supabaseAdmin
     .from("subscriptions")
     .select("stripe_customer_id")
     .eq("user_id", user.id)
-    .single();
+    .limit(1);
 
-  let customerId = sub?.stripe_customer_id;
+  let customerId = subRows?.[0]?.stripe_customer_id;
 
   if (!customerId) {
     const customer = await getStripe().customers.create({

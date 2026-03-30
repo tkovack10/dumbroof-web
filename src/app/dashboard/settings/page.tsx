@@ -27,6 +27,7 @@ function SettingsPageContent() {
   const isPasswordReset = searchParams.get("reset") === "true";
   const billingSuccess = searchParams.get("billing") === "success";
   const gmailJustConnected = searchParams.get("gmail") === "connected";
+  const stripeConnectSuccess = searchParams.get("stripe_connect") === "success";
   const passwordRef = useRef<HTMLDivElement>(null);
   const [loading, setLoading] = useState(true);
   const billing = useBillingQuota();
@@ -481,7 +482,7 @@ function SettingsPageContent() {
         </div>
 
         {/* Stripe Connect — Invoicing */}
-        <StripeConnectSection />
+        <StripeConnectSection justConnected={stripeConnectSuccess} />
 
         {/* Authorized Forwarders */}
         <div className="mt-12 pt-8 border-t border-[var(--border-glass)]">
@@ -1018,7 +1019,7 @@ function SettingsPageContent() {
   );
 }
 
-function StripeConnectSection() {
+function StripeConnectSection({ justConnected }: { justConnected?: boolean }) {
   const [status, setStatus] = useState<{
     connected: boolean;
     status: string;
@@ -1071,6 +1072,12 @@ function StripeConnectSection() {
         Connect your company&apos;s Stripe account to send invoices directly from DumbRoof.
         Payments go to your account — DumbRoof never touches the funds.
       </p>
+
+      {justConnected && (
+        <div className="bg-green-500/10 border border-green-500/30 text-green-400 text-sm rounded-lg px-4 py-3 mb-4">
+          Stripe account connected! You can now send invoices with payment links from DumbRoof.
+        </div>
+      )}
 
       <div className="bg-[var(--bg-glass)] border border-[var(--border-glass)] rounded-xl p-6">
         {status === null ? (

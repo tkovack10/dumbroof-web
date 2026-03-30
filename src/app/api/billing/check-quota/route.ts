@@ -50,7 +50,7 @@ export async function GET() {
     remaining,
     periodUsed,
     lifetimeUsed,
-    limit: planId === "starter" ? plan.lifetimeCap : plan.claimsPerMonth,
+    limit: planId === "starter" ? plan.lifetimeCap : planId === "sales_rep" ? null : plan.claimsPerMonth,
     status: sub?.status || "active",
   });
 }
