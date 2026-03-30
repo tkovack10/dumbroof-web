@@ -3544,6 +3544,16 @@ if __name__ == "__main__":
         html_files.append((lang["doc4_title"].title(), build_appeal_letter(config)))
         html_files.append(("Cover Email", build_cover_email(config)))
 
+    # Document #6: Code Compliance Report (if measurements available)
+    try:
+        from compliance_report import build_compliance_report, has_measurements
+        if has_measurements(config):
+            compliance_html = build_compliance_report(config)
+            if compliance_html:
+                html_files.append(("Code Compliance Report", compliance_html))
+    except Exception as e:
+        print(f"[WARN] Code Compliance Report skipped: {e}")
+
     # Convert to PDF
     print("\n" + "=" * 60)
     print("CONVERTING HTML -> PDF (Chrome Headless)")
