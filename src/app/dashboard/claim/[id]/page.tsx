@@ -558,8 +558,8 @@ export default function ClaimDetailPage() {
               </svg>
             </div>
             <div>
-              <h3 className="text-base font-bold text-[var(--white)]">Measurements Detected — Configure Your Estimate</h3>
-              <p className="text-xs text-[var(--gray-muted)]">Select roof type and options to generate the full 6-document package</p>
+              <h3 className="text-base font-bold text-[var(--white)]">Estimate Configuration</h3>
+              <p className="text-xs text-[var(--gray-muted)]">Configure roof material, gutters, and siding — then reprocess to update your documents</p>
             </div>
           </div>
         </div>
@@ -670,7 +670,7 @@ export default function ClaimDetailPage() {
                 <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
               </svg>
             )}
-            {saving ? "Generating..." : "Generate Full 6-Document Package"}
+            {saving ? "Saving & Reprocessing..." : "Save & Reprocess"}
           </button>
         </div>
       </div>
@@ -1088,8 +1088,8 @@ export default function ClaimDetailPage() {
           <EstimateView claimId={claim.id} />
         )}
 
-        {/* Upgrade Panel — forensic-only with measurements ready */}
-        {isReady && isForensicOnly && (claim.measurement_files?.length ?? 0) > 0 && (
+        {/* Estimate Configuration — any claim with measurements can configure roof/gutters/siding */}
+        {isReady && (claim.measurement_files?.length ?? 0) > 0 && (
           <EstimateConfigPanel
             claimId={claim.id}
             existingRequest={claim.estimate_request}
