@@ -2579,6 +2579,29 @@ def build_roof_sections(measurements: dict, photo_analysis: dict = None, provide
     if not sections:
         return None
 
+    # Dedup: if multiple structures have identical area/pitch, they're likely extraction duplicates
+    # (e.g., Claude seeing the same roof data on summary + detail pages of EagleView PDF)
+    if len(structures) > 1:
+        seen_fingerprints = set()
+        deduped_sections = []
+        deduped_sf = 0
+        for s in sections:
+            fp = f"{s['area_sf']}_{s['pitch']}"
+            if fp in seen_fingerprints:
+                continue
+            seen_fingerprints.add(fp)
+            deduped_sections.append(s)
+            deduped_sf += s["area_sf"]
+        if len(deduped_sections) < len(sections):
+            removed = len(sections) - len(deduped_sections)
+            print(f"[DEDUP] Removed {removed} duplicate roof sections (identical area+pitch across structures)")
+            # Re-index to structure 0 since they collapsed into one
+            for s in deduped_sections:
+                s["structure_index"] = 0
+                s["structure_name"] = "Structure 1"
+            sections = deduped_sections
+            total_sf = deduped_sf
+
     return {
         "provider": provider,
         "sections": sections,
