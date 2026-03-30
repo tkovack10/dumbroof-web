@@ -199,7 +199,7 @@ def compute_financials(config):
     o_and_p = len(trades) >= 3
     o_and_p_amount = 0
     if o_and_p:
-        o_and_p_amount = round(line_total * 0.10 + line_total * 0.10, 2)
+        o_and_p_amount = round(line_total * 0.10 + line_total * 0.11, 2)  # 10% overhead + 11% profit (confirmed across 18 gold standard estimates)
 
     deductible = config.get("carrier", {}).get("deductible", 0)
     carrier_rcv = config.get("carrier", {}).get("carrier_rcv", 0)
@@ -2486,7 +2486,7 @@ body {{ margin: 0; padding: 0; }}
     <tr><th>Item</th><th class="amt">Amount</th></tr>
     <tr><td>Line Item Total</td><td class="amt">{fmt_money(fin['line_total'])}</td></tr>
     <tr><td>Tax ({fin['tax_rate']*100:g}%)</td><td class="amt">{fmt_money(fin['tax'])}</td></tr>
-    {"<tr><td>Overhead & Profit (10% + 10%)</td><td class='amt'>" + fmt_money(fin['o_and_p_amount']) + "</td></tr>" if fin['o_and_p'] else ""}
+    {"<tr><td>Overhead & Profit (10% + 11%)</td><td class='amt'>" + fmt_money(fin['o_and_p_amount']) + "</td></tr>" if fin['o_and_p'] else ""}
     <tr class="grand-total">
         <td><strong>TOTAL RCV</strong></td>
         <td class="amt" style="font-size:14pt;"><strong>{fmt_money(fin['total_with_op'])}</strong></td>
@@ -2500,7 +2500,7 @@ body {{ margin: 0; padding: 0; }}
 </table>
 
 <div class="highlight-box">
-<strong>NOTE ON OVERHEAD &amp; PROFIT:</strong> {"O&P (10% + 10%) is included — " + str(len(scope.get('trades',[]))) + " trades involved (" + trades_str + ")." if fin['o_and_p'] else o_and_p_note}
+<strong>NOTE ON OVERHEAD &amp; PROFIT:</strong> {"O&P (10% + 11%) is included — " + str(len(scope.get('trades',[]))) + " trades involved (" + trades_str + ")." if fin['o_and_p'] else o_and_p_note}
 </div>
 
 <div class="highlight-box">
@@ -2806,7 +2806,7 @@ td.var-pos {{ color: #c8102e; font-weight: 700; }}
 {variance_summary_html}
 
 <h2>O&amp;P NOTE</h2>
-<p>{"Overhead & Profit (10% + 10%) is included — " + str(len(scope.get('trades',[]))) + " trades involved (" + trades_str + ")." if fin['o_and_p'] else "Overhead & Profit (O&P) is <strong>not included</strong>. " + o_and_p_note}</p>
+<p>{"Overhead & Profit (10% + 11%) is included — " + str(len(scope.get('trades',[]))) + " trades involved (" + trades_str + ")." if fin['o_and_p'] else "Overhead & Profit (O&P) is <strong>not included</strong>. " + o_and_p_note}</p>
 
 <h2>KEY ARGUMENTS</h2>
 {key_args_html}

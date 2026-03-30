@@ -4523,7 +4523,7 @@ async def process_claim(claim_id: str):
             _li_total = sum(float(i.get("qty", 0)) * float(i.get("unit_price", 0)) for i in _li)
             _tax = _li_total * config.get("financials", {}).get("tax_rate", 0)
             _rcv = _li_total + _tax
-            _op = _li_total * 0.20 if config.get("scope", {}).get("o_and_p") else 0
+            _op = _li_total * 0.21 if config.get("scope", {}).get("o_and_p") else 0  # 10% overhead + 11% profit
             _total = _rcv + _op
             _variance = _total - config["carrier"]["carrier_rcv"]
             _carrier_name = config.get("carrier", {}).get("name", "the carrier")

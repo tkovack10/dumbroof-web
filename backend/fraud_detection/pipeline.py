@@ -157,7 +157,8 @@ def run_fraud_checks(
     if db is None:
         try:
             db = FraudDB()
-        except Exception:
+        except Exception as e:
+            print(f"  WARN: FraudDB init failed: {e}")
             db = None
 
     # Discover photos
@@ -238,8 +239,8 @@ def run_fraud_checks(
             for f in verification.flags:
                 try:
                     db.log_flag(claim_slug, f)
-                except Exception:
-                    pass
+                except Exception as e:
+                    print(f"  WARN: DB flag logging failed for {meta.photo_key}: {e}")
 
         # Register hash in DB for future duplicate detection
         if db and meta.perceptual_hash:
@@ -253,8 +254,8 @@ def run_fraud_checks(
                     gps_lat=meta.gps_lat,
                     gps_lon=meta.gps_lon,
                 )
-            except Exception:
-                pass
+            except Exception as e:
+                print(f"  WARN: Hash registration failed for {meta.photo_key}: {e}")
 
     report.compute_summary()
     return report

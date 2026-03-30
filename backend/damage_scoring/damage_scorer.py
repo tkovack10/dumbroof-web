@@ -43,40 +43,30 @@ def compute_damage_score(
 
 
 def _get_all_text(config: dict) -> str:
-    """Combine all text fields from forensic findings into one searchable string."""
-    forensic = config.get("forensic_findings", {})
-    parts = []
-    # Narrative fields
-    for key in ("damage_summary", "recommended_scope"):
-        val = forensic.get(key, "")
-        if isinstance(val, str):
-            parts.append(val)
-    # List-of-string fields (key_arguments, conclusion_findings)
-    for key in ("key_arguments", "conclusion_findings"):
-        val = forensic.get(key, [])
-        if isinstance(val, list):
-            for item in val:
-                if isinstance(item, str):
-                    parts.append(item)
-    # List-of-dict fields
-    for key in ("critical_observations", "damage_thresholds", "differentiation_table"):
-        val = forensic.get(key, [])
-        if isinstance(val, list):
-            for item in val:
-                if isinstance(item, dict):
-                    parts.extend(str(v) for v in item.values())
-    return " ".join(parts).lower()
+    """Combine all text fields from forensic findings into one searchable string.
+    Cached on config to avoid recomputation across scorers."""
+    from damage_scoring.utils import get_all_forensic_text
+    return get_all_forensic_text(config)
 
+
+_METAL_PATTERNS = [re.compile(p) for p in [
+    r"gutter", r"downspout", r"vent(?:s| )", r"pipe boot",
+    r"drip edge", r"flash(?:ing|ed)", r"window wrap", r"fascia",
+    r"soffit", r"a[/.]?c\s*(?:unit|pad)", r"mailbox", r"meter",
+    r"gas line", r"chimney cap", r"exhaust cap",
+]]
+
+# Cache keyed by id(text) to avoid re-running 15 regex searches on the same string
+_metal_cache = {}
 
 def _count_metal_mentions(text: str) -> int:
     """Count distinct soft metal component types mentioned in text."""
-    metal_patterns = [
-        r"gutter", r"downspout", r"vent(?:s| )", r"pipe boot",
-        r"drip edge", r"flash(?:ing|ed)", r"window wrap", r"fascia",
-        r"soffit", r"a[/.]?c\s*(?:unit|pad)", r"mailbox", r"meter",
-        r"gas line", r"chimney cap", r"exhaust cap",
-    ]
-    return sum(1 for p in metal_patterns if re.search(p, text))
+    key = id(text)
+    if key in _metal_cache:
+        return _metal_cache[key]
+    result = sum(1 for p in _METAL_PATTERNS if p.search(text))
+    _metal_cache[key] = result
+    return result
 
 
 def _score_roof_surface(
