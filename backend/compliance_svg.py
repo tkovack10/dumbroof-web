@@ -35,7 +35,7 @@ def _roof_peak_y(stories: int, pitch_fraction: float) -> int:
     """Calculate roof peak Y based on stories and pitch."""
     wall_top = _HOUSE_BOTTOM - _wall_height(stories)
     # pitch_fraction: e.g., 0.5 for 6/12, 0.75 for 9/12
-    roof_rise = int((_WALL_WIDTH / 2) * min(pitch_fraction, 0.85) * 0.45)
+    roof_rise = int((_WALL_WIDTH / 2) * max(0.1, min(pitch_fraction, 0.85)) * 0.45)
     return wall_top - roof_rise - 30
 
 
@@ -222,12 +222,18 @@ def _svg_house_structure(pts: dict, has_siding: bool, stories: int) -> str:
     elements.append(f'<rect x="{door_x}" y="{door_y}" width="50" height="{door_h}" '
                      f'rx="2" fill="#6b4c3b" stroke="{stroke}" stroke-width="1.5"/>')
 
-    # Side windows
+    # Side windows (use explicit parallelogram instead of skewY to avoid position displacement)
     side_win_x = pts["fr"][0] + 20
-    side_win_y = wt + pts["wh"] * 0.3 - 20
-    elements.append(f'<rect x="{side_win_x}" y="{side_win_y}" width="40" height="{pts['wh'] * 0.3}" '
-                     f'rx="2" fill="#a8c4e0" stroke="{stroke}" stroke-width="1.5" '
-                     f'transform="skewY(-18)"/>')
+    side_win_h = pts["wh"] * 0.3
+    side_win_y = wt + side_win_h - 20
+    # Parallelogram points for isometric side window
+    sw_tl = (side_win_x, side_win_y - 20)
+    sw_tr = (side_win_x + 40, side_win_y - 20 - 12)
+    sw_br = (side_win_x + 40, side_win_y + side_win_h - 12)
+    sw_bl = (side_win_x, side_win_y + side_win_h)
+    elements.append(f'<polygon points="{sw_tl[0]},{sw_tl[1]} {sw_tr[0]},{sw_tr[1]} '
+                     f'{sw_br[0]},{sw_br[1]} {sw_bl[0]},{sw_bl[1]}" '
+                     f'fill="#a8c4e0" stroke="{stroke}" stroke-width="1.5"/>')
 
     # Foundation line
     elements.append(f'<rect x="{pts["fl"][0] - 5}" y="{_HOUSE_BOTTOM}" '
@@ -370,7 +376,7 @@ def generate_house_svg(config: dict, annotations: list[dict]) -> str:
     stories = config.get("property", {}).get("stories", 1) or 1
     if isinstance(stories, str):
         stories = int(stories) if stories.isdigit() else 1
-    has_siding = "siding" in [t.lower() for t in config.get("scope", {}).get("trades", [])]
+    has_siding = "siding" in [t.lower() for t in (config.get("scope", {}).get("trades") or [])]
 
     pitch = _parse_pitch(pitch_str)
     pts = _get_house_points(stories, pitch)
@@ -402,7 +408,7 @@ def generate_house_svg(config: dict, annotations: list[dict]) -> str:
 
     # Build SVG
     svg_parts = [f'''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {VIEWBOX_W} {VIEWBOX_H}"
-     width="100%" height="auto" style="max-width: 850px; margin: 0 auto; display: block;">
+     width="100%" style="max-width: 850px; margin: 0 auto; display: block;">
   <defs>
     <filter id="shadow" x="-5%" y="-5%" width="110%" height="110%">
       <feDropShadow dx="2" dy="2" stdDeviation="3" flood-color="#000" flood-opacity="0.12"/>
@@ -476,10 +482,10 @@ def collect_annotations_from_config(config: dict) -> list[dict]:
         if not cc:
             continue
 
-        section = cc.get("section", "")
-        # Find matching CODE_TO_ZONE entry
-        for code_key, zone_info in CODE_TO_ZONE.items():
-            if code_key in section:
+        section = cc.get("section", "") or ""
+        # Find matching CODE_TO_ZONE entry (longest match first to avoid R905.1 stealing R905.1.2)
+        for code_key, zone_info in sorted(CODE_TO_ZONE.items(), key=lambda x: -len(x[0])):
+            if section.startswith(code_key) or section == code_key:
                 zone = zone_info["zone"]
                 if zone in seen_zones:
                     continue
@@ -489,7 +495,7 @@ def collect_annotations_from_config(config: dict) -> list[dict]:
                 meas_str = _build_measurement_string(zone, measurements, li)
 
                 # Build code tag with jurisdiction
-                code_tag = f"{jurisdiction} {section}" if section else cc.get("code_tag", "")
+                code_tag = f"{jurisdiction} {section}" if section else (cc.get("code_tag") or "")
 
                 annotations.append({
                     "zone": zone,
@@ -507,9 +513,9 @@ def collect_annotations_from_config(config: dict) -> list[dict]:
 
 def _build_measurement_string(zone: str, measurements: dict, line_item: dict) -> str:
     """Build a human-readable measurement string for the annotation."""
-    qty = line_item.get("qty", 0)
-    unit = line_item.get("unit", "")
-    ev_formula = line_item.get("ev_formula", "")
+    qty = float(line_item.get("qty", 0) or 0)
+    unit = line_item.get("unit", "") or ""
+    ev_formula = line_item.get("ev_formula", "") or ""
 
     if ev_formula:
         return f"{qty:.0f} {unit} ({ev_formula})"

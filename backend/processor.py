@@ -3744,6 +3744,15 @@ async def process_claim(claim_id: str):
             except Exception as e:
                 print(f"[RECONCILE] DB update failed (non-fatal): {e}")
 
+        # 2c. Re-check auto-upgrade after reconcile (reconcile may have populated measurement_files)
+        if report_mode == "forensic_only" and claim.get("measurement_files"):
+            report_mode = "full"
+            try:
+                sb.table("claims").update({"report_mode": "full"}).eq("id", claim_id).execute()
+                print(f"[PROCESS] Auto-upgraded forensic_only → full (measurements found after reconcile)", flush=True)
+            except Exception:
+                pass
+
         # 3. Download measurement files
         measurement_paths = []
         for fname in claim.get("measurement_files", []):
@@ -3872,7 +3881,7 @@ async def process_claim(claim_id: str):
                             .execute()
                         has_new_corrections = bool(_fb_check.data)
                 except Exception:
-                    pass  # If check fails, re-analyze to be safe
+                    has_new_corrections = True  # If check fails, re-analyze to be safe
 
             if cached and cached_hash == photo_hash and not has_new_corrections and is_revision:
                 print(f"[PROCESS] Reusing cached photo analysis ({len(photo_file_names)} photos unchanged, no new corrections)")

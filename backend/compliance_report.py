@@ -9,13 +9,19 @@ Generates a PDF with:
 """
 
 import os
+import html as _html
 from compliance_svg import generate_house_svg, collect_annotations_from_config, CODE_TO_ZONE
+
+
+def _h(text) -> str:
+    """Escape text for safe HTML embedding."""
+    return _html.escape(str(text) if text is not None else "")
 
 # ── CSS ──
 
 COMPLIANCE_CSS = """
 @page { size: letter; margin: 0.5in 0.6in; }
-body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; color: #1a1a2e; line-height: 1.5; }
+body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; color: #1a1a2e; line-height: 1.5; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 .page-break { page-break-after: always; }
 h1 { font-size: 26px; font-weight: 700; color: #0d2137; margin: 0 0 8px 0; }
 h2 { font-size: 20px; font-weight: 700; color: #0d2137; margin: 30px 0 12px 0; border-bottom: 2px solid #c0392b; padding-bottom: 6px; }
@@ -80,12 +86,12 @@ def _get_jurisdiction(state: str) -> dict:
 def _build_cover_page(config: dict, jurisdiction: dict, annotation_count: int) -> str:
     """Build the cover page HTML."""
     prop = config.get("property", {})
-    address = f"{prop.get('address', '')}, {prop.get('city', '')}, {prop.get('state', '')} {prop.get('zip', '')}"
-    claim_number = config.get("carrier", {}).get("claim_number", "")
+    address = _h(f"{prop.get('address', '')}, {prop.get('city', '')}, {prop.get('state', '')} {prop.get('zip', '')}")
+    claim_number = _h(config.get("carrier", {}).get("claim_number", ""))
     company = config.get("company", {})
-    company_name = company.get("name", "USA ROOF MASTERS")
-    date_of_loss = config.get("dates", {}).get("date_of_loss", "")
-    trades = ", ".join(config.get("scope", {}).get("trades", ["Roofing"]))
+    company_name = _h(company.get("name", "USA ROOF MASTERS"))
+    date_of_loss = _h(config.get("dates", {}).get("date_of_loss", ""))
+    trades = _h(", ".join(config.get("scope", {}).get("trades") or ["Roofing"]))
 
     return f'''
     <div class="cover-header">
@@ -122,11 +128,11 @@ def _build_code_detail_cards(annotations: list[dict], config: dict) -> str:
         is_critical = ann.get("is_critical", False)
 
         card_class = "code-card critical" if is_critical else "code-card"
-        code_tag = ann.get("code_tag", "")
-        title = ann.get("title", "")
-        requirement = cc.get("requirement", "")
-        supplement = cc.get("supplement_argument", "")
-        meas = ann.get("measurement", "")
+        code_tag = _h(ann.get("code_tag", ""))
+        title = _h(ann.get("title", ""))
+        requirement = _h(cc.get("requirement", ""))
+        supplement = _h(cc.get("supplement_argument", ""))
+        meas = _h(ann.get("measurement", ""))
 
         card = f'''
         <div class="{card_class}">
@@ -177,7 +183,8 @@ def _build_installation_diagrams(annotations: list[dict], config: dict) -> str:
         diagrams.append(f'''
         <div class="diagram-box">
             <div class="diagram-title">Ice &amp; Water Barrier — Correct Installation</div>
-            <svg viewBox="0 0 600 180" width="100%" style="max-width:580px;">
+            <svg viewBox="0 0 600 180" width="100%" style="max-width:580px;" xmlns="http://www.w3.org/2000/svg">
+                <defs><marker id="arr" markerWidth="6" markerHeight="4" refX="5" refY="2" orient="auto"><polygon points="0 0, 6 2, 0 4" fill="#c0392b"/></marker></defs>
                 <!-- Cross-section of eave -->
                 <rect x="20" y="100" width="560" height="60" fill="#e8d5b0" stroke="#8b7355" stroke-width="1.5" rx="2"/>
                 <text x="300" y="138" text-anchor="middle" font-size="11" fill="#8b7355" font-weight="600">ROOF DECK (Plywood/OSB)</text>
@@ -190,13 +197,11 @@ def _build_installation_diagrams(annotations: list[dict], config: dict) -> str:
                 <!-- Wall line -->
                 <rect x="350" y="20" width="12" height="140" fill="#bdc3c7" stroke="#7f8c8d" stroke-width="1"/>
                 <text x="380" y="90" font-size="10" fill="#7f8c8d">Interior Wall</text>
-                <!-- Dimension arrow -->
-                <line x1="20" y1="45" x2="375" y2="45" stroke="#c0392b" stroke-width="1.5" marker-end="url(#arr)"/>
-                <line x1="375" y1="45" x2="20" y2="45" stroke="#c0392b" stroke-width="1.5" marker-start="url(#arr)"/>
+                <!-- Dimension arrow (single line with both markers) -->
+                <line x1="20" y1="45" x2="375" y2="45" stroke="#c0392b" stroke-width="1.5" marker-start="url(#arr)" marker-end="url(#arr)"/>
                 <text x="197" y="40" text-anchor="middle" font-size="11" fill="#c0392b" font-weight="700">24" past interior wall line</text>
                 <!-- Eave edge label -->
                 <text x="10" y="25" font-size="10" fill="#2c3e50" font-weight="600">Eave Edge ({eave_lf:.0f} LF)</text>
-                <defs><marker id="arr" markerWidth="6" markerHeight="4" refX="5" refY="2" orient="auto"><polygon points="0 0, 6 2, 0 4" fill="#c0392b"/></marker></defs>
             </svg>
             <div style="font-size:12px; color:#5d6d7e; margin-top:8px;">
                 <span class="diagram-correct">CORRECT:</span> I&amp;W extends from eave edge to minimum 24" past the interior face of the exterior wall.
