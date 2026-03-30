@@ -511,6 +511,172 @@ export default function ClaimDetailPage() {
     </div>
   );
 
+  const EstimateConfigPanel = ({ claimId, existingRequest, onReprocess }: {
+    claimId: string;
+    existingRequest?: Record<string, string> | null;
+    onReprocess: () => void;
+  }) => {
+    const [roofMaterial, setRoofMaterial] = useState(existingRequest?.roof_material || "");
+    const [includeGutters, setIncludeGutters] = useState(!!existingRequest?.gutters);
+    const [gutterType, setGutterType] = useState(existingRequest?.gutters || "");
+    const [includeSiding, setIncludeSiding] = useState(!!existingRequest?.siding);
+    const [sidingType, setSidingType] = useState(existingRequest?.siding || "");
+    const [saving, setSaving] = useState(false);
+
+    const handleGenerate = async () => {
+      if (!roofMaterial) return;
+      setSaving(true);
+      try {
+        const estimateRequest: Record<string, string> = { roof_material: roofMaterial };
+        if (includeGutters && gutterType) estimateRequest.gutters = gutterType;
+        if (includeSiding && sidingType) estimateRequest.siding = sidingType;
+
+        const res = await fetch("/api/claims/update", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            claimId,
+            updates: { estimate_request: estimateRequest, status: "uploaded" },
+          }),
+        });
+        if (!res.ok) throw new Error("Failed to update");
+        onReprocess();
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setSaving(false);
+      }
+    };
+
+    return (
+      <div className="glass-card overflow-hidden">
+        <div className="bg-gradient-to-r from-[var(--cyan)]/10 to-[var(--pink)]/10 border-b border-[var(--border-glass)] px-6 py-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[var(--cyan)] to-[var(--blue)] flex items-center justify-center">
+              <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
+              </svg>
+            </div>
+            <div>
+              <h3 className="text-base font-bold text-[var(--white)]">Measurements Detected — Configure Your Estimate</h3>
+              <p className="text-xs text-[var(--gray-muted)]">Select roof type and options to generate the full 6-document package</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="p-6 space-y-4">
+          {/* Roof Material */}
+          <div>
+            <label className="block text-sm font-semibold text-[var(--white)] mb-1.5">Roof Material *</label>
+            <select
+              value={roofMaterial}
+              onChange={(e) => setRoofMaterial(e.target.value)}
+              className="w-full px-4 py-3 rounded-lg bg-[rgb(15,18,35)] border border-[var(--border-glass)] focus:border-[var(--cyan)] focus:ring-1 focus:ring-[var(--cyan)] outline-none transition-colors text-sm text-[var(--white)]"
+            >
+              <option value="">Select roof material...</option>
+              <option value="3-Tab">3-Tab</option>
+              <option value="Laminate Comp Shingle">Laminate Comp Shingle</option>
+              <option value="Premium Grade Laminate Comp Shingle">Premium Grade Laminate Comp Shingle</option>
+              <option value="Slate">Slate</option>
+              <option value="Standing Seam Metal">Standing Seam Metal</option>
+              <option value="Tile">Tile</option>
+              <option value="Cedar">Cedar</option>
+            </select>
+          </div>
+
+          {/* Gutters */}
+          <div>
+            <label className="flex items-center gap-3 cursor-pointer group">
+              <button
+                type="button"
+                onClick={() => { setIncludeGutters(!includeGutters); if (includeGutters) setGutterType(""); }}
+                className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors ${
+                  includeGutters
+                    ? "border-[var(--pink)] bg-gradient-to-r from-[var(--pink)] to-[var(--blue)]"
+                    : "border-[var(--border-glass)] bg-[var(--bg-glass)]"
+                }`}
+              >
+                {includeGutters && (
+                  <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                  </svg>
+                )}
+              </button>
+              <span className="text-sm font-semibold text-[var(--white)]">Include Gutters</span>
+            </label>
+            {includeGutters && (
+              <select
+                value={gutterType}
+                onChange={(e) => setGutterType(e.target.value)}
+                className="w-full mt-2 ml-8 px-4 py-3 rounded-lg bg-[rgb(15,18,35)] border border-[var(--border-glass)] focus:border-[var(--cyan)] focus:ring-1 focus:ring-[var(--cyan)] outline-none transition-colors text-sm text-[var(--white)]"
+              >
+                <option value="">Select gutter type...</option>
+                <option value="5K Gutters and Downspouts">5K Gutters and Downspouts</option>
+                <option value="6K Gutters and Downspouts">6K Gutters and Downspouts</option>
+                <option value="Copper Half Round">Copper Half Round</option>
+              </select>
+            )}
+          </div>
+
+          {/* Siding */}
+          <div>
+            <label className="flex items-center gap-3 cursor-pointer group">
+              <button
+                type="button"
+                onClick={() => { setIncludeSiding(!includeSiding); if (includeSiding) setSidingType(""); }}
+                className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors ${
+                  includeSiding
+                    ? "border-[var(--pink)] bg-gradient-to-r from-[var(--pink)] to-[var(--blue)]"
+                    : "border-[var(--border-glass)] bg-[var(--bg-glass)]"
+                }`}
+              >
+                {includeSiding && (
+                  <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                  </svg>
+                )}
+              </button>
+              <span className="text-sm font-semibold text-[var(--white)]">Include Siding</span>
+            </label>
+            {includeSiding && (
+              <select
+                value={sidingType}
+                onChange={(e) => setSidingType(e.target.value)}
+                className="w-full mt-2 ml-8 px-4 py-3 rounded-lg bg-[rgb(15,18,35)] border border-[var(--border-glass)] focus:border-[var(--cyan)] focus:ring-1 focus:ring-[var(--cyan)] outline-none transition-colors text-sm text-[var(--white)]"
+              >
+                <option value="">Select siding type...</option>
+                <option value="Vinyl Siding">Vinyl Siding</option>
+                <option value="Vinyl w/ Insulation">Vinyl w/ Insulation</option>
+                <option value="Aluminum">Aluminum</option>
+                <option value="Cedar">Cedar</option>
+                <option value="Specialty">Specialty</option>
+              </select>
+            )}
+          </div>
+
+          {/* Generate Button */}
+          <button
+            onClick={handleGenerate}
+            disabled={!roofMaterial || saving}
+            className="w-full py-3 rounded-lg bg-gradient-to-r from-[var(--cyan)] to-[var(--blue)] text-white font-bold text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:opacity-90 transition-opacity flex items-center justify-center gap-2"
+          >
+            {saving ? (
+              <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+              </svg>
+            ) : (
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
+              </svg>
+            )}
+            {saving ? "Generating..." : "Generate Full 6-Document Package"}
+          </button>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <main className="min-h-screen">
       {/* Top Bar */}
@@ -913,7 +1079,7 @@ export default function ClaimDetailPage() {
         {isReady && claim.scope_comparison && !isForensicOnly && (
           <ScopeComparison claimId={claim.id} carrierName={claim.carrier} />
         )}
-        {isReady && isForensicOnly && (
+        {isReady && isForensicOnly && !(claim.measurement_files?.length) && (
           <LockedCard title="Line-by-Line Carrier Comparison" description="Compare your scope against the carrier's to find every underpayment and missing item." />
         )}
 
@@ -921,7 +1087,19 @@ export default function ClaimDetailPage() {
         {isReady && !isForensicOnly && (
           <EstimateView claimId={claim.id} />
         )}
-        {isReady && isForensicOnly && (
+
+        {/* Upgrade Panel — forensic-only with measurements ready */}
+        {isReady && isForensicOnly && (claim.measurement_files?.length ?? 0) > 0 && (
+          <EstimateConfigPanel
+            claimId={claim.id}
+            existingRequest={claim.estimate_request}
+            onReprocess={() => {
+              setClaim((prev) => prev ? { ...prev, status: "uploaded" } : prev);
+            }}
+          />
+        )}
+
+        {isReady && isForensicOnly && !(claim.measurement_files?.length) && (
           <LockedCard title="Code-Cited Estimate" description="Every line item backed by building codes, photo evidence, and regional Xactimate pricing." />
         )}
 

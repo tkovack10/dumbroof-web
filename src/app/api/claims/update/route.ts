@@ -10,6 +10,7 @@ const ALLOWED_FIELDS = new Set([
   "other_files",
   "status",
   "phase",
+  "estimate_request",
 ]);
 
 export async function POST(request: Request) {
