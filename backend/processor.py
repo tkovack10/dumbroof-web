@@ -717,6 +717,28 @@ HAIL DAMAGE INDICATORS:
 - Fractured/cracked shingle mat (per HAAG standard = functional damage requiring full replacement)
 - Soft metal deformation (gutters, vents, flashing)
 
+MATERIAL INFERENCE (CRITICAL — fixes most common error):
+- When a photo shows a CLOSE-UP of shingle damage (chalk circles, granule detail, mat texture), you can often NOT see enough of the shingle to identify the product.
+- Do NOT default material to "other" for close-up damage shots. Infer material from context: if the claim's other photos show laminate/architectural shingles, tag close-ups as "asphalt_shingle" or "comp_shingle_laminated".
+- "other" should ONLY be used when the material is genuinely unidentifiable AND no context clues exist from surrounding photos.
+- Copper turret caps, metal chimney caps, and metal vent caps = material: "metal" and trade: "roofing" (not "flashing").
+
+INSPECTOR LANGUAGE (use these exact terms — they carry legal weight):
+- "soft to the touch" = confirmed mat fracture via press test (strongest hail evidence)
+- "functional damage" = damage that impairs the shingle's function and requires replacement (the insurance trigger term)
+- "bruised mat" = physical mat damage from hail impact
+- "embedded granules" = impact velocity crushed granules into the asphalt layer (proves force of impact)
+- "circular depression" = hail impact indent visible on shingle surface
+Do NOT use these weak/generic terms: "granule displacement", "exposed mat", "dark mat visible", "granule loss pattern consistent with". These are textbook terms that adjusters dismiss.
+Lead with the FINDING, not the description. "Functional damage confirmed" > "photo shows evidence of damage."
+
+CHALK TEST NOTATION READING:
+- Test square notations follow this format: [SIDE] H=[count]
+- Common sides: FRONT, BACK, LEFT, RIGHT (sometimes abbreviated F, B, L, R)
+- H= means hail hits counted in the 10x10 test square
+- Only transcribe what is CLEARLY legible. Do not guess abbreviations.
+- Example: "Right slope test square: H=11 hail hits confirmed" (not "markings read RHHF")
+
 SIDING DAMAGE — Look for:
 - Hail dents on metal/aluminum siding (chalk test gaps on flat metal panels)
 - Cracked, chipped, or broken vinyl siding panels
