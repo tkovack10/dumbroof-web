@@ -311,48 +311,6 @@ export function CocBuilder({ claimId, claimAddress, carrierName, userId, filePat
                 />
               </div>
 
-              {/* Completion photos */}
-              <div className="space-y-2">
-                <FileUploadZone
-                  label="Completion Photos"
-                  description="Attach photos showing the completed work"
-                  accept="image/*,.heic,.heif"
-                  multiple
-                  files={completionPhotos}
-                  onFilesChange={setCompletionPhotos}
-                />
-                {completionPhotos.length > 0 && (
-                  <button
-                    onClick={uploadCompletionPhotos}
-                    disabled={uploadingPhotos}
-                    className="px-3 py-1.5 rounded-lg bg-purple-500/10 text-purple-400 text-xs font-semibold hover:bg-purple-500/20 transition-colors disabled:opacity-50"
-                  >
-                    {uploadingPhotos
-                      ? `Uploading ${completionPhotos.length} photo${completionPhotos.length !== 1 ? "s" : ""}...`
-                      : `Upload ${completionPhotos.length} Photo${completionPhotos.length !== 1 ? "s" : ""}`}
-                  </button>
-                )}
-                {(crmIntegrations.acculynx || crmIntegrations.companycam) && (
-                  <button
-                    onClick={() => setShowCrmModal(true)}
-                    className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[var(--cyan)]/10 text-[var(--cyan)] text-sm font-semibold hover:bg-[var(--cyan)]/20 transition-colors"
-                  >
-                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
-                    </svg>
-                    Import from CRM
-                  </button>
-                )}
-                {completionPhotoPaths.length > 0 && (
-                  <p className="text-[10px] text-green-400 flex items-center gap-1">
-                    <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                    </svg>
-                    {completionPhotoPaths.length} completion photo{completionPhotoPaths.length !== 1 ? "s" : ""} ready
-                  </p>
-                )}
-              </div>
-
               {/* Generate button */}
               <button
                 onClick={generatePdf}
@@ -375,6 +333,48 @@ export function CocBuilder({ claimId, claimAddress, carrierName, userId, filePat
               </button>
             </div>
           )}
+
+          {/* Completion photos — shown in both modes */}
+          <div className="space-y-2 mt-4">
+            <FileUploadZone
+              label="Completion Photos"
+              description="Attach photos of the completed work to send with COC"
+              accept="image/*,.heic,.heif"
+              multiple
+              files={completionPhotos}
+              onFilesChange={setCompletionPhotos}
+            />
+            {completionPhotos.length > 0 && (
+              <button
+                onClick={uploadCompletionPhotos}
+                disabled={uploadingPhotos}
+                className="px-3 py-1.5 rounded-lg bg-purple-500/10 text-purple-400 text-xs font-semibold hover:bg-purple-500/20 transition-colors disabled:opacity-50"
+              >
+                {uploadingPhotos
+                  ? `Uploading ${completionPhotos.length} photo${completionPhotos.length !== 1 ? "s" : ""}...`
+                  : `Upload ${completionPhotos.length} Photo${completionPhotos.length !== 1 ? "s" : ""}`}
+              </button>
+            )}
+            {(crmIntegrations.acculynx || crmIntegrations.companycam) && (
+              <button
+                onClick={() => setShowCrmModal(true)}
+                className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[var(--cyan)]/10 text-[var(--cyan)] text-sm font-semibold hover:bg-[var(--cyan)]/20 transition-colors"
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
+                </svg>
+                Import from CRM
+              </button>
+            )}
+            {completionPhotoPaths.length > 0 && (
+              <p className="text-[10px] text-green-400 flex items-center gap-1">
+                <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                </svg>
+                {completionPhotoPaths.length} completion photo{completionPhotoPaths.length !== 1 ? "s" : ""} ready
+              </p>
+            )}
+          </div>
 
           {/* PDF preview / download */}
           {pdfPath && (
