@@ -9,6 +9,8 @@ interface Props {
   scopeFiles?: string[] | null;
   weatherFiles?: string[] | null;
   otherFiles?: string[] | null;
+  cocFiles?: string[] | null;
+  aobFiles?: string[] | null;
 }
 
 interface DocCategory {
@@ -20,7 +22,7 @@ interface DocCategory {
   color: string;
 }
 
-export function UploadedDocuments({ filePath, measurementFiles, scopeFiles, weatherFiles, otherFiles }: Props) {
+export function UploadedDocuments({ filePath, measurementFiles, scopeFiles, weatherFiles, otherFiles, cocFiles, aobFiles }: Props) {
   const [expanded, setExpanded] = useState(false);
   const [signedUrls, setSignedUrls] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
@@ -89,8 +91,38 @@ export function UploadedDocuments({ filePath, measurementFiles, scopeFiles, weat
       });
     }
 
+    if (aobFiles && aobFiles.length > 0) {
+      cats.push({
+        key: "aob",
+        label: "AOB / Contingency",
+        folder: "aob",
+        files: aobFiles,
+        color: "text-amber-400",
+        icon: (
+          <svg className="w-4 h-4 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" />
+          </svg>
+        ),
+      });
+    }
+
+    if (cocFiles && cocFiles.length > 0) {
+      cats.push({
+        key: "coc",
+        label: "Certificate of Completion",
+        folder: "coc",
+        files: cocFiles,
+        color: "text-purple-400",
+        icon: (
+          <svg className="w-4 h-4 text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12c0 1.268-.63 2.39-1.593 3.068a3.745 3.745 0 01-1.043 3.296 3.745 3.745 0 01-3.296 1.043A3.745 3.745 0 0112 21c-1.268 0-2.39-.63-3.068-1.593a3.746 3.746 0 01-3.296-1.043 3.745 3.745 0 01-1.043-3.296A3.745 3.745 0 013 12c0-1.268.63-2.39 1.593-3.068a3.745 3.745 0 011.043-3.296 3.746 3.746 0 013.296-1.043A3.746 3.746 0 0112 3c1.268 0 2.39.63 3.068 1.593a3.746 3.746 0 013.296 1.043 3.746 3.746 0 011.043 3.296A3.745 3.745 0 0121 12z" />
+          </svg>
+        ),
+      });
+    }
+
     return cats;
-  }, [measurementFiles, scopeFiles, weatherFiles, otherFiles]);
+  }, [measurementFiles, scopeFiles, weatherFiles, otherFiles, cocFiles, aobFiles]);
 
   const totalFiles = categories.reduce((sum, c) => sum + c.files.length, 0);
 

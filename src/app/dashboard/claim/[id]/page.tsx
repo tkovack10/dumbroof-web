@@ -1073,6 +1073,8 @@ export default function ClaimDetailPage() {
           scopeFiles={claim.scope_files}
           weatherFiles={claim.weather_files}
           otherFiles={claim.other_files}
+          cocFiles={claim.coc_files}
+          aobFiles={claim.aob_files}
         />
 
         {/* Scope Comparison — only when scope_comparison data exists */}

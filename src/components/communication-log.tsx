@@ -62,7 +62,7 @@ export function CommunicationLog({ claimId }: Props) {
     fetchEmails();
   }, [claimId]);
 
-  if (loading || emails.length === 0) return null;
+  if (loading) return null;
 
   return (
     <div className="glass-card overflow-hidden">
@@ -72,9 +72,11 @@ export function CommunicationLog({ claimId }: Props) {
       >
         <div className="flex items-center gap-3">
           <h2 className="text-sm font-semibold text-[var(--white)]">Communication Log</h2>
-          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-500/10 text-blue-400">
-            {emails.length} sent
-          </span>
+          {emails.length > 0 && (
+            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-500/10 text-blue-400">
+              {emails.length} sent
+            </span>
+          )}
         </div>
         <svg className={`w-5 h-5 text-[var(--gray-dim)] transition-transform ${expanded ? "rotate-180" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
@@ -83,6 +85,12 @@ export function CommunicationLog({ claimId }: Props) {
 
       {expanded && (
         <div className="border-t border-white/[0.04]">
+          {emails.length === 0 && (
+            <div className="px-6 py-8 text-center">
+              <p className="text-sm text-[var(--gray-dim)]">No communications sent yet</p>
+              <p className="text-xs text-[var(--gray-dim)] mt-1">Emails sent from this claim will appear here</p>
+            </div>
+          )}
           {emails.map((email) => {
             const style = TYPE_STYLES[email.email_type] || TYPE_STYLES.custom;
             const isExpanded = expandedEmail === email.id;

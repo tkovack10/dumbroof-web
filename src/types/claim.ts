@@ -21,6 +21,8 @@ export interface Claim {
   scope_files?: string[] | null;
   weather_files?: string[] | null;
   other_files?: string[] | null;
+  coc_files?: string[] | null;
+  aob_files?: string[] | null;
   // Financial (populated by backend processor)
   contractor_rcv?: number | null;
   original_carrier_rcv?: number | null;

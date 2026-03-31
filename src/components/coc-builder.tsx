@@ -81,12 +81,24 @@ export function CocBuilder({ claimId, claimAddress, carrierName, userId, filePat
     setUploadingPhotos(false);
   };
 
+  const saveCocFileToSourceDocs = async (filename: string) => {
+    try {
+      await fetch("/api/team-claims/update-files", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ claim_id: claimId, column: "coc_files", filename }),
+      });
+    } catch { /* non-fatal */ }
+  };
+
   const uploadOwnCoc = async () => {
     if (ownCocFile.length === 0) return;
     setUploadingCoc(true);
     try {
       const path = await uploadFile(ownCocFile[0], "coc");
       setPdfPath(path);
+      const filename = path.split("/").pop() || "";
+      if (filename) await saveCocFileToSourceDocs(filename);
       setOwnCocFile([]);
     } catch {
       /* ignore */
@@ -143,6 +155,8 @@ export function CocBuilder({ claimId, claimAddress, carrierName, userId, filePat
         const data = await res.json();
         setPdfPath(data.pdf_path);
         setDownloadUrl(data.download_url);
+        const filename = (data.pdf_path || "").split("/").pop() || "";
+        if (filename) await saveCocFileToSourceDocs(filename);
         await fetchExisting();
       }
     } catch { /* ignore */ }

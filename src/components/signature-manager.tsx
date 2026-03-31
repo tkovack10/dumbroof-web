@@ -375,6 +375,15 @@ export function SignatureManager({ claimId, claimAddress, carrierName, userId, f
                       });
 
                       if (res.ok) {
+                        // Save to source docs
+                        const aobFilename = signData.path.split("/").pop() || "";
+                        if (aobFilename) {
+                          fetch("/api/team-claims/update-files", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ claim_id: claimId, column: "aob_files", filename: aobFilename }),
+                          }).catch(() => {});
+                        }
                         setSignedPdfFile([]);
                         setHomeownerName("");
                         setHomeownerEmail("");
