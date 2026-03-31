@@ -161,12 +161,30 @@ export async function PUT(req: NextRequest) {
       return NextResponse.json({ error: result.message }, { status: 500 });
     }
 
-    // Update COC record
+    // Upsert COC record (handles "Upload Your Own" mode where no record exists yet)
     const updateField = recipient_type === "homeowner" ? "sent_to_homeowner" : "sent_to_carrier";
-    await supabaseAdmin
+    const { data: existingCoc } = await supabaseAdmin
       .from("certificates_of_completion")
-      .update({ [updateField]: true, sent_at: new Date().toISOString() })
-      .eq("claim_id", claim_id);
+      .select("id")
+      .eq("claim_id", claim_id)
+      .limit(1);
+
+    if (existingCoc && existingCoc.length > 0) {
+      await supabaseAdmin
+        .from("certificates_of_completion")
+        .update({ [updateField]: true, sent_at: new Date().toISOString(), pdf_path })
+        .eq("id", existingCoc[0].id);
+    } else {
+      await supabaseAdmin
+        .from("certificates_of_completion")
+        .insert({
+          claim_id,
+          user_id: userId,
+          pdf_path,
+          [updateField]: true,
+          sent_at: new Date().toISOString(),
+        });
+    }
 
     // Update lifecycle phase
     await supabaseAdmin
