@@ -161,7 +161,7 @@ export async function POST(req: NextRequest) {
         homeowner_email: homeowner_email,
         homeowner_phone: homeowner_phone || "",
         address: claimAddress,
-        city_state_zip: claim?.address ? "" : (sender_fields?.city_state_zip || ""),
+        city_state_zip: sender_fields?.city_state_zip || "",
         carrier: claim?.carrier || sender_fields?.carrier || "",
         claim_number: claim?.claim_number || sender_fields?.claim_number || "",
         adjuster_info: claim?.adjuster_name || sender_fields?.adjuster_info || "",
@@ -238,19 +238,30 @@ export async function POST(req: NextRequest) {
         <p>Respectfully,<br/>${companyName}<br/>${company?.phone || ""}</p>
       `;
 
-      await fetch(`${BACKEND_URL}/api/supplement-email/send`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          claim_id: claim_id || null,
-          user_id: userId,
-          to_email: homeowner_email,
-          subject: `${docLabel} — ${claimAddress}`,
-          body_html: emailBody,
-        }),
-      });
+      let emailSent = false;
+      try {
+        const emailRes = await fetch(`${BACKEND_URL}/api/supplement-email/send`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            claim_id: claim_id || null,
+            user_id: userId,
+            to_email: homeowner_email,
+            subject: `${docLabel} — ${claimAddress}`,
+            body_html: emailBody,
+          }),
+        });
+        emailSent = emailRes.ok;
+      } catch (emailErr) {
+        console.error("Failed to send signing email:", emailErr);
+      }
 
-      return NextResponse.json({ ok: true, signature_id: sig.id, sign_link: signLink });
+      return NextResponse.json({
+        ok: true,
+        signature_id: sig.id,
+        sign_link: signLink,
+        email_sent: emailSent,
+      });
     } catch (err) {
       const message = err instanceof Error ? err.message : "Failed to create template-based signing request";
       console.error("Template signing error:", err);

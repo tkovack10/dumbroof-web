@@ -349,7 +349,7 @@ export function SignForm({ signatureId, documentType, homeownerName, companyName
                                     canvasRefs.current.set(field.id, el);
                                     if (!el.dataset.init) {
                                       el.dataset.init = "1";
-                                      initCanvas(el);
+                                      requestAnimationFrame(() => initCanvas(el));
                                     }
                                   }
                                 }}
@@ -403,7 +403,7 @@ export function SignForm({ signatureId, documentType, homeownerName, companyName
                                     canvasRefs.current.set(field.id, el);
                                     if (!el.dataset.init) {
                                       el.dataset.init = "1";
-                                      initCanvas(el);
+                                      requestAnimationFrame(() => initCanvas(el));
                                     }
                                   }
                                 }}
