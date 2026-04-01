@@ -1,5 +1,6 @@
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { SignForm } from "./sign-form";
+import type { TemplateField } from "@/lib/usarm-aob-template";
 
 export default async function SignPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -7,7 +8,7 @@ export default async function SignPage({ params }: { params: Promise<{ id: strin
   // Fetch signing request server-side
   const { data: rows } = await supabaseAdmin
     .from("aob_signatures")
-    .select("id, document_type, homeowner_name, company_name, claim_address, unsigned_pdf_path, status")
+    .select("id, document_type, homeowner_name, company_name, claim_address, unsigned_pdf_path, status, template_id")
     .eq("id", id)
     .limit(1);
 
@@ -60,6 +61,23 @@ export default async function SignPage({ params }: { params: Promise<{ id: strin
     pdfUrl = signedUrl?.signedUrl || null;
   }
 
+  // Load signer fields from template
+  let templateFields: TemplateField[] = [];
+  if (sig.template_id) {
+    const { data: tplRows } = await supabaseAdmin
+      .from("document_templates")
+      .select("fields")
+      .eq("id", sig.template_id)
+      .limit(1);
+
+    const tpl = tplRows?.[0];
+    if (tpl?.fields) {
+      templateFields = (tpl.fields as TemplateField[]).filter(
+        (f) => f.filledBy === "signer"
+      );
+    }
+  }
+
   return (
     <SignForm
       signatureId={sig.id}
@@ -68,6 +86,7 @@ export default async function SignPage({ params }: { params: Promise<{ id: strin
       companyName={sig.company_name || ""}
       claimAddress={sig.claim_address || ""}
       pdfUrl={pdfUrl}
+      templateFields={templateFields.length > 0 ? templateFields : undefined}
     />
   );
 }

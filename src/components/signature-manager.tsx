@@ -26,12 +26,30 @@ interface SignatureRecord {
   carrier_cadence_started: boolean;
   carrier_email: string | null;
   created_at: string;
+  template_id?: string | null;
+}
+
+interface Template {
+  id: string;
+  name: string;
+  document_type: string;
+  description: string | null;
+  page_count: number;
+  is_system: boolean;
 }
 
 const DOC_TYPE_LABELS: Record<string, string> = {
   aob: "Assignment of Benefits (AOB)",
   contingency: "Contingency Agreement",
 };
+
+const TRADE_OPTIONS = [
+  { id: "roofing", label: "Roofing System" },
+  { id: "gutters", label: "Gutter / Roof Drainage System" },
+  { id: "siding", label: "Siding & Capping" },
+  { id: "windows", label: "Windows" },
+  { id: "other", label: "Other" },
+];
 
 export function SignatureManager({ claimId, claimAddress, carrierName, userId, filePath, claimNumber, adjusterEmail }: Props) {
   const [expanded, setExpanded] = useState(false);
@@ -40,6 +58,7 @@ export function SignatureManager({ claimId, claimAddress, carrierName, userId, f
   const [docType, setDocType] = useState<"aob" | "contingency">("aob");
   const [homeownerName, setHomeownerName] = useState("");
   const [homeownerEmail, setHomeownerEmail] = useState("");
+  const [homeownerPhone, setHomeownerPhone] = useState("");
   const [sending, setSending] = useState(false);
   const [signLink, setSignLink] = useState<string | null>(null);
   const [carrierEmail, setCarrierEmail] = useState(adjusterEmail || "");
@@ -47,6 +66,12 @@ export function SignatureManager({ claimId, claimAddress, carrierName, userId, f
   const [uploadMode, setUploadMode] = useState(false);
   const [signedPdfFile, setSignedPdfFile] = useState<File[]>([]);
   const [uploadingSigned, setUploadingSigned] = useState(false);
+
+  // Template state
+  const [templates, setTemplates] = useState<Template[]>([]);
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
+  const [selectedTrades, setSelectedTrades] = useState<string[]>([]);
+  const [otherTradeText, setOtherTradeText] = useState("");
 
   const fetchSignatures = useCallback(async () => {
     try {
@@ -59,28 +84,63 @@ export function SignatureManager({ claimId, claimAddress, carrierName, userId, f
     setLoading(false);
   }, [claimId]);
 
-  useEffect(() => { fetchSignatures(); }, [fetchSignatures]);
+  const fetchTemplates = useCallback(async () => {
+    try {
+      const res = await fetch("/api/templates");
+      if (res.ok) {
+        const data = await res.json();
+        setTemplates(data.templates || []);
+        // Auto-select if only one AOB template
+        const aobTemplates = (data.templates || []).filter((t: Template) => t.document_type === "aob");
+        if (aobTemplates.length === 1) {
+          setSelectedTemplateId(aobTemplates[0].id);
+        }
+      }
+    } catch { /* ignore */ }
+  }, []);
+
+  useEffect(() => { fetchSignatures(); fetchTemplates(); }, [fetchSignatures, fetchTemplates]);
+
+  const toggleTrade = (tradeId: string) => {
+    setSelectedTrades((prev) =>
+      prev.includes(tradeId) ? prev.filter((t) => t !== tradeId) : [...prev, tradeId]
+    );
+  };
 
   const sendForSignature = async () => {
     if (!homeownerName || !homeownerEmail) return;
     setSending(true);
     setSignLink(null);
     try {
+      const body: Record<string, unknown> = {
+        claim_id: claimId,
+        document_type: docType,
+        homeowner_name: homeownerName,
+        homeowner_email: homeownerEmail,
+      };
+
+      if (selectedTemplateId) {
+        body.template_id = selectedTemplateId;
+        body.homeowner_phone = homeownerPhone;
+        body.trades = selectedTrades;
+        if (selectedTrades.includes("other") && otherTradeText) {
+          body.sender_fields = { trade_other_text: otherTradeText };
+        }
+      }
+
       const res = await fetch("/api/signatures", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          claim_id: claimId,
-          document_type: docType,
-          homeowner_name: homeownerName,
-          homeowner_email: homeownerEmail,
-        }),
+        body: JSON.stringify(body),
       });
       if (res.ok) {
         const data = await res.json();
         setSignLink(data.sign_link);
         setHomeownerName("");
         setHomeownerEmail("");
+        setHomeownerPhone("");
+        setSelectedTrades([]);
+        setOtherTradeText("");
         await fetchSignatures();
       }
     } catch { /* ignore */ }
@@ -116,6 +176,8 @@ export function SignatureManager({ claimId, claimAddress, carrierName, userId, f
   const latestSig = signatures[0];
   const hasSigned = signatures.some((s) => s.status === "signed");
   const hasPending = signatures.some((s) => s.status === "pending");
+  const aobTemplates = templates.filter((t) => t.document_type === "aob");
+  const showTemplateSelector = aobTemplates.length > 0 && docType === "aob";
 
   return (
     <div className="glass-card overflow-hidden">
@@ -139,19 +201,13 @@ export function SignatureManager({ claimId, claimAddress, carrierName, userId, f
         </div>
         <div className="flex items-center gap-3">
           {hasSigned && (
-            <span className="text-xs px-2.5 py-1 rounded-full bg-green-500/10 text-green-400 font-semibold">
-              Signed
-            </span>
+            <span className="text-xs px-2.5 py-1 rounded-full bg-green-500/10 text-green-400 font-semibold">Signed</span>
           )}
           {hasPending && !hasSigned && (
-            <span className="text-xs px-2.5 py-1 rounded-full bg-amber-500/10 text-amber-400 font-semibold">
-              Pending
-            </span>
+            <span className="text-xs px-2.5 py-1 rounded-full bg-amber-500/10 text-amber-400 font-semibold">Pending</span>
           )}
           {latestSig?.carrier_cadence_started && (
-            <span className="text-xs px-2.5 py-1 rounded-full bg-blue-500/10 text-blue-400 font-semibold">
-              Carrier Notified
-            </span>
+            <span className="text-xs px-2.5 py-1 rounded-full bg-blue-500/10 text-blue-400 font-semibold">Carrier Notified</span>
           )}
           <svg className={`w-5 h-5 text-[var(--gray-muted)] transition-transform ${expanded ? "rotate-180" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
@@ -170,6 +226,7 @@ export function SignatureManager({ claimId, claimAddress, carrierName, userId, f
                     <div>
                       <p className="text-sm font-semibold text-[var(--white)]">
                         {DOC_TYPE_LABELS[sig.document_type] || sig.document_type}
+                        {sig.template_id && <span className="ml-1 text-[10px] text-blue-400">(custom template)</span>}
                       </p>
                       <p className="text-[10px] text-[var(--gray-dim)]">
                         {sig.homeowner_name} &middot; {sig.homeowner_email}
@@ -184,7 +241,6 @@ export function SignatureManager({ claimId, claimAddress, carrierName, userId, f
                     </span>
                   </div>
 
-                  {/* Signed → show carrier notification */}
                   {sig.status === "signed" && !sig.carrier_cadence_started && (
                     <div className="mt-3 rounded-xl bg-green-500/[0.06] border border-green-500/20 p-3">
                       <p className="text-xs text-green-400 font-semibold mb-2">
@@ -235,7 +291,7 @@ export function SignatureManager({ claimId, claimAddress, carrierName, userId, f
               {(["aob", "contingency"] as const).map((type) => (
                 <button
                   key={type}
-                  onClick={() => setDocType(type)}
+                  onClick={() => { setDocType(type); setSelectedTemplateId(null); }}
                   className={`flex-1 p-3 rounded-xl border text-left transition-colors ${
                     docType === type
                       ? "border-blue-500/30 bg-blue-500/[0.06]"
@@ -248,6 +304,45 @@ export function SignatureManager({ claimId, claimAddress, carrierName, userId, f
                 </button>
               ))}
             </div>
+
+            {/* Template selector (for AOB) */}
+            {showTemplateSelector && (
+              <div>
+                <label className="text-xs font-semibold text-[var(--gray-muted)] block mb-1.5">Document Template</label>
+                <div className="flex flex-col gap-2">
+                  <button
+                    onClick={() => setSelectedTemplateId(null)}
+                    className={`p-3 rounded-xl border text-left transition-colors ${
+                      !selectedTemplateId
+                        ? "border-blue-500/30 bg-blue-500/[0.06]"
+                        : "border-white/10 bg-white/[0.03] hover:bg-white/[0.06]"
+                    }`}
+                  >
+                    <p className={`text-sm font-semibold ${!selectedTemplateId ? "text-blue-400" : "text-[var(--white)]"}`}>
+                      Platform Generated (Default)
+                    </p>
+                    <p className="text-[10px] text-[var(--gray-dim)]">Standard AOB generated by DumbRoof.ai</p>
+                  </button>
+                  {aobTemplates.map((tpl) => (
+                    <button
+                      key={tpl.id}
+                      onClick={() => setSelectedTemplateId(tpl.id)}
+                      className={`p-3 rounded-xl border text-left transition-colors ${
+                        selectedTemplateId === tpl.id
+                          ? "border-blue-500/30 bg-blue-500/[0.06]"
+                          : "border-white/10 bg-white/[0.03] hover:bg-white/[0.06]"
+                      }`}
+                    >
+                      <p className={`text-sm font-semibold ${selectedTemplateId === tpl.id ? "text-blue-400" : "text-[var(--white)]"}`}>
+                        {tpl.name}
+                        {tpl.is_system && <span className="ml-1 text-[10px] text-[var(--gray-dim)]">(system)</span>}
+                      </p>
+                      {tpl.description && <p className="text-[10px] text-[var(--gray-dim)]">{tpl.description}</p>}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Toggle: digital vs upload */}
             <div className="flex gap-2">
@@ -286,12 +381,54 @@ export function SignatureManager({ claimId, claimAddress, carrierName, userId, f
                     className="bg-white/5 border border-white/10 rounded-lg px-3 py-2.5 text-sm text-[var(--white)] placeholder:text-[var(--gray-dim)]"
                   />
                 </div>
+
+                {/* Phone (shown when template selected) */}
+                {selectedTemplateId && (
+                  <input
+                    placeholder="Homeowner phone (optional)"
+                    value={homeownerPhone}
+                    onChange={(e) => setHomeownerPhone(e.target.value)}
+                    className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2.5 text-sm text-[var(--white)] placeholder:text-[var(--gray-dim)]"
+                  />
+                )}
+
+                {/* Trade checkboxes (shown when template selected) */}
+                {selectedTemplateId && (
+                  <div>
+                    <label className="text-xs font-semibold text-[var(--gray-muted)] block mb-2">Select Trades</label>
+                    <div className="grid grid-cols-2 gap-2">
+                      {TRADE_OPTIONS.map((trade) => (
+                        <button
+                          key={trade.id}
+                          onClick={() => toggleTrade(trade.id)}
+                          className={`p-2.5 rounded-lg border text-left text-sm transition-colors ${
+                            selectedTrades.includes(trade.id)
+                              ? "border-blue-500/30 bg-blue-500/[0.06] text-blue-400 font-semibold"
+                              : "border-white/10 bg-white/[0.03] text-[var(--gray-muted)] hover:bg-white/[0.06]"
+                          }`}
+                        >
+                          <span className="mr-2">{selectedTrades.includes(trade.id) ? "\u2611" : "\u2610"}</span>
+                          {trade.label}
+                        </button>
+                      ))}
+                    </div>
+                    {selectedTrades.includes("other") && (
+                      <input
+                        placeholder="Describe other trade..."
+                        value={otherTradeText}
+                        onChange={(e) => setOtherTradeText(e.target.value)}
+                        className="mt-2 w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-[var(--white)] placeholder:text-[var(--gray-dim)]"
+                      />
+                    )}
+                  </div>
+                )}
+
                 <button
                   onClick={sendForSignature}
                   disabled={!homeownerName || !homeownerEmail || sending}
                   className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-blue-500 to-blue-600 text-white text-sm font-semibold hover:shadow-lg hover:shadow-blue-500/20 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
                 >
-                  {sending ? "Generating & Sending..." : `Send ${DOC_TYPE_LABELS[docType]} for Signature`}
+                  {sending ? "Generating & Sending..." : `Send ${selectedTemplateId ? "AOB" : DOC_TYPE_LABELS[docType]} for Signature`}
                 </button>
 
                 {signLink && (
@@ -345,7 +482,6 @@ export function SignatureManager({ claimId, claimAddress, carrierName, userId, f
                     if (!homeownerName || !homeownerEmail || signedPdfFile.length === 0) return;
                     setUploadingSigned(true);
                     try {
-                      // Upload the PDF
                       const file = signedPdfFile[0];
                       const signRes = await fetch("/api/storage/sign-upload", {
                         method: "POST",
@@ -360,7 +496,6 @@ export function SignatureManager({ claimId, claimAddress, carrierName, userId, f
                       if (!signRes.ok) throw new Error(signData.error || "Failed to get upload URL");
                       await directUpload(signData.signedUrl, file);
 
-                      // Create signature record with upload_mode flag
                       const res = await fetch("/api/signatures", {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
@@ -375,7 +510,6 @@ export function SignatureManager({ claimId, claimAddress, carrierName, userId, f
                       });
 
                       if (res.ok) {
-                        // Save to source docs
                         const aobFilename = signData.path.split("/").pop() || "";
                         if (aobFilename) {
                           fetch("/api/team-claims/update-files", {

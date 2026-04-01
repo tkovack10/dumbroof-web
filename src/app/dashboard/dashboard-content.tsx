@@ -365,6 +365,12 @@ export function DashboardContent({ user }: { user: User }) {
               </a>
             )}
             <a
+              href="/dashboard/send-document"
+              className="bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/30 text-blue-400 px-4 py-3 rounded-xl font-semibold transition-colors text-sm"
+            >
+              Send AOB
+            </a>
+            <a
               href="/dashboard/quick-report"
               className="bg-[var(--cyan)]/10 hover:bg-[var(--cyan)]/20 border border-[var(--cyan)]/30 text-[var(--cyan)] px-4 py-3 rounded-xl font-semibold transition-colors text-sm"
             >
