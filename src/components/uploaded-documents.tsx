@@ -129,18 +129,20 @@ export function UploadedDocuments({ filePath, measurementFiles, scopeFiles, weat
   const fetchSignedUrls = useCallback(async () => {
     if (totalFiles === 0) return;
     setLoading(true);
+    const allPaths = categories.flatMap(cat =>
+      cat.files.map(f => ({ key: `${cat.folder}/${f}`, path: `${filePath}/${cat.folder}/${f}` }))
+    );
     const urls: Record<string, string> = {};
-    for (const cat of categories) {
-      for (const file of cat.files) {
-        const path = `${filePath}/${cat.folder}/${file}`;
-        try {
-          const { data } = await supabase.storage
-            .from("claim-documents")
-            .createSignedUrl(path, 3600);
-          if (data?.signedUrl) urls[`${cat.folder}/${file}`] = data.signedUrl;
-        } catch { /* ignore */ }
+    try {
+      const { data } = await supabase.storage
+        .from("claim-documents")
+        .createSignedUrls(allPaths.map(p => p.path), 3600);
+      if (data) {
+        data.forEach((item, i) => {
+          if (item.signedUrl) urls[allPaths[i].key] = item.signedUrl;
+        });
       }
-    }
+    } catch { /* ignore */ }
     setSignedUrls(urls);
     setLoading(false);
   }, [categories, filePath, supabase, totalFiles]);

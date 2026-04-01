@@ -368,8 +368,8 @@ export function CrmImportModal({
               </a>
             </div>
           )}
-          {/* Search Step */}
-          {step === "search" && (
+          {/* Search Step — only when at least one integration is connected */}
+          {step === "search" && (integrations.acculynx || integrations.companycam) && (
             <>
               <div className="flex gap-3 mb-4">
                 <input

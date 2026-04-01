@@ -98,7 +98,7 @@ export function CocBuilder({ claimId, claimAddress, carrierName, userId, filePat
       const path = await uploadFile(ownCocFile[0], "coc");
       setPdfPath(path);
       const filename = path.split("/").pop() || "";
-      if (filename) await saveCocFileToSourceDocs(filename);
+      if (filename) void saveCocFileToSourceDocs(filename);
       setOwnCocFile([]);
     } catch {
       /* ignore */
@@ -156,7 +156,7 @@ export function CocBuilder({ claimId, claimAddress, carrierName, userId, filePat
         setPdfPath(data.pdf_path);
         setDownloadUrl(data.download_url);
         const filename = (data.pdf_path || "").split("/").pop() || "";
-        if (filename) await saveCocFileToSourceDocs(filename);
+        if (filename) void saveCocFileToSourceDocs(filename);
         await fetchExisting();
       }
     } catch { /* ignore */ }

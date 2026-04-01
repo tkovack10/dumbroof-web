@@ -25,11 +25,13 @@ export async function POST(req: Request) {
   }
 
   // Get current files array, append if not already present
-  const { data: claim } = await supabaseAdmin
+  const { data: claims } = await supabaseAdmin
     .from("claims")
     .select(column)
     .eq("id", claim_id)
-    .single();
+    .limit(1);
+
+  const claim = claims?.[0];
 
   const raw = claim?.[column];
   const currentFiles: string[] = Array.isArray(raw) ? raw : [];
