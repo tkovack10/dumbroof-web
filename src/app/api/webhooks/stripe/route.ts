@@ -37,7 +37,17 @@ export async function POST(req: NextRequest) {
       if (!subscriptionId) {
         const addOnId = session.metadata?.add_on_id;
         console.log("One-time payment completed:", { userId, customerId, addOnId, amount: session.amount_total });
-        // Future: create an inspection record, notify inspector network, etc.
+
+        if (addOnId === "haag_inspection") {
+          await supabaseAdmin.from("inspections").insert({
+            user_id: userId,
+            payment_status: "paid",
+            stripe_session_id: session.id,
+            amount_paid: session.amount_total,
+            status: "pending_assignment",
+            notes: "HAAG inspection purchased via dumbroof.ai — awaiting inspector assignment",
+          });
+        }
         break;
       }
 

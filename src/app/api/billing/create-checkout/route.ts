@@ -93,11 +93,8 @@ export async function POST(req: NextRequest) {
         cancel_url: `${origin}/pricing`,
         "metadata[user_id]": user.id,
         "metadata[add_on_id]": addOn.id,
+        allow_promotion_codes: "true",
       };
-
-      if (coupon) {
-        params["discounts[0][coupon]"] = coupon;
-      }
 
       const session = await stripePost("/checkout/sessions", params);
       return NextResponse.json({ url: session.url });

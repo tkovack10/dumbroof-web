@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import { Suspense } from "react";
+import { createBrowserClient } from "@supabase/ssr";
 import { Footer } from "@/components/footer";
 import { PLANS, ADD_ONS, type PlanId } from "@/lib/stripe-config";
 
@@ -12,10 +13,21 @@ export default function PricingPage() {
 
 function PricingContent() {
   const [loading, setLoading] = useState<string | null>(null);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
   const searchParams = useSearchParams();
   const coupon = searchParams.get("coupon") || undefined;
 
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const supabase = createBrowserClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    );
+    supabase.auth.getUser().then(({ data }) => {
+      if (data.user) setIsLoggedIn(true);
+    });
+  }, []);
 
   const handleCheckout = async (params: { planId?: PlanId; addOnId?: string }) => {
     setLoading(params.planId || params.addOnId || null);
@@ -58,15 +70,26 @@ function PricingContent() {
             </span>
           </a>
           <div className="flex items-center gap-4">
-            <a href="/login" className="text-[var(--gray-dim)] hover:text-white text-sm transition-colors">
-              Sign In
-            </a>
-            <a
-              href="/login?mode=signup"
-              className="bg-gradient-to-r from-[var(--pink)] via-[var(--purple)] to-[var(--blue)] hover:shadow-[var(--shadow-glow-pink)] text-white px-5 py-2 rounded-lg text-sm font-semibold transition-colors"
-            >
-              Create Account
-            </a>
+            {isLoggedIn ? (
+              <a
+                href="/dashboard"
+                className="bg-gradient-to-r from-[var(--pink)] via-[var(--purple)] to-[var(--blue)] hover:shadow-[var(--shadow-glow-pink)] text-white px-5 py-2 rounded-lg text-sm font-semibold transition-colors"
+              >
+                Dashboard
+              </a>
+            ) : (
+              <>
+                <a href="/login" className="text-[var(--gray-dim)] hover:text-white text-sm transition-colors">
+                  Sign In
+                </a>
+                <a
+                  href="/login?mode=signup"
+                  className="bg-gradient-to-r from-[var(--pink)] via-[var(--purple)] to-[var(--blue)] hover:shadow-[var(--shadow-glow-pink)] text-white px-5 py-2 rounded-lg text-sm font-semibold transition-colors"
+                >
+                  Create Account
+                </a>
+              </>
+            )}
           </div>
         </div>
       </nav>
@@ -309,24 +332,32 @@ function PricingContent() {
           <div className="space-y-4">
             {[
               {
-                q: "Do I need an Xactimate license?",
-                a: "No. Our AI generates Xactimate-style line items with current regional pricing. You upload your documents, we handle the rest.",
+                q: "How does it work? What do I need to get started?",
+                a: "Upload your inspection photos and roof measurements (EagleView, HOVER, etc.) — that's it. You can even connect CompanyCam to pull photos directly. No onboarding, no training, no setup calls. Upload and go.",
               },
               {
-                q: "What documents do I need to get started?",
-                a: "At minimum: roof measurements (EagleView, HOVER, etc.) and inspection photos. If you have a carrier scope, upload that too for a full supplement package.",
+                q: "I've never done storm damage claims before. Can I still use this?",
+                a: "Absolutely — that's exactly who this is built for. Our AI Claim Brain walks you through every step: what hail damage looks like, what wind damage looks like, what line items to include, what codes apply, and how to respond to the carrier. Think of it as having a 20-year supplement expert sitting next to you on every claim.",
               },
               {
-                q: "How long does it take?",
-                a: "Most claim packages are ready in 2-5 minutes after upload. Complex claims with 100+ photos may take slightly longer.",
+                q: "How fast do I get my documents back?",
+                a: "Most claim packages are ready in 2-5 minutes after upload. You get a full forensic causation report, itemized estimate, code compliance report, scope comparison, and cover letter — all generated from your photos and measurements.",
+              },
+              {
+                q: "What makes this different from other supplement services?",
+                a: "Two things: speed and intelligence. Traditional supplement services take days and charge per claim. We deliver in minutes, and our AI learns from every claim — every carrier tactic, every denied line item, every successful argument. Plus, you can add a real HAAG-certified inspection for $500 when you need boots on the roof.",
+              },
+              {
+                q: "Do I need to know building codes or Xactimate pricing?",
+                a: "No. The AI automatically applies the correct building codes for your state (RCNYS for New York, IRC for PA/NJ), calculates Xactimate-style pricing using current regional rates for your ZIP code, and flags every code violation the carrier missed.",
               },
               {
                 q: "Can I cancel anytime?",
-                a: "Yes. Cancel directly from your dashboard settings. No contracts, no cancellation fees.",
+                a: "Yes. No contracts, no cancellation fees. Cancel directly from your dashboard. Your 3 free claims on the Starter plan never expire.",
               },
               {
                 q: "Is my data secure?",
-                a: "All documents are encrypted in transit and at rest. We never share your claim data with carriers or third parties.",
+                a: "All documents are encrypted in transit and at rest. Your claim data is never shared with carriers, competitors, or third parties. Each company's data is completely isolated.",
               },
             ].map((faq) => (
               <div key={faq.q} className="glass-card p-5">
