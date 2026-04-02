@@ -34,14 +34,13 @@ export async function POST(req: NextRequest) {
       if (!userId) break;
 
       const sub = await getStripe().subscriptions.retrieve(subscriptionId);
-      const item = sub.items.data[0];
       // Iterate all items to find the plan (sales_rep has 2 items: base + metered)
       const plan = sub.items.data
-        .map(si => getPlanByPriceId(si.price.id))
-        .find(p => p !== undefined) || null;
+        .map((si: { price: { id: string } }) => getPlanByPriceId(si.price.id))
+        .find((p: unknown) => p !== undefined) || null;
 
       if (!plan) {
-        console.error("Checkout completed with unknown price IDs:", sub.items.data.map(si => si.price.id));
+        console.error("Checkout completed with unknown price IDs:", sub.items.data.map((si: { price: { id: string } }) => si.price.id));
       }
 
       await supabaseAdmin.from("subscriptions").upsert(
@@ -49,10 +48,10 @@ export async function POST(req: NextRequest) {
           user_id: userId,
           stripe_customer_id: customerId,
           stripe_subscription_id: subscriptionId,
-          plan_id: plan?.id || "starter", // Fall back to starter (safe), not pro
+          plan_id: plan?.id || "starter",
           status: "active",
-          current_period_start: item ? new Date(item.current_period_start * 1000).toISOString() : new Date().toISOString(),
-          current_period_end: item ? new Date(item.current_period_end * 1000).toISOString() : new Date().toISOString(),
+          current_period_start: new Date(sub.current_period_start * 1000).toISOString(),
+          current_period_end: new Date(sub.current_period_end * 1000).toISOString(),
           claims_used_this_period: 0,
           updated_at: new Date().toISOString(),
         },
@@ -64,15 +63,14 @@ export async function POST(req: NextRequest) {
     case "customer.subscription.updated": {
       const sub = event.data.object as Stripe.Subscription;
       const customerId = sub.customer as string;
-      const subItem = sub.items.data[0];
       const plan = sub.items.data
-        .map(si => getPlanByPriceId(si.price.id))
-        .find(p => p !== undefined) || null;
+        .map((si: { price: { id: string } }) => getPlanByPriceId(si.price.id))
+        .find((p: unknown) => p !== undefined) || null;
 
       const updates: Record<string, unknown> = {
         status: sub.status === "active" ? "active" : sub.status === "past_due" ? "past_due" : "canceled",
-        current_period_start: subItem ? new Date(subItem.current_period_start * 1000).toISOString() : new Date().toISOString(),
-        current_period_end: subItem ? new Date(subItem.current_period_end * 1000).toISOString() : new Date().toISOString(),
+        current_period_start: new Date(sub.current_period_start * 1000).toISOString(),
+        current_period_end: new Date(sub.current_period_end * 1000).toISOString(),
         updated_at: new Date().toISOString(),
       };
 
