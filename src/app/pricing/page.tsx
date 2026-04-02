@@ -15,8 +15,11 @@ function PricingContent() {
   const searchParams = useSearchParams();
   const coupon = searchParams.get("coupon") || undefined;
 
+  const [checkoutError, setCheckoutError] = useState<string | null>(null);
+
   const handleSubscribe = async (planId: PlanId) => {
     setLoading(planId);
+    setCheckoutError(null);
     try {
       const res = await fetch("/api/billing/create-checkout", {
         method: "POST",
@@ -26,11 +29,15 @@ function PricingContent() {
       const data = await res.json();
       if (data.url) {
         window.location.href = data.url;
+        return; // Don't clear loading — page is navigating
       } else if (res.status === 401) {
         window.location.href = "/login?mode=signup&redirect=/pricing";
+        return;
+      } else {
+        setCheckoutError(data.error || "Failed to create checkout session");
       }
     } catch {
-      // fall through
+      setCheckoutError("Network error — please try again");
     }
     setLoading(null);
   };
@@ -167,6 +174,13 @@ function PricingContent() {
             );
           })}
         </div>
+
+        {/* Checkout error */}
+        {checkoutError && (
+          <div className="max-w-md mx-auto mt-6 p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-center">
+            <p className="text-sm text-red-400">{checkoutError}</p>
+          </div>
+        )}
 
         {/* FAQ-ish note */}
         <div className="max-w-2xl mx-auto mt-12 text-center">
