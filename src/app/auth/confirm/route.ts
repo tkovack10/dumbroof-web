@@ -12,9 +12,12 @@ async function notifyNewSignup(email: string) {
       headers: { Authorization: `Bearer ${RESEND_KEY}`, "Content-Type": "application/json" },
       body: JSON.stringify({
         from: "DumbRoof <noreply@dumbroof.ai>",
-        to: "tkovack@usaroofmasters.com",
-        subject: `New User Signup: ${email}`,
-        html: `<h2>New User Registered</h2><p><strong>${email}</strong> just confirmed their email on dumbroof.ai.</p><p><a href="https://www.dumbroof.ai/admin">View Admin Dashboard</a></p>`,
+        to: ["tkovack@usaroofmasters.com", "hello@dumbroof.ai", "arivera@usaroofmasters.com"],
+        subject: `🚨 New User Signup: ${email}`,
+        html: `<h2>New User Registered on dumbroof.ai</h2>
+          <p><strong>${email}</strong> just confirmed their email.</p>
+          <p>Time: ${new Date().toLocaleString("en-US", { timeZone: "America/New_York" })} ET</p>
+          <p><a href="https://www.dumbroof.ai/dashboard/admin" style="background-color:#2563eb;color:white;padding:10px 24px;border-radius:8px;text-decoration:none;font-weight:600;display:inline-block;">View Admin Dashboard</a></p>`,
       }),
     });
   } catch {
