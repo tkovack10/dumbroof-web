@@ -9,7 +9,7 @@ import { GlassBackground } from "@/components/glass-background";
 import "./globals.css";
 
 // GA4 measurement ID — set in Vercel env vars after creating a clean property
-const GA_MEASUREMENT_ID = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID;
+const GA_MEASUREMENT_ID = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID?.trim();
 
 const inter = Inter({
   subsets: ["latin"],
