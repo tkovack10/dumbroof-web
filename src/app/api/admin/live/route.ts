@@ -68,13 +68,18 @@ export async function GET() {
     supabaseAdmin.from("aob_signatures").select("*", { count: "exact", head: true }).gte("created_at", todayStart),
   ]);
 
-  // Count plans
+  // Count plans — users without a subscription row are on starter (free)
   const planCounts: Record<string, number> = {};
+  let paidCount = 0;
   for (const s of (subscriptionsRes.data || []) as { plan_id: string; status: string }[]) {
     if (s.status === "active") {
       planCounts[s.plan_id] = (planCounts[s.plan_id] || 0) + 1;
+      paidCount++;
     }
   }
+  // Everyone without a subscription row is on starter
+  const total = totalUsers as number;
+  planCounts["starter"] = Math.max(0, total - paidCount);
 
   return NextResponse.json({
     timestamp: new Date().toISOString(),
