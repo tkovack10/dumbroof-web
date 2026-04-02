@@ -27,7 +27,7 @@ export const ADD_ONS: AddOnDefinition[] = [
     id: "haag_inspection",
     name: "HAAG Inspection + 6-Doc Package",
     price: 500,
-    stripePriceId: (process.env.NEXT_PUBLIC_STRIPE_HAAG_PRICE_ID || "price_1THePpFFUUJjJC6QRvJPa1mM").trim(),
+    stripePriceId: (process.env.NEXT_PUBLIC_STRIPE_HAAG_PRICE_ID || "").trim(),
     description: "In-person HAAG-certified roof inspection by a DumbRoof Inspection Club member",
     features: [
       "HAAG-certified inspector on-site",

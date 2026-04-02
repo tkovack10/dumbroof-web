@@ -29,12 +29,20 @@ export async function POST(req: NextRequest) {
       const session = event.data.object as Stripe.Checkout.Session;
       const userId = session.metadata?.user_id;
       const customerId = session.customer as string;
-      const subscriptionId = session.subscription as string;
+      const subscriptionId = session.subscription as string | null;
 
       if (!userId) break;
 
+      // One-time payment (e.g., HAAG inspection) — no subscription to process
+      if (!subscriptionId) {
+        const addOnId = session.metadata?.add_on_id;
+        console.log("One-time payment completed:", { userId, customerId, addOnId, amount: session.amount_total });
+        // Future: create an inspection record, notify inspector network, etc.
+        break;
+      }
+
+      // Subscription checkout
       const sub = await getStripe().subscriptions.retrieve(subscriptionId);
-      // Iterate all items to find the plan (sales_rep has 2 items: base + metered)
       const plan = sub.items.data
         .map((si: { price: { id: string } }) => getPlanByPriceId(si.price.id))
         .find((p: unknown) => p !== undefined) || null;

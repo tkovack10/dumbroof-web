@@ -164,7 +164,7 @@ function PricingContent() {
                     className={`w-full py-3 rounded-xl font-semibold transition-colors text-sm disabled:opacity-50 ${
                       isPopular
                         ? "bg-gradient-to-r from-[var(--pink)] via-[var(--purple)] to-[var(--blue)] hover:shadow-[var(--shadow-glow-pink)] text-white"
-                        : "bg-gradient-to-r from-[var(--pink)] via-[var(--purple)] to-[var(--blue)] hover:shadow-[var(--shadow-glow-pink)] text-white"
+                        : "bg-white/5 border border-white/10 text-[var(--white)] hover:bg-white/10"
                     }`}
                   >
                     {loading === id ? "Redirecting..." : "Subscribe"}
@@ -191,7 +191,7 @@ function PricingContent() {
             <p className="text-center text-[var(--gray-muted)] text-sm mb-8">
               Stand out from AI slop. Real boots on the roof.
             </p>
-            <div className="grid grid-cols-1 md:grid-cols-1 gap-6">
+            <div className="grid grid-cols-1 gap-6">
               {ADD_ONS.map((addOn) => (
                 <div
                   key={addOn.id}
