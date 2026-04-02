@@ -82,12 +82,24 @@ function LoginPageContent() {
         window.ttq?.track("CompleteRegistration", {
           contents: [{ content_id: "signup", content_type: "product", content_name: "dumbroof.ai Account" }],
         });
+        // Notify team of new signup (fire and forget)
+        fetch("/api/notify-signup", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email }),
+        }).catch(() => {});
         window.location.href = "/dashboard/new-claim";
       } else {
         window.fbq?.("track", "CompleteRegistration");
         window.ttq?.track("CompleteRegistration", {
           contents: [{ content_id: "signup", content_type: "product", content_name: "dumbroof.ai Account" }],
         });
+        // Notify team of new signup (fire and forget)
+        fetch("/api/notify-signup", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email }),
+        }).catch(() => {});
         setMessage("Account created! Check your email for a confirmation link, then come back and sign in.");
       }
     } else {
