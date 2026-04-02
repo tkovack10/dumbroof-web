@@ -237,6 +237,58 @@ function PricingContent() {
           </div>
         )}
 
+        {/* Inspector Club CTA */}
+        <div className="max-w-3xl mx-auto mt-16">
+          <div className="relative rounded-2xl border border-[var(--cyan)]/30 bg-gradient-to-br from-[var(--cyan)]/[0.04] to-transparent p-8">
+            <div className="absolute -top-3 left-6">
+              <span className="bg-[var(--cyan)] text-[var(--bg-dark)] text-[10px] font-bold uppercase tracking-wider px-3 py-1 rounded-full">
+                Free to Join
+              </span>
+            </div>
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
+              <div className="flex-1">
+                <h3 className="text-xl font-bold text-[var(--white)] mb-2">
+                  DumbRoof Inspection Club
+                </h3>
+                <p className="text-sm text-[var(--gray-muted)] mb-4">
+                  HAAG-certified inspector? Earn <span className="text-[var(--cyan)] font-semibold">$300+ per inspection</span> on
+                  your own schedule. No commitment, no fees. Set your coverage area and get notified when
+                  an inspection is booked in your market. Accept the jobs you want — first come, first serve.
+                </p>
+                <div className="grid grid-cols-2 gap-2">
+                  {[
+                    "Set your own coverage area",
+                    "$300+ per completed inspection",
+                    "No monthly fees or commitments",
+                    "Accept or pass on every job",
+                    "Get paid via Stripe direct deposit",
+                    "Grow your network & referrals",
+                  ].map((f) => (
+                    <div key={f} className="flex items-center gap-2 text-sm text-[var(--gray)]">
+                      <svg className="w-4 h-4 text-[var(--cyan)] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                      </svg>
+                      {f}
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <div className="text-center md:text-right shrink-0">
+                <div className="text-4xl font-bold text-[var(--white)]">
+                  Free
+                </div>
+                <p className="text-xs text-[var(--gray-muted)] mb-4">no cost to join</p>
+                <a
+                  href="/inspection-club"
+                  className="inline-block px-8 py-3 rounded-xl bg-[var(--cyan)]/10 border border-[var(--cyan)]/30 text-[var(--cyan)] text-sm font-semibold hover:bg-[var(--cyan)]/20 transition-all"
+                >
+                  Join the Inspection Club
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+
         {/* FAQ-ish note */}
         <div className="max-w-2xl mx-auto mt-12 text-center">
           <p className="text-[var(--gray-muted)] text-sm">
