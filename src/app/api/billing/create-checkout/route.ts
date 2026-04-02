@@ -7,7 +7,7 @@ const STRIPE_API = "https://api.stripe.com/v1";
 
 /** Direct fetch to Stripe API — bypasses SDK connection issues on Vercel */
 async function stripePost(path: string, body: Record<string, string>) {
-  const key = process.env.STRIPE_SECRET_KEY;
+  const key = process.env.STRIPE_SECRET_KEY?.trim();
   if (!key) throw new Error("STRIPE_SECRET_KEY not set");
 
   const res = await fetch(`${STRIPE_API}${path}`, {

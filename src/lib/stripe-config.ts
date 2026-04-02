@@ -33,7 +33,7 @@ export const PLANS: Record<PlanId, PlanDefinition> = {
     price: 99,
     claimsPerMonth: 0, // pay per claim
     includedUsers: 1,
-    stripePriceId: process.env.NEXT_PUBLIC_STRIPE_SALES_REP_PRICE_ID || "",
+    stripePriceId: (process.env.NEXT_PUBLIC_STRIPE_SALES_REP_PRICE_ID || "").trim(),
     features: [
       "$25 per claim",
       "Full 6-document package",
@@ -49,7 +49,7 @@ export const PLANS: Record<PlanId, PlanDefinition> = {
     claimsPerMonth: 8,
     includedUsers: 2,
     extraUserPrice: 99,
-    stripePriceId: process.env.NEXT_PUBLIC_STRIPE_PRO_PRICE_ID || "",
+    stripePriceId: (process.env.NEXT_PUBLIC_STRIPE_PRO_PRICE_ID || "").trim(),
     features: [
       "8 claims / month",
       "2 users included",
@@ -67,7 +67,7 @@ export const PLANS: Record<PlanId, PlanDefinition> = {
     claimsPerMonth: 20,
     includedUsers: 2,
     extraUserPrice: 99,
-    stripePriceId: process.env.NEXT_PUBLIC_STRIPE_GROWTH_PRICE_ID || "",
+    stripePriceId: (process.env.NEXT_PUBLIC_STRIPE_GROWTH_PRICE_ID || "").trim(),
     features: [
       "20 claims / month",
       "2 users included",
@@ -84,7 +84,7 @@ export const PLANS: Record<PlanId, PlanDefinition> = {
     claimsPerMonth: 100,
     includedUsers: 5,
     extraUserPrice: 99,
-    stripePriceId: process.env.NEXT_PUBLIC_STRIPE_ENTERPRISE_PRICE_ID || "",
+    stripePriceId: (process.env.NEXT_PUBLIC_STRIPE_ENTERPRISE_PRICE_ID || "").trim(),
     features: [
       "100 claims / month",
       "5 users included",
