@@ -1,8 +1,30 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { getStripe } from "@/lib/stripe";
 import { PLANS, type PlanId } from "@/lib/stripe-config";
 import { supabaseAdmin } from "@/lib/supabase/admin";
+
+const STRIPE_API = "https://api.stripe.com/v1";
+
+/** Direct fetch to Stripe API — bypasses SDK connection issues on Vercel */
+async function stripePost(path: string, body: Record<string, string>) {
+  const key = process.env.STRIPE_SECRET_KEY;
+  if (!key) throw new Error("STRIPE_SECRET_KEY not set");
+
+  const res = await fetch(`${STRIPE_API}${path}`, {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${key}`,
+      "Content-Type": "application/x-www-form-urlencoded",
+    },
+    body: new URLSearchParams(body).toString(),
+  });
+
+  const data = await res.json();
+  if (!res.ok) {
+    throw new Error(data.error?.message || `Stripe API error: ${res.status}`);
+  }
+  return data;
+}
 
 export async function POST(req: NextRequest) {
   const supabase = await createClient();
@@ -20,9 +42,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Invalid plan" }, { status: 400 });
     }
 
-    const stripe = getStripe();
-
-    // Check if user already has a Stripe customer ID (use .limit(1), NOT .single() — E099)
+    // Check if user already has a Stripe customer ID
     const { data: subRows } = await supabaseAdmin
       .from("subscriptions")
       .select("stripe_customer_id")
@@ -32,13 +52,13 @@ export async function POST(req: NextRequest) {
     let customerId = subRows?.[0]?.stripe_customer_id;
 
     if (!customerId) {
-      const customer = await stripe.customers.create({
-        email: user.email,
-        metadata: { user_id: user.id },
+      // Create customer via direct API
+      const customer = await stripePost("/customers", {
+        email: user.email || "",
+        "metadata[user_id]": user.id,
       });
       customerId = customer.id;
 
-      // Ensure subscription row exists
       await supabaseAdmin.from("subscriptions").upsert(
         {
           user_id: user.id,
@@ -52,33 +72,36 @@ export async function POST(req: NextRequest) {
 
     const origin = req.headers.get("origin") || "https://www.dumbroof.ai";
 
-    // Build line items — sales_rep includes both base price + metered per-claim price
-    const lineItems: Array<{ price: string; quantity?: number }> = [
-      { price: plan.stripePriceId!, quantity: 1 },
-    ];
+    // Build checkout session params
+    const params: Record<string, string> = {
+      customer: customerId!,
+      mode: "subscription",
+      "line_items[0][price]": plan.stripePriceId!,
+      "line_items[0][quantity]": "1",
+      success_url: `${origin}/dashboard/settings?billing=success`,
+      cancel_url: `${origin}/pricing`,
+      "metadata[user_id]": user.id,
+    };
+
+    // Sales rep: add metered price as second line item
     if (planId === "sales_rep") {
       const meteredPriceId = process.env.STRIPE_SALES_REP_METERED_PRICE_ID;
       if (meteredPriceId) {
-        lineItems.push({ price: meteredPriceId });
+        params["line_items[1][price]"] = meteredPriceId;
       }
     }
 
-    const session = await stripe.checkout.sessions.create({
-      customer: customerId,
-      mode: "subscription",
-      line_items: lineItems,
-      ...(coupon ? { discounts: [{ coupon }] } : {}),
-      success_url: `${origin}/dashboard/settings?billing=success`,
-      cancel_url: `${origin}/pricing`,
-      metadata: { user_id: user.id },
-    });
+    // Add coupon if provided
+    if (coupon) {
+      params["discounts[0][coupon]"] = coupon;
+    }
+
+    const session = await stripePost("/checkout/sessions", params);
 
     return NextResponse.json({ url: session.url });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Checkout failed";
-    const keyLen = process.env.STRIPE_SECRET_KEY?.length || 0;
-    const keyPre = process.env.STRIPE_SECRET_KEY?.substring(0, 10) || "MISSING";
-    console.error("Stripe checkout error:", message, "keyLen:", keyLen, "keyPre:", keyPre);
-    return NextResponse.json({ error: message, _diag: { keyLen, keyPre } }, { status: 500 });
+    console.error("Stripe checkout error:", message);
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
