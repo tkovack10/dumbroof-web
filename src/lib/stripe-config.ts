@@ -12,6 +12,34 @@ export interface PlanDefinition {
   features: string[];
 }
 
+/** One-time purchasable add-ons (not subscriptions) */
+export interface AddOnDefinition {
+  id: string;
+  name: string;
+  price: number;
+  stripePriceId: string;
+  description: string;
+  features: string[];
+}
+
+export const ADD_ONS: AddOnDefinition[] = [
+  {
+    id: "haag_inspection",
+    name: "HAAG Inspection + 6-Doc Package",
+    price: 500,
+    stripePriceId: (process.env.NEXT_PUBLIC_STRIPE_HAAG_PRICE_ID || "price_1THePpFFUUJjJC6QRvJPa1mM").trim(),
+    description: "In-person HAAG-certified roof inspection by a DumbRoof Inspection Club member",
+    features: [
+      "HAAG-certified inspector on-site",
+      "Full 6-document forensic package",
+      "AI photo analysis + annotations",
+      "Forensic causation report",
+      "Xactimate-style estimate",
+      "Code compliance report",
+    ],
+  },
+];
+
 export const PLANS: Record<PlanId, PlanDefinition> = {
   starter: {
     id: "starter",

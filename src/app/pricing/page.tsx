@@ -4,32 +4,32 @@ import { useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { Suspense } from "react";
 import { Footer } from "@/components/footer";
-import { PLANS, type PlanId } from "@/lib/stripe-config";
+import { PLANS, ADD_ONS, type PlanId } from "@/lib/stripe-config";
 
 export default function PricingPage() {
   return <Suspense><PricingContent /></Suspense>;
 }
 
 function PricingContent() {
-  const [loading, setLoading] = useState<PlanId | null>(null);
+  const [loading, setLoading] = useState<string | null>(null);
   const searchParams = useSearchParams();
   const coupon = searchParams.get("coupon") || undefined;
 
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
 
-  const handleSubscribe = async (planId: PlanId) => {
-    setLoading(planId);
+  const handleCheckout = async (params: { planId?: PlanId; addOnId?: string }) => {
+    setLoading(params.planId || params.addOnId || null);
     setCheckoutError(null);
     try {
       const res = await fetch("/api/billing/create-checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ planId, coupon }),
+        body: JSON.stringify({ ...params, coupon }),
       });
       const data = await res.json();
       if (data.url) {
         window.location.href = data.url;
-        return; // Don't clear loading — page is navigating
+        return;
       } else if (res.status === 401) {
         window.location.href = "/login?mode=signup&redirect=/pricing";
         return;
@@ -159,7 +159,7 @@ function PricingContent() {
                   </a>
                 ) : (
                   <button
-                    onClick={() => handleSubscribe(id)}
+                    onClick={() => handleCheckout({ planId: id })}
                     disabled={loading === id}
                     className={`w-full py-3 rounded-xl font-semibold transition-colors text-sm disabled:opacity-50 ${
                       isPopular
@@ -179,6 +179,61 @@ function PricingContent() {
         {checkoutError && (
           <div className="max-w-md mx-auto mt-6 p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-center">
             <p className="text-sm text-red-400">{checkoutError}</p>
+          </div>
+        )}
+
+        {/* HAAG Inspection Add-On */}
+        {ADD_ONS.length > 0 && (
+          <div className="max-w-3xl mx-auto mt-16">
+            <h2 className="text-2xl font-bold text-[var(--white)] text-center mb-2">
+              Premium Services
+            </h2>
+            <p className="text-center text-[var(--gray-muted)] text-sm mb-8">
+              Stand out from AI slop. Real boots on the roof.
+            </p>
+            <div className="grid grid-cols-1 md:grid-cols-1 gap-6">
+              {ADD_ONS.map((addOn) => (
+                <div
+                  key={addOn.id}
+                  className="relative rounded-2xl border border-[var(--pink)]/30 bg-gradient-to-br from-[var(--pink)]/[0.04] to-[var(--blue)]/[0.04] p-8"
+                >
+                  <div className="absolute -top-3 left-6">
+                    <span className="bg-gradient-to-r from-[var(--pink)] to-[var(--blue)] text-white text-[10px] font-bold uppercase tracking-wider px-3 py-1 rounded-full">
+                      HAAG Certified
+                    </span>
+                  </div>
+                  <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
+                    <div className="flex-1">
+                      <h3 className="text-xl font-bold text-[var(--white)] mb-2">{addOn.name}</h3>
+                      <p className="text-sm text-[var(--gray-muted)] mb-4">{addOn.description}</p>
+                      <div className="grid grid-cols-2 gap-2">
+                        {addOn.features.map((f) => (
+                          <div key={f} className="flex items-center gap-2 text-sm text-[var(--gray)]">
+                            <svg className="w-4 h-4 text-green-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                            </svg>
+                            {f}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="text-center md:text-right shrink-0">
+                      <div className="text-4xl font-bold text-[var(--white)]">
+                        ${addOn.price}
+                      </div>
+                      <p className="text-xs text-[var(--gray-muted)] mb-4">one-time per inspection</p>
+                      <button
+                        onClick={() => handleCheckout({ addOnId: addOn.id })}
+                        disabled={loading === addOn.id}
+                        className="px-8 py-3 rounded-xl bg-gradient-to-r from-[var(--pink)] via-[var(--purple)] to-[var(--blue)] hover:shadow-[var(--shadow-glow-pink)] text-white text-sm font-semibold transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                      >
+                        {loading === addOn.id ? "Redirecting..." : "Book Inspection"}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         )}
 
