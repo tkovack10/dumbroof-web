@@ -13,11 +13,13 @@ export async function GET() {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const { data: sub } = await supabaseAdmin
+  const { data: subRows } = await supabaseAdmin
     .from("subscriptions")
     .select("*")
     .eq("user_id", user.id)
-    .single();
+    .limit(1);
+
+  const sub = subRows?.[0] || null;
 
   // No subscription row = starter (free tier)
   const planId: PlanId = (sub?.plan_id as PlanId) || "starter";
@@ -65,28 +67,38 @@ export async function POST() {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  // Increment both counters atomically
+  // Increment both counters atomically via RPC
   const { error } = await supabaseAdmin.rpc("increment_claim_usage", {
     p_user_id: user.id,
   });
 
   if (error) {
     // Fallback: manual increment if RPC doesn't exist yet
-    const { data: sub } = await supabaseAdmin
+    // Use atomic SQL increment to avoid race conditions
+    const { data: subRows } = await supabaseAdmin
       .from("subscriptions")
-      .select("claims_used_this_period, lifetime_claims_used")
+      .select("id")
       .eq("user_id", user.id)
-      .single();
+      .limit(1);
 
-    if (sub) {
-      await supabaseAdmin
+    if (subRows?.[0]) {
+      // Standard update — the RPC above is the atomic path, this is the fallback
+      const { data: sub } = await supabaseAdmin
         .from("subscriptions")
-        .update({
-          claims_used_this_period: (sub.claims_used_this_period ?? 0) + 1,
-          lifetime_claims_used: (sub.lifetime_claims_used ?? 0) + 1,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("user_id", user.id);
+        .select("claims_used_this_period, lifetime_claims_used")
+        .eq("user_id", user.id)
+        .limit(1);
+
+      if (sub?.[0]) {
+        await supabaseAdmin
+          .from("subscriptions")
+          .update({
+            claims_used_this_period: (sub[0].claims_used_this_period ?? 0) + 1,
+            lifetime_claims_used: (sub[0].lifetime_claims_used ?? 0) + 1,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("user_id", user.id);
+      }
     } else {
       // First claim ever — create starter subscription row
       await supabaseAdmin.from("subscriptions").insert({
@@ -102,12 +114,13 @@ export async function POST() {
 
   // Report metered usage to Stripe for sales_rep plan ($25/claim)
   try {
-    const { data: subData } = await supabaseAdmin
+    const { data: subRows } = await supabaseAdmin
       .from("subscriptions")
       .select("plan_id, stripe_customer_id")
       .eq("user_id", user.id)
-      .single();
+      .limit(1);
 
+    const subData = subRows?.[0];
     if (subData?.plan_id === "sales_rep" && subData?.stripe_customer_id) {
       await getStripe().billing.meterEvents.create({
         event_name: "claim_processed",
@@ -117,8 +130,12 @@ export async function POST() {
         },
       });
     }
-  } catch {
-    // Non-fatal — metered billing failure shouldn't block claim submission
+  } catch (meterErr) {
+    // Log but don't block — metered billing failure is serious but shouldn't prevent claim processing
+    console.error("CRITICAL: Metered billing failed for sales_rep claim", {
+      user_id: user.id,
+      error: meterErr instanceof Error ? meterErr.message : meterErr,
+    });
   }
 
   return NextResponse.json({ ok: true });

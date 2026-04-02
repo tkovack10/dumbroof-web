@@ -12,12 +12,13 @@ export async function POST() {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const { data: sub } = await supabaseAdmin
+  const { data: subRows } = await supabaseAdmin
     .from("subscriptions")
     .select("stripe_customer_id")
     .eq("user_id", user.id)
-    .single();
+    .limit(1);
 
+  const sub = subRows?.[0];
   if (!sub?.stripe_customer_id) {
     return NextResponse.json(
       { error: "No billing account found" },
