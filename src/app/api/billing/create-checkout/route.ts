@@ -14,6 +14,16 @@ export async function POST(req: NextRequest) {
   }
 
   try {
+    // TEMPORARY DIAGNOSTIC — remove after Stripe connection is fixed
+    const _key = process.env.STRIPE_SECRET_KEY || "";
+    console.log("STRIPE_DIAG:", {
+      keyLength: _key.length,
+      keyPrefix: _key.substring(0, 12),
+      keySuffix: _key.substring(_key.length - 4),
+      hasWhitespace: _key !== _key.trim(),
+      hasNewline: _key.includes("\n"),
+    });
+
     const { planId, coupon } = (await req.json()) as { planId: PlanId; coupon?: string };
     const plan = PLANS[planId];
     if (!plan || !plan.stripePriceId) {
