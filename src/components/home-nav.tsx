@@ -11,6 +11,7 @@ const NAV_LINKS = [
   { href: "/integrations", label: "Integrations" },
   { href: "/learn", label: "Learn" },
   { href: "/pricing", label: "Pricing" },
+  { href: "/pricing#faq", label: "FAQ" },
 ];
 
 export function HomeNav() {

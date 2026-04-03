@@ -325,7 +325,7 @@ function PricingContent() {
         </div>
 
         {/* FAQ */}
-        <div className="max-w-2xl mx-auto mt-16">
+        <div id="faq" className="max-w-2xl mx-auto mt-16 scroll-mt-24">
           <h2 className="text-2xl font-bold text-[var(--white)] text-center mb-8">
             Frequently Asked Questions
           </h2>
