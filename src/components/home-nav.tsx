@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 
 const NAV_LINKS = [
   { href: "#problem", label: "The Problem" },
@@ -18,15 +18,23 @@ export function HomeNav() {
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    function handleClick(e: MouseEvent) {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
-        setMenuOpen(false);
-      }
+  const handleOutsideClick = useCallback((e: MouseEvent) => {
+    if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+      setMenuOpen(false);
     }
-    if (menuOpen) document.addEventListener("mousedown", handleClick);
-    return () => document.removeEventListener("mousedown", handleClick);
-  }, [menuOpen]);
+  }, []);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    // Delay listener registration to avoid capturing the opening click (fixes mobile INP)
+    const timer = setTimeout(() => {
+      document.addEventListener("mousedown", handleOutsideClick);
+    }, 50);
+    return () => {
+      clearTimeout(timer);
+      document.removeEventListener("mousedown", handleOutsideClick);
+    };
+  }, [menuOpen, handleOutsideClick]);
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 bg-[var(--bg-glass)]/95 backdrop-blur-sm border-b border-white/10">

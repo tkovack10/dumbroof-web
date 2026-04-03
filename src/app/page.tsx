@@ -1,3 +1,4 @@
+import Image from "next/image";
 import { InspectorApplicationForm } from "@/components/inspector-application-form";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { HomeNav } from "@/components/home-nav";
@@ -125,11 +126,14 @@ export default async function Home() {
                 { name: "RoofLink", logo: "/integrations/rooflink.svg" },
                 { name: "ServiceTitan", logo: "/integrations/servicetitan.svg" },
               ].map((tool) => (
-                <img
+                <Image
                   key={tool.name}
                   src={tool.logo}
                   alt={tool.name}
+                  width={80}
+                  height={28}
                   className="h-6 sm:h-7 w-auto opacity-60 hover:opacity-100 transition-opacity"
+                  loading="lazy"
                 />
               ))}
             </a>
