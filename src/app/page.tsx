@@ -305,6 +305,20 @@ export default async function Home() {
         </div>
       </section>
 
+      {/* Inline CTA #1 — after the trust problem */}
+      <section className="py-10 px-6">
+        <div className="max-w-xl mx-auto text-center">
+          <a
+            href="/login?mode=signup"
+            className="group inline-flex items-center gap-3 bg-gradient-to-r from-[var(--pink)] via-[var(--purple)] to-[var(--blue)] hover:shadow-[var(--shadow-glow-pink)] text-white px-8 py-4 rounded-xl text-lg font-semibold transition-all shadow-lg shadow-red-900/30"
+          >
+            Try 3 Free Claims
+            <svg className="w-5 h-5 group-hover:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" /></svg>
+          </a>
+          <p className="text-xs text-[var(--gray-muted)] mt-3">No credit card. No onboarding. Just upload photos.</p>
+        </div>
+      </section>
+
       {/* How It Works */}
       <section id="how-it-works" className="py-20 px-6 scroll-mt-20">
         <div className="max-w-5xl mx-auto">
@@ -374,6 +388,30 @@ export default async function Home() {
               </div>
             ))}
           </div>
+        </div>
+      </section>
+
+      {/* Inline CTA #2 — after How It Works (social proof + frictionless) */}
+      <section className="py-10 px-6">
+        <div className="max-w-xl mx-auto text-center">
+          <div className="inline-flex items-center gap-2 mb-4 px-4 py-2 rounded-full bg-green-500/10 border border-green-500/20">
+            <div className="flex -space-x-2">
+              {[1,2,3,4].map(i => (
+                <div key={i} className="w-6 h-6 rounded-full bg-gradient-to-br from-[var(--pink)] to-[var(--blue)] border-2 border-[var(--navy)] flex items-center justify-center text-[8px] text-white font-bold">
+                  {["TK","RJ","KS","ZR"][i-1]}
+                </div>
+              ))}
+            </div>
+            <span className="text-xs text-green-400 font-medium">{stats.claimsProcessed} in claims processed this month</span>
+          </div>
+          <a
+            href="/login?mode=signup"
+            className="group inline-flex items-center gap-3 bg-gradient-to-r from-[var(--pink)] via-[var(--purple)] to-[var(--blue)] hover:shadow-[var(--shadow-glow-pink)] text-white px-8 py-4 rounded-xl text-lg font-semibold transition-all shadow-lg shadow-red-900/30"
+          >
+            Get Your First Report Free
+            <svg className="w-5 h-5 group-hover:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" /></svg>
+          </a>
+          <p className="text-xs text-[var(--gray-muted)] mt-3">30 seconds to sign up. Upload photos. Done.</p>
         </div>
       </section>
 
@@ -486,6 +524,27 @@ export default async function Home() {
               </table>
             </div>
           </div>
+        </div>
+      </section>
+
+      {/* Inline CTA #3 — after Results (show the money) */}
+      <section className="py-10 px-6 bg-white/[0.02]">
+        <div className="max-w-xl mx-auto text-center">
+          <p className="text-sm text-[var(--gray-muted)] mb-2">Real result from last week</p>
+          <p className="text-2xl font-bold text-[var(--white)] mb-1">
+            Carrier scope: <span className="text-[var(--gray-muted)] line-through">$20,469</span>
+          </p>
+          <p className="text-2xl font-bold text-green-400 mb-4">
+            After DumbRoof: $943,233
+          </p>
+          <a
+            href="/login?mode=signup"
+            className="group inline-flex items-center gap-3 bg-gradient-to-r from-[var(--pink)] via-[var(--purple)] to-[var(--blue)] hover:shadow-[var(--shadow-glow-pink)] text-white px-8 py-4 rounded-xl text-lg font-semibold transition-all shadow-lg shadow-red-900/30"
+          >
+            See What You&apos;re Leaving on the Roof
+            <svg className="w-5 h-5 group-hover:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" /></svg>
+          </a>
+          <p className="text-xs text-[var(--gray-muted)] mt-3">Same claim. Same house. Different result.</p>
         </div>
       </section>
 
