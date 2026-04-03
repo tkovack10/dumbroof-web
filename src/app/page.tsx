@@ -133,7 +133,6 @@ export default async function Home() {
                   width={80}
                   height={28}
                   className="h-6 sm:h-7 w-auto opacity-60 hover:opacity-100 transition-opacity"
-                  loading="lazy"
                 />
               ))}
             </a>

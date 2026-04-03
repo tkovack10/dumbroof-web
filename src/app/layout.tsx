@@ -151,7 +151,7 @@ export default function RootLayout({
     <html lang="en" className={`${inter.variable} ${jetbrainsMono.variable}`}>
       <head>
         {/* Preconnect to critical third-party origins — saves ~50ms per first request */}
-        <link rel="preconnect" href="https://hdiyncxkaadxnhwiyagn.supabase.co" />
+        <link rel="preconnect" href="https://hdiyncxkaadxnhwiyagn.supabase.co" crossOrigin="anonymous" />
         <link rel="dns-prefetch" href="https://hdiyncxkaadxnhwiyagn.supabase.co" />
         <link rel="preconnect" href="https://www.googletagmanager.com" />
         <script
