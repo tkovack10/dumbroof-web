@@ -57,9 +57,9 @@ export default async function Home() {
       {/* Hero */}
       <section className="relative pt-32 pb-20 px-6 bg-gradient-to-b from-[var(--navy)] via-[var(--navy-light)] to-[var(--navy)]">
         <div className="max-w-4xl mx-auto text-center">
-          <div className="inline-block mb-6 px-4 py-1.5 rounded-full bg-white/10 border border-white/20">
-            <span className="text-[var(--gold)] text-sm font-medium">
-              Now Available
+          <div className="inline-block mb-6 px-4 py-1.5 rounded-full bg-green-500/10 border border-green-500/20">
+            <span className="text-green-400 text-sm font-semibold">
+              Free Trial &mdash; 3 Claims, No Card Required
             </span>
           </div>
 
@@ -70,7 +70,7 @@ export default async function Home() {
           </h1>
 
           <p className="text-lg sm:text-xl text-[var(--gray-dim)] max-w-2xl mx-auto mb-10 leading-relaxed">
-            Upload photos and measurements. Get 5 forensic-grade PDFs in 15 minutes.
+            Upload photos and measurements. Get 6 forensic-grade PDFs in 15 minutes.
             Every line item backed by building codes, photo evidence, and carrier-specific
             intelligence. Sophisticated automation is available from there at the click
             of a button. No onboarding required.
