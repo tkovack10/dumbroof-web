@@ -359,6 +359,34 @@ function PricingContent() {
                 q: "Is my data secure?",
                 a: "All documents are encrypted in transit and at rest. Your claim data is never shared with carriers, competitors, or third parties. Each company's data is completely isolated.",
               },
+              {
+                q: "I own a roofing company — how would this actually help me?",
+                a: "Every storm claim you're not filing is money left on the table. DumbRoof turns your inspection photos and measurements into a complete insurance claim package — forensic causation report, itemized estimate, code compliance analysis, scope comparison, and a carrier-ready cover letter. You don't need to hire a supplement company, wait days for documents, or train your team on Xactimate. Upload photos, drop in your EagleView or HOVER report, and the full package is ready in minutes. More claims filed, faster payments collected, zero back-office headaches.",
+              },
+              {
+                q: "I primarily do retail work. I don't know much about insurance claims — seems like a headache.",
+                a: "That's the whole point. You don't need to become an insurance expert — the AI already is one. DumbRoof handles the codes, the line items, the carrier language, and the pricing. You just keep doing what you're already doing: inspecting roofs and taking photos. The difference is now every storm-damaged roof you walk turns into a fully documented claim without you learning a single Xactimate code. Retail contractors who add storm restoration typically double their revenue per job. We remove the learning curve entirely.",
+              },
+              {
+                q: "My sales reps would kill me if I introduced another new software.",
+                a: "We get it — your team doesn't need another login to forget. Here's the thing: if your rep can take photos on their phone and drop a pin, they can use DumbRoof. That's literally it. Upload inspection photos (or connect CompanyCam and they pull in automatically), attach the EagleView or HOVER measurements you already have, and the AI builds the entire claim package. No training sessions, no certification courses, no 47-step workflow. Most reps are running their first claim within 10 minutes of signing up.",
+              },
+              {
+                q: "Tell me more about the automations — what exactly does it do for me?",
+                a: "Once your claim package is generated, the automations take over the tedious follow-up work that usually falls through the cracks. The system tracks every claim through its lifecycle — from initial submission to payment. It automatically generates and sends certificates of completion to the carrier when the job is done, then follows up on a polite, persistent schedule until the payment is released. It also tracks supplement requests, flags underpayments against your original scope, and alerts you when a carrier response needs attention. Think of it as a full-time claims admin that never forgets a follow-up.",
+              },
+              {
+                q: "So it automatically sends certificates of completion and follows up until I get paid?",
+                a: "Exactly. Once you mark a job complete, DumbRoof generates the certificate of completion with all the documentation the carrier needs — before/after photos, scope of work, and compliance details. It sends it directly to the carrier and then follows up on a scheduled cadence with polite, professional nudges until the payment is released. No more chasing adjusters, no more \"I forgot to send the COC,\" no more checks sitting in limbo because nobody followed up. You do the work, we make sure you get paid for it.",
+              },
+              {
+                q: "Will this help my newer reps who don't take the best inspection photos?",
+                a: "This is one of the most powerful parts of the platform. When your reps upload photos, the AI analyzes every image and gives real-time feedback — \"this photo is too far away to document the hail impact,\" \"you're missing a close-up of the granule displacement,\" \"the chalk circle isn't visible in this shot.\" It teaches them what adjusters and engineers look for: test squares, directional damage patterns, collateral damage on soft metals, proper labeling. Over time, your newest rep starts documenting like a 10-year veteran. It's like having a HAAG-certified trainer riding along on every inspection without the $500/day price tag.",
+              },
+              {
+                q: "I'm an inspector for Seeknow, Hancock, etc. — could I pick up DumbRoof inspections in my spare time?",
+                a: "Absolutely — that's exactly what the DumbRoof Inspection Club is built for. If you're already HAAG-certified and deployed to storm areas, you're in the perfect position. Set your coverage area, and when a DumbRoof customer books a HAAG inspection in your market, you get notified. Accept the jobs you want, pass on the ones you don't — first come, first serve. You'll earn $300+ per completed inspection, paid via Stripe direct deposit. No monthly fees, no commitments, no non-competes. It's incremental income using skills you already have, on a schedule you control. Join free at the Inspection Club section above.",
+              },
             ].map((faq) => (
               <div key={faq.q} className="glass-card p-5">
                 <h3 className="text-sm font-semibold text-[var(--white)] mb-2">{faq.q}</h3>
