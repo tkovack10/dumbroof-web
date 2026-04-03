@@ -177,7 +177,7 @@ export function AdminDashboard() {
   useEffect(() => {
     fetchUserProfiles();
     fetchClaims();
-    const interval = setInterval(fetchClaims, 10000);
+    const interval = setInterval(fetchClaims, 30000);
     return () => clearInterval(interval);
   }, [fetchUserProfiles, fetchClaims]);
 

@@ -24,7 +24,7 @@ export function RepairsDashboard({ user }: { user: User }) {
 
   useEffect(() => {
     fetchRepairs();
-    const interval = setInterval(fetchRepairs, 5000);
+    const interval = setInterval(fetchRepairs, 30000);
     return () => clearInterval(interval);
   }, [fetchRepairs]);
 

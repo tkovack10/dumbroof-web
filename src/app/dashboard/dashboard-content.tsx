@@ -71,14 +71,9 @@ export function DashboardContent({ user }: { user: User }) {
 
   useEffect(() => {
     fetchAll();
-    // Use requestIdleCallback to avoid blocking UI interactions (fixes mobile INP 528ms → <200ms)
-    const interval = setInterval(() => {
-      if (typeof requestIdleCallback !== "undefined") {
-        requestIdleCallback(() => fetchAll());
-      } else {
-        fetchAll();
-      }
-    }, 5000);
+    // Poll every 30s instead of 5s — aggressive polling was causing mobile INP spikes (584ms)
+    // 5s polling = constant network + state updates competing with user taps on mobile
+    const interval = setInterval(fetchAll, 30000);
     // Check admin status
     (async () => {
       try {
