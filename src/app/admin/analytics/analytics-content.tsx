@@ -44,7 +44,7 @@ function timeAgo(ts: string): string {
   return `${Math.floor(hrs / 24)}d ago`;
 }
 
-export default function LiveAnalyticsPage() {
+export function LiveAnalyticsContent() {
   const [data, setData] = useState<LiveData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [lastRefresh, setLastRefresh] = useState<Date | null>(null);

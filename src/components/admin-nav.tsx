@@ -20,6 +20,7 @@ export function AdminNav({ variant = "full" }: AdminNavProps) {
   const navLinks = [
     { href: "/admin", label: "Dashboard" },
     { href: "/admin/ma-dashboard", label: "M&A" },
+    { href: "/admin/analytics", label: "Live Analytics" },
   ];
 
   return (
