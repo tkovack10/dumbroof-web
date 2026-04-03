@@ -130,10 +130,19 @@ export function HeroSignupForm() {
         </form>
       )}
       {error && (
-        <p className="text-red-400 text-sm mt-2 text-center">{error}</p>
+        <p className="text-red-400 text-sm mt-2 text-center">
+          {error}
+          {error.includes("exists") && (
+            <> <a href="/login" className="underline text-[var(--cyan)]">Sign in instead</a></>
+          )}
+        </p>
       )}
       <p className="text-xs text-[var(--gray-muted)] mt-3 text-center">
-        {step === "email" ? "No credit card. No onboarding. Upload photos and go." : `Signing up as ${email}`}
+        {step === "email" ? (
+          <>No credit card. No onboarding. Upload photos and go. <a href="/login" className="text-[var(--cyan)] hover:text-white">Already have an account?</a></>
+        ) : (
+          `Signing up as ${email}`
+        )}
       </p>
     </div>
   );
