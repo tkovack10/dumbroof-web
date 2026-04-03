@@ -1,5 +1,6 @@
 import Image from "next/image";
 import { InspectorApplicationForm } from "@/components/inspector-application-form";
+import { HeroSignupForm } from "@/components/hero-signup-form";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { HomeNav } from "@/components/home-nav";
 import { Footer } from "@/components/footer";
@@ -59,7 +60,7 @@ export default async function Home() {
         <div className="max-w-4xl mx-auto text-center">
           <div className="inline-block mb-6 px-4 py-1.5 rounded-full bg-green-500/10 border border-green-500/20">
             <span className="text-green-400 text-sm font-semibold">
-              Free Trial &mdash; 3 Claims, No Card Required
+              Get Started Free &mdash; No Credit Card
             </span>
           </div>
 
@@ -76,31 +77,31 @@ export default async function Home() {
             of a button. No onboarding required.
           </p>
 
-          <div className="flex flex-col sm:flex-row gap-4 justify-center mb-6">
+          {/* Inline signup — email field right in the hero, no page redirect */}
+          <div className="mb-8">
+            <HeroSignupForm />
+          </div>
+
+          <div className="flex items-center justify-center gap-6 mb-16">
             <a
-              href="/login?mode=signup"
-              className="bg-gradient-to-r from-[var(--pink)] via-[var(--purple)] to-[var(--blue)] hover:shadow-[var(--shadow-glow-pink)] text-white px-8 py-4 rounded-xl text-lg font-semibold transition-colors shadow-lg shadow-red-900/30"
+              href="/sample/forensic-report-sample.pdf"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 text-sm text-[var(--cyan)] hover:text-white transition-colors"
             >
-              Try 3 Free Claims
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+              View Sample Report
             </a>
             <a
               href="#problem"
-              className="border border-white/30 hover:border-white/60 text-white px-8 py-4 rounded-xl text-lg font-semibold transition-colors"
+              className="inline-flex items-center gap-2 text-sm text-[var(--gray-muted)] hover:text-white transition-colors"
             >
-              See Why This Exists
+              Learn More
+              <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" /></svg>
             </a>
           </div>
-          <a
-            href="/sample/forensic-report-sample.pdf"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 text-sm text-[var(--cyan)] hover:text-white transition-colors mb-16"
-          >
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-            </svg>
-            View a Sample Forensic Report
-          </a>
 
           {/* Stats Row */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6 max-w-3xl mx-auto">
