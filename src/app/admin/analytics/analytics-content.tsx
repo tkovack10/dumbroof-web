@@ -95,7 +95,7 @@ export function LiveAnalyticsContent() {
         <div>
           <h1 className="text-2xl font-bold text-[var(--white)]">Live Analytics</h1>
           <p className="text-xs text-[var(--gray-muted)]">
-            Auto-refreshes every 10 seconds
+            Auto-refreshes every 30 seconds
             {lastRefresh && <> &middot; Last updated {lastRefresh.toLocaleTimeString()}</>}
           </p>
         </div>
@@ -203,14 +203,38 @@ export function LiveAnalyticsContent() {
         </div>
       </div>
 
-      {/* External Links */}
+      {/* Social Media Accounts */}
+      <div className="glass-card p-6">
+        <h2 className="text-sm font-bold text-[var(--white)] mb-4">Social Media</h2>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          {[
+            { label: "Facebook", url: "https://www.facebook.com/profile.php?id=61574348498498", color: "blue", icon: "f" },
+            { label: "Instagram", url: "https://www.instagram.com/dumbroof.ai/", color: "pink", icon: "ig" },
+            { label: "X / Twitter", url: "https://x.com/DumbRoofAI", color: "white", icon: "x" },
+            { label: "TikTok", url: "https://www.tiktok.com/@dumbroof.ai", color: "cyan", icon: "tt" },
+          ].map((link) => (
+            <a
+              key={link.label}
+              href={link.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="rounded-xl bg-white/[0.03] border border-white/10 p-4 text-center hover:bg-white/[0.06] transition-colors group"
+            >
+              <p className={`text-lg font-bold text-[var(--${link.color})] group-hover:scale-110 transition-transform`}>{link.label}</p>
+              <p className="text-[10px] text-[var(--gray-dim)] mt-1">@dumbroof.ai &rarr;</p>
+            </a>
+          ))}
+        </div>
+      </div>
+
+      {/* External Dashboards */}
       <div className="glass-card p-6">
         <h2 className="text-sm font-bold text-[var(--white)] mb-4">External Dashboards</h2>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           {[
-            { label: "GA4 Realtime", url: "https://analytics.google.com", color: "amber" },
+            { label: "GA4 Realtime", url: "https://analytics.google.com/analytics/web/#/a389826484p531121188/realtime/overview", color: "amber" },
             { label: "Vercel Analytics", url: "https://vercel.com/tkovack10s-projects/dumbroof-web/analytics", color: "white" },
-            { label: "Meta Ads Manager", url: "https://business.facebook.com/adsmanager", color: "blue" },
+            { label: "Meta Ads Manager", url: "https://adsmanager.facebook.com/adsmanager/manage/campaigns?act=1290509309613066", color: "blue" },
             { label: "Stripe Dashboard", url: "https://dashboard.stripe.com", color: "purple" },
           ].map((link) => (
             <a
@@ -228,7 +252,7 @@ export function LiveAnalyticsContent() {
       </div>
 
       <p className="text-center text-[10px] text-[var(--gray-dim)]">
-        Data from Supabase &middot; GA4 &amp; Meta Pixel tracked client-side &middot; Polls every 10s
+        Data from Supabase &middot; GA4 &amp; Meta Pixel tracked client-side &middot; Polls every 30s
       </p>
     </div>
   );
