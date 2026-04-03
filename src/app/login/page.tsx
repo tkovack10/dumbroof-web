@@ -139,14 +139,14 @@ function LoginPageContent() {
             {isForgotPassword
               ? "Reset your password"
               : isSignUp
-                ? "Create your account"
+                ? "Get started free"
                 : "Welcome back"}
           </h2>
           <p className="text-[var(--gray-muted)] text-sm mb-6">
             {isForgotPassword
               ? "Enter your email and we'll send a reset link."
               : isSignUp
-                ? "3 free claims. No credit card."
+                ? "No credit card. No onboarding. Just upload photos."
                 : "Sign in to your dashboard."}
           </p>
 
@@ -162,6 +162,7 @@ function LoginPageContent() {
                 onChange={(e) => setEmail(e.target.value)}
                 className="w-full px-4 py-3 rounded-lg bg-[var(--bg-input)] border border-[var(--border-glass)] text-[var(--white)] placeholder:text-[var(--gray-dim)] focus:border-[var(--red)] focus:ring-1 focus:ring-[var(--red)] outline-none transition-colors text-sm"
                 placeholder="you@company.com"
+                autoFocus
               />
             </div>
 
@@ -176,7 +177,7 @@ function LoginPageContent() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className="w-full px-4 py-3 rounded-lg bg-[var(--bg-input)] border border-[var(--border-glass)] text-[var(--white)] placeholder:text-[var(--gray-dim)] focus:border-[var(--red)] focus:ring-1 focus:ring-[var(--red)] outline-none transition-colors text-sm"
-                  placeholder="••••••••"
+                  placeholder={isSignUp ? "Create a password (6+ characters)" : "••••••••"}
                   minLength={6}
                 />
               </div>
@@ -204,7 +205,7 @@ function LoginPageContent() {
                 : isForgotPassword
                   ? "Send Reset Link"
                   : isSignUp
-                    ? "Create Account"
+                    ? "Get Started Free →"
                     : "Sign In"}
             </button>
 
@@ -252,7 +253,7 @@ function LoginPageContent() {
                 ? "Back to sign in"
                 : isSignUp
                   ? "Already have an account? Sign in"
-                  : "Need an account? Sign up"}
+                  : "New here? Get started free"}
             </button>
           </div>
         </div>
