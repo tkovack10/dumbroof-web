@@ -34,6 +34,10 @@ export default function NewClaimPage() {
   >(null);
   const [stormReason, setStormReason] = useState<string | null>(null);
   const [showAdvanced, setShowAdvanced] = useState(false);
+  const [showChecklist, setShowChecklist] = useState(true);
+  const [hasPhotos, setHasPhotos] = useState(true);
+  const [hasMeasurements, setHasMeasurements] = useState(false);
+  const [hasCarrierScope, setHasCarrierScope] = useState(false);
   const [status, setStatus] = useState<UploadStatus>("idle");
   const [errorMsg, setErrorMsg] = useState("");
   const [uploadProgress, setUploadProgress] = useState("");
@@ -357,6 +361,112 @@ export default function NewClaimPage() {
           }}
         />
 
+        {/* Guided Checklist — shows before the form */}
+        {showChecklist && (
+          <div className="mb-8 space-y-8">
+            <div>
+              <h2 className="text-xl font-bold text-[var(--white)] mb-2">What do you have for this claim?</h2>
+              <p className="text-sm text-[var(--gray-muted)]">Check what you have right now. You can always add more documents later.</p>
+            </div>
+
+            <div className="space-y-3">
+              {/* Photos — always checked */}
+              <label className="flex items-start gap-4 p-4 rounded-xl bg-white/[0.04] border border-[var(--border-glass)] cursor-pointer hover:bg-white/[0.06] transition-colors">
+                <button
+                  type="button"
+                  onClick={() => setHasPhotos(!hasPhotos)}
+                  className={`mt-0.5 w-6 h-6 rounded-lg border-2 flex items-center justify-center shrink-0 transition-colors ${
+                    hasPhotos ? "border-green-400 bg-green-500/20" : "border-[var(--border-glass)]"
+                  }`}
+                >
+                  {hasPhotos && <svg className="w-4 h-4 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>}
+                </button>
+                <div>
+                  <p className="text-sm font-semibold text-[var(--white)]">Inspection photos</p>
+                  <p className="text-xs text-[var(--gray-muted)] mt-0.5">Take photos during your inspection. AI annotates every photo, weather data and code compliance requirements are built into the report.</p>
+                </div>
+              </label>
+
+              <label className="flex items-start gap-4 p-4 rounded-xl bg-white/[0.04] border border-[var(--border-glass)] cursor-pointer hover:bg-white/[0.06] transition-colors">
+                <button
+                  type="button"
+                  onClick={() => setHasMeasurements(!hasMeasurements)}
+                  className={`mt-0.5 w-6 h-6 rounded-lg border-2 flex items-center justify-center shrink-0 transition-colors ${
+                    hasMeasurements ? "border-green-400 bg-green-500/20" : "border-[var(--border-glass)]"
+                  }`}
+                >
+                  {hasMeasurements && <svg className="w-4 h-4 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>}
+                </button>
+                <div>
+                  <p className="text-sm font-semibold text-[var(--white)]">Roof / siding measurements</p>
+                  <p className="text-xs text-[var(--gray-muted)] mt-0.5">EagleView, HOVER, GAF QuickMeasure, or any measurement report. Don&apos;t have them yet? That&apos;s fine &mdash; add them anytime.</p>
+                </div>
+              </label>
+
+              <label className="flex items-start gap-4 p-4 rounded-xl bg-white/[0.04] border border-[var(--border-glass)] cursor-pointer hover:bg-white/[0.06] transition-colors">
+                <button
+                  type="button"
+                  onClick={() => setHasCarrierScope(!hasCarrierScope)}
+                  className={`mt-0.5 w-6 h-6 rounded-lg border-2 flex items-center justify-center shrink-0 transition-colors ${
+                    hasCarrierScope ? "border-green-400 bg-green-500/20" : "border-[var(--border-glass)]"
+                  }`}
+                >
+                  {hasCarrierScope && <svg className="w-4 h-4 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>}
+                </button>
+                <div>
+                  <p className="text-sm font-semibold text-[var(--white)]">Insurance carrier scope</p>
+                  <p className="text-xs text-[var(--gray-muted)] mt-0.5">The carrier&apos;s estimate or scope of loss. Don&apos;t have it yet? That&apos;s fine &mdash; add it once you receive it.</p>
+                </div>
+              </label>
+            </div>
+
+            {/* What you'll get */}
+            <div className="rounded-xl bg-white/[0.04] border border-[var(--border-glass)] p-5">
+              <p className="text-xs text-[var(--gray-dim)] uppercase tracking-wider font-semibold mb-3">Here&apos;s what you&apos;ll get</p>
+              {hasPhotos && !hasMeasurements && !hasCarrierScope && (
+                <div>
+                  <p className="text-base font-bold text-[var(--white)]">Forensic Causation Report</p>
+                  <p className="text-xs text-[var(--gray-muted)] mt-1">AI-annotated photos, weather data, code compliance. Ready in ~5 minutes.</p>
+                </div>
+              )}
+              {hasPhotos && hasMeasurements && !hasCarrierScope && (
+                <div>
+                  <p className="text-base font-bold text-[var(--white)]">Forensic Report + Xactimate Estimate + Code Compliance Report</p>
+                  <p className="text-xs text-[var(--gray-muted)] mt-1">3 documents with market-specific pricing, code citations, and annotated house rendering. Ready in ~15 minutes.</p>
+                </div>
+              )}
+              {hasPhotos && hasMeasurements && hasCarrierScope && (
+                <div>
+                  <p className="text-base font-bold text-[var(--white)]">Full 6-Document Package + Scope Comparison + Supplement Composer</p>
+                  <p className="text-xs text-[var(--gray-muted)] mt-1">Complete claim package with carrier comparison, supplement letter, and automated follow-ups. Ready in ~15 minutes.</p>
+                </div>
+              )}
+              {hasPhotos && !hasMeasurements && hasCarrierScope && (
+                <div>
+                  <p className="text-base font-bold text-[var(--white)]">Forensic Report + Carrier Analysis</p>
+                  <p className="text-xs text-[var(--gray-muted)] mt-1">Add measurements later to unlock the full estimate and scope comparison.</p>
+                </div>
+              )}
+              {!hasPhotos && (
+                <div>
+                  <p className="text-sm text-[var(--gray-muted)]">Check at least &quot;Inspection photos&quot; to get started.</p>
+                </div>
+              )}
+              <p className="text-xs text-[var(--gray-dim)] mt-3 italic">This guides your claim from first inspection to final payment. Add documents at any stage.</p>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setShowChecklist(false)}
+              disabled={!hasPhotos}
+              className="w-full bg-gradient-to-r from-[var(--pink)] via-[var(--purple)] to-[var(--blue)] hover:shadow-[var(--shadow-glow-pink)] text-white py-4 rounded-xl font-semibold text-base transition-all shadow-lg shadow-red-900/30 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Got it &mdash; let&apos;s get started
+            </button>
+          </div>
+        )}
+
+        {!showChecklist && (<>
         {/* Quota Gate — Upgrade */}
         {quota && !quota.allowed && (
           <div className="mb-8 bg-gradient-to-br from-[var(--navy)] to-[var(--navy-light)] rounded-2xl p-8 text-center text-white">
@@ -450,22 +560,7 @@ export default function NewClaimPage() {
             </div>
           </div>
 
-          {/* Advanced Options Toggle */}
-          <button
-            type="button"
-            onClick={() => setShowAdvanced(!showAdvanced)}
-            className="flex items-center gap-2 text-sm text-[var(--gray-dim)] hover:text-[var(--white)] transition-colors"
-          >
-            <svg className={`w-4 h-4 transition-transform ${showAdvanced ? "rotate-180" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-            </svg>
-            Advanced Options
-            <span className="text-xs text-[var(--gray-dim)]">(date of loss, storm scan, notes)</span>
-          </button>
-
-          {showAdvanced && (
-            <>
-          {/* Date of Loss */}
+          {/* Date of Loss — always visible */}
           <div>
             <div className="flex items-baseline gap-2 mb-1">
               <label className="block text-sm font-semibold text-[var(--white)]">
@@ -597,17 +692,10 @@ export default function NewClaimPage() {
               onFilesChange={setScopeFiles}
             />
 
-            <FileUploadZone
-              label="Weather Data"
-              description="HailTrace report, NOAA data, or any storm/weather documentation for the loss date. You can forward the email (.eml) directly. Strengthens the forensic case."
-              accept=".pdf,.jpg,.jpeg,.png,.heic,.heif,.webp,.tiff,.tif,.bmp,.zip,.eml"
-              multiple
-              files={weatherFiles}
-              onFilesChange={setWeatherFiles}
-            />
           </div>
 
-          {/* Estimate Request */}
+          {/* Estimate Request — always visible */}
+          {(hasMeasurements || measurementFiles.length > 0) && (
           <div className="space-y-4">
             <h3 className="text-sm font-semibold text-[var(--gray-dim)] uppercase tracking-wider">
               Estimate Request
@@ -715,6 +803,7 @@ export default function NewClaimPage() {
               )}
             </div>
           </div>
+          )}
 
           {/* Additional Context */}
           <div className="space-y-2">
@@ -740,7 +829,29 @@ export default function NewClaimPage() {
               />
             </div>
           </div>
-            </>
+
+          {/* Advanced Options — only weather report */}
+          <button
+            type="button"
+            onClick={() => setShowAdvanced(!showAdvanced)}
+            className="flex items-center gap-2 text-sm text-[var(--gray-dim)] hover:text-[var(--white)] transition-colors"
+          >
+            <svg className={`w-4 h-4 transition-transform ${showAdvanced ? "rotate-180" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+            </svg>
+            Advanced Options
+          </button>
+          {showAdvanced && (
+            <div className="space-y-4">
+              <FileUploadZone
+                label="Weather Data"
+                description="HailTrace report, NOAA data, or any storm/weather documentation. Strengthens the forensic case. Usually auto-detected — only upload if you have a specific report."
+                accept=".pdf,.jpg,.jpeg,.png,.heic,.heif,.webp,.tiff,.tif,.bmp,.zip,.eml"
+                multiple
+                files={weatherFiles}
+                onFilesChange={setWeatherFiles}
+              />
+            </div>
           )}
 
           {/* Phase Indicator */}
@@ -838,6 +949,7 @@ export default function NewClaimPage() {
             </p>
           )}
         </form>
+        </>)}
       </div>
     </main>
   );
