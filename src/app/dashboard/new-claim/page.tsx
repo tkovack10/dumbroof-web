@@ -371,10 +371,10 @@ export default function NewClaimPage() {
 
             <div className="space-y-3">
               {/* Photos — always checked */}
-              <label className="flex items-start gap-4 p-4 rounded-xl bg-white/[0.04] border border-[var(--border-glass)] cursor-pointer hover:bg-white/[0.06] transition-colors">
+              <div onClick={() => setHasPhotos(!hasPhotos)} className="flex items-start gap-4 p-4 rounded-xl bg-white/[0.04] border border-[var(--border-glass)] cursor-pointer hover:bg-white/[0.06] transition-colors">
                 <button
                   type="button"
-                  onClick={() => setHasPhotos(!hasPhotos)}
+                  onClick={(e) => { e.stopPropagation(); setHasPhotos(!hasPhotos); }}
                   className={`mt-0.5 w-6 h-6 rounded-lg border-2 flex items-center justify-center shrink-0 transition-colors ${
                     hasPhotos ? "border-green-400 bg-green-500/20" : "border-[var(--border-glass)]"
                   }`}
@@ -385,12 +385,12 @@ export default function NewClaimPage() {
                   <p className="text-sm font-semibold text-[var(--white)]">Inspection photos</p>
                   <p className="text-xs text-[var(--gray-muted)] mt-0.5">Take photos during your inspection. AI annotates every photo, weather data and code compliance requirements are built into the report.</p>
                 </div>
-              </label>
+              </div>
 
-              <label className="flex items-start gap-4 p-4 rounded-xl bg-white/[0.04] border border-[var(--border-glass)] cursor-pointer hover:bg-white/[0.06] transition-colors">
+              <div onClick={() => setHasMeasurements(!hasMeasurements)} className="flex items-start gap-4 p-4 rounded-xl bg-white/[0.04] border border-[var(--border-glass)] cursor-pointer hover:bg-white/[0.06] transition-colors">
                 <button
                   type="button"
-                  onClick={() => setHasMeasurements(!hasMeasurements)}
+                  onClick={(e) => { e.stopPropagation(); setHasMeasurements(!hasMeasurements); }}
                   className={`mt-0.5 w-6 h-6 rounded-lg border-2 flex items-center justify-center shrink-0 transition-colors ${
                     hasMeasurements ? "border-green-400 bg-green-500/20" : "border-[var(--border-glass)]"
                   }`}
@@ -401,12 +401,12 @@ export default function NewClaimPage() {
                   <p className="text-sm font-semibold text-[var(--white)]">Roof / siding measurements</p>
                   <p className="text-xs text-[var(--gray-muted)] mt-0.5">EagleView, HOVER, GAF QuickMeasure, or any measurement report. Don&apos;t have them yet? That&apos;s fine &mdash; add them anytime.</p>
                 </div>
-              </label>
+              </div>
 
-              <label className="flex items-start gap-4 p-4 rounded-xl bg-white/[0.04] border border-[var(--border-glass)] cursor-pointer hover:bg-white/[0.06] transition-colors">
+              <div onClick={() => setHasCarrierScope(!hasCarrierScope)} className="flex items-start gap-4 p-4 rounded-xl bg-white/[0.04] border border-[var(--border-glass)] cursor-pointer hover:bg-white/[0.06] transition-colors">
                 <button
                   type="button"
-                  onClick={() => setHasCarrierScope(!hasCarrierScope)}
+                  onClick={(e) => { e.stopPropagation(); setHasCarrierScope(!hasCarrierScope); }}
                   className={`mt-0.5 w-6 h-6 rounded-lg border-2 flex items-center justify-center shrink-0 transition-colors ${
                     hasCarrierScope ? "border-green-400 bg-green-500/20" : "border-[var(--border-glass)]"
                   }`}
@@ -417,7 +417,7 @@ export default function NewClaimPage() {
                   <p className="text-sm font-semibold text-[var(--white)]">Insurance carrier scope</p>
                   <p className="text-xs text-[var(--gray-muted)] mt-0.5">The carrier&apos;s estimate or scope of loss. Don&apos;t have it yet? That&apos;s fine &mdash; add it once you receive it.</p>
                 </div>
-              </label>
+              </div>
             </div>
 
             {/* What you'll get */}
