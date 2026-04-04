@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { createClient as createSupabaseClient } from "@supabase/supabase-js";
+import { createClient } from "@/lib/supabase/client";
 
 export default function AuthCallbackPage() {
   const processed = useRef(false);
@@ -13,14 +13,7 @@ export default function AuthCallbackPage() {
   const [passwordError, setPasswordError] = useState("");
   const [success, setSuccess] = useState(false);
 
-  // Use vanilla Supabase client — NOT createBrowserClient (singleton that auto-consumes hash)
-  const supabaseRef = useRef(
-    createSupabaseClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      { auth: { detectSessionInUrl: false, persistSession: true, autoRefreshToken: true } }
-    )
-  );
+  const supabase = createClient();
 
   useEffect(() => {
     if (processed.current) return;
@@ -29,7 +22,6 @@ export default function AuthCallbackPage() {
     const hash = window.location.hash;
     const params = new URLSearchParams(window.location.search);
     const code = params.get("code");
-    const supabase = supabaseRef.current;
 
     const handleAuth = async () => {
       // Implicit flow — hash fragment from recovery/invite emails
@@ -61,10 +53,17 @@ export default function AuthCallbackPage() {
         }
       }
 
-      // PKCE code flow
+      // PKCE code flow (Google OAuth, email confirmation, etc.)
       if (code) {
         const { error } = await supabase.auth.exchangeCodeForSession(code);
         if (error) {
+          // If PKCE fails, the session might already be established by the client
+          // Check if we have a valid session anyway
+          const { data: { session } } = await supabase.auth.getSession();
+          if (session) {
+            window.location.href = "/dashboard";
+            return;
+          }
           setErrorMsg(error.message);
           setMode("error");
           return;
@@ -80,12 +79,19 @@ export default function AuthCallbackPage() {
         return;
       }
 
+      // No code or hash — check if session exists (e.g., auto-detected by client)
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        window.location.href = "/dashboard";
+        return;
+      }
+
       setErrorMsg("Invalid or expired link. Please try again.");
       setMode("error");
     };
 
     handleAuth();
-  }, []);
+  }, [supabase]);
 
   const handlePasswordSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -101,7 +107,7 @@ export default function AuthCallbackPage() {
     }
 
     setSaving(true);
-    const { error } = await supabaseRef.current.auth.updateUser({ password: newPassword });
+    const { error } = await supabase.auth.updateUser({ password: newPassword });
     if (error) {
       setPasswordError(error.message);
       setSaving(false);
