@@ -38,6 +38,7 @@ export default function NewClaimPage() {
   const [hasPhotos, setHasPhotos] = useState(true);
   const [hasMeasurements, setHasMeasurements] = useState(false);
   const [hasCarrierScope, setHasCarrierScope] = useState(false);
+  const [userRole, setUserRole] = useState("");
   const [status, setStatus] = useState<UploadStatus>("idle");
   const [errorMsg, setErrorMsg] = useState("");
   const [uploadProgress, setUploadProgress] = useState("");
@@ -417,6 +418,49 @@ export default function NewClaimPage() {
                   <p className="text-sm font-semibold text-[var(--white)]">Insurance carrier scope</p>
                   <p className="text-xs text-[var(--gray-muted)] mt-0.5">The carrier&apos;s estimate or scope of loss. Don&apos;t have it yet? That&apos;s fine &mdash; add it once you receive it.</p>
                 </div>
+              </div>
+            </div>
+
+            {/* Role selector */}
+            <div>
+              <p className="text-sm font-semibold text-[var(--white)] mb-2">I am a...</p>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                {[
+                  { value: "sales_rep", label: "Sales Rep" },
+                  { value: "company_owner", label: "Company Owner" },
+                  { value: "public_adjuster", label: "Public Adjuster" },
+                  { value: "attorney", label: "Attorney" },
+                  { value: "claims_adjuster", label: "Claims Adjuster" },
+                  { value: "homeowner", label: "Homeowner" },
+                ].map((role) => (
+                  <button
+                    key={role.value}
+                    type="button"
+                    onClick={() => setUserRole(role.value)}
+                    className={`px-4 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+                      userRole === role.value
+                        ? "bg-gradient-to-r from-[var(--pink)] to-[var(--blue)] text-white"
+                        : "bg-white/[0.04] border border-[var(--border-glass)] text-[var(--gray)] hover:bg-white/[0.08]"
+                    }`}
+                  >
+                    {role.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Company profile alert */}
+            <div className="rounded-xl bg-[var(--cyan)]/5 border border-[var(--cyan)]/20 p-4 flex items-start gap-3">
+              <svg className="w-5 h-5 text-[var(--cyan)] shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <div>
+                <p className="text-sm font-semibold text-[var(--white)]">Want your branding on the reports?</p>
+                <p className="text-xs text-[var(--gray-muted)] mt-0.5">
+                  Add your company name, address, logo, and contact info in{" "}
+                  <a href="/dashboard/settings" className="text-[var(--cyan)] hover:underline">Settings</a>{" "}
+                  and every report will be branded with your info.
+                </p>
               </div>
             </div>
 
