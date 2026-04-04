@@ -57,8 +57,13 @@ export function HeroSignupForm() {
       contents: [{ content_id: "signup", content_type: "product", content_name: "dumbroof.ai Account" }],
     });
 
-    // Notify team
+    // Notify team + send welcome email
     fetch("/api/notify-signup", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email }),
+    }).catch(() => {});
+    fetch("/api/welcome-email", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email }),

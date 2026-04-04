@@ -1,6 +1,19 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 
+async function sendWelcomeEmail(email: string) {
+  try {
+    const origin = process.env.NEXT_PUBLIC_APP_URL || "https://www.dumbroof.ai";
+    await fetch(`${origin}/api/welcome-email`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email }),
+    });
+  } catch {
+    // Non-fatal
+  }
+}
+
 async function notifyNewSignup(email: string) {
   try {
     const RESEND_KEY = process.env.RESEND_API_KEY;
@@ -44,8 +57,9 @@ export async function GET(request: Request) {
           .eq("user_id", user.id);
 
         if (count === 0) {
-          // New user — notify team (fire and forget)
+          // New user — notify team + send welcome email (fire and forget)
           notifyNewSignup(user.email || "unknown");
+          sendWelcomeEmail(user.email || "");
           return NextResponse.redirect(`${origin}/dashboard/new-claim`);
         }
       }
