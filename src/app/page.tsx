@@ -65,16 +65,15 @@ export default async function Home() {
           </div>
 
           <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold text-white leading-tight mb-6">
-            Don&apos;t tell them they have damage.
+            Upload inspection photos.
             <br />
-            <span className="text-[var(--red)]">Show them.</span>
+            <span className="text-[var(--red)]">Get a forensic report in 5 minutes.</span>
           </h1>
 
           <p className="text-lg sm:text-xl text-[var(--gray-dim)] max-w-2xl mx-auto mb-10 leading-relaxed">
-            Upload photos and measurements. Get 6 forensic-grade PDFs in 15 minutes.
-            Every line item backed by building codes, photo evidence, and carrier-specific
-            intelligence. Sophisticated automation is available from there at the click
-            of a button. No onboarding required.
+            AI annotates every photo, cites building codes, and builds your
+            Xactimate estimate &mdash; so your reps don&apos;t have to.
+            No training. No onboarding. Just upload and go.
           </p>
 
           {/* Inline signup — email field right in the hero, no page redirect */}
