@@ -19,11 +19,22 @@ export async function GET(req: NextRequest) {
 
   const domain = user.email.split("@")[1];
 
-  // Get all user_ids that share this email domain
-  const { data: domainUsers } = await supabaseAdmin.auth.admin.listUsers({ perPage: 500 });
-  const teamUserIds = (domainUsers?.users || [])
-    .filter((u) => u.email && u.email.endsWith(`@${domain}`))
-    .map((u) => u.id);
+  // Public email domains should NOT be treated as "same company"
+  const PUBLIC_DOMAINS = new Set([
+    "gmail.com", "yahoo.com", "hotmail.com", "outlook.com", "aol.com",
+    "icloud.com", "mail.com", "protonmail.com", "zoho.com", "yandex.com",
+    "live.com", "msn.com", "comcast.net", "verizon.net", "att.net",
+  ]);
+  const isPublicDomain = PUBLIC_DOMAINS.has(domain.toLowerCase());
+
+  // Get all user_ids that share this email domain (skip for public domains)
+  let teamUserIds: string[] = [user.id];
+  if (!isPublicDomain) {
+    const { data: domainUsers } = await supabaseAdmin.auth.admin.listUsers({ perPage: 500 });
+    teamUserIds = (domainUsers?.users || [])
+      .filter((u) => u.email && u.email.endsWith(`@${domain}`))
+      .map((u) => u.id);
+  }
 
   if (teamUserIds.length <= 1) {
     // No team — just return own claims
