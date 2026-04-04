@@ -12,7 +12,7 @@ async function notifyNewSignup(email: string) {
       headers: { Authorization: `Bearer ${RESEND_KEY}`, "Content-Type": "application/json" },
       body: JSON.stringify({
         from: "DumbRoof <noreply@dumbroof.ai>",
-        to: ["tkovack@usaroofmasters.com", "hello@dumbroof.ai", "arivera@usaroofmasters.com"],
+        to: ["tkovack@usaroofmasters.com", "hello@dumbroof.ai", "arivera@usaroofmasters.com", "tom@dumbroof.ai", "kristen@dumbroof.ai"],
         subject: `🚨 New User Signup: ${email}`,
         html: `<h2>New User Registered on dumbroof.ai</h2>
           <p><strong>${email}</strong> just confirmed their email.</p>
