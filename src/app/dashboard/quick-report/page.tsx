@@ -132,7 +132,7 @@ export default function QuickReportPage() {
         user_id: user.id,
         address: propertyAddress,
         ...(homeownerName.trim() ? { homeowner_name: homeownerName.trim() } : {}),
-        carrier: insuranceCarrier || null,
+        carrier: insuranceCarrier || "",
         slug,
         phase: "pre-scope",
         status: "uploaded",
