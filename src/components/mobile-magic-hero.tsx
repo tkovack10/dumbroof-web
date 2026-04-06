@@ -120,13 +120,11 @@ export function MobileMagicHero({ inAppName, stats }: Props) {
   return (
     <div className="min-h-[80vh] flex flex-col justify-center px-6 py-12 bg-gradient-to-b from-[var(--navy)] via-[var(--navy-light)] to-[var(--navy)]">
       <div className="max-w-md mx-auto w-full">
-        {sourceLabel && (
-          <div className="text-center mb-3">
-            <span className="inline-block px-3 py-1 rounded-full bg-white/[0.06] border border-white/[0.1] text-xs text-[var(--gray-dim)] font-medium">
-              Saw us on {sourceLabel}? &darr;
-            </span>
-          </div>
-        )}
+        <div className="text-center mb-3">
+          <span className="inline-block px-3 py-1 rounded-full bg-white/[0.06] border border-white/[0.1] text-xs text-[var(--gray-dim)] font-medium">
+            {sourceLabel ? `Saw us on ${sourceLabel}? \u2193` : "On your phone? \u2193"}
+          </span>
+        </div>
 
         <h1 className="text-3xl sm:text-4xl font-bold text-white text-center leading-tight mb-3">
           AI builds your storm claim package in 5 minutes.
