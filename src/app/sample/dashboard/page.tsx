@@ -53,22 +53,27 @@ const STATUS_STYLES: Record<string, { chip: string; row: string; label: string }
 export default function SampleDashboardPage() {
   const [tab, setTab] = useState<Tab>("compare");
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
+  const [emailModalOpen, setEmailModalOpen] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   const supplementItems = useMemo(
     () => SAMPLE_COMPARISON_ROWS.filter((r) => r.status === "missing" || r.status === "under"),
     []
   );
 
+  const selectedRows = useMemo(
+    () => supplementItems.filter((r) => selectedItems.has(r.checklist_desc)),
+    [supplementItems, selectedItems]
+  );
+
   const selectedTotal = useMemo(() => {
     let total = 0;
-    for (const row of supplementItems) {
-      if (selectedItems.has(row.checklist_desc)) {
-        const delta = row.usarm_amount - row.carrier_amount;
-        total += delta > 0 ? delta : row.usarm_amount;
-      }
+    for (const row of selectedRows) {
+      const delta = row.usarm_amount - row.carrier_amount;
+      total += delta > 0 ? delta : row.usarm_amount;
     }
     return total;
-  }, [selectedItems, supplementItems]);
+  }, [selectedRows]);
 
   const toggleItem = (key: string) => {
     setSelectedItems((prev) => {
@@ -77,6 +82,79 @@ export default function SampleDashboardPage() {
       else next.add(key);
       return next;
     });
+  };
+
+  /**
+   * Compose the supplement email exactly the way the real product does it,
+   * using Tom's email rules (subject = claim number, "underscoped" not
+   * "underpaid", no advocacy language). The output is shown in the modal
+   * so demo users can see what the real product generates without us
+   * actually firing an email.
+   */
+  const composedEmail = useMemo(() => {
+    if (selectedRows.length === 0) return null;
+    const body: string[] = [];
+    body.push(`Re: Claim #${SAMPLE_CLAIM_META.claim_number}`);
+    body.push(`Insured property: ${SAMPLE_CLAIM_META.address}`);
+    body.push(`Date of loss: ${SAMPLE_CLAIM_META.date_of_loss}`);
+    body.push("");
+    body.push("Our forensic review of the carrier scope identified the following code-required items that are currently underscoped or missing. We are submitting these for inclusion in the supplement.");
+    body.push("");
+
+    selectedRows.forEach((row, i) => {
+      const delta = row.usarm_amount - row.carrier_amount;
+      const amount = delta > 0 ? delta : row.usarm_amount;
+      body.push(`${i + 1}. ${row.checklist_desc}`);
+      if (row.carrier_amount > 0) {
+        body.push(`   Carrier scoped: ${row.carrier_qty} ${row.carrier_unit} @ ${fmtMoney(row.carrier_unit_price)}/${row.carrier_unit} = ${fmtMoney(row.carrier_amount)}`);
+        body.push(`   Code-compliant: ${row.ev_qty} ${row.ev_unit} @ ${fmtMoney(row.xact_unit_price)}/${row.ev_unit} = ${fmtMoney(row.usarm_amount)}`);
+      } else {
+        body.push(`   Carrier scoped: not included`);
+        body.push(`   Code-compliant: ${row.ev_qty} ${row.ev_unit} @ ${fmtMoney(row.xact_unit_price)}/${row.ev_unit} = ${fmtMoney(row.usarm_amount)}`);
+      }
+      body.push(`   Supplement requested: ${fmtMoney(amount)}`);
+
+      if (row.code_citation) {
+        body.push(`   Code basis: ${row.code_citation.code_tag} ${row.code_citation.section} — ${row.code_citation.title}`);
+        body.push(`   ${row.code_citation.supplement_argument}`);
+        if (row.code_citation.has_warranty_void && row.code_citation.manufacturer_specs[0]) {
+          body.push(`   Manufacturer note: ${row.code_citation.manufacturer_specs[0].warranty_text}`);
+        }
+      } else if (row.note) {
+        body.push(`   ${row.note}`);
+      }
+      body.push("");
+    });
+
+    body.push(`Total supplement requested: ${fmtMoney(selectedTotal)}`);
+    body.push("");
+    body.push("All line items above are required for code-compliant installation per RCNYS 2020 (Binghamton, NY jurisdiction) and applicable manufacturer specifications. Photo evidence and full forensic causation report are attached.");
+    body.push("");
+    body.push("Please confirm receipt and a target date for review. We are available for a re-inspection if requested.");
+    body.push("");
+    body.push("Regards,");
+    body.push("[Contractor Name]");
+    body.push("[Company Name]");
+
+    return {
+      subject: SAMPLE_CLAIM_META.claim_number, // Tom's rule: subject = claim number ONLY
+      to: "[adjuster email]",
+      cc: "[your company admin]",
+      bcc: "claims@dumbroof.ai",
+      body: body.join("\n"),
+    };
+  }, [selectedRows, selectedTotal]);
+
+  const copyToClipboard = async () => {
+    if (!composedEmail) return;
+    const fullText = `To: ${composedEmail.to}\nCC: ${composedEmail.cc}\nBCC: ${composedEmail.bcc}\nSubject: ${composedEmail.subject}\n\n${composedEmail.body}`;
+    try {
+      await navigator.clipboard.writeText(fullText);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // navigator.clipboard not available — silently no-op
+    }
   };
 
   return (
@@ -303,7 +381,7 @@ export default function SampleDashboardPage() {
                 </div>
                 <button
                   disabled={selectedItems.size === 0}
-                  onClick={() => alert("In the real app, this opens a fully-composed email to the adjuster with code citations and photo evidence. Sign up to try it for real!")}
+                  onClick={() => setEmailModalOpen(true)}
                   className="bg-gradient-to-r from-[var(--pink)] via-[var(--purple)] to-[var(--blue)] text-white px-5 py-3 rounded-xl text-sm font-semibold disabled:opacity-40"
                 >
                   Compose Email →
@@ -321,6 +399,120 @@ export default function SampleDashboardPage() {
         {tab === "richard" && (
           <div className="bg-white/[0.04] border border-white/[0.1] rounded-2xl overflow-hidden">
             <SampleClaimBrainChat />
+          </div>
+        )}
+
+        {/* Email modal — shows the actual drafted supplement email */}
+        {emailModalOpen && composedEmail && (
+          <div
+            className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4"
+            onClick={() => setEmailModalOpen(false)}
+          >
+            <div
+              className="w-full sm:max-w-2xl bg-[rgb(15,18,35)] border border-white/[0.1] rounded-t-2xl sm:rounded-2xl shadow-2xl max-h-[90vh] flex flex-col"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Modal header */}
+              <div className="px-5 py-4 border-b border-white/[0.08] flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="text-[10px] font-bold uppercase tracking-wider text-[var(--pink)] mb-0.5">
+                    Supplement Email — Generated by dumbroof.ai
+                  </div>
+                  <p className="text-sm font-semibold text-white truncate">
+                    {selectedRows.length} item{selectedRows.length === 1 ? "" : "s"} · {fmtMoney(selectedTotal)}
+                  </p>
+                </div>
+                <button
+                  onClick={() => setEmailModalOpen(false)}
+                  className="shrink-0 w-8 h-8 rounded-lg bg-white/[0.06] hover:bg-white/[0.12] flex items-center justify-center text-white/60 hover:text-white"
+                  aria-label="Close"
+                >
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+
+              {/* Modal scrollable body — render the email like Gmail compose */}
+              <div className="flex-1 overflow-y-auto">
+                {/* Email headers */}
+                <div className="px-5 py-3 border-b border-white/[0.05] space-y-1.5 text-xs">
+                  <div className="flex gap-3">
+                    <span className="text-[var(--gray-muted)] w-12 shrink-0">To</span>
+                    <span className="text-white font-mono">{composedEmail.to}</span>
+                  </div>
+                  <div className="flex gap-3">
+                    <span className="text-[var(--gray-muted)] w-12 shrink-0">Cc</span>
+                    <span className="text-white font-mono">{composedEmail.cc}</span>
+                  </div>
+                  <div className="flex gap-3">
+                    <span className="text-[var(--gray-muted)] w-12 shrink-0">Bcc</span>
+                    <span className="text-white font-mono">{composedEmail.bcc}</span>
+                  </div>
+                  <div className="flex gap-3 pt-1 border-t border-white/[0.05]">
+                    <span className="text-[var(--gray-muted)] w-12 shrink-0">Subject</span>
+                    <span className="text-white font-mono font-semibold">{composedEmail.subject}</span>
+                  </div>
+                </div>
+
+                {/* Email body — preserve line breaks, monospace for the data tables */}
+                <div className="px-5 py-4">
+                  <pre className="text-[12px] text-[var(--gray-dim)] font-mono whitespace-pre-wrap leading-relaxed">
+{composedEmail.body}
+                  </pre>
+                </div>
+
+                {/* Annotations + attachments */}
+                <div className="mx-5 mb-5 bg-[var(--cyan)]/[0.06] border border-[var(--cyan)]/20 rounded-lg p-3">
+                  <div className="text-[10px] font-bold uppercase tracking-wider text-[var(--cyan)] mb-1.5">
+                    Attached automatically
+                  </div>
+                  <ul className="text-[11px] text-[var(--gray-dim)] space-y-1">
+                    <li>📄 forensic-causation-report.pdf (47 annotated photos)</li>
+                    <li>📊 xactimate-style-estimate.pdf ({fmtMoney(SAMPLE_FINANCIALS.contractor_rcv)} RCV)</li>
+                    <li>📋 scope-comparison-report.pdf</li>
+                    <li>📑 scope-clarification-letter.pdf</li>
+                  </ul>
+                </div>
+              </div>
+
+              {/* Modal footer with actions */}
+              <div className="px-5 py-4 border-t border-white/[0.08] bg-[rgba(6,9,24,0.5)]">
+                <div className="flex flex-col sm:flex-row gap-2 sm:items-center sm:justify-between">
+                  <p className="text-[10px] text-[var(--gray-muted)] leading-relaxed">
+                    <strong className="text-amber-300">Demo mode:</strong> in production, dumbroof.ai sends this directly via your connected Gmail.
+                  </p>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={copyToClipboard}
+                      className="bg-white/[0.08] hover:bg-white/[0.12] text-white text-xs font-semibold px-3 py-2 rounded-lg flex items-center gap-1.5"
+                    >
+                      {copied ? (
+                        <>
+                          <svg className="w-3.5 h-3.5 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                          </svg>
+                          Copied
+                        </>
+                      ) : (
+                        <>
+                          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                          </svg>
+                          Copy email
+                        </>
+                      )}
+                    </button>
+                    <a
+                      href="/?from=demo"
+                      className="bg-gradient-to-r from-[var(--pink)] via-[var(--purple)] to-[var(--blue)] text-white text-xs font-semibold px-4 py-2 rounded-lg"
+                    >
+                      Send for real →
+                    </a>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         )}
 
