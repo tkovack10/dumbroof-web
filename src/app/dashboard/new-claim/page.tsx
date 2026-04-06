@@ -70,9 +70,14 @@ export default function NewClaimPage() {
 
   const hasScope = scopeFiles.length > 0;
   const phase = hasScope ? "post-scope" : "pre-scope";
+  // Photos are the ONLY hard requirement. Measurements and carrier scope
+  // are both optional — each one unlocks more of the package when added.
+  // Contractor can submit photos-only and get a Forensic Causation Report,
+  // then add measurements for Xactimate + scope comparison, then add the
+  // carrier scope for the full 5-doc supplement package.
+  // Tom's directive 2026-04-06: "we dont NEED EAGLEVIEW"
   const canSubmit =
     propertyAddress.trim() !== "" &&
-    measurementFiles.length > 0 &&
     (photoFiles.length > 0 || crmPhotoCount > 0) &&
     roofMaterial !== "" &&
     (quota === null || quota.allowed);

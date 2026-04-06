@@ -30,20 +30,24 @@ const FOLLOWUP_HTML = (magicLink: string) => `
     <p style="color:#b5d0e8;font-size:14px;margin:8px 0 0;">Open this on your desktop to upload your first claim.</p>
   </div>
   <div style="padding:28px;background:#ffffff;border:1px solid #e5e7eb;border-top:none;border-radius:0 0 12px 12px;">
-    <p style="font-size:16px;color:#374151;margin:0 0 18px;">Tap the button below from your <strong>desktop or laptop</strong> &mdash; the upload form needs your EagleView PDF and inspection photos, which probably aren't on your phone.</p>
+    <p style="font-size:16px;color:#374151;margin:0 0 18px;">Tap the button below from your <strong>desktop or laptop</strong> &mdash; uploading 50+ inspection photos from a phone is painful.</p>
 
     <div style="text-align:center;margin:24px 0;">
       <a href="${magicLink}" style="background:linear-gradient(135deg,#ec4899,#8b5cf6,#3b82f6);color:#ffffff;padding:14px 36px;border-radius:10px;text-decoration:none;font-weight:600;font-size:16px;display:inline-block;">Open on Desktop &rarr;</a>
     </div>
 
-    <p style="font-size:14px;color:#6b7280;margin:18px 0 6px;"><strong>What you'll need:</strong></p>
+    <p style="font-size:14px;color:#6b7280;margin:18px 0 6px;"><strong>The only thing you need:</strong></p>
     <ul style="font-size:14px;color:#6b7280;padding-left:20px;margin:0 0 18px;">
-      <li>EagleView, HOVER, or GAF QuickMeasure report (PDF)</li>
-      <li>Inspection photos (we accept ZIP, individual files, or CompanyCam imports)</li>
-      <li>About 5 minutes</li>
+      <li><strong>Inspection photos</strong> (ZIP, individual files, or CompanyCam import)</li>
     </ul>
 
-    <p style="font-size:13px;color:#9ca3af;margin:18px 0 0;">Don't have measurements yet? You can still upload photos and we'll generate a forensic causation report. Add the rest later.</p>
+    <p style="font-size:14px;color:#6b7280;margin:14px 0 6px;"><strong>Optional &mdash; add when you have them:</strong></p>
+    <ul style="font-size:14px;color:#6b7280;padding-left:20px;margin:0 0 18px;">
+      <li>Measurement report (EagleView, HOVER, GAF QuickMeasure, or any source) &mdash; unlocks Xactimate estimate + scope comparison</li>
+      <li>Carrier scope of loss (PDF) &mdash; unlocks the full 5-document supplement package</li>
+    </ul>
+
+    <p style="font-size:13px;color:#9ca3af;margin:18px 0 0;">Starting with just photos? You get a forensic causation report in 5 minutes. Add measurements + scope whenever they come in &mdash; the claim grows with you.</p>
 
     <hr style="border:none;border-top:1px solid #e5e7eb;margin:24px 0;" />
 

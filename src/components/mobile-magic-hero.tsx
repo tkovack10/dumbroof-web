@@ -139,7 +139,7 @@ export function MobileMagicHero({ inAppName, stats }: Props) {
             Email me a link to finish at my desk
           </p>
           <p className="text-xs text-[var(--gray-muted)] mb-4">
-            You&apos;ll need your EagleView and inspection photos &mdash; easier from a desktop than a phone.
+            Upload your inspection photos &mdash; add measurements or a carrier scope later to unlock the full package. Easier from a desktop.
           </p>
 
           <form onSubmit={handleSubmit} className="space-y-3">

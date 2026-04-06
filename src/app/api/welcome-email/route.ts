@@ -44,7 +44,7 @@ const WELCOME_HTML = `
       </tr>
     </table>
 
-    <p style="font-size: 14px; color: #6b7280;">Upload your EagleView measurements anytime — even weeks later. Upload the carrier scope when you receive it. Every document you add unlocks more automation. Your claim is never "done" until the homeowner is paid and the job is complete.</p>
+    <p style="font-size: 14px; color: #6b7280;">Upload measurements anytime — any source works (EagleView, HOVER, GAF QuickMeasure, hand-drawn, whatever you've got). Upload the carrier scope when you receive it. Every document you add unlocks more automation. Your claim is never "done" until the homeowner is paid and the job is complete.</p>
 
     <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 28px 0;" />
 

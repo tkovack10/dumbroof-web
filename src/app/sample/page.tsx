@@ -97,32 +97,76 @@ export default async function SamplePage() {
             </div>
           </div>
 
-          {/* Embedded PDF — works on iOS Safari + Android Chrome + desktop */}
-          <div className="bg-white/[0.04] border border-white/[0.1] rounded-2xl overflow-hidden mb-10">
-            <div className="px-5 py-3 border-b border-white/[0.1] flex items-center justify-between">
-              <p className="text-sm font-semibold text-white">Forensic Causation Report (preview)</p>
-              <a
-                href="/sample/forensic-report-sample.pdf"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-xs text-[var(--cyan)] hover:text-white"
-              >
-                Open full PDF →
-              </a>
+          {/*
+            Mobile: iOS Safari doesn't render PDF iframes inline — the viewer
+            shows a blank white rectangle. We render a clickable "open PDF"
+            card instead. Desktop keeps the inline iframe.
+          */}
+          {device.isMobile ? (
+            <a
+              href="/sample/forensic-report-sample.pdf"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="block bg-gradient-to-br from-white/[0.06] to-white/[0.02] border border-white/[0.1] rounded-2xl overflow-hidden mb-10 active:scale-[0.99] transition-transform"
+            >
+              {/* Visual mockup of the PDF cover */}
+              <div className="bg-gradient-to-br from-[var(--navy-light)] to-[var(--navy)] px-6 py-10 border-b border-white/[0.1]">
+                <div className="max-w-[280px] mx-auto bg-white rounded-lg shadow-2xl overflow-hidden">
+                  {/* Fake PDF page preview — styled to look like the real thing */}
+                  <div className="bg-gradient-to-b from-slate-900 to-slate-800 px-5 py-4 text-white">
+                    <div className="text-[9px] font-bold tracking-wider opacity-70 mb-1">
+                      DUMBROOF.AI · FORENSIC REPORT
+                    </div>
+                    <div className="text-[11px] font-bold leading-tight">
+                      Forensic Causation Report
+                    </div>
+                    <div className="text-[8px] opacity-60 mt-1">14-square hail claim · 47 photos</div>
+                  </div>
+                  <div className="px-5 py-4 space-y-2">
+                    <div className="h-1.5 rounded bg-slate-300 w-full" />
+                    <div className="h-1.5 rounded bg-slate-300 w-4/5" />
+                    <div className="h-1.5 rounded bg-slate-200 w-full" />
+                    <div className="h-1.5 rounded bg-slate-200 w-3/5" />
+                    <div className="h-12 mt-3 rounded bg-gradient-to-br from-slate-700 to-slate-500 flex items-center justify-center text-white text-[8px] font-semibold">
+                      PHOTO ANNOTATION · HAIL STRIKE 1/47
+                    </div>
+                    <div className="h-1.5 rounded bg-slate-300 w-full mt-3" />
+                    <div className="h-1.5 rounded bg-slate-300 w-5/6" />
+                    <div className="h-1.5 rounded bg-slate-200 w-4/5" />
+                  </div>
+                </div>
+              </div>
+              <div className="px-5 py-4 text-center">
+                <p className="text-base font-semibold text-white mb-1">
+                  Tap to open the full PDF &rarr;
+                </p>
+                <p className="text-xs text-[var(--gray-muted)]">
+                  ~18 pages · Xactimate estimate · code citations · 47 annotated photos
+                </p>
+              </div>
+            </a>
+          ) : (
+            <div className="bg-white/[0.04] border border-white/[0.1] rounded-2xl overflow-hidden mb-10">
+              <div className="px-5 py-3 border-b border-white/[0.1] flex items-center justify-between">
+                <p className="text-sm font-semibold text-white">Forensic Causation Report (preview)</p>
+                <a
+                  href="/sample/forensic-report-sample.pdf"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs text-[var(--cyan)] hover:text-white"
+                >
+                  Open full PDF &rarr;
+                </a>
+              </div>
+              <div className="bg-white" style={{ height: "min(75vh, 800px)" }}>
+                <iframe
+                  src="/sample/forensic-report-sample.pdf#view=FitH"
+                  className="w-full h-full border-0"
+                  title="Sample forensic causation report"
+                />
+              </div>
             </div>
-            <div className="bg-white" style={{ height: "min(75vh, 800px)" }}>
-              <iframe
-                src="/sample/forensic-report-sample.pdf#view=FitH"
-                className="w-full h-full border-0"
-                title="Sample forensic causation report"
-              />
-            </div>
-            <div className="px-5 py-3 border-t border-white/[0.1] text-center">
-              <p className="text-xs text-[var(--gray-muted)]">
-                On mobile? The PDF may open in a separate viewer — that&apos;s normal.
-              </p>
-            </div>
-          </div>
+          )}
 
           {/* Bottom CTA */}
           <div className="text-center bg-white/[0.04] border border-white/[0.1] rounded-2xl p-8">
