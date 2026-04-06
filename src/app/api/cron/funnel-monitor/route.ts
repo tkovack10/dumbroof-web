@@ -5,6 +5,7 @@ import { gatherSupabase } from "@/lib/funnel-monitor/sources/supabase";
 import { gatherResend } from "@/lib/funnel-monitor/sources/resend";
 import { gatherStripe } from "@/lib/funnel-monitor/sources/stripe";
 import { gatherVercelAnalytics } from "@/lib/funnel-monitor/sources/vercel-analytics";
+import { gatherGA4 } from "@/lib/funnel-monitor/sources/ga4";
 import { gatherMetaAds } from "@/lib/funnel-monitor/sources/meta-ads";
 import { gatherRailwayHealth } from "@/lib/funnel-monitor/sources/railway";
 import { generateAiInsight } from "@/lib/funnel-monitor/ai-insight";
@@ -65,15 +66,23 @@ async function runFunnelMonitor(): Promise<{ ok: boolean; report?: FunnelReport;
   const sourcesFailed: string[] = [];
 
   // Run all sources in parallel — no source should block the others
-  const [supabaseResult, resendResult, stripeResult, vercelResult, metaResult, railwayResult] =
-    await Promise.allSettled([
-      gatherSupabase(windowStart, windowEnd, anomalies),
-      gatherResend(windowStart, windowEnd, anomalies),
-      gatherStripe(windowStart, windowEnd, anomalies),
-      gatherVercelAnalytics(windowStart, windowEnd, anomalies),
-      gatherMetaAds(windowStart, windowEnd, anomalies),
-      gatherRailwayHealth(),
-    ]);
+  const [
+    supabaseResult,
+    resendResult,
+    stripeResult,
+    vercelResult,
+    ga4Result,
+    metaResult,
+    railwayResult,
+  ] = await Promise.allSettled([
+    gatherSupabase(windowStart, windowEnd, anomalies),
+    gatherResend(windowStart, windowEnd, anomalies),
+    gatherStripe(windowStart, windowEnd, anomalies),
+    gatherVercelAnalytics(windowStart, windowEnd, anomalies),
+    gatherGA4(windowStart, windowEnd, anomalies),
+    gatherMetaAds(windowStart, windowEnd, anomalies),
+    gatherRailwayHealth(),
+  ]);
 
   const unwrap = <T>(result: PromiseSettledResult<T | null>, name: string): T | null => {
     if (result.status === "fulfilled") {
@@ -107,7 +116,7 @@ async function runFunnelMonitor(): Promise<{ ok: boolean; report?: FunnelReport;
     resend: unwrap(resendResult, "resend"),
     stripe: unwrap(stripeResult, "stripe"),
     vercel_analytics: unwrap(vercelResult, "vercel_analytics"),
-    ga4: null, // GA4 source not yet implemented — TODO Phase 3.x
+    ga4: unwrap(ga4Result, "ga4"),
     meta_ads: unwrap(metaResult, "meta_ads"),
     railway: unwrap(railwayResult, "railway"),
     anomalies,

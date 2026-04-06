@@ -108,6 +108,30 @@ export function renderReportHtml(report: FunnelReport): string {
     </div>`
     : "";
 
+  const ga4Html = report.ga4
+    ? `<div style="background:#ffffff;border:1px solid #e5e7eb;border-radius:10px;padding:18px;margin-bottom:14px;">
+      <div style="font-size:12px;font-weight:700;color:#6b7280;letter-spacing:0.05em;margin-bottom:10px;">GA4 ENGAGEMENT</div>
+      <div style="display:flex;gap:18px;flex-wrap:wrap;margin-bottom:14px;">
+        <div><div style="font-size:24px;font-weight:700;color:#1f2937;">${fmtPct(report.ga4.engagement_rate)}</div><div style="font-size:11px;color:#6b7280;">engagement rate</div></div>
+        <div><div style="font-size:24px;font-weight:700;color:#1f2937;">${report.ga4.avg_engagement_time_seconds.toFixed(0)}s</div><div style="font-size:11px;color:#6b7280;">avg session</div></div>
+        <div><div style="font-size:24px;font-weight:700;color:#1f2937;">${fmtPct(report.ga4.scroll_rate)}</div><div style="font-size:11px;color:#6b7280;">scroll rate</div></div>
+        <div><div style="font-size:24px;font-weight:700;color:#1f2937;">${report.ga4.conversions}</div><div style="font-size:11px;color:#6b7280;">conversions</div></div>
+      </div>
+      ${
+        report.ga4.top_geo.length > 0
+          ? `<div style="font-size:11px;font-weight:700;color:#6b7280;margin-bottom:6px;">TOP CITIES</div><table style="width:100%;font-size:12px;border-collapse:collapse;">
+              ${report.ga4.top_geo
+                .map(
+                  (g) =>
+                    `<tr><td style="padding:4px 8px 4px 0;color:#1f2937;">${escape(g.city)}</td><td style="padding:4px 0;color:#6b7280;text-align:right;">${g.users}</td></tr>`
+                )
+                .join("")}
+            </table>`
+          : ""
+      }
+    </div>`
+    : "";
+
   const vercelHtml = report.vercel_analytics
     ? `<div style="background:#ffffff;border:1px solid #e5e7eb;border-radius:10px;padding:18px;margin-bottom:14px;">
       <div style="font-size:12px;font-weight:700;color:#6b7280;letter-spacing:0.05em;margin-bottom:10px;">VERCEL ANALYTICS</div>
@@ -169,6 +193,7 @@ export function renderReportHtml(report: FunnelReport): string {
       ${aiInsightHtml}
       ${anomalyHtml}
       ${supabaseHtml}
+      ${ga4Html}
       ${resendHtml}
       ${stripeHtml}
       ${vercelHtml}
