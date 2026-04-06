@@ -2,8 +2,9 @@ import { HomeNav } from "@/components/home-nav";
 import { Footer } from "@/components/footer";
 import { getDeviceContext } from "@/lib/device-detection";
 
-// Cache the sample page heavily — it's static content
-export const revalidate = 3600;
+// MUST be dynamic — UA-based CTA at the bottom (mobile vs desktop link).
+// ISR would cache the first request's HTML for everyone.
+export const dynamic = "force-dynamic";
 
 /**
  * Sample report preview page — NO signup wall.

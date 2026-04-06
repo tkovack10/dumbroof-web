@@ -1,21 +1,26 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { supabaseAdmin } from "@/lib/supabase/admin";
 import { getResend, EMAIL_FROM, EMAIL_REPLY_TO } from "@/lib/resend";
 
 /**
  * "Save my spot" — magic-link signup for mobile in-app browser users.
  *
  * The mobile hero (src/components/mobile-magic-hero.tsx) posts here with
- * just an email. We use Supabase signInWithOtp to send a passwordless link,
- * then immediately send our own branded "open on desktop" email via Resend
- * with a one-click button.
+ * just an email. We use Supabase admin generateLink() to mint a REAL
+ * magic link server-side (which also creates the user if they don't
+ * exist), then send our own branded "open on desktop" email via Resend
+ * containing that link. We do NOT call signInWithOtp because that would
+ * also fire Supabase's default email — leading to two emails that confuse
+ * the user.
  *
  * Why: roofers click ads on Instagram/Facebook on their phones during
  * downtime, but the actual upload work (EagleView PDF + 60 photos) needs
- * a desktop. This routes them through their inbox instead of bouncing.
+ * a desktop. This routes them through their inbox to a desktop session.
  *
  * Funnel investigation: 2026-04-06 — 14 mobile signups in 7 days, 0 uploads.
  */
+
+const APP_URL = "https://www.dumbroof.ai";
 
 const FOLLOWUP_HTML = (magicLink: string) => `
 <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;max-width:560px;margin:0 auto;color:#1a1a2e;">
@@ -24,7 +29,7 @@ const FOLLOWUP_HTML = (magicLink: string) => `
     <p style="color:#b5d0e8;font-size:14px;margin:8px 0 0;">Open this on your desktop to upload your first claim.</p>
   </div>
   <div style="padding:28px;background:#ffffff;border:1px solid #e5e7eb;border-top:none;border-radius:0 0 12px 12px;">
-    <p style="font-size:16px;color:#374151;margin:0 0 18px;">Tap the button below from your <strong>desktop or laptop</strong> — the upload form needs your EagleView PDF and inspection photos, which probably aren't on your phone.</p>
+    <p style="font-size:16px;color:#374151;margin:0 0 18px;">Tap the button below from your <strong>desktop or laptop</strong> &mdash; the upload form needs your EagleView PDF and inspection photos, which probably aren't on your phone.</p>
 
     <div style="text-align:center;margin:24px 0;">
       <a href="${magicLink}" style="background:linear-gradient(135deg,#ec4899,#8b5cf6,#3b82f6);color:#ffffff;padding:14px 36px;border-radius:10px;text-decoration:none;font-weight:600;font-size:16px;display:inline-block;">Open on Desktop &rarr;</a>
@@ -41,12 +46,14 @@ const FOLLOWUP_HTML = (magicLink: string) => `
 
     <hr style="border:none;border-top:1px solid #e5e7eb;margin:24px 0;" />
 
-    <p style="font-size:13px;color:#9ca3af;margin:0;">This link is single-use and expires in 1 hour. If it expires, just sign up again from your desktop at <a href="https://www.dumbroof.ai" style="color:#3b82f6;">dumbroof.ai</a>.</p>
+    <p style="font-size:13px;color:#9ca3af;margin:0;">This link is single-use and expires in 1 hour. If it expires, just sign up again from your desktop at <a href="${APP_URL}" style="color:#3b82f6;">dumbroof.ai</a>.</p>
     <p style="font-size:13px;color:#9ca3af;margin:8px 0 0;">Reply to this email with your phone number if you'd rather we text the link.</p>
-    <p style="font-size:13px;color:#9ca3af;margin:14px 0 0;">— The DumbRoof Team</p>
+    <p style="font-size:13px;color:#9ca3af;margin:14px 0 0;">&mdash; The DumbRoof Team</p>
   </div>
 </div>
 `;
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export async function POST(req: NextRequest) {
   let email: string;
@@ -54,44 +61,44 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     email = String(body.email || "").trim().toLowerCase();
-    source = body.source;
+    source = typeof body.source === "string" ? body.source : undefined;
   } catch {
     return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
   }
 
-  if (!email || !email.includes("@") || email.length < 5) {
+  if (!EMAIL_RE.test(email)) {
     return NextResponse.json({ error: "Please enter a valid email" }, { status: 400 });
   }
 
-  const supabase = await createClient();
-
-  // signInWithOtp creates the user if they don't exist (passwordless).
-  // The redirect lands on /auth/callback which already supports `next=`
-  // (Phase 1.6).
-  const { error: otpError } = await supabase.auth.signInWithOtp({
+  // Mint a real magic link via the admin API. This:
+  //   1. Creates the user if they don't exist (magiclink type creates by default)
+  //   2. Returns the actual signed action_link we can put in our own email
+  //   3. Does NOT trigger Supabase's default email
+  // Docs: https://supabase.com/docs/reference/javascript/auth-admin-generatelink
+  const { data, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
+    type: "magiclink",
     email,
     options: {
-      shouldCreateUser: true,
-      emailRedirectTo: `https://www.dumbroof.ai/auth/callback?next=/dashboard/new-claim`,
+      redirectTo: `${APP_URL}/auth/callback?next=/dashboard/new-claim`,
       data: {
         signup_source: source || "mobile_inapp_magic_link",
       },
     },
   });
 
-  if (otpError) {
-    console.error("save-spot signInWithOtp failed:", otpError);
-    return NextResponse.json({ error: otpError.message }, { status: 400 });
+  if (linkError || !data?.properties?.action_link) {
+    console.error("save-spot generateLink failed:", linkError);
+    // Don't leak Supabase error messages to the client — they sometimes
+    // include internal details. Use a friendly fallback.
+    return NextResponse.json(
+      { error: "Couldn't send your link. Please try again or sign up from your desktop." },
+      { status: 500 }
+    );
   }
 
-  // Supabase sends its own OTP email. We ALSO send a branded one with
-  // the magic link rendered as a desktop CTA. Most users open one or
-  // the other; sending both maximizes the chance of a click.
-  //
-  // Note: we can't grab the actual magic link from signInWithOtp's response —
-  // it's only in the email Supabase sends. So our follow-up email points
-  // at the homepage with a session-aware CTA. Acceptable trade-off vs the
-  // complexity of generating an admin-style magic link server-side.
+  const magicLink = data.properties.action_link;
+
+  // Send our own branded email containing the real magic link.
   try {
     const resend = getResend();
     await resend.emails.send({
@@ -99,24 +106,21 @@ export async function POST(req: NextRequest) {
       to: [email],
       replyTo: EMAIL_REPLY_TO,
       subject: "Your dumbroof.ai link — open on desktop",
-      html: FOLLOWUP_HTML("https://www.dumbroof.ai/login?email=" + encodeURIComponent(email)),
+      html: FOLLOWUP_HTML(magicLink),
     });
   } catch (resendErr) {
-    // Non-fatal — Supabase's email is the source of truth.
-    console.error("save-spot followup email failed:", resendErr);
+    console.error("save-spot Resend send failed:", resendErr);
+    // The user has been created in Supabase but didn't get our email.
+    // They can still sign up again — return success so they see the
+    // "check your inbox" UI. Tom will see the failure in Resend dashboard.
   }
 
-  // Notify team about new mobile signup so they show up in the funnel
-  // monitor immediately rather than waiting for the next cron tick.
-  try {
-    await fetch("https://www.dumbroof.ai/api/notify-signup", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, source: source || "mobile_inapp_magic_link" }),
-    });
-  } catch {
-    // Non-fatal
-  }
+  // Notify team about new mobile signup. Fire-and-forget.
+  fetch(`${APP_URL}/api/notify-signup`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email, source: source || "mobile_inapp_magic_link" }),
+  }).catch(() => {});
 
   return NextResponse.json({ ok: true });
 }

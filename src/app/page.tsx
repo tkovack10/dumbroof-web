@@ -1,4 +1,5 @@
 import Image from "next/image";
+import { unstable_cache } from "next/cache";
 import { InspectorApplicationForm } from "@/components/inspector-application-form";
 import { HeroSignupForm } from "@/components/hero-signup-form";
 import { MobileMagicHero } from "@/components/mobile-magic-hero";
@@ -7,8 +8,12 @@ import { HomeNav } from "@/components/home-nav";
 import { Footer } from "@/components/footer";
 import { getDeviceContext } from "@/lib/device-detection";
 
-// Revalidate homepage stats every 5 minutes
-export const revalidate = 300;
+// MUST be dynamic — we render a different hero for mobile in-app browser
+// users based on User-Agent. ISR would cache the first request's HTML and
+// serve it to everyone (desktop AND mobile WebView) in the same 5-min window,
+// breaking the funnel recovery work. The hero stats are still cached at the
+// data layer via unstable_cache with a 5-min TTL.
+export const dynamic = "force-dynamic";
 
 function fmtBigMoney(val: number): string {
   if (val >= 1_000_000) return `$${(val / 1_000_000).toFixed(1)}M+`;
@@ -16,39 +21,46 @@ function fmtBigMoney(val: number): string {
   return `$${val.toLocaleString()}`;
 }
 
-async function getHeroStats() {
-  try {
-    const [webClaimsRes, webWinsRes, localClaimsRes, localWinsRes, repairsRes] = await Promise.all([
-      // Web claims (from claims table — all users)
-      supabaseAdmin.from("claims").select("contractor_rcv"),
-      supabaseAdmin.from("claims").select("settlement_amount").eq("claim_outcome", "won"),
-      // Local CLI claims (from claim_outcomes — not in claims table)
-      supabaseAdmin.from("claim_outcomes").select("usarm_rcv").eq("source", "cli"),
-      supabaseAdmin.from("claim_outcomes").select("settlement_amount").eq("source", "cli").eq("win", true),
-      // Repairs
-      supabaseAdmin.from("repairs").select("id", { count: "exact", head: true }).in("status", ["ready", "complete"]),
-    ]);
+// Cache the actual Supabase queries for 5 minutes at the data layer.
+// The PAGE itself is dynamic (UA-aware) but we don't need to re-query
+// claim totals on every request — they barely change.
+const getHeroStats = unstable_cache(
+  async () => {
+    try {
+      const [webClaimsRes, webWinsRes, localClaimsRes, localWinsRes, repairsRes] = await Promise.all([
+        // Web claims (from claims table — all users)
+        supabaseAdmin.from("claims").select("contractor_rcv"),
+        supabaseAdmin.from("claims").select("settlement_amount").eq("claim_outcome", "won"),
+        // Local CLI claims (from claim_outcomes — not in claims table)
+        supabaseAdmin.from("claim_outcomes").select("usarm_rcv").eq("source", "cli"),
+        supabaseAdmin.from("claim_outcomes").select("settlement_amount").eq("source", "cli").eq("win", true),
+        // Repairs
+        supabaseAdmin.from("repairs").select("id", { count: "exact", head: true }).in("status", ["ready", "complete"]),
+      ]);
 
-    const webRcv = (webClaimsRes.data || []).reduce((s, c) => s + (c.contractor_rcv ?? 0), 0);
-    const localRcv = (localClaimsRes.data || []).reduce((s, c) => s + (c.usarm_rcv ?? 0), 0);
-    const totalProcessed = webRcv + localRcv;
+      const webRcv = (webClaimsRes.data || []).reduce((s, c) => s + (c.contractor_rcv ?? 0), 0);
+      const localRcv = (localClaimsRes.data || []).reduce((s, c) => s + (c.usarm_rcv ?? 0), 0);
+      const totalProcessed = webRcv + localRcv;
 
-    const webWon = (webWinsRes.data || []).reduce((s, c) => s + (c.settlement_amount ?? 0), 0);
-    const localWon = (localWinsRes.data || []).reduce((s, c) => s + (c.settlement_amount ?? 0), 0);
-    const totalApproved = webWon + localWon;
+      const webWon = (webWinsRes.data || []).reduce((s, c) => s + (c.settlement_amount ?? 0), 0);
+      const localWon = (localWinsRes.data || []).reduce((s, c) => s + (c.settlement_amount ?? 0), 0);
+      const totalApproved = webWon + localWon;
 
-    const repairCount = Math.max(repairsRes.count ?? 0, 52);
+      const repairCount = Math.max(repairsRes.count ?? 0, 52);
 
-    return {
-      claimsProcessed: fmtBigMoney(totalProcessed),
-      approvedSupplements: fmtBigMoney(totalApproved),
-      completedRepairs: `${repairCount}+`,
-      diagnosticAccuracy: "98%",
-    };
-  } catch {
-    return { claimsProcessed: "$5.3M+", approvedSupplements: "$1.4M+", completedRepairs: "52+", diagnosticAccuracy: "98%" };
-  }
-}
+      return {
+        claimsProcessed: fmtBigMoney(totalProcessed),
+        approvedSupplements: fmtBigMoney(totalApproved),
+        completedRepairs: `${repairCount}+`,
+        diagnosticAccuracy: "98%",
+      };
+    } catch {
+      return { claimsProcessed: "$5.3M+", approvedSupplements: "$1.4M+", completedRepairs: "52+", diagnosticAccuracy: "98%" };
+    }
+  },
+  ["hero-stats"],
+  { revalidate: 300, tags: ["hero-stats"] }
+);
 
 export default async function Home() {
   const [stats, device] = await Promise.all([getHeroStats(), getDeviceContext()]);
