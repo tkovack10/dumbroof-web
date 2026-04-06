@@ -78,13 +78,16 @@ async function runFunnelMonitor(): Promise<{ ok: boolean; report?: FunnelReport;
   const unwrap = <T>(result: PromiseSettledResult<T | null>, name: string): T | null => {
     if (result.status === "fulfilled") {
       if (result.value === null) {
-        sourcesFailed.push(`${name} (no key)`);
+        // Source either has no env keys configured OR returned null after a soft
+        // failure (e.g., 404). The source itself pushes a more specific anomaly
+        // when it encounters a real API error — here we just label the slot.
+        sourcesFailed.push(`${name} (skipped or unavailable)`);
         return null;
       }
       sourcesSucceeded.push(name);
       return result.value;
     }
-    sourcesFailed.push(`${name} (error)`);
+    sourcesFailed.push(`${name} (threw)`);
     console.error(`funnel-monitor source ${name} failed:`, result.reason);
     anomalies.push({
       severity: "warning",
