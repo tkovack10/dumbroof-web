@@ -11,6 +11,10 @@ import { SAMPLE_RICHARD_SUGGESTIONS } from "@/lib/sample-claim-data";
  * production ClaimBrainChat component (400+ lines with tool actions,
  * approvals, PDF generation, email sending), this one is read-only —
  * just a back-and-forth text chat. That matches what the demo should be.
+ *
+ * Cleanup: tracks an in-flight AbortController and a "mounted" ref so
+ * navigating away mid-stream cleanly aborts the fetch + stops setState
+ * calls on the unmounted component (no React warnings, no orphan reads).
  */
 
 type Message = { role: "user" | "assistant"; content: string };
@@ -21,14 +25,27 @@ export function SampleClaimBrainChat() {
   const [streaming, setStreaming] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const abortRef = useRef<AbortController | null>(null);
+  const mountedRef = useRef(true);
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
   }, [messages, streaming]);
 
+  // Mount/unmount lifecycle: abort any in-flight stream and flag the
+  // component as unmounted so closures don't call setState afterward.
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+      abortRef.current?.abort();
+    };
+  }, []);
+
   async function send(userText: string) {
     const text = userText.trim();
     if (!text || streaming) return;
+    if (!mountedRef.current) return;
     setError(null);
 
     const next: Message[] = [...messages, { role: "user", content: text }];
@@ -39,15 +56,24 @@ export function SampleClaimBrainChat() {
     // Seed a blank assistant message we'll stream into
     setMessages((m) => [...m, { role: "assistant", content: "" }]);
 
+    // Replace any prior controller with a fresh one for this request
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+
     try {
       const res = await fetch("/api/sample/brain/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ messages: next }),
+        signal: controller.signal,
       });
+
+      if (!mountedRef.current) return;
 
       if (!res.ok) {
         const body = await res.json().catch(() => ({ error: "Request failed" }));
+        if (!mountedRef.current) return;
         setError(body.error || `Error ${res.status}`);
         setMessages((m) => m.slice(0, -1)); // drop the empty assistant msg
         setStreaming(false);
@@ -55,6 +81,7 @@ export function SampleClaimBrainChat() {
       }
 
       if (!res.body) {
+        if (!mountedRef.current) return;
         setError("No response stream");
         setStreaming(false);
         return;
@@ -65,39 +92,54 @@ export function SampleClaimBrainChat() {
       let buffer = "";
       let assembled = "";
 
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        buffer += decoder.decode(value, { stream: true });
-        const events = buffer.split("\n\n");
-        buffer = events.pop() || "";
-        for (const event of events) {
-          const line = event.split("\n").find((l) => l.startsWith("data: "));
-          if (!line) continue;
-          const payload = line.slice(6);
-          try {
-            const data = JSON.parse(payload);
-            if (typeof data.delta === "string") {
-              assembled += data.delta;
-              setMessages((m) => {
-                const copy = [...m];
-                copy[copy.length - 1] = { role: "assistant", content: assembled };
-                return copy;
-              });
+      try {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          if (!mountedRef.current || controller.signal.aborted) {
+            // Best-effort: cancel the stream so the server can free resources
+            try { await reader.cancel(); } catch { /* ignore */ }
+            return;
+          }
+          buffer += decoder.decode(value, { stream: true });
+          const events = buffer.split("\n\n");
+          buffer = events.pop() || "";
+          for (const event of events) {
+            const line = event.split("\n").find((l) => l.startsWith("data: "));
+            if (!line) continue;
+            const payload = line.slice(6);
+            try {
+              const data = JSON.parse(payload);
+              if (typeof data.delta === "string") {
+                assembled += data.delta;
+                if (!mountedRef.current) return;
+                setMessages((m) => {
+                  const copy = [...m];
+                  copy[copy.length - 1] = { role: "assistant", content: assembled };
+                  return copy;
+                });
+              }
+              if (data.error && mountedRef.current) {
+                setError(data.error);
+              }
+            } catch {
+              // ignore malformed event payloads — just skip and keep streaming
             }
-            if (data.error) {
-              setError(data.error);
-            }
-          } catch {
-            // ignore malformed
           }
         }
+      } finally {
+        try { reader.releaseLock(); } catch { /* already released */ }
       }
     } catch (err) {
+      // AbortError from unmount/cleanup is expected — swallow it silently
+      if (err instanceof DOMException && err.name === "AbortError") return;
+      if (!mountedRef.current) return;
       setError(err instanceof Error ? err.message : "Chat failed");
       setMessages((m) => m.slice(0, -1));
     } finally {
-      setStreaming(false);
+      if (mountedRef.current) setStreaming(false);
+      // Clear the controller ref if it's still ours (don't clobber a newer one)
+      if (abortRef.current === controller) abortRef.current = null;
     }
   }
 

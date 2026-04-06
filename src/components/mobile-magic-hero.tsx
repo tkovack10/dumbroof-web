@@ -218,20 +218,14 @@ export function MobileMagicHero({ inAppName, stats }: Props) {
           </div>
         </div>
 
-        {/* Sample report — no signup wall */}
-        <a
-          href="/sample"
-          className="block text-center text-sm text-[var(--cyan)] hover:text-white transition-colors mb-2"
-        >
-          See a sample report (no signup) →
-        </a>
-
-        {/* Sample dashboard — interactive demo */}
+        {/* Live demo — interactive dashboard with real claim data, no signup wall.
+            Replaces the previous static /sample PDF preview link — the dashboard
+            includes the same forensic report PLUS supplement composer + Richard chat. */}
         <a
           href="/sample/dashboard"
-          className="block text-center text-sm text-[var(--cyan)] hover:text-white transition-colors mb-4"
+          className="block text-center text-sm font-semibold text-[var(--cyan)] hover:text-white transition-colors mb-4"
         >
-          Try the demo dashboard (no signup) →
+          See a live demo (no signup) →
         </a>
 
         <p className="text-center text-[11px] text-[var(--gray-muted)]">
