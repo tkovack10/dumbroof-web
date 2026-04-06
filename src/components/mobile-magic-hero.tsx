@@ -188,12 +188,50 @@ export function MobileMagicHero({ inAppName, stats }: Props) {
           </div>
         </div>
 
+        {/* The 3 tiers — what you unlock at each upload step */}
+        <div className="bg-white/[0.03] border border-white/[0.08] rounded-xl p-4 mb-6">
+          <p className="text-[11px] font-semibold text-[var(--gray-muted)] uppercase tracking-wider text-center mb-3">
+            The claim grows with you
+          </p>
+          <div className="space-y-2.5">
+            <div className="flex items-start gap-2.5">
+              <div className="shrink-0 w-5 h-5 rounded-full bg-gradient-to-br from-[var(--pink)] to-[var(--purple)] flex items-center justify-center text-[10px] font-bold text-white">1</div>
+              <div className="flex-1 text-xs">
+                <span className="text-white font-semibold">Photos</span>
+                <span className="text-[var(--gray-muted)]"> → Forensic Causation Report</span>
+              </div>
+            </div>
+            <div className="flex items-start gap-2.5">
+              <div className="shrink-0 w-5 h-5 rounded-full bg-gradient-to-br from-[var(--purple)] to-[var(--blue)] flex items-center justify-center text-[10px] font-bold text-white">2</div>
+              <div className="flex-1 text-xs">
+                <span className="text-white font-semibold">+ Measurements</span>
+                <span className="text-[var(--gray-muted)]"> → Xactimate estimate + code compliance</span>
+              </div>
+            </div>
+            <div className="flex items-start gap-2.5">
+              <div className="shrink-0 w-5 h-5 rounded-full bg-[var(--blue)] flex items-center justify-center text-[10px] font-bold text-white">3</div>
+              <div className="flex-1 text-xs">
+                <span className="text-white font-semibold">+ Carrier scope</span>
+                <span className="text-[var(--gray-muted)]"> → scope comparison + supplement package</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
         {/* Sample report — no signup wall */}
         <a
           href="/sample"
-          className="block text-center text-sm text-[var(--cyan)] hover:text-white transition-colors mb-4"
+          className="block text-center text-sm text-[var(--cyan)] hover:text-white transition-colors mb-2"
         >
           See a sample report (no signup) →
+        </a>
+
+        {/* Sample dashboard — interactive demo */}
+        <a
+          href="/sample/dashboard"
+          className="block text-center text-sm text-[var(--cyan)] hover:text-white transition-colors mb-4"
+        >
+          Try the demo dashboard (no signup) →
         </a>
 
         <p className="text-center text-[11px] text-[var(--gray-muted)]">
