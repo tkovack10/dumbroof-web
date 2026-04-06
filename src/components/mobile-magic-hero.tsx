@@ -139,7 +139,7 @@ export function MobileMagicHero({ inAppName, stats }: Props) {
             Email me a link to finish at my desk
           </p>
           <p className="text-xs text-[var(--gray-muted)] mb-4">
-            Upload your inspection photos &mdash; add measurements or a carrier scope later to unlock the full package. Easier from a desktop.
+            Upload your inspection photos. We&apos;ll do the rest. Add measurements and carrier scope later &mdash; the claim grows with you.
           </p>
 
           <form onSubmit={handleSubmit} className="space-y-3">
