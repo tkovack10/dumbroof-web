@@ -196,13 +196,40 @@ export default function NewClaimPage() {
       // Increment claim usage counter
       await fetch("/api/billing/check-quota", { method: "POST" });
 
-      window.fbq?.("track", "Lead");
+      // Generate a single event_id used by BOTH the browser pixel and the
+      // server-side CAPI mirror. Meta dedupes events with matching IDs so
+      // we count this upload exactly once even though we fire from two places.
+      const capiEventId = `claim_${slug}_${Date.now()}`;
+
+      window.fbq?.("track", "StartTrial", { value: 499, currency: "USD" }, { eventID: capiEventId });
+      window.fbq?.("track", "Lead", {}, { eventID: `${capiEventId}_lead` });
       window.ttq?.track("SubmitForm");
       window.ttq?.track("Lead", {
         contents: [{ content_id: slug, content_type: "product", content_name: "Claim Package" }],
         value: 499,
         currency: "USD",
       });
+
+      // Mirror the StartTrial event to Meta Conversions API server-side.
+      // iOS 14+ blocks the browser pixel for ~25-40% of users; CAPI bypasses
+      // that. Same eventId = Meta merges into one canonical conversion.
+      // Fire-and-forget — never blocks the success state.
+      fetch("/api/capi-event", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          eventName: "StartTrial",
+          eventId: capiEventId,
+          eventSourceUrl: window.location.href,
+          customData: {
+            value: 499,
+            currency: "USD",
+            content_name: "Claim Package",
+            content_category: phase,
+          },
+        }),
+      }).catch(() => {});
+
       setStatus("success");
     } catch (err) {
       setStatus("error");

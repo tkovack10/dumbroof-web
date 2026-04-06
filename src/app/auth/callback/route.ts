@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { sendCapiEvent, CapiEventName, extractMetaTracking } from "@/lib/meta-conversions-api";
 
 async function sendWelcomeEmail(email: string) {
   try {
@@ -63,6 +64,26 @@ export async function GET(request: Request) {
           // New user — notify team + send welcome email (fire and forget)
           notifyNewSignup(user.email || "unknown");
           sendWelcomeEmail(user.email || "");
+
+          // Fire Meta CAPI Lead event server-side. iOS 14+ blocks the
+          // browser pixel for ~25-40% of users. Without this, Meta's
+          // algorithm can't optimize against actual signup conversions.
+          // Fire-and-forget; never blocks the redirect.
+          const tracking = extractMetaTracking(request);
+          sendCapiEvent({
+            eventName: CapiEventName.Lead,
+            email: user.email || undefined,
+            eventSourceUrl: `${origin}/`,
+            clientIpAddress: request.headers.get("x-forwarded-for") || undefined,
+            clientUserAgent: request.headers.get("user-agent") || undefined,
+            fbc: tracking.fbc,
+            fbp: tracking.fbp,
+            customData: {
+              content_name: "auth_callback_signup",
+              content_category: type || "oauth_or_email_confirm",
+            },
+          }).catch(() => {});
+
           // Honor `next` if present, otherwise default to new-claim form
           return NextResponse.redirect(`${origin}${next || "/dashboard/new-claim"}`);
         }

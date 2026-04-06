@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { type EmailOtpType } from "@supabase/supabase-js";
+import { sendCapiEvent, CapiEventName, extractMetaTracking } from "@/lib/meta-conversions-api";
 
 async function notifyNewSignup(email: string) {
   // Send notification email to Tom when a new user signs up
@@ -48,6 +49,25 @@ export async function GET(request: Request) {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
         if (user.email) notifyNewSignup(user.email);
+
+        // Fire Meta CAPI Lead event server-side. Same reasoning as
+        // /auth/callback — iOS 14+ blocks browser pixel, server-side is
+        // the only reliable feed. Fire-and-forget; never blocks redirect.
+        const tracking = extractMetaTracking(request);
+        sendCapiEvent({
+          eventName: CapiEventName.Lead,
+          email: user.email || undefined,
+          eventSourceUrl: `${origin}/`,
+          clientIpAddress: request.headers.get("x-forwarded-for") || undefined,
+          clientUserAgent: request.headers.get("user-agent") || undefined,
+          fbc: tracking.fbc,
+          fbp: tracking.fbp,
+          customData: {
+            content_name: "email_confirm_signup",
+            content_category: type,
+          },
+        }).catch(() => {});
+
         const { count } = await supabase
           .from("claims")
           .select("id", { count: "exact", head: true })

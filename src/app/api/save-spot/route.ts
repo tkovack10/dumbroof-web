@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { getResend, EMAIL_FROM, EMAIL_REPLY_TO } from "@/lib/resend";
+import { sendCapiEvent, CapiEventName, extractMetaTracking } from "@/lib/meta-conversions-api";
 
 /**
  * "Save my spot" — magic-link signup for mobile in-app browser users.
@@ -120,6 +121,28 @@ export async function POST(req: NextRequest) {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ email, source: source || "mobile_inapp_magic_link" }),
+  }).catch(() => {});
+
+  // Fire Meta CAPI Lead event server-side. iOS 14+ blocks the browser pixel
+  // for ~25-40% of users — without this, Meta's algorithm sees a fraction of
+  // our actual conversions. Fire-and-forget; never blocks the response.
+  // The browser pixel ALSO fires a Lead event from mobile-magic-hero.tsx —
+  // event_id (auto UUID here) is unique per side, so Meta keeps both as
+  // separate events. For exact dedup we'd need to thread the same UUID
+  // through to the client, which is a follow-up.
+  const tracking = extractMetaTracking(req);
+  sendCapiEvent({
+    eventName: CapiEventName.Lead,
+    email,
+    eventSourceUrl: `${APP_URL}/`,
+    clientIpAddress: req.headers.get("x-forwarded-for") || undefined,
+    clientUserAgent: req.headers.get("user-agent") || undefined,
+    fbc: tracking.fbc,
+    fbp: tracking.fbp,
+    customData: {
+      content_name: "mobile_magic_link",
+      content_category: source || "mobile_inapp_magic_link",
+    },
   }).catch(() => {});
 
   return NextResponse.json({ ok: true });
