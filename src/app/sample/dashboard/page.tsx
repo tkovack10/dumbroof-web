@@ -51,7 +51,10 @@ const STATUS_STYLES: Record<string, { chip: string; row: string; label: string }
 };
 
 export default function SampleDashboardPage() {
-  const [tab, setTab] = useState<Tab>("compare");
+  // Default tab = supplement composer (Tom's directive 2026-04-06).
+  // The composer is the highest-engagement interaction — checkboxes,
+  // running total, generated email modal — so demo users land there first.
+  const [tab, setTab] = useState<Tab>("supplement");
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
   const [emailModalOpen, setEmailModalOpen] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -237,11 +240,12 @@ export default function SampleDashboardPage() {
           </div>
         </div>
 
-        {/* Tabs */}
+        {/* Tabs — supplement first (highest-engagement interaction), then
+            scope comparison, then Richard. Order locked by Tom 2026-04-06. */}
         <div className="flex gap-1 p-1 bg-white/[0.04] border border-white/[0.1] rounded-xl mb-5">
           {[
-            { id: "compare" as Tab, label: "Scope Comparison", count: SAMPLE_SUMMARY.missing_count + SAMPLE_SUMMARY.under_count },
             { id: "supplement" as Tab, label: "Supplement", count: selectedItems.size || null },
+            { id: "compare" as Tab, label: "Scope Comparison", count: SAMPLE_SUMMARY.missing_count + SAMPLE_SUMMARY.under_count },
             { id: "richard" as Tab, label: "Ask Richard" },
           ].map((t) => (
             <button
