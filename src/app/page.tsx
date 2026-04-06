@@ -1,9 +1,11 @@
 import Image from "next/image";
 import { InspectorApplicationForm } from "@/components/inspector-application-form";
 import { HeroSignupForm } from "@/components/hero-signup-form";
+import { MobileMagicHero } from "@/components/mobile-magic-hero";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { HomeNav } from "@/components/home-nav";
 import { Footer } from "@/components/footer";
+import { getDeviceContext } from "@/lib/device-detection";
 
 // Revalidate homepage stats every 5 minutes
 export const revalidate = 300;
@@ -49,7 +51,29 @@ async function getHeroStats() {
 }
 
 export default async function Home() {
-  const stats = await getHeroStats();
+  const [stats, device] = await Promise.all([getHeroStats(), getDeviceContext()]);
+
+  // Mobile in-app browser users (Instagram/Facebook/TikTok WebView):
+  // serve a stripped-down magic-link hero. Their phones can't reliably
+  // upload an EagleView PDF + 60 photos, and the WebView breaks our
+  // OAuth cookie persistence. Email them a desktop link instead.
+  // See: USARM-Claims-Platform funnel investigation 2026-04-06.
+  if (device.isInAppBrowser) {
+    return (
+      <main className="min-h-screen">
+        <HomeNav />
+        <MobileMagicHero
+          inAppName={device.inAppName}
+          stats={{
+            claimsProcessed: stats.claimsProcessed,
+            approvedSupplements: stats.approvedSupplements,
+          }}
+        />
+        <Footer />
+      </main>
+    );
+  }
+
   return (
     <main className="min-h-screen">
       {/* Nav */}

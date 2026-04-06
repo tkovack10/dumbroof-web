@@ -42,10 +42,19 @@ export async function GET(request: Request) {
     }
 
     // Notify Tom on new signups (type=signup means email confirmation)
+    // Also redirect new users (no claims yet) straight to /dashboard/new-claim
+    // so they don't land on an empty dashboard and bounce.
     if (type === "signup" || type === "email") {
       const { data: { user } } = await supabase.auth.getUser();
-      if (user?.email) {
-        notifyNewSignup(user.email);
+      if (user) {
+        if (user.email) notifyNewSignup(user.email);
+        const { count } = await supabase
+          .from("claims")
+          .select("id", { count: "exact", head: true })
+          .eq("user_id", user.id);
+        if (count === 0) {
+          return NextResponse.redirect(`${origin}/dashboard/new-claim`);
+        }
       }
     }
 

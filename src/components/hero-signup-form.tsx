@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { trackBoth, FunnelEvent } from "@/lib/track";
 
 export function HeroSignupForm() {
   const [email, setEmail] = useState("");
@@ -13,16 +14,20 @@ export function HeroSignupForm() {
 
   const handleEmailSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    trackBoth(FunnelEvent.HERO_CTA_CLICKED, { email_provided: true });
     if (!email.includes("@")) {
       setError("Enter a valid email");
       return;
     }
     setError("");
+    trackBoth(FunnelEvent.SIGNUP_EMAIL_STEP_COMPLETED);
     setStep("password");
+    trackBoth(FunnelEvent.SIGNUP_PASSWORD_STEP_STARTED);
   };
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
+    trackBoth(FunnelEvent.SIGNUP_PASSWORD_SUBMITTED);
     if (password.length < 6) {
       setError("Password must be at least 6 characters");
       return;
@@ -34,17 +39,19 @@ export function HeroSignupForm() {
       email,
       password,
       options: {
-        emailRedirectTo: `${window.location.origin}/auth/callback`,
+        emailRedirectTo: `${window.location.origin}/auth/confirm`,
       },
     });
 
     if (signupError) {
+      trackBoth(FunnelEvent.SIGNUP_FAILED, { error_message: signupError.message });
       setError(signupError.message);
       setLoading(false);
       return;
     }
 
     if (data.user && data.user.identities && data.user.identities.length === 0) {
+      trackBoth(FunnelEvent.SIGNUP_FAILED, { error_message: "account_exists" });
       setError("Account exists — try signing in");
       setLoading(false);
       return;
@@ -56,6 +63,7 @@ export function HeroSignupForm() {
     window.ttq?.track("CompleteRegistration", {
       contents: [{ content_id: "signup", content_type: "product", content_name: "dumbroof.ai Account" }],
     });
+    trackBoth(FunnelEvent.SIGNUP_SUCCEEDED, { auth_method: "email", auto_confirmed: !!data.session });
 
     // Notify team + send welcome email
     fetch("/api/notify-signup", {
@@ -93,6 +101,7 @@ export function HeroSignupForm() {
   }
 
   const handleGoogleSignIn = async () => {
+    trackBoth(FunnelEvent.OAUTH_STARTED, { provider: "google" });
     await supabase.auth.signInWithOAuth({
       provider: "google",
       options: { redirectTo: `${window.location.origin}/auth/callback` },

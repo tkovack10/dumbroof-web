@@ -7,6 +7,7 @@ import { AddressAutocomplete } from "@/components/address-autocomplete";
 import { useBillingQuota } from "@/hooks/use-billing-quota";
 import { uploadFilesBatched } from "@/lib/upload-utils";
 import { CrmImportModal } from "@/components/crm-import-modal";
+import { trackBoth, FunnelEvent } from "@/lib/track";
 
 type UploadStatus = "idle" | "uploading" | "success" | "error";
 
@@ -101,6 +102,14 @@ export default function NewClaimPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!canSubmit) return;
+
+    trackBoth(FunnelEvent.NEW_CLAIM_FORM_SUBMITTED, {
+      phase,
+      measurement_count: measurementFiles.length,
+      photo_count: photoFiles.length + crmPhotoCount,
+      scope_count: scopeFiles.length,
+      has_carrier_scope: scopeFiles.length > 0,
+    });
 
     setStatus("uploading");
     setErrorMsg("");
@@ -198,6 +207,9 @@ export default function NewClaimPage() {
     } catch (err) {
       setStatus("error");
       setErrorMsg(err instanceof Error ? err.message : "Upload failed");
+      trackBoth(FunnelEvent.NEW_CLAIM_UPLOAD_FAILED, {
+        error_message: err instanceof Error ? err.message : "unknown",
+      });
     }
   };
 

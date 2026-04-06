@@ -37,6 +37,9 @@ export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get("code");
   const type = searchParams.get("type");
+  // `next` param honored for magic-link / save-spot deep links
+  // (e.g. /auth/callback?next=/dashboard/new-claim from mobile-magic-hero)
+  const next = searchParams.get("next");
 
   if (code) {
     const supabase = await createClient();
@@ -60,10 +63,12 @@ export async function GET(request: Request) {
           // New user — notify team + send welcome email (fire and forget)
           notifyNewSignup(user.email || "unknown");
           sendWelcomeEmail(user.email || "");
-          return NextResponse.redirect(`${origin}/dashboard/new-claim`);
+          // Honor `next` if present, otherwise default to new-claim form
+          return NextResponse.redirect(`${origin}${next || "/dashboard/new-claim"}`);
         }
       }
-      return NextResponse.redirect(`${origin}/dashboard`);
+      // Existing user — honor `next` if present, otherwise dashboard
+      return NextResponse.redirect(`${origin}${next || "/dashboard"}`);
     }
 
     console.error("Auth callback error:", error.message);
