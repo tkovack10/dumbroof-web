@@ -1,15 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
+import { getTeamUserIds } from "@/lib/team-lookup";
 
 /**
- * Domain sharing: returns all claims where the claim owner's email
- * shares the same domain as the requesting user.
- * e.g., barbera@usaroofmasters.com sees all @usaroofmasters.com claims.
+ * Domain sharing: returns all claims where the claim owner belongs to the
+ * same company as the requesting user.
  *
- * Falls back to user_id filter for non-matching domains (external users).
+ * Team membership is resolved via getTeamUserIds() which queries
+ * company_profiles (company_id first, then email-domain fallback).
+ *
+ * Falls back to user_id filter for solo users (no team).
  */
-export async function GET(req: NextRequest) {
+export async function GET(_req: NextRequest) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
@@ -17,27 +20,10 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
   }
 
-  const domain = user.email.split("@")[1];
+  const { userIds: teamUserIds, isTeam } = await getTeamUserIds(user);
 
-  // Public email domains should NOT be treated as "same company"
-  const PUBLIC_DOMAINS = new Set([
-    "gmail.com", "yahoo.com", "hotmail.com", "outlook.com", "aol.com",
-    "icloud.com", "mail.com", "protonmail.com", "zoho.com", "yandex.com",
-    "live.com", "msn.com", "comcast.net", "verizon.net", "att.net",
-  ]);
-  const isPublicDomain = PUBLIC_DOMAINS.has(domain.toLowerCase());
-
-  // Get all user_ids that share this email domain (skip for public domains)
-  let teamUserIds: string[] = [user.id];
-  if (!isPublicDomain) {
-    const { data: domainUsers } = await supabaseAdmin.auth.admin.listUsers({ perPage: 500 });
-    teamUserIds = (domainUsers?.users || [])
-      .filter((u) => u.email && u.email.endsWith(`@${domain}`))
-      .map((u) => u.id);
-  }
-
-  if (teamUserIds.length <= 1) {
-    // No team — just return own claims
+  if (!isTeam) {
+    // Solo user — just return own claims
     const { data: claims } = await supabaseAdmin
       .from("claims")
       .select("*")

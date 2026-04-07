@@ -1,11 +1,12 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
+import { getTeamUserIds } from "@/lib/team-lookup";
 
 /**
  * GET /api/admin/team
- * Returns all users that share the admin's email domain,
- * with last_sign_in and claims_count.
+ * Returns all users that share the admin's company,
+ * with claims_count.
  */
 export async function GET() {
   const supabase = await createClient();
@@ -29,16 +30,7 @@ export async function GET() {
   }
 
   try {
-    const domain = user.email.split("@")[1];
-
-    // List all users with same email domain
-    const { data: allUsers } = await supabaseAdmin.auth.admin.listUsers({
-      perPage: 500,
-    });
-    const teamUsers = (allUsers?.users || []).filter(
-      (u) => u.email && u.email.endsWith(`@${domain}`)
-    );
-    const teamUserIds = teamUsers.map((u) => u.id);
+    const { userIds: teamUserIds, members: teamMembers } = await getTeamUserIds(user);
 
     // Get claims count per user
     const { data: claims } = await supabaseAdmin
@@ -51,11 +43,11 @@ export async function GET() {
       claimCounts[c.user_id] = (claimCounts[c.user_id] || 0) + 1;
     }
 
-    const members = teamUsers.map((u) => ({
-      id: u.id,
-      email: u.email || "",
-      last_sign_in: u.last_sign_in_at || null,
-      claims_count: claimCounts[u.id] || 0,
+    const members = teamMembers.map((m) => ({
+      id: m.id,
+      email: m.email || "",
+      last_sign_in: null as string | null,
+      claims_count: claimCounts[m.id] || 0,
     }));
 
     // Sort: most claims first

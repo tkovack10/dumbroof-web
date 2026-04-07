@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireAuth, isAuthError } from "@/lib/api-auth";
 import { supabaseAdmin } from "@/lib/supabase/admin";
+import { getTeamUserIds } from "@/lib/team-lookup";
 
 interface ClaimRow {
   id: string;
@@ -50,20 +51,10 @@ export async function GET() {
   }
 
   try {
-    // Get user's email domain for team matching
-    const email = user.email || profileRows[0].email || "";
-    const domain = email.split("@")[1];
-
-    if (!domain) {
-      return NextResponse.json({ error: "Cannot determine email domain" }, { status: 400 });
-    }
-
-    // Get all user IDs with the same email domain
-    const { data: domainUsers } = await supabaseAdmin.auth.admin.listUsers({ perPage: 500 });
-    const teamUsers = (domainUsers?.users || []).filter(
-      (u) => u.email && u.email.endsWith(`@${domain}`)
-    );
-    const teamUserIds = teamUsers.map((u) => u.id);
+    const { userIds: teamUserIds, members: teamUsers } = await getTeamUserIds({
+      id: user.id,
+      email: user.email || profileRows[0].email || null,
+    });
 
     if (teamUserIds.length === 0) {
       return NextResponse.json({ reps: [], alerts: [] });
