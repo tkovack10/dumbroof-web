@@ -60,7 +60,7 @@ export async function GET() {
     supabaseAdmin.from("claims").select("*", { count: "exact", head: true }),
     supabaseAdmin.from("claims").select("user_id", { count: "exact", head: true }).gte("created_at", dayAgo),
     safe(() => supabaseAdmin.rpc("exec_sql_ro", {
-      query: `SELECT email, created_at AT TIME ZONE 'America/New_York' as ts FROM auth.users ORDER BY created_at DESC LIMIT 10`
+      query: `SELECT email, created_at AT TIME ZONE 'America/New_York' as ts FROM auth.users ORDER BY created_at DESC LIMIT 2000`
     }), [] as { email: string; ts: string }[]),
     supabaseAdmin.from("claims").select("id, address, user_id, status, created_at")
       .order("created_at", { ascending: false }).limit(10),

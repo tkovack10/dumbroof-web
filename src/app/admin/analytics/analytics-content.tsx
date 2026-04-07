@@ -49,6 +49,7 @@ export function LiveAnalyticsContent() {
   const [error, setError] = useState<string | null>(null);
   const [lastRefresh, setLastRefresh] = useState<Date | null>(null);
   const [prevData, setPrevData] = useState<LiveData | null>(null);
+  const [signupSearch, setSignupSearch] = useState("");
 
   const fetchData = useCallback(async () => {
     try {
@@ -141,24 +142,42 @@ export function LiveAnalyticsContent() {
 
       {/* Two-column layout */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Recent Signups */}
+        {/* All Signups */}
         <div className="glass-card p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-sm font-bold text-[var(--white)]">Recent Signups</h2>
-            <span className="text-[10px] text-[var(--gray-dim)]">{data.users.total} total</span>
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-sm font-bold text-[var(--white)]">All Signups</h2>
+            <span className="text-[10px] text-[var(--gray-dim)]">
+              {(() => {
+                const filtered = data.users.recent.filter((u) =>
+                  u.email.toLowerCase().includes(signupSearch.toLowerCase())
+                );
+                return signupSearch
+                  ? `${filtered.length} of ${data.users.total}`
+                  : `${data.users.recent.length} of ${data.users.total}`;
+              })()}
+            </span>
           </div>
-          <div className="space-y-2">
+          <input
+            type="text"
+            value={signupSearch}
+            onChange={(e) => setSignupSearch(e.target.value)}
+            placeholder="Search by email…"
+            className="w-full mb-3 px-3 py-2 text-sm rounded-lg bg-white/[0.03] border border-white/10 text-[var(--white)] placeholder:text-[var(--gray-dim)] focus:outline-none focus:border-[var(--cyan)]"
+          />
+          <div className="space-y-1 max-h-[480px] overflow-y-auto pr-2 -mr-2">
             {data.users.recent.length === 0 ? (
               <p className="text-xs text-[var(--gray-dim)]">No signups yet</p>
             ) : (
-              data.users.recent.map((u, i) => (
-                <div key={i} className="flex items-center justify-between py-2 border-b border-white/[0.04] last:border-0">
-                  <div>
-                    <p className="text-sm text-[var(--white)] font-medium">{u.email}</p>
+              data.users.recent
+                .filter((u) => u.email.toLowerCase().includes(signupSearch.toLowerCase()))
+                .map((u, i) => (
+                  <div key={i} className="flex items-center justify-between py-2 border-b border-white/[0.04] last:border-0">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm text-[var(--white)] font-medium truncate">{u.email}</p>
+                    </div>
+                    <span className="text-[10px] text-[var(--gray-dim)] whitespace-nowrap ml-2">{timeAgo(u.ts)}</span>
                   </div>
-                  <span className="text-[10px] text-[var(--gray-dim)] whitespace-nowrap">{timeAgo(u.ts)}</span>
-                </div>
-              ))
+                ))
             )}
           </div>
         </div>
