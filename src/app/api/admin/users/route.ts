@@ -1,26 +1,37 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { requireAuth, isAuthError, isAdmin } from "@/lib/api-auth";
+import { supabaseAdmin } from "@/lib/supabase/admin";
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_KEY!
-);
-
+/**
+ * GET /api/admin/users
+ *
+ * Returns id+email for every platform user. Used by the legacy /admin
+ * dashboard to fill in display names for users without company_profiles.
+ *
+ * Uses the list_platform_users() RPC (SECURITY DEFINER) instead of
+ * supabase.auth.admin.listUsers() because that endpoint has been
+ * returning 500s on this Supabase project.
+ */
 export async function GET() {
-  try {
-    const { data, error } = await supabase.auth.admin.listUsers();
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
-    }
+  const authResult = await requireAuth();
+  if (isAuthError(authResult)) return authResult.response;
+  const { user } = authResult;
 
-    const users = (data?.users || []).map((u) => ({
-      id: u.id,
-      email: u.email || "",
-    }));
-
-    return NextResponse.json(users);
-  } catch (err) {
-    const message = err instanceof Error ? err.message : "Failed to list users";
-    return NextResponse.json({ error: message }, { status: 500 });
+  if (!(await isAdmin(user.id))) {
+    return NextResponse.json({ error: "Not authorized" }, { status: 403 });
   }
+
+  const { data, error } = await supabaseAdmin.rpc("list_platform_users");
+  if (error) {
+    console.error("[api/admin/users] list_platform_users RPC failed", error);
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+
+  type RpcRow = { id: string; email: string | null };
+  const users = ((data as RpcRow[] | null) || []).map((u) => ({
+    id: u.id,
+    email: u.email || "",
+  }));
+
+  return NextResponse.json(users);
 }

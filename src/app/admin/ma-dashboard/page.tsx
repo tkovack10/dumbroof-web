@@ -18,16 +18,17 @@ export default async function MADashboardPage() {
 
   if (!admin) redirect("/dashboard");
 
-  // Fetch dynamic metrics in parallel
-  // Use admin client for auth.users count (RLS blocks direct user table access)
-  const [claimsRes, winsRes, inspectorsRes, authUsersRes] = await Promise.all([
+  // Fetch dynamic metrics in parallel.
+  // Use count_platform_users() RPC for auth.users count — supabase.auth.admin.listUsers
+  // returns 500s on this project, so we route through a SECURITY DEFINER function instead.
+  const [claimsRes, winsRes, inspectorsRes, userCountRes] = await Promise.all([
     supabase.from("claims").select("id", { count: "exact", head: true }),
     supabase.from("claims").select("id", { count: "exact", head: true }).eq("claim_outcome", "won"),
     supabase.from("inspector_applications").select("id", { count: "exact", head: true }),
-    supabaseAdmin.auth.admin.listUsers({ perPage: 1000 }),
+    supabaseAdmin.rpc("count_platform_users"),
   ]);
 
-  const totalUsers = authUsersRes.data?.users?.length ?? 0;
+  const totalUsers = Number(userCountRes.data ?? 0);
 
   return (
     <MADashboardContent
