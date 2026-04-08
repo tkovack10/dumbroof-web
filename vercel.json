@@ -3,6 +3,10 @@
     {
       "path": "/api/cron/funnel-monitor",
       "schedule": "0 13,21 * * *"
+    },
+    {
+      "path": "/api/cron/document-quality",
+      "schedule": "0 13,21 * * *"
     }
   ]
 }
