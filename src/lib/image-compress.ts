@@ -58,8 +58,11 @@ export async function compressImage(
 
       canvas.toBlob(
         (blob) => {
+          // Free canvas pixel buffer immediately (don't wait for GC)
+          canvas.width = 0;
+          canvas.height = 0;
+
           if (!blob || blob.size >= file.size) {
-            // Compression made it larger (rare) — return original
             resolve(file);
             return;
           }
@@ -81,12 +84,27 @@ export async function compressImage(
 }
 
 /**
- * Compress multiple image files in parallel.
+ * Compress multiple image files with bounded concurrency.
+ * Limits to 4 simultaneous canvas operations to avoid OOM on mobile.
  */
 export async function compressImages(
   files: File[],
   maxDimension = DEFAULT_MAX_DIMENSION,
   quality = DEFAULT_QUALITY
 ): Promise<File[]> {
-  return Promise.all(files.map((f) => compressImage(f, maxDimension, quality)));
+  const CONCURRENCY = 4;
+  const results: File[] = new Array(files.length);
+  let cursor = 0;
+
+  async function worker() {
+    while (cursor < files.length) {
+      const idx = cursor++;
+      results[idx] = await compressImage(files[idx], maxDimension, quality);
+    }
+  }
+
+  await Promise.all(
+    Array.from({ length: Math.min(CONCURRENCY, files.length) }, () => worker())
+  );
+  return results;
 }

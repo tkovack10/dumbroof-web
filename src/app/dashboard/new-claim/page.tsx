@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { FileUploadZone } from "@/components/file-upload-zone";
 import { AddressAutocomplete } from "@/components/address-autocomplete";
@@ -49,6 +49,23 @@ export default function NewClaimPage() {
   const [crmUserId, setCrmUserId] = useState("");
   const [importedPhotoNote, setImportedPhotoNote] = useState("");
   const [isMobile, setIsMobile] = useState(false);
+
+  // Stable object URLs for photo thumbnails — revokes previous URLs on change
+  const photoUrls = useMemo(() => {
+    const urls = photoFiles.map((f) => URL.createObjectURL(f));
+    return urls;
+  }, [photoFiles]);
+  useEffect(() => {
+    return () => { photoUrls.forEach((u) => URL.revokeObjectURL(u)); };
+  }, [photoUrls]);
+
+  // Shared handler for mobile photo inputs (camera + camera roll)
+  const handleMobilePhotoAdd = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length > 0) setPhotoFiles((prev) => [...prev, ...files]);
+    e.target.value = "";
+  }, []);
+
   const BACKEND_URL =
     process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000";
 
@@ -840,11 +857,7 @@ export default function NewClaimPage() {
                   capture="environment"
                   multiple
                   className="hidden"
-                  onChange={(e) => {
-                    const files = Array.from(e.target.files || []);
-                    if (files.length > 0) setPhotoFiles((prev) => [...prev, ...files]);
-                    e.target.value = "";
-                  }}
+                  onChange={handleMobilePhotoAdd}
                 />
               </label>
 
@@ -859,11 +872,7 @@ export default function NewClaimPage() {
                   accept="image/*,.heic,.heif,.jpg,.jpeg,.png"
                   multiple
                   className="hidden"
-                  onChange={(e) => {
-                    const files = Array.from(e.target.files || []);
-                    if (files.length > 0) setPhotoFiles((prev) => [...prev, ...files]);
-                    e.target.value = "";
-                  }}
+                  onChange={handleMobilePhotoAdd}
                 />
               </label>
 
@@ -874,7 +883,7 @@ export default function NewClaimPage() {
                     <div key={`${file.name}-${i}`} className="relative aspect-square rounded-lg overflow-hidden bg-white/[0.04]">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
-                        src={URL.createObjectURL(file)}
+                        src={photoUrls[i]}
                         alt={file.name}
                         className="w-full h-full object-cover"
                       />
