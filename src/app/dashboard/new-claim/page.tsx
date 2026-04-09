@@ -8,6 +8,7 @@ import { useBillingQuota } from "@/hooks/use-billing-quota";
 import { uploadFilesBatched } from "@/lib/upload-utils";
 import { CrmImportModal } from "@/components/crm-import-modal";
 import { trackBoth, FunnelEvent } from "@/lib/track";
+import { compressImages } from "@/lib/image-compress";
 
 type UploadStatus = "idle" | "uploading" | "success" | "error";
 
@@ -47,8 +48,20 @@ export default function NewClaimPage() {
   const [crmIntegrations, setCrmIntegrations] = useState<{ acculynx: boolean; companycam: boolean }>({ acculynx: false, companycam: false });
   const [crmUserId, setCrmUserId] = useState("");
   const [importedPhotoNote, setImportedPhotoNote] = useState("");
+  const [isMobile, setIsMobile] = useState(false);
   const BACKEND_URL =
     process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000";
+
+  // Detect mobile device — enables simplified camera-first upload flow
+  useEffect(() => {
+    const ua = navigator.userAgent;
+    const mobile = /iPhone|iPad|iPod|Android|webOS|BlackBerry|Windows Phone/i.test(ua) || window.innerWidth < 768;
+    if (mobile) {
+      setIsMobile(true);
+      setShowChecklist(false); // skip guided checklist — mobile users just want to upload
+      setHasPhotos(true);
+    }
+  }, []);
 
   // Check CRM integration status on mount
   useEffect(() => {
@@ -135,6 +148,10 @@ export default function NewClaimPage() {
         `-${Date.now()}`);
       const claimPath = `${user.id}/${slug}`;
 
+      // Compress photos before upload (HEIC → JPEG, resize to 2048px max)
+      setUploadProgress("Compressing photos...");
+      const compressedPhotos = await compressImages(photoFiles);
+
       // Upload all file categories with concurrent batching
       const uploadCategory = async (files: File[], folder: string, label: string) => {
         if (files.length === 0) return { uploaded: [] as string[], errors: [] as string[] };
@@ -148,7 +165,7 @@ export default function NewClaimPage() {
 
       const [mResult, pResult, sResult, wResult] = await Promise.all([
         uploadCategory(measurementFiles, "measurements", "measurements"),
-        uploadCategory(photoFiles, "photos", "photos"),
+        uploadCategory(compressedPhotos, "photos", "photos"),
         uploadCategory(scopeFiles, "scope", "carrier scope"),
         uploadCategory(weatherFiles, "weather", "weather data"),
       ]);
@@ -597,7 +614,7 @@ export default function NewClaimPage() {
           {/* Property Info */}
           <div className="space-y-4">
             <h3 className="text-sm font-semibold text-[var(--gray-dim)] uppercase tracking-wider">
-              Property Info
+              {isMobile ? "Claim Info" : "Property Info"}
             </h3>
             <div>
               <label className="block text-sm font-semibold text-[var(--white)] mb-1">
@@ -611,6 +628,48 @@ export default function NewClaimPage() {
                 className="w-full px-4 py-3 rounded-lg border border-[var(--border-glass)] focus:border-[var(--cyan)] focus:ring-1 focus:ring-[var(--cyan)] outline-none transition-colors text-sm"
               />
             </div>
+            {/* Date of Loss — on mobile, show here (above photos) as a required-looking field */}
+            {isMobile && (
+              <div>
+                <label className="block text-sm font-semibold text-[var(--white)] mb-1">
+                  Storm Date (hail or wind)
+                </label>
+                <div className="flex gap-2">
+                  <input
+                    type="date"
+                    value={dateOfLoss}
+                    onChange={(e) => setDateOfLoss(e.target.value)}
+                    className="flex-1 px-4 py-3 rounded-lg border border-[var(--border-glass)] focus:border-[var(--cyan)] focus:ring-1 focus:ring-[var(--cyan)] outline-none transition-colors text-sm"
+                  />
+                  <button
+                    type="button"
+                    onClick={scanForStorms}
+                    disabled={!propertyAddress.trim() || scanningStorms}
+                    className="px-3 py-3 text-xs bg-blue-500/10 text-blue-400 border border-blue-500/30 rounded-lg hover:bg-blue-500/20 disabled:opacity-50 disabled:cursor-not-allowed transition-colors whitespace-nowrap"
+                  >
+                    {scanningStorms ? "Scanning..." : "Find storms"}
+                  </button>
+                </div>
+                <p className="text-xs text-[var(--gray-dim)] mt-1">Required for NOAA weather data in the forensic report</p>
+                {stormResults && stormResults.length > 0 && (
+                  <div className="mt-2 space-y-1">
+                    {stormResults.map((storm, i) => (
+                      <button
+                        key={i}
+                        type="button"
+                        onClick={() => { setDateOfLoss(storm.date); setStormResults(null); }}
+                        className="block w-full text-left text-xs px-3 py-2 bg-amber-500/10 border border-amber-500/30 rounded-lg"
+                      >
+                        <span className="font-semibold text-amber-400">{storm.date}</span>
+                        <span className="text-amber-400 ml-2">{storm.type}{storm.details ? ` — ${storm.details}` : ""}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+            {!isMobile && (
+            <>
             <div>
               <div className="flex items-baseline gap-2 mb-1">
                 <label className="block text-sm font-semibold text-[var(--white)]">
@@ -646,10 +705,12 @@ export default function NewClaimPage() {
                   : "Leave blank if you don't know yet — you can add it later."}
               </p>
             </div>
+            </>
+            )}
           </div>
 
-          {/* Date of Loss — always visible */}
-          <div>
+          {/* Date of Loss — desktop only (mobile has it in the Claim Info section above) */}
+          {!isMobile && (<div>
             <div className="flex items-baseline gap-2 mb-1">
               <label className="block text-sm font-semibold text-[var(--white)]">
                 Date of Loss
@@ -743,9 +804,155 @@ export default function NewClaimPage() {
                 ))}
               </div>
             )}
-          </div>
+          </div>)}
 
-          {/* Documents */}
+          {/* Documents — mobile gets simplified camera-first UI */}
+          {isMobile ? (
+            <div className="space-y-4">
+              <h3 className="text-sm font-semibold text-[var(--gray-dim)] uppercase tracking-wider">
+                Inspection Photos
+              </h3>
+
+              {/* Photo count guidance */}
+              <div className="text-xs text-[var(--gray-muted)] flex items-center gap-2">
+                {photoFiles.length === 0 && <span>Take at least 3 photos of the roof damage</span>}
+                {photoFiles.length >= 1 && photoFiles.length <= 2 && (
+                  <span className="text-amber-400">Add more photos for a better report (3+ recommended)</span>
+                )}
+                {photoFiles.length >= 3 && photoFiles.length <= 9 && (
+                  <span className="text-green-400">Good coverage &mdash; more angles = more thorough report</span>
+                )}
+                {photoFiles.length >= 10 && (
+                  <span className="text-green-400">Excellent coverage</span>
+                )}
+              </div>
+
+              {/* Camera button — opens rear camera on mobile */}
+              <label className="flex items-center justify-center gap-3 w-full py-5 rounded-xl bg-gradient-to-r from-[var(--pink)] via-[var(--purple)] to-[var(--blue)] text-white font-semibold text-base cursor-pointer active:scale-[0.98] transition-transform">
+                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.774 48.774 0 00-5.232 0 2.192 2.192 0 00-1.736 1.039l-.821 1.316z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 12.75a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0z" />
+                </svg>
+                Take Photos
+                <input
+                  type="file"
+                  accept="image/*"
+                  capture="environment"
+                  multiple
+                  className="hidden"
+                  onChange={(e) => {
+                    const files = Array.from(e.target.files || []);
+                    if (files.length > 0) setPhotoFiles((prev) => [...prev, ...files]);
+                    e.target.value = "";
+                  }}
+                />
+              </label>
+
+              {/* Camera roll fallback */}
+              <label className="flex items-center justify-center gap-2 w-full py-3 rounded-xl bg-white/[0.04] border border-[var(--border-glass)] text-[var(--gray)] text-sm cursor-pointer hover:bg-white/[0.06] transition-colors">
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909M3.75 21h16.5A2.25 2.25 0 0022.5 18.75V5.25A2.25 2.25 0 0020.25 3H3.75A2.25 2.25 0 001.5 5.25v13.5A2.25 2.25 0 003.75 21z" />
+                </svg>
+                Or select from camera roll
+                <input
+                  type="file"
+                  accept="image/*,.heic,.heif,.jpg,.jpeg,.png"
+                  multiple
+                  className="hidden"
+                  onChange={(e) => {
+                    const files = Array.from(e.target.files || []);
+                    if (files.length > 0) setPhotoFiles((prev) => [...prev, ...files]);
+                    e.target.value = "";
+                  }}
+                />
+              </label>
+
+              {/* Photo thumbnails grid */}
+              {photoFiles.length > 0 && (
+                <div className="grid grid-cols-4 gap-2">
+                  {photoFiles.map((file, i) => (
+                    <div key={`${file.name}-${i}`} className="relative aspect-square rounded-lg overflow-hidden bg-white/[0.04]">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={URL.createObjectURL(file)}
+                        alt={file.name}
+                        className="w-full h-full object-cover"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setPhotoFiles((prev) => prev.filter((_, idx) => idx !== i))}
+                        className="absolute top-1 right-1 w-6 h-6 rounded-full bg-black/60 flex items-center justify-center text-white text-xs"
+                      >
+                        &times;
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Optional extras accordion */}
+              <button
+                type="button"
+                onClick={() => setShowAdvanced(!showAdvanced)}
+                className="flex items-center gap-2 text-sm text-[var(--gray-dim)] hover:text-[var(--white)] transition-colors mt-2"
+              >
+                <svg className={`w-4 h-4 transition-transform ${showAdvanced ? "rotate-180" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                </svg>
+                Add measurements, carrier scope, or notes (optional)
+              </button>
+              {showAdvanced && (
+                <div className="space-y-4">
+                  <FileUploadZone
+                    label="Measurements"
+                    description="EagleView, HOVER, or any measurement report. Add later if you don't have it yet."
+                    accept=".pdf,.eml"
+                    multiple
+                    files={measurementFiles}
+                    onFilesChange={setMeasurementFiles}
+                  />
+                  <FileUploadZone
+                    label="Carrier Scope"
+                    description="The carrier's estimate or scope of loss. Add later if you don't have it yet."
+                    accept=".pdf,.eml"
+                    multiple
+                    files={scopeFiles}
+                    onFilesChange={setScopeFiles}
+                  />
+                  <div>
+                    <label className="block text-sm font-semibold text-[var(--white)] mb-1">Homeowner Name</label>
+                    <input
+                      type="text"
+                      value={homeownerName}
+                      onChange={(e) => setHomeownerName(e.target.value)}
+                      placeholder="e.g. John Smith"
+                      className="w-full px-4 py-3 rounded-lg border border-[var(--border-glass)] focus:border-[var(--cyan)] focus:ring-1 focus:ring-[var(--cyan)] outline-none transition-colors text-sm"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-[var(--white)] mb-1">Insurance Carrier</label>
+                    <input
+                      type="text"
+                      value={insuranceCarrier}
+                      onChange={(e) => setInsuranceCarrier(e.target.value)}
+                      placeholder="e.g. State Farm, Allstate..."
+                      className="w-full px-4 py-3 rounded-lg border border-[var(--border-glass)] focus:border-[var(--cyan)] focus:ring-1 focus:ring-[var(--cyan)] outline-none transition-colors text-sm"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-[var(--white)] mb-1">Notes for the AI</label>
+                    <textarea
+                      value={userNotes}
+                      onChange={(e) => setUserNotes(e.target.value)}
+                      placeholder="Describe damage, materials, or what the adjuster said..."
+                      rows={3}
+                      className="w-full px-4 py-3 rounded-lg border border-[var(--border-glass)] focus:border-[var(--cyan)] focus:ring-1 focus:ring-[var(--cyan)] outline-none transition-colors text-sm resize-none"
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : (
           <div className="space-y-6">
             <h3 className="text-sm font-semibold text-[var(--gray-dim)] uppercase tracking-wider">
               Documents
@@ -781,9 +988,10 @@ export default function NewClaimPage() {
             />
 
           </div>
+          )}
 
           {/* Estimate Request — always visible */}
-          {(hasMeasurements || measurementFiles.length > 0) && (
+          {(hasMeasurements || measurementFiles.length > 0 || isMobile) && (
           <div className="space-y-4">
             <h3 className="text-sm font-semibold text-[var(--gray-dim)] uppercase tracking-wider">
               Estimate Request
@@ -893,8 +1101,8 @@ export default function NewClaimPage() {
           </div>
           )}
 
-          {/* Additional Context */}
-          <div className="space-y-2">
+          {/* Additional Context — desktop only (mobile has these in accordion) */}
+          {!isMobile && (<div className="space-y-2">
             <h3 className="text-sm font-semibold text-[var(--gray-dim)] uppercase tracking-wider">
               Additional Context
             </h3>
@@ -916,9 +1124,10 @@ export default function NewClaimPage() {
                 className="w-full px-4 py-3 rounded-lg border border-[var(--border-glass)] focus:border-[var(--cyan)] focus:ring-1 focus:ring-[var(--cyan)] outline-none transition-colors text-sm resize-none"
               />
             </div>
-          </div>
+          </div>)}
 
-          {/* Advanced Options — only weather report */}
+          {/* Advanced Options — desktop only (mobile has these in accordion) */}
+          {!isMobile && (<>
           <button
             type="button"
             onClick={() => setShowAdvanced(!showAdvanced)}
@@ -941,6 +1150,7 @@ export default function NewClaimPage() {
               />
             </div>
           )}
+          </>)}
 
           {/* Phase Indicator */}
           <div

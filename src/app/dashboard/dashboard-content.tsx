@@ -684,8 +684,11 @@ export function DashboardContent({ user }: { user: User }) {
                   </svg>
                 </div>
                 <h3 className="text-lg font-semibold text-[var(--white)] mb-2">No claims yet</h3>
-                <p className="text-[var(--gray-muted)] text-sm mb-6 max-w-md mx-auto">
-                  Upload your measurements, inspection photos, and carrier scope to generate your first claim package.
+                <p className="text-[var(--gray-muted)] text-sm mb-2 max-w-md mx-auto">
+                  Upload inspection photos to generate your first forensic report in 5 minutes.
+                </p>
+                <p className="text-[var(--gray-dim)] text-xs mb-6 max-w-md mx-auto">
+                  Just photos from your phone is enough to start. Add measurements and carrier scope later for the full package.
                 </p>
                 <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
                   <a href="/dashboard/new-claim" className="inline-block bg-gradient-to-r from-[var(--pink)] via-[var(--purple)] to-[var(--blue)] hover:shadow-[var(--shadow-glow-pink)] text-white px-8 py-3 rounded-xl font-semibold transition-colors text-sm">

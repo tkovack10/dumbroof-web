@@ -27,13 +27,13 @@ const FOLLOWUP_HTML = (magicLink: string) => `
 <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;max-width:560px;margin:0 auto;color:#1a1a2e;">
   <div style="background:linear-gradient(135deg,#0d2137 0%,#1a3a5c 100%);padding:28px;border-radius:12px 12px 0 0;">
     <h1 style="color:#ffffff;font-size:22px;margin:0;">Your dumbroof.ai link</h1>
-    <p style="color:#b5d0e8;font-size:14px;margin:8px 0 0;">Open this on your desktop to upload your first claim.</p>
+    <p style="color:#b5d0e8;font-size:14px;margin:8px 0 0;">Your forensic report is 5 minutes away.</p>
   </div>
   <div style="padding:28px;background:#ffffff;border:1px solid #e5e7eb;border-top:none;border-radius:0 0 12px 12px;">
-    <p style="font-size:16px;color:#374151;margin:0 0 18px;">Tap the button below from your <strong>desktop or laptop</strong> &mdash; uploading 50+ inspection photos from a phone is painful.</p>
+    <p style="font-size:16px;color:#374151;margin:0 0 18px;">Tap the button below to start &mdash; upload a few photos from your phone and get your first forensic report in 5 minutes. Add measurements and carrier scope later for the full package.</p>
 
     <div style="text-align:center;margin:24px 0;">
-      <a href="${magicLink}" style="background:linear-gradient(135deg,#ec4899,#8b5cf6,#3b82f6);color:#ffffff;padding:14px 36px;border-radius:10px;text-decoration:none;font-weight:600;font-size:16px;display:inline-block;">Open on Desktop &rarr;</a>
+      <a href="${magicLink}" style="background:linear-gradient(135deg,#ec4899,#8b5cf6,#3b82f6);color:#ffffff;padding:14px 36px;border-radius:10px;text-decoration:none;font-weight:600;font-size:16px;display:inline-block;">Start Your First Claim &rarr;</a>
     </div>
 
     <p style="font-size:14px;color:#6b7280;margin:18px 0 6px;"><strong>The only thing you need:</strong></p>
