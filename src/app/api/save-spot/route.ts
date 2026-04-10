@@ -75,6 +75,14 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Please enter a valid email" }, { status: 400 });
   }
 
+  // Check if user already exists — redirect to /login instead of sending magic link
+  const { data: existingUser } = await supabaseAdmin.rpc("exec_sql_ro", {
+    query: `SELECT id::text, last_sign_in_at IS NOT NULL as has_signed_in FROM auth.users WHERE lower(email) = lower('${email.replace(/'/g, "''")}') LIMIT 1`
+  });
+  if (existingUser?.[0]?.has_signed_in) {
+    return NextResponse.json({ existing: true });
+  }
+
   // Mint a real magic link via the admin API. This:
   //   1. Creates the user if they don't exist (magiclink type creates by default)
   //   2. Returns the actual signed action_link we can put in our own email
@@ -110,7 +118,7 @@ export async function POST(req: NextRequest) {
       from: EMAIL_FROM,
       to: [email],
       replyTo: EMAIL_REPLY_TO,
-      subject: "Your dumbroof.ai link — open on desktop",
+      subject: "Your dumbroof.ai link — tap to start",
       html: FOLLOWUP_HTML(magicLink),
     });
   } catch (resendErr) {

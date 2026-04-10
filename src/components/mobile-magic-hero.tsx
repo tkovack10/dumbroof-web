@@ -64,6 +64,12 @@ export function MobileMagicHero({ inAppName, stats }: Props) {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Something went wrong");
 
+      // Existing user — redirect to login instead of showing "check email"
+      if (data.existing) {
+        window.location.href = `/login?email=${encodeURIComponent(email)}`;
+        return;
+      }
+
       // Fire conversion pixels (mobile signups still count as Lead/CompleteRegistration)
       // for Meta and TikTok ad attribution. Globals declared in src/lib/track.ts.
       if (typeof window !== "undefined") {
@@ -104,9 +110,9 @@ export function MobileMagicHero({ inAppName, stats }: Props) {
             We sent a one-click link to <strong className="text-white">{email}</strong>.
           </p>
           <div className="bg-white/[0.05] border border-white/[0.1] rounded-xl px-5 py-4 text-left mb-6">
-            <p className="text-sm font-semibold text-white mb-2">Important:</p>
+            <p className="text-sm font-semibold text-white mb-2">Tap the link to get started</p>
             <p className="text-sm text-[var(--gray-dim)]">
-              Open the email from your <strong className="text-white">desktop or laptop</strong>. The upload form needs your EagleView and inspection photos, which probably aren&apos;t on your phone.
+              Upload a few photos from your phone and get your first forensic report in 5 minutes. You can add measurements and scope later.
             </p>
           </div>
           <p className="text-xs text-[var(--gray-muted)]">
