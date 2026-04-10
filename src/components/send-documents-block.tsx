@@ -21,6 +21,8 @@ function friendlyName(file: string): string {
 export function SendDocumentsBlock({ claimId, claimAddress, claimNumber, adjusterEmail, carrierName, filePath, outputFiles }: Props) {
   const [showSend, setShowSend] = useState(false);
   const [recipientEmail, setRecipientEmail] = useState("");
+  const [ccEmail, setCcEmail] = useState("");
+  const [editClaimNumber, setEditClaimNumber] = useState(claimNumber || "");
   const [recipientType, setRecipientType] = useState<"carrier" | "homeowner">("carrier");
   const [selectedFiles, setSelectedFiles] = useState<Set<string>>(new Set());
   const [sending, setSending] = useState(false);
@@ -35,6 +37,10 @@ export function SendDocumentsBlock({ claimId, claimAddress, claimNumber, adjuste
     });
   };
 
+  const subject = editClaimNumber.trim()
+    ? `Claim #${editClaimNumber.trim()}`
+    : `Inspection Report — ${claimAddress}`;
+
   const handleSend = async () => {
     if (!recipientEmail || selectedFiles.size === 0) return;
     setSending(true);
@@ -45,10 +51,6 @@ export function SendDocumentsBlock({ claimId, claimAddress, claimNumber, adjuste
 
     const docNames = selected.map(friendlyName).join(", ");
 
-    const subject = claimNumber
-      ? `Claim #${claimNumber}`
-      : `Inspection Report — ${claimAddress}`;
-
     const bodyHtml = recipientType === "carrier"
       ? `<p>Please find the attached documentation for the property at <strong>${claimAddress}</strong>.</p>
          <p>Attached: ${docNames}.</p>
@@ -57,6 +59,17 @@ export function SendDocumentsBlock({ claimId, claimAddress, claimNumber, adjuste
          <p>Attached you will find: ${docNames}.</p>
          <p>Please don't hesitate to reach out if you have any questions.</p>`;
 
+    // Build CC list: user-entered CC + always BCC claims@dumbroof.ai
+    const ccList: string[] = [];
+    if (ccEmail.trim()) {
+      ccEmail.split(",").forEach((e) => {
+        const trimmed = e.trim();
+        if (trimmed) ccList.push(trimmed);
+      });
+    }
+    // Always include claims@dumbroof.ai
+    ccList.push("claims@dumbroof.ai");
+
     try {
       await fetch(`${BACKEND_URL}/api/supplement-email/send`, {
         method: "POST",
@@ -64,6 +77,7 @@ export function SendDocumentsBlock({ claimId, claimAddress, claimNumber, adjuste
         body: JSON.stringify({
           claim_id: claimId,
           to_email: recipientEmail,
+          cc: ccList.join(", "),
           subject,
           body_html: bodyHtml,
           attachment_paths: attachmentPaths,
@@ -120,6 +134,22 @@ export function SendDocumentsBlock({ claimId, claimAddress, claimNumber, adjuste
             </button>
           </div>
 
+          {/* Claim number — editable, drives subject line */}
+          <div>
+            <label className="block text-[10px] font-semibold uppercase tracking-wider text-[var(--gray-muted)] mb-1">
+              Claim Number
+            </label>
+            <input
+              placeholder="e.g. 0820085561"
+              value={editClaimNumber}
+              onChange={(e) => setEditClaimNumber(e.target.value)}
+              className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-[var(--white)] placeholder:text-[var(--gray-dim)]"
+            />
+            <p className="text-[10px] text-[var(--gray-dim)] mt-1">
+              Subject line: <span className="text-[var(--gray)]">{subject}</span>
+            </p>
+          </div>
+
           {/* Document selection */}
           <div>
             <p className="text-[10px] font-semibold uppercase tracking-wider text-[var(--gray-muted)] mb-2">
@@ -150,27 +180,46 @@ export function SendDocumentsBlock({ claimId, claimAddress, claimNumber, adjuste
             </div>
           </div>
 
-          {/* Email input + send */}
-          <div className="flex flex-col sm:flex-row gap-2">
-            <input
-              placeholder={recipientType === "carrier" ? "Adjuster email" : "Homeowner email"}
-              value={recipientEmail}
-              onChange={(e) => setRecipientEmail(e.target.value)}
-              className="flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-[var(--white)] placeholder:text-[var(--gray-dim)]"
-            />
-            <button
-              onClick={handleSend}
-              disabled={!recipientEmail || selectedFiles.size === 0 || sending}
-              className="px-4 py-2 rounded-lg bg-[var(--cyan)]/10 text-[var(--cyan)] text-sm font-semibold hover:bg-[var(--cyan)]/20 transition-colors disabled:opacity-30 disabled:cursor-not-allowed whitespace-nowrap"
-            >
-              {sending ? "Sending..." : `Send ${selectedFiles.size} Document${selectedFiles.size !== 1 ? "s" : ""}`}
-            </button>
-            <button
-              onClick={() => setShowSend(false)}
-              className="px-3 py-2 text-xs text-[var(--gray-muted)] hover:text-[var(--white)] transition-colors"
-            >
-              Cancel
-            </button>
+          {/* Email inputs: TO + CC + send */}
+          <div className="space-y-2">
+            <div>
+              <label className="block text-[10px] font-semibold uppercase tracking-wider text-[var(--gray-muted)] mb-1">
+                {recipientType === "carrier" ? "Adjuster Email" : "Homeowner Email"}
+              </label>
+              <input
+                placeholder={recipientType === "carrier" ? "adjuster@carrier.com" : "homeowner@email.com"}
+                value={recipientEmail}
+                onChange={(e) => setRecipientEmail(e.target.value)}
+                className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-[var(--white)] placeholder:text-[var(--gray-dim)]"
+              />
+            </div>
+            <div>
+              <label className="block text-[10px] font-semibold uppercase tracking-wider text-[var(--gray-muted)] mb-1">
+                CC <span className="text-[var(--gray-dim)] normal-case">(separate multiple with commas)</span>
+              </label>
+              <input
+                placeholder="cc@example.com, another@example.com"
+                value={ccEmail}
+                onChange={(e) => setCcEmail(e.target.value)}
+                className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-[var(--white)] placeholder:text-[var(--gray-dim)]"
+              />
+              <p className="text-[10px] text-[var(--gray-dim)] mt-1">claims@dumbroof.ai is always included automatically</p>
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={handleSend}
+                disabled={!recipientEmail || selectedFiles.size === 0 || sending}
+                className="flex-1 px-4 py-2 rounded-lg bg-[var(--cyan)]/10 text-[var(--cyan)] text-sm font-semibold hover:bg-[var(--cyan)]/20 transition-colors disabled:opacity-30 disabled:cursor-not-allowed whitespace-nowrap"
+              >
+                {sending ? "Sending..." : `Send ${selectedFiles.size} Document${selectedFiles.size !== 1 ? "s" : ""}`}
+              </button>
+              <button
+                onClick={() => setShowSend(false)}
+                className="px-3 py-2 text-xs text-[var(--gray-muted)] hover:text-[var(--white)] transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
           </div>
 
           {/* Sent confirmation */}
