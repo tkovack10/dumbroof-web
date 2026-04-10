@@ -61,6 +61,7 @@ export function SignatureManager({ claimId, claimAddress, carrierName, userId, f
   const [homeownerPhone, setHomeownerPhone] = useState("");
   const [sending, setSending] = useState(false);
   const [signLink, setSignLink] = useState<string | null>(null);
+  const [editClaimNumber, setEditClaimNumber] = useState(claimNumber || "");
   const [carrierEmail, setCarrierEmail] = useState(adjusterEmail || "");
   const [notifying, setNotifying] = useState<string | null>(null);
   const [uploadMode, setUploadMode] = useState(false);
@@ -154,7 +155,7 @@ export function SignatureManager({ claimId, claimAddress, carrierName, userId, f
       const res = await fetch("/api/signatures/notify-carrier", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ signature_id: sigId, carrier_email: carrierEmail, claim_number: claimNumber || undefined }),
+        body: JSON.stringify({ signature_id: sigId, carrier_email: carrierEmail, claim_number: editClaimNumber.trim() || undefined }),
       });
       if (res.ok) {
         setCarrierEmail("");
@@ -246,7 +247,18 @@ export function SignatureManager({ claimId, claimAddress, carrierName, userId, f
                       <p className="text-xs text-green-400 font-semibold mb-2">
                         Document signed! Send to carrier with W9 to start payment redirect.
                       </p>
-                      <div className="flex flex-col sm:flex-row gap-2">
+                      <div className="space-y-2">
+                        <div>
+                          <label className="block text-[10px] font-semibold uppercase tracking-wider text-[var(--gray-muted)] mb-1">Claim Number</label>
+                          <input
+                            placeholder="e.g. 0820085561"
+                            value={editClaimNumber}
+                            onChange={(e) => setEditClaimNumber(e.target.value)}
+                            className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-[var(--white)] placeholder:text-[var(--gray-dim)]"
+                          />
+                        </div>
+                      </div>
+                      <div className="flex flex-col sm:flex-row gap-2 mt-2">
                         <input
                           placeholder="Carrier adjuster email"
                           value={carrierEmail}
