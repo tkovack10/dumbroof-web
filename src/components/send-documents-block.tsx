@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { createClient } from "@/lib/supabase/client";
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000";
 
@@ -27,6 +28,13 @@ export function SendDocumentsBlock({ claimId, claimAddress, claimNumber, adjuste
   const [selectedFiles, setSelectedFiles] = useState<Set<string>>(new Set());
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+
+  useEffect(() => {
+    createClient().auth.getUser().then(({ data }) => {
+      if (data.user) setCurrentUserId(data.user.id);
+    });
+  }, []);
 
   const toggleFile = (file: string) => {
     setSelectedFiles((prev) => {
@@ -76,6 +84,7 @@ export function SendDocumentsBlock({ claimId, claimAddress, claimNumber, adjuste
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           claim_id: claimId,
+          user_id: currentUserId,
           to_email: recipientEmail,
           cc: ccList.join(", "),
           subject,
