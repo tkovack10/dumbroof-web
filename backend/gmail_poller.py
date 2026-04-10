@@ -48,6 +48,10 @@ POLL_INTERVAL_SECONDS = 60  # Check every 60 seconds
 SCOPES = ["https://www.googleapis.com/auth/gmail.modify"]
 GMAIL_USER = os.environ.get("GMAIL_DELEGATED_USER", "claims@dumbroof.ai")
 
+# Team email domains — outbound emails from these are our own sends (BCC copies),
+# not inbound edit requests. Skip processing.
+TEAM_DOMAINS: set[str] = {"usaroofmasters.com", "dumbroof.ai"}
+
 # Known carrier email domains
 CARRIER_DOMAINS: dict[str, str] = {
     "statefarm.com": "State Farm",
@@ -491,7 +495,6 @@ def resolve_user_id(sb: Client, forwarder_email: str) -> tuple:
         pass
 
     # 3. Domain-based fallback for team emails
-    TEAM_DOMAINS = {"usaroofmasters.com"}
     domain = forwarder_email.split("@")[-1].lower()
     if domain in TEAM_DOMAINS:
         try:
@@ -523,15 +526,24 @@ def resolve_user_id(sb: Client, forwarder_email: str) -> tuple:
 
 def classify_email(parsed: dict, carrier_name: str | None) -> str:
     """
-    Classify an email as 'carrier_correspondence' or 'edit_request'.
+    Classify an email as 'carrier_correspondence', 'edit_request', or 'outbound_send'.
 
     Rules:
+    0. Direct (not forwarded) from a team domain → outbound_send (BCC copy of our own send)
     1. Forwarded + original_from is a known carrier domain → carrier_correspondence
     2. Direct (not forwarded) from authorized forwarder → edit_request
     3. Forwarded but original_from is NOT a carrier → edit_request
     """
     is_forwarded = parsed.get("is_forwarded", False)
     original_from = parsed.get("original_from") or ""
+    from_email = parsed.get("from_email") or ""
+    from_domain = from_email.split("@")[-1].lower() if "@" in from_email else ""
+
+    # Rule 0: Outbound email from the team (BCC copy from Send Documents, supplement
+    # composer, AOB notify, etc.). These are NOT edit requests — they're our own sends
+    # that got BCC'd to claims@dumbroof.ai. Skip processing.
+    if not is_forwarded and from_domain in TEAM_DOMAINS:
+        return "outbound_send"
 
     if is_forwarded and original_from:
         # Check if original sender is a carrier
@@ -547,7 +559,7 @@ def classify_email(parsed: dict, carrier_name: str | None) -> str:
             return "carrier_correspondence"
         return "edit_request"
 
-    # Direct email (not forwarded) from the team → edit request
+    # Direct email (not forwarded) from non-team sender → edit request
     return "edit_request"
 
 
@@ -709,8 +721,14 @@ async def _poll_once(service, sb: Client, backend_url: str):
             carrier_email = parsed["original_from"] or parsed["from_email"]
             carrier_name = identify_carrier(carrier_email, parsed["text_body"])
 
-            # Classify: carrier correspondence vs edit request
+            # Classify: carrier correspondence vs edit request vs outbound send
             email_type = classify_email(parsed, carrier_name)
+
+            # Outbound sends (BCC copies of our own emails) — skip processing
+            if email_type == "outbound_send":
+                print(f"[GMAIL POLLER] Skipping outbound send from {parsed['from_email']}: {parsed['subject']}", flush=True)
+                _mark_as_read(service, msg_id)
+                continue
 
             # Extract claim number and address
             search_text = f"{parsed['subject']} {parsed.get('original_subject', '')} {parsed['text_body']}"
