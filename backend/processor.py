@@ -1382,6 +1382,24 @@ def _build_intel_section(intel_context: dict) -> str:
     return "\n\n" + "\n".join(lines) + "\nWeave relevant patterns where evidence supports them.\n"
 
 
+def _format_date_human(date_str: str) -> str:
+    """Format a date string to human-readable form ("March 31, 2026").
+
+    Accepts ISO dates ("2026-03-31"), slash dates ("3/31/2026"), or strings
+    that are already human-readable. Returns the input unchanged if parsing
+    fails, so upstream callers can decide how to handle unknowns.
+    """
+    if not date_str:
+        return ""
+    s = date_str.strip()
+    for fmt in ("%Y-%m-%d", "%m/%d/%Y", "%m-%d-%Y", "%B %d, %Y", "%b %d, %Y"):
+        try:
+            return datetime.strptime(s, fmt).strftime("%B %d, %Y")
+        except ValueError:
+            continue
+    return s
+
+
 def _enforce_property_address(paragraphs: list, canonical_address: str) -> list:
     """Scrub hallucinated house numbers from LLM-generated paragraphs.
 
@@ -1424,6 +1442,7 @@ def synthesize_executive_summary(
     photo_count: int,
     intel_context: dict = None,
     property_address: str = "",
+    date_of_loss: str = "",
 ) -> list[str]:
     """Use Claude to synthesize raw damage data into a structured executive summary.
     Returns a list of paragraph strings (3-5 paragraphs)."""
@@ -1438,11 +1457,15 @@ def synthesize_executive_summary(
 
     intel_section = _build_intel_section(intel_context)
 
+    dol_display = _format_date_human(date_of_loss) if date_of_loss else ""
     prompt = f"""You are writing the Executive Summary for a forensic causation report on a storm-damaged property.
 Property address: {property_address}
+Date of loss: {dol_display or 'not specified'}
 The roofing material is: {material}
 
 CRITICAL: The property address is EXACTLY "{property_address}". Use this address verbatim in the report. NEVER change the house number even if a photo appears to show a different number.
+
+CRITICAL: The date of loss is EXACTLY "{dol_display or 'not specified'}". When you reference the date of loss in the report, write it exactly as given. NEVER invent, guess, or paraphrase a different date. NEVER confuse the date of loss with the inspection date. If the date of loss is "not specified", write "the reported storm event" instead of making up a date.
 
 Raw damage analysis from photo inspection:
 {damage_summary[:3000]}
@@ -4411,6 +4434,7 @@ async def process_claim(claim_id: str):
         try:
             print(f"[PROCESS] Synthesizing executive summary...")
             exec_address = claim.get("address", "") or config.get("property", {}).get("address", "")
+            exec_dol = config.get("dates", {}).get("date_of_loss", "") or (weather_data or {}).get("storm_date", "")
             exec_paragraphs = synthesize_executive_summary(
                 claude,
                 photo_analysis.get("damage_summary", ""),
@@ -4421,6 +4445,7 @@ async def process_claim(claim_id: str):
                 photo_analysis.get("photo_count", 0),
                 intel_context=intel_context,
                 property_address=exec_address,
+                date_of_loss=exec_dol,
             )
             if isinstance(exec_paragraphs, list):
                 exec_paragraphs = _enforce_property_address(exec_paragraphs, exec_address)
@@ -4431,7 +4456,8 @@ async def process_claim(claim_id: str):
         try:
             print(f"[PROCESS] Synthesizing conclusion...")
             conclusion_address = claim.get("address", "") or config.get("property", {}).get("address", "")
-            conclusion_storm = config.get("dates", {}).get("date_of_loss", "") or config.get("weather", {}).get("storm_date", "the reported storm event")
+            raw_storm = config.get("dates", {}).get("date_of_loss", "") or config.get("weather", {}).get("storm_date", "")
+            conclusion_storm = _format_date_human(raw_storm) if raw_storm else "the reported storm event"
             conclusion_count = len(photo_analysis.get("key_findings", []))
             conclusion_paragraphs = synthesize_conclusion(
                 claude,
