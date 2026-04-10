@@ -1382,6 +1382,38 @@ def _build_intel_section(intel_context: dict) -> str:
     return "\n\n" + "\n".join(lines) + "\nWeave relevant patterns where evidence supports them.\n"
 
 
+def _enforce_property_address(paragraphs: list, canonical_address: str) -> list:
+    """Scrub hallucinated house numbers from LLM-generated paragraphs.
+
+    Claude occasionally invents a different street number when narrating the
+    property (seen: "10 Franklin" instead of "8 Franklin"). This finds any
+    "<digits> <street_name>" reference whose street name matches the canonical
+    address but whose number does NOT match, and swaps the number only —
+    leaving the rest of the surrounding text untouched.
+    """
+    if not canonical_address or not paragraphs:
+        return paragraphs
+    m = re.match(r"^\s*(\d+[A-Za-z]?)\s+([A-Za-z][A-Za-z\.]*)", canonical_address)
+    if not m:
+        return paragraphs
+    canonical_num = m.group(1)
+    street_word = m.group(2).strip()
+    if len(street_word) < 3:
+        return paragraphs
+    pattern = re.compile(
+        rf"\b(\d+[A-Za-z]?)(\s+){re.escape(street_word)}\b",
+        re.IGNORECASE,
+    )
+
+    def _replace(match):
+        num = match.group(1)
+        if num == canonical_num:
+            return match.group(0)
+        return f"{canonical_num}{match.group(2)}{street_word}"
+
+    return [pattern.sub(_replace, p) if isinstance(p, str) else p for p in paragraphs]
+
+
 def synthesize_executive_summary(
     client: anthropic.Anthropic,
     damage_summary: str,
@@ -1463,6 +1495,9 @@ def synthesize_conclusion(
     material: str,
     carrier_data: Optional[dict],
     intel_context: dict = None,
+    property_address: str = "",
+    storm_event: str = "",
+    finding_count: int = 0,
 ) -> list[str]:
     """Use Claude to synthesize a structured conclusion. Returns list of paragraph strings."""
     carrier_rcv = carrier_data.get("carrier_rcv", 0) if carrier_data else 0
@@ -1471,7 +1506,10 @@ def synthesize_conclusion(
     intel_section = _build_intel_section(intel_context)
 
     prompt = f"""You are writing the Conclusion & Scope Determination section for a forensic causation report.
+Property address: {property_address}
 Roofing material: {material}
+
+CRITICAL: The property address is EXACTLY "{property_address}". Use this address verbatim anywhere you reference the property. NEVER change the house number, street name, city, or ZIP even if a photo appears to show a different number. Do not invent or paraphrase the address.
 
 Key forensic findings:
 {findings_text}
@@ -1484,7 +1522,7 @@ Damage summary context: {damage_summary[:1500]}{intel_section}
 
 Write 3-4 SHORT paragraphs (2-4 sentences each) that tie everything together:
 
-Paragraph 1 — EVIDENCE SYNTHESIS: Based on our forensic analysis of [N] documented findings, the property at [address] sustained confirmed storm damage from [storm event]. Summarize the weight of evidence — chalk-tested hail impacts, fracture patterns, code violations.
+Paragraph 1 — EVIDENCE SYNTHESIS: Based on our forensic analysis of {finding_count} documented findings, the property at {property_address} sustained confirmed storm damage from {storm_event}. Summarize the weight of evidence — chalk-tested hail impacts, fracture patterns, code violations.
 
 Paragraph 2 — TECHNICAL DETERMINATION: The confirmed damage to [material] and associated components requires full system replacement. Explain WHY in 2-3 sentences — material matching, code triggers, non-repairability.
 
@@ -4372,6 +4410,7 @@ async def process_claim(claim_id: str):
         material = config.get("structures", [{}])[0].get("shingle_type", "roofing material")
         try:
             print(f"[PROCESS] Synthesizing executive summary...")
+            exec_address = claim.get("address", "") or config.get("property", {}).get("address", "")
             exec_paragraphs = synthesize_executive_summary(
                 claude,
                 photo_analysis.get("damage_summary", ""),
@@ -4381,14 +4420,19 @@ async def process_claim(claim_id: str):
                 photo_analysis.get("key_findings", []),
                 photo_analysis.get("photo_count", 0),
                 intel_context=intel_context,
-                property_address=claim.get("address", "") or config.get("property", {}).get("address", ""),
+                property_address=exec_address,
             )
+            if isinstance(exec_paragraphs, list):
+                exec_paragraphs = _enforce_property_address(exec_paragraphs, exec_address)
             config["forensic_findings"]["executive_summary"] = exec_paragraphs
         except Exception as e:
             print(f"[PROCESS] Executive summary synthesis failed (non-fatal): {e}")
 
         try:
             print(f"[PROCESS] Synthesizing conclusion...")
+            conclusion_address = claim.get("address", "") or config.get("property", {}).get("address", "")
+            conclusion_storm = config.get("dates", {}).get("date_of_loss", "") or config.get("weather", {}).get("storm_date", "the reported storm event")
+            conclusion_count = len(photo_analysis.get("key_findings", []))
             conclusion_paragraphs = synthesize_conclusion(
                 claude,
                 photo_analysis.get("damage_summary", ""),
@@ -4397,18 +4441,22 @@ async def process_claim(claim_id: str):
                 material,
                 carrier_data,
                 intel_context=intel_context,
+                property_address=conclusion_address,
+                storm_event=conclusion_storm,
+                finding_count=conclusion_count,
             )
-            # Post-process: substitute bracket placeholders that Claude sometimes returns literally
+            # Defense-in-depth: scrub any hallucinated house numbers + substitute any bracket placeholders
             if conclusion_paragraphs and isinstance(conclusion_paragraphs, list):
-                address = config.get("property", {}).get("address", "the property")
-                storm_date_str = config.get("dates", {}).get("date_of_loss", "") or config.get("weather", {}).get("storm_date", "the reported storm event")
-                finding_count = len(photo_analysis.get("key_findings", []))
+                address = conclusion_address or "the property"
+                storm_date_str = conclusion_storm
+                finding_count = conclusion_count
                 conclusion_paragraphs = [
                     p.replace("[address]", address)
                      .replace("[storm event]", storm_date_str)
                      .replace("[N]", str(finding_count))
                     for p in conclusion_paragraphs if isinstance(p, str)
                 ]
+                conclusion_paragraphs = _enforce_property_address(conclusion_paragraphs, address)
                 config["forensic_findings"]["conclusion_paragraphs"] = conclusion_paragraphs
             else:
                 print(f"[PROCESS] Conclusion synthesis returned {type(conclusion_paragraphs)} — skipping placeholder replacement")
