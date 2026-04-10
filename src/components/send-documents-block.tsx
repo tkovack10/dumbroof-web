@@ -9,7 +9,7 @@ interface Props {
   claimAddress: string;
   claimNumber: string;
   adjusterEmail: string;
-  carrierName: string;
+  carrierName?: string;
   filePath: string;
   outputFiles: string[];
 }
@@ -18,7 +18,7 @@ function friendlyName(file: string): string {
   return file.replace(/_/g, " ").replace(".pdf", "").replace(/^\d+\s*/, "");
 }
 
-export function SendDocumentsBlock({ claimId, claimAddress, claimNumber, adjusterEmail, carrierName, filePath, outputFiles }: Props) {
+export function SendDocumentsBlock({ claimId, claimAddress, claimNumber, adjusterEmail, filePath, outputFiles }: Props) {
   const [showSend, setShowSend] = useState(false);
   const [recipientEmail, setRecipientEmail] = useState("");
   const [ccEmail, setCcEmail] = useState("");
@@ -59,19 +59,19 @@ export function SendDocumentsBlock({ claimId, claimAddress, claimNumber, adjuste
          <p>Attached you will find: ${docNames}.</p>
          <p>Please don't hesitate to reach out if you have any questions.</p>`;
 
-    // Build CC list: user-entered CC + always BCC claims@dumbroof.ai
+    // Build CC list: user-entered CC + always include claims@dumbroof.ai
     const ccList: string[] = [];
     if (ccEmail.trim()) {
       ccEmail.split(",").forEach((e) => {
-        const trimmed = e.trim();
-        if (trimmed) ccList.push(trimmed);
+        // Strip \r\n to prevent email header injection
+        const trimmed = e.trim().replace(/[\r\n]/g, "");
+        if (trimmed && trimmed.includes("@")) ccList.push(trimmed);
       });
     }
-    // Always include claims@dumbroof.ai
     ccList.push("claims@dumbroof.ai");
 
     try {
-      await fetch(`${BACKEND_URL}/api/supplement-email/send`, {
+      const res = await fetch(`${BACKEND_URL}/api/supplement-email/send`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -84,9 +84,12 @@ export function SendDocumentsBlock({ claimId, claimAddress, claimNumber, adjuste
           email_type: "custom",
         }),
       });
+      if (!res.ok) throw new Error(`Send failed (${res.status})`);
       setSent(true);
       setTimeout(() => setSent(false), 5000);
-    } catch { /* ignore */ }
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Failed to send email. Please try again.");
+    }
     setSending(false);
   };
 

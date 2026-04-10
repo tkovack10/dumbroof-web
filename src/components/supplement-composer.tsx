@@ -375,6 +375,7 @@ export function SupplementComposer({ claimId, claimAddress, carrierName, compari
                           claim_id: claimId,
                           user_id: userId || null,
                           to_email: toEmail,
+                          cc: "claims@dumbroof.ai",
                           subject: claimNumber,
                           body_html: bodyHtml,
                           email_type: "supplement",
