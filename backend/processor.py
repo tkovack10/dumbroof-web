@@ -1391,6 +1391,7 @@ def synthesize_executive_summary(
     key_findings: list,
     photo_count: int,
     intel_context: dict = None,
+    property_address: str = "",
 ) -> list[str]:
     """Use Claude to synthesize raw damage data into a structured executive summary.
     Returns a list of paragraph strings (3-5 paragraphs)."""
@@ -1406,7 +1407,10 @@ def synthesize_executive_summary(
     intel_section = _build_intel_section(intel_context)
 
     prompt = f"""You are writing the Executive Summary for a forensic causation report on a storm-damaged property.
+Property address: {property_address}
 The roofing material is: {material}
+
+CRITICAL: The property address is EXACTLY "{property_address}". Use this address verbatim in the report. NEVER change the house number even if a photo appears to show a different number.
 
 Raw damage analysis from photo inspection:
 {damage_summary[:3000]}
@@ -4377,6 +4381,7 @@ async def process_claim(claim_id: str):
                 photo_analysis.get("key_findings", []),
                 photo_analysis.get("photo_count", 0),
                 intel_context=intel_context,
+                property_address=claim.get("address", "") or config.get("property", {}).get("address", ""),
             )
             config["forensic_findings"]["executive_summary"] = exec_paragraphs
         except Exception as e:
