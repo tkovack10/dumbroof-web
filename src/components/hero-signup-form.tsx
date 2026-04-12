@@ -65,13 +65,8 @@ export function HeroSignupForm() {
     });
     trackBoth(FunnelEvent.SIGNUP_SUCCEEDED, { auth_method: "email", auto_confirmed: !!data.session });
 
-    // Notify team + send welcome email
+    // Notify team + send welcome email — both handled server-side by notify-signup.
     fetch("/api/notify-signup", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email }),
-    }).catch(() => {});
-    fetch("/api/welcome-email", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email }),

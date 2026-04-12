@@ -2,32 +2,18 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { sendCapiEvent, CapiEventName, extractMetaTracking } from "@/lib/meta-conversions-api";
 
-async function sendWelcomeEmail(email: string) {
-  try {
-    const origin = process.env.NEXT_PUBLIC_APP_URL || "https://www.dumbroof.ai";
-    await fetch(`${origin}/api/welcome-email`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email }),
-    });
-  } catch {
-    // Non-fatal
-  }
-}
-
+/**
+ * Notify team + send welcome email via the unified /api/notify-signup endpoint.
+ * That endpoint handles both team notification AND welcome email with PDF attachment
+ * server-side, so neither can be killed by browser navigation or function termination.
+ */
 async function notifyNewSignup(email: string) {
   try {
-    const RESEND_KEY = process.env.RESEND_API_KEY;
-    if (!RESEND_KEY) return;
-    await fetch("https://api.resend.com/emails", {
+    const origin = process.env.NEXT_PUBLIC_APP_URL || "https://www.dumbroof.ai";
+    await fetch(`${origin}/api/notify-signup`, {
       method: "POST",
-      headers: { Authorization: `Bearer ${RESEND_KEY}`, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        from: "DumbRoof <noreply@dumbroof.ai>",
-        to: ["tkovack@usaroofmasters.com", "hello@dumbroof.ai", "arivera@usaroofmasters.com", "tom@dumbroof.ai", "kristen@dumbroof.ai"],
-        subject: `New User Signup: ${email}`,
-        html: `<h2>New User Registered</h2><p><strong>${email}</strong> just signed up on dumbroof.ai (via Google).</p><p><a href="https://www.dumbroof.ai/admin">View Admin Dashboard</a></p>`,
-      }),
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, source: "google_oauth" }),
     });
   } catch {
     // Non-fatal
@@ -61,9 +47,8 @@ export async function GET(request: Request) {
           .eq("user_id", user.id);
 
         if (count === 0) {
-          // New user — notify team + send welcome email (fire and forget)
+          // New user — notify team + send welcome email (both handled by notifyNewSignup)
           notifyNewSignup(user.email || "unknown");
-          sendWelcomeEmail(user.email || "");
 
           // Fire Meta CAPI Lead event server-side. iOS 14+ blocks the
           // browser pixel for ~25-40% of users. Without this, Meta's

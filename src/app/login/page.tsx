@@ -83,13 +83,8 @@ function LoginPageContent() {
         window.ttq?.track("CompleteRegistration", {
           contents: [{ content_id: "signup", content_type: "product", content_name: "dumbroof.ai Account" }],
         });
-        // Notify team + send welcome email (fire and forget)
+        // Notify team + send welcome email — both handled server-side by notify-signup
         fetch("/api/notify-signup", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email }),
-        }).catch(() => {});
-        fetch("/api/welcome-email", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ email }),
@@ -101,13 +96,8 @@ function LoginPageContent() {
         window.ttq?.track("CompleteRegistration", {
           contents: [{ content_id: "signup", content_type: "product", content_name: "dumbroof.ai Account" }],
         });
-        // Notify team + send welcome email (fire and forget)
+        // Notify team + send welcome email — both handled server-side by notify-signup
         fetch("/api/notify-signup", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email }),
-        }).catch(() => {});
-        fetch("/api/welcome-email", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ email }),

@@ -120,16 +120,13 @@ export function MobileMagicHero({ inAppName, stats }: Props) {
       auto_confirmed: !!data.session,
     });
 
-    // Notify team + welcome email (fire and forget)
+    // Notify team + send welcome email — both handled server-side by notify-signup.
+    // Welcome email was previously a separate client-side fetch that got killed by
+    // window.location.href navigation on mobile (87% failure rate).
     fetch("/api/notify-signup", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email, source: `mobile_${inAppName || "direct"}` }),
-    }).catch(() => {});
-    fetch("/api/welcome-email", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email }),
     }).catch(() => {});
 
     if (data.session) {

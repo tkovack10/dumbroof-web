@@ -3,23 +3,17 @@ import { createClient } from "@/lib/supabase/server";
 import { type EmailOtpType } from "@supabase/supabase-js";
 import { sendCapiEvent, CapiEventName, extractMetaTracking } from "@/lib/meta-conversions-api";
 
+/**
+ * Notify team + send welcome email via the unified /api/notify-signup endpoint.
+ * Handles both team notification AND welcome email with PDF attachment server-side.
+ */
 async function notifyNewSignup(email: string) {
-  // Send notification email to Tom when a new user signs up
   try {
-    const RESEND_KEY = process.env.RESEND_API_KEY;
-    if (!RESEND_KEY) return;
-    await fetch("https://api.resend.com/emails", {
+    const origin = process.env.NEXT_PUBLIC_APP_URL || "https://www.dumbroof.ai";
+    await fetch(`${origin}/api/notify-signup`, {
       method: "POST",
-      headers: { Authorization: `Bearer ${RESEND_KEY}`, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        from: "DumbRoof <noreply@dumbroof.ai>",
-        to: ["tkovack@usaroofmasters.com", "hello@dumbroof.ai", "arivera@usaroofmasters.com", "tom@dumbroof.ai", "kristen@dumbroof.ai"],
-        subject: `🚨 New User Signup: ${email}`,
-        html: `<h2>New User Registered on dumbroof.ai</h2>
-          <p><strong>${email}</strong> just confirmed their email.</p>
-          <p>Time: ${new Date().toLocaleString("en-US", { timeZone: "America/New_York" })} ET</p>
-          <p><a href="https://www.dumbroof.ai/dashboard/admin" style="background-color:#2563eb;color:white;padding:10px 24px;border-radius:8px;text-decoration:none;font-weight:600;display:inline-block;">View Admin Dashboard</a></p>`,
-      }),
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, source: "email_confirm" }),
     });
   } catch {
     // Non-fatal — don't block auth flow
