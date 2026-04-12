@@ -51,7 +51,7 @@ const FOLLOWUP_HTML = (magicLink: string) => `
 
     <hr style="border:none;border-top:1px solid #e5e7eb;margin:24px 0;" />
 
-    <p style="font-size:13px;color:#9ca3af;margin:0;">This link is single-use and expires in 1 hour. If it expires, just sign up again from your desktop at <a href="${APP_URL}" style="color:#3b82f6;">dumbroof.ai</a>.</p>
+    <p style="font-size:13px;color:#9ca3af;margin:0;">This link is single-use and expires in 1 hour. If it expires, just visit <a href="${APP_URL}" style="color:#3b82f6;">dumbroof.ai</a> to get a new one.</p>
     <p style="font-size:13px;color:#9ca3af;margin:8px 0 0;">Reply to this email with your phone number if you'd rather we text the link.</p>
     <p style="font-size:13px;color:#9ca3af;margin:14px 0 0;">&mdash; The DumbRoof Team</p>
   </div>
@@ -104,7 +104,7 @@ export async function POST(req: NextRequest) {
     // Don't leak Supabase error messages to the client — they sometimes
     // include internal details. Use a friendly fallback.
     return NextResponse.json(
-      { error: "Couldn't send your link. Please try again or sign up from your desktop." },
+      { error: "Couldn't send your link. Please try again or visit dumbroof.ai to sign up." },
       { status: 500 }
     );
   }
