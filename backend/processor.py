@@ -1970,6 +1970,25 @@ def build_claim_config(
             _tb.print_exc()
             sys.stdout.flush()
 
+    # Step 2b: Per-claim carrier intelligence (runs after scope comparison)
+    carrier_analyst_result = None
+    if carrier_data and carrier_data.get("carrier_rcv", 0) > 0:
+        try:
+            from carrier_analyst import analyze_carrier_scope
+            print("[CARRIER-ANALYST] Analyzing carrier scope for underpayment tactics...")
+            carrier_analyst_result = analyze_carrier_scope(
+                carrier_data=carrier_data,
+                measurements=measurements or {},
+                carrier_name=carrier_data.get("carrier", {}).get("name", "") if isinstance(carrier_data.get("carrier"), dict) else "",
+                config={"line_items": line_items, "property": {"state": state}, "scope": {"o_and_p": len(set(li.get("trade","").lower() for li in line_items if li.get("trade"))) >= 3}},
+                claude_client=claude,
+                call_claude_fn=_call_claude_with_retry,
+            )
+            tactic_count = len(carrier_analyst_result.get("tactics_found", []))
+            print(f"[CARRIER-ANALYST] Found {tactic_count} tactics, variance ~{carrier_analyst_result.get('estimated_variance_pct', 0)}%")
+        except Exception as e:
+            print(f"[CARRIER-ANALYST] Analysis failed (non-fatal): {e}")
+
     # Step 3: Carrier-informed data is now available — config building below uses comparison results
     # scope_comparison_matched replaces raw carrier_line_items in config["carrier"]
 
@@ -4796,6 +4815,8 @@ async def process_claim(claim_id: str):
         }
         if qa_audit_result is not None:
             update_data["qa_audit_flags"] = qa_audit_result
+        if carrier_analyst_result and carrier_analyst_result.get("analyzed"):
+            update_data["carrier_analyst_flags"] = carrier_analyst_result
         if photo_integrity and photo_integrity.get("total", 0) > 0:
             update_data["photo_integrity"] = {
                 "total": photo_integrity["total"],

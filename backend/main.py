@@ -1361,6 +1361,20 @@ class DirectEmailRequest(BaseModel):
     email_type: str = "supplement"  # supplement | install_supplement | coc | aob | invoice
 
 
+@app.get("/api/claim-brain/{claim_id}/history")
+async def claim_brain_history(claim_id: str):
+    """Fetch persisted Claim Brain messages for frontend rehydration."""
+    sb = get_supabase_client()
+    result = sb.table("claim_brain_messages") \
+        .select("role, content") \
+        .eq("claim_id", claim_id) \
+        .in_("role", ["user", "assistant"]) \
+        .order("created_at", desc=False) \
+        .limit(50) \
+        .execute()
+    return {"messages": result.data or []}
+
+
 @app.post("/api/supplement-email/send")
 async def send_supplement_email_direct(body: DirectEmailRequest):
     """Send an email with optional file attachments from Supabase Storage."""

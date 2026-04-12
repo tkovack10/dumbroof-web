@@ -324,6 +324,27 @@ export function ClaimBrainChat({
     scrollToBottom();
   }, [messages, scrollToBottom]);
 
+  useEffect(() => {
+    let cancelled = false;
+    const loadHistory = async () => {
+      try {
+        const res = await fetch(`${BACKEND_URL}/api/claim-brain/${claimId}/history`);
+        if (!res.ok || cancelled) return;
+        const data = (await res.json()) as { messages?: Array<{ role: string; content: string }> };
+        if (cancelled || !data.messages?.length) return;
+        const restored: Message[] = data.messages.map((m) => ({
+          role: m.role as "user" | "assistant",
+          content: m.content,
+        }));
+        setMessages(restored);
+      } catch {
+        // Silent — fresh conversation is fine
+      }
+    };
+    loadHistory();
+    return () => { cancelled = true; };
+  }, [claimId, BACKEND_URL]);
+
   const sendMessage = async (messageText?: string) => {
     const msg = messageText || input.trim();
     if (!msg || isStreaming) return;
