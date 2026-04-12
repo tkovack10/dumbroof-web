@@ -2,7 +2,37 @@ import { NextRequest, NextResponse } from "next/server";
 import { getStripe } from "@/lib/stripe";
 import { getPlanByPriceId } from "@/lib/stripe-config";
 import { supabaseAdmin } from "@/lib/supabase/admin";
+import { sendCapiEvent, CapiEventName } from "@/lib/meta-conversions-api";
 import Stripe from "stripe";
+
+/**
+ * Fire Meta CAPI Purchase event so Meta can optimize for revenue.
+ * Without this, Meta only sees Lead/StartTrial and optimizes for
+ * signups instead of paying customers.
+ */
+async function fireCapiPurchase(userId: string, value: number, planName: string): Promise<void> {
+  try {
+    // Look up user email from Supabase auth
+    const { data } = await supabaseAdmin.auth.admin.getUserById(userId);
+    const email = data?.user?.email;
+    if (!email) return;
+
+    await sendCapiEvent({
+      eventName: CapiEventName.Purchase,
+      email,
+      eventSourceUrl: "https://www.dumbroof.ai/pricing",
+      customData: {
+        value,
+        currency: "USD",
+        content_name: planName,
+        content_category: "subscription",
+      },
+    });
+  } catch (err) {
+    // Fire-and-forget — never block the webhook
+    console.error("[CAPI] Purchase event failed:", err);
+  }
+}
 
 export async function POST(req: NextRequest) {
   const body = await req.text();
@@ -48,6 +78,8 @@ export async function POST(req: NextRequest) {
             notes: "HAAG inspection purchased via dumbroof.ai — awaiting inspector assignment",
           });
         }
+        // Fire CAPI Purchase for one-time payments (e.g. HAAG inspection $500)
+        fireCapiPurchase(userId, (session.amount_total || 0) / 100, addOnId || "one_time");
         break;
       }
 
@@ -75,6 +107,9 @@ export async function POST(req: NextRequest) {
         },
         { onConflict: "user_id" }
       );
+
+      // Fire CAPI Purchase — Meta can now optimize for paying customers
+      fireCapiPurchase(userId, plan?.price || 0, plan?.name || "subscription");
       break;
     }
 

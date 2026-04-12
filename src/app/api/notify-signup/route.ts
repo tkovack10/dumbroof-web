@@ -2,6 +2,8 @@ import { readFileSync } from "fs";
 import { join } from "path";
 import { NextRequest, NextResponse } from "next/server";
 import { getResend } from "@/lib/resend";
+import { sendCapiEvent, CapiEventName } from "@/lib/meta-conversions-api";
+import { getUtmFromRequest } from "@/lib/utm";
 
 const EMAIL_FROM_NOREPLY = "DumbRoof <noreply@dumbroof.ai>";
 
@@ -119,12 +121,15 @@ export async function POST(req: NextRequest) {
   const timestamp = new Date().toLocaleString("en-US", { timeZone: "America/New_York" });
   const sourceLabel = typeof source === "string" && source.length > 0 ? source : "unknown";
 
-  // Send team notification AND welcome email in parallel, both server-side.
-  // Previously welcome email was fired client-side via a separate fetch() call,
-  // but window.location.href navigation killed 87% of those requests on mobile
-  // before the PDF download + email send could complete.
-  //
-  // Using allSettled so a failure in one doesn't prevent the other from completing.
+  // Extract UTM attribution + Meta tracking cookies for CAPI
+  const utm = getUtmFromRequest(req);
+  const cookieHeader = req.headers.get("cookie") || "";
+  const fbpMatch = cookieHeader.match(/(?:^|; )_fbp=([^;]*)/);
+  const fbcMatch = cookieHeader.match(/(?:^|; )_fbc=([^;]*)/);
+
+  // Send team notification, welcome email, AND CAPI CompleteRegistration in parallel.
+  // CAPI CompleteRegistration is critical — browser pixel fires this event but
+  // iOS 14+ blocks it for 25-40% of users. Server-side ensures Meta sees every signup.
   const resend = getResend();
   const results = await Promise.allSettled([
     resend.emails.send({
@@ -134,10 +139,27 @@ export async function POST(req: NextRequest) {
       html: `<h2>New User Registered on dumbroof.ai</h2>
         <p><strong>${email}</strong> just created an account.</p>
         <p>Source: <strong>${sourceLabel}</strong></p>
+        ${utm?.utm_campaign ? `<p>Campaign: <strong>${utm.utm_campaign}</strong> (${utm.utm_source || "?"} / ${utm.utm_medium || "?"})</p>` : ""}
         <p>Time: ${timestamp} ET</p>
         <p><a href="https://www.dumbroof.ai/dashboard/admin" style="background-color:#2563eb;color:white;padding:10px 24px;border-radius:8px;text-decoration:none;font-weight:600;display:inline-block;">View Admin Dashboard</a></p>`,
     }),
     sendWelcome(email),
+    // CAPI CompleteRegistration — iOS 14+ can't block server-side events
+    sendCapiEvent({
+      eventName: CapiEventName.CompleteRegistration,
+      email,
+      eventSourceUrl: "https://www.dumbroof.ai/",
+      clientIpAddress: req.headers.get("x-forwarded-for") || undefined,
+      clientUserAgent: req.headers.get("user-agent") || undefined,
+      fbc: fbcMatch?.[1],
+      fbp: fbpMatch?.[1],
+      customData: {
+        content_name: sourceLabel,
+        content_category: "signup",
+        ...(utm?.utm_source && { utm_source: utm.utm_source }),
+        ...(utm?.utm_campaign && { utm_campaign: utm.utm_campaign }),
+      },
+    }),
   ]);
 
   for (const r of results) {

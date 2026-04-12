@@ -1,11 +1,12 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useSearchParams } from "next/navigation";
 import { Suspense } from "react";
 import { createBrowserClient } from "@supabase/ssr";
 import { Footer } from "@/components/footer";
 import { PLANS, ADD_ONS, type PlanId } from "@/lib/stripe-config";
+import { trackBoth, FunnelEvent } from "@/lib/track";
 
 export default function PricingPage() {
   return <Suspense><PricingContent /></Suspense>;
@@ -19,6 +20,7 @@ function PricingContent() {
 
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
 
+  const trackedRef = useRef(false);
   useEffect(() => {
     const supabase = createBrowserClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -27,6 +29,13 @@ function PricingContent() {
     supabase.auth.getUser().then(({ data }) => {
       if (data.user) setIsLoggedIn(true);
     });
+    // Fire pricing page view event once — feeds funnel monitor + GA4 + Meta
+    if (!trackedRef.current) {
+      trackedRef.current = true;
+      trackBoth(FunnelEvent.PRICING_PAGE_VIEWED);
+      window.fbq?.("track", "ViewContent", { content_name: "pricing_page", content_type: "product" });
+      window.ttq?.track("ViewContent", { content_name: "pricing" });
+    }
   }, []);
 
   const handleCheckout = async (params: { planId?: PlanId; addOnId?: string }) => {
