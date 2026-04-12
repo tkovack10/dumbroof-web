@@ -39,7 +39,7 @@ export function HeroSignupForm() {
       email,
       password,
       options: {
-        emailRedirectTo: `${window.location.origin}/auth/confirm`,
+        // emailRedirectTo not needed — email confirmation is OFF in Supabase
       },
     });
 

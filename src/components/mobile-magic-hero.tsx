@@ -72,7 +72,7 @@ export function MobileMagicHero({ inAppName, stats }: Props) {
       email: email.trim().toLowerCase(),
       password,
       options: {
-        emailRedirectTo: `${window.location.origin}/auth/confirm`,
+        // emailRedirectTo not needed — email confirmation is OFF in Supabase
         data: {
           signup_source: inAppName ? `mobile_${inAppName}` : "mobile_direct",
         },
