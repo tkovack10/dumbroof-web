@@ -161,6 +161,23 @@ export async function insertRecommendations(
   return count ?? rows.length;
 }
 
+/** HTML-escape a string for Resend email templates. */
+export function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+/** Stat tile for cron email digests. */
+export function emailTile(label: string, value: number, color: string): string {
+  return `<div style="flex:1;background:#fff;padding:14px;border-radius:6px;border:1px solid #e5e7eb">
+    <p style="margin:0 0 4px;font-size:11px;text-transform:uppercase;color:#6b7280;font-weight:600">${label}</p>
+    <p style="margin:0;font-size:28px;font-weight:900;color:${color}">${value}</p>
+  </div>`;
+}
+
 /** Authorize a cron request — same shape as document-quality/funnel-monitor. */
 export function authorizeCron(req: Request): boolean {
   const secret = process.env.CRON_SECRET?.trim();

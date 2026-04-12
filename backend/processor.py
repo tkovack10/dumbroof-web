@@ -1383,22 +1383,7 @@ def _build_intel_section(intel_context: dict) -> str:
     return "\n\n" + "\n".join(lines) + "\nWeave relevant patterns where evidence supports them.\n"
 
 
-def _format_date_human(date_str: str) -> str:
-    """Format a date string to human-readable form ("March 31, 2026").
-
-    Accepts ISO dates ("2026-03-31"), slash dates ("3/31/2026"), or strings
-    that are already human-readable. Returns the input unchanged if parsing
-    fails, so upstream callers can decide how to handle unknowns.
-    """
-    if not date_str:
-        return ""
-    s = date_str.strip()
-    for fmt in ("%Y-%m-%d", "%m/%d/%Y", "%m-%d-%Y", "%B %d, %Y", "%b %d, %Y"):
-        try:
-            return datetime.strptime(s, fmt).strftime("%B %d, %Y")
-        except ValueError:
-            continue
-    return s
+from date_utils import format_date_human as _format_date_human
 
 
 def _enforce_property_address(paragraphs: list, canonical_address: str) -> list:
@@ -4472,17 +4457,9 @@ async def process_claim(claim_id: str):
                 storm_event=conclusion_storm,
                 finding_count=conclusion_count,
             )
-            # Defense-in-depth: scrub any hallucinated house numbers + substitute any bracket placeholders
             if conclusion_paragraphs and isinstance(conclusion_paragraphs, list):
                 address = conclusion_address or "the property"
-                storm_date_str = conclusion_storm
-                finding_count = conclusion_count
-                conclusion_paragraphs = [
-                    p.replace("[address]", address)
-                     .replace("[storm event]", storm_date_str)
-                     .replace("[N]", str(finding_count))
-                    for p in conclusion_paragraphs if isinstance(p, str)
-                ]
+                conclusion_paragraphs = [p for p in conclusion_paragraphs if isinstance(p, str)]
                 conclusion_paragraphs = _enforce_property_address(conclusion_paragraphs, address)
                 config["forensic_findings"]["conclusion_paragraphs"] = conclusion_paragraphs
             else:

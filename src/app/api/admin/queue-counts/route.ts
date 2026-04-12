@@ -1,16 +1,8 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { createClient as createAdminClient } from "@supabase/supabase-js";
+import { supabaseAdmin } from "@/lib/supabase/admin";
 
 export const dynamic = "force-dynamic";
-
-function getSb() {
-  return createAdminClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_KEY!,
-    { auth: { persistSession: false } }
-  );
-}
 
 export async function GET() {
   const userSb = await createClient();
@@ -26,14 +18,12 @@ export async function GET() {
     return NextResponse.json({ error: "forbidden" }, { status: 403 });
   }
 
-  const sb = getSb();
-
   const [qaRes, recRes] = await Promise.all([
-    sb
+    supabaseAdmin
       .from("claims")
       .select("id", { count: "exact", head: true })
       .eq("status", "qa_review_pending"),
-    sb
+    supabaseAdmin
       .from("agent_recommendations")
       .select("id", { count: "exact", head: true })
       .eq("status", "pending"),

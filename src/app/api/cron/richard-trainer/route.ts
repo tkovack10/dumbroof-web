@@ -22,6 +22,8 @@ import {
   authorizeCron,
   callAnthropic,
   computeWindow,
+  escapeHtml,
+  emailTile,
   insertRecommendations,
   parseJsonFromLlm,
   type AgentRecommendation,
@@ -233,20 +235,7 @@ function renderEmail(report: TrainerReport): string {
 </div>`;
 }
 
-function tile(label: string, value: number, color: string): string {
-  return `<div style="flex:1;background:#fff;padding:14px;border-radius:6px;border:1px solid #e5e7eb">
-    <p style="margin:0 0 4px;font-size:11px;text-transform:uppercase;color:#6b7280;font-weight:600">${label}</p>
-    <p style="margin:0;font-size:28px;font-weight:900;color:${color}">${value}</p>
-  </div>`;
-}
-
-function escapeHtml(s: string): string {
-  return s
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
-}
+const tile = emailTile;
 
 async function persist(report: TrainerReport, emailSent: boolean, error?: string): Promise<number | null> {
   const { data } = await supabaseAdmin

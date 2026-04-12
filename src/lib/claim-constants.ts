@@ -58,6 +58,7 @@ export const CLAIM_STATUS_CONFIG: Record<string, { color: string; label: string;
   uploaded: { color: "text-blue-700", label: "Uploaded", bg: "bg-blue-100" },
   processing: { color: "text-amber-700", label: "Processing", bg: "bg-amber-100" },
   ready: { color: "text-green-700", label: "Ready", bg: "bg-green-100" },
+  qa_review_pending: { color: "text-blue-700", label: "Quality Review", bg: "bg-blue-100" },
   needs_improvement: { color: "text-orange-700", label: "Needs Improvement", bg: "bg-orange-100" },
   error: { color: "text-red-700", label: "Error", bg: "bg-red-100" },
 };

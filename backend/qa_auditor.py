@@ -13,27 +13,11 @@ from __future__ import annotations
 
 import json
 from datetime import datetime
-from typing import TYPE_CHECKING, Optional
+from typing import Optional
 
-if TYPE_CHECKING:
-    import anthropic  # noqa: F401
+import anthropic
 
-
-SEVERITY_CRITICAL = "critical"
-SEVERITY_MEDIUM = "medium"
-SEVERITY_LOW = "low"
-
-
-def _format_date_for_audit(date_str: str) -> str:
-    if not date_str:
-        return ""
-    s = date_str.strip()
-    for fmt in ("%Y-%m-%d", "%m/%d/%Y", "%m-%d-%Y", "%B %d, %Y", "%b %d, %Y"):
-        try:
-            return datetime.strptime(s, fmt).strftime("%B %d, %Y")
-        except ValueError:
-            continue
-    return s
+from date_utils import format_date_human as _format_date_human
 
 
 def _build_ground_truth(config: dict, claim: dict) -> dict:
@@ -51,7 +35,7 @@ def _build_ground_truth(config: dict, claim: dict) -> dict:
         or prop.get("address")
         or ""
     )
-    canonical_dol = _format_date_for_audit(
+    canonical_dol = _format_date_human(
         dates.get("date_of_loss", "") or weather.get("storm_date", "")
     )
     canonical_carrier = carrier.get("name", "") or claim.get("carrier", "")
@@ -82,8 +66,8 @@ def _build_ground_truth(config: dict, claim: dict) -> dict:
         "user_role": user_role,
         "photo_count": photo_count,
         "trades": trades,
-        "inspection_date": _format_date_for_audit(dates.get("inspection_date", "")),
-        "report_date": _format_date_for_audit(dates.get("report_date", "")),
+        "inspection_date": _format_date_human(dates.get("inspection_date", "")),
+        "report_date": _format_date_human(dates.get("report_date", "")),
     }
 
 
@@ -219,7 +203,7 @@ def _fail_safe_result(reason: str) -> dict:
 def audit_forensic_prose(
     config: dict,
     claim: dict,
-    claude: "anthropic.Anthropic",
+    claude: anthropic.Anthropic,
     call_claude_fn=None,
 ) -> dict:
     """Review generated forensic prose against claim ground truth.

@@ -1,16 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { createClient as createAdminClient } from "@supabase/supabase-js";
+import { supabaseAdmin } from "@/lib/supabase/admin";
 
 export const dynamic = "force-dynamic";
-
-function getSb() {
-  return createAdminClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_KEY!,
-    { auth: { persistSession: false } }
-  );
-}
 
 export async function POST(
   _req: NextRequest,
@@ -32,9 +24,7 @@ export async function POST(
     return NextResponse.json({ error: "forbidden" }, { status: 403 });
   }
 
-  const sb = getSb();
-
-  const { data: claim, error: fetchErr } = await sb
+  const { data: claim, error: fetchErr } = await supabaseAdmin
     .from("claims")
     .select("id, status, qa_audit_flags")
     .eq("id", id)
@@ -56,7 +46,7 @@ export async function POST(
     override_reason: "admin manual override via /admin/qa-review",
   };
 
-  const { error: updateErr } = await sb
+  const { error: updateErr } = await supabaseAdmin
     .from("claims")
     .update({
       status: "ready",
