@@ -95,8 +95,8 @@ export async function GET(request: Request) {
     console.error("Auth callback error:", error.message);
   }
 
-  // No code or exchange failed — redirect to login
+  // No code or exchange failed — likely expired/used magic link
   return NextResponse.redirect(
-    `${origin}/login?error=${encodeURIComponent("Sign in failed. Please try again.")}`
+    `${origin}/login?error=${encodeURIComponent("This sign-in link has expired or was already used. Enter your email below to get a new one.")}`
   );
 }

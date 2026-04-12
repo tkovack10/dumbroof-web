@@ -28,7 +28,7 @@ const SOURCE_LABEL: Record<NonNullable<InAppName>, string> = {
  *   - Users are mid-scroll and don't have EagleView/photos on their phone
  *
  * Strategy: collect just the email, send a magic link via /api/save-spot,
- * tell them to open it on their desktop. Roofers click from their inbox
+ * user taps the link on their phone to start uploading. Roofers click from their inbox
  * the next morning and finish the upload from their office.
  */
 export function MobileMagicHero({ inAppName, stats }: Props) {
@@ -142,10 +142,10 @@ export function MobileMagicHero({ inAppName, stats }: Props) {
 
         <div className="bg-white/[0.04] border border-white/[0.1] rounded-2xl p-6 mb-6">
           <p className="text-sm font-semibold text-white mb-1">
-            Email me a link to finish at my desk
+            Start your first claim — photos only
           </p>
           <p className="text-xs text-[var(--gray-muted)] mb-4">
-            Upload your inspection photos. We&apos;ll do the rest. Add measurements and carrier scope later &mdash; the claim grows with you.
+            Enter your email, tap the link we send, and upload photos right from your phone. Add measurements and carrier scope later &mdash; the claim grows with you.
           </p>
 
           <form onSubmit={handleSubmit} className="space-y-3">
@@ -165,7 +165,7 @@ export function MobileMagicHero({ inAppName, stats }: Props) {
               disabled={status === "loading"}
               className="w-full bg-gradient-to-r from-[var(--pink)] via-[var(--purple)] to-[var(--blue)] hover:shadow-[var(--shadow-glow-pink)] text-white px-6 py-4 rounded-xl font-semibold text-base transition-all shadow-lg disabled:opacity-50"
             >
-              {status === "loading" ? "Sending..." : "Send Me The Link →"}
+              {status === "loading" ? "Sending..." : "Try Free →"}
             </button>
           </form>
 
