@@ -65,19 +65,10 @@ const getHeroStats = unstable_cache(
 export default async function Home() {
   const [stats, device] = await Promise.all([getHeroStats(), getDeviceContext()]);
 
-  // ALL mobile users (98% of dumbroof.ai traffic per Vercel Analytics
-  // 2026-04-06) get the mobile-magic-link hero — not just in-app browser
-  // users. Even on Mobile Safari, uploading an EagleView PDF + 60 photos
-  // from a phone is impractical for the contractor audience. The magic
-  // link routes them to their inbox → desktop session → real upload flow.
-  //
-  // Why we don't gate on `isInAppBrowser` anymore: the in-app subset is
-  // ~75-80% of mobile visitors but the remaining mobile-Safari/Chrome
-  // mobile users were getting the desktop hero rendered on a 375px
-  // screen, which is the same broken experience as in-app WebView.
-  //
-  // Desktop (the remaining 1-2%) still sees the full desktop hero +
-  // marketing page below.
+  // ALL mobile users (98% of traffic) get the mobile hero with instant
+  // email+password signup. No magic links, no email verification.
+  // Mobile hero → signUp → /dashboard/new-claim → upload photos.
+  // Desktop (1-2%) still sees the full marketing page + desktop hero.
   if (device.isMobile) {
     return (
       <main className="min-h-screen">
