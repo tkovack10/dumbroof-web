@@ -69,7 +69,7 @@ export function HeroSignupForm() {
     fetch("/api/notify-signup", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email }),
+      body: JSON.stringify({ email, source: "desktop_hero" }),
     }).catch(() => {});
 
     if (data.session) {

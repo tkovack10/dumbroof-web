@@ -87,7 +87,7 @@ function LoginPageContent() {
         fetch("/api/notify-signup", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email }),
+          body: JSON.stringify({ email, source: "login_page" }),
         }).catch(() => {});
         window.location.href = "/dashboard/new-claim";
       } else {
@@ -100,7 +100,7 @@ function LoginPageContent() {
         fetch("/api/notify-signup", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email }),
+          body: JSON.stringify({ email, source: "login_page" }),
         }).catch(() => {});
         setMessage("Account created! Check your email for a confirmation link, then come back and sign in.");
       }

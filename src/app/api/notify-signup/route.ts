@@ -1,6 +1,32 @@
+import { readFileSync } from "fs";
+import { join } from "path";
 import { NextRequest, NextResponse } from "next/server";
+import { getResend } from "@/lib/resend";
 
-const SAMPLE_REPORT_URL = "https://www.dumbroof.ai/sample/forensic-report-sample.pdf";
+const EMAIL_FROM_NOREPLY = "DumbRoof <noreply@dumbroof.ai>";
+
+const TEAM_EMAILS = [
+  "tkovack@usaroofmasters.com",
+  "hello@dumbroof.ai",
+  "arivera@usaroofmasters.com",
+  "tom@dumbroof.ai",
+  "kristen@dumbroof.ai",
+];
+
+// Cache the base64-encoded PDF across invocations within the same cold start.
+// The file is 10 MB — encoding it once per cold start instead of per request
+// saves ~100-500ms and avoids the HTTP round-trip of fetching from our own CDN.
+let _pdfBase64: string | null = null;
+function getSamplePdfBase64(): string | null {
+  if (_pdfBase64) return _pdfBase64;
+  try {
+    const buf = readFileSync(join(process.cwd(), "public/sample/forensic-report-sample.pdf"));
+    _pdfBase64 = buf.toString("base64");
+    return _pdfBase64;
+  } catch {
+    return null;
+  }
+}
 
 const WELCOME_HTML = `
 <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; color: #1a1a2e;">
@@ -60,37 +86,20 @@ const WELCOME_HTML = `
 `;
 
 /**
- * Send welcome email with sample report attachment.
- * Runs server-side so browser navigation can't kill it.
+ * Send welcome email with cached PDF attachment. Falls back to no-attachment
+ * if the PDF can't be read (e.g. deployed without the public/ file).
  */
-async function sendWelcome(resendKey: string, email: string): Promise<void> {
+async function sendWelcome(email: string): Promise<void> {
   try {
-    const pdfRes = await fetch(SAMPLE_REPORT_URL, { signal: AbortSignal.timeout(10000) });
-    if (!pdfRes.ok) {
-      // PDF fetch failed — send welcome without attachment rather than not sending at all
-      await fetch("https://api.resend.com/emails", {
-        method: "POST",
-        headers: { Authorization: `Bearer ${resendKey}`, "Content-Type": "application/json" },
-        body: JSON.stringify({
-          from: "DumbRoof <noreply@dumbroof.ai>",
-          to: [email],
-          subject: "Your 3 free claims are ready",
-          html: WELCOME_HTML,
-        }),
-      });
-      return;
-    }
-    const pdfBuffer = await pdfRes.arrayBuffer();
-    const pdfBase64 = Buffer.from(pdfBuffer).toString("base64");
+    const resend = getResend();
+    const pdfBase64 = getSamplePdfBase64();
 
-    await fetch("https://api.resend.com/emails", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${resendKey}`, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        from: "DumbRoof <noreply@dumbroof.ai>",
-        to: [email],
-        subject: "Your 3 free claims are ready",
-        html: WELCOME_HTML,
+    await resend.emails.send({
+      from: EMAIL_FROM_NOREPLY,
+      to: [email],
+      subject: "Your 3 free claims are ready",
+      html: WELCOME_HTML,
+      ...(pdfBase64 && {
         attachments: [
           { filename: "DumbRoof-Sample-Forensic-Report.pdf", content: pdfBase64 },
         ],
@@ -102,11 +111,6 @@ async function sendWelcome(resendKey: string, email: string): Promise<void> {
 }
 
 export async function POST(req: NextRequest) {
-  const RESEND_KEY = process.env.RESEND_API_KEY?.trim();
-  if (!RESEND_KEY) {
-    return NextResponse.json({ error: "No Resend key" }, { status: 500 });
-  }
-
   const { email, source } = await req.json();
   if (!email) {
     return NextResponse.json({ error: "No email" }, { status: 400 });
@@ -120,29 +124,22 @@ export async function POST(req: NextRequest) {
   // but window.location.href navigation killed 87% of those requests on mobile
   // before the PDF download + email send could complete.
   //
-  // Using allSettled so a failure in one (e.g. Resend network blip) doesn't
-  // prevent the other from completing or cause a 500 response.
+  // Using allSettled so a failure in one doesn't prevent the other from completing.
+  const resend = getResend();
   const results = await Promise.allSettled([
-    // Team notification (fast — small HTML, no attachments)
-    fetch("https://api.resend.com/emails", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${RESEND_KEY}`, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        from: "DumbRoof <noreply@dumbroof.ai>",
-        to: ["tkovack@usaroofmasters.com", "hello@dumbroof.ai", "arivera@usaroofmasters.com", "tom@dumbroof.ai", "kristen@dumbroof.ai"],
-        subject: `New User Signup: ${email}`,
-        html: `<h2>New User Registered on dumbroof.ai</h2>
-          <p><strong>${email}</strong> just created an account.</p>
-          <p>Source: <strong>${sourceLabel}</strong></p>
-          <p>Time: ${timestamp} ET</p>
-          <p><a href="https://www.dumbroof.ai/dashboard/admin" style="background-color:#2563eb;color:white;padding:10px 24px;border-radius:8px;text-decoration:none;font-weight:600;display:inline-block;">View Admin Dashboard</a></p>`,
-      }),
+    resend.emails.send({
+      from: EMAIL_FROM_NOREPLY,
+      to: TEAM_EMAILS,
+      subject: `New User Signup: ${email}`,
+      html: `<h2>New User Registered on dumbroof.ai</h2>
+        <p><strong>${email}</strong> just created an account.</p>
+        <p>Source: <strong>${sourceLabel}</strong></p>
+        <p>Time: ${timestamp} ET</p>
+        <p><a href="https://www.dumbroof.ai/dashboard/admin" style="background-color:#2563eb;color:white;padding:10px 24px;border-radius:8px;text-decoration:none;font-weight:600;display:inline-block;">View Admin Dashboard</a></p>`,
     }),
-    // Welcome email to user (slow — downloads PDF sample report, then sends with attachment)
-    sendWelcome(RESEND_KEY, email),
+    sendWelcome(email),
   ]);
 
-  // Log failures but always return 200 — the client already navigated away
   for (const r of results) {
     if (r.status === "rejected") {
       console.error("notify-signup partial failure:", r.reason);
