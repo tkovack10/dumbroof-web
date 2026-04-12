@@ -24,6 +24,7 @@ import { useCountUp } from "@/hooks/use-count-up";
 import { Confetti } from "@/components/confetti";
 import { ClaimBrainChat } from "@/components/claim-brain-chat";
 import { CommunicationLog } from "@/components/communication-log";
+import { ClaimLifecycleBar } from "@/components/claim-lifecycle-bar";
 
 function EditableField({ value, placeholder, field, claimId, prefix, className, onSave }: {
   value: string;
@@ -712,6 +713,16 @@ export default function ClaimDetailPage() {
       })()}
 
       <div className="max-w-4xl mx-auto px-6 py-10 space-y-6">
+        {/* Claim Lifecycle Progress Bar */}
+        <ClaimLifecycleBar
+          claim={claim}
+          onScrollTo={(section) => {
+            // Scroll to the relevant upload section or component
+            const el = document.getElementById(`lifecycle-${section}`);
+            if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+          }}
+        />
+
         {/* Claim Header */}
         <div className="glass-card p-6">
           <div className="flex items-start justify-between">
@@ -1112,7 +1123,7 @@ export default function ClaimDetailPage() {
 
         {/* Estimate & Damage Assessment */}
         {isReady && !isForensicOnly && (
-          <EstimateView claimId={claim.id} />
+          <div id="lifecycle-estimate"><EstimateView claimId={claim.id} /></div>
         )}
 
         {/* Estimate Configuration — any claim with measurements can configure roof/gutters/siding */}
@@ -1132,22 +1143,24 @@ export default function ClaimDetailPage() {
 
         {/* Supplement Composer — only for post-scope claims with comparison data */}
         {isReady && claim.scope_comparison && !isForensicOnly && (
-          <SupplementComposer
-            claimId={claim.id}
-            claimAddress={claim.address}
-            carrierName={claim.carrier}
-            comparisonRows={claim.scope_comparison as ScopeComparisonRow[]}
-            carrierRcv={claim.current_carrier_rcv ?? claim.original_carrier_rcv ?? 0}
-            contractorRcv={claim.contractor_rcv ?? 0}
-            userId={currentUserId}
-            userName={userProfile.name}
-            companyName={userProfile.company}
-            companyPhone={userProfile.phone}
-          />
+          <div id="lifecycle-supplement">
+            <SupplementComposer
+              claimId={claim.id}
+              claimAddress={claim.address}
+              carrierName={claim.carrier}
+              comparisonRows={claim.scope_comparison as ScopeComparisonRow[]}
+              carrierRcv={claim.current_carrier_rcv ?? claim.original_carrier_rcv ?? 0}
+              contractorRcv={claim.contractor_rcv ?? 0}
+              userId={currentUserId}
+              userName={userProfile.name}
+              companyName={userProfile.company}
+              companyPhone={userProfile.phone}
+            />
+          </div>
         )}
 
         {/* Upload Additional Documents */}
-        <div className="glass-card p-6">
+        <div id="lifecycle-forensic" className="glass-card p-6">
           <div className="flex items-center justify-between mb-4">
             <div>
               <h2 className="text-sm font-semibold text-[var(--white)]">
@@ -1377,15 +1390,17 @@ export default function ClaimDetailPage() {
 
         {/* Certificate of Completion */}
         {isReady && !isForensicOnly && (
-          <CocBuilder
-            claimId={claim.id}
-            claimAddress={claim.address}
-            carrierName={claim.carrier}
-            userId={currentUserId}
-            filePath={claim.file_path}
-            claimNumber={claim.claim_number || ""}
-            adjusterEmail={claim.adjuster_email || ""}
-          />
+          <div id="lifecycle-completion">
+            <CocBuilder
+              claimId={claim.id}
+              claimAddress={claim.address}
+              carrierName={claim.carrier}
+              userId={currentUserId}
+              filePath={claim.file_path}
+              claimNumber={claim.claim_number || ""}
+              adjusterEmail={claim.adjuster_email || ""}
+            />
+          </div>
         )}
         {isReady && isForensicOnly && (
           <LockedCard title="Certificate of Substantial Completion" description="Generate and send completion documents with embedded photos." />
