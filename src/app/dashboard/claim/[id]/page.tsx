@@ -495,6 +495,7 @@ export default function ClaimDetailPage() {
   const isProcessing = claim.status === "processing";
   const isUploaded = claim.status === "uploaded";
   const isReprocessingState = isProcessing || isUploaded;
+  const isQAReviewPending = claim.status === "qa_review_pending";
   const integrity = claim.photo_integrity;
   const isForensicOnly = claim.report_mode === "forensic_only";
 
@@ -986,6 +987,30 @@ export default function ClaimDetailPage() {
               <p className="text-xs text-orange-800">
                 <strong>What to do:</strong> Upload additional photos following the tips above, then click &ldquo;Reprocess&rdquo; to re-analyze your claim. Better documentation can turn a weak claim into a winning one.
               </p>
+            </div>
+          </div>
+        )}
+
+        {/* QA Review Pending — our auditor caught something we want to fix before release */}
+        {isQAReviewPending && (
+          <div className="bg-blue-500/10 border border-blue-500/30 rounded-2xl p-6">
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center shrink-0">
+                <svg className="w-5 h-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                </svg>
+              </div>
+              <div className="flex-1">
+                <h2 className="text-base font-bold text-blue-100">
+                  Under Quality Review
+                </h2>
+                <p className="text-sm text-blue-200/90 mt-1">
+                  Our AI quality auditor flagged your report for a final human review before release. This is a safety check to make sure every detail is accurate — we&apos;ll release it shortly, typically within a few hours. You&apos;ll get an email the moment it&apos;s ready.
+                </p>
+                <p className="text-xs text-blue-200/70 mt-2">
+                  No action needed on your end.
+                </p>
+              </div>
             </div>
           </div>
         )}

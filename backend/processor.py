@@ -27,6 +27,7 @@ from carrier_intelligence import suggest_arguments
 from analytics import predict_settlement, detect_price_deviations
 from xactimate_lookup import XactRegistry, _clean_desc
 from code_compliance import enrich_line_items_with_citations
+from qa_auditor import audit_forensic_prose, format_audit_for_email
 
 # Xactimate registry cache: market_code → XactRegistry instance
 _XACT_REGISTRIES = {}
@@ -4783,14 +4784,41 @@ async def process_claim(claim_id: str):
             uploaded_pdfs.append(pdf_name)
             print(f"[PROCESS] Uploaded: {pdf_name}")
 
-        # 12. Update claim status to ready
+        # 11b. QA Auditor — last line of defense before customer sees PDFs.
+        # Reviews the generated forensic prose against ground-truth claim data
+        # and flags any hallucinated address/date/carrier/UPPA violation.
+        # See ~/.claude/plans/proud-wiggling-hearth.md Phase 1.
+        qa_audit_result: Optional[dict] = None
+        try:
+            print("[QA] Running forensic prose audit...")
+            qa_audit_result = audit_forensic_prose(
+                config,
+                claim,
+                claude,
+                call_claude_fn=_call_claude_with_retry,
+            )
+            crit_count = len(qa_audit_result.get("critical", []) or [])
+            med_count = len(qa_audit_result.get("medium", []) or [])
+            if crit_count:
+                print(f"[QA] BLOCKED — {crit_count} critical, {med_count} medium: {qa_audit_result.get('summary', '')}")
+            else:
+                print(f"[QA] PASSED — {med_count} medium warnings: {qa_audit_result.get('summary', '')}")
+        except Exception as e:
+            print(f"[QA] Audit failed (non-fatal, failing open): {e}")
+            qa_audit_result = None
+
+        qa_blocked = bool(qa_audit_result and qa_audit_result.get("critical"))
+
+        # 12. Update claim status to ready (or qa_review_pending if blocked)
         from datetime import datetime, timezone
         update_data: dict = {
-            "status": "ready",
+            "status": "qa_review_pending" if qa_blocked else "ready",
             "output_files": uploaded_pdfs,
             "improvement_guidance": None,  # Clear any previous rejection guidance
             "last_processed_at": datetime.now(timezone.utc).isoformat(),
         }
+        if qa_audit_result is not None:
+            update_data["qa_audit_flags"] = qa_audit_result
         if photo_integrity and photo_integrity.get("total", 0) > 0:
             update_data["photo_integrity"] = {
                 "total": photo_integrity["total"],
@@ -5012,14 +5040,98 @@ async def process_claim(claim_id: str):
             print(f"[SYNC] GitHub sync failed (non-fatal): {e}")
 
         # 14. Send completion email notification (non-fatal)
-        try:
-            _send_completion_notification(claim_id)
-        except Exception as e:
-            print(f"[NOTIFY] Email notification failed (non-fatal): {e}")
+        # If QA auditor blocked the claim, skip the customer email and alert Tom instead.
+        if qa_blocked:
+            try:
+                _send_qa_alert_email(claim, qa_audit_result or {})
+                print("[QA] Alert email sent to admin")
+            except Exception as e:
+                print(f"[QA] Alert email failed (non-fatal): {e}")
+        else:
+            try:
+                _send_completion_notification(claim_id)
+            except Exception as e:
+                print(f"[NOTIFY] Email notification failed (non-fatal): {e}")
 
     # Reset telemetry globals
     _TELEMETRY_SB = None
     _TELEMETRY_CLAIM_ID = None
+
+
+def _send_qa_alert_email(claim: dict, audit: dict):
+    """Alert Tom when the QA auditor blocks a claim delivery.
+
+    Uses the existing Resend helper from claim_brain_email. Non-fatal —
+    if Resend is down the block is still enforced in the DB, we just
+    lose the proactive notification.
+    """
+    try:
+        from claim_brain_email import send_via_resend
+    except Exception as e:
+        print(f"[QA] Could not import send_via_resend: {e}")
+        return
+
+    address = claim.get("address", "unknown")
+    claim_id = claim.get("id", "unknown")
+    crit = audit.get("critical", []) or []
+    med = audit.get("medium", []) or []
+    summary = audit.get("summary", "")
+    recommendation = (audit.get("recommendation") or "hold").upper()
+
+    subject = f"[QA BLOCK] {address} — {len(crit)} critical issue{'s' if len(crit) != 1 else ''}"
+
+    deep_link = f"https://www.dumbroof.ai/admin/qa-review?claim={claim_id}"
+
+    def _render_issue_list(issues: list, label: str, color: str) -> str:
+        if not issues:
+            return ""
+        rows = []
+        for it in issues:
+            issue = it.get("issue", "?")
+            loc = it.get("location", "?")
+            found = it.get("found")
+            expected = it.get("expected")
+            quote = (it.get("quote") or "")[:250]
+            body = f"<strong>{issue}</strong> &nbsp;<span style='color:#666'>@ {loc}</span>"
+            if found and expected:
+                body += f"<br><span style='color:#b91c1c'>found:</span> {found}<br><span style='color:#15803d'>expected:</span> {expected}"
+            if quote:
+                body += f"<br><em style='color:#666'>“{quote}”</em>"
+            rows.append(f"<li style='margin:10px 0'>{body}</li>")
+        return f"<h3 style='color:{color};margin:18px 0 6px'>{label} ({len(issues)})</h3><ul style='padding-left:20px;margin:0'>{''.join(rows)}</ul>"
+
+    body_html = f"""
+<div style='font-family:-apple-system,system-ui,sans-serif;max-width:680px;margin:0 auto;padding:20px;background:#fff;color:#111'>
+  <div style='background:linear-gradient(135deg,#7f1d1d,#b91c1c);color:#fff;padding:20px;border-radius:8px;margin-bottom:20px'>
+    <h1 style='margin:0;font-size:22px'>QA Audit Blocked a Claim</h1>
+    <p style='margin:8px 0 0;font-size:15px;opacity:0.9'>Recommendation: <strong>{recommendation}</strong></p>
+  </div>
+  <div style='background:#f9fafb;padding:16px;border-radius:6px;margin-bottom:18px'>
+    <p style='margin:0 0 4px'><strong>Property:</strong> {address}</p>
+    <p style='margin:0 0 4px'><strong>Claim ID:</strong> <code>{claim_id}</code></p>
+    <p style='margin:8px 0 0;color:#374151'>{summary}</p>
+  </div>
+  {_render_issue_list(crit, '🛑 Critical', '#b91c1c')}
+  {_render_issue_list(med, '⚠️ Medium', '#b45309')}
+  <div style='margin-top:24px;padding:16px;background:#eff6ff;border-radius:6px'>
+    <p style='margin:0 0 8px;font-weight:600;color:#1e40af'>Review &amp; override</p>
+    <a href='{deep_link}' style='display:inline-block;background:#2563eb;color:#fff;padding:10px 18px;border-radius:6px;text-decoration:none;font-weight:600'>Open admin QA queue</a>
+  </div>
+  <p style='margin-top:24px;font-size:12px;color:#6b7280'>
+    The customer will NOT see this claim until you review and release it. Status set to <code>qa_review_pending</code>.
+  </p>
+</div>
+"""
+
+    try:
+        send_via_resend(
+            company_name="DumbRoof QA Auditor",
+            to_email="tkovack@usaroofmasters.com",
+            subject=subject,
+            body_html=body_html,
+        )
+    except Exception as e:
+        print(f"[QA] send_via_resend failed: {e}")
 
 
 def _send_completion_notification(claim_id: str):

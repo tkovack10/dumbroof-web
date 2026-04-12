@@ -92,4 +92,28 @@ export interface Claim {
   completion_date?: string | null;
   // Admin enrichment
   user_email?: string;
+  // QA auditor flags — written inline by backend/qa_auditor.py after each claim processes.
+  // When critical[] is non-empty, status is set to 'qa_review_pending' and the customer
+  // completion email is suppressed until an admin reviews via /admin/qa-review.
+  qa_audit_flags?: QAAuditResult | null;
+}
+
+export interface QAAuditIssue {
+  issue: string;
+  location?: string;
+  found?: string;
+  expected?: string;
+  quote?: string;
+}
+
+export interface QAAuditResult {
+  passed: boolean;
+  critical: QAAuditIssue[];
+  medium: QAAuditIssue[];
+  low: QAAuditIssue[];
+  recommendation: "ship" | "hold" | "reprocess";
+  summary: string;
+  ground_truth?: Record<string, unknown>;
+  audited_at?: string;
+  audit_error?: string;
 }

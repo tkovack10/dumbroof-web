@@ -1109,6 +1109,17 @@ async def claim_brain_chat(claim_id: str, body: ChatMessage):
     client = anthropic.Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
     user_id = body.user_id or claim_data.get("user_id", "")
 
+    # Persist user message to Supabase for richard-trainer + history rehydration
+    try:
+        sb.table("claim_brain_messages").insert({
+            "claim_id": claim_id,
+            "user_id": user_id or None,
+            "role": "user",
+            "content": body.message[:10000],
+        }).execute()
+    except Exception as e:
+        print(f"[BRAIN] Failed to persist user message (non-fatal): {e}")
+
     async def stream_response():
         try:
             messages = list(_brain_conversations[claim_id])
@@ -1242,6 +1253,22 @@ async def claim_brain_chat(claim_id: str, body: ChatMessage):
             except Exception:
                 pass
 
+            # Persist assistant response for richard-trainer + history rehydration
+            try:
+                tool_calls_json = [{"name": t.get("name"), "result_preview": str(t.get("result", ""))[:200]} for t in tool_results_for_frontend] if tool_results_for_frontend else None
+                sb.table("claim_brain_messages").insert({
+                    "claim_id": claim_id,
+                    "user_id": user_id or None,
+                    "role": "assistant",
+                    "content": full_response[:10000],
+                    "tool_calls": tool_calls_json,
+                    "model": "claude-sonnet-4-20250514",
+                    "tokens_in": int(prompt_tokens * 1.3) if prompt_tokens else None,
+                    "tokens_out": int(completion_tokens * 1.3) if completion_tokens else None,
+                }).execute()
+            except Exception as e:
+                print(f"[BRAIN] Failed to persist assistant message (non-fatal): {e}")
+
             yield f"data: {json.dumps({'done': True})}\n\n"
         except Exception as e:
             yield f"data: {json.dumps({'error': str(e)})}\n\n"
@@ -1311,6 +1338,11 @@ async def approve_brain_action(claim_id: str, body: ToolApproval):
 async def reset_claim_brain(claim_id: str):
     """Reset the Claim Brain conversation for a claim."""
     _brain_conversations.pop(claim_id, None)
+    try:
+        sb = get_supabase_client()
+        sb.table("claim_brain_messages").delete().eq("claim_id", claim_id).execute()
+    except Exception as e:
+        print(f"[BRAIN] Failed to delete persisted messages (non-fatal): {e}")
     return {"status": "reset", "claim_id": claim_id}
 
 
@@ -1790,14 +1822,16 @@ async def integration_status(user_id: str):
         # Cascade: look up company admin's profile
         admin_profile = None
 
-        # Try company_id first
+        # Try company_id first — find an admin who actually has keys
         if profile and profile.get("company_id"):
             admin_result = sb.table("company_profiles").select(
                 "acculynx_api_key, acculynx_connected_at, "
                 "companycam_api_key, companycam_connected_at"
-            ).eq("company_id", profile["company_id"]).eq("is_admin", True).limit(1).execute()
-            if admin_result.data:
-                admin_profile = admin_result.data[0]
+            ).eq("company_id", profile["company_id"]).eq("is_admin", True).execute()
+            for candidate in (admin_result.data or []):
+                if candidate.get("acculynx_api_key") or candidate.get("companycam_api_key"):
+                    admin_profile = candidate
+                    break
 
         # Try domain matching — get user's email from their profile or auth
         if not admin_profile:
@@ -1860,11 +1894,14 @@ async def _get_user_integration_client(user_id: str, provider: str):
     profile = result.data[0] if result.data else None
     api_key = profile.get(col) if profile else None
 
-    # Fall back 1: company_id → admin profile
+    # Fall back 1: company_id → admin profile (find one that actually has the key)
     if not api_key and profile and profile.get("company_id"):
         company_id = profile["company_id"]
-        admin_result = sb.table("company_profiles").select(col).eq("company_id", company_id).eq("is_admin", True).limit(1).execute()
-        api_key = admin_result.data[0].get(col) if admin_result.data else None
+        admin_result = sb.table("company_profiles").select(col).eq("company_id", company_id).eq("is_admin", True).execute()
+        for candidate in (admin_result.data or []):
+            if candidate.get(col):
+                api_key = candidate[col]
+                break
 
     # Fall back 2: domain matching → find admin with same email domain who has the key
     if not api_key:

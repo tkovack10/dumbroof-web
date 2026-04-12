@@ -7,6 +7,18 @@
     {
       "path": "/api/cron/document-quality",
       "schedule": "0 13,21 * * *"
+    },
+    {
+      "path": "/api/cron/damage-detective",
+      "schedule": "0 13 * * 1"
+    },
+    {
+      "path": "/api/cron/carrier-analyst",
+      "schedule": "0 14 * * 1"
+    },
+    {
+      "path": "/api/cron/richard-trainer",
+      "schedule": "0 20 * * 0"
     }
   ]
 }
