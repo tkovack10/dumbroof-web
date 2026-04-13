@@ -466,36 +466,64 @@ export default function NewClaimPage() {
                 </div>
               </div>
 
-              <div onClick={() => setHasMeasurements(!hasMeasurements)} className="flex items-start gap-4 p-4 rounded-xl bg-white/[0.04] border border-[var(--border-glass)] cursor-pointer hover:bg-white/[0.06] transition-colors">
-                <button
-                  type="button"
-                  onClick={(e) => { e.stopPropagation(); setHasMeasurements(!hasMeasurements); }}
-                  className={`mt-0.5 w-6 h-6 rounded-lg border-2 flex items-center justify-center shrink-0 transition-colors ${
-                    hasMeasurements ? "border-green-400 bg-green-500/20" : "border-[var(--border-glass)]"
-                  }`}
-                >
-                  {hasMeasurements && <svg className="w-4 h-4 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>}
-                </button>
-                <div>
-                  <p className="text-sm font-semibold text-[var(--white)]">Roof / siding measurements</p>
-                  <p className="text-xs text-[var(--gray-muted)] mt-0.5">EagleView, HOVER, GAF QuickMeasure, or any measurement report. Don&apos;t have them yet? That&apos;s fine &mdash; add them anytime.</p>
+              <div className="rounded-xl bg-white/[0.04] border border-[var(--border-glass)] overflow-hidden">
+                <div onClick={() => setHasMeasurements(!hasMeasurements)} className="flex items-start gap-4 p-4 cursor-pointer hover:bg-white/[0.06] transition-colors">
+                  <button
+                    type="button"
+                    onClick={(e) => { e.stopPropagation(); setHasMeasurements(!hasMeasurements); }}
+                    className={`mt-0.5 w-6 h-6 rounded-lg border-2 flex items-center justify-center shrink-0 transition-colors ${
+                      hasMeasurements ? "border-green-400 bg-green-500/20" : "border-[var(--border-glass)]"
+                    }`}
+                  >
+                    {hasMeasurements && <svg className="w-4 h-4 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>}
+                  </button>
+                  <div>
+                    <p className="text-sm font-semibold text-[var(--white)]">Roof / siding measurements</p>
+                    <p className="text-xs text-[var(--gray-muted)] mt-0.5">EagleView, HOVER, GAF QuickMeasure, or any measurement report. Don&apos;t have them yet? That&apos;s fine &mdash; add them anytime.</p>
+                  </div>
                 </div>
+                {hasMeasurements && (
+                  <div className="px-4 pb-4 pt-0">
+                    <FileUploadZone
+                      label="Upload Measurements"
+                      description="PDF or email file (.eml) with your EagleView, HOVER, or measurement report."
+                      accept=".pdf,.eml"
+                      multiple
+                      files={measurementFiles}
+                      onFilesChange={setMeasurementFiles}
+                    />
+                  </div>
+                )}
               </div>
 
-              <div onClick={() => setHasCarrierScope(!hasCarrierScope)} className="flex items-start gap-4 p-4 rounded-xl bg-white/[0.04] border border-[var(--border-glass)] cursor-pointer hover:bg-white/[0.06] transition-colors">
-                <button
-                  type="button"
-                  onClick={(e) => { e.stopPropagation(); setHasCarrierScope(!hasCarrierScope); }}
-                  className={`mt-0.5 w-6 h-6 rounded-lg border-2 flex items-center justify-center shrink-0 transition-colors ${
-                    hasCarrierScope ? "border-green-400 bg-green-500/20" : "border-[var(--border-glass)]"
-                  }`}
-                >
-                  {hasCarrierScope && <svg className="w-4 h-4 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>}
-                </button>
-                <div>
-                  <p className="text-sm font-semibold text-[var(--white)]">Insurance carrier scope</p>
-                  <p className="text-xs text-[var(--gray-muted)] mt-0.5">The carrier&apos;s estimate or scope of loss. Don&apos;t have it yet? That&apos;s fine &mdash; add it once you receive it.</p>
+              <div className="rounded-xl bg-white/[0.04] border border-[var(--border-glass)] overflow-hidden">
+                <div onClick={() => setHasCarrierScope(!hasCarrierScope)} className="flex items-start gap-4 p-4 cursor-pointer hover:bg-white/[0.06] transition-colors">
+                  <button
+                    type="button"
+                    onClick={(e) => { e.stopPropagation(); setHasCarrierScope(!hasCarrierScope); }}
+                    className={`mt-0.5 w-6 h-6 rounded-lg border-2 flex items-center justify-center shrink-0 transition-colors ${
+                      hasCarrierScope ? "border-green-400 bg-green-500/20" : "border-[var(--border-glass)]"
+                    }`}
+                  >
+                    {hasCarrierScope && <svg className="w-4 h-4 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>}
+                  </button>
+                  <div>
+                    <p className="text-sm font-semibold text-[var(--white)]">Insurance carrier scope</p>
+                    <p className="text-xs text-[var(--gray-muted)] mt-0.5">The carrier&apos;s estimate or scope of loss. Don&apos;t have it yet? That&apos;s fine &mdash; add it once you receive it.</p>
+                  </div>
                 </div>
+                {hasCarrierScope && (
+                  <div className="px-4 pb-4 pt-0">
+                    <FileUploadZone
+                      label="Upload Carrier Scope"
+                      description="The carrier's estimate or scope of loss PDF, or forward the email (.eml)."
+                      accept=".pdf,.eml"
+                      multiple
+                      files={scopeFiles}
+                      onFilesChange={setScopeFiles}
+                    />
+                  </div>
+                )}
               </div>
             </div>
 
