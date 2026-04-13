@@ -96,6 +96,7 @@ export interface Claim {
   // When critical[] is non-empty, status is set to 'qa_review_pending' and the customer
   // completion email is suppressed until an admin reviews via /admin/qa-review.
   qa_audit_flags?: QAAuditResult | null;
+  carrier_analyst_flags?: Record<string, unknown> | null;
 }
 
 export interface QAAuditIssue {

@@ -1236,6 +1236,8 @@ async def claim_brain_chat(claim_id: str, body: ChatMessage):
             _brain_conversations[claim_id].append({"role": "assistant", "content": full_response})
 
             # Log to telemetry
+            prompt_tokens = None
+            completion_tokens = None
             try:
                 from telemetry import log_processing_step
                 prompt_tokens = len(system_prompt.split()) + sum(

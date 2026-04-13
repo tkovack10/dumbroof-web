@@ -44,7 +44,12 @@ def _build_ground_truth(config: dict, claim: dict) -> dict:
 
     photo_count = 0
     try:
-        photo_count = int(config.get("photo_count", 0) or 0)
+        # photo_count lives in config["forensic"]["total_photos"] (set by build_claim_config),
+        # NOT config["photo_count"] which doesn't exist. Fallback to photo_annotations length.
+        forensic = config.get("forensic", {}) or {}
+        photo_count = int(forensic.get("total_photos", 0) or 0)
+        if not photo_count:
+            photo_count = len(config.get("photo_annotations", {}) or {})
     except (TypeError, ValueError):
         photo_count = 0
 

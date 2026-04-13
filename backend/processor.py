@@ -27,7 +27,7 @@ from carrier_intelligence import suggest_arguments
 from analytics import predict_settlement, detect_price_deviations
 from xactimate_lookup import XactRegistry, _clean_desc
 from code_compliance import enrich_line_items_with_citations
-from qa_auditor import audit_forensic_prose, format_audit_for_email
+from qa_auditor import audit_forensic_prose
 
 # Xactimate registry cache: market_code → XactRegistry instance
 _XACT_REGISTRIES = {}
@@ -1457,12 +1457,12 @@ Raw damage analysis from photo inspection:
 {damage_summary[:3000]}
 
 Weather data: Storm date {weather_data.get('storm_date', 'N/A')}, hail size {weather_data.get('hail_size', 'N/A')}
-Carrier RCV: ${carrier_rcv:,.2f}
 Photo count: {photo_count}
 Key findings count: {len(key_findings)}
+{f"Carrier RCV: ${carrier_rcv:,.2f}" if carrier_rcv > 0 else "Carrier scope: NOT YET RECEIVED (pre-scope forensic report)"}
 {playbook_section}{intel_section}
 
-Write 3-5 SHORT paragraphs (2-4 sentences each) that build evidence gracefully:
+Write 3-{4 if carrier_rcv > 0 else 3} SHORT paragraphs (2-4 sentences each) that build evidence gracefully:
 
 Paragraph 1 — SCOPE: What property was inspected, what material systems are involved, what storm event caused the damage, and the date of loss. Set the scene.
 
@@ -1470,7 +1470,7 @@ Paragraph 2 — KEY DAMAGE FINDINGS: Summarize the primary storm damage document
 
 Paragraph 3 — TECHNICAL BASIS: Why full replacement is required vs. spot repair — material matching impossibility, code compliance triggers, non-repairability of aged system post-storm.
 
-Paragraph 4 (if carrier scope exists) — CARRIER VARIANCE: The carrier's scope at ${carrier_rcv:,.2f} does not account for [key missing items]. Our forensic analysis identifies a scope significantly beyond the carrier's approved amount.
+{"Paragraph 4 — CARRIER VARIANCE: The carrier" + chr(39) + f"s scope at ${carrier_rcv:,.2f} does not account for [key missing items]. Our forensic analysis identifies a scope significantly beyond the carrier" + chr(39) + "s approved amount." if carrier_rcv > 0 else "IMPORTANT: There is NO carrier scope yet. This is a pre-scope forensic report. Do NOT reference carrier scope, carrier RCV, $0.00, or any carrier-approved amount. Do NOT write anything about what the carrier did or did not approve."}
 
 RULES:
 - NO run-on paragraphs — each paragraph should be 2-4 sentences max
@@ -1526,7 +1526,7 @@ Key forensic findings:
 Code violations documented:
 {violations_text}
 
-Carrier RCV: ${carrier_rcv:,.2f}
+{f"Carrier RCV: ${carrier_rcv:,.2f}" if carrier_rcv > 0 else "Carrier scope: NOT YET RECEIVED (pre-scope forensic report)"}
 Damage summary context: {damage_summary[:1500]}{intel_section}
 
 Write 3-4 SHORT paragraphs (2-4 sentences each) that tie everything together:
@@ -1535,7 +1535,7 @@ Paragraph 1 — EVIDENCE SYNTHESIS: Based on our forensic analysis of {finding_c
 
 Paragraph 2 — TECHNICAL DETERMINATION: The confirmed damage to [material] and associated components requires full system replacement. Explain WHY in 2-3 sentences — material matching, code triggers, non-repairability.
 
-Paragraph 3 — SCOPE RECOMMENDATION: Based on the documented damage, applicable building codes, and industry standards, we recommend full replacement of [systems]. The carrier's current scope of ${carrier_rcv:,.2f} does not adequately address the documented conditions.
+{f"Paragraph 3 — SCOPE RECOMMENDATION: Based on the documented damage, applicable building codes, and industry standards, we recommend full replacement of [systems]. The carrier" + chr(39) + f"s current scope of ${carrier_rcv:,.2f} does not adequately address the documented conditions." if carrier_rcv > 0 else "Paragraph 3 — SCOPE RECOMMENDATION: Based on the documented damage, applicable building codes, and industry standards, we recommend full replacement of [systems]. State what the forensic evidence supports — do NOT reference any carrier scope or dollar amount since no carrier scope has been received yet."}
 
 Paragraph 4 (optional) — PROFESSIONAL STANDARD: Reference the applicable standards (HAAG, NRCA, IRC) that support the determination.
 
@@ -1969,25 +1969,6 @@ def build_claim_config(
             import traceback as _tb
             _tb.print_exc()
             sys.stdout.flush()
-
-    # Step 2b: Per-claim carrier intelligence (runs after scope comparison)
-    carrier_analyst_result = None
-    if carrier_data and carrier_data.get("carrier_rcv", 0) > 0:
-        try:
-            from carrier_analyst import analyze_carrier_scope
-            print("[CARRIER-ANALYST] Analyzing carrier scope for underpayment tactics...")
-            carrier_analyst_result = analyze_carrier_scope(
-                carrier_data=carrier_data,
-                measurements=measurements or {},
-                carrier_name=carrier_data.get("carrier", {}).get("name", "") if isinstance(carrier_data.get("carrier"), dict) else "",
-                config={"line_items": line_items, "property": {"state": state}, "scope": {"o_and_p": len(set(li.get("trade","").lower() for li in line_items if li.get("trade"))) >= 3}},
-                claude_client=claude,
-                call_claude_fn=_call_claude_with_retry,
-            )
-            tactic_count = len(carrier_analyst_result.get("tactics_found", []))
-            print(f"[CARRIER-ANALYST] Found {tactic_count} tactics, variance ~{carrier_analyst_result.get('estimated_variance_pct', 0)}%")
-        except Exception as e:
-            print(f"[CARRIER-ANALYST] Analysis failed (non-fatal): {e}")
 
     # Step 3: Carrier-informed data is now available — config building below uses comparison results
     # scope_comparison_matched replaces raw carrier_line_items in config["carrier"]
@@ -4780,6 +4761,29 @@ async def process_claim(claim_id: str):
             uploaded_pdfs.append(pdf_name)
             print(f"[PROCESS] Uploaded: {pdf_name}")
 
+        # 11a. Carrier analyst — per-claim underpayment tactic detection.
+        # Runs after config is built so we have line_items + carrier data.
+        carrier_analyst_result = None
+        if carrier_data and carrier_data.get("carrier_rcv", 0) > 0:
+            try:
+                from carrier_analyst import analyze_carrier_scope
+                _state = config.get("property", {}).get("state", "")
+                _li = config.get("line_items", [])
+                _trades = set(li.get("trade", "").lower().strip() for li in _li if li.get("trade"))
+                print("[CARRIER-ANALYST] Analyzing carrier scope for underpayment tactics...")
+                carrier_analyst_result = analyze_carrier_scope(
+                    carrier_data=carrier_data,
+                    measurements=measurements or {},
+                    carrier_name=carrier_data.get("carrier", {}).get("name", "") if isinstance(carrier_data.get("carrier"), dict) else "",
+                    config={"line_items": _li, "property": {"state": _state}, "scope": {"o_and_p": len(_trades) >= 3}},
+                    claude_client=claude,
+                    call_claude_fn=_call_claude_with_retry,
+                )
+                tactic_count = len(carrier_analyst_result.get("tactics_found", []))
+                print(f"[CARRIER-ANALYST] Found {tactic_count} tactics, variance ~{carrier_analyst_result.get('estimated_variance_pct', 0)}%")
+            except Exception as e:
+                print(f"[CARRIER-ANALYST] Analysis failed (non-fatal): {e}")
+
         # 11b. QA Auditor — last line of defense before customer sees PDFs.
         # Reviews the generated forensic prose against ground-truth claim data
         # and flags any hallucinated address/date/carrier/UPPA violation.
@@ -5051,7 +5055,9 @@ async def process_claim(claim_id: str):
             except Exception as e:
                 print(f"[NOTIFY] Email notification failed (non-fatal): {e}")
 
-    # Reset telemetry globals
+    # Reset telemetry globals (in finally-like position — also reset on crash
+    # via the except block in run_processing() in main.py, but this catches
+    # normal completion and non-fatal paths)
     _TELEMETRY_SB = None
     _TELEMETRY_CLAIM_ID = None
 
