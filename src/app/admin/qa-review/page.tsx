@@ -19,11 +19,15 @@ export default async function QAReviewPage() {
 
   if (!admin || admin.length === 0) redirect("/dashboard");
 
-  const { data: claims } = await supabaseAdmin
+  const { data: claims, error } = await supabaseAdmin
     .from("claims")
-    .select("id, slug, address, carrier, status, qa_audit_flags, last_processed_at, user_id, contractor_rcv, user_email")
+    .select("id, slug, address, carrier, status, qa_audit_flags, last_processed_at, user_id, contractor_rcv")
     .eq("status", "qa_review_pending")
     .order("last_processed_at", { ascending: false });
+
+  if (error) {
+    console.error("[qa-review] fetch error:", error);
+  }
 
   return <QAReviewQueue initialClaims={claims || []} />;
 }

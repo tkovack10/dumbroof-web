@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  .ad {
+    width: 1080px;
+    height: 1080px;
+    position: relative;
+    overflow: hidden;
+    page-break-after: always;
+    margin-bottom: 40px;
+  }
+
+  .label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 14px;
+    color: #999;
+    text-align: center;
+    padding: 12px;
+    background: #f0f0f0;
+  }
+
+  /* ============================================
+     AD 1 — "EVIDENCE" — Forensic / data grid
+     Color block: Kryptonite Green top, white bottom
+     ============================================ */
+  .ad1 {
+    background: #F9F9F9;
+    display: flex;
+    flex-direction: column;
+  }
+  .ad1 .top-bar {
+    background: #ABFF5A;
+    height: 160px;
+    display: flex;
+    align-items: center;
+    padding: 0 70px;
+    gap: 24px;
+  }
+  .ad1 .top-bar .richard-icon {
+    width: 80px;
+    height: 80px;
+  }
+  .ad1 .top-bar .brand {
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 700;
+    font-size: 42px;
+    color: #090909;
+    letter-spacing: -1px;
+  }
+  .ad1 .body {
+    flex: 1;
+    padding: 70px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+  .ad1 .mono-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 16px;
+    font-weight: 600;
+    color: #085E55;
+    text-transform: uppercase;
+    letter-spacing: 3px;
+    margin-bottom: 30px;
+  }
+  .ad1 .headline {
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 700;
+    font-size: 72px;
+    line-height: 1.05;
+    color: #090909;
+    margin-bottom: 40px;
+    letter-spacing: -2px;
+  }
+  .ad1 .headline em {
+    font-style: normal;
+    color: #FF6FFF;
+  }
+  .ad1 .evidence-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 50px;
+  }
+  .ad1 .evidence-item {
+    background: #fff;
+    border: 2px solid #e0e0e0;
+    border-radius: 12px;
+    padding: 24px;
+    text-align: center;
+  }
+  .ad1 .evidence-item .num {
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 700;
+    font-size: 38px;
+    color: #085E55;
+  }
+  .ad1 .evidence-item .desc {
+    font-family: 'Inter', sans-serif;
+    font-size: 15px;
+    color: #666;
+    margin-top: 6px;
+  }
+  .ad1 .cta {
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 600;
+    font-size: 22px;
+    color: #085E55;
+  }
+
+  /* ============================================
+     AD 2 — "SPLIT" — Half pink / half white
+     Diagonal energy, conversation starter
+     ============================================ */
+  .ad2 {
+    background: #FF6FFF;
+    display: flex;
+    flex-direction: column;
+  }
+  .ad2 .split-top {
+    height: 540px;
+    background: #FF6FFF;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    padding: 0 80px 50px;
+    position: relative;
+  }
+  .ad2 .split-top .small-text {
+    font-family: 'Inter', sans-serif;
+    font-weight: 500;
+    font-size: 20px;
+    color: rgba(9,9,9,0.5);
+    margin-bottom: 16px;
+    letter-spacing: 1px;
+  }
+  .ad2 .split-top .headline {
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 700;
+    font-size: 80px;
+    line-height: 0.95;
+    color: #090909;
+    letter-spacing: -3px;
+  }
+  .ad2 .split-bottom {
+    height: 540px;
+    background: #F9F9F9;
+    padding: 50px 80px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+  }
+  .ad2 .split-bottom .answer {
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 700;
+    font-size: 64px;
+    color: #090909;
+    letter-spacing: -2px;
+    line-height: 1.1;
+  }
+  .ad2 .split-bottom .answer span {
+    color: #FF6FFF;
+  }
+  .ad2 .split-bottom .footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+  }
+  .ad2 .split-bottom .url {
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 600;
+    font-size: 28px;
+    color: #090909;
+  }
+  .ad2 .split-bottom .richard-sm {
+    width: 70px;
+    height: 70px;
+    opacity: 0.8;
+  }
+
+  /* ============================================
+     AD 3 — "TICKER" — Stock ticker / data vibe
+     All green, numbers-driven, results energy
+     ============================================ */
+  .ad3 {
+    background: #085E55;
+    display: flex;
+    flex-direction: column;
+    color: #fff;
+    padding: 70px;
+    justify-content: space-between;
+  }
+  .ad3 .top-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .ad3 .top-row .brand {
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 700;
+    font-size: 28px;
+    color: #ABFF5A;
+  }
+  .ad3 .top-row .live-badge {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 14px;
+    font-weight: 600;
+    color: #ABFF5A;
+    border: 2px solid #ABFF5A;
+    border-radius: 20px;
+    padding: 6px 18px;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+  }
+  .ad3 .big-number {
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 700;
+    font-size: 160px;
+    color: #ABFF5A;
+    letter-spacing: -6px;
+    line-height: 1;
+    margin-top: 20px;
+  }
+  .ad3 .big-number .pct {
+    font-size: 100px;
+  }
+  .ad3 .metric-label {
+    font-family: 'Inter', sans-serif;
+    font-weight: 500;
+    font-size: 28px;
+    color: rgba(255,255,255,0.7);
+    margin-top: 8px;
+  }
+  .ad3 .divider {
+    height: 2px;
+    background: rgba(171,255,90,0.3);
+    margin: 30px 0;
+  }
+  .ad3 .stats-row {
+    display: flex;
+    gap: 40px;
+  }
+  .ad3 .stat {
+    flex: 1;
+  }
+  .ad3 .stat .val {
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 700;
+    font-size: 44px;
+    color: #fff;
+    letter-spacing: -1px;
+  }
+  .ad3 .stat .lbl {
+    font-family: 'Inter', sans-serif;
+    font-size: 16px;
+    color: rgba(255,255,255,0.5);
+    margin-top: 4px;
+  }
+  .ad3 .bottom-cta {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+  }
+  .ad3 .bottom-cta .tagline {
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 600;
+    font-size: 26px;
+    color: #fff;
+  }
+  .ad3 .bottom-cta .richard-icon {
+    width: 60px;
+    height: 60px;
+  }
+
+  /* ============================================
+     AD 4 — "OVERHEARD" — Text message / chat vibe
+     Casual, disruptive, conversation-style
+     ============================================ */
+  .ad4 {
+    background: #FFC0FF;
+    display: flex;
+    flex-direction: column;
+    padding: 70px;
+    justify-content: space-between;
+  }
+  .ad4 .header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .ad4 .header .brand {
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 700;
+    font-size: 24px;
+    color: #090909;
+  }
+  .ad4 .header .richard-icon {
+    width: 56px;
+    height: 56px;
+  }
+  .ad4 .chat-area {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 20px;
+    padding: 20px 0;
+  }
+  .ad4 .bubble {
+    max-width: 75%;
+    padding: 28px 36px;
+    border-radius: 28px;
+    font-family: 'Inter', sans-serif;
+    font-size: 28px;
+    line-height: 1.4;
+    font-weight: 500;
+  }
+  .ad4 .bubble.left {
+    background: #fff;
+    color: #090909;
+    align-self: flex-start;
+    border-bottom-left-radius: 8px;
+  }
+  .ad4 .bubble.right {
+    background: #090909;
+    color: #fff;
+    align-self: flex-end;
+    border-bottom-right-radius: 8px;
+  }
+  .ad4 .bubble.right .highlight {
+    color: #ABFF5A;
+    font-weight: 700;
+  }
+  .ad4 .bubble .typing {
+    display: inline-flex;
+    gap: 6px;
+    padding: 4px 0;
+  }
+  .ad4 .bubble .typing span {
+    width: 10px;
+    height: 10px;
+    background: #bbb;
+    border-radius: 50%;
+    display: inline-block;
+  }
+  .ad4 .footer-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+  }
+  .ad4 .footer-bar .url {
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 700;
+    font-size: 36px;
+    color: #090909;
+  }
+  .ad4 .footer-bar .sub {
+    font-family: 'Inter', sans-serif;
+    font-size: 18px;
+    color: rgba(9,9,9,0.5);
+    margin-top: 4px;
+  }
+
+  /* Richard SVG inline filter for green version */
+  .richard-green { filter: brightness(0) saturate(100%) invert(89%) sepia(47%) saturate(527%) hue-rotate(36deg) brightness(104%) contrast(101%); }
+  .richard-pink { filter: brightness(0) saturate(100%) invert(56%) sepia(97%) saturate(1694%) hue-rotate(272deg) brightness(101%) contrast(101%); }
+</style>
+</head>
+<body>
+
+<!-- AD 1 — EVIDENCE / DATA GRID -->
+<div class="label">AD 1 — "Evidence" — Forensic data grid (1080×1080)</div>
+<div class="ad ad1">
+  <div class="top-bar">
+    <svg class="richard-icon" viewBox="0 0 1024 1024"><path d="M 718.65 820.72 L 663.54 820.72 L 653.52 818.21 L 640.37 807.57 L 631.60 786.27 L 624.72 779.39 L 399.28 779.39 L 389.89 787.53 L 381.12 808.82 L 375.49 814.45 L 359.21 820.72 L 285.32 819.46 L 250.25 815.71 L 216.43 805.69 L 202.03 793.79 L 195.77 780.01 L 194.52 752.46 L 209.55 593.41 L 165.09 591.53 L 135.03 586.52 L 121.88 577.12 L 119.37 560.84 L 253.38 326.65 L 253.38 218.94 L 261.52 207.04 L 272.79 203.28 L 409.30 203.28 L 418.07 205.79 L 427.46 217.69 L 429.34 269.66 L 474.43 265.90 L 585.89 265.90 L 649.76 273.42 L 688.59 283.44 L 716.14 295.96 L 729.92 305.98 L 749.33 326.65 L 895.86 547.07 L 903.37 559.59 L 904.63 569.61 L 897.74 581.51 L 883.96 587.77 L 862.67 591.53 L 814.45 593.41 L 829.48 752.46 L 829.48 773.75 L 821.97 793.79 L 811.32 803.18 L 791.28 811.95 L 767.49 816.96 L 718.65 820.72 Z M 388.64 535.80 L 409.30 528.91 L 423.71 514.50 L 431.22 496.97 L 431.22 478.19 L 422.45 459.40 L 410.56 447.50 L 398.03 441.24 L 379.25 438.73 L 355.45 447.50 L 342.30 460.65 L 336.04 474.43 L 334.79 494.47 L 341.05 512.00 L 355.45 527.65 L 371.73 535.17 L 388.64 535.80 Z M 646.63 539.55 L 663.54 533.92 L 679.19 519.51 L 686.71 503.23 L 687.96 488.20 L 682.95 470.67 L 668.55 453.76 L 654.77 446.25 L 635.99 443.74 L 613.44 451.26 L 601.55 461.90 L 591.53 481.94 L 591.53 501.98 L 597.79 517.01 L 610.94 531.41 L 632.23 540.18 L 646.63 539.55 Z" fill="#090909" fill-rule="evenodd"/></svg>
+    <span class="brand">dumbroof.ai</span>
+  </div>
+  <div class="body">
+    <div class="mono-label">Claim Analysis Report</div>
+    <div class="headline">Your adjuster<br>missed <em>47 items</em><br>on average.</div>
+    <div class="evidence-grid">
+      <div class="evidence-item">
+        <div class="num">$14,200</div>
+        <div class="desc">Avg. recovered per claim</div>
+      </div>
+      <div class="evidence-item">
+        <div class="num">47</div>
+        <div class="desc">Missed line items</div>
+      </div>
+      <div class="evidence-item">
+        <div class="num">3 min</div>
+        <div class="desc">Time to full report</div>
+      </div>
+    </div>
+    <div class="cta">Ask Richard. Get the full picture. →</div>
+  </div>
+</div>
+
+<!-- AD 2 — SPLIT PINK/WHITE -->
+<div class="label">AD 2 — "Split" — Conversation starter (1080×1080)</div>
+<div class="ad ad2">
+  <div class="split-top">
+    <div class="small-text">Every roofer we talk to says the same thing:</div>
+    <div class="headline">"I left money<br>on the table."</div>
+  </div>
+  <div class="split-bottom">
+    <div class="answer">Richard doesn't<br>leave <span>anything</span>.</div>
+    <div class="footer">
+      <div class="url">dumbroof.ai</div>
+      <svg class="richard-sm" viewBox="0 0 1024 1024"><path d="M 718.65 820.72 L 663.54 820.72 L 653.52 818.21 L 640.37 807.57 L 631.60 786.27 L 624.72 779.39 L 399.28 779.39 L 389.89 787.53 L 381.12 808.82 L 375.49 814.45 L 359.21 820.72 L 285.32 819.46 L 250.25 815.71 L 216.43 805.69 L 202.03 793.79 L 195.77 780.01 L 194.52 752.46 L 209.55 593.41 L 165.09 591.53 L 135.03 586.52 L 121.88 577.12 L 119.37 560.84 L 253.38 326.65 L 253.38 218.94 L 261.52 207.04 L 272.79 203.28 L 409.30 203.28 L 418.07 205.79 L 427.46 217.69 L 429.34 269.66 L 474.43 265.90 L 585.89 265.90 L 649.76 273.42 L 688.59 283.44 L 716.14 295.96 L 729.92 305.98 L 749.33 326.65 L 895.86 547.07 L 903.37 559.59 L 904.63 569.61 L 897.74 581.51 L 883.96 587.77 L 862.67 591.53 L 814.45 593.41 L 829.48 752.46 L 829.48 773.75 L 821.97 793.79 L 811.32 803.18 L 791.28 811.95 L 767.49 816.96 L 718.65 820.72 Z M 388.64 535.80 L 409.30 528.91 L 423.71 514.50 L 431.22 496.97 L 431.22 478.19 L 422.45 459.40 L 410.56 447.50 L 398.03 441.24 L 379.25 438.73 L 355.45 447.50 L 342.30 460.65 L 336.04 474.43 L 334.79 494.47 L 341.05 512.00 L 355.45 527.65 L 371.73 535.17 L 388.64 535.80 Z M 646.63 539.55 L 663.54 533.92 L 679.19 519.51 L 686.71 503.23 L 687.96 488.20 L 682.95 470.67 L 668.55 453.76 L 654.77 446.25 L 635.99 443.74 L 613.44 451.26 L 601.55 461.90 L 591.53 481.94 L 591.53 501.98 L 597.79 517.01 L 610.94 531.41 L 632.23 540.18 L 646.63 539.55 Z" fill="#090909" fill-rule="evenodd"/></svg>
+    </div>
+  </div>
+</div>
+
+<!-- AD 3 — TICKER / DATA -->
+<div class="label">AD 3 — "Ticker" — Performance dashboard vibe (1080×1080)</div>
+<div class="ad ad3">
+  <div class="top-row">
+    <div class="brand">dumbroof.ai</div>
+    <div class="live-badge">● Live Results</div>
+  </div>
+  <div>
+    <div class="big-number">+38<span class="pct">%</span></div>
+    <div class="metric-label">Average claim value increase</div>
+  </div>
+  <div class="divider"></div>
+  <div class="stats-row">
+    <div class="stat">
+      <div class="val">2,847</div>
+      <div class="lbl">Claims processed</div>
+    </div>
+    <div class="stat">
+      <div class="val">$41M</div>
+      <div class="lbl">Total recovered</div>
+    </div>
+    <div class="stat">
+      <div class="val">3 min</div>
+      <div class="lbl">Avg. report time</div>
+    </div>
+  </div>
+  <div class="divider"></div>
+  <div class="bottom-cta">
+    <div class="tagline">Your numbers could look like this.</div>
+    <svg class="richard-icon richard-green" viewBox="0 0 1024 1024"><path d="M 718.65 820.72 L 663.54 820.72 L 653.52 818.21 L 640.37 807.57 L 631.60 786.27 L 624.72 779.39 L 399.28 779.39 L 389.89 787.53 L 381.12 808.82 L 375.49 814.45 L 359.21 820.72 L 285.32 819.46 L 250.25 815.71 L 216.43 805.69 L 202.03 793.79 L 195.77 780.01 L 194.52 752.46 L 209.55 593.41 L 165.09 591.53 L 135.03 586.52 L 121.88 577.12 L 119.37 560.84 L 253.38 326.65 L 253.38 218.94 L 261.52 207.04 L 272.79 203.28 L 409.30 203.28 L 418.07 205.79 L 427.46 217.69 L 429.34 269.66 L 474.43 265.90 L 585.89 265.90 L 649.76 273.42 L 688.59 283.44 L 716.14 295.96 L 729.92 305.98 L 749.33 326.65 L 895.86 547.07 L 903.37 559.59 L 904.63 569.61 L 897.74 581.51 L 883.96 587.77 L 862.67 591.53 L 814.45 593.41 L 829.48 752.46 L 829.48 773.75 L 821.97 793.79 L 811.32 803.18 L 791.28 811.95 L 767.49 816.96 L 718.65 820.72 Z M 388.64 535.80 L 409.30 528.91 L 423.71 514.50 L 431.22 496.97 L 431.22 478.19 L 422.45 459.40 L 410.56 447.50 L 398.03 441.24 L 379.25 438.73 L 355.45 447.50 L 342.30 460.65 L 336.04 474.43 L 334.79 494.47 L 341.05 512.00 L 355.45 527.65 L 371.73 535.17 L 388.64 535.80 Z M 646.63 539.55 L 663.54 533.92 L 679.19 519.51 L 686.71 503.23 L 687.96 488.20 L 682.95 470.67 L 668.55 453.76 L 654.77 446.25 L 635.99 443.74 L 613.44 451.26 L 601.55 461.90 L 591.53 481.94 L 591.53 501.98 L 597.79 517.01 L 610.94 531.41 L 632.23 540.18 L 646.63 539.55 Z" fill="#090909" fill-rule="evenodd"/></svg>
+  </div>
+</div>
+
+<!-- AD 4 — CHAT / TEXT MESSAGE -->
+<div class="label">AD 4 — "Overheard" — Text conversation vibe (1080×1080)</div>
+<div class="ad ad4">
+  <div class="header">
+    <div class="brand">dumbroof.ai</div>
+    <svg class="richard-icon" viewBox="0 0 1024 1024"><path d="M 718.65 820.72 L 663.54 820.72 L 653.52 818.21 L 640.37 807.57 L 631.60 786.27 L 624.72 779.39 L 399.28 779.39 L 389.89 787.53 L 381.12 808.82 L 375.49 814.45 L 359.21 820.72 L 285.32 819.46 L 250.25 815.71 L 216.43 805.69 L 202.03 793.79 L 195.77 780.01 L 194.52 752.46 L 209.55 593.41 L 165.09 591.53 L 135.03 586.52 L 121.88 577.12 L 119.37 560.84 L 253.38 326.65 L 253.38 218.94 L 261.52 207.04 L 272.79 203.28 L 409.30 203.28 L 418.07 205.79 L 427.46 217.69 L 429.34 269.66 L 474.43 265.90 L 585.89 265.90 L 649.76 273.42 L 688.59 283.44 L 716.14 295.96 L 729.92 305.98 L 749.33 326.65 L 895.86 547.07 L 903.37 559.59 L 904.63 569.61 L 897.74 581.51 L 883.96 587.77 L 862.67 591.53 L 814.45 593.41 L 829.48 752.46 L 829.48 773.75 L 821.97 793.79 L 811.32 803.18 L 791.28 811.95 L 767.49 816.96 L 718.65 820.72 Z M 388.64 535.80 L 409.30 528.91 L 423.71 514.50 L 431.22 496.97 L 431.22 478.19 L 422.45 459.40 L 410.56 447.50 L 398.03 441.24 L 379.25 438.73 L 355.45 447.50 L 342.30 460.65 L 336.04 474.43 L 334.79 494.47 L 341.05 512.00 L 355.45 527.65 L 371.73 535.17 L 388.64 535.80 Z M 646.63 539.55 L 663.54 533.92 L 679.19 519.51 L 686.71 503.23 L 687.96 488.20 L 682.95 470.67 L 668.55 453.76 L 654.77 446.25 L 635.99 443.74 L 613.44 451.26 L 601.55 461.90 L 591.53 481.94 L 591.53 501.98 L 597.79 517.01 L 610.94 531.41 L 632.23 540.18 L 646.63 539.55 Z" fill="#090909" fill-rule="evenodd"/></svg>
+  </div>
+  <div class="chat-area">
+    <div class="bubble left">Adjuster said $18K on the roof. That feel right to you?</div>
+    <div class="bubble right">Ran it through Richard. He flagged <span class="highlight">$31K in missed damage</span>.</div>
+    <div class="bubble left">Wait what</div>
+    <div class="bubble right">Yeah. <span class="highlight">47 line items</span> they didn't scope.</div>
+    <div class="bubble left"><span class="typing"><span></span><span></span><span></span></span></div>
+  </div>
+  <div class="footer-bar">
+    <div>
+      <div class="url">dumbroof.ai</div>
+      <div class="sub">AI that finds what adjusters miss.</div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

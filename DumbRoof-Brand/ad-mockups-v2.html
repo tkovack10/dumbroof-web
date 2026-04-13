@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dumb Roof — Ad Mockups v2</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600;700&family=Silkscreen:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:#e8e8e8; font-family:'Inter',sans-serif; padding:40px 20px; }
+  h1 { text-align:center; font-family:'Space Grotesk',sans-serif; font-size:1.8em; font-weight:700; color:#090909; margin-bottom:4px; }
+  .sub { text-align:center; color:#888; margin-bottom:50px; font-size:0.9em; }
+  .section-label { max-width:1100px; margin:40px auto 16px auto; font-size:0.75em; color:#999; text-transform:uppercase; letter-spacing:3px; font-family:'IBM Plex Mono',monospace; }
+  hr { max-width:1100px; margin:40px auto; border:none; border-top:2px solid #ddd; }
+  .fb-banner {
+    max-width:820px; margin:0 auto 24px auto;
+    aspect-ratio: 820/312; border-radius:12px; overflow:hidden;
+    position:relative; display:flex;
+    box-shadow:0 4px 20px rgba(0,0,0,0.12);
+  }
+  .ig-grid { max-width:1100px; margin:0 auto 24px auto; display:grid; grid-template-columns:1fr 1fr 1fr; gap:16px; }
+  .ig-post {
+    aspect-ratio:1/1; border-radius:12px; overflow:hidden;
+    position:relative; box-shadow:0 4px 20px rgba(0,0,0,0.12);
+  }
+  /* Richard glow circle */
+  .richard-glow {
+    position:relative; display:flex; align-items:center; justify-content:center;
+  }
+  .richard-glow .outer-ring {
+    width:140px; height:140px; border-radius:50%;
+    background:radial-gradient(circle, rgba(171,255,90,0.15) 0%, rgba(171,255,90,0.05) 50%, transparent 70%);
+    border:1px dashed rgba(171,255,90,0.3);
+    display:flex; align-items:center; justify-content:center;
+    position:relative;
+  }
+  .richard-glow .inner-ring {
+    width:100px; height:100px; border-radius:50%;
+    background:rgba(255,255,255,0.08);
+    display:flex; align-items:center; justify-content:center;
+  }
+  .richard-glow .mascot { width:60px; height:60px; }
+  .richard-glow .mascot img { width:100%; }
+  .richard-glow .online-badge {
+    position:absolute; top:8px; right:8px;
+    font-family:'IBM Plex Mono',monospace; font-size:9px; font-weight:500;
+    color:#090909; background:#fff; padding:3px 8px; border-radius:20px;
+    display:flex; align-items:center; gap:4px;
+  }
+  .richard-glow .online-dot { width:5px; height:5px; border-radius:50%; background:#ABFF5A; }
+  .richard-glow .agent-label {
+    position:absolute; bottom:0px; right:-10px;
+    font-family:'IBM Plex Mono',monospace; font-size:8px;
+    color:#090909; background:#fff; padding:4px 8px; border-radius:6px;
+    line-height:1.3;
+  }
+  /* Pink glow variant */
+  .richard-glow-pink .outer-ring {
+    background:radial-gradient(circle, rgba(255,111,255,0.2) 0%, rgba(255,111,255,0.05) 50%, transparent 70%);
+    border-color:rgba(255,111,255,0.3);
+  }
+  /* Particle dots */
+  .particle { position:absolute; width:4px; height:4px; border-radius:50%; }
+
+  @media(max-width:900px) { .ig-grid { grid-template-columns:1fr; max-width:400px; } }
+</style>
+</head>
+<body>
+
+<h1>dumbroof.ai — Ad Mockups v2</h1>
+<p class="sub">Richard as the AI agent. Glowing. Online. Neural energy. Built from the website draft direction.</p>
+
+<!-- ==================== FB BANNERS ==================== -->
+<p class="section-label">Facebook Banners</p>
+
+<!-- FB 1: Green — Meet Richard -->
+<div class="fb-banner" style="background:#ABFF5A;position:relative;">
+  <!-- Particle dots -->
+  <div class="particle" style="background:rgba(255,111,255,0.4);top:20%;left:15%;"></div>
+  <div class="particle" style="background:rgba(255,111,255,0.3);top:60%;left:8%;"></div>
+  <div class="particle" style="background:rgba(8,94,85,0.2);top:30%;left:70%;"></div>
+  <div class="particle" style="background:rgba(255,111,255,0.2);top:80%;left:55%;"></div>
+
+  <div style="flex:1;padding:32px 40px;display:flex;flex-direction:column;justify-content:center;">
+    <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:500;color:#085E55;letter-spacing:1px;background:rgba(255,255,255,0.5);display:inline-block;padding:4px 10px;border-radius:20px;width:fit-content;margin-bottom:14px;">● AI-POWERED CLAIMS INTELLIGENCE</div>
+    <div style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:38px;color:#090909;line-height:1.1;">The claims process<br>just got a <span style="color:#FF6FFF;">brain.</span></div>
+    <div style="font-family:'IBM Plex Mono',monospace;font-weight:500;font-size:16px;color:#090909;margin-top:12px;">Meet Richard.</div>
+    <div style="margin-top:16px;display:flex;align-items:center;gap:12px;">
+      <div style="font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:13px;color:#090909;background:#FF6FFF;color:#fff;padding:8px 18px;border-radius:8px;">Ask Richard →</div>
+      <div style="font-family:'Inter',sans-serif;font-weight:500;font-size:12px;color:#085E55;">dumbroof.ai</div>
+    </div>
+  </div>
+  <div style="width:280px;display:flex;align-items:center;justify-content:center;position:relative;">
+    <div class="richard-glow">
+      <div class="outer-ring">
+        <div class="online-badge"><div class="online-dot"></div> ONLINE</div>
+        <div class="inner-ring">
+          <div class="mascot"><img src="mascot_assets/dumb_roof_mascot_pink.png"></div>
+        </div>
+        <div class="agent-label"><strong>RICHARD.AI</strong><br>Claims Intelligence Agent</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- FB 2: Dark — Numbers + Richard -->
+<div class="fb-banner" style="background:#090909;position:relative;">
+  <div class="particle" style="background:rgba(171,255,90,0.3);top:15%;left:20%;"></div>
+  <div class="particle" style="background:rgba(255,111,255,0.3);top:70%;left:12%;"></div>
+  <div class="particle" style="background:rgba(171,255,90,0.2);top:40%;left:85%;"></div>
+
+  <div style="width:160px;display:flex;align-items:center;justify-content:center;">
+    <div style="width:70px;height:70px;"><img src="mascot_assets/dumb_roof_mascot_pink.png" style="width:100%;filter:drop-shadow(0 0 20px rgba(255,111,255,0.4));"></div>
+  </div>
+  <div style="flex:1;padding:32px 20px;display:flex;flex-direction:column;justify-content:center;">
+    <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:rgba(255,255,255,0.4);letter-spacing:2px;margin-bottom:8px;">CARRIER MOVEMENT</div>
+    <div style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:40px;color:#ABFF5A;line-height:1;">$20,408 → $943,233</div>
+    <div style="font-family:'Inter',sans-serif;font-weight:500;font-size:13px;color:rgba(255,255,255,0.5);margin-top:8px;">Same claim. Same house. Richard found what the adjuster missed.</div>
+  </div>
+  <div style="width:180px;background:rgba(255,255,255,0.03);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;border-left:1px solid rgba(255,255,255,0.06);">
+    <div style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:22px;color:#FF6FFF;">dumbroof.ai</div>
+    <div style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:rgba(255,255,255,0.3);margin-top:6px;">AI Claims Intelligence</div>
+    <div style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:11px;color:#ABFF5A;margin-top:14px;background:rgba(171,255,90,0.1);padding:4px 10px;border-radius:4px;">+4,508%</div>
+  </div>
+</div>
+
+<!-- FB 3: Pink — Ask Richard pure -->
+<div class="fb-banner" style="background:#FF6FFF;position:relative;">
+  <div class="particle" style="background:rgba(255,255,255,0.2);top:20%;left:10%;width:6px;height:6px;"></div>
+  <div class="particle" style="background:rgba(255,255,255,0.15);top:70%;left:75%;width:5px;height:5px;"></div>
+
+  <div style="flex:1;display:flex;align-items:center;padding:20px 40px;">
+    <div>
+      <div style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:50px;color:#fff;line-height:1.05;">Did you ask<br>Richard?</div>
+      <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:rgba(255,255,255,0.6);margin-top:12px;">AI that finds what adjusters miss.</div>
+    </div>
+  </div>
+  <div style="width:260px;display:flex;flex-direction:column;align-items:center;justify-content:center;background:rgba(0,0,0,0.08);padding:20px;">
+    <div class="richard-glow richard-glow-pink">
+      <div class="outer-ring" style="width:100px;height:100px;border-color:rgba(255,255,255,0.3);background:radial-gradient(circle, rgba(255,255,255,0.15) 0%, transparent 70%);">
+        <div class="inner-ring" style="width:70px;height:70px;background:rgba(255,255,255,0.1);">
+          <div class="mascot" style="width:45px;height:45px;"><img src="mascot_assets/dumb_roof_mascot_white.png" style="width:100%;"></div>
+        </div>
+      </div>
+    </div>
+    <div style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:22px;color:#fff;margin-top:16px;">dumbroof.ai</div>
+  </div>
+</div>
+
+<hr>
+
+<!-- ==================== INSTAGRAM POSTS ==================== -->
+<p class="section-label">Instagram Posts — Campaign Mix</p>
+
+<div class="ig-grid">
+
+  <!-- IG 1: Green — Meet Richard (website style) -->
+  <div class="ig-post" style="background:#ABFF5A;display:flex;flex-direction:column;padding:36px;position:relative;">
+    <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:500;color:#085E55;background:rgba(255,255,255,0.5);display:inline-block;padding:4px 10px;border-radius:20px;width:fit-content;">● AI-POWERED CLAIMS</div>
+    <div style="flex:1;display:flex;flex-direction:column;justify-content:center;">
+      <div style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:34px;color:#090909;line-height:1.1;">The claims<br>process just<br>got a <span style="color:#FF6FFF;">brain.</span></div>
+      <div style="font-family:'IBM Plex Mono',monospace;font-weight:500;font-size:18px;color:#090909;margin-top:14px;">Meet Richard.</div>
+    </div>
+    <div style="display:flex;align-items:center;justify-content:space-between;">
+      <div style="font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:12px;background:#FF6FFF;color:#fff;padding:8px 16px;border-radius:8px;">Ask Richard →</div>
+      <div style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:14px;color:#085E55;">dumbroof.ai</div>
+    </div>
+    <!-- Richard floating -->
+    <div style="position:absolute;top:50%;right:20px;transform:translateY(-50%);">
+      <div style="width:80px;height:80px;border-radius:50%;background:rgba(255,255,255,0.15);display:flex;align-items:center;justify-content:center;border:1px dashed rgba(8,94,85,0.2);">
+        <img src="mascot_assets/dumb_roof_mascot_pink.png" style="width:50px;">
+      </div>
+    </div>
+  </div>
+
+  <!-- IG 2: Black — Richard doesn't lose -->
+  <div class="ig-post" style="background:#090909;display:flex;flex-direction:column;justify-content:center;padding:36px;position:relative;">
+    <div style="width:40px;height:40px;margin-bottom:24px;"><img src="mascot_assets/dumb_roof_mascot_pink.png" style="width:100%;filter:drop-shadow(0 0 15px rgba(255,111,255,0.4));"></div>
+    <div style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:26px;color:#fff;line-height:1.35;">
+      Richard doesn't sleep.<br>
+      Richard doesn't forget.<br>
+      <span style="color:#FF6FFF;">Richard doesn't lose.</span>
+    </div>
+    <div style="margin-top:28px;display:flex;align-items:center;gap:8px;">
+      <div style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:15px;color:#ABFF5A;">dumbroof.ai</div>
+      <div style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:rgba(255,255,255,0.3);">// claims intelligence</div>
+    </div>
+    <!-- Particle dots -->
+    <div class="particle" style="background:rgba(171,255,90,0.3);top:15%;right:20%;"></div>
+    <div class="particle" style="background:rgba(255,111,255,0.2);top:60%;right:10%;"></div>
+    <div class="particle" style="background:rgba(171,255,90,0.15);bottom:20%;right:30%;"></div>
+  </div>
+
+  <!-- IG 3: Green — $943K stat -->
+  <div class="ig-post" style="background:#ABFF5A;display:flex;flex-direction:column;justify-content:center;align-items:center;padding:36px;text-align:center;">
+    <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:#085E55;letter-spacing:2px;">BEFORE RICHARD</div>
+    <div style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:28px;color:#085E55;margin:6px 0;text-decoration:line-through;opacity:0.4;">$20,408</div>
+    <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:#085E55;letter-spacing:2px;margin-top:12px;">AFTER RICHARD</div>
+    <div style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:48px;color:#090909;margin:6px 0;">$943,233</div>
+    <div style="width:30px;height:2px;background:#085E55;margin:16px 0;"></div>
+    <div style="font-family:'Inter',sans-serif;font-weight:500;font-size:13px;color:#085E55;">Same claim. Same house.</div>
+    <div style="font-family:'Silkscreen',sans-serif;font-size:10px;color:#085E55;margin-top:6px;opacity:0.5;">+4,508% carrier movement</div>
+    <div style="margin-top:20px;display:flex;align-items:center;gap:8px;">
+      <div style="width:20px;height:20px;"><img src="mascot_assets/dumb_roof_mascot_black.png" style="width:100%;"></div>
+      <div style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:15px;color:#090909;">dumbroof.ai</div>
+    </div>
+  </div>
+
+  <!-- IG 4: Deep Green — 50 reps -->
+  <div class="ig-post" style="background:#085E55;display:flex;flex-direction:column;justify-content:center;padding:36px;">
+    <div style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:26px;color:rgba(255,255,255,0.6);line-height:1.3;">You have 50 reps.<br>5 understand insurance.</div>
+    <div style="width:40px;height:3px;background:#FF6FFF;margin:20px 0;"></div>
+    <div style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:30px;color:#ABFF5A;line-height:1.2;">Now all 50 do.</div>
+    <div style="margin-top:28px;display:flex;align-items:center;gap:8px;">
+      <div style="width:20px;height:20px;"><img src="mascot_assets/dumb_roof_mascot_pink.png" style="width:100%;opacity:0.8;"></div>
+      <div style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:15px;color:#fff;">dumbroof.ai</div>
+    </div>
+  </div>
+
+  <!-- IG 5: Neutral — Evidence not estimates -->
+  <div class="ig-post" style="background:#F9F9F9;display:flex;flex-direction:column;justify-content:center;padding:36px;border:1px solid #e8e8e8;">
+    <div style="width:4px;height:40px;background:#FF6FFF;margin-bottom:20px;border-radius:2px;"></div>
+    <div style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:14px;color:#FF6FFF;letter-spacing:1px;text-transform:uppercase;margin-bottom:10px;">Don't tell them. Show them.</div>
+    <div style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:24px;color:#090909;line-height:1.35;">Code-cited.<br>Photo-annotated.<br>Carrier-specific.<br><span style="color:#085E55;">In 15 minutes.</span></div>
+    <div style="margin-top:24px;display:flex;align-items:center;gap:8px;">
+      <div style="width:20px;height:20px;"><img src="mascot_assets/dumb_roof_mascot_pink.png" style="width:100%;"></div>
+      <div style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:15px;color:#090909;">dumbroof.ai</div>
+    </div>
+  </div>
+
+  <!-- IG 6: Pink — Ask Richard pure -->
+  <div class="ig-post" style="background:#FF6FFF;display:flex;flex-direction:column;justify-content:center;align-items:center;padding:40px;text-align:center;position:relative;">
+    <div style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:40px;color:#fff;line-height:1.15;">Did you ask<br>Richard?</div>
+    <div style="margin-top:24px;">
+      <div style="width:60px;height:60px;border-radius:50%;background:rgba(255,255,255,0.12);display:flex;align-items:center;justify-content:center;margin:0 auto;border:1px dashed rgba(255,255,255,0.3);">
+        <img src="mascot_assets/dumb_roof_mascot_white.png" style="width:38px;">
+      </div>
+    </div>
+    <div style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:18px;color:#fff;margin-top:16px;">dumbroof.ai</div>
+    <div style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:rgba(255,255,255,0.5);margin-top:4px;">AI that finds what adjusters miss</div>
+  </div>
+
+</div>
+
+<hr>
+
+<!-- ==================== STORY FORMAT ==================== -->
+<p class="section-label">Story Format (9:16)</p>
+
+<div style="max-width:1100px;margin:0 auto;display:grid;grid-template-columns:repeat(3, 260px);gap:16px;justify-content:center;">
+
+  <!-- Story 1: Meet Richard -->
+  <div style="width:260px;aspect-ratio:9/16;background:#ABFF5A;border-radius:16px;overflow:hidden;position:relative;padding:30px;display:flex;flex-direction:column;box-shadow:0 4px 20px rgba(0,0,0,0.12);">
+    <div style="font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:500;color:#085E55;background:rgba(255,255,255,0.5);display:inline-block;padding:3px 8px;border-radius:20px;width:fit-content;">● ONLINE</div>
+    <div style="flex:1;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;">
+      <div style="width:100px;height:100px;border-radius:50%;background:rgba(255,255,255,0.15);display:flex;align-items:center;justify-content:center;border:1px dashed rgba(8,94,85,0.2);">
+        <img src="mascot_assets/dumb_roof_mascot_pink.png" style="width:65px;">
+      </div>
+      <div style="font-family:'IBM Plex Mono',monospace;font-weight:600;font-size:12px;color:#090909;margin-top:16px;background:rgba(255,255,255,0.4);padding:4px 12px;border-radius:4px;">RICHARD.AI</div>
+      <div style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:28px;color:#090909;margin-top:20px;line-height:1.1;">Meet<br>Richard.</div>
+      <div style="font-family:'Inter',sans-serif;font-weight:400;font-size:12px;color:#085E55;margin-top:10px;line-height:1.4;">He handles the complexity.<br>You focus on the job.</div>
+    </div>
+    <div style="display:flex;justify-content:space-between;align-items:center;">
+      <div style="font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:11px;background:#FF6FFF;color:#fff;padding:8px 14px;border-radius:8px;">Ask Richard →</div>
+      <div style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:12px;color:#085E55;">dumbroof.ai</div>
+    </div>
+  </div>
+
+  <!-- Story 2: The number -->
+  <div style="width:260px;aspect-ratio:9/16;background:#090909;border-radius:16px;overflow:hidden;position:relative;padding:30px;display:flex;flex-direction:column;box-shadow:0 4px 20px rgba(0,0,0,0.12);">
+    <div style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:rgba(255,255,255,0.3);letter-spacing:2px;">REAL CLAIM DATA</div>
+    <div style="flex:1;display:flex;flex-direction:column;justify-content:center;">
+      <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:rgba(255,255,255,0.3);letter-spacing:1px;">CARRIER INITIAL SCOPE</div>
+      <div style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:28px;color:rgba(255,255,255,0.3);margin:4px 0;text-decoration:line-through;">$20,408</div>
+      <div style="width:30px;height:2px;background:#FF6FFF;margin:16px 0;"></div>
+      <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:#ABFF5A;letter-spacing:1px;">AFTER RICHARD</div>
+      <div style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:42px;color:#ABFF5A;margin:4px 0;line-height:1;">$943,233</div>
+      <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#FF6FFF;margin-top:12px;">+4,508% increase</div>
+      <div style="font-family:'Inter',sans-serif;font-size:12px;color:rgba(255,255,255,0.4);margin-top:16px;line-height:1.4;">Same claim. Same house.<br>Richard found what the adjuster missed.</div>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px;">
+      <div style="width:20px;height:20px;"><img src="mascot_assets/dumb_roof_mascot_pink.png" style="width:100%;filter:drop-shadow(0 0 8px rgba(255,111,255,0.4));"></div>
+      <div style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:14px;color:#FF6FFF;">dumbroof.ai</div>
+    </div>
+  </div>
+
+  <!-- Story 3: Ask Richard pink -->
+  <div style="width:260px;aspect-ratio:9/16;background:#FF6FFF;border-radius:16px;overflow:hidden;position:relative;padding:30px;display:flex;flex-direction:column;box-shadow:0 4px 20px rgba(0,0,0,0.12);">
+    <div style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:rgba(255,255,255,0.5);letter-spacing:2px;">DUMBROOF.AI</div>
+    <div style="flex:1;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;">
+      <div style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:38px;color:#fff;line-height:1.1;">Did you<br>ask<br>Richard?</div>
+      <div style="margin-top:30px;width:70px;height:70px;border-radius:50%;background:rgba(255,255,255,0.12);display:flex;align-items:center;justify-content:center;border:1px dashed rgba(255,255,255,0.3);">
+        <img src="mascot_assets/dumb_roof_mascot_white.png" style="width:45px;">
+      </div>
+    </div>
+    <div style="text-align:center;">
+      <div style="font-family:'Inter',sans-serif;font-weight:400;font-size:11px;color:rgba(255,255,255,0.6);">AI that finds what adjusters miss</div>
+      <div style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:16px;color:#fff;margin-top:6px;">dumbroof.ai</div>
+    </div>
+  </div>
+
+</div>
+
+<p style="text-align:center;color:#999;font-size:0.8em;margin-top:40px;">
+  v2 — Built with locked brand system. Richard as glowing AI agent.<br>
+  Space Grotesk + Inter + IBM Plex Mono | #FF6FFF #ABFF5A #085E55 #090909 #F9F9F9
+</p>
+
+</body>
+</html>

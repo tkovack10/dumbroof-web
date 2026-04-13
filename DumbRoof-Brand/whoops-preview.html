@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Whoops Video Preview</title>
+<style>
+  body {
+    background: #222;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100vh;
+    margin: 0;
+    flex-direction: column;
+    gap: 20px;
+  }
+  .version-picker {
+    display: flex;
+    gap: 10px;
+  }
+  .version-picker button {
+    font-family: 'Space Grotesk', monospace;
+    font-size: 14px;
+    padding: 10px 22px;
+    border-radius: 8px;
+    border: 2px solid #555;
+    background: #333;
+    color: #ccc;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .version-picker button:hover { background: #444; border-color: #777; }
+  .version-picker button.active {
+    background: #FF6FFF;
+    color: #0a0a0a;
+    border-color: #FF6FFF;
+    font-weight: bold;
+  }
+  .version-label {
+    font-family: monospace;
+    color: #999;
+    font-size: 13px;
+    text-align: center;
+  }
+  .preview-frame {
+    border: 2px solid #444;
+    border-radius: 8px;
+    overflow: hidden;
+    position: relative;
+    cursor: pointer;
+  }
+  .preview-frame iframe {
+    border: none;
+    pointer-events: none;
+  }
+  .play-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 12px;
+    z-index: 10;
+  }
+  .play-btn {
+    width: 70px;
+    height: 70px;
+    border-radius: 50%;
+    background: #FF6FFF;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .play-btn div {
+    width: 0;
+    height: 0;
+    border-top: 18px solid transparent;
+    border-bottom: 18px solid transparent;
+    border-left: 28px solid #090909;
+    margin-left: 6px;
+  }
+  .play-label {
+    font-family: monospace;
+    color: #ccc;
+    font-size: 14px;
+  }
+  .controls {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+  }
+  .controls button {
+    font-family: monospace;
+    font-size: 14px;
+    padding: 8px 20px;
+    border-radius: 6px;
+    border: 1px solid #555;
+    background: #333;
+    color: #fff;
+    cursor: pointer;
+  }
+  .controls button:hover { background: #444; }
+  .controls span {
+    font-family: monospace;
+    color: #999;
+    font-size: 13px;
+  }
+</style>
+</head>
+<body>
+  <div class="version-picker">
+    <button class="active" onclick="selectVersion(0)">Original</button>
+    <button onclick="selectVersion(1)">Square V2</button>
+    <button onclick="selectVersion(2)">Reel V2</button>
+  </div>
+
+  <div class="preview-frame" id="previewFrame" onclick="playVideo()">
+    <div class="play-overlay" id="playOverlay">
+      <div class="play-btn"><div></div></div>
+      <div class="play-label">Click to Play with Sound</div>
+    </div>
+    <iframe id="frame" src="about:blank"></iframe>
+  </div>
+
+  <div class="controls">
+    <button onclick="playVideo()">Replay</button>
+    <span id="sizeLabel">Scaled 50% — actual output is 1080x1080</span>
+  </div>
+
+  <div class="version-label" id="versionLabel">whoops-video.html</div>
+
+  <script>
+    const versions = [
+      { file: 'whoops-video.html', w: 1080, h: 1080, label: 'Original — 1080x1080' },
+      { file: 'dumbroof-ad-square.html', w: 1080, h: 1080, label: 'Square V2 — 1080x1080' },
+      { file: 'dumbroof-ad-reel.html', w: 1080, h: 1920, label: 'Reel V2 — 1080x1920' }
+    ];
+
+    let current = 0;
+
+    function selectVersion(idx) {
+      current = idx;
+      const v = versions[idx];
+
+      // Update button states
+      document.querySelectorAll('.version-picker button').forEach((btn, i) => {
+        btn.classList.toggle('active', i === idx);
+      });
+
+      // Resize preview frame + iframe
+      const frame = document.getElementById('frame');
+      const previewFrame = document.getElementById('previewFrame');
+
+      // Scale to fit: 540px wide max
+      const scale = 540 / v.w;
+      const previewH = v.h * scale;
+
+      previewFrame.style.width = '540px';
+      previewFrame.style.height = previewH + 'px';
+      frame.style.width = v.w + 'px';
+      frame.style.height = v.h + 'px';
+      frame.style.transform = `scale(${scale})`;
+      frame.style.transformOrigin = 'top left';
+
+      // Update labels
+      document.getElementById('sizeLabel').textContent =
+        `Scaled ${Math.round(scale * 100)}% — actual output is ${v.w}x${v.h}`;
+      document.getElementById('versionLabel').textContent = v.file;
+
+      // Show play overlay, reset iframe
+      document.getElementById('playOverlay').style.display = 'flex';
+      frame.src = 'about:blank';
+      frame.style.pointerEvents = 'none';
+    }
+
+    function playVideo() {
+      const v = versions[current];
+      const frame = document.getElementById('frame');
+      const overlay = document.getElementById('playOverlay');
+      frame.src = v.file;
+      overlay.style.display = 'none';
+      frame.style.pointerEvents = 'auto';
+      setTimeout(() => {
+        try {
+          const iframeDoc = frame.contentDocument || frame.contentWindow.document;
+          const innerOverlay = iframeDoc.querySelector('div[style*="z-index"]');
+          if (innerOverlay) innerOverlay.click();
+        } catch(e) {}
+      }, 500);
+    }
+
+    // Initialize with original selected
+    selectVersion(0);
+  </script>
+</body>
+</html>

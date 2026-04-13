@@ -1,0 +1,555 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  .ad {
+    width: 1080px;
+    height: 1080px;
+    position: relative;
+    overflow: hidden;
+    page-break-after: always;
+    margin-bottom: 40px;
+  }
+
+  .label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 14px;
+    color: #999;
+    text-align: center;
+    padding: 12px;
+    background: #f0f0f0;
+  }
+
+  /* ============================================
+     AD 5 — "RECEIPT" — Looks like a printed receipt
+     Shows what the adjuster missed
+     ============================================ */
+  .ad5 {
+    background: #F9F9F9;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .ad5 .receipt {
+    width: 700px;
+    background: #fff;
+    border-radius: 4px;
+    padding: 60px 50px;
+    box-shadow: 0 8px 40px rgba(0,0,0,0.08);
+    position: relative;
+  }
+  .ad5 .receipt::before {
+    content: '';
+    position: absolute;
+    top: -15px;
+    left: 0;
+    right: 0;
+    height: 15px;
+    background: linear-gradient(135deg, #F9F9F9 33.33%, transparent 33.33%) -10px 0,
+                linear-gradient(225deg, #F9F9F9 33.33%, transparent 33.33%) -10px 0;
+    background-size: 20px 15px;
+    background-color: #fff;
+  }
+  .ad5 .receipt::after {
+    content: '';
+    position: absolute;
+    bottom: -15px;
+    left: 0;
+    right: 0;
+    height: 15px;
+    background: linear-gradient(315deg, #F9F9F9 33.33%, transparent 33.33%) -10px 0,
+                linear-gradient(45deg, #F9F9F9 33.33%, transparent 33.33%) -10px 0;
+    background-size: 20px 15px;
+    background-color: #fff;
+  }
+  .ad5 .receipt-header {
+    text-align: center;
+    margin-bottom: 30px;
+    padding-bottom: 20px;
+    border-bottom: 2px dashed #ddd;
+  }
+  .ad5 .receipt-header .logo {
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 700;
+    font-size: 28px;
+    color: #090909;
+    margin-bottom: 4px;
+  }
+  .ad5 .receipt-header .sub {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 13px;
+    color: #999;
+  }
+  .ad5 .receipt-title {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 14px;
+    font-weight: 600;
+    color: #999;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    margin-bottom: 20px;
+  }
+  .ad5 .line-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    padding: 10px 0;
+    font-family: 'Inter', sans-serif;
+    font-size: 18px;
+    color: #090909;
+  }
+  .ad5 .line-item .dots {
+    flex: 1;
+    border-bottom: 1px dotted #ccc;
+    margin: 0 12px;
+    min-width: 40px;
+  }
+  .ad5 .line-item.missed {
+    color: #FC032D;
+    text-decoration: line-through;
+    opacity: 0.5;
+  }
+  .ad5 .line-item.found {
+    color: #085E55;
+    font-weight: 600;
+  }
+  .ad5 .receipt-divider {
+    border: none;
+    border-top: 2px dashed #ddd;
+    margin: 20px 0;
+  }
+  .ad5 .receipt-total {
+    display: flex;
+    justify-content: space-between;
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 700;
+    font-size: 28px;
+    color: #085E55;
+    padding: 10px 0;
+  }
+  .ad5 .receipt-total .label-txt {
+    color: #090909;
+  }
+  .ad5 .receipt-footer {
+    text-align: center;
+    margin-top: 24px;
+    padding-top: 20px;
+    border-top: 2px dashed #ddd;
+  }
+  .ad5 .receipt-footer .tagline {
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 600;
+    font-size: 18px;
+    color: #FF6FFF;
+  }
+  .ad5 .brand-corner {
+    position: absolute;
+    bottom: 40px;
+    right: 50px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .ad5 .brand-corner .richard-sm {
+    width: 44px;
+    height: 44px;
+  }
+  .ad5 .brand-corner .url {
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 700;
+    font-size: 22px;
+    color: #090909;
+  }
+
+  /* ============================================
+     AD 6 — "SCOREBOARD" — Side by side comparison
+     Without Richard vs With Richard
+     ============================================ */
+  .ad6 {
+    display: flex;
+    flex-direction: row;
+  }
+  .ad6 .side {
+    width: 540px;
+    height: 1080px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 60px;
+  }
+  .ad6 .side-left {
+    background: #F9F9F9;
+  }
+  .ad6 .side-right {
+    background: #ABFF5A;
+  }
+  .ad6 .side-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 13px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 3px;
+    margin-bottom: 50px;
+  }
+  .ad6 .side-left .side-label { color: #999; }
+  .ad6 .side-right .side-label { color: #085E55; }
+  .ad6 .score-item {
+    margin-bottom: 40px;
+  }
+  .ad6 .score-item .val {
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 700;
+    font-size: 52px;
+    letter-spacing: -2px;
+    line-height: 1;
+  }
+  .ad6 .side-left .score-item .val { color: #999; }
+  .ad6 .side-right .score-item .val { color: #090909; }
+  .ad6 .score-item .desc {
+    font-family: 'Inter', sans-serif;
+    font-size: 16px;
+    margin-top: 6px;
+  }
+  .ad6 .side-left .score-item .desc { color: #bbb; }
+  .ad6 .side-right .score-item .desc { color: #085E55; }
+  .ad6 .side-bottom {
+    margin-top: auto;
+  }
+  .ad6 .side-left .side-bottom .brand {
+    font-family: 'Inter', sans-serif;
+    font-size: 16px;
+    color: #ccc;
+  }
+  .ad6 .side-right .side-bottom {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+  .ad6 .side-right .side-bottom .brand {
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 700;
+    font-size: 28px;
+    color: #090909;
+  }
+  .ad6 .side-right .richard-sm {
+    width: 50px;
+    height: 50px;
+  }
+
+  /* ============================================
+     AD 7 — "NOTIFICATION" — Phone notification style
+     Like Richard just pinged you
+     ============================================ */
+  .ad7 {
+    background: #FF6FFF;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 80px;
+    gap: 40px;
+  }
+  .ad7 .context-text {
+    font-family: 'Inter', sans-serif;
+    font-weight: 500;
+    font-size: 22px;
+    color: rgba(9,9,9,0.4);
+    text-align: center;
+  }
+  .ad7 .notif-card {
+    width: 100%;
+    background: #fff;
+    border-radius: 24px;
+    padding: 36px 40px;
+    display: flex;
+    gap: 24px;
+    align-items: flex-start;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.15);
+  }
+  .ad7 .notif-card .icon-wrap {
+    width: 56px;
+    height: 56px;
+    background: #FF6FFF;
+    border-radius: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+  .ad7 .notif-card .icon-wrap svg {
+    width: 34px;
+    height: 34px;
+  }
+  .ad7 .notif-card .notif-body {
+    flex: 1;
+  }
+  .ad7 .notif-card .notif-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+  }
+  .ad7 .notif-card .app-name {
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 700;
+    font-size: 20px;
+    color: #090909;
+  }
+  .ad7 .notif-card .time {
+    font-family: 'Inter', sans-serif;
+    font-size: 15px;
+    color: #999;
+  }
+  .ad7 .notif-card .notif-title {
+    font-family: 'Inter', sans-serif;
+    font-weight: 700;
+    font-size: 22px;
+    color: #090909;
+    margin-bottom: 6px;
+  }
+  .ad7 .notif-card .notif-text {
+    font-family: 'Inter', sans-serif;
+    font-size: 19px;
+    color: #666;
+    line-height: 1.4;
+  }
+  .ad7 .notif-card .notif-text strong {
+    color: #085E55;
+  }
+  .ad7 .big-text {
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 700;
+    font-size: 64px;
+    color: #090909;
+    text-align: center;
+    line-height: 1.1;
+    letter-spacing: -2px;
+  }
+  .ad7 .bottom-brand {
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 600;
+    font-size: 28px;
+    color: rgba(9,9,9,0.6);
+  }
+
+  /* ============================================
+     AD 8 — "EDITORIAL" — Bold provocation
+     Big type, color block, one-liner
+     ============================================ */
+  .ad8 {
+    display: flex;
+    flex-direction: column;
+  }
+  .ad8 .top-block {
+    height: 200px;
+    background: #ABFF5A;
+    display: flex;
+    align-items: center;
+    padding: 0 70px;
+    justify-content: space-between;
+  }
+  .ad8 .top-block .brand {
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 700;
+    font-size: 32px;
+    color: #090909;
+  }
+  .ad8 .top-block .richard-icon {
+    width: 70px;
+    height: 70px;
+  }
+  .ad8 .mid-block {
+    flex: 1;
+    background: #FFC0FF;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 0 70px;
+  }
+  .ad8 .mid-block .headline {
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 700;
+    font-size: 76px;
+    line-height: 1.05;
+    color: #090909;
+    letter-spacing: -3px;
+  }
+  .ad8 .bot-block {
+    height: 200px;
+    background: #090909;
+    display: flex;
+    align-items: center;
+    padding: 0 70px;
+    justify-content: space-between;
+  }
+  .ad8 .bot-block .cta {
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 700;
+    font-size: 36px;
+    color: #ABFF5A;
+  }
+  .ad8 .bot-block .url {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 20px;
+    color: rgba(255,255,255,0.5);
+  }
+
+</style>
+</head>
+<body>
+
+<!-- AD 5 — RECEIPT -->
+<div class="label">AD 5 — "Receipt" — What your adjuster missed (1080×1080)</div>
+<div class="ad ad5">
+  <div class="receipt">
+    <div class="receipt-header">
+      <div class="logo">Richard's Report</div>
+      <div class="sub">CLAIM ANALYSIS — dumbroof.ai</div>
+    </div>
+    <div class="receipt-title">Adjuster's scope</div>
+    <div class="line-item missed">
+      <span>Ridge cap replacement</span>
+      <span class="dots"></span>
+      <span>MISSED</span>
+    </div>
+    <div class="line-item missed">
+      <span>Drip edge (full perimeter)</span>
+      <span class="dots"></span>
+      <span>MISSED</span>
+    </div>
+    <div class="line-item missed">
+      <span>Pipe boot flashing (×6)</span>
+      <span class="dots"></span>
+      <span>MISSED</span>
+    </div>
+    <div class="line-item missed">
+      <span>Ice & water shield</span>
+      <span class="dots"></span>
+      <span>MISSED</span>
+    </div>
+    <div class="line-item missed">
+      <span>Step flashing (chimney)</span>
+      <span class="dots"></span>
+      <span>MISSED</span>
+    </div>
+    <hr class="receipt-divider">
+    <div class="receipt-title">Richard found</div>
+    <div class="line-item found">
+      <span>Items missed by adjuster</span>
+      <span class="dots"></span>
+      <span>47</span>
+    </div>
+    <div class="line-item found">
+      <span>Additional claim value</span>
+      <span class="dots"></span>
+      <span>$14,200</span>
+    </div>
+    <hr class="receipt-divider">
+    <div class="receipt-total">
+      <span class="label-txt">Money left on the table:</span>
+      <span>$14,200</span>
+    </div>
+    <div class="receipt-footer">
+      <div class="tagline">You didn't ask Richard.</div>
+    </div>
+  </div>
+  <div class="brand-corner">
+    <svg class="richard-sm" viewBox="0 0 1024 1024"><path d="M 718.65 820.72 L 663.54 820.72 L 653.52 818.21 L 640.37 807.57 L 631.60 786.27 L 624.72 779.39 L 399.28 779.39 L 389.89 787.53 L 381.12 808.82 L 375.49 814.45 L 359.21 820.72 L 285.32 819.46 L 250.25 815.71 L 216.43 805.69 L 202.03 793.79 L 195.77 780.01 L 194.52 752.46 L 209.55 593.41 L 165.09 591.53 L 135.03 586.52 L 121.88 577.12 L 119.37 560.84 L 253.38 326.65 L 253.38 218.94 L 261.52 207.04 L 272.79 203.28 L 409.30 203.28 L 418.07 205.79 L 427.46 217.69 L 429.34 269.66 L 474.43 265.90 L 585.89 265.90 L 649.76 273.42 L 688.59 283.44 L 716.14 295.96 L 729.92 305.98 L 749.33 326.65 L 895.86 547.07 L 903.37 559.59 L 904.63 569.61 L 897.74 581.51 L 883.96 587.77 L 862.67 591.53 L 814.45 593.41 L 829.48 752.46 L 829.48 773.75 L 821.97 793.79 L 811.32 803.18 L 791.28 811.95 L 767.49 816.96 L 718.65 820.72 Z M 388.64 535.80 L 409.30 528.91 L 423.71 514.50 L 431.22 496.97 L 431.22 478.19 L 422.45 459.40 L 410.56 447.50 L 398.03 441.24 L 379.25 438.73 L 355.45 447.50 L 342.30 460.65 L 336.04 474.43 L 334.79 494.47 L 341.05 512.00 L 355.45 527.65 L 371.73 535.17 L 388.64 535.80 Z M 646.63 539.55 L 663.54 533.92 L 679.19 519.51 L 686.71 503.23 L 687.96 488.20 L 682.95 470.67 L 668.55 453.76 L 654.77 446.25 L 635.99 443.74 L 613.44 451.26 L 601.55 461.90 L 591.53 481.94 L 591.53 501.98 L 597.79 517.01 L 610.94 531.41 L 632.23 540.18 L 646.63 539.55 Z" fill="#090909" fill-rule="evenodd"/></svg>
+    <span class="url">dumbroof.ai</span>
+  </div>
+</div>
+
+<!-- AD 6 — SCOREBOARD -->
+<div class="label">AD 6 — "Scoreboard" — Without vs With Richard (1080×1080)</div>
+<div class="ad ad6">
+  <div class="side side-left">
+    <div class="side-label">Without Richard</div>
+    <div class="score-item">
+      <div class="val">$18K</div>
+      <div class="desc">Claim value</div>
+    </div>
+    <div class="score-item">
+      <div class="val">12</div>
+      <div class="desc">Line items scoped</div>
+    </div>
+    <div class="score-item">
+      <div class="val">0</div>
+      <div class="desc">Supplements filed</div>
+    </div>
+    <div class="score-item">
+      <div class="val">😐</div>
+      <div class="desc">How you feel about it</div>
+    </div>
+    <div class="side-bottom">
+      <div class="brand">The old way.</div>
+    </div>
+  </div>
+  <div class="side side-right">
+    <div class="side-label">With Richard</div>
+    <div class="score-item">
+      <div class="val">$49K</div>
+      <div class="desc">Claim value</div>
+    </div>
+    <div class="score-item">
+      <div class="val">59</div>
+      <div class="desc">Line items scoped</div>
+    </div>
+    <div class="score-item">
+      <div class="val">3</div>
+      <div class="desc">Supplements auto-generated</div>
+    </div>
+    <div class="score-item">
+      <div class="val">😏</div>
+      <div class="desc">How you feel about it</div>
+    </div>
+    <div class="side-bottom">
+      <svg class="richard-sm" viewBox="0 0 1024 1024"><path d="M 718.65 820.72 L 663.54 820.72 L 653.52 818.21 L 640.37 807.57 L 631.60 786.27 L 624.72 779.39 L 399.28 779.39 L 389.89 787.53 L 381.12 808.82 L 375.49 814.45 L 359.21 820.72 L 285.32 819.46 L 250.25 815.71 L 216.43 805.69 L 202.03 793.79 L 195.77 780.01 L 194.52 752.46 L 209.55 593.41 L 165.09 591.53 L 135.03 586.52 L 121.88 577.12 L 119.37 560.84 L 253.38 326.65 L 253.38 218.94 L 261.52 207.04 L 272.79 203.28 L 409.30 203.28 L 418.07 205.79 L 427.46 217.69 L 429.34 269.66 L 474.43 265.90 L 585.89 265.90 L 649.76 273.42 L 688.59 283.44 L 716.14 295.96 L 729.92 305.98 L 749.33 326.65 L 895.86 547.07 L 903.37 559.59 L 904.63 569.61 L 897.74 581.51 L 883.96 587.77 L 862.67 591.53 L 814.45 593.41 L 829.48 752.46 L 829.48 773.75 L 821.97 793.79 L 811.32 803.18 L 791.28 811.95 L 767.49 816.96 L 718.65 820.72 Z M 388.64 535.80 L 409.30 528.91 L 423.71 514.50 L 431.22 496.97 L 431.22 478.19 L 422.45 459.40 L 410.56 447.50 L 398.03 441.24 L 379.25 438.73 L 355.45 447.50 L 342.30 460.65 L 336.04 474.43 L 334.79 494.47 L 341.05 512.00 L 355.45 527.65 L 371.73 535.17 L 388.64 535.80 Z M 646.63 539.55 L 663.54 533.92 L 679.19 519.51 L 686.71 503.23 L 687.96 488.20 L 682.95 470.67 L 668.55 453.76 L 654.77 446.25 L 635.99 443.74 L 613.44 451.26 L 601.55 461.90 L 591.53 481.94 L 591.53 501.98 L 597.79 517.01 L 610.94 531.41 L 632.23 540.18 L 646.63 539.55 Z" fill="#090909" fill-rule="evenodd"/></svg>
+      <div class="brand">dumbroof.ai</div>
+    </div>
+  </div>
+</div>
+
+<!-- AD 7 — NOTIFICATION -->
+<div class="label">AD 7 — "Notification" — Richard just pinged you (1080×1080)</div>
+<div class="ad ad7">
+  <div class="context-text">You just submitted a claim for $22K.</div>
+  <div class="notif-card">
+    <div class="icon-wrap">
+      <svg viewBox="0 0 1024 1024"><path d="M 718.65 820.72 L 663.54 820.72 L 653.52 818.21 L 640.37 807.57 L 631.60 786.27 L 624.72 779.39 L 399.28 779.39 L 389.89 787.53 L 381.12 808.82 L 375.49 814.45 L 359.21 820.72 L 285.32 819.46 L 250.25 815.71 L 216.43 805.69 L 202.03 793.79 L 195.77 780.01 L 194.52 752.46 L 209.55 593.41 L 165.09 591.53 L 135.03 586.52 L 121.88 577.12 L 119.37 560.84 L 253.38 326.65 L 253.38 218.94 L 261.52 207.04 L 272.79 203.28 L 409.30 203.28 L 418.07 205.79 L 427.46 217.69 L 429.34 269.66 L 474.43 265.90 L 585.89 265.90 L 649.76 273.42 L 688.59 283.44 L 716.14 295.96 L 729.92 305.98 L 749.33 326.65 L 895.86 547.07 L 903.37 559.59 L 904.63 569.61 L 897.74 581.51 L 883.96 587.77 L 862.67 591.53 L 814.45 593.41 L 829.48 752.46 L 829.48 773.75 L 821.97 793.79 L 811.32 803.18 L 791.28 811.95 L 767.49 816.96 L 718.65 820.72 Z M 388.64 535.80 L 409.30 528.91 L 423.71 514.50 L 431.22 496.97 L 431.22 478.19 L 422.45 459.40 L 410.56 447.50 L 398.03 441.24 L 379.25 438.73 L 355.45 447.50 L 342.30 460.65 L 336.04 474.43 L 334.79 494.47 L 341.05 512.00 L 355.45 527.65 L 371.73 535.17 L 388.64 535.80 Z M 646.63 539.55 L 663.54 533.92 L 679.19 519.51 L 686.71 503.23 L 687.96 488.20 L 682.95 470.67 L 668.55 453.76 L 654.77 446.25 L 635.99 443.74 L 613.44 451.26 L 601.55 461.90 L 591.53 481.94 L 591.53 501.98 L 597.79 517.01 L 610.94 531.41 L 632.23 540.18 L 646.63 539.55 Z" fill="#fff" fill-rule="evenodd"/></svg>
+    </div>
+    <div class="notif-body">
+      <div class="notif-header">
+        <span class="app-name">Richard</span>
+        <span class="time">just now</span>
+      </div>
+      <div class="notif-title">Hold on. I found more.</div>
+      <div class="notif-text">Your scope is missing <strong>34 line items</strong> worth an estimated <strong>$17,400</strong>. Want me to build the supplement?</div>
+    </div>
+  </div>
+  <div class="big-text">Before you send it —<br>ask Richard.</div>
+  <div class="bottom-brand">dumbroof.ai</div>
+</div>
+
+<!-- AD 8 — EDITORIAL COLOR BLOCK -->
+<div class="label">AD 8 — "Editorial" — Bold color block provocation (1080×1080)</div>
+<div class="ad ad8">
+  <div class="top-block">
+    <div class="brand">dumbroof.ai</div>
+    <svg class="richard-icon" viewBox="0 0 1024 1024" style="width:70px;height:70px"><path d="M 718.65 820.72 L 663.54 820.72 L 653.52 818.21 L 640.37 807.57 L 631.60 786.27 L 624.72 779.39 L 399.28 779.39 L 389.89 787.53 L 381.12 808.82 L 375.49 814.45 L 359.21 820.72 L 285.32 819.46 L 250.25 815.71 L 216.43 805.69 L 202.03 793.79 L 195.77 780.01 L 194.52 752.46 L 209.55 593.41 L 165.09 591.53 L 135.03 586.52 L 121.88 577.12 L 119.37 560.84 L 253.38 326.65 L 253.38 218.94 L 261.52 207.04 L 272.79 203.28 L 409.30 203.28 L 418.07 205.79 L 427.46 217.69 L 429.34 269.66 L 474.43 265.90 L 585.89 265.90 L 649.76 273.42 L 688.59 283.44 L 716.14 295.96 L 729.92 305.98 L 749.33 326.65 L 895.86 547.07 L 903.37 559.59 L 904.63 569.61 L 897.74 581.51 L 883.96 587.77 L 862.67 591.53 L 814.45 593.41 L 829.48 752.46 L 829.48 773.75 L 821.97 793.79 L 811.32 803.18 L 791.28 811.95 L 767.49 816.96 L 718.65 820.72 Z M 388.64 535.80 L 409.30 528.91 L 423.71 514.50 L 431.22 496.97 L 431.22 478.19 L 422.45 459.40 L 410.56 447.50 L 398.03 441.24 L 379.25 438.73 L 355.45 447.50 L 342.30 460.65 L 336.04 474.43 L 334.79 494.47 L 341.05 512.00 L 355.45 527.65 L 371.73 535.17 L 388.64 535.80 Z M 646.63 539.55 L 663.54 533.92 L 679.19 519.51 L 686.71 503.23 L 687.96 488.20 L 682.95 470.67 L 668.55 453.76 L 654.77 446.25 L 635.99 443.74 L 613.44 451.26 L 601.55 461.90 L 591.53 481.94 L 591.53 501.98 L 597.79 517.01 L 610.94 531.41 L 632.23 540.18 L 646.63 539.55 Z" fill="#090909" fill-rule="evenodd"/></svg>
+  </div>
+  <div class="mid-block">
+    <div class="headline">The adjuster<br>already came.<br>The money<br>already left.</div>
+  </div>
+  <div class="bot-block">
+    <div class="cta">Get it back. Ask Richard.</div>
+    <div class="url">dumbroof.ai</div>
+  </div>
+</div>
+
+</body>
+</html>

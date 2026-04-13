@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dumb Roof — Font Showdown</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Exo+2:wght@700;800;900&family=Space+Grotesk:wght@500;600;700&family=Sora:wght@700;800&family=Archivo+Black&family=Archivo:wght@700;800;900&family=Bricolage+Grotesque:wght@700;800&family=Silkscreen:wght@400;700&family=Press+Start+2P&family=DotGothic16&family=VT323&display=swap" rel="stylesheet">
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:#f5f5f5; font-family:-apple-system,sans-serif; padding:40px 20px; }
+  h1 { text-align:center; font-size:2em; font-weight:900; color:#111; margin-bottom:6px; }
+  .sub { text-align:center; color:#888; margin-bottom:40px; }
+  @media(max-width:900px) { div[style*="grid-template-columns:repeat(3"] { grid-template-columns:1fr !important; } }
+</style>
+</head>
+<body>
+
+<h1>Font Showdown v2</h1>
+<p class="sub">6 fonts &times; 10 backgrounds from your new color palette</p>
+
+
+<div style="max-width:1200px;margin:0 auto 30px auto;">
+<h2 style="font-size:1.4em;font-weight:700;color:#111;margin-bottom:16px;">Color Palette</h2>
+<div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:30px;">
+  <div style="background:#FFE02C;color:#111;border-radius:8px;padding:12px 16px;min-width:120px;text-align:center;font-size:0.75em;font-weight:600;border:1px solid rgba(0,0,0,0.08);"><div>Summer Yellow</div><div style="opacity:0.7;margin-top:2px;">#FFE02C</div></div>
+  <div style="background:#00EBF5;color:#111;border-radius:8px;padding:12px 16px;min-width:120px;text-align:center;font-size:0.75em;font-weight:600;border:1px solid rgba(0,0,0,0.08);"><div>Day Break Light Blue</div><div style="opacity:0.7;margin-top:2px;">#00EBF5</div></div>
+  <div style="background:#FFC0FF;color:#111;border-radius:8px;padding:12px 16px;min-width:120px;text-align:center;font-size:0.75em;font-weight:600;border:1px solid rgba(0,0,0,0.08);"><div>Candy Pink</div><div style="opacity:0.7;margin-top:2px;">#FFC0FF</div></div>
+  <div style="background:#66FF5A;color:#111;border-radius:8px;padding:12px 16px;min-width:120px;text-align:center;font-size:0.75em;font-weight:600;border:1px solid rgba(0,0,0,0.08);"><div>Kryptonite Green</div><div style="opacity:0.7;margin-top:2px;">#66FF5A</div></div>
+  <div style="background:#F9F8F9;color:#111;border-radius:8px;padding:12px 16px;min-width:120px;text-align:center;font-size:0.75em;font-weight:600;border:1px solid rgba(0,0,0,0.08);"><div>Off-white</div><div style="opacity:0.7;margin-top:2px;">#F9F8F9</div></div>
+  <div style="background:#0058FC;color:#fff;border-radius:8px;padding:12px 16px;min-width:120px;text-align:center;font-size:0.75em;font-weight:600;border:1px solid rgba(0,0,0,0.08);"><div>Electric Blue</div><div style="opacity:0.7;margin-top:2px;">#0058FC</div></div>
+  <div style="background:#FF07FF;color:#fff;border-radius:8px;padding:12px 16px;min-width:120px;text-align:center;font-size:0.75em;font-weight:600;border:1px solid rgba(0,0,0,0.08);"><div>Futuristic Pink</div><div style="opacity:0.7;margin-top:2px;">#FF07FF</div></div>
+  <div style="background:#FF9502;color:#111;border-radius:8px;padding:12px 16px;min-width:120px;text-align:center;font-size:0.75em;font-weight:600;border:1px solid rgba(0,0,0,0.08);"><div>Nectarine Orange</div><div style="opacity:0.7;margin-top:2px;">#FF9502</div></div>
+  <div style="background:#3500C0;color:#fff;border-radius:8px;padding:12px 16px;min-width:120px;text-align:center;font-size:0.75em;font-weight:600;border:1px solid rgba(0,0,0,0.08);"><div>Open Sky Blue</div><div style="opacity:0.7;margin-top:2px;">#3500C0</div></div>
+  <div style="background:#02038C;color:#fff;border-radius:8px;padding:12px 16px;min-width:120px;text-align:center;font-size:0.75em;font-weight:600;border:1px solid rgba(0,0,0,0.08);"><div>Pine Green</div><div style="opacity:0.7;margin-top:2px;">#02038C</div></div>
+  <div style="background:#999999;color:#111;border-radius:8px;padding:12px 16px;min-width:120px;text-align:center;font-size:0.75em;font-weight:600;border:1px solid rgba(0,0,0,0.08);"><div>Grey</div><div style="opacity:0.7;margin-top:2px;">#999999</div></div>
+  <div style="background:#FF3A02;color:#fff;border-radius:8px;padding:12px 16px;min-width:120px;text-align:center;font-size:0.75em;font-weight:600;border:1px solid rgba(0,0,0,0.08);"><div>Party Orange</div><div style="opacity:0.7;margin-top:2px;">#FF3A02</div></div>
+  <div style="background:#FC0502;color:#fff;border-radius:8px;padding:12px 16px;min-width:120px;text-align:center;font-size:0.75em;font-weight:600;border:1px solid rgba(0,0,0,0.08);"><div>Loud Red</div><div style="opacity:0.7;margin-top:2px;">#FC0502</div></div>
+  <div style="background:#003B00;color:#fff;border-radius:8px;padding:12px 16px;min-width:120px;text-align:center;font-size:0.75em;font-weight:600;border:1px solid rgba(0,0,0,0.08);"><div>Deep Green</div><div style="opacity:0.7;margin-top:2px;">#003B00</div></div>
+  <div style="background:#020009;color:#fff;border-radius:8px;padding:12px 16px;min-width:120px;text-align:center;font-size:0.75em;font-weight:600;border:1px solid rgba(0,0,0,0.08);"><div>Black</div><div style="opacity:0.7;margin-top:2px;">#020009</div></div>
+</div></div>
+<hr style="max-width:1200px;margin:10px auto 30px auto;border:none;border-top:2px solid #ddd;">
+
+<p style="max-width:1200px;margin:0 auto 12px auto;font-size:0.8em;color:#999;text-transform:uppercase;letter-spacing:3px;">On Futuristic Pink (#FF07FF)</p>
+<div style="max-width:1200px;margin:0 auto 30px auto;display:grid;grid-template-columns:repeat(3,1fr);gap:12px;">
+  <div style="background:#FF07FF;border-radius:14px;padding:24px 16px;text-align:center;">
+    <div style="font-size:0.6em;color:#fff;opacity:0.4;text-transform:uppercase;letter-spacing:2px;margin-bottom:10px;">Exo 2</div>
+    <div style="font-family:'Exo 2',sans-serif;font-weight:900;font-size:2.6em;color:#fff;line-height:1;">DUMB ROOF</div>
+    <div style="font-family:'Exo 2',sans-serif;font-weight:900;font-size:1.6em;color:#fff;opacity:0.65;line-height:1;margin-top:4px;">dumb roof</div>
+    <div style="font-family:'Exo 2',sans-serif;font-weight:900;font-size:0.85em;color:#FFE02C;margin-top:10px;">Did you ask Richard?</div>
+  </div>
+  <div style="background:#FF07FF;border-radius:14px;padding:24px 16px;text-align:center;">
+    <div style="font-size:0.6em;color:#fff;opacity:0.4;text-transform:uppercase;letter-spacing:2px;margin-bottom:10px;">Space Grotesk</div>
+    <div style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:2.6em;color:#fff;line-height:1;">DUMB ROOF</div>
+    <div style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:1.6em;color:#fff;opacity:0.65;line-height:1;margin-top:4px;">dumb roof</div>
+    <div style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:0.85em;color:#FFE02C;margin-top:10px;">Did you ask Richard?</div>
+  </div>
+  <div style="background:#FF07FF;border-radius:14px;padding:24px 16px;text-align:center;">
+    <div style="font-size:0.6em;color:#fff;opacity:0.4;text-transform:uppercase;letter-spacing:2px;margin-bottom:10px;">Sora</div>
+    <div style="font-family:'Sora',sans-serif;font-weight:800;font-size:2.6em;color:#fff;line-height:1;">DUMB ROOF</div>
+    <div style="font-family:'Sora',sans-serif;font-weight:800;font-size:1.6em;color:#fff;opacity:0.65;line-height:1;margin-top:4px;">dumb roof</div>
+    <div style="font-family:'Sora',sans-serif;font-weight:800;font-size:0.85em;color:#FFE02C;margin-top:10px;">Did you ask Richard?</div>
+  </div>
+  <div style="background:#FF07FF;border-radius:14px;padding:24px 16px;text-align:center;">
+    <div style="font-size:0.6em;color:#fff;opacity:0.4;text-transform:uppercase;letter-spacing:2px;margin-bottom:10px;">Archivo Black</div>
+    <div style="font-family:'Archivo Black',sans-serif;;font-size:2.6em;color:#fff;line-height:1;">DUMB ROOF</div>
+    <div style="font-family:'Archivo Black',sans-serif;;font-size:1.6em;color:#fff;opacity:0.65;line-height:1;margin-top:4px;">dumb roof</div>
+    <div style="font-family:'Archivo Black',sans-serif;;font-size:0.85em;color:#FFE02C;margin-top:10px;">Did you ask Richard?</div>
+  </div>
+  <div style="background:#FF07FF;border-radius:14px;padding:24px 16px;text-align:center;">
+    <div style="font-size:0.6em;color:#fff;opacity:0.4;text-transform:uppercase;letter-spacing:2px;margin-bottom:10px;">Archivo 900</div>
+    <div style="font-family:'Archivo',sans-serif;font-weight:900;font-size:2.6em;color:#fff;line-height:1;">DUMB ROOF</div>
+    <div style="font-family:'Archivo',sans-serif;font-weight:900;font-size:1.6em;color:#fff;opacity:0.65;line-height:1;margin-top:4px;">dumb roof</div>
+    <div style="font-family:'Archivo',sans-serif;font-weight:900;font-size:0.85em;color:#FFE02C;margin-top:10px;">Did you ask Richard?</div>
+  </div>
+  <div style="background:#FF07FF;border-radius:14px;padding:24px 16px;text-align:center;">
+    <div style="font-size:0.6em;color:#fff;opacity:0.4;text-transform:uppercase;letter-spacing:2px;margin-bottom:10px;">Bricolage Grotesque</div>
+    <div style="font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:2.6em;color:#fff;line-height:1;">DUMB ROOF</div>
+    <div style="font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:1.6em;color:#fff;opacity:0.65;line-height:1;margin-top:4px;">dumb roof</div>
+    <div style="font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:0.85em;color:#FFE02C;margin-top:10px;">Did you ask Richard?</div>
+  </div>
+</div>
+
+<p style="max-width:1200px;margin:0 auto 12px auto;font-size:0.8em;color:#999;text-transform:uppercase;letter-spacing:3px;">On Candy Pink (#FFC0FF)</p>
+<div style="max-width:1200px;margin:0 auto 30px auto;display:grid;grid-template-columns:repeat(3,1fr);gap:12px;">
+  <div style="background:#FFC0FF;border-radius:14px;padding:24px 16px;text-align:center;">
+    <div style="font-size:0.6em;color:#111;opacity:0.4;text-transform:uppercase;letter-spacing:2px;margin-bottom:10px;">Exo 2</div>
+    <div style="font-family:'Exo 2',sans-serif;font-weight:900;font-size:2.6em;color:#111;line-height:1;">DUMB ROOF</div>
+    <div style="font-family:'Exo 2',sans-serif;font-weight:900;font-size:1.6em;color:#111;opacity:0.65;line-height:1;margin-top:4px;">dumb roof</div>
+    <div style="font-family:'Exo 2',sans-serif;font-weight:900;font-size:0.85em;color:#0058FC;margin-top:10px;">Did you ask Richard?</div>
+  </div>
+  <div style="background:#FFC0FF;border-radius:14px;padding:24px 16px;text-align:center;">
+    <div style="font-size:0.6em;color:#111;opacity:0.4;text-transform:uppercase;letter-spacing:2px;margin-bottom:10px;">Space Grotesk</div>
+    <div style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:2.6em;color:#111;line-height:1;">DUMB ROOF</div>
+    <div style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:1.6em;color:#111;opacity:0.65;line-height:1;margin-top:4px;">dumb roof</div>
+    <div style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:0.85em;color:#0058FC;margin-top:10px;">Did you ask Richard?</div>
+  </div>
+  <div style="background:#FFC0FF;border-radius:14px;padding:24px 16px;text-align:center;">
+    <div style="font-size:0.6em;color:#111;opacity:0.4;text-transform:uppercase;letter-spacing:2px;margin-bottom:10px;">Sora</div>
+    <div style="font-family:'Sora',sans-serif;font-weight:800;font-size:2.6em;color:#111;line-height:1;">DUMB ROOF</div>
+    <div style="font-family:'Sora',sans-serif;font-weight:800;font-size:1.6em;color:#111;opacity:0.65;line-height:1;margin-top:4px;">dumb roof</div>
+    <div style="font-family:'Sora',sans-serif;font-weight:800;font-size:0.85em;color:#0058FC;margin-top:10px;">Did you ask Richard?</div>
+  </div>
+  <div style="background:#FFC0FF;border-radius:14px;padding:24px 16px;text-align:center;">
+    <div style="font-size:0.6em;color:#111;opacity:0.4;text-transform:uppercase;letter-spacing:2px;margin-bottom:10px;">Archivo Black</div>
+    <div style="font-family:'Archivo Black',sans-serif;;font-size:2.6em;color:#111;line-height:1;">DUMB ROOF</div>
+    <div style="font-family:'Archivo Black',sans-serif;;font-size:1.6em;color:#111;opacity:0.65;line-height:1;margin-top:4px;">dumb roof</div>
+    <div style="font-family:'Archivo Black',sans-serif;;font-size:0.85em;color:#0058FC;margin-top:10px;">Did you ask Richard?</div>
+  </div>
+  <div style="background:#FFC0FF;border-radius:14px;padding:24px 16px;text-align:center;">
+    <div style="font-size:0.6em;color:#111;opacity:0.4;text-transform:uppercase;letter-spacing:2px;margin-bottom:10px;">Archivo 900</div>
+    <div style="font-family:'Archivo',sans-serif;font-weight:900;font-size:2.6em;color:#111;line-height:1;">DUMB ROOF</div>
+    <div style="font-family:'Archivo',sans-serif;font-weight:900;font-size:1.6em;color:#111;opacity:0.65;line-height:1;margin-top:4px;">dumb roof</div>
+    <div style="font-family:'Archivo',sans-serif;font-weight:900;font-size:0.85em;color:#0058FC;margin-top:10px;">Did you ask Richard?</div>
+  </div>
+  <div style="background:#FFC0FF;border-radius:14px;padding:24px 16px;text-align:center;">
+    <div style="font-size:0.6em;color:#111;opacity:0.4;text-transform:uppercase;letter-spacing:2px;margin-bottom:10px;">Bricolage Grotesque</div>
+    <div style="font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:2.6em;color:#111;line-height:1;">DUMB ROOF</div>
+    <div style="font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:1.6em;color:#111;opacity:0.65;line-height:1;margin-top:4px;">dumb roof</div>
+    <div style="font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:0.85em;color:#0058FC;margin-top:10px;">Did you ask Richard?</div>
+  </div>
+</div>
+
+<p style="max-width:1200px;margin:0 auto 12px auto;font-size:0.8em;color:#999;text-transform:uppercase;letter-spacing:3px;">On Summer Yellow (#FFE02C)</p>
+<div style="max-width:1200px;margin:0 auto 30px auto;display:grid;grid-template-columns:repeat(3,1fr);gap:12px;">
+  <div style="background:#FFE02C;border-radius:14px;padding:24px 16px;text-align:center;">
+    <div style="font-size:0.6em;color:#111;opacity:0.4;text-transform:uppercase;letter-spacing:2px;margin-bottom:10px;">Exo 2</div>
+    <div style="font-family:'Exo 2',sans-serif;font-weight:900;font-size:2.6em;color:#111;line-height:1;">DUMB ROOF</div>
+    <div style="font-family:'Exo 2',sans-serif;font-weight:900;font-size:1.6em;color:#111;opacity:0.65;line-height:1;margin-top:4px;">dumb roof</div>
+    <div style="font-family:'Exo 2',sans-serif;font-weight:900;font-size:0.85em;color:#FF07FF;margin-top:10px;">Did you ask Richard?</div>
+  </div>
+  <div style="background:#FFE02C;border-radius:14px;padding:24px 16px;text-align:center;">
+    <div style="font-size:0.6em;color:#111;opacity:0.4;text-transform:uppercase;letter-spacing:2px;margin-bottom:10px;">Space Grotesk</div>
+    <div style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:2.6em;color:#111;line-height:1;">DUMB ROOF</div>
+    <div style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:1.6em;color:#111;opacity:0.65;line-height:1;margin-top:4px;">dumb roof</div>
+    <div style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:0.85em;color:#FF07FF;margin-top:10px;">Did you ask Richard?</div>
+  </div>
+  <div style="background:#FFE02C;border-radius:14px;padding:24px 16px;text-align:center;">
+    <div style="font-size:0.6em;color:#111;opacity:0.4;text-transform:uppercase;letter-spacing:2px;margin-bottom:10px;">Sora</div>
+    <div style="font-family:'Sora',sans-serif;font-weight:800;font-size:2.6em;color:#111;line-height:1;">DUMB ROOF</div>
+    <div style="font-family:'Sora',sans-serif;font-weight:800;font-size:1.6em;color:#111;opacity:0.65;line-height:1;margin-top:4px;">dumb roof</div>
+    <div style="font-family:'Sora',sans-serif;font-weight:800;font-size:0.85em;color:#FF07FF;margin-top:10px;">Did you ask Richard?</div>
+  </div>
+  <div style="background:#FFE02C;border-radius:14px;padding:24px 16px;text-align:center;">
+    <div style="font-size:0.6em;color:#111;opacity:0.4;text-transform:uppercase;letter-spacing:2px;margin-bottom:10px;">Archivo Black</div>
+    <div style="font-family:'Archivo Black',sans-serif;;font-size:2.6em;color:#111;line-height:1;">DUMB ROOF</div>
+    <div style="font-family:'Archivo Black',sans-serif;;font-size:1.6em;color:#111;opacity:0.65;line-height:1;margin-top:4px;">dumb roof</div>
+    <div style="font-family:'Archivo Black',sans-serif;;font-size:0.85em;color:#FF07FF;margin-top:10px;">Did you ask Richard?</div>
+  </div>
+  <div style="background:#FFE02C;border-radius:14px;padding:24px 16px;text-align:center;">
+    <div style="font-size:0.6em;color:#111;opacity:0.4;text-transform:uppercase;letter-spacing:2px;margin-bottom:10px;">Archivo 900</div>
+    <div style="font-family:'Archivo',sans-serif;font-weight:900;font-size:2.6em;color:#111;line-height:1;">DUMB ROOF</div>
+    <div style="font-family:'Archivo',sans-serif;font-weight:900;font-size:1.6em;color:#111;opacity:0.65;line-height:1;margin-top:4px;">dumb roof</div>
+    <div style="font-family:'Archivo',sans-serif;font-weight:900;font-size:0.85em;color:#FF07FF;margin-top:10px;">Did you ask Richard?</div>
+  </div>
+  <div style="background:#FFE02C;border-radius:14px;padding:24px 16px;text-align:center;">
+    <div style="font-size:0.6em;color:#111;opacity:0.4;text-transform:uppercase;letter-spacing:2px;margin-bottom:10px;">Bricolage Grotesque</div>
+    <div style="font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:2.6em;color:#111;line-height:1;">DUMB ROOF</div>
+    <div style="font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:1.6em;color:#111;opacity:0.65;line-height:1;margin-top:4px;">dumb roof</div>
+    <div style="font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:0.85em;color:#FF07FF;margin-top:10px;">Did you ask Richard?</div>
+  </div>
+</div>
+
+<p style="max-width:1200px;margin:0 auto 12px auto;font-size:0.8em;color:#999;text-transform:uppercase;letter-spacing:3px;">On Kryptonite Green (#66FF5A)</p>
+<div style="max-width:1200px;margin:0 auto 30px auto;display:grid;grid-template-columns:repeat(3,1fr);gap:12px;">
+  <div style="background:#66FF5A;border-radius:14px;padding:24px 16px;text-align:center;">
+    <div style="font-size:0.6em;color:#111;opacity:0.4;text-transform:uppercase;letter-spacing:2px;margin-bottom:10px;">Exo 2</div>
+    <div style="font-family:'Exo 2',sans-serif;font-weight:900;font-size:2.6em;color:#111;line-height:1;">DUMB ROOF</div>
+    <div style="font-family:'Exo 2',sans-serif;font-weight:900;font-size:1.6em;color:#111;opacity:0.65;line-height:1;margin-top:4px;">dumb roof</div>
+    <div style="font-family:'Exo 2',sans-serif;font-weight:900;font-size:0.85em;color:#0058FC;margin-top:10px;">Did you ask Richard?</div>
+  </div>
+  <div style="background:#66FF5A;border-radius:14px;padding:24px 16px;text-align:center;">
+    <div style="font-size:0.6em;color:#111;opacity:0.4;text-transform:uppercase;letter-spacing:2px;margin-bottom:10px;">Space Grotesk</div>
+    <div style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:2.6em;color:#111;line-height:1;">DUMB ROOF</div>
+    <div style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:1.6em;color:#111;opacity:0.65;line-height:1;margin-top:4px;">dumb roof</div>
+    <div style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:0.85em;color:#0058FC;margin-top:10px;">Did you ask Richard?</div>
+  </div>
+  <div style="background:#66FF5A;border-radius:14px;padding:24px 16px;text-align:center;">
+    <div style="font-size:0.6em;color:#111;opacity:0.4;text-transform:uppercase;letter-spacing:2px;margin-bottom:10px;">Sora</div>
+    <div style="font-family:'Sora',sans-serif;font-weight:800;font-size:2.6em;color:#111;line-height:1;">DUMB ROOF</div>
+    <div style="font-family:'Sora',sans-serif;font-weight:800;font-size:1.6em;color:#111;opacity:0.65;line-height:1;margin-top:4px;">dumb roof</div>
+    <div style="font-family:'Sora',sans-serif;font-weight:800;font-size:0.85em;color:#0058FC;margin-top:10px;">Did you ask Richard?</div>
+  </div>
+  <div style="background:#66FF5A;border-radius:14px;padding:24px 16px;text-align:center;">
+    <div style="font-size:0.6em;color:#111;opacity:0.4;text-transform:uppercase;letter-spacing:2px;margin-bottom:10px;">Archivo Black</div>
+    <div style="font-family:'Archivo Black',sans-serif;;font-size:2.6em;color:#111;line-height:1;">DUMB ROOF</div>
+    <div style="font-family:'Archivo Black',sans-serif;;font-size:1.6em;color:#111;opacity:0.65;line-height:1;margin-top:4px;">dumb roof</div>
+    <div style="font-family:'Archivo Black',sans-serif;;font-size:0.85em;color:#0058FC;margin-top:10px;">Did you ask Richard?</div>
+  </div>
+  <div style="background:#66FF5A;border-radius:14px;padding:24px 16px;text-align:center;">
+    <div style="font-size:0.6em;color:#111;opacity:0.4;text-transform:uppercase;letter-spacing:2px;margin-bottom:10px;">Archivo 900</div>
+    <div style="font-family:'Archivo',sans-serif;font-weight:900;font-size:2.6em;color:#111;line-height:1;">DUMB ROOF</div>
+    <div style="font-family:'Archivo',sans-serif;font-weight:900;font-size:1.6em;color:#111;opacity:0.65;line-height:1;margin-top:4px;">dumb roof</div>
+    <div style="font-family:'Archivo',sans-serif;font-weight:900;font-size:0.85em;color:#0058FC;margin-top:10px;">Did you ask Richard?</div>
+  </div>
+  <div style="background:#66FF5A;border-radius:14px;padding:24px 16px;text-align:center;">
+    <div style="font-size:0.6em;color:#111;opacity:0.4;text-transform:uppercase;letter-spacing:2px;margin-bottom:10px;">Bricolage Grotesque</div>
+    <div style="font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:2.6em;color:#111;line-height:1;">DUMB ROOF</div>
+    <div style="font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:1.6em;color:#111;opacity:0.65;line-height:1;margin-top:4px;">dumb roof</div>
+    <div style="font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:0.85em;color:#0058FC;margin-top:10px;">Did you ask Richard?</div>
+  </div>
+</div>
+
+<p style="max-width:1200px;margin:0 auto 12px auto;font-size:0.8em;color:#999;text-transform:uppercase;letter-spacing:3px;">On Electric Blue (#0058FC)</p>
+<div style="max-width:1200px;margin:0 auto 30px auto;display:grid;grid-template-columns:repeat(3,1fr);gap:12px;">
+  <div style="background:#0058FC;border-radius:14px;padding:24px 16px;text-align:center;">
+    <div style="font-size:0.6em;color:#fff;opacity:0.4;text-transform:uppercase;letter-spacing:2px;margin-bottom:10px;">Exo 2</div>
+    <div style="font-family:'Exo 2',sans-serif;font-weight:900;font-size:2.6em;color:#fff;line-height:1;">DUMB ROOF</div>
+    <div style="font-family:'Exo 2',sans-serif;font-weight:900;font-size:1.6em;color:#fff;opacity:0.65;line-height:1;margin-top:4px;">dumb roof</div>
+    <div style="font-family:'Exo 2',sans-serif;font-weight:900;font-size:0.85em;color:#FFE02C;margin-top:10px;">Did you ask Richard?</div>
+  </div>
+  <div style="background:#0058FC;border-radius:14px;padding:24px 16px;text-align:center;">
+    <div style="font-size:0.6em;color:#fff;opacity:0.4;text-transform:uppercase;letter-spacing:2px;margin-bottom:10px;">Space Grotesk</div>
+    <div style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:2.6em;color:#fff;line-height:1;">DUMB ROOF</div>
+    <div style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:1.6em;color:#fff;opacity:0.65;line-height:1;margin-top:4px;">dumb roof</div>
+    <div style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:0.85em;color:#FFE02C;margin-top:10px;">Did you ask Richard?</div>
+  </div>
+  <div style="background:#0058FC;border-radius:14px;padding:24px 16px;text-align:center;">
+    <div style="font-size:0.6em;color:#fff;opacity:0.4;text-transform:uppercase;letter-spacing:2px;margin-bottom:10px;">Sora</div>
+    <div style="font-family:'Sora',sans-serif;font-weight:800;font-size:2.6em;color:#fff;line-height:1;">DUMB ROOF</div>
+    <div style="font-family:'Sora',sans-serif;font-weight:800;font-size:1.6em;color:#fff;opacity:0.65;line-height:1;margin-top:4px;">dumb roof</div>
+    <div style="font-family:'Sora',sans-serif;font-weight:800;font-size:0.85em;color:#FFE02C;margin-top:10px;">Did you ask Richard?</div>
+  </div>
+  <div style="background:#0058FC;border-radius:14px;padding:24px 16px;text-align:center;">
+    <div style="font-size:0.6em;color:#fff;opacity:0.4;text-transform:uppercase;letter-spacing:2px;margin-bottom:10px;">Archivo Black</div>
+    <div style="font-family:'Archivo Black',sans-serif;;font-size:2.6em;color:#fff;line-height:1;">DUMB ROOF</div>
+    <div style="font-family:'Archivo Black',sans-serif;;font-size:1.6em;color:#fff;opacity:0.65;line-height:1;margin-top:4px;">dumb roof</div>
+    <div style="font-family:'Archivo Black',sans-serif;;font-size:0.85em;color:#FFE02C;margin-top:10px;">Did you ask Richard?</div>
+  </div>
+  <div style="background:#0058FC;border-radius:14px;padding:24px 16px;text-align:center;">
+    <div style="font-size:0.6em;color:#fff;opacity:0.4;text-transform:uppercase;letter-spacing:2px;margin-bottom:10px;">Archivo 900</div>
+    <div style="font-family:'Archivo',sans-serif;font-weight:900;font-size:2.6em;color:#fff;line-height:1;">DUMB ROOF</div>
+    <div style="font-family:'Archivo',sans-serif;font-weight:900;font-size:1.6em;color:#fff;opacity:0.65;line-height:1;margin-top:4px;">dumb roof</div>
+    <div style="font-family:'Archivo',sans-serif;font-weight:900;font-size:0.85em;color:#FFE02C;margin-top:10px;">Did you ask Richard?</div>
+  </div>
+  <div style="background:#0058FC;border-radius:14px;padding:24px 16px;text-align:center;">
+    <div style="font-size:0.6em;color:#fff;opacity:0.4;text-transform:uppercase;letter-spacing:2px;margin-bottom:10px;">Bricolage Grotesque</div>
+    <div style="font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:2.6em;color:#fff;line-height:1;">DUMB ROOF</div>
+    <div style="font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:1.6em;color:#fff;opacity:0.65;line-height:1;margin-top:4px;">dumb roof</div>
+    <div style="font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:0.85em;color:#FFE02C;margin-top:10px;">Did you ask Richard?</div>
+  </div>
+</div>
+
+<p style="max-width:1200px;margin:0 auto 12px auto;font-size:0.8em;color:#999;text-transform:uppercase;letter-spacing:3px;">On Party Orange (#FF3A02)</p>
+<div style="max-width:1200px;margin:0 auto 30px auto;display:grid;grid-template-columns:repeat(3,1fr);gap:12px;">
+  <div style="background:#FF3A02;border-radius:14px;padding:24px 16px;text-align:center;">
+    <div style="font-size:0.6em;color:#fff;opacity:0.4;text-transform:uppercase;letter-spacing:2px;margin-bottom:10px;">Exo 2</div>
+    <div style="font-family:'Exo 2',sans-serif;font-weight:900;font-size:2.6em;color:#fff;line-height:1;">DUMB ROOF</div>
+    <div style="font-family:'Exo 2',sans-serif;font-weight:900;font-size:1.6em;color:#fff;opacity:0.65;line-height:1;margin-top:4px;">dumb roof</div>
+    <div style="font-family:'Exo 2',sans-serif;font-weight:900;font-size:0.85em;color:#FFE02C;margin-top:10px;">Did you ask Richard?</div>
+  </div>
+  <div style="background:#FF3A02;border-radius:14px;padding:24px 16px;text-align:center;">
+    <div style="font-size:0.6em;color:#fff;opacity:0.4;text-transform:uppercase;letter-spacing:2px;margin-bottom:10px;">Space Grotesk</div>
+    <div style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:2.6em;color:#fff;line-height:1;">DUMB ROOF</div>
+    <div style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:1.6em;color:#fff;opacity:0.65;line-height:1;margin-top:4px;">dumb roof</div>
+    <div style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:0.85em;color:#FFE02C;margin-top:10px;">Did you ask Richard?</div>
+  </div>
+  <div style="background:#FF3A02;border-radius:14px;padding:24px 16px;text-align:center;">
+    <div style="font-size:0.6em;color:#fff;opacity:0.4;text-transform:uppercase;letter-spacing:2px;margin-bottom:10px;">Sora</div>
+    <div style="font-family:'Sora',sans-serif;font-weight:800;font-size:2.6em;color:#fff;line-height:1;">DUMB ROOF</div>
+    <div style="font-family:'Sora',sans-serif;font-weight:800;font-size:1.6em;color:#fff;opacity:0.65;line-height:1;margin-top:4px;">dumb roof</div>
+    <div style="font-family:'Sora',sans-serif;font-weight:800;font-size:0.85em;color:#FFE02C;margin-top:10px;">Did you ask Richard?</div>
+  </div>
+  <div style="background:#FF3A02;border-radius:14px;padding:24px 16px;text-align:center;">
+    <div style="font-size:0.6em;color:#fff;opacity:0.4;text-transform:uppercase;letter-spacing:2px;margin-bottom:10px;">Archivo Black</div>
+    <div style="font-family:'Archivo Black',sans-serif;;font-size:2.6em;color:#fff;line-height:1;">DUMB ROOF</div>
+    <div style="font-family:'Archivo Black',sans-serif;;font-size:1.6em;color:#fff;opacity:0.65;line-height:1;margin-top:4px;">dumb roof</div>
+    <div style="font-family:'Archivo Black',sans-serif;;font-size:0.85em;color:#FFE02C;margin-top:10px;">Did you ask Richard?</div>
+  </div>
+  <div style="background:#FF3A02;border-radius:14px;padding:24px 16px;text-align:center;">
+    <div style="font-size:0.6em;color:#fff;opacity:0.4;text-transform:uppercase;letter-spacing:2px;margin-bottom:10px;">Archivo 900</div>
+    <div style="font-family:'Archivo',sans-serif;font-weight:900;font-size:2.6em;color:#fff;line-height:1;">DUMB ROOF</div>
+    <div style="font-family:'Archivo',sans-serif;font-weight:900;font-size:1.6em;color:#fff;opacity:0.65;line-height:1;margin-top:4px;">dumb roof</div>
+    <div style="font-family:'Archivo',sans-serif;font-weight:900;font-size:0.85em;color:#FFE02C;margin-top:10px;">Did you ask Richard?</div>
+  </div>
+  <div style="background:#FF3A02;border-radius:14px;padding:24px 16px;text-align:center;">
+    <div style="font-size:0.6em;color:#fff;opacity:0.4;text-transform:uppercase;letter-spacing:2px;margin-bottom:10px;">Bricolage Grotesque</div>
+    <div style="font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:2.6em;color:#fff;line-height:1;">DUMB ROOF</div>
+    <div style="font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:1.6em;color:#fff;opacity:0.65;line-height:1;margin-top:4px;">dumb roof</div>
+    <div style="font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:0.85em;color:#FFE02C;margin-top:10px;">Did you ask Richard?</div>
+  </div>
+</div>
+
+<p style="max-width:1200px;margin:0 auto 12px auto;font-size:0.8em;color:#999;text-transform:uppercase;letter-spacing:3px;">On Day Break Light Blue (#00EBF5)</p>
+<div style="max-width:1200px;margin:0 auto 30px auto;display:grid;grid-template-columns:repeat(3,1fr);gap:12px;">
+  <div style="background:#00EBF5;border-radius:14px;padding:24px 16px;text-align:center;">
+    <div style="font-size:0.6em;color:#111;opacity:0.4;text-transform:uppercase;letter-spacing:2px;margin-bottom:10px;">Exo 2</div>
+    <div style="font-family:'Exo 2',sans-serif;font-weight:900;font-size:2.6em;color:#111;line-height:1;">DUMB ROOF</div>
+    <div style="font-family:'Exo 2',sans-serif;font-weight:900;font-size:1.6em;color:#111;opacity:0.65;line-height:1;margin-top:4px;">dumb roof</div>
+    <div style="font-family:'Exo 2',sans-serif;font-weight:900;font-size:0.85em;color:#FF07FF;margin-top:10px;">Did you ask Richard?</div>
+  </div>
+  <div style="background:#00EBF5;border-radius:14px;padding:24px 16px;text-align:center;">
+    <div style="font-size:0.6em;color:#111;opacity:0.4;text-transform:uppercase;letter-spacing:2px;margin-bottom:10px;">Space Grotesk</div>
+    <div style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:2.6em;color:#111;line-height:1;">DUMB ROOF</div>
+    <div style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:1.6em;color:#111;opacity:0.65;line-height:1;margin-top:4px;">dumb roof</div>
+    <div style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:0.85em;color:#FF07FF;margin-top:10px;">Did you ask Richard?</div>
+  </div>
+  <div style="background:#00EBF5;border-radius:14px;padding:24px 16px;text-align:center;">
+    <div style="font-size:0.6em;color:#111;opacity:0.4;text-transform:uppercase;letter-spacing:2px;margin-bottom:10px;">Sora</div>
+    <div style="font-family:'Sora',sans-serif;font-weight:800;font-size:2.6em;color:#111;line-height:1;">DUMB ROOF</div>
+    <div style="font-family:'Sora',sans-serif;font-weight:800;font-size:1.6em;color:#111;opacity:0.65;line-height:1;margin-top:4px;">dumb roof</div>
+    <div style="font-family:'Sora',sans-serif;font-weight:800;font-size:0.85em;color:#FF07FF;margin-top:10px;">Did you ask Richard?</div>
+  </div>
+  <div style="background:#00EBF5;border-radius:14px;padding:24px 16px;text-align:center;">
+    <div style="font-size:0.6em;color:#111;opacity:0.4;text-transform:uppercase;letter-spacing:2px;margin-bottom:10px;">Archivo Black</div>
+    <div style="font-family:'Archivo Black',sans-serif;;font-size:2.6em;color:#111;line-height:1;">DUMB ROOF</div>
+    <div style="font-family:'Archivo Black',sans-serif;;font-size:1.6em;color:#111;opacity:0.65;line-height:1;margin-top:4px;">dumb roof</div>
+    <div style="font-family:'Archivo Black',sans-serif;;font-size:0.85em;color:#FF07FF;margin-top:10px;">Did you ask Richard?</div>
+  </div>
+  <div style="background:#00EBF5;border-radius:14px;padding:24px 16px;text-align:center;">
+    <div style="font-size:0.6em;color:#111;opacity:0.4;text-transform:uppercase;letter-spacing:2px;margin-bottom:10px;">Archivo 900</div>
+    <div style="font-family:'Archivo',sans-serif;font-weight:900;font-size:2.6em;color:#111;line-height:1;">DUMB ROOF</div>
+    <div style="font-family:'Archivo',sans-serif;font-weight:900;font-size:1.6em;color:#111;opacity:0.65;line-height:1;margin-top:4px;">dumb roof</div>
+    <div style="font-family:'Archivo',sans-serif;font-weight:900;font-size:0.85em;color:#FF07FF;margin-top:10px;">Did you ask Richard?</div>
+  </div>
+  <div style="background:#00EBF5;border-radius:14px;padding:24px 16px;text-align:center;">
+    <div style="font-size:0.6em;color:#111;opacity:0.4;text-transform:uppercase;letter-spacing:2px;margin-bottom:10px;">Bricolage Grotesque</div>
+    <div style="font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:2.6em;color:#111;line-height:1;">DUMB ROOF</div>
+    <div style="font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:1.6em;color:#111;opacity:0.65;line-height:1;margin-top:4px;">dumb roof</div>
+    <div style="font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:0.85em;color:#FF07FF;margin-top:10px;">Did you ask Richard?</div>
+  </div>
+</div>
+
+<p style="max-width:1200px;margin:0 auto 12px auto;font-size:0.8em;color:#999;text-transform:uppercase;letter-spacing:3px;">On Loud Red (#FC0502)</p>
+<div style="max-width:1200px;margin:0 auto 30px auto;display:grid;grid-template-columns:repeat(3,1fr);gap:12px;">
+  <div style="background:#FC0502;border-radius:14px;padding:24px 16px;text-align:center;">
+    <div style="font-size:0.6em;color:#fff;opacity:0.4;text-transform:uppercase;letter-spacing:2px;margin-bottom:10px;">Exo 2</div>
+    <div style="font-family:'Exo 2',sans-serif;font-weight:900;font-size:2.6em;color:#fff;line-height:1;">DUMB ROOF</div>
+    <div style="font-family:'Exo 2',sans-serif;font-weight:900;font-size:1.6em;color:#fff;opacity:0.65;line-height:1;margin-top:4px;">dumb roof</div>
+    <div style="font-family:'Exo 2',sans-serif;font-weight:900;font-size:0.85em;color:#FFE02C;margin-top:10px;">Did you ask Richard?</div>
+  </div>
+  <div style="background:#FC0502;border-radius:14px;padding:24px 16px;text-align:center;">
+    <div style="font-size:0.6em;color:#fff;opacity:0.4;text-transform:uppercase;letter-spacing:2px;margin-bottom:10px;">Space Grotesk</div>
+    <div style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:2.6em;color:#fff;line-height:1;">DUMB ROOF</div>
+    <div style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:1.6em;color:#fff;opacity:0.65;line-height:1;margin-top:4px;">dumb roof</div>
+    <div style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:0.85em;color:#FFE02C;margin-top:10px;">Did you ask Richard?</div>
+  </div>
+  <div style="background:#FC0502;border-radius:14px;padding:24px 16px;text-align:center;">
+    <div style="font-size:0.6em;color:#fff;opacity:0.4;text-transform:uppercase;letter-spacing:2px;margin-bottom:10px;">Sora</div>
+    <div style="font-family:'Sora',sans-serif;font-weight:800;font-size:2.6em;color:#fff;line-height:1;">DUMB ROOF</div>
+    <div style="font-family:'Sora',sans-serif;font-weight:800;font-size:1.6em;color:#fff;opacity:0.65;line-height:1;margin-top:4px;">dumb roof</div>
+    <div style="font-family:'Sora',sans-serif;font-weight:800;font-size:0.85em;color:#FFE02C;margin-top:10px;">Did you ask Richard?</div>
+  </div>
+  <div style="background:#FC0502;border-radius:14px;padding:24px 16px;text-align:center;">
+    <div style="font-size:0.6em;color:#fff;opacity:0.4;text-transform:uppercase;letter-spacing:2px;margin-bottom:10px;">Archivo Black</div>
+    <div style="font-family:'Archivo Black',sans-serif;;font-size:2.6em;color:#fff;line-height:1;">DUMB ROOF</div>
+    <div style="font-family:'Archivo Black',sans-serif;;font-size:1.6em;color:#fff;opacity:0.65;line-height:1;margin-top:4px;">dumb roof</div>
+    <div style="font-family:'Archivo Black',sans-serif;;font-size:0.85em;color:#FFE02C;margin-top:10px;">Did you ask Richard?</div>
+  </div>
+  <div style="background:#FC0502;border-radius:14px;padding:24px 16px;text-align:center;">
+    <div style="font-size:0.6em;color:#fff;opacity:0.4;text-transform:uppercase;letter-spacing:2px;margin-bottom:10px;">Archivo 900</div>
+    <div style="font-family:'Archivo',sans-serif;font-weight:900;font-size:2.6em;color:#fff;line-height:1;">DUMB ROOF</div>
+    <div style="font-family:'Archivo',sans-serif;font-weight:900;font-size:1.6em;color:#fff;opacity:0.65;line-height:1;margin-top:4px;">dumb roof</div>
+    <div style="font-family:'Archivo',sans-serif;font-weight:900;font-size:0.85em;color:#FFE02C;margin-top:10px;">Did you ask Richard?</div>
+  </div>
+  <div style="background:#FC0502;border-radius:14px;padding:24px 16px;text-align:center;">
+    <div style="font-size:0.6em;color:#fff;opacity:0.4;text-transform:uppercase;letter-spacing:2px;margin-bottom:10px;">Bricolage Grotesque</div>
+    <div style="font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:2.6em;color:#fff;line-height:1;">DUMB ROOF</div>
+    <div style="font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:1.6em;color:#fff;opacity:0.65;line-height:1;margin-top:4px;">dumb roof</div>
+    <div style="font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:0.85em;color:#FFE02C;margin-top:10px;">Did you ask Richard?</div>
+  </div>
+</div>
+
+<p style="max-width:1200px;margin:0 auto 12px auto;font-size:0.8em;color:#999;text-transform:uppercase;letter-spacing:3px;">On Open Sky Blue (#3500C0)</p>
+<div style="max-width:1200px;margin:0 auto 30px auto;display:grid;grid-template-columns:repeat(3,1fr);gap:12px;">
+  <div style="background:#3500C0;border-radius:14px;padding:24px 16px;text-align:center;">
+    <div style="font-size:0.6em;color:#66FF5A;opacity:0.4;text-transform:uppercase;letter-spacing:2px;margin-bottom:10px;">Exo 2</div>
+    <div style="font-family:'Exo 2',sans-serif;font-weight:900;font-size:2.6em;color:#66FF5A;line-height:1;">DUMB ROOF</div>
+    <div style="font-family:'Exo 2',sans-serif;font-weight:900;font-size:1.6em;color:#66FF5A;opacity:0.65;line-height:1;margin-top:4px;">dumb roof</div>
+    <div style="font-family:'Exo 2',sans-serif;font-weight:900;font-size:0.85em;color:#FFE02C;margin-top:10px;">Did you ask Richard?</div>
+  </div>
+  <div style="background:#3500C0;border-radius:14px;padding:24px 16px;text-align:center;">
+    <div style="font-size:0.6em;color:#66FF5A;opacity:0.4;text-transform:uppercase;letter-spacing:2px;margin-bottom:10px;">Space Grotesk</div>
+    <div style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:2.6em;color:#66FF5A;line-height:1;">DUMB ROOF</div>
+    <div style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:1.6em;color:#66FF5A;opacity:0.65;line-height:1;margin-top:4px;">dumb roof</div>
+    <div style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:0.85em;color:#FFE02C;margin-top:10px;">Did you ask Richard?</div>
+  </div>
+  <div style="background:#3500C0;border-radius:14px;padding:24px 16px;text-align:center;">
+    <div style="font-size:0.6em;color:#66FF5A;opacity:0.4;text-transform:uppercase;letter-spacing:2px;margin-bottom:10px;">Sora</div>
+    <div style="font-family:'Sora',sans-serif;font-weight:800;font-size:2.6em;color:#66FF5A;line-height:1;">DUMB ROOF</div>
+    <div style="font-family:'Sora',sans-serif;font-weight:800;font-size:1.6em;color:#66FF5A;opacity:0.65;line-height:1;margin-top:4px;">dumb roof</div>
+    <div style="font-family:'Sora',sans-serif;font-weight:800;font-size:0.85em;color:#FFE02C;margin-top:10px;">Did you ask Richard?</div>
+  </div>
+  <div style="background:#3500C0;border-radius:14px;padding:24px 16px;text-align:center;">
+    <div style="font-size:0.6em;color:#66FF5A;opacity:0.4;text-transform:uppercase;letter-spacing:2px;margin-bottom:10px;">Archivo Black</div>
+    <div style="font-family:'Archivo Black',sans-serif;;font-size:2.6em;color:#66FF5A;line-height:1;">DUMB ROOF</div>
+    <div style="font-family:'Archivo Black',sans-serif;;font-size:1.6em;color:#66FF5A;opacity:0.65;line-height:1;margin-top:4px;">dumb roof</div>
+    <div style="font-family:'Archivo Black',sans-serif;;font-size:0.85em;color:#FFE02C;margin-top:10px;">Did you ask Richard?</div>
+  </div>
+  <div style="background:#3500C0;border-radius:14px;padding:24px 16px;text-align:center;">
+    <div style="font-size:0.6em;color:#66FF5A;opacity:0.4;text-transform:uppercase;letter-spacing:2px;margin-bottom:10px;">Archivo 900</div>
+    <div style="font-family:'Archivo',sans-serif;font-weight:900;font-size:2.6em;color:#66FF5A;line-height:1;">DUMB ROOF</div>
+    <div style="font-family:'Archivo',sans-serif;font-weight:900;font-size:1.6em;color:#66FF5A;opacity:0.65;line-height:1;margin-top:4px;">dumb roof</div>
+    <div style="font-family:'Archivo',sans-serif;font-weight:900;font-size:0.85em;color:#FFE02C;margin-top:10px;">Did you ask Richard?</div>
+  </div>
+  <div style="background:#3500C0;border-radius:14px;padding:24px 16px;text-align:center;">
+    <div style="font-size:0.6em;color:#66FF5A;opacity:0.4;text-transform:uppercase;letter-spacing:2px;margin-bottom:10px;">Bricolage Grotesque</div>
+    <div style="font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:2.6em;color:#66FF5A;line-height:1;">DUMB ROOF</div>
+    <div style="font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:1.6em;color:#66FF5A;opacity:0.65;line-height:1;margin-top:4px;">dumb roof</div>
+    <div style="font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:0.85em;color:#FFE02C;margin-top:10px;">Did you ask Richard?</div>
+  </div>
+</div>
+
+<p style="max-width:1200px;margin:0 auto 12px auto;font-size:0.8em;color:#999;text-transform:uppercase;letter-spacing:3px;">On Black (#020009)</p>
+<div style="max-width:1200px;margin:0 auto 30px auto;display:grid;grid-template-columns:repeat(3,1fr);gap:12px;">
+  <div style="background:#020009;border-radius:14px;padding:24px 16px;text-align:center;">
+    <div style="font-size:0.6em;color:#FF07FF;opacity:0.4;text-transform:uppercase;letter-spacing:2px;margin-bottom:10px;">Exo 2</div>
+    <div style="font-family:'Exo 2',sans-serif;font-weight:900;font-size:2.6em;color:#FF07FF;line-height:1;">DUMB ROOF</div>
+    <div style="font-family:'Exo 2',sans-serif;font-weight:900;font-size:1.6em;color:#FF07FF;opacity:0.65;line-height:1;margin-top:4px;">dumb roof</div>
+    <div style="font-family:'Exo 2',sans-serif;font-weight:900;font-size:0.85em;color:#66FF5A;margin-top:10px;">Did you ask Richard?</div>
+  </div>
+  <div style="background:#020009;border-radius:14px;padding:24px 16px;text-align:center;">
+    <div style="font-size:0.6em;color:#FF07FF;opacity:0.4;text-transform:uppercase;letter-spacing:2px;margin-bottom:10px;">Space Grotesk</div>
+    <div style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:2.6em;color:#FF07FF;line-height:1;">DUMB ROOF</div>
+    <div style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:1.6em;color:#FF07FF;opacity:0.65;line-height:1;margin-top:4px;">dumb roof</div>
+    <div style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:0.85em;color:#66FF5A;margin-top:10px;">Did you ask Richard?</div>
+  </div>
+  <div style="background:#020009;border-radius:14px;padding:24px 16px;text-align:center;">
+    <div style="font-size:0.6em;color:#FF07FF;opacity:0.4;text-transform:uppercase;letter-spacing:2px;margin-bottom:10px;">Sora</div>
+    <div style="font-family:'Sora',sans-serif;font-weight:800;font-size:2.6em;color:#FF07FF;line-height:1;">DUMB ROOF</div>
+    <div style="font-family:'Sora',sans-serif;font-weight:800;font-size:1.6em;color:#FF07FF;opacity:0.65;line-height:1;margin-top:4px;">dumb roof</div>
+    <div style="font-family:'Sora',sans-serif;font-weight:800;font-size:0.85em;color:#66FF5A;margin-top:10px;">Did you ask Richard?</div>
+  </div>
+  <div style="background:#020009;border-radius:14px;padding:24px 16px;text-align:center;">
+    <div style="font-size:0.6em;color:#FF07FF;opacity:0.4;text-transform:uppercase;letter-spacing:2px;margin-bottom:10px;">Archivo Black</div>
+    <div style="font-family:'Archivo Black',sans-serif;;font-size:2.6em;color:#FF07FF;line-height:1;">DUMB ROOF</div>
+    <div style="font-family:'Archivo Black',sans-serif;;font-size:1.6em;color:#FF07FF;opacity:0.65;line-height:1;margin-top:4px;">dumb roof</div>
+    <div style="font-family:'Archivo Black',sans-serif;;font-size:0.85em;color:#66FF5A;margin-top:10px;">Did you ask Richard?</div>
+  </div>
+  <div style="background:#020009;border-radius:14px;padding:24px 16px;text-align:center;">
+    <div style="font-size:0.6em;color:#FF07FF;opacity:0.4;text-transform:uppercase;letter-spacing:2px;margin-bottom:10px;">Archivo 900</div>
+    <div style="font-family:'Archivo',sans-serif;font-weight:900;font-size:2.6em;color:#FF07FF;line-height:1;">DUMB ROOF</div>
+    <div style="font-family:'Archivo',sans-serif;font-weight:900;font-size:1.6em;color:#FF07FF;opacity:0.65;line-height:1;margin-top:4px;">dumb roof</div>
+    <div style="font-family:'Archivo',sans-serif;font-weight:900;font-size:0.85em;color:#66FF5A;margin-top:10px;">Did you ask Richard?</div>
+  </div>
+  <div style="background:#020009;border-radius:14px;padding:24px 16px;text-align:center;">
+    <div style="font-size:0.6em;color:#FF07FF;opacity:0.4;text-transform:uppercase;letter-spacing:2px;margin-bottom:10px;">Bricolage Grotesque</div>
+    <div style="font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:2.6em;color:#FF07FF;line-height:1;">DUMB ROOF</div>
+    <div style="font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:1.6em;color:#FF07FF;opacity:0.65;line-height:1;margin-top:4px;">dumb roof</div>
+    <div style="font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:0.85em;color:#66FF5A;margin-top:10px;">Did you ask Richard?</div>
+  </div>
+</div>
+
+
+
+<hr style="max-width:1200px;margin:40px auto;border:none;border-top:2px solid #ddd;">
+
+<h2 style="max-width:1200px;margin:0 auto 6px auto;font-size:1.4em;font-weight:700;color:#111;">FK Raster Vibes — Pixel/Bitmap Fonts</h2>
+<p style="max-width:1200px;margin:0 auto 24px auto;color:#888;font-size:0.9em;">FK Raster is a premium paid font. Here are free alternatives with similar retro-digital energy. Nobody in construction is using these.</p>
+
+<p style="max-width:1200px;margin:0 auto 12px auto;font-size:0.8em;color:#999;text-transform:uppercase;letter-spacing:3px;">On Futuristic Pink</p>
+<div style="max-width:1200px;margin:0 auto 24px auto;display:grid;grid-template-columns:repeat(2,1fr);gap:12px;">
+
+  <div style="background:#FF07FF;border-radius:14px;padding:28px 20px;text-align:center;">
+    <div style="font-size:0.6em;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:2px;margin-bottom:10px;">Silkscreen Bold</div>
+    <div style="font-family:'Silkscreen',sans-serif;font-weight:700;font-size:2.6em;color:#fff;line-height:1;">DUMB ROOF</div>
+    <div style="font-family:'Silkscreen',sans-serif;font-weight:700;font-size:1.6em;color:rgba(255,255,255,0.65);line-height:1;margin-top:4px;">dumb roof</div>
+    <div style="font-family:'Silkscreen',sans-serif;font-weight:400;font-size:0.85em;color:#FFE02C;margin-top:10px;">Did you ask Richard?</div>
+  </div>
+
+  <div style="background:#FF07FF;border-radius:14px;padding:28px 20px;text-align:center;">
+    <div style="font-size:0.6em;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:2px;margin-bottom:10px;">Press Start 2P</div>
+    <div style="font-family:'Press Start 2P',sans-serif;font-size:1.8em;color:#fff;line-height:1.2;">DUMB ROOF</div>
+    <div style="font-family:'Press Start 2P',sans-serif;font-size:1.1em;color:rgba(255,255,255,0.65);line-height:1.2;margin-top:6px;">dumb roof</div>
+    <div style="font-family:'Press Start 2P',sans-serif;font-size:0.6em;color:#FFE02C;margin-top:10px;">Did you ask Richard?</div>
+  </div>
+
+  <div style="background:#FF07FF;border-radius:14px;padding:28px 20px;text-align:center;">
+    <div style="font-size:0.6em;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:2px;margin-bottom:10px;">DotGothic16</div>
+    <div style="font-family:'DotGothic16',sans-serif;font-size:2.6em;color:#fff;line-height:1;">DUMB ROOF</div>
+    <div style="font-family:'DotGothic16',sans-serif;font-size:1.6em;color:rgba(255,255,255,0.65);line-height:1;margin-top:4px;">dumb roof</div>
+    <div style="font-family:'DotGothic16',sans-serif;font-size:0.85em;color:#FFE02C;margin-top:10px;">Did you ask Richard?</div>
+  </div>
+
+  <div style="background:#FF07FF;border-radius:14px;padding:28px 20px;text-align:center;">
+    <div style="font-size:0.6em;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:2px;margin-bottom:10px;">VT323</div>
+    <div style="font-family:'VT323',monospace;font-size:3.2em;color:#fff;line-height:1;">DUMB ROOF</div>
+    <div style="font-family:'VT323',monospace;font-size:2em;color:rgba(255,255,255,0.65);line-height:1;margin-top:4px;">dumb roof</div>
+    <div style="font-family:'VT323',monospace;font-size:1.1em;color:#FFE02C;margin-top:10px;">Did you ask Richard?</div>
+  </div>
+
+</div>
+
+<p style="max-width:1200px;margin:0 auto 12px auto;font-size:0.8em;color:#999;text-transform:uppercase;letter-spacing:3px;">On Day Break Light Blue</p>
+<div style="max-width:1200px;margin:0 auto 24px auto;display:grid;grid-template-columns:repeat(2,1fr);gap:12px;">
+
+  <div style="background:#00EBF5;border-radius:14px;padding:28px 20px;text-align:center;">
+    <div style="font-size:0.6em;color:rgba(0,0,0,0.3);text-transform:uppercase;letter-spacing:2px;margin-bottom:10px;">Silkscreen Bold</div>
+    <div style="font-family:'Silkscreen',sans-serif;font-weight:700;font-size:2.6em;color:#111;line-height:1;">DUMB ROOF</div>
+    <div style="font-family:'Silkscreen',sans-serif;font-weight:700;font-size:1.6em;color:rgba(0,0,0,0.5);line-height:1;margin-top:4px;">dumb roof</div>
+    <div style="font-family:'Silkscreen',sans-serif;font-weight:400;font-size:0.85em;color:#FF07FF;margin-top:10px;">Did you ask Richard?</div>
+  </div>
+
+  <div style="background:#00EBF5;border-radius:14px;padding:28px 20px;text-align:center;">
+    <div style="font-size:0.6em;color:rgba(0,0,0,0.3);text-transform:uppercase;letter-spacing:2px;margin-bottom:10px;">Press Start 2P</div>
+    <div style="font-family:'Press Start 2P',sans-serif;font-size:1.8em;color:#111;line-height:1.2;">DUMB ROOF</div>
+    <div style="font-family:'Press Start 2P',sans-serif;font-size:1.1em;color:rgba(0,0,0,0.5);line-height:1.2;margin-top:6px;">dumb roof</div>
+    <div style="font-family:'Press Start 2P',sans-serif;font-size:0.6em;color:#FF07FF;margin-top:10px;">Did you ask Richard?</div>
+  </div>
+
+  <div style="background:#00EBF5;border-radius:14px;padding:28px 20px;text-align:center;">
+    <div style="font-size:0.6em;color:rgba(0,0,0,0.3);text-transform:uppercase;letter-spacing:2px;margin-bottom:10px;">DotGothic16</div>
+    <div style="font-family:'DotGothic16',sans-serif;font-size:2.6em;color:#111;line-height:1;">DUMB ROOF</div>
+    <div style="font-family:'DotGothic16',sans-serif;font-size:1.6em;color:rgba(0,0,0,0.5);line-height:1;margin-top:4px;">dumb roof</div>
+    <div style="font-family:'DotGothic16',sans-serif;font-size:0.85em;color:#FF07FF;margin-top:10px;">Did you ask Richard?</div>
+  </div>
+
+  <div style="background:#00EBF5;border-radius:14px;padding:28px 20px;text-align:center;">
+    <div style="font-size:0.6em;color:rgba(0,0,0,0.3);text-transform:uppercase;letter-spacing:2px;margin-bottom:10px;">VT323</div>
+    <div style="font-family:'VT323',monospace;font-size:3.2em;color:#111;line-height:1;">DUMB ROOF</div>
+    <div style="font-family:'VT323',monospace;font-size:2em;color:rgba(0,0,0,0.5);line-height:1;margin-top:4px;">dumb roof</div>
+    <div style="font-family:'VT323',monospace;font-size:1.1em;color:#FF07FF;margin-top:10px;">Did you ask Richard?</div>
+  </div>
+
+</div>
+
+<p style="max-width:1200px;margin:0 auto 12px auto;font-size:0.8em;color:#999;text-transform:uppercase;letter-spacing:3px;">On Kryptonite Green</p>
+<div style="max-width:1200px;margin:0 auto 24px auto;display:grid;grid-template-columns:repeat(2,1fr);gap:12px;">
+
+  <div style="background:#66FF5A;border-radius:14px;padding:28px 20px;text-align:center;">
+    <div style="font-size:0.6em;color:rgba(0,0,0,0.3);text-transform:uppercase;letter-spacing:2px;margin-bottom:10px;">Silkscreen Bold</div>
+    <div style="font-family:'Silkscreen',sans-serif;font-weight:700;font-size:2.6em;color:#111;line-height:1;">DUMB ROOF</div>
+    <div style="font-family:'Silkscreen',sans-serif;font-weight:700;font-size:1.6em;color:rgba(0,0,0,0.5);line-height:1;margin-top:4px;">dumb roof</div>
+    <div style="font-family:'Silkscreen',sans-serif;font-weight:400;font-size:0.85em;color:#0058FC;margin-top:10px;">Did you ask Richard?</div>
+  </div>
+
+  <div style="background:#66FF5A;border-radius:14px;padding:28px 20px;text-align:center;">
+    <div style="font-size:0.6em;color:rgba(0,0,0,0.3);text-transform:uppercase;letter-spacing:2px;margin-bottom:10px;">Press Start 2P</div>
+    <div style="font-family:'Press Start 2P',sans-serif;font-size:1.8em;color:#111;line-height:1.2;">DUMB ROOF</div>
+    <div style="font-family:'Press Start 2P',sans-serif;font-size:1.1em;color:rgba(0,0,0,0.5);line-height:1.2;margin-top:6px;">dumb roof</div>
+    <div style="font-family:'Press Start 2P',sans-serif;font-size:0.6em;color:#0058FC;margin-top:10px;">Did you ask Richard?</div>
+  </div>
+
+  <div style="background:#66FF5A;border-radius:14px;padding:28px 20px;text-align:center;">
+    <div style="font-size:0.6em;color:rgba(0,0,0,0.3);text-transform:uppercase;letter-spacing:2px;margin-bottom:10px;">DotGothic16</div>
+    <div style="font-family:'DotGothic16',sans-serif;font-size:2.6em;color:#111;line-height:1;">DUMB ROOF</div>
+    <div style="font-family:'DotGothic16',sans-serif;font-size:1.6em;color:rgba(0,0,0,0.5);line-height:1;margin-top:4px;">dumb roof</div>
+    <div style="font-family:'DotGothic16',sans-serif;font-size:0.85em;color:#0058FC;margin-top:10px;">Did you ask Richard?</div>
+  </div>
+
+  <div style="background:#66FF5A;border-radius:14px;padding:28px 20px;text-align:center;">
+    <div style="font-size:0.6em;color:rgba(0,0,0,0.3);text-transform:uppercase;letter-spacing:2px;margin-bottom:10px;">VT323</div>
+    <div style="font-family:'VT323',monospace;font-size:3.2em;color:#111;line-height:1;">DUMB ROOF</div>
+    <div style="font-family:'VT323',monospace;font-size:2em;color:rgba(0,0,0,0.5);line-height:1;margin-top:4px;">dumb roof</div>
+    <div style="font-family:'VT323',monospace;font-size:1.1em;color:#0058FC;margin-top:10px;">Did you ask Richard?</div>
+  </div>
+
+</div>
+
+<p style="max-width:1200px;margin:0 auto 12px auto;font-size:0.8em;color:#999;text-transform:uppercase;letter-spacing:3px;">On Black</p>
+<div style="max-width:1200px;margin:0 auto 24px auto;display:grid;grid-template-columns:repeat(2,1fr);gap:12px;">
+
+  <div style="background:#020009;border-radius:14px;padding:28px 20px;text-align:center;">
+    <div style="font-size:0.6em;color:rgba(255,255,255,0.3);text-transform:uppercase;letter-spacing:2px;margin-bottom:10px;">Silkscreen Bold</div>
+    <div style="font-family:'Silkscreen',sans-serif;font-weight:700;font-size:2.6em;color:#66FF5A;line-height:1;">DUMB ROOF</div>
+    <div style="font-family:'Silkscreen',sans-serif;font-weight:700;font-size:1.6em;color:rgba(102,255,90,0.5);line-height:1;margin-top:4px;">dumb roof</div>
+    <div style="font-family:'Silkscreen',sans-serif;font-weight:400;font-size:0.85em;color:#FF07FF;margin-top:10px;">Did you ask Richard?</div>
+  </div>
+
+  <div style="background:#020009;border-radius:14px;padding:28px 20px;text-align:center;">
+    <div style="font-size:0.6em;color:rgba(255,255,255,0.3);text-transform:uppercase;letter-spacing:2px;margin-bottom:10px;">Press Start 2P</div>
+    <div style="font-family:'Press Start 2P',sans-serif;font-size:1.8em;color:#66FF5A;line-height:1.2;">DUMB ROOF</div>
+    <div style="font-family:'Press Start 2P',sans-serif;font-size:1.1em;color:rgba(102,255,90,0.5);line-height:1.2;margin-top:6px;">dumb roof</div>
+    <div style="font-family:'Press Start 2P',sans-serif;font-size:0.6em;color:#FF07FF;margin-top:10px;">Did you ask Richard?</div>
+  </div>
+
+  <div style="background:#020009;border-radius:14px;padding:28px 20px;text-align:center;">
+    <div style="font-size:0.6em;color:rgba(255,255,255,0.3);text-transform:uppercase;letter-spacing:2px;margin-bottom:10px;">DotGothic16</div>
+    <div style="font-family:'DotGothic16',sans-serif;font-size:2.6em;color:#00EBF5;line-height:1;">DUMB ROOF</div>
+    <div style="font-family:'DotGothic16',sans-serif;font-size:1.6em;color:rgba(0,235,245,0.5);line-height:1;margin-top:4px;">dumb roof</div>
+    <div style="font-family:'DotGothic16',sans-serif;font-size:0.85em;color:#FFE02C;margin-top:10px;">Did you ask Richard?</div>
+  </div>
+
+  <div style="background:#020009;border-radius:14px;padding:28px 20px;text-align:center;">
+    <div style="font-size:0.6em;color:rgba(255,255,255,0.3);text-transform:uppercase;letter-spacing:2px;margin-bottom:10px;">VT323</div>
+    <div style="font-family:'VT323',monospace;font-size:3.2em;color:#00EBF5;line-height:1;">DUMB ROOF</div>
+    <div style="font-family:'VT323',monospace;font-size:2em;color:rgba(0,235,245,0.5);line-height:1;margin-top:4px;">dumb roof</div>
+    <div style="font-family:'VT323',monospace;font-size:1.1em;color:#FFE02C;margin-top:10px;">Did you ask Richard?</div>
+  </div>
+
+</div>
+
+<p style="max-width:1200px;margin:0 auto 10px auto;color:#999;font-size:0.8em;font-style:italic;">Note: FK Raster is a premium font by @floriankarsten. These are free alternatives. If you love the pixel look, FK Raster can be purchased for the final brand.</p>
+
+<p style="text-align:center;color:#bbb;margin-top:40px;font-size:0.8em;">Dumb Roof Technologies — Font Showdown v2 — March 24, 2026</p>
+
+</body>
+</html>

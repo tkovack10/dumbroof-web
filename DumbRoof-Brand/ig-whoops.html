@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600;700&family=Silkscreen:wght@400;700&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  .ad {
+    width: 1080px;
+    height: 1080px;
+    position: relative;
+    overflow: hidden;
+    margin-bottom: 40px;
+  }
+
+  .label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 14px;
+    color: #999;
+    text-align: center;
+    padding: 12px;
+    background: #f0f0f0;
+  }
+
+  /* ============================================
+     V1 — CANDY PINK — Playful, bold
+     ============================================ */
+  .ad-v1 {
+    background: #FFC0FF;
+    display: flex;
+    flex-direction: column;
+    padding: 80px;
+    justify-content: space-between;
+  }
+  .ad-v1 .whoops {
+    font-family: 'Silkscreen', monospace;
+    font-weight: 700;
+    font-size: 36px;
+    color: rgba(9,9,9,0.3);
+    text-transform: uppercase;
+    letter-spacing: 4px;
+  }
+  .ad-v1 .hero {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+  }
+  .ad-v1 .hero .main-line {
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 700;
+    font-size: 64px;
+    color: #090909;
+    line-height: 1.1;
+    letter-spacing: -2px;
+  }
+  .ad-v1 .hero .brand-line {
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 700;
+    font-size: 52px;
+    color: #FF6FFF;
+    letter-spacing: -1px;
+  }
+  .ad-v1 .hero .tagline {
+    font-family: 'Silkscreen', monospace;
+    font-size: 24px;
+    color: #090909;
+    text-transform: uppercase;
+    letter-spacing: 3px;
+    margin-top: 10px;
+  }
+  .ad-v1 .bot {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+  }
+  .ad-v1 .bot .richard-icon { width: 70px; height: 70px; }
+  .ad-v1 .bot .url {
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 600;
+    font-size: 22px;
+    color: rgba(9,9,9,0.4);
+  }
+
+  /* ============================================
+     V2 — FUTURISTIC PINK — Centered impact
+     ============================================ */
+  .ad-v2 {
+    background: #FF6FFF;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 80px;
+    text-align: center;
+    gap: 40px;
+  }
+  .ad-v2 .whoops {
+    font-family: 'Silkscreen', monospace;
+    font-weight: 700;
+    font-size: 80px;
+    color: #fff;
+    text-transform: uppercase;
+    letter-spacing: 4px;
+  }
+  .ad-v2 .main-line {
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 700;
+    font-size: 44px;
+    color: #090909;
+    line-height: 1.2;
+    letter-spacing: -1px;
+    max-width: 800px;
+  }
+  .ad-v2 .divider {
+    width: 120px;
+    height: 4px;
+    background: #090909;
+  }
+  .ad-v2 .brand-line {
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 700;
+    font-size: 48px;
+    color: #090909;
+    letter-spacing: -1px;
+  }
+  .ad-v2 .tagline {
+    font-family: 'Silkscreen', monospace;
+    font-size: 22px;
+    color: rgba(9,9,9,0.4);
+    text-transform: uppercase;
+    letter-spacing: 4px;
+  }
+
+  /* ============================================
+     V3 — KRYPTONITE GREEN — High energy
+     ============================================ */
+  .ad-v3 {
+    background: #ABFF5A;
+    display: flex;
+    flex-direction: column;
+    padding: 80px;
+    justify-content: space-between;
+  }
+  .ad-v3 .whoops {
+    font-family: 'Silkscreen', monospace;
+    font-weight: 700;
+    font-size: 100px;
+    color: #085E55;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    line-height: 0.9;
+  }
+  .ad-v3 .mid {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+  .ad-v3 .main-line {
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 700;
+    font-size: 50px;
+    color: #090909;
+    line-height: 1.15;
+    letter-spacing: -2px;
+  }
+  .ad-v3 .brand-url {
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 700;
+    font-size: 44px;
+    color: #085E55;
+    letter-spacing: -1px;
+  }
+  .ad-v3 .bot {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+  }
+  .ad-v3 .tagline {
+    font-family: 'Silkscreen', monospace;
+    font-size: 20px;
+    color: rgba(8,94,85,0.5);
+    text-transform: uppercase;
+    letter-spacing: 3px;
+  }
+  .ad-v3 .richard-icon { width: 70px; height: 70px; }
+
+  /* ============================================
+     V4 — WHITE — Clean, editorial, disruptive
+     ============================================ */
+  .ad-v4 {
+    background: #F9F9F9;
+    display: flex;
+    flex-direction: column;
+    padding: 80px;
+    justify-content: space-between;
+  }
+  .ad-v4 .whoops {
+    font-family: 'Silkscreen', monospace;
+    font-weight: 700;
+    font-size: 28px;
+    color: #FF6FFF;
+    text-transform: uppercase;
+    letter-spacing: 6px;
+  }
+  .ad-v4 .hero {
+    display: flex;
+    flex-direction: column;
+    gap: 30px;
+  }
+  .ad-v4 .main-line {
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 700;
+    font-size: 68px;
+    color: #090909;
+    line-height: 1.05;
+    letter-spacing: -3px;
+  }
+  .ad-v4 .pink-bar {
+    width: 100%;
+    height: 6px;
+    background: #FF6FFF;
+  }
+  .ad-v4 .brand-line {
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 700;
+    font-size: 40px;
+    color: #090909;
+    letter-spacing: -1px;
+  }
+  .ad-v4 .bot {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+  }
+  .ad-v4 .tagline {
+    font-family: 'Silkscreen', monospace;
+    font-size: 18px;
+    color: #090909;
+    text-transform: uppercase;
+    letter-spacing: 3px;
+  }
+  .ad-v4 .richard-icon { width: 60px; height: 60px; }
+  .ad-v4 .richard-icon path { fill: #FF6FFF; }
+
+  /* ============================================
+     V5 — SUMMER YELLOW — Loud announcement
+     ============================================ */
+  .ad-v5 {
+    background: #FFEA00;
+    display: flex;
+    flex-direction: column;
+    padding: 80px;
+    justify-content: space-between;
+    align-items: center;
+    text-align: center;
+  }
+  .ad-v5 .richard-icon { width: 90px; height: 90px; }
+  .ad-v5 .center {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 30px;
+  }
+  .ad-v5 .whoops {
+    font-family: 'Silkscreen', monospace;
+    font-weight: 700;
+    font-size: 72px;
+    color: #090909;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+  }
+  .ad-v5 .main-line {
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 700;
+    font-size: 42px;
+    color: #090909;
+    line-height: 1.2;
+    letter-spacing: -1px;
+    max-width: 750px;
+  }
+  .ad-v5 .brand-line {
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 700;
+    font-size: 48px;
+    color: #090909;
+    letter-spacing: -1px;
+  }
+  .ad-v5 .tagline {
+    font-family: 'Silkscreen', monospace;
+    font-size: 22px;
+    color: rgba(9,9,9,0.4);
+    text-transform: uppercase;
+    letter-spacing: 4px;
+  }
+
+  /* ============================================
+     V6 — ELECTRIC BLUE — Tech-forward
+     ============================================ */
+  .ad-v6 {
+    background: #5151FC;
+    display: flex;
+    flex-direction: column;
+    padding: 80px;
+    justify-content: space-between;
+  }
+  .ad-v6 .whoops {
+    font-family: 'Silkscreen', monospace;
+    font-weight: 700;
+    font-size: 90px;
+    color: #FF6FFF;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    line-height: 0.9;
+  }
+  .ad-v6 .mid {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+  }
+  .ad-v6 .main-line {
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 700;
+    font-size: 48px;
+    color: #fff;
+    line-height: 1.15;
+    letter-spacing: -2px;
+  }
+  .ad-v6 .brand-line {
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 700;
+    font-size: 44px;
+    color: #ABFF5A;
+    letter-spacing: -1px;
+  }
+  .ad-v6 .bot {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+  }
+  .ad-v6 .tagline {
+    font-family: 'Silkscreen', monospace;
+    font-size: 18px;
+    color: rgba(255,255,255,0.3);
+    text-transform: uppercase;
+    letter-spacing: 3px;
+  }
+  .ad-v6 .richard-icon { width: 60px; height: 60px; }
+  .ad-v6 .richard-icon path { fill: #FF6FFF; }
+
+</style>
+</head>
+<body>
+
+<!-- V1 — CANDY PINK -->
+<div class="label">V1 — Candy Pink — Playful intro (1080×1080)</div>
+<div class="ad ad-v1">
+  <div class="whoops">Whoops....</div>
+  <div class="hero">
+    <div class="main-line">We're about to break<br>the roofing industry.</div>
+    <div class="brand-line">dumbroof.ai</div>
+    <div class="tagline">Sophisticated as fuck.</div>
+  </div>
+  <div class="bot">
+    <svg class="richard-icon" viewBox="0 0 1024 1024"><path d="M 718.65 820.72 L 663.54 820.72 L 653.52 818.21 L 640.37 807.57 L 631.60 786.27 L 624.72 779.39 L 399.28 779.39 L 389.89 787.53 L 381.12 808.82 L 375.49 814.45 L 359.21 820.72 L 285.32 819.46 L 250.25 815.71 L 216.43 805.69 L 202.03 793.79 L 195.77 780.01 L 194.52 752.46 L 209.55 593.41 L 165.09 591.53 L 135.03 586.52 L 121.88 577.12 L 119.37 560.84 L 253.38 326.65 L 253.38 218.94 L 261.52 207.04 L 272.79 203.28 L 409.30 203.28 L 418.07 205.79 L 427.46 217.69 L 429.34 269.66 L 474.43 265.90 L 585.89 265.90 L 649.76 273.42 L 688.59 283.44 L 716.14 295.96 L 729.92 305.98 L 749.33 326.65 L 895.86 547.07 L 903.37 559.59 L 904.63 569.61 L 897.74 581.51 L 883.96 587.77 L 862.67 591.53 L 814.45 593.41 L 829.48 752.46 L 829.48 773.75 L 821.97 793.79 L 811.32 803.18 L 791.28 811.95 L 767.49 816.96 L 718.65 820.72 Z M 388.64 535.80 L 409.30 528.91 L 423.71 514.50 L 431.22 496.97 L 431.22 478.19 L 422.45 459.40 L 410.56 447.50 L 398.03 441.24 L 379.25 438.73 L 355.45 447.50 L 342.30 460.65 L 336.04 474.43 L 334.79 494.47 L 341.05 512.00 L 355.45 527.65 L 371.73 535.17 L 388.64 535.80 Z M 646.63 539.55 L 663.54 533.92 L 679.19 519.51 L 686.71 503.23 L 687.96 488.20 L 682.95 470.67 L 668.55 453.76 L 654.77 446.25 L 635.99 443.74 L 613.44 451.26 L 601.55 461.90 L 591.53 481.94 L 591.53 501.98 L 597.79 517.01 L 610.94 531.41 L 632.23 540.18 L 646.63 539.55 Z" fill="#090909" fill-rule="evenodd"/></svg>
+    <div class="url">Coming soon.</div>
+  </div>
+</div>
+
+<!-- V2 — FUTURISTIC PINK -->
+<div class="label">V2 — Futuristic Pink — Centered impact (1080×1080)</div>
+<div class="ad ad-v2">
+  <div class="whoops">Whoops.</div>
+  <div class="main-line">We're about to break<br>the roofing industry.</div>
+  <div class="divider"></div>
+  <div class="brand-line">dumbroof.ai</div>
+  <div class="tagline">Sophisticated as fuck.</div>
+</div>
+
+<!-- V3 — KRYPTONITE GREEN -->
+<div class="label">V3 — Kryptonite Green — High energy (1080×1080)</div>
+<div class="ad ad-v3">
+  <div class="whoops">Whoops.</div>
+  <div class="mid">
+    <div class="main-line">We're about to break<br>the roofing industry.</div>
+    <div class="brand-url">dumbroof.ai</div>
+  </div>
+  <div class="bot">
+    <div class="tagline">Sophisticated as fuck.</div>
+    <svg class="richard-icon" viewBox="0 0 1024 1024"><path d="M 718.65 820.72 L 663.54 820.72 L 653.52 818.21 L 640.37 807.57 L 631.60 786.27 L 624.72 779.39 L 399.28 779.39 L 389.89 787.53 L 381.12 808.82 L 375.49 814.45 L 359.21 820.72 L 285.32 819.46 L 250.25 815.71 L 216.43 805.69 L 202.03 793.79 L 195.77 780.01 L 194.52 752.46 L 209.55 593.41 L 165.09 591.53 L 135.03 586.52 L 121.88 577.12 L 119.37 560.84 L 253.38 326.65 L 253.38 218.94 L 261.52 207.04 L 272.79 203.28 L 409.30 203.28 L 418.07 205.79 L 427.46 217.69 L 429.34 269.66 L 474.43 265.90 L 585.89 265.90 L 649.76 273.42 L 688.59 283.44 L 716.14 295.96 L 729.92 305.98 L 749.33 326.65 L 895.86 547.07 L 903.37 559.59 L 904.63 569.61 L 897.74 581.51 L 883.96 587.77 L 862.67 591.53 L 814.45 593.41 L 829.48 752.46 L 829.48 773.75 L 821.97 793.79 L 811.32 803.18 L 791.28 811.95 L 767.49 816.96 L 718.65 820.72 Z M 388.64 535.80 L 409.30 528.91 L 423.71 514.50 L 431.22 496.97 L 431.22 478.19 L 422.45 459.40 L 410.56 447.50 L 398.03 441.24 L 379.25 438.73 L 355.45 447.50 L 342.30 460.65 L 336.04 474.43 L 334.79 494.47 L 341.05 512.00 L 355.45 527.65 L 371.73 535.17 L 388.64 535.80 Z M 646.63 539.55 L 663.54 533.92 L 679.19 519.51 L 686.71 503.23 L 687.96 488.20 L 682.95 470.67 L 668.55 453.76 L 654.77 446.25 L 635.99 443.74 L 613.44 451.26 L 601.55 461.90 L 591.53 481.94 L 591.53 501.98 L 597.79 517.01 L 610.94 531.41 L 632.23 540.18 L 646.63 539.55 Z" fill="#085E55" fill-rule="evenodd"/></svg>
+  </div>
+</div>
+
+<!-- V4 — WHITE EDITORIAL -->
+<div class="label">V4 — White — Clean editorial (1080×1080)</div>
+<div class="ad ad-v4">
+  <div class="whoops">Whoops....</div>
+  <div class="hero">
+    <div class="main-line">We're about to<br>break the roofing<br>industry.</div>
+    <div class="pink-bar"></div>
+    <div class="brand-line">dumbroof.ai</div>
+  </div>
+  <div class="bot">
+    <div class="tagline">Sophisticated as fuck.</div>
+    <svg class="richard-icon" viewBox="0 0 1024 1024"><path d="M 718.65 820.72 L 663.54 820.72 L 653.52 818.21 L 640.37 807.57 L 631.60 786.27 L 624.72 779.39 L 399.28 779.39 L 389.89 787.53 L 381.12 808.82 L 375.49 814.45 L 359.21 820.72 L 285.32 819.46 L 250.25 815.71 L 216.43 805.69 L 202.03 793.79 L 195.77 780.01 L 194.52 752.46 L 209.55 593.41 L 165.09 591.53 L 135.03 586.52 L 121.88 577.12 L 119.37 560.84 L 253.38 326.65 L 253.38 218.94 L 261.52 207.04 L 272.79 203.28 L 409.30 203.28 L 418.07 205.79 L 427.46 217.69 L 429.34 269.66 L 474.43 265.90 L 585.89 265.90 L 649.76 273.42 L 688.59 283.44 L 716.14 295.96 L 729.92 305.98 L 749.33 326.65 L 895.86 547.07 L 903.37 559.59 L 904.63 569.61 L 897.74 581.51 L 883.96 587.77 L 862.67 591.53 L 814.45 593.41 L 829.48 752.46 L 829.48 773.75 L 821.97 793.79 L 811.32 803.18 L 791.28 811.95 L 767.49 816.96 L 718.65 820.72 Z M 388.64 535.80 L 409.30 528.91 L 423.71 514.50 L 431.22 496.97 L 431.22 478.19 L 422.45 459.40 L 410.56 447.50 L 398.03 441.24 L 379.25 438.73 L 355.45 447.50 L 342.30 460.65 L 336.04 474.43 L 334.79 494.47 L 341.05 512.00 L 355.45 527.65 L 371.73 535.17 L 388.64 535.80 Z M 646.63 539.55 L 663.54 533.92 L 679.19 519.51 L 686.71 503.23 L 687.96 488.20 L 682.95 470.67 L 668.55 453.76 L 654.77 446.25 L 635.99 443.74 L 613.44 451.26 L 601.55 461.90 L 591.53 481.94 L 591.53 501.98 L 597.79 517.01 L 610.94 531.41 L 632.23 540.18 L 646.63 539.55 Z" fill="#FF6FFF" fill-rule="evenodd"/></svg>
+  </div>
+</div>
+
+<!-- V5 — SUMMER YELLOW -->
+<div class="label">V5 — Summer Yellow — Loud announcement (1080×1080)</div>
+<div class="ad ad-v5">
+  <svg class="richard-icon" viewBox="0 0 1024 1024"><path d="M 718.65 820.72 L 663.54 820.72 L 653.52 818.21 L 640.37 807.57 L 631.60 786.27 L 624.72 779.39 L 399.28 779.39 L 389.89 787.53 L 381.12 808.82 L 375.49 814.45 L 359.21 820.72 L 285.32 819.46 L 250.25 815.71 L 216.43 805.69 L 202.03 793.79 L 195.77 780.01 L 194.52 752.46 L 209.55 593.41 L 165.09 591.53 L 135.03 586.52 L 121.88 577.12 L 119.37 560.84 L 253.38 326.65 L 253.38 218.94 L 261.52 207.04 L 272.79 203.28 L 409.30 203.28 L 418.07 205.79 L 427.46 217.69 L 429.34 269.66 L 474.43 265.90 L 585.89 265.90 L 649.76 273.42 L 688.59 283.44 L 716.14 295.96 L 729.92 305.98 L 749.33 326.65 L 895.86 547.07 L 903.37 559.59 L 904.63 569.61 L 897.74 581.51 L 883.96 587.77 L 862.67 591.53 L 814.45 593.41 L 829.48 752.46 L 829.48 773.75 L 821.97 793.79 L 811.32 803.18 L 791.28 811.95 L 767.49 816.96 L 718.65 820.72 Z M 388.64 535.80 L 409.30 528.91 L 423.71 514.50 L 431.22 496.97 L 431.22 478.19 L 422.45 459.40 L 410.56 447.50 L 398.03 441.24 L 379.25 438.73 L 355.45 447.50 L 342.30 460.65 L 336.04 474.43 L 334.79 494.47 L 341.05 512.00 L 355.45 527.65 L 371.73 535.17 L 388.64 535.80 Z M 646.63 539.55 L 663.54 533.92 L 679.19 519.51 L 686.71 503.23 L 687.96 488.20 L 682.95 470.67 L 668.55 453.76 L 654.77 446.25 L 635.99 443.74 L 613.44 451.26 L 601.55 461.90 L 591.53 481.94 L 591.53 501.98 L 597.79 517.01 L 610.94 531.41 L 632.23 540.18 L 646.63 539.55 Z" fill="#090909" fill-rule="evenodd"/></svg>
+  <div class="center">
+    <div class="whoops">Whoops.</div>
+    <div class="main-line">We're about to break<br>the roofing industry.</div>
+    <div class="brand-line">dumbroof.ai</div>
+  </div>
+  <div class="tagline">Sophisticated as fuck.</div>
+</div>
+
+<!-- V6 — ELECTRIC BLUE -->
+<div class="label">V6 — Electric Blue — Tech-forward (1080×1080)</div>
+<div class="ad ad-v6">
+  <div class="whoops">Whoops.</div>
+  <div class="mid">
+    <div class="main-line">We're about to break<br>the roofing industry.</div>
+    <div class="brand-line">dumbroof.ai</div>
+  </div>
+  <div class="bot">
+    <div class="tagline">Sophisticated as fuck.</div>
+    <svg class="richard-icon" viewBox="0 0 1024 1024" style="width:60px;height:60px"><path d="M 718.65 820.72 L 663.54 820.72 L 653.52 818.21 L 640.37 807.57 L 631.60 786.27 L 624.72 779.39 L 399.28 779.39 L 389.89 787.53 L 381.12 808.82 L 375.49 814.45 L 359.21 820.72 L 285.32 819.46 L 250.25 815.71 L 216.43 805.69 L 202.03 793.79 L 195.77 780.01 L 194.52 752.46 L 209.55 593.41 L 165.09 591.53 L 135.03 586.52 L 121.88 577.12 L 119.37 560.84 L 253.38 326.65 L 253.38 218.94 L 261.52 207.04 L 272.79 203.28 L 409.30 203.28 L 418.07 205.79 L 427.46 217.69 L 429.34 269.66 L 474.43 265.90 L 585.89 265.90 L 649.76 273.42 L 688.59 283.44 L 716.14 295.96 L 729.92 305.98 L 749.33 326.65 L 895.86 547.07 L 903.37 559.59 L 904.63 569.61 L 897.74 581.51 L 883.96 587.77 L 862.67 591.53 L 814.45 593.41 L 829.48 752.46 L 829.48 773.75 L 821.97 793.79 L 811.32 803.18 L 791.28 811.95 L 767.49 816.96 L 718.65 820.72 Z M 388.64 535.80 L 409.30 528.91 L 423.71 514.50 L 431.22 496.97 L 431.22 478.19 L 422.45 459.40 L 410.56 447.50 L 398.03 441.24 L 379.25 438.73 L 355.45 447.50 L 342.30 460.65 L 336.04 474.43 L 334.79 494.47 L 341.05 512.00 L 355.45 527.65 L 371.73 535.17 L 388.64 535.80 Z M 646.63 539.55 L 663.54 533.92 L 679.19 519.51 L 686.71 503.23 L 687.96 488.20 L 682.95 470.67 L 668.55 453.76 L 654.77 446.25 L 635.99 443.74 L 613.44 451.26 L 601.55 461.90 L 591.53 481.94 L 591.53 501.98 L 597.79 517.01 L 610.94 531.41 L 632.23 540.18 L 646.63 539.55 Z" fill="#FF6FFF" fill-rule="evenodd"/></svg>
+  </div>
+</div>
+
+</body>
+</html>

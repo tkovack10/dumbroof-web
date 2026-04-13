@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Dumb Roof Ad — Reel</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@700&family=Cormorant+Garamond:ital,wght@1,300&family=VT323&display=swap" rel="stylesheet">
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html, body { width:1080px; height:1920px; overflow:hidden; background:#000; }
+  .ad { width:1080px; height:1920px; position:relative; overflow:hidden; background:#000; }
+  #screen-terminal { position:absolute; inset:0; background:#000; display:flex; flex-direction:column; justify-content:center; padding:120px; }
+  #screen-glitch { position:absolute; inset:0; pointer-events:none; opacity:0; }
+  #screen-brand { position:absolute; inset:0; background:#FF6FFF; display:flex; flex-direction:column; justify-content:center; align-items:center; text-align:center; padding:120px; opacity:0; }
+  .terminal-text { font-family:'VT323',monospace; color:#ffffff; font-size:64px; line-height:2; letter-spacing:0.02em; }
+  .cursor { display:inline-block; width:36px; height:60px; background:#fff; margin-left:4px; vertical-align:middle; }
+  .cursor.blink { animation:blink 0.55s step-end infinite; }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+  .logo { font-family:'Space Grotesk',sans-serif; font-size:148px; font-weight:700; color:#0a0a0a; letter-spacing:-4px; line-height:1; opacity:0; }
+  .tag { font-family:'Cormorant Garamond',serif; font-style:italic; font-weight:300; font-size:72px; color:#085E55; margin-top:36px; opacity:0; }
+  .logo.show { animation:popIn 0.4s cubic-bezier(0.22,1,0.36,1) forwards; }
+  .tag.show { animation:fadeIn 5s ease 1.2s forwards; }
+  @keyframes popIn { 0%{opacity:0;transform:scale(0.94)} 100%{opacity:1;transform:scale(1)} }
+  @keyframes fadeIn { 0%{opacity:0} 100%{opacity:1} }
+  .glitch-bar { position:absolute; left:0; right:0; height:5px; background:#fff; opacity:0; }
+  .glitch-block { position:absolute; opacity:0; }
+</style>
+</head>
+<body>
+<div class="ad">
+  <div id="screen-terminal">
+    <div class="terminal-text" id="line1"></div>
+    <div class="terminal-text" id="line2"></div>
+    <span class="cursor" id="cursor"></span>
+  </div>
+  <div id="screen-glitch">
+    <div class="glitch-bar" id="gb1"></div>
+    <div class="glitch-bar" id="gb2" style="height:10px;background:#FF6FFF;"></div>
+    <div class="glitch-bar" id="gb3" style="height:3px;"></div>
+    <div class="glitch-block" id="gblock1" style="top:10%;left:0;width:60%;height:18%;background:#FF6FFF;"></div>
+    <div class="glitch-block" id="gblock2" style="top:35%;left:30%;width:70%;height:12%;background:#ABFF5A;"></div>
+    <div class="glitch-block" id="gblock3" style="top:60%;left:0;width:40%;height:20%;background:#FF6FFF;"></div>
+  </div>
+  <div id="screen-brand">
+    <div class="logo" id="logo">dumbroof.ai</div>
+    <div class="tag" id="tag">Sophisticated as f*ck.</div>
+  </div>
+</div>
+<script>
+let audioCtx=null,soundEnabled=true,crtNode=null,crtGain=null;
+function getCtx(){if(!audioCtx)audioCtx=new(window.AudioContext||window.webkitAudioContext)();if(audioCtx.state==='suspended')audioCtx.resume();return audioCtx;}
+function playMacClick(){if(!soundEnabled)return;const ctx=getCtx();const sr=ctx.sampleRate;const len=Math.floor(sr*0.022);const buf=ctx.createBuffer(1,len,sr);const d=buf.getChannelData(0);for(let i=0;i<len;i++)d[i]=(Math.random()*2-1)*Math.pow(1-i/len,16);const src=ctx.createBufferSource();src.buffer=buf;const hp=ctx.createBiquadFilter();hp.type='highpass';hp.frequency.value=5500;const lp=ctx.createBiquadFilter();lp.type='lowpass';lp.frequency.value=10000;const pk=ctx.createBiquadFilter();pk.type='peaking';pk.frequency.value=7000;pk.gain.value=6;pk.Q.value=1.5;const g=ctx.createGain();g.gain.value=0.25;src.connect(hp);hp.connect(lp);lp.connect(pk);pk.connect(g);g.connect(ctx.destination);src.start();}
+function startCRTHum(){if(!soundEnabled)return;stopCRTHumNow();const ctx=getCtx();crtNode=ctx.createOscillator();crtNode.type='sawtooth';crtNode.frequency.value=60;crtGain=ctx.createGain();crtGain.gain.setValueAtTime(0,ctx.currentTime);crtGain.gain.linearRampToValueAtTime(0.004,ctx.currentTime+2.0);crtNode.connect(crtGain);crtGain.connect(ctx.destination);crtNode.start();}
+function stopCRTHumNow(){if(!crtNode)return;try{const ctx=getCtx();crtGain.gain.cancelScheduledValues(ctx.currentTime);crtGain.gain.setValueAtTime(crtGain.gain.value,ctx.currentTime);crtGain.gain.linearRampToValueAtTime(0,ctx.currentTime+0.015);const n=crtNode;setTimeout(()=>{try{n.stop();}catch(e){}},60);crtNode=null;crtGain=null;}catch(e){crtNode=null;crtGain=null;}}
+function playOldTVOff(){if(!soundEnabled)return;const ctx=getCtx();const sr=ctx.sampleRate;const now=ctx.currentTime;const whine=ctx.createOscillator();whine.type='sine';whine.frequency.setValueAtTime(15600,now);whine.frequency.exponentialRampToValueAtTime(400,now+0.18);whine.frequency.exponentialRampToValueAtTime(40,now+0.35);const wg=ctx.createGain();wg.gain.setValueAtTime(0.22,now);wg.gain.linearRampToValueAtTime(0.18,now+0.1);wg.gain.exponentialRampToValueAtTime(0.0001,now+0.38);whine.connect(wg);wg.connect(ctx.destination);whine.start(now);whine.stop(now+0.4);const thump=ctx.createOscillator();thump.type='sine';thump.frequency.setValueAtTime(120,now);thump.frequency.exponentialRampToValueAtTime(30,now+0.12);const tg=ctx.createGain();tg.gain.setValueAtTime(0.5,now);tg.gain.exponentialRampToValueAtTime(0.0001,now+0.14);thump.connect(tg);tg.connect(ctx.destination);thump.start(now);thump.stop(now+0.2);const clen=Math.floor(sr*0.04);const cbuf=ctx.createBuffer(1,clen,sr);const cd=cbuf.getChannelData(0);for(let i=0;i<clen;i++)cd[i]=(Math.random()*2-1)*Math.pow(1-i/clen,2.5);const csrc=ctx.createBufferSource();csrc.buffer=cbuf;const cf=ctx.createBiquadFilter();cf.type='bandpass';cf.frequency.value=2400;cf.Q.value=0.8;const cg=ctx.createGain();cg.gain.value=0.35;csrc.connect(cf);cf.connect(cg);cg.connect(ctx.destination);csrc.start(now);}
+function wait(ms){return new Promise(r=>setTimeout(r,ms));}
+function humanDelay(base){const jitter=(Math.random()-0.5)*base*0.6;const burst=Math.random()<0.12?-base*0.3:0;const pause=Math.random()<0.06?base*1.8:0;return Math.max(60,base+jitter+burst+pause);}
+function typeHuman(el,text,baseDelay){return new Promise(resolve=>{el.textContent='';let i=0,wordBuffer='',humTriggered=false;function nextChar(){if(i>=text.length){resolve();return;}const ch=text[i];el.textContent+=ch;playMacClick();wordBuffer+=ch.toLowerCase();if(ch===' '||i===text.length-1){if(!humTriggered&&wordBuffer.trim().includes('industry')){humTriggered=true;startCRTHum();}wordBuffer='';}i++;setTimeout(nextChar,humanDelay(baseDelay));}nextChar();});}
+async function glitchBreak(){const gl=document.getElementById('screen-glitch');const terminal=document.getElementById('screen-terminal');const brand=document.getElementById('screen-brand');const logo=document.getElementById('logo');const tag=document.getElementById('tag');const bars=['gb1','gb2','gb3'].map(id=>document.getElementById(id));const blocks=['gblock1','gblock2','gblock3'].map(id=>document.getElementById(id));gl.style.opacity='1';for(let f=0;f<9;f++){bars.forEach(b=>{b.style.opacity=Math.random()>0.4?'1':'0';b.style.top=(Math.random()*90)+'%';b.style.transform=`translateX(${(Math.random()-0.5)*40}px)`;});blocks.forEach(b=>{b.style.opacity=Math.random()>0.5?(Math.random()*0.7+0.2).toFixed(2):'0';b.style.transform=`translateX(${(Math.random()-0.5)*60}px)`;});terminal.style.transform=`translate(${(Math.random()-0.5)*14}px,${(Math.random()-0.5)*10}px)`;terminal.style.filter=Math.random()>0.5?'hue-rotate(180deg) brightness(1.6)':'invert(1)';await wait(50);}playOldTVOff();stopCRTHumNow();terminal.style.opacity='0';terminal.style.transform='none';terminal.style.filter='none';gl.style.opacity='0';await wait(220);brand.style.opacity='1';logo.classList.add('show');tag.classList.add('show');}
+async function runAd(){const terminal=document.getElementById('screen-terminal');const brand=document.getElementById('screen-brand');const logo=document.getElementById('logo');const tag=document.getElementById('tag');const cursor=document.getElementById('cursor');stopCRTHumNow();terminal.style.opacity='1';terminal.style.transform='none';terminal.style.filter='none';brand.style.opacity='0';logo.className='logo';tag.className='tag';cursor.style.opacity='1';cursor.classList.remove('blink');document.getElementById('line1').textContent='';document.getElementById('line2').textContent='';await wait(700);await typeHuman(document.getElementById('line1'),'> WHOOPS...',110);await wait(1400);await typeHuman(document.getElementById('line2'),"> We're about to break the roofing industry claims process...",95);await wait(600);cursor.classList.add('blink');await wait(3500);cursor.classList.remove('blink');cursor.style.opacity='0';await wait(200);await glitchBreak();}
+document.addEventListener('click',()=>{if(!audioCtx){audioCtx=new(window.AudioContext||window.webkitAudioContext)();}audioCtx.resume();});
+runAd();
+</script>
+</body>
+</html>

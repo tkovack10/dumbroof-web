@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap');
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  .hero {
+    width: 1400px;
+    height: 850px;
+    background: #F9F9F9;
+    padding: 50px 70px 40px;
+    display: flex;
+    flex-direction: column;
+    font-family: 'Inter', sans-serif;
+  }
+
+  /* Header — left aligned */
+  .header { text-align: left; margin-bottom: 36px; }
+  .headline {
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 700; font-size: 28px; color: #090909;
+    letter-spacing: -0.5px; margin-bottom: 6px;
+  }
+  .subline {
+    font-size: 18px; color: #555; max-width: 800px; line-height: 1.6;
+  }
+  .subline .tagline {
+    display: block;
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 600; font-size: 17px; color: #085E55;
+    margin-top: 4px; letter-spacing: 0.5px;
+  }
+
+  /* Layout */
+  .comparison {
+    flex: 1; display: flex; align-items: flex-start; gap: 0;
+  }
+
+  .side { flex: 1; display: flex; flex-direction: column; align-items: center; }
+  .side .label {
+    font-family: 'Inter', sans-serif; font-weight: 600; font-size: 13px;
+    text-transform: uppercase; letter-spacing: 2px; margin-bottom: 14px;
+  }
+  .side-left .label { color: #999; }
+  .side-right .label { color: #085E55; }
+
+  /* ======= DOG-EAR DOCUMENT ======= */
+  .doc-wrap {
+    position: relative;
+    width: 440px;
+    height: 530px;
+  }
+
+  /* The folded corner — triangle cutout via clip-path */
+  .doc-page {
+    position: absolute;
+    top: 0; left: 0;
+    width: 440px; height: 530px;
+    background: #fff;
+    clip-path: polygon(0 0, calc(100% - 32px) 0, 100% 32px, 100% 100%, 0 100%);
+  }
+
+  /* The fold triangle */
+  .doc-fold {
+    position: absolute;
+    top: 0; right: 0;
+    width: 32px; height: 32px;
+    background: linear-gradient(225deg, #F9F9F9 48%, #d8d8d8 50%, #eee 52%, #e8e8e8 100%);
+    clip-path: polygon(0 0, 100% 0, 100% 100%);
+    z-index: 3;
+  }
+
+  /* Border around the page (simulated) */
+  .doc-page.carrier { border: 1px solid #e0e0e0; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
+  .doc-page.claim { border: 2px solid #085E55; box-shadow: 0 4px 20px rgba(8,94,85,0.1); }
+
+  .doc-fold.carrier-fold { }
+  .doc-fold.claim-fold { }
+
+  /* Stacked pages behind the claim doc */
+  .stack-page {
+    position: absolute;
+    width: 440px; height: 530px;
+    background: #fff;
+    clip-path: polygon(0 0, calc(100% - 32px) 0, 100% 32px, 100% 100%, 0 100%);
+  }
+  .stack-page.s1 {
+    top: 6px; left: 6px;
+    border: 1px solid rgba(8,94,85,0.2);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+    z-index: -1;
+  }
+  .stack-page.s2 {
+    top: 12px; left: 12px;
+    background: #f6f6f6;
+    border: 1px solid rgba(8,94,85,0.1);
+    z-index: -2;
+  }
+  .stack-page.s3 {
+    top: 18px; left: 18px;
+    background: #f0f0f0;
+    border: 1px solid rgba(0,0,0,0.06);
+    z-index: -3;
+  }
+
+  /* Content inside docs */
+  .doc-content {
+    position: relative; z-index: 2;
+    padding: 32px 28px 24px;
+    height: 530px;
+    display: flex; flex-direction: column;
+  }
+
+  /* Shared doc styles */
+  .doc-hdr {
+    display: flex; justify-content: space-between; align-items: flex-start;
+    margin-bottom: 16px; padding-bottom: 12px;
+  }
+  .doc-hdr .title { font-family: 'Space Grotesk', sans-serif; font-weight: 700; font-size: 15px; }
+  .doc-hdr .badge {
+    font-family: 'IBM Plex Mono', monospace; font-size: 9px; font-weight: 600;
+    text-transform: uppercase; letter-spacing: 1px;
+    padding: 3px 8px; border-radius: 4px;
+  }
+
+  /* Carrier doc specifics */
+  .carrier .doc-hdr { border-bottom: 1px solid #eee; }
+  .carrier .doc-hdr .title { color: #090909; }
+  .carrier .doc-hdr .badge { color: #999; border: 1px solid #ddd; }
+
+  .meta-row { display: flex; justify-content: space-between; margin-bottom: 14px; }
+  .meta-item { font-size: 11px; color: #999; }
+  .meta-item span { color: #666; font-weight: 500; }
+
+  .scope-item {
+    display: flex; justify-content: space-between; align-items: baseline;
+    padding: 9px 0; border-bottom: 1px solid #f5f5f5;
+  }
+  .scope-item .desc { font-size: 13px; color: #555; }
+  .scope-item .amt {
+    font-family: 'IBM Plex Mono', monospace; font-size: 13px; color: #555; font-weight: 500;
+  }
+
+  .scope-spacer {
+    flex: 1; display: flex; align-items: center; justify-content: center; padding: 16px 0;
+  }
+  .empty-msg {
+    font-size: 12px; color: #ccc; font-style: italic; text-align: center;
+    padding: 16px; border: 1px dashed #e0e0e0; border-radius: 8px; width: 100%;
+  }
+
+  .doc-total {
+    display: flex; justify-content: space-between; align-items: baseline;
+    padding: 12px 0 0; margin-top: 8px;
+  }
+  .doc-total.carrier-total { border-top: 2px solid #e0e0e0; }
+  .doc-total.claim-total { border-top: 2px solid #085E55; }
+  .doc-total .desc { font-family: 'Space Grotesk', sans-serif; font-size: 15px; font-weight: 700; color: #090909; }
+  .doc-total .amt { font-family: 'IBM Plex Mono', monospace; font-size: 19px; font-weight: 700; }
+  .doc-total.carrier-total .amt { color: #090909; }
+  .doc-total.claim-total .amt { color: #085E55; }
+
+  /* Claim doc specifics */
+  .claim .doc-hdr { border-bottom: 2px solid rgba(8,94,85,0.15); }
+  .claim .doc-hdr .title { color: #085E55; }
+  .claim .doc-hdr .badge {
+    color: #085E55; border: none; display: flex; align-items: center; gap: 4px;
+  }
+  .claim .doc-hdr .badge svg { width: 14px; height: 14px; }
+
+  .claim-section { margin-bottom: 10px; }
+  .claim-section-title {
+    font-family: 'Space Grotesk', sans-serif; font-size: 9px; font-weight: 700;
+    color: #085E55; text-transform: uppercase; letter-spacing: 1.5px;
+    margin-bottom: 4px; padding-bottom: 3px;
+    border-bottom: 1px solid rgba(8,94,85,0.1);
+  }
+  .claim-row {
+    display: flex; justify-content: space-between; align-items: baseline; padding: 3px 0;
+  }
+  .claim-row .desc { font-size: 10.5px; color: #444; flex: 1; }
+  .claim-row .amt {
+    font-family: 'IBM Plex Mono', monospace; font-size: 10.5px;
+    color: #085E55; font-weight: 600; margin-left: 10px;
+  }
+  .claim-row.found .desc { color: #085E55; font-weight: 600; }
+  .supp-tag {
+    display: inline-block; font-family: 'IBM Plex Mono', monospace;
+    font-size: 7px; font-weight: 700; color: #fff; background: #085E55;
+    border-radius: 3px; padding: 1px 4px; margin-left: 4px; vertical-align: middle;
+  }
+
+  .found-summary {
+    display: flex; justify-content: space-between; align-items: center; margin-top: 6px;
+  }
+  .found-summary .text { font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: #085E55; font-weight: 600; }
+  .found-summary .items { font-family: 'IBM Plex Mono', monospace; font-size: 9px; color: #999; }
+
+  /* Center Richard */
+  .center-piece {
+    width: 140px; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; position: relative;
+  }
+  .center-piece::before {
+    content: ''; position: absolute; top: 50%; left: 0; right: 0;
+    height: 2px; background: linear-gradient(90deg, #ddd, #085E55, #085E55);
+    z-index: 0;
+  }
+  .richard-circle {
+    width: 90px; height: 90px; background: #085E55; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 4px 18px rgba(8,94,85,0.25); z-index: 1; margin-bottom: 8px;
+  }
+  .richard-circle svg { width: 52px; height: 52px; }
+  .richard-text {
+    font-family: 'IBM Plex Mono', monospace; font-size: 9px; font-weight: 600;
+    color: #085E55; text-transform: uppercase; letter-spacing: 1.5px;
+    text-align: center; z-index: 1;
+  }
+
+  /* Bottom */
+  .bottom-bar {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-top: 20px; padding-top: 14px; border-top: 1px solid #eee;
+  }
+  .bottom-bar .tagline {
+    font-family: 'Space Grotesk', sans-serif; font-weight: 600; font-size: 16px;
+    color: #090909; letter-spacing: -0.5px;
+  }
+  .bottom-bar .brand {
+    font-family: 'Space Grotesk', sans-serif; font-weight: 700; font-size: 22px;
+    color: #090909; letter-spacing: -1px;
+  }
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="header">
+    <div class="headline">Not another estimating tool.</div>
+    <div class="subline">Photos first. Measurements when you have them. Carrier scope when it arrives.<br>A few clicks from you and Richard handles the rest.<span class="tagline">Simple. Hassle‑free. Intelligently.</span></div>
+  </div>
+
+  <div class="comparison">
+
+    <!-- LEFT: Carrier Scope -->
+    <div class="side side-left">
+      <div class="label">Carrier's Initial Scope</div>
+      <div class="doc-wrap">
+        <div class="doc-page carrier"></div>
+        <div class="doc-fold carrier-fold"></div>
+        <div class="doc-content carrier">
+          <div class="doc-hdr">
+            <div class="title">Estimate Summary</div>
+            <div class="badge">Carrier</div>
+          </div>
+          <div class="meta-row">
+            <div class="meta-item">Claim #<span>WC-2024-08172</span></div>
+            <div class="meta-item">Date: <span>03/15/2026</span></div>
+          </div>
+          <div class="scope-item">
+            <span class="desc">Remove roofing — 28.5 sq</span>
+            <span class="amt">$1,840.00</span>
+          </div>
+          <div class="scope-item">
+            <span class="desc">Install 3-tab shingles</span>
+            <span class="amt">$8,265.00</span>
+          </div>
+          <div class="scope-item">
+            <span class="desc">Felt underlayment</span>
+            <span class="amt">$1,425.00</span>
+          </div>
+          <div class="scope-item">
+            <span class="desc">Haul debris</span>
+            <span class="amt">$480.00</span>
+          </div>
+          <div class="scope-spacer">
+            <div class="empty-msg">That's it. 4 line items.</div>
+          </div>
+          <div class="doc-total carrier-total">
+            <span class="desc">Carrier Total</span>
+            <span class="amt">$12,010.00</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- CENTER: Richard -->
+    <div class="center-piece">
+      <div class="richard-circle">
+        <svg viewBox="0 0 1024 1024"><path d="M 718.65 820.72 L 663.54 820.72 L 653.52 818.21 L 640.37 807.57 L 631.60 786.27 L 624.72 779.39 L 399.28 779.39 L 389.89 787.53 L 381.12 808.82 L 375.49 814.45 L 359.21 820.72 L 285.32 819.46 L 250.25 815.71 L 216.43 805.69 L 202.03 793.79 L 195.77 780.01 L 194.52 752.46 L 209.55 593.41 L 165.09 591.53 L 135.03 586.52 L 121.88 577.12 L 119.37 560.84 L 253.38 326.65 L 253.38 218.94 L 261.52 207.04 L 272.79 203.28 L 409.30 203.28 L 418.07 205.79 L 427.46 217.69 L 429.34 269.66 L 474.43 265.90 L 585.89 265.90 L 649.76 273.42 L 688.59 283.44 L 716.14 295.96 L 729.92 305.98 L 749.33 326.65 L 895.86 547.07 L 903.37 559.59 L 904.63 569.61 L 897.74 581.51 L 883.96 587.77 L 862.67 591.53 L 814.45 593.41 L 829.48 752.46 L 829.48 773.75 L 821.97 793.79 L 811.32 803.18 L 791.28 811.95 L 767.49 816.96 L 718.65 820.72 Z M 388.64 535.80 L 409.30 528.91 L 423.71 514.50 L 431.22 496.97 L 431.22 478.19 L 422.45 459.40 L 410.56 447.50 L 398.03 441.24 L 379.25 438.73 L 355.45 447.50 L 342.30 460.65 L 336.04 474.43 L 334.79 494.47 L 341.05 512.00 L 355.45 527.65 L 371.73 535.17 L 388.64 535.80 Z M 646.63 539.55 L 663.54 533.92 L 679.19 519.51 L 686.71 503.23 L 687.96 488.20 L 682.95 470.67 L 668.55 453.76 L 654.77 446.25 L 635.99 443.74 L 613.44 451.26 L 601.55 461.90 L 591.53 481.94 L 591.53 501.98 L 597.79 517.01 L 610.94 531.41 L 632.23 540.18 L 646.63 539.55 Z" fill="#ABFF5A" fill-rule="evenodd"/></svg>
+      </div>
+      <div class="richard-text">Analyzed by<br>Richard</div>
+    </div>
+
+    <!-- RIGHT: Your Claim Package -->
+    <div class="side side-right">
+      <div class="label">Your Claim Package</div>
+      <div class="doc-wrap">
+        <!-- Stacked pages behind -->
+        <div class="stack-page s3"></div>
+        <div class="stack-page s2"></div>
+        <div class="stack-page s1"></div>
+        <!-- Main page -->
+        <div class="doc-page claim"></div>
+        <div class="doc-fold claim-fold"></div>
+        <div class="doc-content claim">
+          <div class="doc-hdr">
+            <div class="title">Your Claim Package</div>
+            <div class="badge">
+              <svg viewBox="0 0 1024 1024"><path d="M 718.65 820.72 L 663.54 820.72 L 653.52 818.21 L 640.37 807.57 L 631.60 786.27 L 624.72 779.39 L 399.28 779.39 L 389.89 787.53 L 381.12 808.82 L 375.49 814.45 L 359.21 820.72 L 285.32 819.46 L 250.25 815.71 L 216.43 805.69 L 202.03 793.79 L 195.77 780.01 L 194.52 752.46 L 209.55 593.41 L 165.09 591.53 L 135.03 586.52 L 121.88 577.12 L 119.37 560.84 L 253.38 326.65 L 253.38 218.94 L 261.52 207.04 L 272.79 203.28 L 409.30 203.28 L 418.07 205.79 L 427.46 217.69 L 429.34 269.66 L 474.43 265.90 L 585.89 265.90 L 649.76 273.42 L 688.59 283.44 L 716.14 295.96 L 729.92 305.98 L 749.33 326.65 L 895.86 547.07 L 903.37 559.59 L 904.63 569.61 L 897.74 581.51 L 883.96 587.77 L 862.67 591.53 L 814.45 593.41 L 829.48 752.46 L 829.48 773.75 L 821.97 793.79 L 811.32 803.18 L 791.28 811.95 L 767.49 816.96 L 718.65 820.72 Z M 388.64 535.80 L 409.30 528.91 L 423.71 514.50 L 431.22 496.97 L 431.22 478.19 L 422.45 459.40 L 410.56 447.50 L 398.03 441.24 L 379.25 438.73 L 355.45 447.50 L 342.30 460.65 L 336.04 474.43 L 334.79 494.47 L 341.05 512.00 L 355.45 527.65 L 371.73 535.17 L 388.64 535.80 Z M 646.63 539.55 L 663.54 533.92 L 679.19 519.51 L 686.71 503.23 L 687.96 488.20 L 682.95 470.67 L 668.55 453.76 L 654.77 446.25 L 635.99 443.74 L 613.44 451.26 L 601.55 461.90 L 591.53 481.94 L 591.53 501.98 L 597.79 517.01 L 610.94 531.41 L 632.23 540.18 L 646.63 539.55 Z" fill="#085E55" fill-rule="evenodd"/></svg>
+              Checked by Richard
+            </div>
+          </div>
+
+          <div class="claim-section">
+            <div class="claim-section-title">Roofing</div>
+            <div class="claim-row"><span class="desc">Remove roofing — 28.5 sq</span><span class="amt">$1,840</span></div>
+            <div class="claim-row"><span class="desc">Install architectural shingles — 28.5 sq</span><span class="amt">$9,120</span></div>
+            <div class="claim-row found"><span class="desc">Ridge cap — 42 LF <span class="supp-tag">SUPP</span></span><span class="amt">$680</span></div>
+            <div class="claim-row found"><span class="desc">Ice & water shield — valleys <span class="supp-tag">SUPP</span></span><span class="amt">$1,260</span></div>
+            <div class="claim-row found"><span class="desc">Synthetic underlayment <span class="supp-tag">SUPP</span></span><span class="amt">$2,180</span></div>
+            <div class="claim-row found"><span class="desc">Starter strip — 164 LF <span class="supp-tag">SUPP</span></span><span class="amt">$492</span></div>
+          </div>
+
+          <div class="claim-section">
+            <div class="claim-section-title">Flashing</div>
+            <div class="claim-row found"><span class="desc">Drip edge — full perimeter <span class="supp-tag">SUPP</span></span><span class="amt">$890</span></div>
+            <div class="claim-row found"><span class="desc">Step flashing — chimney <span class="supp-tag">SUPP</span></span><span class="amt">$520</span></div>
+            <div class="claim-row found"><span class="desc">Pipe boot flashing ×4 <span class="supp-tag">SUPP</span></span><span class="amt">$380</span></div>
+          </div>
+
+          <div class="claim-section">
+            <div class="claim-section-title">Additional</div>
+            <div class="claim-row"><span class="desc">Haul debris</span><span class="amt">$480</span></div>
+            <div class="claim-row found"><span class="desc">Ridge vent — 42 LF <span class="supp-tag">SUPP</span></span><span class="amt">$630</span></div>
+            <div class="claim-row found"><span class="desc">High roof / 2-story <span class="supp-tag">SUPP</span></span><span class="amt">$1,710</span></div>
+            <div class="claim-row found"><span class="desc">Steep pitch — 6/12 <span class="supp-tag">SUPP</span></span><span class="amt">$855</span></div>
+          </div>
+
+          <div class="doc-total claim-total">
+            <span class="desc">Your Total</span>
+            <span class="amt">$21,037</span>
+          </div>
+          <div class="found-summary">
+            <span class="text">+$9,027 found by Richard</span>
+            <span class="items">10 supplement items</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="bottom-bar">
+    <div class="tagline">Your workflow. Maximum payout.</div>
+    <div class="brand">dumbroof.ai</div>
+  </div>
+</div>
+
+</body>
+</html>

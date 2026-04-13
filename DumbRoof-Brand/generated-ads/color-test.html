@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #333; padding: 40px; display: flex; flex-direction: column; align-items: center; gap: 60px; }
+
+  .label {
+    font-family: 'Inter', sans-serif;
+    color: #aaa;
+    font-size: 16px;
+    margin-bottom: -48px;
+    text-align: center;
+  }
+
+  .label span { color: #FF6FFF; font-weight: 600; }
+
+  /* Shared ad structure */
+  .ad {
+    width: 1080px; height: 1080px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    padding: 80px;
+    position: relative;
+  }
+
+  .ad .accent-bar {
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 8px;
+  }
+
+  .ad .richard { margin-bottom: 40px; }
+
+  .ad .headline {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 68px;
+    font-weight: 700;
+    line-height: 1.15;
+    margin-bottom: 20px;
+  }
+
+  .ad .subline {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 36px;
+    font-weight: 600;
+    margin-bottom: 48px;
+  }
+
+  .ad .bottom {
+    position: absolute;
+    bottom: 60px;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+  }
+
+  .ad .url {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 40px;
+    font-weight: 700;
+  }
+
+  /* === 1. Neutral White === */
+  .ad-neutral {
+    background: #F9F9F9;
+  }
+  .ad-neutral .accent-bar { background: linear-gradient(90deg, #FF6FFF, #ABFF5A); }
+  .ad-neutral .headline { color: #090909; }
+  .ad-neutral .headline em { font-style: normal; color: #FF6FFF; }
+  .ad-neutral .subline { color: #085E55; }
+  .ad-neutral .url { color: #090909; }
+
+  /* === 2. Candy Pink === */
+  .ad-candy {
+    background: #FFC0FF;
+  }
+  .ad-candy .accent-bar { background: #085E55; }
+  .ad-candy .headline { color: #090909; }
+  .ad-candy .headline em { font-style: normal; color: #085E55; }
+  .ad-candy .subline { color: #085E55; }
+  .ad-candy .url { color: #090909; }
+
+  /* === 3. Kryptonite Green === */
+  .ad-kryp {
+    background: #ABFF5A;
+  }
+  .ad-kryp .accent-bar { background: #FF6FFF; }
+  .ad-kryp .headline { color: #090909; }
+  .ad-kryp .headline em { font-style: normal; color: #085E55; }
+  .ad-kryp .subline { color: #085E55; }
+  .ad-kryp .url { color: #090909; }
+
+  /* === 4. Futuristic Pink === */
+  .ad-pink {
+    background: #FF6FFF;
+  }
+  .ad-pink .accent-bar { background: #ABFF5A; }
+  .ad-pink .headline { color: #F9F9F9; }
+  .ad-pink .headline em { font-style: normal; color: #090909; }
+  .ad-pink .subline { color: #090909; }
+  .ad-pink .url { color: #F9F9F9; }
+
+  /* === 5. Deep Green === */
+  .ad-deep {
+    background: #085E55;
+  }
+  .ad-deep .accent-bar { background: #ABFF5A; }
+  .ad-deep .headline { color: #F9F9F9; }
+  .ad-deep .headline em { font-style: normal; color: #ABFF5A; }
+  .ad-deep .subline { color: #ABFF5A; }
+  .ad-deep .url { color: #F9F9F9; }
+
+  /* === 6. Pink + Green Split === */
+  .ad-split {
+    background: linear-gradient(135deg, #FFC0FF 0%, #FFC0FF 50%, #ABFF5A 50%, #ABFF5A 100%);
+  }
+  .ad-split .headline { color: #090909; }
+  .ad-split .headline em { font-style: normal; color: #085E55; }
+  .ad-split .subline { color: #085E55; }
+  .ad-split .url { color: #090909; }
+
+  /* === 7. Neutral + Pink Block === */
+  .ad-block {
+    background: #F9F9F9;
+    padding: 0;
+    display: grid;
+    grid-template-rows: auto 1fr auto;
+  }
+  .ad-block .top-block {
+    background: #FF6FFF;
+    padding: 60px 80px 48px;
+    text-align: left;
+  }
+  .ad-block .top-block .headline {
+    color: #090909;
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 64px;
+    font-weight: 700;
+    line-height: 1.15;
+  }
+  .ad-block .middle {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    padding: 40px;
+  }
+  .ad-block .middle .subline {
+    font-family: 'Inter', sans-serif;
+    font-size: 28px;
+    color: #555;
+    margin-bottom: 0;
+  }
+  .ad-block .bottom-strip {
+    background: #085E55;
+    padding: 36px 80px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .ad-block .bottom-strip .url {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 36px;
+    font-weight: 700;
+    color: #F9F9F9;
+  }
+  .ad-block .bottom-strip .tagline {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 32px;
+    font-weight: 600;
+    color: #ABFF5A;
+  }
+
+  /* === 8. Green + Pink Halves === */
+  .ad-halves {
+    padding: 0;
+    display: flex;
+  }
+  .ad-halves .half-left {
+    flex: 1;
+    background: #ABFF5A;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 60px;
+  }
+  .ad-halves .half-left .headline {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 56px;
+    font-weight: 700;
+    color: #090909;
+    line-height: 1.15;
+    text-align: left;
+    margin-bottom: 16px;
+  }
+  .ad-halves .half-left .sub {
+    font-family: 'Inter', sans-serif;
+    font-size: 24px;
+    color: #085E55;
+    text-align: left;
+  }
+  .ad-halves .half-right {
+    flex: 1;
+    background: #FF6FFF;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    padding: 60px;
+  }
+  .ad-halves .half-right .answer {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 44px;
+    font-weight: 700;
+    color: #F9F9F9;
+    margin-top: 24px;
+    margin-bottom: 16px;
+  }
+  .ad-halves .half-right .url {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 30px;
+    font-weight: 700;
+    color: #090909;
+  }
+</style>
+</head>
+<body>
+
+<!-- Richard SVGs -->
+<svg style="display:none;">
+  <defs>
+    <symbol id="r-pink" viewBox="0 0 1024 1024"><path d="M 718.65 820.72 L 663.54 820.72 L 653.52 818.21 L 640.37 807.57 L 631.60 786.27 L 624.72 779.39 L 399.28 779.39 L 389.89 787.53 L 381.12 808.82 L 375.49 814.45 L 359.21 820.72 L 285.32 819.46 L 250.25 815.71 L 216.43 805.69 L 202.03 793.79 L 195.77 780.01 L 194.52 752.46 L 209.55 593.41 L 165.09 591.53 L 135.03 586.52 L 121.88 577.12 L 119.37 560.84 L 253.38 326.65 L 253.38 218.94 L 261.52 207.04 L 272.79 203.28 L 409.30 203.28 L 418.07 205.79 L 427.46 217.69 L 429.34 269.66 L 474.43 265.90 L 585.89 265.90 L 649.76 273.42 L 688.59 283.44 L 716.14 295.96 L 729.92 305.98 L 749.33 326.65 L 895.86 547.07 L 903.37 559.59 L 904.63 569.61 L 897.74 581.51 L 883.96 587.77 L 862.67 591.53 L 814.45 593.41 L 829.48 752.46 L 829.48 773.75 L 821.97 793.79 L 811.32 803.18 L 791.28 811.95 L 767.49 816.96 L 718.65 820.72 Z M 388.64 535.80 L 409.30 528.91 L 423.71 514.50 L 431.22 496.97 L 431.22 478.19 L 422.45 459.40 L 410.56 447.50 L 398.03 441.24 L 379.25 438.73 L 355.45 447.50 L 342.30 460.65 L 336.04 474.43 L 334.79 494.47 L 341.05 512.00 L 355.45 527.65 L 371.73 535.17 L 388.64 535.80 Z M 646.63 539.55 L 663.54 533.92 L 679.19 519.51 L 686.71 503.23 L 687.96 488.20 L 682.95 470.67 L 668.55 453.76 L 654.77 446.25 L 635.99 443.74 L 613.44 451.26 L 601.55 461.90 L 591.53 481.94 L 591.53 501.98 L 597.79 517.01 L 610.94 531.41 L 632.23 540.18 L 646.63 539.55 Z" fill="#FF6FFF" fill-rule="evenodd"/></symbol>
+    <symbol id="r-black" viewBox="0 0 1024 1024"><path d="M 718.65 820.72 L 663.54 820.72 L 653.52 818.21 L 640.37 807.57 L 631.60 786.27 L 624.72 779.39 L 399.28 779.39 L 389.89 787.53 L 381.12 808.82 L 375.49 814.45 L 359.21 820.72 L 285.32 819.46 L 250.25 815.71 L 216.43 805.69 L 202.03 793.79 L 195.77 780.01 L 194.52 752.46 L 209.55 593.41 L 165.09 591.53 L 135.03 586.52 L 121.88 577.12 L 119.37 560.84 L 253.38 326.65 L 253.38 218.94 L 261.52 207.04 L 272.79 203.28 L 409.30 203.28 L 418.07 205.79 L 427.46 217.69 L 429.34 269.66 L 474.43 265.90 L 585.89 265.90 L 649.76 273.42 L 688.59 283.44 L 716.14 295.96 L 729.92 305.98 L 749.33 326.65 L 895.86 547.07 L 903.37 559.59 L 904.63 569.61 L 897.74 581.51 L 883.96 587.77 L 862.67 591.53 L 814.45 593.41 L 829.48 752.46 L 829.48 773.75 L 821.97 793.79 L 811.32 803.18 L 791.28 811.95 L 767.49 816.96 L 718.65 820.72 Z M 388.64 535.80 L 409.30 528.91 L 423.71 514.50 L 431.22 496.97 L 431.22 478.19 L 422.45 459.40 L 410.56 447.50 L 398.03 441.24 L 379.25 438.73 L 355.45 447.50 L 342.30 460.65 L 336.04 474.43 L 334.79 494.47 L 341.05 512.00 L 355.45 527.65 L 371.73 535.17 L 388.64 535.80 Z M 646.63 539.55 L 663.54 533.92 L 679.19 519.51 L 686.71 503.23 L 687.96 488.20 L 682.95 470.67 L 668.55 453.76 L 654.77 446.25 L 635.99 443.74 L 613.44 451.26 L 601.55 461.90 L 591.53 481.94 L 591.53 501.98 L 597.79 517.01 L 610.94 531.41 L 632.23 540.18 L 646.63 539.55 Z" fill="#090909" fill-rule="evenodd"/></symbol>
+    <symbol id="r-white" viewBox="0 0 1024 1024"><path d="M 718.65 820.72 L 663.54 820.72 L 653.52 818.21 L 640.37 807.57 L 631.60 786.27 L 624.72 779.39 L 399.28 779.39 L 389.89 787.53 L 381.12 808.82 L 375.49 814.45 L 359.21 820.72 L 285.32 819.46 L 250.25 815.71 L 216.43 805.69 L 202.03 793.79 L 195.77 780.01 L 194.52 752.46 L 209.55 593.41 L 165.09 591.53 L 135.03 586.52 L 121.88 577.12 L 119.37 560.84 L 253.38 326.65 L 253.38 218.94 L 261.52 207.04 L 272.79 203.28 L 409.30 203.28 L 418.07 205.79 L 427.46 217.69 L 429.34 269.66 L 474.43 265.90 L 585.89 265.90 L 649.76 273.42 L 688.59 283.44 L 716.14 295.96 L 729.92 305.98 L 749.33 326.65 L 895.86 547.07 L 903.37 559.59 L 904.63 569.61 L 897.74 581.51 L 883.96 587.77 L 862.67 591.53 L 814.45 593.41 L 829.48 752.46 L 829.48 773.75 L 821.97 793.79 L 811.32 803.18 L 791.28 811.95 L 767.49 816.96 L 718.65 820.72 Z M 388.64 535.80 L 409.30 528.91 L 423.71 514.50 L 431.22 496.97 L 431.22 478.19 L 422.45 459.40 L 410.56 447.50 L 398.03 441.24 L 379.25 438.73 L 355.45 447.50 L 342.30 460.65 L 336.04 474.43 L 334.79 494.47 L 341.05 512.00 L 355.45 527.65 L 371.73 535.17 L 388.64 535.80 Z M 646.63 539.55 L 663.54 533.92 L 679.19 519.51 L 686.71 503.23 L 687.96 488.20 L 682.95 470.67 L 668.55 453.76 L 654.77 446.25 L 635.99 443.74 L 613.44 451.26 L 601.55 461.90 L 591.53 481.94 L 591.53 501.98 L 597.79 517.01 L 610.94 531.41 L 632.23 540.18 L 646.63 539.55 Z" fill="#FFFFFF" fill-rule="evenodd"/></symbol>
+    <symbol id="r-deep" viewBox="0 0 1024 1024"><path d="M 718.65 820.72 L 663.54 820.72 L 653.52 818.21 L 640.37 807.57 L 631.60 786.27 L 624.72 779.39 L 399.28 779.39 L 389.89 787.53 L 381.12 808.82 L 375.49 814.45 L 359.21 820.72 L 285.32 819.46 L 250.25 815.71 L 216.43 805.69 L 202.03 793.79 L 195.77 780.01 L 194.52 752.46 L 209.55 593.41 L 165.09 591.53 L 135.03 586.52 L 121.88 577.12 L 119.37 560.84 L 253.38 326.65 L 253.38 218.94 L 261.52 207.04 L 272.79 203.28 L 409.30 203.28 L 418.07 205.79 L 427.46 217.69 L 429.34 269.66 L 474.43 265.90 L 585.89 265.90 L 649.76 273.42 L 688.59 283.44 L 716.14 295.96 L 729.92 305.98 L 749.33 326.65 L 895.86 547.07 L 903.37 559.59 L 904.63 569.61 L 897.74 581.51 L 883.96 587.77 L 862.67 591.53 L 814.45 593.41 L 829.48 752.46 L 829.48 773.75 L 821.97 793.79 L 811.32 803.18 L 791.28 811.95 L 767.49 816.96 L 718.65 820.72 Z M 388.64 535.80 L 409.30 528.91 L 423.71 514.50 L 431.22 496.97 L 431.22 478.19 L 422.45 459.40 L 410.56 447.50 L 398.03 441.24 L 379.25 438.73 L 355.45 447.50 L 342.30 460.65 L 336.04 474.43 L 334.79 494.47 L 341.05 512.00 L 355.45 527.65 L 371.73 535.17 L 388.64 535.80 Z M 646.63 539.55 L 663.54 533.92 L 679.19 519.51 L 686.71 503.23 L 687.96 488.20 L 682.95 470.67 L 668.55 453.76 L 654.77 446.25 L 635.99 443.74 L 613.44 451.26 L 601.55 461.90 L 591.53 481.94 L 591.53 501.98 L 597.79 517.01 L 610.94 531.41 L 632.23 540.18 L 646.63 539.55 Z" fill="#085E55" fill-rule="evenodd"/></symbol>
+  </defs>
+</svg>
+
+<!-- 1. NEUTRAL WHITE -->
+<p class="label">1. <span>Neutral White</span> — #F9F9F9</p>
+<div class="ad ad-neutral" id="color-1">
+  <div class="accent-bar"></div>
+  <svg class="richard" width="120" height="120"><use href="#r-pink"/></svg>
+  <div class="headline">Stop spending your weekend<br>on <em>paperwork.</em></div>
+  <div class="subline">Ask Richard.</div>
+  <div class="bottom">
+    <svg width="48" height="48"><use href="#r-black"/></svg>
+    <div class="url">dumbroof.ai</div>
+  </div>
+</div>
+
+<!-- 2. CANDY PINK -->
+<p class="label">2. <span>Candy Pink</span> — #FFC0FF</p>
+<div class="ad ad-candy" id="color-2">
+  <div class="accent-bar"></div>
+  <svg class="richard" width="120" height="120"><use href="#r-deep"/></svg>
+  <div class="headline">Stop spending your weekend<br>on <em>paperwork.</em></div>
+  <div class="subline">Ask Richard.</div>
+  <div class="bottom">
+    <svg width="48" height="48"><use href="#r-black"/></svg>
+    <div class="url">dumbroof.ai</div>
+  </div>
+</div>
+
+<!-- 3. KRYPTONITE GREEN -->
+<p class="label">3. <span>Kryptonite Green</span> — #ABFF5A</p>
+<div class="ad ad-kryp" id="color-3">
+  <div class="accent-bar"></div>
+  <svg class="richard" width="120" height="120"><use href="#r-black"/></svg>
+  <div class="headline">Stop spending your weekend<br>on <em>paperwork.</em></div>
+  <div class="subline">Ask Richard.</div>
+  <div class="bottom">
+    <svg width="48" height="48"><use href="#r-deep"/></svg>
+    <div class="url">dumbroof.ai</div>
+  </div>
+</div>
+
+<!-- 4. FUTURISTIC PINK -->
+<p class="label">4. <span>Futuristic Pink</span> — #FF6FFF</p>
+<div class="ad ad-pink" id="color-4">
+  <div class="accent-bar"></div>
+  <svg class="richard" width="120" height="120"><use href="#r-white"/></svg>
+  <div class="headline">Stop spending your weekend<br>on <em>paperwork.</em></div>
+  <div class="subline">Ask Richard.</div>
+  <div class="bottom">
+    <svg width="48" height="48"><use href="#r-white"/></svg>
+    <div class="url">dumbroof.ai</div>
+  </div>
+</div>
+
+<!-- 5. DEEP GREEN -->
+<p class="label">5. <span>Deep Green</span> — #085E55</p>
+<div class="ad ad-deep" id="color-5">
+  <div class="accent-bar"></div>
+  <svg class="richard" width="120" height="120"><use href="#r-pink"/></svg>
+  <div class="headline">Stop spending your weekend<br>on <em>paperwork.</em></div>
+  <div class="subline">Ask Richard.</div>
+  <div class="bottom">
+    <svg width="48" height="48"><use href="#r-white"/></svg>
+    <div class="url">dumbroof.ai</div>
+  </div>
+</div>
+
+<!-- 6. DIAGONAL SPLIT -->
+<p class="label">6. <span>Candy Pink + Kryptonite Split</span></p>
+<div class="ad ad-split" id="color-6">
+  <svg class="richard" width="120" height="120"><use href="#r-black"/></svg>
+  <div class="headline">Stop spending your weekend<br>on <em>paperwork.</em></div>
+  <div class="subline">Ask Richard.</div>
+  <div class="bottom">
+    <svg width="48" height="48"><use href="#r-deep"/></svg>
+    <div class="url">dumbroof.ai</div>
+  </div>
+</div>
+
+<!-- 7. COLOR BLOCK (Pink top, white mid, green bottom) -->
+<p class="label">7. <span>Color Block</span> — Pink / White / Deep Green</p>
+<div class="ad ad-block" id="color-7">
+  <div class="top-block">
+    <div class="headline">Stop spending your weekend on paperwork.</div>
+  </div>
+  <div class="middle">
+    <svg width="100" height="100"><use href="#r-pink"/></svg>
+    <div class="subline">AI-powered claims intelligence for roofers.</div>
+  </div>
+  <div class="bottom-strip">
+    <div class="url">dumbroof.ai</div>
+    <div class="tagline">Ask Richard.</div>
+  </div>
+</div>
+
+<!-- 8. GREEN + PINK HALVES -->
+<p class="label">8. <span>Green + Pink Halves</span></p>
+<div class="ad ad-halves" id="color-8">
+  <div class="half-left">
+    <svg width="80" height="80" style="margin-bottom:24px;"><use href="#r-black"/></svg>
+    <div class="headline">Stop spending your weekend on paperwork.</div>
+    <div class="sub">Handwritten scopes. Missed line items. Underpaid claims.</div>
+  </div>
+  <div class="half-right">
+    <svg width="140" height="140"><use href="#r-white"/></svg>
+    <div class="answer">Richard handles<br>that now.</div>
+    <div class="url">dumbroof.ai</div>
+  </div>
+</div>
+
+</body>
+</html>

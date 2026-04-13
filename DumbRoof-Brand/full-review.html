@@ -1,0 +1,840 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dumb Roof — Full Brand Review Dashboard</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&family=DM+Mono:wght@400;500&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Inter', sans-serif;
+    background: #090909;
+    color: #F9F9F9;
+    min-height: 100vh;
+    padding: 40px 20px;
+  }
+
+  .header {
+    text-align: center;
+    margin-bottom: 32px;
+  }
+
+  .header h1 {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 36px;
+    font-weight: 700;
+    background: linear-gradient(135deg, #FF6FFF, #ABFF5A);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    margin-bottom: 8px;
+  }
+
+  .header p { color: #999; font-size: 16px; }
+
+  /* Nav */
+  .nav {
+    display: flex;
+    justify-content: center;
+    gap: 6px;
+    margin-bottom: 40px;
+    flex-wrap: wrap;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: rgba(9,9,9,0.95);
+    backdrop-filter: blur(12px);
+    padding: 14px 10px;
+    border-bottom: 1px solid #222;
+  }
+
+  .nav a {
+    padding: 8px 16px;
+    background: #1a1a1a;
+    border: 1px solid #333;
+    border-radius: 20px;
+    color: #999;
+    font-size: 13px;
+    text-decoration: none;
+    transition: all 0.2s;
+  }
+
+  .nav a:hover { border-color: #FF6FFF; color: #FF6FFF; }
+
+  .section-title {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 24px;
+    font-weight: 600;
+    margin: 56px 0 24px;
+    padding-left: 16px;
+    border-left: 3px solid #FF6FFF;
+    max-width: 1400px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  .section-desc {
+    max-width: 1400px;
+    margin: 0 auto 24px;
+    padding-left: 20px;
+    color: #777;
+    font-size: 14px;
+  }
+
+  /* ===== BRAND SYSTEM SECTION ===== */
+
+  .brand-section {
+    max-width: 1400px;
+    margin: 0 auto;
+  }
+
+  /* Colors */
+  .color-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 16px;
+    margin-bottom: 40px;
+  }
+
+  .color-card {
+    border-radius: 12px;
+    overflow: hidden;
+    border: 2px solid #222;
+    background: #151515;
+  }
+
+  .color-swatch {
+    height: 100px;
+    display: flex;
+    align-items: flex-end;
+    padding: 10px 14px;
+  }
+
+  .color-swatch span {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 13px;
+    padding: 3px 8px;
+    border-radius: 4px;
+    background: rgba(0,0,0,0.5);
+    color: white;
+  }
+
+  .color-info {
+    padding: 12px 14px;
+  }
+
+  .color-info h4 {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+    margin-bottom: 4px;
+  }
+
+  .color-info p {
+    font-size: 12px;
+    color: #777;
+  }
+
+  .color-card.hero-color { border-color: #FF6FFF; }
+
+  /* Fonts */
+  .font-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 20px;
+    margin-bottom: 40px;
+  }
+
+  .font-card {
+    background: #151515;
+    border: 2px solid #222;
+    border-radius: 12px;
+    padding: 24px;
+  }
+
+  .font-card .font-label {
+    font-size: 12px;
+    color: #FF6FFF;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 8px;
+  }
+
+  .font-card .font-name {
+    font-size: 14px;
+    color: #777;
+    margin-bottom: 16px;
+  }
+
+  .font-card .font-sample {
+    font-size: 32px;
+    font-weight: 700;
+    line-height: 1.3;
+    margin-bottom: 8px;
+  }
+
+  .font-card .font-alpha {
+    font-size: 16px;
+    color: #aaa;
+    letter-spacing: 2px;
+  }
+
+  /* Mascot */
+  .mascot-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
+    max-width: 900px;
+    margin: 0 auto 40px;
+  }
+
+  .mascot-card {
+    background: #151515;
+    border: 2px solid #222;
+    border-radius: 12px;
+    padding: 32px;
+    text-align: center;
+  }
+
+  .mascot-card.on-dark { background: #151515; }
+  .mascot-card.on-light { background: #F9F9F9; }
+  .mascot-card.on-pink { background: #FF6FFF; }
+
+  .mascot-card svg { width: 160px; height: 160px; margin-bottom: 12px; }
+  .mascot-card .mascot-label { font-size: 13px; color: #777; }
+  .mascot-card.on-light .mascot-label { color: #555; }
+  .mascot-card.on-pink .mascot-label { color: rgba(0,0,0,0.6); }
+
+  /* Campaign */
+  .campaign-box {
+    background: #111;
+    border: 2px solid #222;
+    border-radius: 16px;
+    padding: 40px;
+    text-align: center;
+    max-width: 800px;
+    margin: 0 auto 20px;
+  }
+
+  .campaign-box .tagline {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 48px;
+    font-weight: 700;
+    color: #FF6FFF;
+    margin-bottom: 12px;
+  }
+
+  .campaign-box .sub {
+    font-size: 18px;
+    color: #777;
+  }
+
+  .campaign-box-alt {
+    background: #ABFF5A;
+    border: none;
+    border-radius: 16px;
+    padding: 40px;
+    text-align: center;
+    max-width: 800px;
+    margin: 0 auto 40px;
+  }
+
+  .campaign-box-alt .tagline {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 48px;
+    font-weight: 700;
+    color: #090909;
+    margin-bottom: 12px;
+  }
+
+  .campaign-box-alt .sub {
+    font-size: 18px;
+    color: rgba(0,0,0,0.6);
+  }
+
+  /* Rules */
+  .rules-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    max-width: 900px;
+    margin: 0 auto 40px;
+  }
+
+  .rules-card {
+    background: #151515;
+    border: 2px solid #222;
+    border-radius: 12px;
+    padding: 24px;
+  }
+
+  .rules-card h4 {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 16px;
+    font-weight: 600;
+    margin-bottom: 16px;
+  }
+
+  .rules-card.do-card h4 { color: #ABFF5A; }
+  .rules-card.dont-card h4 { color: #FF6FFF; }
+
+  .rules-card ul {
+    list-style: none;
+    padding: 0;
+  }
+
+  .rules-card ul li {
+    padding: 6px 0;
+    font-size: 14px;
+    color: #aaa;
+    border-bottom: 1px solid #1a1a1a;
+  }
+
+  .rules-card ul li:last-child { border: none; }
+
+  /* Vote section on brand items */
+  .brand-vote {
+    max-width: 900px;
+    margin: 24px auto;
+    background: #151515;
+    border: 2px solid #222;
+    border-radius: 12px;
+    padding: 20px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+  }
+
+  .brand-vote .bv-label {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 16px;
+    font-weight: 600;
+  }
+
+  .brand-vote .vote-buttons { display: flex; gap: 8px; }
+
+  .vote-btn {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 8px;
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .vote-yes { background: #1a2e1a; color: #ABFF5A; border: 1px solid #2a3e2a; }
+  .vote-yes:hover { background: #2a3e2a; }
+  .vote-yes.active { background: #ABFF5A; color: #090909; }
+
+  .vote-no { background: #2e1a2e; color: #FF6FFF; border: 1px solid #3e2a3e; }
+  .vote-no:hover { background: #3e2a3e; }
+  .vote-no.active { background: #FF6FFF; color: #090909; }
+
+  /* ===== AD REVIEW GRID ===== */
+
+  .grid {
+    display: grid;
+    gap: 24px;
+    max-width: 1400px;
+    margin: 0 auto;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  }
+
+  .card {
+    background: #151515;
+    border-radius: 12px;
+    overflow: hidden;
+    border: 2px solid #222;
+    transition: border-color 0.3s, transform 0.15s;
+  }
+
+  .card:hover { transform: translateY(-2px); }
+  .card.voted-yes { border-color: #ABFF5A; }
+  .card.voted-no { border-color: #FF6FFF; }
+
+  .card img {
+    width: 100%;
+    display: block;
+    cursor: pointer;
+    transition: opacity 0.2s;
+  }
+
+  .card img:hover { opacity: 0.9; }
+  .card-info { padding: 12px 16px; }
+
+  .card-info h3 {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+    margin-bottom: 10px;
+  }
+
+  .card .vote-buttons { display: flex; gap: 8px; }
+
+  .notes-input {
+    width: 100%;
+    margin-top: 8px;
+    padding: 8px 12px;
+    background: #1a1a1a;
+    border: 1px solid #333;
+    border-radius: 6px;
+    color: #F9F9F9;
+    font-family: 'Inter', sans-serif;
+    font-size: 12px;
+    resize: none;
+    display: none;
+  }
+
+  .notes-input:focus { outline: none; border-color: #FF6FFF; }
+  .notes-input.visible { display: block; }
+
+  .card.hidden { display: none; }
+
+  /* Export */
+  .export-section {
+    text-align: center;
+    margin: 60px auto 40px;
+    max-width: 700px;
+  }
+
+  .export-btn {
+    padding: 16px 48px;
+    background: linear-gradient(135deg, #FF6FFF, #ABFF5A);
+    color: #090909;
+    border: none;
+    border-radius: 12px;
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 18px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: transform 0.2s, box-shadow 0.2s;
+  }
+
+  .export-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(255, 111, 255, 0.3);
+  }
+
+  .export-result {
+    margin-top: 20px;
+    padding: 20px;
+    background: #111;
+    border-radius: 12px;
+    text-align: left;
+    font-size: 13px;
+    line-height: 1.8;
+    display: none;
+    white-space: pre-wrap;
+    font-family: monospace;
+    max-height: 500px;
+    overflow-y: auto;
+  }
+
+  /* Lightbox */
+  .lightbox {
+    display: none;
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    background: rgba(0,0,0,0.95);
+    z-index: 1000;
+    cursor: zoom-out;
+    justify-content: center;
+    align-items: center;
+  }
+
+  .lightbox.active { display: flex; }
+
+  .lightbox img {
+    max-width: 92%;
+    max-height: 92%;
+    object-fit: contain;
+    border-radius: 8px;
+  }
+
+  @media (max-width: 700px) {
+    .rules-grid { grid-template-columns: 1fr; }
+    .mascot-grid { grid-template-columns: 1fr; }
+    .campaign-box .tagline, .campaign-box-alt .tagline { font-size: 32px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>Dumb Roof — Full Brand Review</h1>
+  <p>Review everything: brand system + all ad designs. Vote YES or NO on each section.</p>
+</div>
+
+<nav class="nav">
+  <a href="#brand-colors">Colors</a>
+  <a href="#brand-fonts">Fonts</a>
+  <a href="#brand-mascot">Richard</a>
+  <a href="#brand-campaign">Campaign</a>
+  <a href="#brand-rules">Do/Don't</a>
+  <a href="#ads-logos">Logos</a>
+  <a href="#ads-all">All Ads</a>
+  <a href="#ads-new">NEW AI Ads</a>
+  <a href="#export">Export</a>
+</nav>
+
+<!-- ==================== BRAND SYSTEM ==================== -->
+
+<div id="brand-colors" class="section-title">Color System</div>
+<div class="section-desc">The official Dumb Roof color palette. Futuristic Pink is the hero.</div>
+<div class="brand-section">
+  <div class="color-grid">
+    <div class="color-card hero-color">
+      <div class="color-swatch" style="background:#FF6FFF;"><span>#FF6FFF</span></div>
+      <div class="color-info"><h4>Futuristic Pink</h4><p>Hero brand color — marketing, CTAs, standout moments</p></div>
+    </div>
+    <div class="color-card">
+      <div class="color-swatch" style="background:#ABFF5A;"><span>#ABFF5A</span></div>
+      <div class="color-info"><h4>Kryptonite Green</h4><p>Performance/results — approvals, gains, AI callouts</p></div>
+    </div>
+    <div class="color-card">
+      <div class="color-swatch" style="background:#085E55;"><span>#085E55</span></div>
+      <div class="color-info"><h4>Deep Green</h4><p>Trust anchor — dashboards, reports, credibility</p></div>
+    </div>
+    <div class="color-card">
+      <div class="color-swatch" style="background:#090909;"><span>#090909</span></div>
+      <div class="color-info"><h4>Black</h4><p>Authority — wordmark, text, structure</p></div>
+    </div>
+    <div class="color-card">
+      <div class="color-swatch" style="background:#F9F9F9;"><span style="background:rgba(0,0,0,0.7);">#F9F9F9</span></div>
+      <div class="color-info"><h4>Neutral</h4><p>Base canvas — site/app/report backgrounds</p></div>
+    </div>
+    <div class="color-card">
+      <div class="color-swatch" style="background:#FFC0FF;"><span>#FFC0FF</span></div>
+      <div class="color-info"><h4>Candy Pink</h4><p>Support — soft fills, tinted backgrounds</p></div>
+    </div>
+    <div class="color-card">
+      <div class="color-swatch" style="background:#00906C;"><span>#00906C</span></div>
+      <div class="color-info"><h4>Pine Green</h4><p>Support — UI accents, chart variation</p></div>
+    </div>
+    <div class="color-card">
+      <div class="color-swatch" style="background:#FFEA00;"><span style="background:rgba(0,0,0,0.7);">#FFEA00</span></div>
+      <div class="color-info"><h4>Summer Yellow</h4><p>Accent only — small callouts, launch tags</p></div>
+    </div>
+    <div class="color-card">
+      <div class="color-swatch" style="background:#5151FC;"><span>#5151FC</span></div>
+      <div class="color-info"><h4>Electric Blue</h4><p>Digital accent — AI/data moments, charts</p></div>
+    </div>
+    <div class="color-card">
+      <div class="color-swatch" style="background:#FC032D;"><span>#FC032D</span></div>
+      <div class="color-info"><h4>Loud Red</h4><p>SYSTEM ALERTS ONLY — not a brand color</p></div>
+    </div>
+  </div>
+  <div class="brand-vote" id="vote-colors">
+    <span class="bv-label">Color system — approved?</span>
+    <div class="vote-buttons">
+      <button class="vote-btn vote-yes" onclick="brandVote('colors','yes',this)">YES</button>
+      <button class="vote-btn vote-no" onclick="brandVote('colors','no',this)">NO</button>
+    </div>
+  </div>
+</div>
+
+<!-- FONTS -->
+<div id="brand-fonts" class="section-title">Typography</div>
+<div class="section-desc">The fonts that define how Dumb Roof looks in text.</div>
+<div class="brand-section">
+  <div class="font-grid">
+    <div class="font-card">
+      <div class="font-label">Wordmark / Logo / Headlines</div>
+      <div class="font-name">Space Grotesk — Bold</div>
+      <div class="font-sample" style="font-family:'Space Grotesk',sans-serif; color: #FF6FFF;">dumbroof.ai</div>
+      <div class="font-sample" style="font-family:'Space Grotesk',sans-serif; font-size:24px;">Ask Richard.</div>
+      <div class="font-alpha" style="font-family:'Space Grotesk',sans-serif;">ABCDEFGHIJKLMNOPQRSTUVWXYZ<br>abcdefghijklmnopqrstuvwxyz<br>0123456789 !@#$%&</div>
+    </div>
+    <div class="font-card">
+      <div class="font-label">Body / Supporting Text</div>
+      <div class="font-name">Inter — Regular & Medium</div>
+      <div class="font-sample" style="font-family:'Inter',sans-serif; font-size:20px; font-weight:500;">AI-powered damage documentation intelligence for roofing contractors.</div>
+      <div class="font-alpha" style="font-family:'Inter',sans-serif;">ABCDEFGHIJKLMNOPQRSTUVWXYZ<br>abcdefghijklmnopqrstuvwxyz<br>0123456789 !@#$%&</div>
+    </div>
+    <div class="font-card">
+      <div class="font-label">Technical / Data / Code</div>
+      <div class="font-name">IBM Plex Mono</div>
+      <div class="font-sample" style="font-family:'IBM Plex Mono',monospace; font-size:18px; color:#ABFF5A;">claim_value: $47,250</div>
+      <div class="font-alpha" style="font-family:'IBM Plex Mono',monospace;">ABCDEFGHIJKLMNOPQRSTUVWXYZ<br>0123456789 {[()]} $@#%</div>
+    </div>
+  </div>
+  <div class="brand-vote" id="vote-fonts">
+    <span class="bv-label">Typography — approved?</span>
+    <div class="vote-buttons">
+      <button class="vote-btn vote-yes" onclick="brandVote('fonts','yes',this)">YES</button>
+      <button class="vote-btn vote-no" onclick="brandVote('fonts','no',this)">NO</button>
+    </div>
+  </div>
+</div>
+
+<!-- MASCOT -->
+<div id="brand-mascot" class="section-title">Richard (Mascot)</div>
+<div class="section-desc">House silhouette with chimney + two round eyes. Locked — do not redesign.</div>
+<div class="brand-section">
+  <div class="mascot-grid">
+    <div class="mascot-card on-dark">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024"><path d="M 718.65 820.72 L 663.54 820.72 L 653.52 818.21 L 640.37 807.57 L 631.60 786.27 L 624.72 779.39 L 399.28 779.39 L 389.89 787.53 L 381.12 808.82 L 375.49 814.45 L 359.21 820.72 L 285.32 819.46 L 250.25 815.71 L 216.43 805.69 L 202.03 793.79 L 195.77 780.01 L 194.52 752.46 L 209.55 593.41 L 165.09 591.53 L 135.03 586.52 L 121.88 577.12 L 119.37 560.84 L 253.38 326.65 L 253.38 218.94 L 261.52 207.04 L 272.79 203.28 L 409.30 203.28 L 418.07 205.79 L 427.46 217.69 L 429.34 269.66 L 474.43 265.90 L 585.89 265.90 L 649.76 273.42 L 688.59 283.44 L 716.14 295.96 L 729.92 305.98 L 749.33 326.65 L 895.86 547.07 L 903.37 559.59 L 904.63 569.61 L 897.74 581.51 L 883.96 587.77 L 862.67 591.53 L 814.45 593.41 L 829.48 752.46 L 829.48 773.75 L 821.97 793.79 L 811.32 803.18 L 791.28 811.95 L 767.49 816.96 L 718.65 820.72 Z M 388.64 535.80 L 409.30 528.91 L 423.71 514.50 L 431.22 496.97 L 431.22 478.19 L 422.45 459.40 L 410.56 447.50 L 398.03 441.24 L 379.25 438.73 L 355.45 447.50 L 342.30 460.65 L 336.04 474.43 L 334.79 494.47 L 341.05 512.00 L 355.45 527.65 L 371.73 535.17 L 388.64 535.80 Z M 646.63 539.55 L 663.54 533.92 L 679.19 519.51 L 686.71 503.23 L 687.96 488.20 L 682.95 470.67 L 668.55 453.76 L 654.77 446.25 L 635.99 443.74 L 613.44 451.26 L 601.55 461.90 L 591.53 481.94 L 591.53 501.98 L 597.79 517.01 L 610.94 531.41 L 632.23 540.18 L 646.63 539.55 Z" fill="#FF6FFF" fill-rule="evenodd"/></svg>
+      <div class="mascot-label">Pink on Dark</div>
+    </div>
+    <div class="mascot-card on-light">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024"><path d="M 718.65 820.72 L 663.54 820.72 L 653.52 818.21 L 640.37 807.57 L 631.60 786.27 L 624.72 779.39 L 399.28 779.39 L 389.89 787.53 L 381.12 808.82 L 375.49 814.45 L 359.21 820.72 L 285.32 819.46 L 250.25 815.71 L 216.43 805.69 L 202.03 793.79 L 195.77 780.01 L 194.52 752.46 L 209.55 593.41 L 165.09 591.53 L 135.03 586.52 L 121.88 577.12 L 119.37 560.84 L 253.38 326.65 L 253.38 218.94 L 261.52 207.04 L 272.79 203.28 L 409.30 203.28 L 418.07 205.79 L 427.46 217.69 L 429.34 269.66 L 474.43 265.90 L 585.89 265.90 L 649.76 273.42 L 688.59 283.44 L 716.14 295.96 L 729.92 305.98 L 749.33 326.65 L 895.86 547.07 L 903.37 559.59 L 904.63 569.61 L 897.74 581.51 L 883.96 587.77 L 862.67 591.53 L 814.45 593.41 L 829.48 752.46 L 829.48 773.75 L 821.97 793.79 L 811.32 803.18 L 791.28 811.95 L 767.49 816.96 L 718.65 820.72 Z M 388.64 535.80 L 409.30 528.91 L 423.71 514.50 L 431.22 496.97 L 431.22 478.19 L 422.45 459.40 L 410.56 447.50 L 398.03 441.24 L 379.25 438.73 L 355.45 447.50 L 342.30 460.65 L 336.04 474.43 L 334.79 494.47 L 341.05 512.00 L 355.45 527.65 L 371.73 535.17 L 388.64 535.80 Z M 646.63 539.55 L 663.54 533.92 L 679.19 519.51 L 686.71 503.23 L 687.96 488.20 L 682.95 470.67 L 668.55 453.76 L 654.77 446.25 L 635.99 443.74 L 613.44 451.26 L 601.55 461.90 L 591.53 481.94 L 591.53 501.98 L 597.79 517.01 L 610.94 531.41 L 632.23 540.18 L 646.63 539.55 Z" fill="#090909" fill-rule="evenodd"/></svg>
+      <div class="mascot-label">Black on Light</div>
+    </div>
+    <div class="mascot-card on-pink">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024"><path d="M 718.65 820.72 L 663.54 820.72 L 653.52 818.21 L 640.37 807.57 L 631.60 786.27 L 624.72 779.39 L 399.28 779.39 L 389.89 787.53 L 381.12 808.82 L 375.49 814.45 L 359.21 820.72 L 285.32 819.46 L 250.25 815.71 L 216.43 805.69 L 202.03 793.79 L 195.77 780.01 L 194.52 752.46 L 209.55 593.41 L 165.09 591.53 L 135.03 586.52 L 121.88 577.12 L 119.37 560.84 L 253.38 326.65 L 253.38 218.94 L 261.52 207.04 L 272.79 203.28 L 409.30 203.28 L 418.07 205.79 L 427.46 217.69 L 429.34 269.66 L 474.43 265.90 L 585.89 265.90 L 649.76 273.42 L 688.59 283.44 L 716.14 295.96 L 729.92 305.98 L 749.33 326.65 L 895.86 547.07 L 903.37 559.59 L 904.63 569.61 L 897.74 581.51 L 883.96 587.77 L 862.67 591.53 L 814.45 593.41 L 829.48 752.46 L 829.48 773.75 L 821.97 793.79 L 811.32 803.18 L 791.28 811.95 L 767.49 816.96 L 718.65 820.72 Z M 388.64 535.80 L 409.30 528.91 L 423.71 514.50 L 431.22 496.97 L 431.22 478.19 L 422.45 459.40 L 410.56 447.50 L 398.03 441.24 L 379.25 438.73 L 355.45 447.50 L 342.30 460.65 L 336.04 474.43 L 334.79 494.47 L 341.05 512.00 L 355.45 527.65 L 371.73 535.17 L 388.64 535.80 Z M 646.63 539.55 L 663.54 533.92 L 679.19 519.51 L 686.71 503.23 L 687.96 488.20 L 682.95 470.67 L 668.55 453.76 L 654.77 446.25 L 635.99 443.74 L 613.44 451.26 L 601.55 461.90 L 591.53 481.94 L 591.53 501.98 L 597.79 517.01 L 610.94 531.41 L 632.23 540.18 L 646.63 539.55 Z" fill="#FFFFFF" fill-rule="evenodd"/></svg>
+      <div class="mascot-label">White on Pink</div>
+    </div>
+  </div>
+  <div class="brand-vote" id="vote-mascot">
+    <span class="bv-label">Richard mascot — approved?</span>
+    <div class="vote-buttons">
+      <button class="vote-btn vote-yes" onclick="brandVote('mascot','yes',this)">YES</button>
+      <button class="vote-btn vote-no" onclick="brandVote('mascot','no',this)">NO</button>
+    </div>
+  </div>
+</div>
+
+<!-- CAMPAIGN -->
+<div id="brand-campaign" class="section-title">Campaign Theme</div>
+<div class="section-desc">"Got Milk?" style — curiosity-driven, brand recall.</div>
+<div class="brand-section">
+  <div class="campaign-box">
+    <div class="tagline">Did you ask Richard?</div>
+    <div class="sub">dumbroof.ai</div>
+  </div>
+  <div class="campaign-box-alt">
+    <div class="tagline">Ask Richard.</div>
+    <div class="sub">dumbroof.ai</div>
+  </div>
+  <div class="brand-vote" id="vote-campaign">
+    <span class="bv-label">Campaign theme — approved?</span>
+    <div class="vote-buttons">
+      <button class="vote-btn vote-yes" onclick="brandVote('campaign','yes',this)">YES</button>
+      <button class="vote-btn vote-no" onclick="brandVote('campaign','no',this)">NO</button>
+    </div>
+  </div>
+</div>
+
+<!-- DO / DON'T -->
+<div id="brand-rules" class="section-title">Brand Rules</div>
+<div class="brand-section">
+  <div class="rules-grid">
+    <div class="rules-card do-card">
+      <h4>DO</h4>
+      <ul>
+        <li>Use loud color with discipline</li>
+        <li>Let product screenshots feel clean and trustworthy</li>
+        <li>Use concise benefit-led headlines</li>
+        <li>Test mascot as support element, not crutch</li>
+        <li>Speak to ROOFERS (the customer)</li>
+        <li>Always show dumbroof.ai prominently</li>
+      </ul>
+    </div>
+    <div class="rules-card dont-card">
+      <h4>DON'T</h4>
+      <ul>
+        <li>Look like a traditional roofer logo or truck wrap</li>
+        <li>Overcrowd with too many bright colors equally</li>
+        <li>Lean into cheesy AI robot tropes</li>
+        <li>Use generic SaaS gradients</li>
+        <li>Use Loud Red except for system alerts</li>
+        <li>Redesign Richard's silhouette</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== ADS ==================== -->
+
+<div id="ads-logos" class="section-title">Logos</div>
+<div class="grid" id="grid-logos"></div>
+
+<div class="section-title">Richard Concepts</div>
+<div class="grid" id="grid-richard"></div>
+
+<div id="ads-all" class="section-title">Ads — All Versions</div>
+<div class="grid" id="grid-ads"></div>
+
+<div class="section-title">Chrome Style</div>
+<div class="grid" id="grid-chrome"></div>
+
+<div class="section-title">Candy Style</div>
+<div class="grid" id="grid-candy"></div>
+
+<div class="section-title">Roofer Photos</div>
+<div class="grid" id="grid-roofer"></div>
+
+<div class="section-title">Facebook Banners</div>
+<div class="grid" id="grid-fb"></div>
+
+<div class="section-title">Campaign</div>
+<div class="grid" id="grid-campaign"></div>
+
+<div class="section-title">Posters</div>
+<div class="grid" id="grid-posters"></div>
+
+<div id="ads-new" class="section-title" style="border-left-color:#ABFF5A;">NEW — AI Generated (Imagen 4 / Nano Banana)</div>
+<div class="grid" id="grid-new"></div>
+
+<!-- EXPORT -->
+<div id="export" class="export-section">
+  <button class="export-btn" onclick="exportResults()">Export All Votes</button>
+  <div class="export-result" id="exportResult"></div>
+</div>
+
+<!-- LIGHTBOX -->
+<div class="lightbox" id="lightbox" onclick="closeLightbox()">
+  <img id="lightboxImg" src="" alt="">
+</div>
+
+<script>
+const adSections = {
+  "grid-logos": ["Logo-1.jpg","Logo-3.jpg","Logo-4.jpg","Logo-v2-1.jpg","Logo-v2-2.jpg","Logo-v2-3.jpg","Logo-v2-4.jpg"],
+  "grid-richard": ["Richard-R1.jpg","Richard-R2.jpg","Richard-R3.jpg","Richard-R4.jpg"],
+  "grid-ads": ["Ad-1.jpg","Ad-2.jpg","Ad-3.jpg","Ad-4.jpg","Ad-v2-1.jpg","Ad-v2-2.jpg","Ad-v2-3.jpg","Ad-v3-1.jpg","Ad-v3-2.jpg"],
+  "grid-chrome": ["chrome-1.jpg","chrome-2.jpg","chrome-3.jpg","chrome-v2-1a.jpg","chrome-v2-1b.jpg","chrome-v2-1c.jpg","chrome-v2-2.jpg","chrome-v2-3.jpg","chrome-v2-fb.jpg"],
+  "grid-candy": ["candy-1.jpg","candy-2.jpg","candy-3.jpg","candy-fb.jpg"],
+  "grid-roofer": ["roofer-1-green.jpg","roofer-2-dark.jpg","roofer-3-fb.jpg","roofer-4-candy.jpg"],
+  "grid-fb": ["FB-1.jpg","FB-2.jpg","FB-3.jpg","FB-4.jpg","FB-5.jpg","FB-net-1.jpg","FB-net-2.jpg","FB-net-3.jpg","FB-net-4.jpg","FB-v2-1.jpg","FB-v2-2.jpg","FB-v2-3.jpg","FB-v2-4.jpg","FB-v3-1.jpg","FB-v3-2.jpg","FB-v3-3.jpg","FB-v3-4.jpg","FB-v3-5.jpg","FB-v4-1.jpg","FB-v4-2.jpg","FB-v4-3.jpg","FB-v4-4.jpg","FB-v5-1.jpg","FB-v5-2.jpg","FB-v5-3.jpg"],
+  "grid-campaign": ["campaign-fb-numbers-1.jpg","campaign-fb-numbers-2.jpg","campaign-fb-richard-1.jpg","campaign-ig-richard-1.jpg","campaign-ig-richard-2.jpg","campaign-ig-stat-1.jpg"],
+  "grid-posters": ["Poster-1.jpg","Poster-2.jpg","Poster-3.jpg","Poster-4.jpg","Poster-5.jpg","Poster-6.jpg","Poster-v2-1.jpg","Poster-v2-2.jpg","Poster-v2-3.jpg","Poster-v2-4.jpg","Poster-v2-5.jpg","Poster-v2-6.jpg","Poster-v2-7.jpg","Poster-v2-8.jpg"],
+  "grid-new": ["generated-ads/ig-feed-easier-claims.png","generated-ads/ig-feed-higher-value.png","generated-ads/ig-feed-margin-growth.png","generated-ads/ig-feed-modern-operator.png","generated-ads/story-ask-richard.png","generated-ads/story-data-advantage.png","generated-ads/fb-feed-easier-claims.png","generated-ads/fb-feed-campaign-hero.png"],
+};
+
+const votes = {};
+const brandVotes = {};
+const allCards = [];
+
+// Render ad grids
+Object.entries(adSections).forEach(([gridId, files]) => {
+  const grid = document.getElementById(gridId);
+  files.forEach(file => {
+    const id = file.replace(/[\/\.\s]/g, '-');
+    const name = file.replace('generated-ads/', '').replace(/\.(jpg|png)$/, '');
+    allCards.push({ id, file, name });
+
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.id = `card-${id}`;
+    card.setAttribute('data-id', id);
+    card.innerHTML = `
+      <img src="${file}" alt="${name}" onclick="openLightbox('${file}')" loading="lazy">
+      <div class="card-info">
+        <h3>${name}</h3>
+        <div class="vote-buttons">
+          <button class="vote-btn vote-yes" onclick="adVote('${id}','yes',this)">YES</button>
+          <button class="vote-btn vote-no" onclick="adVote('${id}','no',this)">NO</button>
+        </div>
+        <textarea class="notes-input" id="notes-${id}" placeholder="Notes (optional)" rows="2"></textarea>
+      </div>
+    `;
+    grid.appendChild(card);
+  });
+});
+
+function adVote(id, decision, btn) {
+  const card = document.getElementById(`card-${id}`);
+  const buttons = card.querySelectorAll('.vote-btn');
+  const notes = document.getElementById(`notes-${id}`);
+
+  if (votes[id] === decision) {
+    delete votes[id]; buttons.forEach(b => b.classList.remove('active'));
+    card.classList.remove('voted-yes','voted-no'); notes.classList.remove('visible');
+  } else {
+    votes[id] = decision; buttons.forEach(b => b.classList.remove('active'));
+    btn.classList.add('active'); card.classList.remove('voted-yes','voted-no');
+    card.classList.add(`voted-${decision}`);
+    decision === 'no' ? notes.classList.add('visible') : notes.classList.remove('visible');
+  }
+  save();
+}
+
+function brandVote(key, decision, btn) {
+  const container = btn.closest('.brand-vote');
+  const buttons = container.querySelectorAll('.vote-btn');
+  if (brandVotes[key] === decision) {
+    delete brandVotes[key]; buttons.forEach(b => b.classList.remove('active'));
+  } else {
+    brandVotes[key] = decision; buttons.forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+  }
+  save();
+}
+
+function save() {
+  const data = { votes, brandVotes, notes: {} };
+  allCards.forEach(c => { const n = document.getElementById(`notes-${c.id}`)?.value; if (n) data.notes[c.id] = n; });
+  localStorage.setItem('dumbroof-full-review', JSON.stringify(data));
+}
+
+function load() {
+  try {
+    const data = JSON.parse(localStorage.getItem('dumbroof-full-review'));
+    if (!data) return;
+    Object.entries(data.votes || {}).forEach(([id, v]) => {
+      votes[id] = v;
+      const card = document.getElementById(`card-${id}`);
+      if (!card) return;
+      card.classList.add(`voted-${v}`);
+      const btn = card.querySelector(`.vote-${v}`);
+      if (btn) btn.classList.add('active');
+      if (v === 'no') { const n = document.getElementById(`notes-${id}`); if (n) n.classList.add('visible'); }
+    });
+    Object.entries(data.brandVotes || {}).forEach(([key, v]) => {
+      brandVotes[key] = v;
+      const container = document.getElementById(`vote-${key}`);
+      if (container) { const btn = container.querySelector(`.vote-${v}`); if (btn) btn.classList.add('active'); }
+    });
+    Object.entries(data.notes || {}).forEach(([id, n]) => {
+      const el = document.getElementById(`notes-${id}`); if (el) el.value = n;
+    });
+  } catch(e) {}
+}
+
+function exportResults() {
+  let out = "DUMB ROOF — FULL BRAND REVIEW\n" + new Date().toLocaleDateString() + "\n" + "=".repeat(50) + "\n\n";
+
+  out += "BRAND SYSTEM:\n";
+  ['colors','fonts','mascot','campaign'].forEach(k => {
+    const v = brandVotes[k] || 'not voted';
+    const icon = v === 'yes' ? 'YES' : v === 'no' ? 'NO ' : '...';
+    out += `  ${icon}  ${k.charAt(0).toUpperCase() + k.slice(1)}\n`;
+  });
+  out += "\n";
+
+  const yes = [], no = [], pending = [];
+  allCards.forEach(c => {
+    const v = votes[c.id];
+    const notes = document.getElementById(`notes-${c.id}`)?.value.trim();
+    const line = `${c.name}${notes ? ' — ' + notes : ''}`;
+    if (v === 'yes') yes.push(line);
+    else if (v === 'no') no.push(line);
+    else pending.push(line);
+  });
+
+  if (yes.length) { out += `APPROVED ADS (${yes.length}):\n`; yes.forEach(a => out += `  YES  ${a}\n`); out += "\n"; }
+  if (no.length) { out += `REJECTED ADS (${no.length}):\n`; no.forEach(r => out += `  NO   ${r}\n`); out += "\n"; }
+  if (pending.length) { out += `NOT YET VOTED (${pending.length}):\n`; pending.forEach(p => out += `  ...  ${p}\n`); }
+
+  const el = document.getElementById('exportResult');
+  el.textContent = out; el.style.display = 'block';
+  navigator.clipboard.writeText(out).then(() => {
+    const b = document.querySelector('.export-btn');
+    b.textContent = 'Copied to Clipboard!'; setTimeout(() => b.textContent = 'Export All Votes', 2000);
+  });
+}
+
+function openLightbox(file) { document.getElementById('lightboxImg').src = file; document.getElementById('lightbox').classList.add('active'); }
+function closeLightbox() { document.getElementById('lightbox').classList.remove('active'); }
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeLightbox(); });
+
+load();
+</script>
+</body>
+</html>

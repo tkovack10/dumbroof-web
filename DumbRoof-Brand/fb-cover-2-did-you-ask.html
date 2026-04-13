@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700;800&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 820px; height: 312px; overflow: hidden; }
+  .cover {
+    width: 820px; height: 312px;
+    background: #090909;
+    font-family: 'Space Grotesk', sans-serif;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 56px;
+    position: relative;
+    overflow: hidden;
+  }
+  .left { z-index: 2; }
+  .headline {
+    font-size: 44px; font-weight: 800;
+    color: #FF6FFF; letter-spacing: -2px;
+    line-height: 1.05; margin-bottom: 12px;
+  }
+  .sub {
+    font-size: 15px; color: #444;
+    line-height: 1.6; margin-bottom: 20px;
+  }
+  .cta {
+    display: inline-flex;
+    background: #FF6FFF; color: #090909;
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 14px; font-weight: 700;
+    padding: 12px 28px; border-radius: 100px;
+  }
+  .right {
+    z-index: 2;
+    display: flex; flex-direction: column;
+    align-items: center; gap: 8px;
+  }
+  .richard-circle {
+    width: 140px; height: 140px;
+    border-radius: 50%;
+    background: #ABFF5A;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .richard-circle svg { width: 90px; height: 90px; }
+  .richard-label {
+    font-size: 13px; font-weight: 700;
+    color: #ABFF5A; letter-spacing: -0.3px;
+  }
+  .accent {
+    position: absolute; bottom: 0; left: 0; right: 0;
+    height: 4px; background: #FF6FFF;
+  }
+</style>
+</head>
+<body>
+<div class="cover">
+  <div class="left">
+    <div class="headline">Did you ask<br>Richard?</div>
+    <div class="sub">Before you send that claim — ask Richard first.</div>
+    <div class="cta">dumbroof.ai</div>
+  </div>
+  <div class="right">
+    <div class="richard-circle">
+      <svg viewBox="0 0 1000 1000" xmlns="http://www.w3.org/2000/svg">
+        <path d="M 718.65 820.72 L 663.54 820.72 L 653.52 818.21 L 640.37 807.57 L 631.60 786.27 L 624.72 779.39 L 399.28 779.39 L 389.89 787.53 L 381.12 808.82 L 375.49 814.45 L 359.21 820.72 L 285.32 819.46 L 250.25 815.71 L 216.43 805.69 L 202.03 793.79 L 195.77 780.01 L 194.52 752.46 L 209.55 593.41 L 165.09 591.53 L 135.03 586.52 L 121.88 577.12 L 119.37 560.84 L 253.38 326.65 L 253.38 218.94 L 261.52 207.04 L 272.79 203.28 L 409.30 203.28 L 418.07 205.79 L 427.46 217.69 L 429.34 269.66 L 474.43 265.90 L 585.89 265.90 L 649.76 273.42 L 688.59 283.44 L 716.14 295.96 L 729.92 305.98 L 749.33 326.65 L 895.86 547.07 L 903.37 559.59 L 904.63 569.61 L 897.74 581.51 L 883.96 587.77 L 862.67 591.53 L 814.45 593.41 L 829.48 752.46 L 829.48 773.75 L 821.97 793.79 L 811.32 803.18 L 791.28 811.95 L 767.49 816.96 L 718.65 820.72 Z M 388.64 535.80 L 409.30 528.91 L 423.71 514.50 L 431.22 496.97 L 431.22 478.19 L 422.45 459.40 L 410.56 447.50 L 398.03 441.24 L 379.25 438.73 L 355.45 447.50 L 342.30 460.65 L 336.04 474.43 L 334.79 494.47 L 341.05 512.00 L 355.45 527.65 L 371.73 535.17 L 388.64 535.80 Z M 646.63 539.55 L 663.54 533.92 L 679.19 519.51 L 686.71 503.23 L 687.96 488.20 L 682.95 470.67 L 668.55 453.76 L 654.77 446.25 L 635.99 443.74 L 613.44 451.26 L 601.55 461.90 L 591.53 481.94 L 591.53 501.98 L 597.79 517.01 L 610.94 531.41 L 632.23 540.18 L 646.63 539.55 Z" fill="#FF6FFF" fill-rule="evenodd"/>
+      </svg>
+    </div>
+    <div class="richard-label">dumbroof.ai</div>
+  </div>
+  <div class="accent"></div>
+</div>
+</body>
+</html>

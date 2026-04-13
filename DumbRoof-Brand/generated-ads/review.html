@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dumb Roof Ad Review — Kristen's Dashboard</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&family=Inter:wght@400;500;600&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Inter', sans-serif;
+    background: #090909;
+    color: #F9F9F9;
+    min-height: 100vh;
+    padding: 40px 20px;
+  }
+
+  .header {
+    text-align: center;
+    margin-bottom: 48px;
+  }
+
+  .header h1 {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 36px;
+    font-weight: 700;
+    background: linear-gradient(135deg, #FF6FFF, #ABFF5A);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    margin-bottom: 8px;
+  }
+
+  .header p {
+    color: #999;
+    font-size: 16px;
+  }
+
+  .score-bar {
+    display: flex;
+    justify-content: center;
+    gap: 32px;
+    margin-bottom: 40px;
+    padding: 20px;
+    background: #111;
+    border-radius: 12px;
+    max-width: 600px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  .score-item {
+    text-align: center;
+  }
+
+  .score-item .number {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 32px;
+    font-weight: 700;
+  }
+
+  .score-item .label {
+    font-size: 13px;
+    color: #777;
+    margin-top: 4px;
+  }
+
+  .yes-count { color: #ABFF5A; }
+  .no-count { color: #FF6FFF; }
+  .pending-count { color: #666; }
+
+  .section-title {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 22px;
+    font-weight: 600;
+    margin: 48px 0 24px;
+    padding-left: 16px;
+    border-left: 3px solid #FF6FFF;
+    max-width: 1200px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  .grid {
+    display: grid;
+    gap: 32px;
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+
+  .grid-square { grid-template-columns: repeat(auto-fill, minmax(400px, 1fr)); }
+  .grid-story { grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); }
+  .grid-wide { grid-template-columns: 1fr; max-width: 900px; }
+
+  .card {
+    background: #151515;
+    border-radius: 16px;
+    overflow: hidden;
+    border: 2px solid #222;
+    transition: border-color 0.3s, transform 0.2s;
+  }
+
+  .card:hover { transform: translateY(-2px); }
+  .card.voted-yes { border-color: #ABFF5A; }
+  .card.voted-no { border-color: #FF6FFF; }
+
+  .card img {
+    width: 100%;
+    display: block;
+    cursor: pointer;
+    transition: opacity 0.2s;
+  }
+
+  .card img:hover { opacity: 0.9; }
+
+  .card-info {
+    padding: 16px 20px;
+  }
+
+  .card-info h3 {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 15px;
+    font-weight: 600;
+    margin-bottom: 4px;
+  }
+
+  .card-info .concept {
+    font-size: 12px;
+    color: #777;
+    margin-bottom: 12px;
+  }
+
+  .card-info .copy-text {
+    font-size: 13px;
+    color: #aaa;
+    font-style: italic;
+    margin-bottom: 16px;
+    line-height: 1.5;
+  }
+
+  .vote-buttons {
+    display: flex;
+    gap: 12px;
+  }
+
+  .vote-btn {
+    flex: 1;
+    padding: 12px 16px;
+    border: none;
+    border-radius: 10px;
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+  }
+
+  .vote-yes {
+    background: #1a2e1a;
+    color: #ABFF5A;
+    border: 1px solid #2a3e2a;
+  }
+
+  .vote-yes:hover { background: #2a3e2a; }
+  .vote-yes.active { background: #ABFF5A; color: #090909; }
+
+  .vote-no {
+    background: #2e1a2e;
+    color: #FF6FFF;
+    border: 1px solid #3e2a3e;
+  }
+
+  .vote-no:hover { background: #3e2a3e; }
+  .vote-no.active { background: #FF6FFF; color: #090909; }
+
+  .notes-input {
+    width: 100%;
+    margin-top: 12px;
+    padding: 10px 14px;
+    background: #1a1a1a;
+    border: 1px solid #333;
+    border-radius: 8px;
+    color: #F9F9F9;
+    font-family: 'Inter', sans-serif;
+    font-size: 13px;
+    resize: none;
+    display: none;
+  }
+
+  .notes-input:focus {
+    outline: none;
+    border-color: #FF6FFF;
+  }
+
+  .notes-input.visible { display: block; }
+
+  .export-section {
+    text-align: center;
+    margin: 60px auto 40px;
+    max-width: 600px;
+  }
+
+  .export-btn {
+    padding: 16px 48px;
+    background: linear-gradient(135deg, #FF6FFF, #ABFF5A);
+    color: #090909;
+    border: none;
+    border-radius: 12px;
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 18px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: transform 0.2s, box-shadow 0.2s;
+  }
+
+  .export-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(255, 111, 255, 0.3);
+  }
+
+  .export-result {
+    margin-top: 20px;
+    padding: 20px;
+    background: #111;
+    border-radius: 12px;
+    text-align: left;
+    font-size: 14px;
+    line-height: 1.8;
+    display: none;
+    white-space: pre-wrap;
+    font-family: 'IBM Plex Mono', monospace;
+  }
+
+  .lightbox {
+    display: none;
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    background: rgba(0,0,0,0.95);
+    z-index: 1000;
+    cursor: zoom-out;
+    justify-content: center;
+    align-items: center;
+  }
+
+  .lightbox.active { display: flex; }
+
+  .lightbox img {
+    max-width: 90%;
+    max-height: 90%;
+    object-fit: contain;
+    border-radius: 8px;
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>Dumb Roof Ad Review</h1>
+  <p>Click each image to enlarge. Vote yes or no. Add notes if you want changes.</p>
+</div>
+
+<div class="score-bar">
+  <div class="score-item">
+    <div class="number yes-count" id="yesCount">0</div>
+    <div class="label">Approved</div>
+  </div>
+  <div class="score-item">
+    <div class="number no-count" id="noCount">0</div>
+    <div class="label">Rejected</div>
+  </div>
+  <div class="score-item">
+    <div class="number pending-count" id="pendingCount">8</div>
+    <div class="label">Pending</div>
+  </div>
+</div>
+
+<!-- INSTAGRAM FEED -->
+<div class="section-title">Instagram Feed (1080 x 1080)</div>
+<div class="grid grid-square" id="ig-section"></div>
+
+<!-- STORIES -->
+<div class="section-title">Instagram / TikTok Stories (1080 x 1920)</div>
+<div class="grid grid-story" id="story-section"></div>
+
+<!-- FACEBOOK -->
+<div class="section-title">Facebook Feed (Landscape)</div>
+<div class="grid grid-wide" id="fb-section"></div>
+
+<!-- EXPORT -->
+<div class="export-section">
+  <button class="export-btn" onclick="exportResults()">Export My Votes</button>
+  <div class="export-result" id="exportResult"></div>
+</div>
+
+<!-- LIGHTBOX -->
+<div class="lightbox" id="lightbox" onclick="closeLightbox()">
+  <img id="lightboxImg" src="" alt="">
+</div>
+
+<script>
+const ads = [
+  // IG Feed
+  {
+    id: "ig-easier-claims",
+    section: "ig-section",
+    file: "ig-feed-easier-claims.png",
+    title: "Easier Claims",
+    concept: "Ad Concept: Easier Claims",
+    copy: '"Stop spending your weekend on paperwork. Ask Richard."',
+  },
+  {
+    id: "ig-higher-value",
+    section: "ig-section",
+    file: "ig-feed-higher-value.png",
+    title: "Higher Value",
+    concept: "Ad Concept: Higher-Value Reporting",
+    copy: '"Your last claim was underpaid by $12K. Richard would have caught it."',
+  },
+  {
+    id: "ig-margin-growth",
+    section: "ig-section",
+    file: "ig-feed-margin-growth.png",
+    title: "Margin Growth",
+    concept: "Ad Concept: Margin Growth",
+    copy: '"Same crew. Same jobs. 3x the claim value. Ask Richard."',
+  },
+  {
+    id: "ig-modern-operator",
+    section: "ig-section",
+    file: "ig-feed-modern-operator.png",
+    title: "Modern Operator",
+    concept: "Ad Concept: Modern Operator",
+    copy: '"Still writing scopes by hand? Richard handles that now."',
+  },
+  // Stories
+  {
+    id: "story-ask-richard",
+    section: "story-section",
+    file: "story-ask-richard.png",
+    title: "Ask Richard (Campaign)",
+    concept: "Campaign: Did You Ask Richard?",
+    copy: '"Did you ask Richard?" — Got Milk? style curiosity ad',
+  },
+  {
+    id: "story-data-advantage",
+    section: "story-section",
+    file: "story-data-advantage.png",
+    title: "Data Advantage",
+    concept: "Campaign: Data Asymmetry",
+    copy: '"They had the data. You didn\'t know. Now you do."',
+  },
+  // Facebook
+  {
+    id: "fb-easier-claims",
+    section: "fb-section",
+    file: "fb-feed-easier-claims.png",
+    title: "Claims Are Complicated",
+    concept: "Ad Concept: Easier Claims (Landscape)",
+    copy: '"Claims are complicated. Richard isn\'t."',
+  },
+  {
+    id: "fb-campaign-hero",
+    section: "fb-section",
+    file: "fb-feed-campaign-hero.png",
+    title: "Ask Richard (Hero Banner)",
+    concept: "Campaign Hero: Ask Richard",
+    copy: '"Ask Richard." — Hero banner with particle network',
+  },
+];
+
+const votes = {};
+
+function renderAds() {
+  ads.forEach(ad => {
+    const section = document.getElementById(ad.section);
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.id = `card-${ad.id}`;
+    card.innerHTML = `
+      <img src="${ad.file}" alt="${ad.title}" onclick="openLightbox('${ad.file}')">
+      <div class="card-info">
+        <h3>${ad.title}</h3>
+        <div class="concept">${ad.concept}</div>
+        <div class="copy-text">${ad.copy}</div>
+        <div class="vote-buttons">
+          <button class="vote-btn vote-yes" onclick="vote('${ad.id}', 'yes', this)">YES</button>
+          <button class="vote-btn vote-no" onclick="vote('${ad.id}', 'no', this)">NO</button>
+        </div>
+        <textarea class="notes-input" id="notes-${ad.id}" placeholder="Notes (optional) — what would you change?" rows="2"></textarea>
+      </div>
+    `;
+    section.appendChild(card);
+  });
+}
+
+function vote(id, decision, btn) {
+  const card = document.getElementById(`card-${id}`);
+  const buttons = card.querySelectorAll('.vote-btn');
+  const notes = document.getElementById(`notes-${id}`);
+
+  // Toggle if clicking same vote
+  if (votes[id] === decision) {
+    delete votes[id];
+    buttons.forEach(b => b.classList.remove('active'));
+    card.classList.remove('voted-yes', 'voted-no');
+    notes.classList.remove('visible');
+  } else {
+    votes[id] = decision;
+    buttons.forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    card.classList.remove('voted-yes', 'voted-no');
+    card.classList.add(decision === 'yes' ? 'voted-yes' : 'voted-no');
+    // Show notes field on NO votes
+    if (decision === 'no') {
+      notes.classList.add('visible');
+      notes.focus();
+    } else {
+      notes.classList.remove('visible');
+    }
+  }
+  updateScores();
+}
+
+function updateScores() {
+  const vals = Object.values(votes);
+  const yes = vals.filter(v => v === 'yes').length;
+  const no = vals.filter(v => v === 'no').length;
+  const pending = ads.length - yes - no;
+  document.getElementById('yesCount').textContent = yes;
+  document.getElementById('noCount').textContent = no;
+  document.getElementById('pendingCount').textContent = pending;
+}
+
+function exportResults() {
+  let output = "DUMB ROOF AD REVIEW — " + new Date().toLocaleDateString() + "\n";
+  output += "=".repeat(50) + "\n\n";
+
+  const approved = [];
+  const rejected = [];
+  const pending = [];
+
+  ads.forEach(ad => {
+    const v = votes[ad.id];
+    const notes = document.getElementById(`notes-${ad.id}`).value.trim();
+    const line = `${ad.title} (${ad.file})${notes ? ' — Notes: ' + notes : ''}`;
+    if (v === 'yes') approved.push(line);
+    else if (v === 'no') rejected.push(line);
+    else pending.push(line);
+  });
+
+  if (approved.length) {
+    output += "APPROVED:\n";
+    approved.forEach(a => output += `  ✅ ${a}\n`);
+    output += "\n";
+  }
+  if (rejected.length) {
+    output += "REJECTED:\n";
+    rejected.forEach(r => output += `  ❌ ${r}\n`);
+    output += "\n";
+  }
+  if (pending.length) {
+    output += "NOT YET VOTED:\n";
+    pending.forEach(p => output += `  ⏳ ${p}\n`);
+    output += "\n";
+  }
+
+  const el = document.getElementById('exportResult');
+  el.textContent = output;
+  el.style.display = 'block';
+
+  // Also copy to clipboard
+  navigator.clipboard.writeText(output).then(() => {
+    const btn = document.querySelector('.export-btn');
+    btn.textContent = 'Copied to Clipboard!';
+    setTimeout(() => btn.textContent = 'Export My Votes', 2000);
+  });
+}
+
+function openLightbox(file) {
+  document.getElementById('lightboxImg').src = file;
+  document.getElementById('lightbox').classList.add('active');
+}
+
+function closeLightbox() {
+  document.getElementById('lightbox').classList.remove('active');
+}
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') closeLightbox();
+});
+
+renderAds();
+</script>
+</body>
+</html>

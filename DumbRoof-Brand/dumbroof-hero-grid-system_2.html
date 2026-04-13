@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>dumbroof.ai</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;700&family=Cormorant+Garamond:ital,wght@0,300;1,300&display=swap" rel="stylesheet">
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:'Space Grotesk',sans-serif; background:#e0e0e0; padding:16px; }
+  .frame { background:#f8f7f5; border-radius:12px; overflow:hidden; max-width:960px; margin:0 auto; }
+
+  /* NAV */
+  .nav { padding:0 48px; height:64px; display:flex; align-items:center; justify-content:space-between; border-bottom:0.5px solid #e8e4df; background:#f8f7f5; }
+  .logo { font-size:20px; font-weight:700; color:#090909; font-family:'Space Grotesk',sans-serif; }
+  .nav-links { display:flex; gap:28px; }
+  .nav-link { font-size:13px; color:#aaa; font-family:'Space Grotesk',sans-serif; }
+  .btn-pink { background-color:#FF6FFF; color:#090909; font-family:'Space Grotesk',sans-serif; font-weight:700; border:none; cursor:pointer; }
+  .btn-pink:hover { opacity:0.9; }
+  .nav-cta { padding:10px 22px; border-radius:30px; font-size:13px; }
+
+  /* BANNER */
+  .banner { background:#ABFF5A; padding:11px 48px; display:flex; justify-content:space-between; align-items:center; }
+  .banner-l { font-size:12px; color:#085E55; font-weight:500; }
+  .banner-r { font-size:12px; color:#085E55; font-weight:700; }
+
+  /* HERO */
+  .hero { padding:72px 48px 60px; }
+  .badge { display:inline-flex; align-items:center; gap:6px; background:#fff; border:0.5px solid #e0e0e0; border-radius:20px; padding:5px 14px; margin-bottom:28px; }
+  .badge-dot { width:6px; height:6px; border-radius:50%; background:#ABFF5A; flex-shrink:0; }
+  .badge-text { font-size:11px; color:#666; font-weight:500; letter-spacing:0.04em; }
+  .tagline { font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:52px; color:#090909; display:block; line-height:1.08; letter-spacing:-2px; margin-bottom:4px; }
+  .h1 { font-size:38px; font-weight:700; color:#090909; letter-spacing:-1px; line-height:1.08; margin-bottom:2px; }
+  .h1-pink { font-size:38px; font-weight:700; color:#FF6FFF; letter-spacing:-1px; line-height:1.08; display:block; font-style:italic; margin-bottom:32px; }
+  .body-copy { font-size:16px; color:#555; line-height:1.8; max-width:540px; margin-bottom:36px; }
+  .body-copy strong { color:#090909; font-weight:700; }
+  .body-copy em { font-style:italic; }
+  .hero-cta { padding:16px 36px; border-radius:30px; font-size:16px; margin-bottom:16px; display:block; }
+  .objections { display:flex; gap:24px; flex-wrap:wrap; }
+  .obj { display:flex; align-items:center; gap:8px; }
+  .obj-check { width:17px; height:17px; border-radius:50%; background:#ABFF5A; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+  .obj-check::after { content:''; display:block; width:6px; height:3.5px; border-left:1.5px solid #085E55; border-bottom:1.5px solid #085E55; transform:rotate(-45deg) translate(1px,-1px); }
+  .obj-text { font-size:13px; color:#666; }
+
+  /* SECTION LABELS */
+  .section-label { padding:48px 48px 24px; }
+  .section-label h2 { font-size:32px; font-weight:700; color:#090909; letter-spacing:-1px; line-height:1.1; margin-bottom:8px; }
+  .section-label p { font-size:15px; color:#777; line-height:1.6; }
+
+  /* SCREEN 1 — STATS */
+  .stats-screen { background:#f8f7f5; padding:48px; display:grid; grid-template-columns:1fr 1fr; gap:3px; }
+  .stat-block { background:#fff; border:0.5px solid #e8e4df; border-radius:10px; padding:32px 28px; }
+  .stat-n { font-size:42px; font-weight:700; color:#090909; letter-spacing:-2px; line-height:1; margin-bottom:8px; }
+  .stat-n span { color:#085E55; }
+  .stat-l { font-size:13px; color:#888; }
+
+  /* SCREEN 2 — WORKFLOW */
+  .workflow-screen { background:#f8f7f5; padding:48px; }
+  .workflow-title { font-size:11px; font-weight:700; letter-spacing:0.14em; text-transform:uppercase; color:#aaa; text-align:center; margin-bottom:28px; }
+  .workflow-steps { display:flex; flex-direction:column; gap:12px; }
+  .step { display:flex; align-items:center; gap:16px; padding:20px 24px; border-radius:10px; border:0.5px solid #e8e4df; background:#fff; }
+  .step.active { background:#FFC0FF; border-color:#FF6FFF; }
+  .step-icon { width:44px; height:44px; border-radius:10px; display:flex; align-items:center; justify-content:center; flex-shrink:0; font-size:18px; }
+  .step-icon.done { background:#ABFF5A; }
+  .step-icon.active { background:#FF6FFF; }
+  .step-icon.pending { background:#f0f0f0; }
+  .step-check { width:18px; height:18px; border-radius:50%; background:#085E55; display:flex; align-items:center; justify-content:center; }
+  .step-check::after { content:''; display:block; width:7px; height:4px; border-left:2px solid #ABFF5A; border-bottom:2px solid #ABFF5A; transform:rotate(-45deg) translate(1px,-1px); }
+  .step-dot { width:8px; height:8px; border-radius:50%; background:#FF6FFF; animation:pulse 1.5s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1;} 50%{opacity:0.4;} }
+  .step-pending-icon { width:18px; height:18px; border-radius:50%; background:#ddd; }
+  .step-content h3 { font-size:15px; font-weight:700; color:#090909; margin-bottom:3px; }
+  .step-content p { font-size:13px; color:#888; }
+  .step.active .step-content h3 { color:#090909; }
+  .step.active .step-content p { color:#085E55; }
+
+  /* SCREEN 3 — CLAIM PACKAGE */
+  .package-screen { background:#f9f9f9; padding:48px; }
+  .package-title { font-size:20px; font-weight:700; color:#090909; letter-spacing:-0.5px; margin-bottom:24px; text-align:center; }
+  .package-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:16px; }
+  .doc-card { background:#fff; border:0.5px solid #e8e4df; border-radius:10px; padding:24px 20px; display:flex; flex-direction:column; align-items:center; gap:10px; }
+  .doc-card.highlight { background:#FFC0FF; border-color:#FF6FFF; }
+  .doc-icon { width:40px; height:40px; border-radius:8px; background:#FF6FFF; display:flex; align-items:center; justify-content:center; }
+  .doc-icon.email { background:#085E55; }
+  .doc-icon svg { width:18px; height:18px; fill:none; stroke:#fff; stroke-width:2; stroke-linecap:round; }
+  .doc-name { font-size:14px; font-weight:700; color:#090909; }
+  .doc-status { font-size:12px; font-weight:600; }
+  .doc-status.done { color:#085E55; }
+  .doc-status.ready { color:#FF6FFF; }
+  .richard-msg { background:#090909; border-radius:10px; padding:18px 20px; display:flex; align-items:flex-start; gap:14px; }
+  .richard-avatar { width:36px; height:36px; border-radius:50%; background:#FF6FFF; display:flex; align-items:center; justify-content:center; font-size:14px; font-weight:700; color:#090909; flex-shrink:0; }
+  .richard-text { font-size:13px; color:#ccc; line-height:1.6; }
+  .richard-text strong { color:#ABFF5A; }
+
+  /* BARS */
+  .bar { padding:36px 48px; display:flex; justify-content:space-between; align-items:center; }
+  .bar-left { flex:1; }
+  .bar-label { font-size:10px; font-weight:700; letter-spacing:0.14em; text-transform:uppercase; margin-bottom:8px; }
+  .bar-h { font-size:28px; font-weight:700; line-height:1.15; letter-spacing:-0.5px; }
+  .bar-sub { font-size:14px; line-height:1.6; margin-top:6px; }
+  .bar-right { font-size:11px; font-weight:700; flex-shrink:0; margin-left:24px; text-align:right; }
+  .meet-pill { background:#FF6FFF; border-radius:20px; padding:7px 18px; font-size:11px; font-weight:700; color:#090909; border:none; cursor:pointer; white-space:nowrap; }
+
+  /* PROOF STATS */
+  .proof { display:grid; grid-template-columns:repeat(4,1fr); gap:3px; }
+  .proof-block { padding:32px 28px; }
+  .proof-n { font-size:38px; font-weight:700; letter-spacing:-1.5px; line-height:1; margin-bottom:8px; }
+  .proof-l { font-size:12px; line-height:1.5; }
+  .proof-s { font-size:10px; margin-top:4px; opacity:0.7; }
+
+  /* CLOSE */
+  .close { background:#ABFF5A; padding:80px 48px; text-align:center; }
+  .close-h1 { font-weight:700; font-size:42px; color:#090909; display:block; line-height:1.1; letter-spacing:-1.5px; }
+  .close-h2 { font-size:42px; font-weight:700; color:#085E55; display:block; line-height:1.1; letter-spacing:-1.5px; margin-bottom:32px; }
+  .close-cta { padding:15px 32px; border-radius:30px; font-size:15px; }
+</style>
+</head>
+<body>
+<div class="frame">
+
+  <!-- NAV -->
+  <div class="nav">
+    <div class="logo">dumbroof.ai</div>
+    <div class="nav-links">
+      <span class="nav-link">How It Works</span>
+      <span class="nav-link">Results</span>
+      <span class="nav-link">Pricing</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:16px;">
+      <span style="font-size:13px;color:#bbb;">Sign In</span>
+      <button class="btn-pink nav-cta">Ask Richard</button>
+    </div>
+  </div>
+
+  <!-- BANNER -->
+  <div class="banner">
+    <span class="banner-l">The carrier came prepared. The adjuster has a playbook.</span>
+    <span class="banner-r">Now you have Richard. →</span>
+  </div>
+
+  <!-- HERO -->
+  <div class="hero">
+    <div class="badge"><div class="badge-dot"></div><span class="badge-text">AI Claim Documentation for Roofers</span></div>
+    <span class="tagline">Stop leaving money on the roof.</span>
+    <div class="h1">Don't tell them they have damage.</div>
+    <span class="h1-pink">Show them.</span>
+    <p class="body-copy">Dumb Roof turns your inspection into <strong>forensic, code-cited documentation that signs jobs fast</strong> and is hard for carriers to dismiss. A few clicks from the roof, and Richard handles the rest — <em>under your name, not ours.</em></p>
+    <button class="btn-pink hero-cta">Ask Richard — Try 3 Free Claims</button>
+    <div class="objections">
+      <div class="obj"><div class="obj-check"></div><span class="obj-text">Start free with 3 claims</span></div>
+      <div class="obj"><div class="obj-check"></div><span class="obj-text">No credit card required</span></div>
+      <div class="obj"><div class="obj-check"></div><span class="obj-text">Your logo, not ours</span></div>
+    </div>
+  </div>
+
+  <!-- SECTION: RESULTS -->
+  <div style="background:#f8f7f5;padding:48px 48px 0;">
+    <div style="font-size:11px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:#aaa;margin-bottom:12px;">Real results</div>
+    <div style="font-size:32px;font-weight:700;color:#090909;letter-spacing:-1px;margin-bottom:4px;">Documentation that moves the number.</div>
+    <div style="font-size:15px;color:#777;margin-bottom:32px;">Same claim. Same house. Different documentation.</div>
+  </div>
+
+  <!-- SCREEN 1 — STATS (neutral bg) -->
+  <div class="stats-screen" style="padding-top:16px;">
+    <div class="stat-block">
+      <div class="stat-n">$13.4<span>M+</span></div>
+      <div class="stat-l">Documented scope value</div>
+    </div>
+    <div class="stat-block">
+      <div class="stat-n">$2.9<span>M+</span></div>
+      <div class="stat-l">Supplemented on record</div>
+    </div>
+    <div class="stat-block">
+      <div class="stat-n">52<span>+</span></div>
+      <div class="stat-l">Carriers documented</div>
+    </div>
+    <div class="stat-block">
+      <div class="stat-n">98<span>%</span></div>
+      <div class="stat-l">Complete file rate</div>
+    </div>
+  </div>
+
+  <!-- SECTION: HOW IT WORKS -->
+  <div style="background:#f8f7f5;padding:48px 48px 0;margin-top:16px;">
+    <div style="font-size:11px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:#aaa;margin-bottom:12px;">How it works</div>
+    <div style="font-size:32px;font-weight:700;color:#090909;letter-spacing:-1px;margin-bottom:4px;">A few clicks from the roof.</div>
+    <div style="font-size:15px;color:#777;margin-bottom:32px;">Richard handles everything else. Automatically.</div>
+  </div>
+
+  <!-- SCREEN 2 — WORKFLOW (neutral bg) -->
+  <div class="workflow-screen" style="padding-top:16px;">
+    <div class="workflow-title">Claim Workflow — Johnson Residence</div>
+    <div class="workflow-steps">
+      <div class="step">
+        <div class="step-icon done"><div class="step-check"></div></div>
+        <div class="step-content">
+          <h3>Photos Uploaded</h3>
+          <p>42 inspection photos</p>
+        </div>
+      </div>
+      <div class="step active">
+        <div class="step-icon active"><div class="step-dot"></div></div>
+        <div class="step-content">
+          <h3>Richard Analyzing</h3>
+          <p>Building forensic claim package...</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-icon pending"><div class="step-pending-icon"></div></div>
+        <div class="step-content">
+          <h3>Download Package</h3>
+          <p>5 forensic PDFs</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-icon pending"><div class="step-pending-icon"></div></div>
+        <div class="step-content">
+          <h3>Send to Carrier</h3>
+          <p>Richard handles it — from your inbox</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SECTION: THE PACKAGE -->
+  <div style="background:#f9f9f9;padding:48px 48px 0;margin-top:3px;">
+    <div style="font-size:11px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:#aaa;margin-bottom:12px;">The package</div>
+    <div style="font-size:32px;font-weight:700;color:#090909;letter-spacing:-1px;margin-bottom:4px;">5 forensic documents. 14 minutes.</div>
+    <div style="font-size:15px;color:#777;margin-bottom:32px;">Everything a carrier needs to approve. Nothing left out.</div>
+  </div>
+
+  <!-- SCREEN 3 — CLAIM PACKAGE (neutral bg) -->
+  <div class="package-screen" style="padding-top:16px;">
+    <div class="package-grid">
+      <div class="doc-card">
+        <div class="doc-icon">
+          <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+        </div>
+        <div class="doc-name">Damage Report</div>
+        <div class="doc-status done">✓ Complete</div>
+      </div>
+      <div class="doc-card">
+        <div class="doc-icon">
+          <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+        </div>
+        <div class="doc-name">Code Analysis</div>
+        <div class="doc-status done">✓ Complete</div>
+      </div>
+      <div class="doc-card">
+        <div class="doc-icon">
+          <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+        </div>
+        <div class="doc-name">Line Items</div>
+        <div class="doc-status done">✓ Complete</div>
+      </div>
+      <div class="doc-card">
+        <div class="doc-icon">
+          <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+        </div>
+        <div class="doc-name">Weather Data</div>
+        <div class="doc-status done">✓ Complete</div>
+      </div>
+      <div class="doc-card">
+        <div class="doc-icon">
+          <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+        </div>
+        <div class="doc-name">Supplement Brief</div>
+        <div class="doc-status done">✓ Complete</div>
+      </div>
+      <div class="doc-card highlight">
+        <div class="doc-icon email">
+          <svg viewBox="0 0 24 24"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+        </div>
+        <div class="doc-name">Carrier Email</div>
+        <div class="doc-status ready">↓ Ready to send</div>
+      </div>
+    </div>
+    <div class="richard-msg">
+      <div class="richard-avatar">R</div>
+      <div class="richard-text"><strong>Richard:</strong> Found 3 missed line items worth $4,200. Supplement brief updated. Want me to email Erie from your inbox?</div>
+    </div>
+  </div>
+
+  <!-- COLOR BARS -->
+  <div class="bar" style="background:#ABFF5A;margin-top:3px;">
+    <div class="bar-left">
+      <div class="bar-label" style="color:#085E55;">AI claims</div>
+      <div class="bar-h" style="color:#090909;">The claims process just got a brain.</div>
+    </div>
+    <button class="meet-pill">Meet Richard →</button>
+  </div>
+
+  <div class="bar" style="background:#f8f7f5;border-top:0.5px solid #e8e4df;">
+    <div class="bar-left">
+      <div class="bar-label" style="color:#aaa;">Before vs after</div>
+      <div class="bar-h" style="color:#aaa;font-size:22px;text-decoration:line-through;">$20,408</div>
+      <div class="bar-h" style="color:#090909;font-size:32px;">$943,233</div>
+    </div>
+    <div class="bar-right" style="color:#085E55;font-size:12px;">Same claim.<br>Same house.</div>
+  </div>
+
+  <div class="bar" style="background:#FFC0FF;">
+    <div class="bar-left">
+      <div class="bar-label" style="color:#085E55;">Stop leaving money</div>
+      <div class="bar-h" style="color:#090909;">on the roof.</div>
+      <div style="font-family:'Cormorant Garamond',serif;font-style:italic;font-size:18px;color:#085E55;margin-top:10px;">Sophisticated as f*ck.</div>
+    </div>
+    <div class="bar-right" style="color:#085E55;">dumbroof.ai</div>
+  </div>
+
+  <!-- BLACK BAR — DID YOU ASK RICHARD -->
+  <div class="bar" style="background:#090909;padding:48px;">
+    <div class="bar-left">
+      <div style="font-size:42px;font-weight:700;color:#FF6FFF;letter-spacing:-1.5px;line-height:1.1;font-family:'Space Grotesk',sans-serif;">DID YOU ASK RICHARD?</div>
+      <div style="font-size:15px;color:#555;margin-top:12px;font-family:'Space Grotesk',sans-serif;">Before you send that claim — ask Richard first.</div>
+    </div>
+    <button class="btn-pink" style="padding:14px 28px;border-radius:30px;font-size:14px;white-space:nowrap;flex-shrink:0;margin-left:32px;">Ask Richard →</button>
+  </div>
+
+  <!-- PROOF STATS BAR -->
+  <div class="proof">
+    <div class="proof-block" style="background:#ABFF5A;">
+      <div class="proof-n" style="color:#085E55;">$13.4<span style="font-size:20px;">M+</span></div>
+      <div class="proof-l" style="color:#085E55;">Documented scope value</div>
+      <div class="proof-s" style="color:#085E55;">Across all active claims</div>
+    </div>
+    <div class="proof-block" style="background:#FF6FFF;">
+      <div class="proof-n" style="color:#090909;">$2.9<span style="font-size:20px;">M+</span></div>
+      <div class="proof-l" style="color:#090909;">Supplemented on record</div>
+      <div class="proof-s" style="color:#090909;">Items initially excluded</div>
+    </div>
+    <div class="proof-block" style="background:#085E55;">
+      <div class="proof-n" style="color:#ABFF5A;">52<span style="font-size:20px;">+</span></div>
+      <div class="proof-l" style="color:#9FE1CB;">Carriers documented</div>
+      <div class="proof-s" style="color:#5DCAA5;">Carrier-specific intel</div>
+    </div>
+    <div class="proof-block" style="background:#FFC0FF;">
+      <div class="proof-n" style="color:#085E55;">98<span style="font-size:20px;">%</span></div>
+      <div class="proof-l" style="color:#085E55;">Complete file rate</div>
+      <div class="proof-s" style="color:#085E55;">Nothing undocumented</div>
+    </div>
+  </div>
+
+  <!-- CLOSE -->
+  <div class="close">
+    <span class="close-h1">Stop leaving money on the roof.</span>
+    <span class="close-h2">Ask Richard.</span>
+    <button class="btn-pink close-cta">Ask Richard — Try 3 Free Claims</button>
+  </div>
+
+</div>
+</body>
+</html>

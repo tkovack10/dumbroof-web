@@ -1,0 +1,714 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600;700&family=Silkscreen:wght@400;700&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  .ad {
+    width: 1080px;
+    height: 1080px;
+    position: relative;
+    overflow: hidden;
+    page-break-after: always;
+    margin-bottom: 40px;
+  }
+
+  .label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 14px;
+    color: #999;
+    text-align: center;
+    padding: 12px;
+    background: #f0f0f0;
+  }
+
+  /* Pixel font class */
+  .pixel {
+    font-family: 'Silkscreen', monospace;
+    text-transform: uppercase;
+  }
+
+  /* ============================================
+     AD 17 — "PIXEL MEET" — Candy Pink
+     Big pixelated MEET RICHARD centered
+     ============================================ */
+  .ad17 {
+    background: #FFC0FF;
+    display: flex;
+    flex-direction: column;
+    padding: 70px;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .ad17 .top {
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .ad17 .top .brand {
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 700;
+    font-size: 24px;
+    color: #090909;
+  }
+  .ad17 .top .richard-icon { width: 50px; height: 50px; }
+  .ad17 .center-block {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 30px;
+  }
+  .ad17 .pixel-hero {
+    font-family: 'Silkscreen', monospace;
+    font-weight: 700;
+    font-size: 110px;
+    color: #090909;
+    text-align: center;
+    line-height: 1.2;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+  }
+  .ad17 .richard-mid {
+    width: 160px;
+    height: 160px;
+  }
+  .ad17 .richard-mid path { fill: #FF6FFF; }
+  .ad17 .sub {
+    font-family: 'Inter', sans-serif;
+    font-size: 22px;
+    color: rgba(9,9,9,0.5);
+    text-align: center;
+  }
+  .ad17 .bottom-url {
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 700;
+    font-size: 28px;
+    color: #090909;
+  }
+
+  /* ============================================
+     AD 18 — "PIXEL GREEN" — Kryptonite Green
+     Pixelated "ASK RICHARD" with stats below
+     ============================================ */
+  .ad18 {
+    background: #ABFF5A;
+    display: flex;
+    flex-direction: column;
+    padding: 70px;
+    justify-content: space-between;
+  }
+  .ad18 .top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .ad18 .top .brand {
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 700;
+    font-size: 28px;
+    color: #090909;
+  }
+  .ad18 .top .tag {
+    font-family: 'Silkscreen', monospace;
+    font-size: 14px;
+    color: #085E55;
+    background: rgba(8,94,85,0.1);
+    padding: 8px 18px;
+    border-radius: 8px;
+    text-transform: uppercase;
+  }
+  .ad18 .hero {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+  .ad18 .hero .pixel-text {
+    font-family: 'Silkscreen', monospace;
+    font-weight: 700;
+    font-size: 120px;
+    color: #085E55;
+    line-height: 1.1;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+  }
+  .ad18 .hero .normal-sub {
+    font-family: 'Inter', sans-serif;
+    font-size: 24px;
+    color: rgba(8,94,85,0.6);
+    max-width: 600px;
+    line-height: 1.5;
+  }
+  .ad18 .stat-strip {
+    display: flex;
+    gap: 40px;
+  }
+  .ad18 .stat-strip .stat {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .ad18 .stat-strip .stat .val {
+    font-family: 'Silkscreen', monospace;
+    font-size: 32px;
+    color: #090909;
+    text-transform: uppercase;
+  }
+  .ad18 .stat-strip .stat .lbl {
+    font-family: 'Inter', sans-serif;
+    font-size: 14px;
+    color: rgba(8,94,85,0.5);
+  }
+
+  /* ============================================
+     AD 19 — "PIXEL PINK STACK" — Futuristic Pink
+     Stacked pixel phrases
+     ============================================ */
+  .ad19 {
+    background: #FF6FFF;
+    display: flex;
+    flex-direction: column;
+    padding: 70px;
+    justify-content: space-between;
+  }
+  .ad19 .top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .ad19 .top .richard-icon { width: 56px; height: 56px; }
+  .ad19 .top .brand {
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 700;
+    font-size: 24px;
+    color: #090909;
+  }
+  .ad19 .phrases {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .ad19 .phrase {
+    font-family: 'Silkscreen', monospace;
+    font-weight: 700;
+    text-transform: uppercase;
+    line-height: 1.15;
+    letter-spacing: 2px;
+  }
+  .ad19 .phrase.dim {
+    color: rgba(9,9,9,0.15);
+    font-size: 52px;
+  }
+  .ad19 .phrase.bright {
+    color: #090909;
+    font-size: 72px;
+  }
+  .ad19 .phrase.pop {
+    color: #fff;
+    font-size: 72px;
+  }
+  .ad19 .bot {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+  }
+  .ad19 .bot .url {
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 700;
+    font-size: 28px;
+    color: #090909;
+  }
+  .ad19 .bot .tagline {
+    font-family: 'Inter', sans-serif;
+    font-size: 18px;
+    color: rgba(9,9,9,0.4);
+  }
+
+  /* ============================================
+     AD 20 — "PIXEL WHITE" — Clean white bg
+     Pixel text with pink Richard, minimal
+     ============================================ */
+  .ad20 {
+    background: #F9F9F9;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 50px;
+    padding: 80px;
+    text-align: center;
+  }
+  .ad20 .pixel-line {
+    font-family: 'Silkscreen', monospace;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 3px;
+  }
+  .ad20 .pixel-line.small {
+    font-size: 28px;
+    color: #999;
+  }
+  .ad20 .pixel-line.big {
+    font-size: 88px;
+    color: #090909;
+    line-height: 1.15;
+  }
+  .ad20 .pixel-line.big span {
+    color: #FF6FFF;
+  }
+  .ad20 .richard-icon { width: 120px; height: 120px; }
+  .ad20 .richard-icon path { fill: #FF6FFF; }
+  .ad20 .brand {
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 700;
+    font-size: 24px;
+    color: #090909;
+  }
+
+  /* ============================================
+     AD 21 — "PIXEL DEEP GREEN" — Deep Green bg
+     Pixel "YOU DIDN'T ASK" + green text
+     ============================================ */
+  .ad21 {
+    background: #085E55;
+    display: flex;
+    flex-direction: column;
+    padding: 70px;
+    justify-content: space-between;
+  }
+  .ad21 .top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .ad21 .top .brand {
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 700;
+    font-size: 28px;
+    color: #ABFF5A;
+  }
+  .ad21 .top .richard-icon { width: 56px; height: 56px; }
+  .ad21 .top .richard-icon path { fill: #ABFF5A; }
+  .ad21 .hero {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+  .ad21 .hero .pixel-main {
+    font-family: 'Silkscreen', monospace;
+    font-weight: 700;
+    font-size: 80px;
+    color: #fff;
+    text-transform: uppercase;
+    line-height: 1.15;
+    letter-spacing: 2px;
+  }
+  .ad21 .hero .pixel-accent {
+    font-family: 'Silkscreen', monospace;
+    font-weight: 700;
+    font-size: 80px;
+    color: #ABFF5A;
+    text-transform: uppercase;
+    line-height: 1.15;
+    letter-spacing: 2px;
+  }
+  .ad21 .bot {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+  }
+  .ad21 .bot .sub {
+    font-family: 'Inter', sans-serif;
+    font-size: 20px;
+    color: rgba(255,255,255,0.4);
+    max-width: 500px;
+    line-height: 1.5;
+  }
+  .ad21 .bot .url {
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 700;
+    font-size: 24px;
+    color: #ABFF5A;
+  }
+
+  /* ============================================
+     AD 22 — "PIXEL YELLOW WARNING" — Yellow bg
+     Pixelated warning/alert style
+     ============================================ */
+  .ad22 {
+    background: #FFEA00;
+    display: flex;
+    flex-direction: column;
+    padding: 70px;
+    justify-content: space-between;
+    align-items: center;
+    text-align: center;
+  }
+  .ad22 .pixel-warning {
+    font-family: 'Silkscreen', monospace;
+    font-weight: 700;
+    font-size: 20px;
+    color: rgba(9,9,9,0.3);
+    text-transform: uppercase;
+    letter-spacing: 6px;
+  }
+  .ad22 .center {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 30px;
+  }
+  .ad22 .pixel-big {
+    font-family: 'Silkscreen', monospace;
+    font-weight: 700;
+    font-size: 68px;
+    color: #090909;
+    text-transform: uppercase;
+    line-height: 1.2;
+    letter-spacing: 2px;
+  }
+  .ad22 .divider {
+    width: 200px;
+    height: 4px;
+    background: #090909;
+  }
+  .ad22 .pixel-sub {
+    font-family: 'Silkscreen', monospace;
+    font-size: 24px;
+    color: rgba(9,9,9,0.5);
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    line-height: 1.6;
+  }
+  .ad22 .richard-icon { width: 100px; height: 100px; }
+  .ad22 .bot {
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+  }
+  .ad22 .bot .brand {
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 700;
+    font-size: 28px;
+    color: #090909;
+  }
+  .ad22 .bot .cta {
+    font-family: 'Silkscreen', monospace;
+    font-size: 16px;
+    color: #090909;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    background: #fff;
+    padding: 12px 28px;
+    border-radius: 8px;
+  }
+
+  /* ============================================
+     AD 23 — "PIXEL BLUE TERMINAL" — Electric Blue
+     Terminal/console aesthetic with pixel font
+     ============================================ */
+  .ad23 {
+    background: #5151FC;
+    display: flex;
+    flex-direction: column;
+    padding: 70px;
+    justify-content: space-between;
+  }
+  .ad23 .top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .ad23 .top .brand {
+    font-family: 'Silkscreen', monospace;
+    font-size: 18px;
+    color: rgba(255,255,255,0.4);
+    text-transform: uppercase;
+    letter-spacing: 3px;
+  }
+  .ad23 .top .cursor-blink {
+    font-family: 'Silkscreen', monospace;
+    font-size: 20px;
+    color: #ABFF5A;
+    animation: blink 1s step-end infinite;
+  }
+  .ad23 .terminal {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+  .ad23 .term-line {
+    font-family: 'Silkscreen', monospace;
+    font-size: 22px;
+    text-transform: uppercase;
+    line-height: 1.5;
+    letter-spacing: 1px;
+  }
+  .ad23 .term-line.prompt { color: rgba(255,255,255,0.3); }
+  .ad23 .term-line.response { color: #ABFF5A; }
+  .ad23 .term-line.highlight { color: #FF6FFF; font-size: 28px; }
+  .ad23 .term-line.big {
+    color: #fff;
+    font-size: 64px;
+    font-weight: 700;
+    line-height: 1.1;
+    margin: 10px 0;
+  }
+  .ad23 .bot {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+  }
+  .ad23 .bot .url {
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 700;
+    font-size: 28px;
+    color: #fff;
+  }
+  .ad23 .bot .richard-icon { width: 56px; height: 56px; }
+  .ad23 .bot .richard-icon path { fill: #FF6FFF; }
+
+  /* ============================================
+     AD 24 — "PIXEL PINE GRID" — Pine Green
+     Grid of pixel phrases, editorial
+     ============================================ */
+  .ad24 {
+    background: #00906C;
+    display: flex;
+    flex-direction: column;
+    padding: 70px;
+    justify-content: space-between;
+  }
+  .ad24 .top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .ad24 .top .brand {
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 700;
+    font-size: 28px;
+    color: #fff;
+  }
+  .ad24 .top .richard-icon { width: 50px; height: 50px; }
+  .ad24 .top .richard-icon path { fill: #ABFF5A; }
+  .ad24 .grid-phrases {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+  }
+  .ad24 .grid-phrase {
+    padding: 30px;
+    border-radius: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .ad24 .grid-phrase.filled {
+    background: rgba(255,255,255,0.08);
+  }
+  .ad24 .grid-phrase.accent {
+    background: #ABFF5A;
+  }
+  .ad24 .grid-phrase .pixel-text {
+    font-family: 'Silkscreen', monospace;
+    font-weight: 700;
+    font-size: 32px;
+    text-transform: uppercase;
+    line-height: 1.2;
+    letter-spacing: 1px;
+  }
+  .ad24 .grid-phrase.filled .pixel-text { color: #fff; }
+  .ad24 .grid-phrase.accent .pixel-text { color: #085E55; }
+  .ad24 .grid-phrase .desc {
+    font-family: 'Inter', sans-serif;
+    font-size: 14px;
+  }
+  .ad24 .grid-phrase.filled .desc { color: rgba(255,255,255,0.4); }
+  .ad24 .grid-phrase.accent .desc { color: rgba(8,94,85,0.6); }
+  .ad24 .bot {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+  }
+  .ad24 .bot .tagline {
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 600;
+    font-size: 22px;
+    color: rgba(255,255,255,0.6);
+  }
+  .ad24 .bot .url {
+    font-family: 'Silkscreen', monospace;
+    font-size: 18px;
+    color: #ABFF5A;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+  }
+
+</style>
+</head>
+<body>
+
+<!-- AD 17 — PIXEL MEET RICHARD (Candy Pink) -->
+<div class="label">AD 17 — "Pixel Meet" — Candy Pink, pixelated MEET RICHARD (1080×1080)</div>
+<div class="ad ad17">
+  <div class="top">
+    <div class="brand">dumbroof.ai</div>
+    <svg class="richard-icon" viewBox="0 0 1024 1024"><path d="M 718.65 820.72 L 663.54 820.72 L 653.52 818.21 L 640.37 807.57 L 631.60 786.27 L 624.72 779.39 L 399.28 779.39 L 389.89 787.53 L 381.12 808.82 L 375.49 814.45 L 359.21 820.72 L 285.32 819.46 L 250.25 815.71 L 216.43 805.69 L 202.03 793.79 L 195.77 780.01 L 194.52 752.46 L 209.55 593.41 L 165.09 591.53 L 135.03 586.52 L 121.88 577.12 L 119.37 560.84 L 253.38 326.65 L 253.38 218.94 L 261.52 207.04 L 272.79 203.28 L 409.30 203.28 L 418.07 205.79 L 427.46 217.69 L 429.34 269.66 L 474.43 265.90 L 585.89 265.90 L 649.76 273.42 L 688.59 283.44 L 716.14 295.96 L 729.92 305.98 L 749.33 326.65 L 895.86 547.07 L 903.37 559.59 L 904.63 569.61 L 897.74 581.51 L 883.96 587.77 L 862.67 591.53 L 814.45 593.41 L 829.48 752.46 L 829.48 773.75 L 821.97 793.79 L 811.32 803.18 L 791.28 811.95 L 767.49 816.96 L 718.65 820.72 Z M 388.64 535.80 L 409.30 528.91 L 423.71 514.50 L 431.22 496.97 L 431.22 478.19 L 422.45 459.40 L 410.56 447.50 L 398.03 441.24 L 379.25 438.73 L 355.45 447.50 L 342.30 460.65 L 336.04 474.43 L 334.79 494.47 L 341.05 512.00 L 355.45 527.65 L 371.73 535.17 L 388.64 535.80 Z M 646.63 539.55 L 663.54 533.92 L 679.19 519.51 L 686.71 503.23 L 687.96 488.20 L 682.95 470.67 L 668.55 453.76 L 654.77 446.25 L 635.99 443.74 L 613.44 451.26 L 601.55 461.90 L 591.53 481.94 L 591.53 501.98 L 597.79 517.01 L 610.94 531.41 L 632.23 540.18 L 646.63 539.55 Z" fill="#090909" fill-rule="evenodd"/></svg>
+  </div>
+  <div class="center-block">
+    <div class="pixel-hero">Meet<br>Richard.</div>
+    <svg class="richard-mid" viewBox="0 0 1024 1024"><path d="M 718.65 820.72 L 663.54 820.72 L 653.52 818.21 L 640.37 807.57 L 631.60 786.27 L 624.72 779.39 L 399.28 779.39 L 389.89 787.53 L 381.12 808.82 L 375.49 814.45 L 359.21 820.72 L 285.32 819.46 L 250.25 815.71 L 216.43 805.69 L 202.03 793.79 L 195.77 780.01 L 194.52 752.46 L 209.55 593.41 L 165.09 591.53 L 135.03 586.52 L 121.88 577.12 L 119.37 560.84 L 253.38 326.65 L 253.38 218.94 L 261.52 207.04 L 272.79 203.28 L 409.30 203.28 L 418.07 205.79 L 427.46 217.69 L 429.34 269.66 L 474.43 265.90 L 585.89 265.90 L 649.76 273.42 L 688.59 283.44 L 716.14 295.96 L 729.92 305.98 L 749.33 326.65 L 895.86 547.07 L 903.37 559.59 L 904.63 569.61 L 897.74 581.51 L 883.96 587.77 L 862.67 591.53 L 814.45 593.41 L 829.48 752.46 L 829.48 773.75 L 821.97 793.79 L 811.32 803.18 L 791.28 811.95 L 767.49 816.96 L 718.65 820.72 Z M 388.64 535.80 L 409.30 528.91 L 423.71 514.50 L 431.22 496.97 L 431.22 478.19 L 422.45 459.40 L 410.56 447.50 L 398.03 441.24 L 379.25 438.73 L 355.45 447.50 L 342.30 460.65 L 336.04 474.43 L 334.79 494.47 L 341.05 512.00 L 355.45 527.65 L 371.73 535.17 L 388.64 535.80 Z M 646.63 539.55 L 663.54 533.92 L 679.19 519.51 L 686.71 503.23 L 687.96 488.20 L 682.95 470.67 L 668.55 453.76 L 654.77 446.25 L 635.99 443.74 L 613.44 451.26 L 601.55 461.90 L 591.53 481.94 L 591.53 501.98 L 597.79 517.01 L 610.94 531.41 L 632.23 540.18 L 646.63 539.55 Z" fill="#FF6FFF" fill-rule="evenodd"/></svg>
+    <div class="sub">AI that finds what adjusters miss.</div>
+  </div>
+  <div class="bottom-url">dumbroof.ai</div>
+</div>
+
+<!-- AD 18 — PIXEL ASK RICHARD (Kryptonite Green) -->
+<div class="label">AD 18 — "Pixel Green" — Kryptonite Green, pixelated ASK RICHARD (1080×1080)</div>
+<div class="ad ad18">
+  <div class="top">
+    <div class="brand">dumbroof.ai</div>
+    <div class="tag">Before you submit</div>
+  </div>
+  <div class="hero">
+    <div class="pixel-text">Ask<br>Richard.</div>
+    <div class="normal-sub">He'll find every line item your adjuster missed. Every single one.</div>
+  </div>
+  <div class="stat-strip">
+    <div class="stat">
+      <div class="val">+38%</div>
+      <div class="lbl">Claim value increase</div>
+    </div>
+    <div class="stat">
+      <div class="val">47 items</div>
+      <div class="lbl">Avg. missed per claim</div>
+    </div>
+    <div class="stat">
+      <div class="val">3 min</div>
+      <div class="lbl">Full report</div>
+    </div>
+  </div>
+</div>
+
+<!-- AD 19 — PIXEL STACK (Futuristic Pink) -->
+<div class="label">AD 19 — "Pixel Stack" — Futuristic Pink, stacked phrases (1080×1080)</div>
+<div class="ad ad19">
+  <div class="top">
+    <svg class="richard-icon" viewBox="0 0 1024 1024" style="width:56px;height:56px"><path d="M 718.65 820.72 L 663.54 820.72 L 653.52 818.21 L 640.37 807.57 L 631.60 786.27 L 624.72 779.39 L 399.28 779.39 L 389.89 787.53 L 381.12 808.82 L 375.49 814.45 L 359.21 820.72 L 285.32 819.46 L 250.25 815.71 L 216.43 805.69 L 202.03 793.79 L 195.77 780.01 L 194.52 752.46 L 209.55 593.41 L 165.09 591.53 L 135.03 586.52 L 121.88 577.12 L 119.37 560.84 L 253.38 326.65 L 253.38 218.94 L 261.52 207.04 L 272.79 203.28 L 409.30 203.28 L 418.07 205.79 L 427.46 217.69 L 429.34 269.66 L 474.43 265.90 L 585.89 265.90 L 649.76 273.42 L 688.59 283.44 L 716.14 295.96 L 729.92 305.98 L 749.33 326.65 L 895.86 547.07 L 903.37 559.59 L 904.63 569.61 L 897.74 581.51 L 883.96 587.77 L 862.67 591.53 L 814.45 593.41 L 829.48 752.46 L 829.48 773.75 L 821.97 793.79 L 811.32 803.18 L 791.28 811.95 L 767.49 816.96 L 718.65 820.72 Z M 388.64 535.80 L 409.30 528.91 L 423.71 514.50 L 431.22 496.97 L 431.22 478.19 L 422.45 459.40 L 410.56 447.50 L 398.03 441.24 L 379.25 438.73 L 355.45 447.50 L 342.30 460.65 L 336.04 474.43 L 334.79 494.47 L 341.05 512.00 L 355.45 527.65 L 371.73 535.17 L 388.64 535.80 Z M 646.63 539.55 L 663.54 533.92 L 679.19 519.51 L 686.71 503.23 L 687.96 488.20 L 682.95 470.67 L 668.55 453.76 L 654.77 446.25 L 635.99 443.74 L 613.44 451.26 L 601.55 461.90 L 591.53 481.94 L 591.53 501.98 L 597.79 517.01 L 610.94 531.41 L 632.23 540.18 L 646.63 539.55 Z" fill="#090909" fill-rule="evenodd"/></svg>
+    <div class="brand">dumbroof.ai</div>
+  </div>
+  <div class="phrases">
+    <div class="phrase dim">Run the scope</div>
+    <div class="phrase dim">Check the photos</div>
+    <div class="phrase dim">Review the numbers</div>
+    <div class="phrase bright">Ask Richard</div>
+    <div class="phrase pop">Get paid.</div>
+  </div>
+  <div class="bot">
+    <div class="url">dumbroof.ai</div>
+    <div class="tagline">The step you keep skipping.</div>
+  </div>
+</div>
+
+<!-- AD 20 — PIXEL WHITE MINIMAL -->
+<div class="label">AD 20 — "Pixel White" — Clean white, pixel text centered (1080×1080)</div>
+<div class="ad ad20">
+  <div class="pixel-line small">Before you send it</div>
+  <svg class="richard-icon" viewBox="0 0 1024 1024"><path d="M 718.65 820.72 L 663.54 820.72 L 653.52 818.21 L 640.37 807.57 L 631.60 786.27 L 624.72 779.39 L 399.28 779.39 L 389.89 787.53 L 381.12 808.82 L 375.49 814.45 L 359.21 820.72 L 285.32 819.46 L 250.25 815.71 L 216.43 805.69 L 202.03 793.79 L 195.77 780.01 L 194.52 752.46 L 209.55 593.41 L 165.09 591.53 L 135.03 586.52 L 121.88 577.12 L 119.37 560.84 L 253.38 326.65 L 253.38 218.94 L 261.52 207.04 L 272.79 203.28 L 409.30 203.28 L 418.07 205.79 L 427.46 217.69 L 429.34 269.66 L 474.43 265.90 L 585.89 265.90 L 649.76 273.42 L 688.59 283.44 L 716.14 295.96 L 729.92 305.98 L 749.33 326.65 L 895.86 547.07 L 903.37 559.59 L 904.63 569.61 L 897.74 581.51 L 883.96 587.77 L 862.67 591.53 L 814.45 593.41 L 829.48 752.46 L 829.48 773.75 L 821.97 793.79 L 811.32 803.18 L 791.28 811.95 L 767.49 816.96 L 718.65 820.72 Z M 388.64 535.80 L 409.30 528.91 L 423.71 514.50 L 431.22 496.97 L 431.22 478.19 L 422.45 459.40 L 410.56 447.50 L 398.03 441.24 L 379.25 438.73 L 355.45 447.50 L 342.30 460.65 L 336.04 474.43 L 334.79 494.47 L 341.05 512.00 L 355.45 527.65 L 371.73 535.17 L 388.64 535.80 Z M 646.63 539.55 L 663.54 533.92 L 679.19 519.51 L 686.71 503.23 L 687.96 488.20 L 682.95 470.67 L 668.55 453.76 L 654.77 446.25 L 635.99 443.74 L 613.44 451.26 L 601.55 461.90 L 591.53 481.94 L 591.53 501.98 L 597.79 517.01 L 610.94 531.41 L 632.23 540.18 L 646.63 539.55 Z" fill="#FF6FFF" fill-rule="evenodd"/></svg>
+  <div class="pixel-line big">Ask<br><span>Richard</span></div>
+  <div class="brand">dumbroof.ai</div>
+</div>
+
+<!-- AD 21 — PIXEL DEEP GREEN -->
+<div class="label">AD 21 — "Pixel Deep Green" — YOU DIDN'T ASK (1080×1080)</div>
+<div class="ad ad21">
+  <div class="top">
+    <div class="brand">dumbroof.ai</div>
+    <svg class="richard-icon" viewBox="0 0 1024 1024" style="width:56px;height:56px"><path d="M 718.65 820.72 L 663.54 820.72 L 653.52 818.21 L 640.37 807.57 L 631.60 786.27 L 624.72 779.39 L 399.28 779.39 L 389.89 787.53 L 381.12 808.82 L 375.49 814.45 L 359.21 820.72 L 285.32 819.46 L 250.25 815.71 L 216.43 805.69 L 202.03 793.79 L 195.77 780.01 L 194.52 752.46 L 209.55 593.41 L 165.09 591.53 L 135.03 586.52 L 121.88 577.12 L 119.37 560.84 L 253.38 326.65 L 253.38 218.94 L 261.52 207.04 L 272.79 203.28 L 409.30 203.28 L 418.07 205.79 L 427.46 217.69 L 429.34 269.66 L 474.43 265.90 L 585.89 265.90 L 649.76 273.42 L 688.59 283.44 L 716.14 295.96 L 729.92 305.98 L 749.33 326.65 L 895.86 547.07 L 903.37 559.59 L 904.63 569.61 L 897.74 581.51 L 883.96 587.77 L 862.67 591.53 L 814.45 593.41 L 829.48 752.46 L 829.48 773.75 L 821.97 793.79 L 811.32 803.18 L 791.28 811.95 L 767.49 816.96 L 718.65 820.72 Z M 388.64 535.80 L 409.30 528.91 L 423.71 514.50 L 431.22 496.97 L 431.22 478.19 L 422.45 459.40 L 410.56 447.50 L 398.03 441.24 L 379.25 438.73 L 355.45 447.50 L 342.30 460.65 L 336.04 474.43 L 334.79 494.47 L 341.05 512.00 L 355.45 527.65 L 371.73 535.17 L 388.64 535.80 Z M 646.63 539.55 L 663.54 533.92 L 679.19 519.51 L 686.71 503.23 L 687.96 488.20 L 682.95 470.67 L 668.55 453.76 L 654.77 446.25 L 635.99 443.74 L 613.44 451.26 L 601.55 461.90 L 591.53 481.94 L 591.53 501.98 L 597.79 517.01 L 610.94 531.41 L 632.23 540.18 L 646.63 539.55 Z" fill="#ABFF5A" fill-rule="evenodd"/></svg>
+  </div>
+  <div class="hero">
+    <div class="pixel-main">You didn't<br>ask</div>
+    <div class="pixel-accent">Richard.</div>
+  </div>
+  <div class="bot">
+    <div class="sub">That's why $14K is still sitting in your claim. He would have found it.</div>
+    <div class="url">dumbroof.ai</div>
+  </div>
+</div>
+
+<!-- AD 22 — PIXEL YELLOW WARNING -->
+<div class="label">AD 22 — "Pixel Yellow" — Warning style on Summer Yellow (1080×1080)</div>
+<div class="ad ad22">
+  <div class="pixel-warning">/// Claim Status ///</div>
+  <div class="center">
+    <div class="pixel-big">Stop.<br>Go back.<br>Ask Richard.</div>
+    <div class="divider"></div>
+    <div class="pixel-sub">Your scope has<br>47 missing items.</div>
+    <svg class="richard-icon" viewBox="0 0 1024 1024"><path d="M 718.65 820.72 L 663.54 820.72 L 653.52 818.21 L 640.37 807.57 L 631.60 786.27 L 624.72 779.39 L 399.28 779.39 L 389.89 787.53 L 381.12 808.82 L 375.49 814.45 L 359.21 820.72 L 285.32 819.46 L 250.25 815.71 L 216.43 805.69 L 202.03 793.79 L 195.77 780.01 L 194.52 752.46 L 209.55 593.41 L 165.09 591.53 L 135.03 586.52 L 121.88 577.12 L 119.37 560.84 L 253.38 326.65 L 253.38 218.94 L 261.52 207.04 L 272.79 203.28 L 409.30 203.28 L 418.07 205.79 L 427.46 217.69 L 429.34 269.66 L 474.43 265.90 L 585.89 265.90 L 649.76 273.42 L 688.59 283.44 L 716.14 295.96 L 729.92 305.98 L 749.33 326.65 L 895.86 547.07 L 903.37 559.59 L 904.63 569.61 L 897.74 581.51 L 883.96 587.77 L 862.67 591.53 L 814.45 593.41 L 829.48 752.46 L 829.48 773.75 L 821.97 793.79 L 811.32 803.18 L 791.28 811.95 L 767.49 816.96 L 718.65 820.72 Z M 388.64 535.80 L 409.30 528.91 L 423.71 514.50 L 431.22 496.97 L 431.22 478.19 L 422.45 459.40 L 410.56 447.50 L 398.03 441.24 L 379.25 438.73 L 355.45 447.50 L 342.30 460.65 L 336.04 474.43 L 334.79 494.47 L 341.05 512.00 L 355.45 527.65 L 371.73 535.17 L 388.64 535.80 Z M 646.63 539.55 L 663.54 533.92 L 679.19 519.51 L 686.71 503.23 L 687.96 488.20 L 682.95 470.67 L 668.55 453.76 L 654.77 446.25 L 635.99 443.74 L 613.44 451.26 L 601.55 461.90 L 591.53 481.94 L 591.53 501.98 L 597.79 517.01 L 610.94 531.41 L 632.23 540.18 L 646.63 539.55 Z" fill="#090909" fill-rule="evenodd"/></svg>
+  </div>
+  <div class="bot">
+    <div class="brand">dumbroof.ai</div>
+    <div class="cta">Ask Richard →</div>
+  </div>
+</div>
+
+<!-- AD 23 — PIXEL BLUE TERMINAL -->
+<div class="label">AD 23 — "Pixel Terminal" — Electric Blue console aesthetic (1080×1080)</div>
+<div class="ad ad23">
+  <div class="top">
+    <div class="brand">dumbroof.ai</div>
+    <div class="cursor-blink">_</div>
+  </div>
+  <div class="terminal">
+    <div class="term-line prompt">> Upload claim scope...</div>
+    <div class="term-line response">✓ Scope received. Analyzing...</div>
+    <div class="term-line prompt">> Adjuster total: $18,200</div>
+    <div class="term-line response">✓ Richard found 47 additional items</div>
+    <div class="term-line highlight">✓ Revised claim value:</div>
+    <div class="term-line big">$49,400</div>
+    <div class="term-line response">> Supplement report ready.</div>
+  </div>
+  <div class="bot">
+    <div class="url">dumbroof.ai</div>
+    <svg class="richard-icon" viewBox="0 0 1024 1024" style="width:56px;height:56px"><path d="M 718.65 820.72 L 663.54 820.72 L 653.52 818.21 L 640.37 807.57 L 631.60 786.27 L 624.72 779.39 L 399.28 779.39 L 389.89 787.53 L 381.12 808.82 L 375.49 814.45 L 359.21 820.72 L 285.32 819.46 L 250.25 815.71 L 216.43 805.69 L 202.03 793.79 L 195.77 780.01 L 194.52 752.46 L 209.55 593.41 L 165.09 591.53 L 135.03 586.52 L 121.88 577.12 L 119.37 560.84 L 253.38 326.65 L 253.38 218.94 L 261.52 207.04 L 272.79 203.28 L 409.30 203.28 L 418.07 205.79 L 427.46 217.69 L 429.34 269.66 L 474.43 265.90 L 585.89 265.90 L 649.76 273.42 L 688.59 283.44 L 716.14 295.96 L 729.92 305.98 L 749.33 326.65 L 895.86 547.07 L 903.37 559.59 L 904.63 569.61 L 897.74 581.51 L 883.96 587.77 L 862.67 591.53 L 814.45 593.41 L 829.48 752.46 L 829.48 773.75 L 821.97 793.79 L 811.32 803.18 L 791.28 811.95 L 767.49 816.96 L 718.65 820.72 Z M 388.64 535.80 L 409.30 528.91 L 423.71 514.50 L 431.22 496.97 L 431.22 478.19 L 422.45 459.40 L 410.56 447.50 L 398.03 441.24 L 379.25 438.73 L 355.45 447.50 L 342.30 460.65 L 336.04 474.43 L 334.79 494.47 L 341.05 512.00 L 355.45 527.65 L 371.73 535.17 L 388.64 535.80 Z M 646.63 539.55 L 663.54 533.92 L 679.19 519.51 L 686.71 503.23 L 687.96 488.20 L 682.95 470.67 L 668.55 453.76 L 654.77 446.25 L 635.99 443.74 L 613.44 451.26 L 601.55 461.90 L 591.53 481.94 L 591.53 501.98 L 597.79 517.01 L 610.94 531.41 L 632.23 540.18 L 646.63 539.55 Z" fill="#FF6FFF" fill-rule="evenodd"/></svg>
+  </div>
+</div>
+
+<!-- AD 24 — PIXEL PINE GRID -->
+<div class="label">AD 24 — "Pixel Grid" — Pine Green phrase grid (1080×1080)</div>
+<div class="ad ad24">
+  <div class="top">
+    <div class="brand">dumbroof.ai</div>
+    <svg class="richard-icon" viewBox="0 0 1024 1024" style="width:50px;height:50px"><path d="M 718.65 820.72 L 663.54 820.72 L 653.52 818.21 L 640.37 807.57 L 631.60 786.27 L 624.72 779.39 L 399.28 779.39 L 389.89 787.53 L 381.12 808.82 L 375.49 814.45 L 359.21 820.72 L 285.32 819.46 L 250.25 815.71 L 216.43 805.69 L 202.03 793.79 L 195.77 780.01 L 194.52 752.46 L 209.55 593.41 L 165.09 591.53 L 135.03 586.52 L 121.88 577.12 L 119.37 560.84 L 253.38 326.65 L 253.38 218.94 L 261.52 207.04 L 272.79 203.28 L 409.30 203.28 L 418.07 205.79 L 427.46 217.69 L 429.34 269.66 L 474.43 265.90 L 585.89 265.90 L 649.76 273.42 L 688.59 283.44 L 716.14 295.96 L 729.92 305.98 L 749.33 326.65 L 895.86 547.07 L 903.37 559.59 L 904.63 569.61 L 897.74 581.51 L 883.96 587.77 L 862.67 591.53 L 814.45 593.41 L 829.48 752.46 L 829.48 773.75 L 821.97 793.79 L 811.32 803.18 L 791.28 811.95 L 767.49 816.96 L 718.65 820.72 Z M 388.64 535.80 L 409.30 528.91 L 423.71 514.50 L 431.22 496.97 L 431.22 478.19 L 422.45 459.40 L 410.56 447.50 L 398.03 441.24 L 379.25 438.73 L 355.45 447.50 L 342.30 460.65 L 336.04 474.43 L 334.79 494.47 L 341.05 512.00 L 355.45 527.65 L 371.73 535.17 L 388.64 535.80 Z M 646.63 539.55 L 663.54 533.92 L 679.19 519.51 L 686.71 503.23 L 687.96 488.20 L 682.95 470.67 L 668.55 453.76 L 654.77 446.25 L 635.99 443.74 L 613.44 451.26 L 601.55 461.90 L 591.53 481.94 L 591.53 501.98 L 597.79 517.01 L 610.94 531.41 L 632.23 540.18 L 646.63 539.55 Z" fill="#ABFF5A" fill-rule="evenodd"/></svg>
+  </div>
+  <div class="grid-phrases">
+    <div class="grid-phrase filled">
+      <div class="pixel-text">Find it</div>
+      <div class="desc">Every missed line item</div>
+    </div>
+    <div class="grid-phrase filled">
+      <div class="pixel-text">Scope it</div>
+      <div class="desc">Full damage documentation</div>
+    </div>
+    <div class="grid-phrase filled">
+      <div class="pixel-text">File it</div>
+      <div class="desc">Auto-generated supplements</div>
+    </div>
+    <div class="grid-phrase accent">
+      <div class="pixel-text">Get paid</div>
+      <div class="desc">The whole claim, not half</div>
+    </div>
+  </div>
+  <div class="bot">
+    <div class="tagline">Four steps. One Richard.</div>
+    <div class="url">dumbroof.ai</div>
+  </div>
+</div>
+
+</body>
+</html>

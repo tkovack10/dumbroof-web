@@ -1,0 +1,838 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  .ad {
+    width: 1080px;
+    height: 1080px;
+    position: relative;
+    overflow: hidden;
+    page-break-after: always;
+    margin-bottom: 40px;
+  }
+
+  .label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 14px;
+    color: #999;
+    text-align: center;
+    padding: 12px;
+    background: #f0f0f0;
+  }
+
+  /* ============================================
+     AD 9 — "YELLOW ALERT" — Summer Yellow base
+     Urgent feel, warning/callout energy
+     ============================================ */
+  .ad9 {
+    background: #FFEA00;
+    display: flex;
+    flex-direction: column;
+    padding: 70px;
+    justify-content: space-between;
+  }
+  .ad9 .top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+  }
+  .ad9 .top .warning-tag {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 14px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 3px;
+    color: #090909;
+    background: rgba(9,9,9,0.1);
+    padding: 8px 18px;
+    border-radius: 20px;
+  }
+  .ad9 .top .richard-icon { width: 60px; height: 60px; }
+  .ad9 .mid {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+  .ad9 .mid .headline {
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 700;
+    font-size: 78px;
+    line-height: 1.0;
+    color: #090909;
+    letter-spacing: -3px;
+  }
+  .ad9 .mid .sub {
+    font-family: 'Inter', sans-serif;
+    font-size: 24px;
+    color: rgba(9,9,9,0.6);
+    line-height: 1.5;
+    max-width: 700px;
+  }
+  .ad9 .bot {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+  }
+  .ad9 .bot .brand {
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 700;
+    font-size: 32px;
+    color: #090909;
+  }
+  .ad9 .bot .cta {
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 600;
+    font-size: 22px;
+    color: #090909;
+    background: #fff;
+    padding: 14px 32px;
+    border-radius: 14px;
+  }
+
+  /* ============================================
+     AD 10 — "ELECTRIC BLUE DATA" — Blue + white
+     AI/tech energy, chart/data feel
+     ============================================ */
+  .ad10 {
+    background: #F9F9F9;
+    display: flex;
+    flex-direction: column;
+  }
+  .ad10 .blue-header {
+    background: #5151FC;
+    height: 240px;
+    padding: 50px 70px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+  }
+  .ad10 .blue-header .top-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .ad10 .blue-header .brand {
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 700;
+    font-size: 28px;
+    color: #fff;
+  }
+  .ad10 .blue-header .ai-tag {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 13px;
+    font-weight: 600;
+    color: #ABFF5A;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+  }
+  .ad10 .blue-header .title {
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 700;
+    font-size: 42px;
+    color: #fff;
+    letter-spacing: -1px;
+  }
+  .ad10 .body {
+    flex: 1;
+    padding: 50px 70px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 40px;
+  }
+  .ad10 .comparison {
+    display: flex;
+    gap: 24px;
+    align-items: stretch;
+  }
+  .ad10 .comp-card {
+    flex: 1;
+    padding: 30px;
+    border-radius: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .ad10 .comp-card.before {
+    background: #fff;
+    border: 2px solid #e8e8e8;
+  }
+  .ad10 .comp-card.after {
+    background: #5151FC;
+    color: #fff;
+  }
+  .ad10 .comp-card .card-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+  }
+  .ad10 .comp-card.before .card-label { color: #999; }
+  .ad10 .comp-card.after .card-label { color: rgba(255,255,255,0.6); }
+  .ad10 .comp-card .big-val {
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 700;
+    font-size: 56px;
+    letter-spacing: -2px;
+    line-height: 1;
+  }
+  .ad10 .comp-card.before .big-val { color: #ccc; }
+  .ad10 .comp-card.after .big-val { color: #ABFF5A; }
+  .ad10 .comp-card .desc {
+    font-family: 'Inter', sans-serif;
+    font-size: 15px;
+  }
+  .ad10 .comp-card.before .desc { color: #999; }
+  .ad10 .comp-card.after .desc { color: rgba(255,255,255,0.7); }
+  .ad10 .bar-row {
+    display: flex;
+    gap: 4px;
+    height: 12px;
+    border-radius: 6px;
+    overflow: hidden;
+    margin-top: 8px;
+  }
+  .ad10 .bar-row .bar-seg {
+    height: 100%;
+    border-radius: 6px;
+  }
+  .ad10 .bottom-cta {
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 600;
+    font-size: 24px;
+    color: #5151FC;
+  }
+
+  /* ============================================
+     AD 11 — "PINE GREEN QUOTE" — Pine Green bg
+     Testimonial/authority style, clean
+     ============================================ */
+  .ad11 {
+    background: #00906C;
+    display: flex;
+    flex-direction: column;
+    padding: 80px;
+    justify-content: space-between;
+  }
+  .ad11 .top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .ad11 .top .brand {
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 700;
+    font-size: 28px;
+    color: #fff;
+  }
+  .ad11 .top .richard-icon { width: 56px; height: 56px; }
+  .ad11 .quote-section {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+  }
+  .ad11 .big-quote {
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 700;
+    font-size: 120px;
+    color: rgba(255,255,255,0.15);
+    line-height: 0.8;
+  }
+  .ad11 .quote-text {
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 700;
+    font-size: 52px;
+    color: #fff;
+    line-height: 1.15;
+    letter-spacing: -1px;
+  }
+  .ad11 .quote-text em {
+    font-style: normal;
+    color: #ABFF5A;
+  }
+  .ad11 .attribution {
+    font-family: 'Inter', sans-serif;
+    font-size: 18px;
+    color: rgba(255,255,255,0.5);
+  }
+  .ad11 .bot {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+  }
+  .ad11 .bot .tagline {
+    font-family: 'Inter', sans-serif;
+    font-size: 20px;
+    color: rgba(255,255,255,0.6);
+  }
+  .ad11 .bot .url {
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 700;
+    font-size: 24px;
+    color: #ABFF5A;
+  }
+
+  /* ============================================
+     AD 12 — "CANDY CHECKLIST" — Candy Pink
+     Checklist/to-do style, casual energy
+     ============================================ */
+  .ad12 {
+    background: #FFC0FF;
+    display: flex;
+    flex-direction: column;
+    padding: 70px;
+    justify-content: space-between;
+  }
+  .ad12 .top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .ad12 .top .brand {
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 700;
+    font-size: 28px;
+    color: #090909;
+  }
+  .ad12 .top .richard-icon { width: 56px; height: 56px; }
+  .ad12 .checklist-area {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .ad12 .checklist-title {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 14px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 3px;
+    color: rgba(9,9,9,0.4);
+    margin-bottom: 16px;
+  }
+  .ad12 .check-item {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    padding: 18px 0;
+    border-bottom: 1px solid rgba(9,9,9,0.08);
+  }
+  .ad12 .check-box {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    border: 3px solid rgba(9,9,9,0.15);
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .ad12 .check-box.done {
+    background: #085E55;
+    border-color: #085E55;
+  }
+  .ad12 .check-box.done::after {
+    content: '✓';
+    color: #ABFF5A;
+    font-size: 20px;
+    font-weight: 700;
+  }
+  .ad12 .check-text {
+    font-family: 'Inter', sans-serif;
+    font-size: 22px;
+    font-weight: 500;
+    color: #090909;
+  }
+  .ad12 .check-item.crossed .check-text {
+    text-decoration: line-through;
+    color: rgba(9,9,9,0.3);
+  }
+  .ad12 .check-item.highlight .check-text {
+    font-weight: 700;
+    color: #085E55;
+  }
+  .ad12 .check-item.empty .check-box {
+    border-style: dashed;
+  }
+  .ad12 .bot {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+  }
+  .ad12 .bot .punchline {
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 700;
+    font-size: 32px;
+    color: #090909;
+    letter-spacing: -1px;
+  }
+  .ad12 .bot .url {
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 600;
+    font-size: 22px;
+    color: rgba(9,9,9,0.4);
+  }
+
+  /* ============================================
+     AD 13 — "FUTURISTIC PINK COUNTDOWN"
+     Big number countdown / launch energy
+     ============================================ */
+  .ad13 {
+    background: #FF6FFF;
+    display: flex;
+    flex-direction: column;
+    padding: 70px;
+    justify-content: space-between;
+    position: relative;
+  }
+  .ad13 .top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .ad13 .top .brand {
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 700;
+    font-size: 28px;
+    color: #090909;
+  }
+  .ad13 .top .tag {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 13px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: #090909;
+    background: rgba(255,255,255,0.3);
+    padding: 8px 18px;
+    border-radius: 20px;
+  }
+  .ad13 .center {
+    text-align: center;
+  }
+  .ad13 .center .big-num {
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 700;
+    font-size: 220px;
+    color: #fff;
+    line-height: 0.85;
+    letter-spacing: -10px;
+    text-shadow: 0 4px 30px rgba(0,0,0,0.1);
+  }
+  .ad13 .center .unit {
+    font-family: 'Inter', sans-serif;
+    font-weight: 600;
+    font-size: 32px;
+    color: rgba(9,9,9,0.5);
+    margin-top: 10px;
+  }
+  .ad13 .center .context {
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 700;
+    font-size: 40px;
+    color: #090909;
+    margin-top: 30px;
+    letter-spacing: -1px;
+  }
+  .ad13 .bot {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+  }
+  .ad13 .bot .sub {
+    font-family: 'Inter', sans-serif;
+    font-size: 18px;
+    color: rgba(9,9,9,0.5);
+    max-width: 500px;
+    line-height: 1.5;
+  }
+  .ad13 .bot .url {
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 700;
+    font-size: 28px;
+    color: #090909;
+  }
+
+  /* ============================================
+     AD 14 — "GREEN GRADIENT STACK"
+     Kryptonite → Deep Green gradient, stacked stats
+     ============================================ */
+  .ad14 {
+    background: linear-gradient(180deg, #ABFF5A 0%, #085E55 100%);
+    display: flex;
+    flex-direction: column;
+    padding: 70px;
+    justify-content: space-between;
+  }
+  .ad14 .top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .ad14 .top .brand {
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 700;
+    font-size: 32px;
+    color: #090909;
+  }
+  .ad14 .top .richard-icon { width: 60px; height: 60px; }
+  .ad14 .stack {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .ad14 .stack-row {
+    display: flex;
+    align-items: baseline;
+    gap: 16px;
+  }
+  .ad14 .stack-row .num {
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 700;
+    font-size: 72px;
+    letter-spacing: -3px;
+    line-height: 1;
+  }
+  .ad14 .stack-row .txt {
+    font-family: 'Inter', sans-serif;
+    font-size: 22px;
+    font-weight: 500;
+  }
+  .ad14 .stack-row:nth-child(1) .num { color: #090909; }
+  .ad14 .stack-row:nth-child(1) .txt { color: rgba(9,9,9,0.6); }
+  .ad14 .stack-row:nth-child(2) .num { color: #090909; }
+  .ad14 .stack-row:nth-child(2) .txt { color: rgba(9,9,9,0.5); }
+  .ad14 .stack-row:nth-child(3) .num { color: #fff; }
+  .ad14 .stack-row:nth-child(3) .txt { color: rgba(255,255,255,0.7); }
+  .ad14 .stack-row:nth-child(4) .num { color: #ABFF5A; }
+  .ad14 .stack-row:nth-child(4) .txt { color: rgba(255,255,255,0.6); }
+  .ad14 .bot {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+  }
+  .ad14 .bot .tagline {
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 700;
+    font-size: 30px;
+    color: #fff;
+    letter-spacing: -1px;
+  }
+  .ad14 .bot .url {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 18px;
+    color: rgba(255,255,255,0.5);
+  }
+
+  /* ============================================
+     AD 15 — "BLUE + PINK SPLIT"
+     Electric Blue / Futuristic Pink halves
+     ============================================ */
+  .ad15 {
+    display: flex;
+    flex-direction: column;
+  }
+  .ad15 .half-top {
+    height: 540px;
+    background: #5151FC;
+    padding: 60px 70px;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+  }
+  .ad15 .half-top .small {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 14px;
+    color: rgba(255,255,255,0.4);
+    text-transform: uppercase;
+    letter-spacing: 3px;
+    margin-bottom: 16px;
+  }
+  .ad15 .half-top .headline {
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 700;
+    font-size: 68px;
+    color: #fff;
+    letter-spacing: -3px;
+    line-height: 1.0;
+  }
+  .ad15 .half-bot {
+    height: 540px;
+    background: #FF6FFF;
+    padding: 60px 70px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+  }
+  .ad15 .half-bot .answer {
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 700;
+    font-size: 68px;
+    color: #090909;
+    letter-spacing: -3px;
+    line-height: 1.0;
+  }
+  .ad15 .half-bot .footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+  }
+  .ad15 .half-bot .url {
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 700;
+    font-size: 28px;
+    color: #090909;
+  }
+  .ad15 .half-bot .sub {
+    font-family: 'Inter', sans-serif;
+    font-size: 16px;
+    color: rgba(9,9,9,0.4);
+    margin-top: 4px;
+  }
+  .ad15 .half-bot .richard-icon { width: 60px; height: 60px; }
+
+  /* ============================================
+     AD 16 — "WHITE SPACE" — Mostly white
+     Ultra minimal with one pop of color
+     ============================================ */
+  .ad16 {
+    background: #F9F9F9;
+    display: flex;
+    flex-direction: column;
+    padding: 80px;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    gap: 40px;
+  }
+  .ad16 .richard-big {
+    width: 180px;
+    height: 180px;
+  }
+  .ad16 .richard-big path { fill: #FF6FFF; }
+  .ad16 .headline {
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 700;
+    font-size: 58px;
+    color: #090909;
+    letter-spacing: -2px;
+    line-height: 1.15;
+    max-width: 800px;
+  }
+  .ad16 .headline em {
+    font-style: normal;
+    color: #FF6FFF;
+  }
+  .ad16 .sub {
+    font-family: 'Inter', sans-serif;
+    font-size: 22px;
+    color: #999;
+    max-width: 600px;
+    line-height: 1.5;
+  }
+  .ad16 .brand {
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 700;
+    font-size: 28px;
+    color: #090909;
+  }
+
+  .richard-white path { fill: #fff; }
+</style>
+</head>
+<body>
+
+<!-- AD 9 — YELLOW ALERT -->
+<div class="label">AD 9 — "Yellow Alert" — Summer Yellow urgent callout (1080×1080)</div>
+<div class="ad ad9">
+  <div class="top">
+    <div class="warning-tag">⚠ Claim Alert</div>
+    <svg class="richard-icon" viewBox="0 0 1024 1024"><path d="M 718.65 820.72 L 663.54 820.72 L 653.52 818.21 L 640.37 807.57 L 631.60 786.27 L 624.72 779.39 L 399.28 779.39 L 389.89 787.53 L 381.12 808.82 L 375.49 814.45 L 359.21 820.72 L 285.32 819.46 L 250.25 815.71 L 216.43 805.69 L 202.03 793.79 L 195.77 780.01 L 194.52 752.46 L 209.55 593.41 L 165.09 591.53 L 135.03 586.52 L 121.88 577.12 L 119.37 560.84 L 253.38 326.65 L 253.38 218.94 L 261.52 207.04 L 272.79 203.28 L 409.30 203.28 L 418.07 205.79 L 427.46 217.69 L 429.34 269.66 L 474.43 265.90 L 585.89 265.90 L 649.76 273.42 L 688.59 283.44 L 716.14 295.96 L 729.92 305.98 L 749.33 326.65 L 895.86 547.07 L 903.37 559.59 L 904.63 569.61 L 897.74 581.51 L 883.96 587.77 L 862.67 591.53 L 814.45 593.41 L 829.48 752.46 L 829.48 773.75 L 821.97 793.79 L 811.32 803.18 L 791.28 811.95 L 767.49 816.96 L 718.65 820.72 Z M 388.64 535.80 L 409.30 528.91 L 423.71 514.50 L 431.22 496.97 L 431.22 478.19 L 422.45 459.40 L 410.56 447.50 L 398.03 441.24 L 379.25 438.73 L 355.45 447.50 L 342.30 460.65 L 336.04 474.43 L 334.79 494.47 L 341.05 512.00 L 355.45 527.65 L 371.73 535.17 L 388.64 535.80 Z M 646.63 539.55 L 663.54 533.92 L 679.19 519.51 L 686.71 503.23 L 687.96 488.20 L 682.95 470.67 L 668.55 453.76 L 654.77 446.25 L 635.99 443.74 L 613.44 451.26 L 601.55 461.90 L 591.53 481.94 L 591.53 501.98 L 597.79 517.01 L 610.94 531.41 L 632.23 540.18 L 646.63 539.55 Z" fill="#090909" fill-rule="evenodd"/></svg>
+  </div>
+  <div class="mid">
+    <div class="headline">Your claim was<br>approved for<br>$22K. It should<br>have been $49K.</div>
+    <div class="sub">The adjuster's scope missed half the damage.<br>Richard catches what they don't.</div>
+  </div>
+  <div class="bot">
+    <div class="brand">dumbroof.ai</div>
+    <div class="cta">Ask Richard →</div>
+  </div>
+</div>
+
+<!-- AD 10 — ELECTRIC BLUE DATA -->
+<div class="label">AD 10 — "Electric Blue" — AI data comparison (1080×1080)</div>
+<div class="ad ad10">
+  <div class="blue-header">
+    <div class="top-row">
+      <div class="brand">dumbroof.ai</div>
+      <div class="ai-tag">● AI-Powered Analysis</div>
+    </div>
+    <div class="title">Same roof. Same storm. Different result.</div>
+  </div>
+  <div class="body">
+    <div class="comparison">
+      <div class="comp-card before">
+        <div class="card-label">Adjuster's Scope</div>
+        <div class="big-val">$18K</div>
+        <div class="desc">12 line items</div>
+        <div class="bar-row">
+          <div class="bar-seg" style="width:30%; background:#e0e0e0;"></div>
+          <div class="bar-seg" style="width:70%; background:#f5f5f5;"></div>
+        </div>
+      </div>
+      <div class="comp-card after">
+        <div class="card-label">Richard's Analysis</div>
+        <div class="big-val">$49K</div>
+        <div class="desc">59 line items found</div>
+        <div class="bar-row">
+          <div class="bar-seg" style="width:80%; background:#ABFF5A;"></div>
+          <div class="bar-seg" style="width:20%; background:rgba(255,255,255,0.2);"></div>
+        </div>
+      </div>
+    </div>
+    <div class="bottom-cta">Richard found $31K the adjuster missed. →</div>
+  </div>
+</div>
+
+<!-- AD 11 — PINE GREEN QUOTE -->
+<div class="label">AD 11 — "Pine Green Quote" — Authority testimonial style (1080×1080)</div>
+<div class="ad ad11">
+  <div class="top">
+    <div class="brand">dumbroof.ai</div>
+    <svg class="richard-icon richard-white" viewBox="0 0 1024 1024" style="width:56px;height:56px"><path d="M 718.65 820.72 L 663.54 820.72 L 653.52 818.21 L 640.37 807.57 L 631.60 786.27 L 624.72 779.39 L 399.28 779.39 L 389.89 787.53 L 381.12 808.82 L 375.49 814.45 L 359.21 820.72 L 285.32 819.46 L 250.25 815.71 L 216.43 805.69 L 202.03 793.79 L 195.77 780.01 L 194.52 752.46 L 209.55 593.41 L 165.09 591.53 L 135.03 586.52 L 121.88 577.12 L 119.37 560.84 L 253.38 326.65 L 253.38 218.94 L 261.52 207.04 L 272.79 203.28 L 409.30 203.28 L 418.07 205.79 L 427.46 217.69 L 429.34 269.66 L 474.43 265.90 L 585.89 265.90 L 649.76 273.42 L 688.59 283.44 L 716.14 295.96 L 729.92 305.98 L 749.33 326.65 L 895.86 547.07 L 903.37 559.59 L 904.63 569.61 L 897.74 581.51 L 883.96 587.77 L 862.67 591.53 L 814.45 593.41 L 829.48 752.46 L 829.48 773.75 L 821.97 793.79 L 811.32 803.18 L 791.28 811.95 L 767.49 816.96 L 718.65 820.72 Z M 388.64 535.80 L 409.30 528.91 L 423.71 514.50 L 431.22 496.97 L 431.22 478.19 L 422.45 459.40 L 410.56 447.50 L 398.03 441.24 L 379.25 438.73 L 355.45 447.50 L 342.30 460.65 L 336.04 474.43 L 334.79 494.47 L 341.05 512.00 L 355.45 527.65 L 371.73 535.17 L 388.64 535.80 Z M 646.63 539.55 L 663.54 533.92 L 679.19 519.51 L 686.71 503.23 L 687.96 488.20 L 682.95 470.67 L 668.55 453.76 L 654.77 446.25 L 635.99 443.74 L 613.44 451.26 L 601.55 461.90 L 591.53 481.94 L 591.53 501.98 L 597.79 517.01 L 610.94 531.41 L 632.23 540.18 L 646.63 539.55 Z" fill="#fff" fill-rule="evenodd"/></svg>
+  </div>
+  <div class="quote-section">
+    <div class="big-quote">"</div>
+    <div class="quote-text">I've been doing this 15 years. Richard found <em>$27K in damage</em> I would have missed on my own scope.</div>
+    <div class="attribution">— Roofing contractor, PA</div>
+  </div>
+  <div class="bot">
+    <div class="tagline">AI that finds what adjusters miss.</div>
+    <div class="url">dumbroof.ai</div>
+  </div>
+</div>
+
+<!-- AD 12 — CANDY CHECKLIST -->
+<div class="label">AD 12 — "Candy Checklist" — To-do list style (1080×1080)</div>
+<div class="ad ad12">
+  <div class="top">
+    <div class="brand">dumbroof.ai</div>
+    <svg class="richard-icon" viewBox="0 0 1024 1024" style="width:56px;height:56px"><path d="M 718.65 820.72 L 663.54 820.72 L 653.52 818.21 L 640.37 807.57 L 631.60 786.27 L 624.72 779.39 L 399.28 779.39 L 389.89 787.53 L 381.12 808.82 L 375.49 814.45 L 359.21 820.72 L 285.32 819.46 L 250.25 815.71 L 216.43 805.69 L 202.03 793.79 L 195.77 780.01 L 194.52 752.46 L 209.55 593.41 L 165.09 591.53 L 135.03 586.52 L 121.88 577.12 L 119.37 560.84 L 253.38 326.65 L 253.38 218.94 L 261.52 207.04 L 272.79 203.28 L 409.30 203.28 L 418.07 205.79 L 427.46 217.69 L 429.34 269.66 L 474.43 265.90 L 585.89 265.90 L 649.76 273.42 L 688.59 283.44 L 716.14 295.96 L 729.92 305.98 L 749.33 326.65 L 895.86 547.07 L 903.37 559.59 L 904.63 569.61 L 897.74 581.51 L 883.96 587.77 L 862.67 591.53 L 814.45 593.41 L 829.48 752.46 L 829.48 773.75 L 821.97 793.79 L 811.32 803.18 L 791.28 811.95 L 767.49 816.96 L 718.65 820.72 Z M 388.64 535.80 L 409.30 528.91 L 423.71 514.50 L 431.22 496.97 L 431.22 478.19 L 422.45 459.40 L 410.56 447.50 L 398.03 441.24 L 379.25 438.73 L 355.45 447.50 L 342.30 460.65 L 336.04 474.43 L 334.79 494.47 L 341.05 512.00 L 355.45 527.65 L 371.73 535.17 L 388.64 535.80 Z M 646.63 539.55 L 663.54 533.92 L 679.19 519.51 L 686.71 503.23 L 687.96 488.20 L 682.95 470.67 L 668.55 453.76 L 654.77 446.25 L 635.99 443.74 L 613.44 451.26 L 601.55 461.90 L 591.53 481.94 L 591.53 501.98 L 597.79 517.01 L 610.94 531.41 L 632.23 540.18 L 646.63 539.55 Z" fill="#090909" fill-rule="evenodd"/></svg>
+  </div>
+  <div class="checklist-area">
+    <div class="checklist-title">Before you submit that claim:</div>
+    <div class="check-item crossed">
+      <div class="check-box done"></div>
+      <div class="check-text">Take photos of the damage</div>
+    </div>
+    <div class="check-item crossed">
+      <div class="check-box done"></div>
+      <div class="check-text">Write up the scope</div>
+    </div>
+    <div class="check-item crossed">
+      <div class="check-box done"></div>
+      <div class="check-text">Review the adjuster's numbers</div>
+    </div>
+    <div class="check-item crossed">
+      <div class="check-box done"></div>
+      <div class="check-text">Double-check line items</div>
+    </div>
+    <div class="check-item highlight">
+      <div class="check-box"></div>
+      <div class="check-text">Ask Richard</div>
+    </div>
+    <div class="check-item empty">
+      <div class="check-box"></div>
+      <div class="check-text" style="color:rgba(9,9,9,0.25);">Submit claim</div>
+    </div>
+  </div>
+  <div class="bot">
+    <div class="punchline">Don't skip the most important step.</div>
+    <div class="url">dumbroof.ai</div>
+  </div>
+</div>
+
+<!-- AD 13 — FUTURISTIC PINK COUNTDOWN -->
+<div class="label">AD 13 — "Pink Countdown" — Big number impact (1080×1080)</div>
+<div class="ad ad13">
+  <div class="top">
+    <div class="brand">dumbroof.ai</div>
+    <div class="tag">Avg. per claim</div>
+  </div>
+  <div class="center">
+    <div class="big-num">$14K</div>
+    <div class="unit">left on the table</div>
+    <div class="context">every single time.</div>
+  </div>
+  <div class="bot">
+    <div class="sub">That's the average amount missed by adjusters<br>on claims Richard re-analyzed.</div>
+    <div class="url">dumbroof.ai</div>
+  </div>
+</div>
+
+<!-- AD 14 — GREEN GRADIENT STACK -->
+<div class="label">AD 14 — "Green Gradient" — Stacked stats on gradient (1080×1080)</div>
+<div class="ad ad14">
+  <div class="top">
+    <div class="brand">dumbroof.ai</div>
+    <svg class="richard-icon" viewBox="0 0 1024 1024" style="width:60px;height:60px"><path d="M 718.65 820.72 L 663.54 820.72 L 653.52 818.21 L 640.37 807.57 L 631.60 786.27 L 624.72 779.39 L 399.28 779.39 L 389.89 787.53 L 381.12 808.82 L 375.49 814.45 L 359.21 820.72 L 285.32 819.46 L 250.25 815.71 L 216.43 805.69 L 202.03 793.79 L 195.77 780.01 L 194.52 752.46 L 209.55 593.41 L 165.09 591.53 L 135.03 586.52 L 121.88 577.12 L 119.37 560.84 L 253.38 326.65 L 253.38 218.94 L 261.52 207.04 L 272.79 203.28 L 409.30 203.28 L 418.07 205.79 L 427.46 217.69 L 429.34 269.66 L 474.43 265.90 L 585.89 265.90 L 649.76 273.42 L 688.59 283.44 L 716.14 295.96 L 729.92 305.98 L 749.33 326.65 L 895.86 547.07 L 903.37 559.59 L 904.63 569.61 L 897.74 581.51 L 883.96 587.77 L 862.67 591.53 L 814.45 593.41 L 829.48 752.46 L 829.48 773.75 L 821.97 793.79 L 811.32 803.18 L 791.28 811.95 L 767.49 816.96 L 718.65 820.72 Z M 388.64 535.80 L 409.30 528.91 L 423.71 514.50 L 431.22 496.97 L 431.22 478.19 L 422.45 459.40 L 410.56 447.50 L 398.03 441.24 L 379.25 438.73 L 355.45 447.50 L 342.30 460.65 L 336.04 474.43 L 334.79 494.47 L 341.05 512.00 L 355.45 527.65 L 371.73 535.17 L 388.64 535.80 Z M 646.63 539.55 L 663.54 533.92 L 679.19 519.51 L 686.71 503.23 L 687.96 488.20 L 682.95 470.67 L 668.55 453.76 L 654.77 446.25 L 635.99 443.74 L 613.44 451.26 L 601.55 461.90 L 591.53 481.94 L 591.53 501.98 L 597.79 517.01 L 610.94 531.41 L 632.23 540.18 L 646.63 539.55 Z" fill="#090909" fill-rule="evenodd"/></svg>
+  </div>
+  <div class="stack">
+    <div class="stack-row">
+      <div class="num">47</div>
+      <div class="txt">line items missed per claim</div>
+    </div>
+    <div class="stack-row">
+      <div class="num">$14K</div>
+      <div class="txt">average money left behind</div>
+    </div>
+    <div class="stack-row">
+      <div class="num">3 min</div>
+      <div class="txt">to run a full analysis</div>
+    </div>
+    <div class="stack-row">
+      <div class="num">1</div>
+      <div class="txt">question: did you ask Richard?</div>
+    </div>
+  </div>
+  <div class="bot">
+    <div class="tagline">Stop guessing. Start asking.</div>
+    <div class="url">dumbroof.ai</div>
+  </div>
+</div>
+
+<!-- AD 15 — BLUE + PINK SPLIT -->
+<div class="label">AD 15 — "Blue Pink Split" — Two-tone question/answer (1080×1080)</div>
+<div class="ad ad15">
+  <div class="half-top">
+    <div class="small">The real question</div>
+    <div class="headline">How much did<br>your adjuster<br>leave out?</div>
+  </div>
+  <div class="half-bot">
+    <div class="answer">Richard knows.<br>Down to the<br>last line item.</div>
+    <div class="footer">
+      <div>
+        <div class="url">dumbroof.ai</div>
+        <div class="sub">AI that finds what adjusters miss.</div>
+      </div>
+      <svg class="richard-icon" viewBox="0 0 1024 1024" style="width:60px;height:60px"><path d="M 718.65 820.72 L 663.54 820.72 L 653.52 818.21 L 640.37 807.57 L 631.60 786.27 L 624.72 779.39 L 399.28 779.39 L 389.89 787.53 L 381.12 808.82 L 375.49 814.45 L 359.21 820.72 L 285.32 819.46 L 250.25 815.71 L 216.43 805.69 L 202.03 793.79 L 195.77 780.01 L 194.52 752.46 L 209.55 593.41 L 165.09 591.53 L 135.03 586.52 L 121.88 577.12 L 119.37 560.84 L 253.38 326.65 L 253.38 218.94 L 261.52 207.04 L 272.79 203.28 L 409.30 203.28 L 418.07 205.79 L 427.46 217.69 L 429.34 269.66 L 474.43 265.90 L 585.89 265.90 L 649.76 273.42 L 688.59 283.44 L 716.14 295.96 L 729.92 305.98 L 749.33 326.65 L 895.86 547.07 L 903.37 559.59 L 904.63 569.61 L 897.74 581.51 L 883.96 587.77 L 862.67 591.53 L 814.45 593.41 L 829.48 752.46 L 829.48 773.75 L 821.97 793.79 L 811.32 803.18 L 791.28 811.95 L 767.49 816.96 L 718.65 820.72 Z M 388.64 535.80 L 409.30 528.91 L 423.71 514.50 L 431.22 496.97 L 431.22 478.19 L 422.45 459.40 L 410.56 447.50 L 398.03 441.24 L 379.25 438.73 L 355.45 447.50 L 342.30 460.65 L 336.04 474.43 L 334.79 494.47 L 341.05 512.00 L 355.45 527.65 L 371.73 535.17 L 388.64 535.80 Z M 646.63 539.55 L 663.54 533.92 L 679.19 519.51 L 686.71 503.23 L 687.96 488.20 L 682.95 470.67 L 668.55 453.76 L 654.77 446.25 L 635.99 443.74 L 613.44 451.26 L 601.55 461.90 L 591.53 481.94 L 591.53 501.98 L 597.79 517.01 L 610.94 531.41 L 632.23 540.18 L 646.63 539.55 Z" fill="#090909" fill-rule="evenodd"/></svg>
+    </div>
+  </div>
+</div>
+
+<!-- AD 16 — WHITE SPACE MINIMAL -->
+<div class="label">AD 16 — "White Space" — Ultra minimal centered (1080×1080)</div>
+<div class="ad ad16">
+  <svg class="richard-big" viewBox="0 0 1024 1024"><path d="M 718.65 820.72 L 663.54 820.72 L 653.52 818.21 L 640.37 807.57 L 631.60 786.27 L 624.72 779.39 L 399.28 779.39 L 389.89 787.53 L 381.12 808.82 L 375.49 814.45 L 359.21 820.72 L 285.32 819.46 L 250.25 815.71 L 216.43 805.69 L 202.03 793.79 L 195.77 780.01 L 194.52 752.46 L 209.55 593.41 L 165.09 591.53 L 135.03 586.52 L 121.88 577.12 L 119.37 560.84 L 253.38 326.65 L 253.38 218.94 L 261.52 207.04 L 272.79 203.28 L 409.30 203.28 L 418.07 205.79 L 427.46 217.69 L 429.34 269.66 L 474.43 265.90 L 585.89 265.90 L 649.76 273.42 L 688.59 283.44 L 716.14 295.96 L 729.92 305.98 L 749.33 326.65 L 895.86 547.07 L 903.37 559.59 L 904.63 569.61 L 897.74 581.51 L 883.96 587.77 L 862.67 591.53 L 814.45 593.41 L 829.48 752.46 L 829.48 773.75 L 821.97 793.79 L 811.32 803.18 L 791.28 811.95 L 767.49 816.96 L 718.65 820.72 Z M 388.64 535.80 L 409.30 528.91 L 423.71 514.50 L 431.22 496.97 L 431.22 478.19 L 422.45 459.40 L 410.56 447.50 L 398.03 441.24 L 379.25 438.73 L 355.45 447.50 L 342.30 460.65 L 336.04 474.43 L 334.79 494.47 L 341.05 512.00 L 355.45 527.65 L 371.73 535.17 L 388.64 535.80 Z M 646.63 539.55 L 663.54 533.92 L 679.19 519.51 L 686.71 503.23 L 687.96 488.20 L 682.95 470.67 L 668.55 453.76 L 654.77 446.25 L 635.99 443.74 L 613.44 451.26 L 601.55 461.90 L 591.53 481.94 L 591.53 501.98 L 597.79 517.01 L 610.94 531.41 L 632.23 540.18 L 646.63 539.55 Z" fill="#FF6FFF" fill-rule="evenodd"/></svg>
+  <div class="headline">Every claim has a <em>hidden number</em>.<br>Richard finds it.</div>
+  <div class="sub">AI-powered claim analysis that catches what adjusters miss — in 3 minutes flat.</div>
+  <div class="brand">dumbroof.ai</div>
+</div>
+
+</body>
+</html>
