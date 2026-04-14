@@ -26,6 +26,7 @@ export default function NewClaimPage() {
   const [userNotes, setUserNotes] = useState("");
   const [dateOfLoss, setDateOfLoss] = useState("");
   const [roofMaterial, setRoofMaterial] = useState("");
+  const [damageType, setDamageType] = useState<"" | "hail" | "wind" | "combined">("");
   const [includeGutters, setIncludeGutters] = useState(false);
   const [gutterType, setGutterType] = useState("");
   const [includeSiding, setIncludeSiding] = useState(false);
@@ -224,6 +225,7 @@ export default function NewClaimPage() {
         ...(roofMaterial ? {
           estimate_request: {
             roof_material: roofMaterial,
+            ...(damageType ? { damage_type: damageType } : {}),
             ...(includeGutters && gutterType ? { gutters: gutterType } : {}),
             ...(includeSiding && sidingType ? { siding: sidingType } : {}),
           }
@@ -1054,6 +1056,43 @@ export default function NewClaimPage() {
                 <option value="Tile">Tile</option>
                 <option value="Cedar">Cedar</option>
               </select>
+            </div>
+
+            {/* Damage Type — tells the AI + NOAA + PDF generator what to focus on */}
+            <div>
+              <label className="block text-sm font-semibold text-[var(--white)] mb-1">
+                Damage Type
+              </label>
+              <div className="grid grid-cols-3 gap-2">
+                {([
+                  { value: "hail" as const, label: "Hail", icon: "🧊" },
+                  { value: "wind" as const, label: "Wind", icon: "💨" },
+                  { value: "combined" as const, label: "Hail & Wind", icon: "⛈" },
+                ] as const).map((opt) => (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => setDamageType(damageType === opt.value ? "" : opt.value)}
+                    className={`flex flex-col items-center gap-1 py-3 px-2 rounded-lg border-2 text-xs font-semibold transition-colors ${
+                      damageType === opt.value
+                        ? "border-[var(--cyan)] bg-[var(--cyan)]/10 text-[var(--cyan)]"
+                        : "border-[var(--border-glass)] text-[var(--gray-muted)] hover:border-white/30 hover:text-white"
+                    }`}
+                  >
+                    <span className="text-lg">{opt.icon}</span>
+                    <span>{opt.label}</span>
+                  </button>
+                ))}
+              </div>
+              <p className="text-xs text-[var(--gray-dim)] mt-1">
+                {damageType === "hail"
+                  ? "AI will prioritize hail indicators: dents, granule loss, chalk test gaps"
+                  : damageType === "wind"
+                  ? "AI will prioritize wind indicators: creased tabs, missing shingles, directional patterns"
+                  : damageType === "combined"
+                  ? "AI will analyze for both hail and wind damage patterns"
+                  : "Optional — helps the AI focus its analysis"}
+              </p>
             </div>
 
             {/* Gutters Toggle */}

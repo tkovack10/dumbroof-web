@@ -625,6 +625,18 @@ def analyze_photos(client: anthropic.Anthropic, photo_paths: list[str], user_not
     exposure_inches = None
 
     # Build context strings ONCE (injected into every batch)
+    # Damage type context — tells the AI what kind of claim this is so it can
+    # weight the right indicators. When the user selects hail/wind/combined on
+    # the claim form, we inject a prioritization directive.
+    damage_type_ctx = ""
+    user_damage_type = (estimate_request or {}).get("damage_type", "")
+    if user_damage_type == "wind":
+        damage_type_ctx = "\n\nCLAIM TYPE: WIND DAMAGE. Prioritize wind indicators: creased tabs (the #1 wind indicator — sharp horizontal fold at nail line), missing shingles (check nail rust: no rust = recent), broken seal strips (clean mechanical separation = wind, crumbling = age), turned-back leading edges, ridge cap blow-off, directional patterns (windward > leeward), debris impact marks (linear gouges, not circular like hail). Still note hail evidence if clearly visible, but wind is the primary loss type for this claim.\n"
+    elif user_damage_type == "hail":
+        damage_type_ctx = "\n\nCLAIM TYPE: HAIL DAMAGE. Prioritize hail indicators: circular dents on metals (chalk test gaps), granule displacement on shingles exposing dark mat, fractured/cracked shingle mat (HAAG standard = functional damage), soft metal deformation. Still note wind evidence if clearly visible, but hail is the primary loss type.\n"
+    elif user_damage_type == "combined":
+        damage_type_ctx = "\n\nCLAIM TYPE: COMBINED HAIL & WIND. Analyze for BOTH damage types with equal weight. For each photo, identify whether the damage is hail-caused (circular dents, granule loss, mat fracture) or wind-caused (creased tabs, missing shingles, directional patterns, seal strip breaks). Tag each photo with the PRIMARY damage type visible. Note the directional pattern across photos to distinguish wind damage from uniform hail damage.\n"
+
     notes_ctx = ""
     if user_notes:
         notes_ctx = f"\n\nCONTEXT FROM CONTRACTOR: {user_notes}\nUse this context to inform your analysis — identify specific materials mentioned, note any adjuster claims to address, and focus on items the contractor highlighted.\n"
@@ -669,7 +681,7 @@ def analyze_photos(client: anthropic.Anthropic, photo_paths: list[str], user_not
 
         content.append({
             "type": "text",
-            "text": f"""You are a forensic roofing damage analyst. Analyze photos {start_num}-{start_num + len(batch) - 1}.{notes_ctx}{corrections_ctx}
+            "text": f"""You are a forensic roofing damage analyst. Analyze photos {start_num}-{start_num + len(batch) - 1}.{damage_type_ctx}{notes_ctx}{corrections_ctx}
 
 STRICT OUTPUT RULES (violations = failure):
 - Each photo_annotation MUST be 1-2 sentences, MAX 150 characters. Lead with the damage finding. No scenery, no context, no preamble.
