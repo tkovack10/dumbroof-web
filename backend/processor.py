@@ -706,10 +706,39 @@ ON SHINGLES (test square methodology):
 - A chalk LINE across a shingle = wind crease mark (functional wind damage requiring replacement)
 - Individual chalk circles on shingles = marked hail impact points
 
-WIND DAMAGE INDICATORS:
-- Creased shingles (chalk line across crease) = functional wind damage, shingle must be replaced
-- Missing shingles with exposed nails underneath: if nail shows NO rust = RECENT storm damage (not old)
-- Lifted/bent shingle tabs or edges
+WIND DAMAGE INDICATORS (EXPANDED — apply same rigor as hail):
+- CREASED TABS (#1 wind indicator): Sharp horizontal fold at 1-2" above the bond strip (near nail line).
+  Granule disruption CONCENTRATED at the crease line. Seal strip below is mechanically broken.
+  Even if tab lies flat, the crease = FUNCTIONAL DAMAGE (HAAG standard) requiring replacement.
+  Tag: damage_type="wind_crease", severity based on seal condition.
+- MISSING SHINGLES with exposed nails: Check nail rust — NO RUST = recent storm, RUSTED = pre-existing.
+  Torn mat at nail holes = forcible wind removal. Tag: damage_type="missing".
+- BROKEN SEAL STRIPS: Tab lifts freely when touched. CLEAN mechanical separation = WIND broke it.
+  DRY/CRUMBLING adhesive = AGE degradation. This distinction matters for coverage.
+- TURNED-BACK LEADING EDGES: Tab folded 90-180 degrees backward. Extreme granule loss at fold line.
+- RIDGE CAP BLOW-OFF: Missing or lifted ridge caps = strongest wind evidence (highest exposure point).
+  Tag: damage_type="missing" or "lifted_tab" with trade="roofing".
+- DIRECTIONAL PATTERN: Wind damage concentrates on WINDWARD faces. If you see damage primarily on
+  one face with minimal damage on the opposite face, note the directional pattern — this is the
+  forensic proof of a wind event.
+- DEBRIS IMPACT: LINEAR gouges/punctures from wind-driven objects. Unlike CIRCULAR hail marks.
+  Tag: damage_type="crack" or "missing" depending on severity.
+- SOFFIT PANEL DISPLACEMENT: Soffit damage is almost always wind (hail cannot reach the underside
+  of the overhang). Tag: damage_type="missing" or "lifted_tab" with trade="soffit".
+- SIDING WIND DAMAGE: Blown-off or shifted panels, buckled panels from wind pressure, cracked vinyl
+  from debris impact. CHECK DIRECTIONAL PATTERN across all 4 elevations.
+
+CRITICAL WIND vs. HAIL ON METAL DISTINCTION (top correction pattern from user feedback):
+- Coating loss at rib CRESTS in circular patterns on metal roofs = HAIL impact (tag: hail_dent)
+- Damage at seam JOINTS from panel movement = WIND displacement (tag: wind_crease or lifted_tab)
+- When you see bare metal on metal roof ribs, DEFAULT to hail unless the damage is specifically
+  at seam connections with panel displacement visible. Users consistently correct wind_crease to
+  hail on metal roof damage.
+
+WIND vs. AGING — DO NOT CONFUSE:
+- Wind crease = SHARP fold line at a specific point. Aging curl = GRADUAL curve from edges inward.
+- Wind seal failure = DIRECTIONAL (windward > leeward). Age seal failure = UNIFORM all faces.
+- Paint peeling / discoloration on trim = AGING (not wind). Do NOT tag as wind damage.
 
 HAIL DAMAGE INDICATORS:
 - Hail splatter (oxidation marks from hail impact) = confirms RECENT damage (splatter fades within ~6 months)
