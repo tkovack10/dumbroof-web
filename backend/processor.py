@@ -587,7 +587,7 @@ If this report includes wall/siding measurements (EagleView Walls report or simi
     return result
 
 
-def analyze_photos(client: anthropic.Anthropic, photo_paths: list[str], user_notes: Optional[str] = None, corrections: list = None) -> dict:
+def analyze_photos(client: anthropic.Anthropic, photo_paths: list[str], user_notes: Optional[str] = None, corrections: list = None, estimate_request: dict = None) -> dict:
     """Send inspection photos to Claude for forensic analysis, in batches."""
     BATCH_SIZE = 5  # 5 resized photos per batch to stay well under API limits
 
@@ -4056,6 +4056,7 @@ async def process_claim(claim_id: str):
                 analyze_photos, claude, photo_paths,
                 user_notes=claim.get("user_notes"),
                 corrections=few_shot_corrections,
+                estimate_request=claim.get("estimate_request"),
             )
 
             # ── Cache the result for future reprocesses ──

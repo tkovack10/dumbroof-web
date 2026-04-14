@@ -1248,6 +1248,12 @@ def _build_wind_amplification_chart(config):
     if not max_wind or max_wind <= 0:
         return ""
 
+    # M3 fix: skip chart for trivially low wind speeds where the amplification
+    # argument has no forensic value (Zone 3 still far below shingle rating).
+    # 40 mph sustained is the practical floor for any wind damage claim.
+    if max_wind < 40:
+        return ""
+
     # Only show for wind or combined claims. If damage_type isn't set, show
     # whenever we have wind data (the AI may have detected wind damage).
     damage_type = estimate_req.get("damage_type", "")
@@ -1325,26 +1331,34 @@ Ground-level wind accelerates over the roof due to building geometry (Bernoulli 
 ASCE 7 defines velocity multipliers by roof zone &mdash; eaves, rakes, and corners experience 1.5&ndash;2&times; the ground speed.
 </p>
 {bar_rows}
-<div style="position:relative;height:24pt;margin:4pt 0;">
-    <div style="position:absolute;left:{rating_pct}%;top:0;width:2px;height:16pt;background:#0d47a1;"></div>
-    <div style="position:absolute;left:{rating_pct}%;top:16pt;font-size:7.5pt;color:#0d47a1;font-weight:700;transform:translateX(-50%);white-space:nowrap;">
-        &#9650; Shingle Rating: {shingle_rating} mph ({rating_label})
-    </div>
+<div class="bar-row" style="margin-top:4pt;border-top:1.5pt dashed #0d47a1;padding-top:4pt;">
+    <div class="bar-label" style="color:#0d47a1;font-weight:700;">&#9650; Shingle Rating</div>
+    <div class="bar-value" style="color:#0d47a1;font-weight:700;">{shingle_rating} mph</div>
+    <div style="flex:1;"><div class="bar-fill" style="width:{rating_pct}%;background:#0d47a1;height:4pt;opacity:0.4;"></div></div>
 </div>
-<div class="exceeds-line" style="margin-top:14pt;">'''
+<p style="font-size:7.5pt;color:#0d47a1;margin:2pt 0 0 0;text-align:right;">{rating_label}</p>
+'''
 
+    # Build the exceeds/marginal summary — skip the styled div entirely if
+    # no zones exceed or approach the rating (M1 fix from code review)
     zone3_vel = zone_multipliers[-1][2]
     zone2_vel = zone_multipliers[-2][2]
+    exceeds_lines = []
     if zone3_vel > shingle_rating:
         delta = zone3_vel - shingle_rating
-        html += f'<span style="color:#c8102e;font-weight:700;">Zone 3 (corners): {zone3_vel} mph &mdash; EXCEEDS shingle rating by {delta} mph</span><br/>'
+        exceeds_lines.append(f'<span style="color:#c8102e;font-weight:700;">Zone 3 (corners): {zone3_vel} mph &mdash; EXCEEDS shingle rating by {delta} mph</span>')
     if zone2_vel > shingle_rating:
         delta = zone2_vel - shingle_rating
-        html += f'<span style="color:#c8102e;font-weight:700;">Zone 2 (edges): {zone2_vel} mph &mdash; EXCEEDS shingle rating by {delta} mph</span><br/>'
+        exceeds_lines.append(f'<span style="color:#c8102e;font-weight:700;">Zone 2 (edges): {zone2_vel} mph &mdash; EXCEEDS shingle rating by {delta} mph</span>')
     elif zone2_vel > shingle_rating * 0.9:
-        html += f'<span style="color:#f59e0b;font-weight:700;">Zone 2 (edges): {zone2_vel} mph &mdash; MARGINAL (within 10% of rating)</span><br/>'
+        exceeds_lines.append(f'<span style="color:#f59e0b;font-weight:700;">Zone 2 (edges): {zone2_vel} mph &mdash; MARGINAL (within 10% of rating)</span>')
 
-    html += f'''</div>
+    if exceeds_lines:
+        html += '<div class="exceeds-line" style="margin-top:10pt;">' + "<br/>".join(exceeds_lines) + '</div>\n'
+    else:
+        html += '<p style="font-size:8.5pt;color:#2e7d32;margin-top:10pt;font-weight:600;">All zones below shingle rating &mdash; wind amplification may not explain observed damage at this wind speed.</p>\n'
+
+    html += f'''
 <p style="font-size:8.5pt;color:#374151;margin-top:8pt;">
 The observed damage pattern &mdash; concentrated at eaves, rakes, and corners &mdash; is engineering-consistent
 with ASCE 7 Zone 2&ndash;3 wind amplification from the {max_wind} mph ground-level wind event.
