@@ -72,20 +72,40 @@ def b64_img(config, filename):
 
 
 def get_logo_b64(config):
-    """Return base64 data URI for the USARM logo."""
-    logo_path = os.path.join(config["_paths"]["photos"], "usarm_logo.jpg")
-    if not os.path.exists(logo_path):
-        # Try alternate names
-        for alt in ["usarm_logo.JPG", "usarm_logo.png", "logo.jpg", "logo.JPG"]:
-            alt_path = os.path.join(config["_paths"]["photos"], alt)
-            if os.path.exists(alt_path):
-                logo_path = alt_path
-                break
-    if not os.path.exists(logo_path):
+    """Return base64 data URI for the company logo.
+
+    Searches for the logo file with multiple extensions since users may
+    upload PNG, JPG, or other formats. Detects the actual MIME type from
+    the file extension (not hardcoded to JPEG) so the PDF renderer
+    processes the image correctly.
+    """
+    photos_dir = config["_paths"]["photos"]
+    logo_path = None
+    for name in ["usarm_logo.png", "usarm_logo.jpg", "usarm_logo.JPG",
+                 "usarm_logo.jpeg", "usarm_logo.webp",
+                 "logo.png", "logo.jpg", "logo.JPG"]:
+        candidate = os.path.join(photos_dir, name)
+        if os.path.exists(candidate):
+            logo_path = candidate
+            break
+    if not logo_path:
         return ""
+
+    # Detect MIME type from extension
+    ext = os.path.splitext(logo_path)[1].lower()
+    mime_map = {
+        ".png": "image/png",
+        ".jpg": "image/jpeg",
+        ".jpeg": "image/jpeg",
+        ".webp": "image/webp",
+        ".gif": "image/gif",
+        ".svg": "image/svg+xml",
+    }
+    mime = mime_map.get(ext, "image/jpeg")
+
     with open(logo_path, "rb") as f:
         data = base64.b64encode(f.read()).decode()
-    return f"data:image/jpeg;base64,{data}"
+    return f"data:{mime};base64,{data}"
 
 
 def get_assoc_logo_b64(logo_basename):

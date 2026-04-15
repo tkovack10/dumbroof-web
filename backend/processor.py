@@ -3825,14 +3825,18 @@ async def process_claim(claim_id: str):
         os.makedirs(source_dir)
         os.makedirs(output_dir)
 
-        # Download user's logo from Supabase if they have one
+        # Download user's logo from Supabase if they have one.
+        # Preserve the original file extension so the PDF generator
+        # can detect the correct MIME type (PNG vs JPEG vs etc).
         if company_profile and company_profile.get("logo_path"):
             try:
-                logo_data = sb.storage.from_("claim-documents").download(company_profile["logo_path"])
-                logo_dest = os.path.join(photos_dir, "usarm_logo.jpg")
+                _logo_path = company_profile["logo_path"]
+                _logo_ext = os.path.splitext(_logo_path)[1].lower() or ".jpg"
+                logo_data = sb.storage.from_("claim-documents").download(_logo_path)
+                logo_dest = os.path.join(photos_dir, f"usarm_logo{_logo_ext}")
                 with open(logo_dest, "wb") as f:
                     f.write(logo_data)
-                print(f"[PROCESS] Downloaded user logo")
+                print(f"[PROCESS] Downloaded user logo ({_logo_ext}, {len(logo_data)} bytes)")
             except Exception as e:
                 print(f"[PROCESS] Could not download logo: {e}")
 
