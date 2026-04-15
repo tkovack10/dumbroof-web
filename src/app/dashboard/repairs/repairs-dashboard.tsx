@@ -11,6 +11,7 @@ export function RepairsDashboard({ user }: { user: User }) {
   const [repairs, setRepairs] = useState<Repair[]>([]);
   const [loading, setLoading] = useState(true);
   const [downloading, setDownloading] = useState<string | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   const fetchRepairs = useCallback(async () => {
     const { data } = await supabase
@@ -27,6 +28,17 @@ export function RepairsDashboard({ user }: { user: User }) {
     const interval = setInterval(fetchRepairs, 30000);
     return () => clearInterval(interval);
   }, [fetchRepairs]);
+
+  useEffect(() => {
+    supabase
+      .from("company_profiles")
+      .select("is_admin")
+      .eq("user_id", user.id)
+      .limit(1)
+      .then(({ data }) => {
+        if (data?.[0]?.is_admin) setIsAdmin(true);
+      });
+  }, [user.id, supabase]);
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();
@@ -87,9 +99,11 @@ export function RepairsDashboard({ user }: { user: User }) {
             <a href="/dashboard" className="text-[var(--gray-dim)] hover:text-white text-sm transition-colors hidden sm:block">
               Claims
             </a>
-            <a href="/dashboard/analytics" className="text-[var(--gray-dim)] hover:text-white text-sm transition-colors hidden sm:block">
-              Analytics
-            </a>
+            {isAdmin && (
+              <a href="/dashboard/analytics" className="text-[var(--gray-dim)] hover:text-white text-sm transition-colors hidden sm:block">
+                Analytics
+              </a>
+            )}
             <a href="/dashboard/settings" className="text-[var(--gray-dim)] hover:text-white text-sm transition-colors hidden sm:block">
               Settings
             </a>

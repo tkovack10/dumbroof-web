@@ -232,7 +232,7 @@ export function DashboardContent({ user }: { user: User }) {
     { href: "/dashboard/correspondence", label: "Correspondence", hasDraftDot: claims.some((c) => (c.pending_drafts || 0) > 0), hasEditDot: claims.some((c) => (c.pending_edits || 0) > 0) },
     { href: "/dashboard/photo-review", label: "Photo Review" },
     { href: "/dashboard/repair-review", label: "Repair Review" },
-    { href: "/dashboard/analytics", label: "Analytics" },
+    ...(isAdmin ? [{ href: "/dashboard/analytics", label: "Analytics" }] : []),
     { href: "/dashboard/settings", label: "Settings" },
   ];
 
