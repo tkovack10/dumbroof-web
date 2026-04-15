@@ -251,7 +251,7 @@ export function MobileMagicHero({ inAppName, stats }: Props) {
                   disabled={loading}
                   className="w-full bg-gradient-to-r from-[var(--pink)] via-[var(--purple)] to-[var(--blue)] hover:shadow-[var(--shadow-glow-pink)] text-white px-6 py-4 rounded-xl font-semibold text-base transition-all shadow-lg disabled:opacity-50"
                 >
-                  {loading ? "Creating account..." : "Start Uploading &rarr;"}
+                  {loading ? "Creating account..." : "Start Uploading →"}
                 </button>
               </form>
 
