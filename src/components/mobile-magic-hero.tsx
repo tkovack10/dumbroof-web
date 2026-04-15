@@ -121,13 +121,26 @@ export function MobileMagicHero({ inAppName, stats }: Props) {
     });
 
     // Notify team + send welcome email — both handled server-side by notify-signup.
-    // Welcome email was previously a separate client-side fetch that got killed by
-    // window.location.href navigation on mobile (87% failure rate).
-    fetch("/api/notify-signup", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, source: `mobile_${inAppName || "direct"}` }),
-    }).catch(() => {});
+    // Use sendBeacon instead of fetch — beacons survive page navigation. Regular
+    // fetch gets killed by window.location.href on mobile (87% failure rate on
+    // the old implementation). sendBeacon is fire-and-forget by design.
+    try {
+      navigator.sendBeacon(
+        "/api/notify-signup",
+        new Blob(
+          [JSON.stringify({ email, source: `mobile_${inAppName || "direct"}` })],
+          { type: "application/json" }
+        )
+      );
+    } catch {
+      // Fallback for browsers without sendBeacon (very rare)
+      fetch("/api/notify-signup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, source: `mobile_${inAppName || "direct"}` }),
+        keepalive: true, // keepalive also survives navigation in modern browsers
+      }).catch(() => {});
+    }
 
     if (data.session) {
       window.location.href = "/dashboard/new-claim";

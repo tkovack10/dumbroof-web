@@ -66,11 +66,23 @@ export function HeroSignupForm() {
     trackBoth(FunnelEvent.SIGNUP_SUCCEEDED, { auth_method: "email", auto_confirmed: !!data.session });
 
     // Notify team + send welcome email — both handled server-side by notify-signup.
-    fetch("/api/notify-signup", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, source: "desktop_hero" }),
-    }).catch(() => {});
+    // Use sendBeacon so the request survives the window.location.href navigation below.
+    try {
+      navigator.sendBeacon(
+        "/api/notify-signup",
+        new Blob(
+          [JSON.stringify({ email, source: "desktop_hero" })],
+          { type: "application/json" }
+        )
+      );
+    } catch {
+      fetch("/api/notify-signup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, source: "desktop_hero" }),
+        keepalive: true,
+      }).catch(() => {});
+    }
 
     if (data.session) {
       // Auto-confirmed — go straight to upload
