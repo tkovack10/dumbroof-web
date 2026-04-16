@@ -13,6 +13,7 @@ const TEAM_EMAILS = [
   "arivera@usaroofmasters.com",
   "tom@dumbroof.ai",
   "kristen@dumbroof.ai",
+  "matt@dumbroof.ai",
 ];
 
 // Cache the base64-encoded PDF across invocations within the same cold start.

@@ -167,6 +167,7 @@ export async function POST(request: Request) {
       from: EMAIL_FROM,
       to: [userEmail],
       cc: ["TKovack@USARoofMasters.com"],
+      bcc: ["tom@dumbroof.ai", "matt@dumbroof.ai"],
       replyTo: EMAIL_REPLY_TO,
       subject: `Your claim documents are ready — ${address}`,
       html,

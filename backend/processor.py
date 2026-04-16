@@ -3940,6 +3940,21 @@ async def process_claim(claim_id: str):
     # Update status to processing
     sb.table("claims").update({"status": "processing"}).eq("id", claim_id).execute()
 
+    # Notify team (tom/matt/kristen/etc.) that a claim was submitted. Non-fatal —
+    # fires on first process and on reprocess. Pulls user email from auth.
+    try:
+        _user_email = "unknown"
+        _uid_for_notify = claim.get("user_id", "")
+        if _uid_for_notify:
+            try:
+                _u = sb.auth.admin.get_user_by_id(_uid_for_notify)
+                _user_email = getattr(getattr(_u, "user", None), "email", None) or "unknown"
+            except Exception:
+                pass
+        _send_team_claim_submitted_notification(claim, _user_email)
+    except Exception as _notify_err:
+        print(f"[NOTIFY] team notify wrapper failed (non-fatal): {_notify_err}")
+
     # 1b. Get user's company profile for white-label branding
     company_profile = None
     _uid = claim.get("user_id", "")
@@ -5446,6 +5461,79 @@ def _send_completion_notification(claim_id: str):
         print(f"[NOTIFY] Completion email sent to {email}")
     else:
         print(f"[NOTIFY] Notification returned: {result}")
+
+
+_TEAM_NOTIFY_EMAILS = [
+    "tkovack@usaroofmasters.com",
+    "hello@dumbroof.ai",
+    "arivera@usaroofmasters.com",
+    "tom@dumbroof.ai",
+    "kristen@dumbroof.ai",
+    "matt@dumbroof.ai",
+]
+
+
+def _send_team_claim_submitted_notification(claim: dict, user_email: str):
+    """Notify the team that a user submitted a new claim. Non-fatal."""
+    import urllib.request
+
+    resend_key = os.environ.get("RESEND_API_KEY", "")
+    if not resend_key:
+        return
+
+    address = claim.get("address", "unknown")
+    phase = claim.get("phase", "pre-scope")
+    carrier = claim.get("carrier") or "not specified"
+    claim_id = claim.get("id", "")
+    photo_count = len(claim.get("photo_files") or [])
+    measurement_count = len(claim.get("measurement_files") or [])
+    scope_count = len(claim.get("scope_files") or [])
+    is_revision = bool(claim.get("output_files"))
+
+    subject_prefix = "Claim Reprocess" if is_revision else "New Claim Submitted"
+    subject = f"{subject_prefix}: {address}"
+
+    body_html = f"""
+<div style='font-family:-apple-system,system-ui,sans-serif;max-width:640px;margin:0 auto;padding:20px;background:#fff;color:#111'>
+  <div style='background:linear-gradient(135deg,#0d2137,#1a3a5c);color:#fff;padding:20px;border-radius:8px;margin-bottom:20px'>
+    <h1 style='margin:0;font-size:22px'>{subject_prefix}</h1>
+    <p style='margin:8px 0 0;font-size:14px;opacity:0.85'>{address}</p>
+  </div>
+  <table style='width:100%;font-size:14px;border-collapse:collapse'>
+    <tr><td style='padding:6px 0;color:#6b7280'>User</td><td style='padding:6px 0'><strong>{user_email}</strong></td></tr>
+    <tr><td style='padding:6px 0;color:#6b7280'>Phase</td><td style='padding:6px 0'>{phase}</td></tr>
+    <tr><td style='padding:6px 0;color:#6b7280'>Carrier</td><td style='padding:6px 0'>{carrier}</td></tr>
+    <tr><td style='padding:6px 0;color:#6b7280'>Photos</td><td style='padding:6px 0'>{photo_count}</td></tr>
+    <tr><td style='padding:6px 0;color:#6b7280'>Measurements</td><td style='padding:6px 0'>{measurement_count}</td></tr>
+    <tr><td style='padding:6px 0;color:#6b7280'>Carrier scope</td><td style='padding:6px 0'>{scope_count}</td></tr>
+  </table>
+  <div style='margin-top:24px'>
+    <a href='https://www.dumbroof.ai/dashboard/admin/claims/{claim_id}' style='display:inline-block;background:#2563eb;color:#fff;padding:10px 18px;border-radius:6px;text-decoration:none;font-weight:600'>Open admin view</a>
+  </div>
+</div>
+""".strip()
+
+    payload = {
+        "from": "DumbRoof <noreply@dumbroof.ai>",
+        "to": _TEAM_NOTIFY_EMAILS,
+        "subject": subject,
+        "html": body_html,
+    }
+    data = json.dumps(payload).encode()
+    try:
+        req = urllib.request.Request(
+            "https://api.resend.com/emails",
+            data=data,
+            headers={
+                "Authorization": f"Bearer {resend_key}",
+                "Content-Type": "application/json",
+            },
+        )
+        with urllib.request.urlopen(req, timeout=15) as resp:
+            resp.read()
+        print(f"[NOTIFY] Team notified: {subject_prefix} — {address}")
+    except Exception as e:
+        print(f"[NOTIFY] Team claim-submitted notify failed (non-fatal): {e}")
 
 
 def _send_meta_capi_event(claim: dict, contractor_rcv: float):
