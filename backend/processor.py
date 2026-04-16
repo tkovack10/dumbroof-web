@@ -137,13 +137,14 @@ def _load_pricing(price_list: str = "nybi26") -> dict:
 PRICING = _load_pricing()  # Default NYBI26
 _PRICING_CACHE = {"nybi26": PRICING}
 
-# Canonical state → price list mapping (used everywhere pricing is resolved).
-# OH: we don't have Ohio-market Xactimate data yet; Pittsburgh PAPI26 is the
-# closest Northeast market (Dayton ↔ Pittsburgh ≈ 270 mi vs Dayton ↔ NYC
-# ≈ 600 mi). Flagged in config so the estimate discloses the proxy market
-# and doesn't silently ship NY prices for an Ohio property.
-STATE_PRICE_LIST = {"NY": "NYBI26", "PA": "PAPI26", "NJ": "NJBI26", "OH": "PAPI26"}
-STATE_PRICE_LIST_IS_PROXY = {"OH": True}
+# Canonical state → price list display label (shown in PDF estimate header).
+# Actual price overlay comes from XactRegistry.resolve_market() + all-markets.json,
+# which now covers 84 markets across NY/NJ/PA/MD/DE/OH/MI/IL/MN as of 2026-04-16.
+STATE_PRICE_LIST = {
+    "NY": "NYBI26", "PA": "PAPI26", "NJ": "NJBI26",
+    "OH": "OHDT26", "MI": "MIDE26", "IL": "ILCC26", "MN": "MNMN26",
+}
+STATE_PRICE_LIST_IS_PROXY = {}  # Midwest (OH/MI/IL/MN) now native as of 2026-04-16
 
 
 # Alfonso's description → build_line_items() pricing key mapping
@@ -2078,7 +2079,11 @@ def build_claim_config(
         else:
             state = "NY"
             print(f"[CONFIG] WARNING: Could not determine state — defaulting to NY")
-    _tax_rates = {"NY": 0.08, "PA": 0.0, "NJ": 0.06625, "CT": 0.0635, "MD": 0.06, "DE": 0.0, "OH": 0.0725}
+    _tax_rates = {
+        "NY": 0.08, "PA": 0.0, "NJ": 0.06625, "CT": 0.0635,
+        "MD": 0.06, "DE": 0.0, "OH": 0.0725,
+        "MI": 0.06, "IL": 0.0625, "MN": 0.06875,
+    }
     tax_rate = _tax_rates.get(state, 0.08)
     if state not in _tax_rates:
         print(f"[CONFIG] WARNING: No tax rate configured for state '{state}' — defaulting to 8%. Verify with Tom.")
@@ -2423,7 +2428,7 @@ def build_claim_config(
         config["financials"]["price_list"] = STATE_PRICE_LIST.get(state, "NYBI26")
     if state in STATE_PRICE_LIST_IS_PROXY:
         config["financials"]["price_list_is_proxy"] = True
-        print(f"[PRICING] WARNING: {state} has no native Xactimate market data; using {config['financials']['price_list']} as regional proxy. Add Ohio pricing via Alfonso's data-collection pipeline.")
+        print(f"[PRICING] WARNING: {state} has no native Xactimate market data; using {config['financials']['price_list']} as regional proxy. Add {state} pricing via Alfonso's data-collection pipeline.")
 
     # Clean trade names: underscores → spaces for display
     trades = [t.replace("_", " ").title() for t in trades]

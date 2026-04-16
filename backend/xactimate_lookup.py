@@ -74,6 +74,10 @@ DEFAULT_MARKETS = {
     "PA": "PAPH8X_MAR26",
     "MD": "MDBA8X_MAR26",
     "DE": "DEDO8X_MAR26",
+    "OH": "OHDT8X_APR26",   # Dayton — closest to current OH work (Laura, OH)
+    "MI": "MIDE8X_APR26",   # Detroit
+    "IL": "ILCC8X_APR26",   # Chicago
+    "MN": "MNMN8X_APR26",   # Minneapolis (pending: 12/22 priced)
 }
 
 # Negative keyword exclusions for scope comparison matching (PRE-COMPILED)
