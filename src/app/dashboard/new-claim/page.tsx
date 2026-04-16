@@ -7,6 +7,7 @@ import { AddressAutocomplete } from "@/components/address-autocomplete";
 import { useBillingQuota } from "@/hooks/use-billing-quota";
 import { uploadFilesBatched } from "@/lib/upload-utils";
 import { CrmImportModal } from "@/components/crm-import-modal";
+import { CompanyProfileGate } from "@/components/company-profile-gate";
 import { trackBoth, FunnelEvent } from "@/lib/track";
 import { compressImages } from "@/lib/image-compress";
 
@@ -50,6 +51,10 @@ export default function NewClaimPage() {
   const [crmUserId, setCrmUserId] = useState("");
   const [importedPhotoNote, setImportedPhotoNote] = useState("");
   const [isMobile, setIsMobile] = useState(false);
+  const [hasCompanyProfile, setHasCompanyProfile] = useState<boolean | null>(null);
+  const [showProfileGate, setShowProfileGate] = useState(false);
+  const [currentUserId, setCurrentUserId] = useState("");
+  const [currentUserEmail, setCurrentUserEmail] = useState("");
 
   // Stable object URLs for photo thumbnails — revokes previous URLs on change
   const photoUrls = useMemo(() => {
@@ -88,6 +93,8 @@ export default function NewClaimPage() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
       setCrmUserId(user.id);
+      setCurrentUserId(user.id);
+      setCurrentUserEmail(user.email || "");
       try {
         const res = await fetch(`${BACKEND_URL}/api/integrations/status?user_id=${user.id}`);
         if (res.ok) {
@@ -95,6 +102,25 @@ export default function NewClaimPage() {
           setCrmIntegrations({ acculynx: !!data.acculynx, companycam: !!data.companycam });
         }
       } catch { /* ignore — CRM import just won't show */ }
+
+      // Profile gate: claim reports must carry the user's company branding —
+      // not ours. Required fields match the processor's USARM default-fill
+      // list so no USARM field ever leaks into a user's PDF.
+      const { data: profile } = await supabase
+        .from("company_profiles")
+        .select("company_name, logo_path, contact_name, phone, address, city_state_zip")
+        .eq("user_id", user.id)
+        .limit(1)
+        .maybeSingle();
+      const complete = !!(
+        profile?.company_name &&
+        profile?.logo_path &&
+        profile?.contact_name &&
+        profile?.phone &&
+        profile?.address &&
+        profile?.city_state_zip
+      );
+      setHasCompanyProfile(complete);
     }
     checkIntegrations();
   }, [BACKEND_URL]);
@@ -139,6 +165,20 @@ export default function NewClaimPage() {
     e.preventDefault();
     if (!canSubmit) return;
 
+    // Gate: users must have company branding before the processor runs,
+    // otherwise reports ship with USA Roof Masters defaults. Pop the modal,
+    // stash the submit until they save their profile. `null` = profile
+    // check still in flight — pop the gate to be safe rather than let a
+    // claim process with USARM defaults.
+    if (hasCompanyProfile !== true) {
+      setShowProfileGate(true);
+      return;
+    }
+
+    await performSubmit();
+  };
+
+  const performSubmit = async () => {
     trackBoth(FunnelEvent.NEW_CLAIM_FORM_SUBMITTED, {
       phase,
       measurement_count: measurementFiles.length,
@@ -439,6 +479,18 @@ export default function NewClaimPage() {
               );
               setShowAdvanced(true);
             }
+          }}
+        />
+
+        <CompanyProfileGate
+          open={showProfileGate}
+          userId={currentUserId}
+          defaultEmail={currentUserEmail}
+          onClose={() => setShowProfileGate(false)}
+          onSaved={() => {
+            setHasCompanyProfile(true);
+            setShowProfileGate(false);
+            performSubmit();
           }}
         />
 

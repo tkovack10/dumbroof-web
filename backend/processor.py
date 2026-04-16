@@ -1683,15 +1683,27 @@ def _estimate_roof_age(config: dict, photo_analysis: dict) -> tuple:
     return estimated_age, reasoning
 
 
+_STATE_CODE_PREFIX = {
+    "NY": "RCNYS",   # Residential Code of New York State (IRC-based with NY amendments)
+    "OH": "RCO",     # Residential Code of Ohio 2024 (based on 2021 IRC)
+    "PA": "UCC",     # PA Uniform Construction Code (IRC-based)
+    "NJ": "NJUCC",   # NJ Uniform Construction Code (IRC-based)
+    "CT": "CTBC",    # CT State Building Code
+    "MD": "MBC",     # Maryland Building Performance Standards
+    "DE": "DEBC",    # Delaware State Residential Code
+}
+
+
 def _build_code_violations(state: str, line_items: list, trades: list) -> list:
     """Build code violations deterministically from state + scope items.
-    NY uses RCNYS codes, others use IRC."""
+    Uses state-specific code prefix (RCNYS, RCO, etc.) falling back to IRC.
+    Includes manufacturer-install citations — code incorporates manufacturer
+    spec by reference, making factory starter, nailing pattern, house wrap
+    corner laps, etc. enforceable as code."""
     violations = []
     state = state.upper()
-    is_ny = state == "NY"
-    code_prefix = "RCNYS" if is_ny else "IRC"
+    code_prefix = _STATE_CODE_PREFIX.get(state, "IRC")
 
-    # Check what line items are present
     items_text = " ".join(item.get("description", "").lower() for item in line_items)
     has_roofing = any("roofing" in item.get("category", "").lower() for item in line_items)
     has_siding = any("siding" in item.get("category", "").lower() for item in line_items)
@@ -1699,45 +1711,97 @@ def _build_code_violations(state: str, line_items: list, trades: list) -> list:
     has_underlayment = "underlayment" in items_text or "felt" in items_text
     has_flashing = "flashing" in items_text
     has_ice_water = "ice" in items_text and "water" in items_text
+    has_starter = "starter" in items_text
     has_house_wrap = "house wrap" in items_text or "tyvek" in items_text
+    has_shingle = "shingle" in items_text or "laminated" in items_text or "3-tab" in items_text
+    has_vinyl_siding = has_siding and ("vinyl" in items_text)
+    has_wood_siding = has_siding and ("wood" in items_text or "cedar" in items_text)
+    has_fiber_cement = has_siding and ("fiber cement" in items_text or "hardie" in items_text)
+    has_metal_siding = has_siding and ("aluminum siding" in items_text or "metal siding" in items_text)
 
     if has_roofing:
+        # Manufacturer install spec adopted as code — the lever argument.
+        # Carrier must fund EVERY manufacturer-required component: factory
+        # starter, 6-nail pattern, ice-barrier extent, drip edge, synthetic
+        # underlayment per shingle warranty, etc. Omitting any = non-compliant.
+        if has_shingle:
+            violations.append({
+                "code": f"{code_prefix} R905.2.2",
+                "requirement": "Asphalt shingles shall be installed in accordance with this section AND the manufacturer's installation instructions — adopts manufacturer spec as code-enforceable requirement",
+                "status": "Required — manufacturer spec controls fastener count, exposure, starter, drip edge, and warranty-critical details",
+            })
         if has_drip_edge:
             violations.append({
                 "code": f"{code_prefix} R905.2.8.5",
-                "requirement": "Drip edge required at eaves and rake edges of shingle roofs",
+                "requirement": "Drip edge required at eaves and rake edges of shingle roofs; min 2-inch overlap at joints, min 1/4-inch projection below sheathing",
                 "status": "Required — included in scope",
             })
         if has_underlayment:
             violations.append({
                 "code": f"{code_prefix} R905.1.1",
-                "requirement": "Underlayment required beneath roof covering",
+                "requirement": "Underlayment shall be applied in accordance with manufacturer's installation instructions — ASTM D226 / D4869 / D6757 labeling required",
                 "status": "Required — included in scope",
             })
-        if has_ice_water:
+        if has_starter:
             violations.append({
-                "code": f"{code_prefix} R905.2.7.1",
-                "requirement": "Ice barrier required in areas where annual mean temperature is 40°F or less",
+                "code": f"{code_prefix} R905.2.7",
+                "requirement": "Factory starter strip course required along eaves and rakes with pre-applied sealant strip at roof edge; field-cut shingles do not qualify as starter (no sealant = wind-uplift failure)",
+                "status": "Required — included in scope per manufacturer wind-warranty spec",
+            })
+        if has_ice_water:
+            ice_section = "R905.1.2" if code_prefix in ("RCO", "IRC") else "R905.2.7.1"
+            violations.append({
+                "code": f"{code_prefix} {ice_section}",
+                "requirement": "Ice barrier required in areas where the average daily temperature in January is ≤25°F or where ice damming has a history; min 2 feet inside exterior wall line (Climate Zones 5A+ including OH/NY)",
                 "status": "Required — included in scope",
             })
         if has_flashing:
             violations.append({
                 "code": f"{code_prefix} R903.2.1",
-                "requirement": "Flashings shall be installed at wall and roof intersections",
+                "requirement": "Flashings shall be installed at wall and roof intersections, wherever there is a change in roof slope or direction, and around roof openings",
                 "status": "Required — included in scope",
             })
 
     if has_siding:
+        violations.append({
+            "code": f"{code_prefix} R703.1",
+            "requirement": "Exterior walls shall provide the building with a weather-resistant exterior wall envelope — continuous barrier, no terminations at corners or penetrations",
+            "status": "Required — governs whole-elevation integrity",
+        })
         if has_house_wrap:
             violations.append({
-                "code": f"{code_prefix} R703.1",
-                "requirement": "Exterior walls shall provide weather protection with continuous weather-resistant barrier",
-                "status": "Required — included in scope",
-            })
-            violations.append({
                 "code": f"{code_prefix} R703.2",
-                "requirement": "Weather-resistant exterior wall envelope required behind exterior cladding",
-                "status": "Required — house wrap must wrap continuously around outside corners",
+                "requirement": "Water-resistive barrier required behind exterior cladding; applied shingle-fashion with min 2-inch horizontal and 6-inch vertical laps; must wrap continuously around outside corners per manufacturer install spec (Tyvek/StuccoWrap min 6-inch corner overlap)",
+                "status": "Required — forces full-elevation replacement when carrier approves partial",
+            })
+        violations.append({
+            "code": f"{code_prefix} R703.4",
+            "requirement": "Wall flashing required at all exterior wall openings (windows, doors, deck ledgers, penetrations) to redirect water to the exterior of the WRB",
+            "status": "Required — window wraps and door flashings non-negotiable",
+        })
+        if has_vinyl_siding:
+            violations.append({
+                "code": f"{code_prefix} R703.11",
+                "requirement": "Vinyl siding shall conform to ASTM D3679 and be installed in accordance with this section AND the manufacturer's installation instructions (fastener spacing 16-inch o.c. max, 1/32-inch gap under fastener head for thermal movement, corrosion-resistant fasteners with min 3/8-inch head)",
+                "status": "Required — manufacturer install spec adopted as code",
+            })
+        if has_wood_siding:
+            violations.append({
+                "code": f"{code_prefix} R703.5",
+                "requirement": "Wood/hardboard siding shall be installed in accordance with manufacturer's installation instructions — naturally durable species or preservative-treated; corrosion-resistant fasteners with min 1.5-inch penetration into framing",
+                "status": "Required — manufacturer install spec adopted as code",
+            })
+        if has_fiber_cement:
+            violations.append({
+                "code": f"{code_prefix} R703.10",
+                "requirement": "Fiber cement siding shall conform to ASTM C1186 Type A and be installed per manufacturer's installation instructions (min 1.25-inch lap; hot-dipped galvanized or stainless fasteners; all butt joints caulked)",
+                "status": "Required — manufacturer install spec adopted as code",
+            })
+        if has_metal_siding:
+            violations.append({
+                "code": f"{code_prefix} R703.3",
+                "requirement": "Metal siding (aluminum/steel) shall be installed per manufacturer's installation instructions; max 16-inch stud spacing; corrosion-resistant fasteners with min 1-inch framing penetration",
+                "status": "Required — manufacturer install spec adopted as code",
             })
 
     return violations
@@ -1871,7 +1935,7 @@ def build_claim_config(
         else:
             state = "NY"
             print(f"[CONFIG] WARNING: Could not determine state — defaulting to NY")
-    _tax_rates = {"NY": 0.08, "PA": 0.0, "NJ": 0.06625, "CT": 0.0635, "MD": 0.06, "DE": 0.0}
+    _tax_rates = {"NY": 0.08, "PA": 0.0, "NJ": 0.06625, "CT": 0.0635, "MD": 0.06, "DE": 0.0, "OH": 0.0725}
     tax_rate = _tax_rates.get(state, 0.08)
     if state not in _tax_rates:
         print(f"[CONFIG] WARNING: No tax rate configured for state '{state}' — defaulting to 8%. Verify with Tom.")
@@ -3312,8 +3376,8 @@ def build_line_items(measurements: dict, photo_analysis: dict, state: str, user_
             items.append({"category": "GUTTERS", "description": "R&R Seamless aluminum gutter & downspout", "qty": gutter_lf, "unit": "LF", "unit_price": PRICING.get("gutter_aluminum", 10.50)})
 
     # ===================== SIDING (opt-in via estimate_request only) =====================
-    # ALWAYS includes house wrap when siding is scoped
-    # (RCNYS R703.2 — continuous weather-resistant exterior wall envelope required).
+    # ALWAYS includes house wrap when siding is scoped (R703.2 — continuous
+    # weather-resistant exterior wall envelope required per IRC-based code).
     # House wrap corner rule forces full replacement when carrier approves partial.
     if _est_req.get("siding"):
         walls = measurements.get("walls", {})
@@ -3352,7 +3416,7 @@ def build_line_items(measurements: dict, photo_analysis: dict, state: str, user_
             # House wrap — ALWAYS included with siding (code requirement)
             # This is the key argument: house wrap must wrap continuously around outside
             # corners — cannot terminate at a corner joint. Forces full replacement.
-            _code_prefix = "RCNYS" if state == "NY" else "IRC"
+            _code_prefix = _STATE_CODE_PREFIX.get(state, "IRC")
             items.append({"category": "SIDING", "description": f"House wrap / Tyvek (code-required per {_code_prefix} R703.2)", "qty": wall_area, "unit": "SF", "unit_price": PRICING.get("house_wrap", 0.64)})
 
             # Fanfold insulation (under siding, standard on re-side jobs)
