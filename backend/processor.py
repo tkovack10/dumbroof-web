@@ -137,8 +137,13 @@ def _load_pricing(price_list: str = "nybi26") -> dict:
 PRICING = _load_pricing()  # Default NYBI26
 _PRICING_CACHE = {"nybi26": PRICING}
 
-# Canonical state → price list mapping (used everywhere pricing is resolved)
-STATE_PRICE_LIST = {"NY": "NYBI26", "PA": "PAPI26", "NJ": "NJBI26"}
+# Canonical state → price list mapping (used everywhere pricing is resolved).
+# OH: we don't have Ohio-market Xactimate data yet; Pittsburgh PAPI26 is the
+# closest Northeast market (Dayton ↔ Pittsburgh ≈ 270 mi vs Dayton ↔ NYC
+# ≈ 600 mi). Flagged in config so the estimate discloses the proxy market
+# and doesn't silently ship NY prices for an Ohio property.
+STATE_PRICE_LIST = {"NY": "NYBI26", "PA": "PAPI26", "NJ": "NJBI26", "OH": "PAPI26"}
+STATE_PRICE_LIST_IS_PROXY = {"OH": True}
 
 
 # Alfonso's description → build_line_items() pricing key mapping
@@ -587,7 +592,7 @@ If this report includes wall/siding measurements (EagleView Walls report or simi
     return result
 
 
-def analyze_photos(client: anthropic.Anthropic, photo_paths: list[str], user_notes: Optional[str] = None, corrections: list = None, estimate_request: dict = None) -> dict:
+def analyze_photos(client: anthropic.Anthropic, photo_paths: list[str], user_notes: Optional[str] = None, corrections: list = None, estimate_request: dict = None, date_of_loss: Optional[str] = None) -> dict:
     """Send inspection photos to Claude for forensic analysis, in batches."""
     BATCH_SIZE = 5  # 5 resized photos per batch to stay well under API limits
 
@@ -641,6 +646,23 @@ def analyze_photos(client: anthropic.Anthropic, photo_paths: list[str], user_not
     if user_notes:
         notes_ctx = f"\n\nCONTEXT FROM CONTRACTOR: {user_notes}\nUse this context to inform your analysis — identify specific materials mentioned, note any adjuster claims to address, and focus on items the contractor highlighted.\n"
 
+    # Authoritative DOL — contractor notes above may contain a stale/wrong date
+    # (e.g. submitted 3/13, later corrected to 3/14 after NOAA lookup). The
+    # date passed here is the current canonical DOL from the claim row.
+    dol_ctx = ""
+    if date_of_loss:
+        try:
+            dol_human = _format_date_human(date_of_loss)
+        except Exception:
+            dol_human = date_of_loss
+        if dol_human:
+            dol_ctx = (
+                f"\n\nAUTHORITATIVE DATE OF LOSS: {dol_human}\n"
+                f"When any photo_annotation references the storm/wind/hail event date, use EXACTLY this date. "
+                f"If the contractor's notes above mention a different date, IGNORE that date — only the date in this block is authoritative. "
+                f"NEVER invent or substitute a different date.\n"
+            )
+
     corrections_ctx = ""
     if corrections:
         changes_lines = []
@@ -681,7 +703,7 @@ def analyze_photos(client: anthropic.Anthropic, photo_paths: list[str], user_not
 
         content.append({
             "type": "text",
-            "text": f"""You are a forensic roofing damage analyst. Analyze photos {start_num}-{start_num + len(batch) - 1}.{damage_type_ctx}{notes_ctx}{corrections_ctx}
+            "text": f"""You are a forensic roofing damage analyst. Analyze photos {start_num}-{start_num + len(batch) - 1}.{damage_type_ctx}{notes_ctx}{dol_ctx}{corrections_ctx}
 
 STRICT OUTPUT RULES (violations = failure):
 - Each photo_annotation MUST be 1-2 sentences, MAX 150 characters. Lead with the damage finding. No scenery, no context, no preamble.
@@ -1392,36 +1414,37 @@ def search_weather_corroboration(city: str, state: str, storm_date: str) -> list
 
 
 def _build_intel_section(intel_context: dict) -> str:
-    """Build carrier intelligence context string for synthesis prompts. Max ~400 tokens."""
+    """Build carrier intelligence context string for synthesis prompts.
+
+    Returns only QUALITATIVE steering signals (top arguments, common denials)
+    — no numeric statistics, no win rates, no underpayment percentages, no
+    settlement ranges. Those figures are proprietary INTERNAL metrics; when
+    echoed into a customer/carrier-facing report they read as weasel advocacy
+    ("pattern of underpayment averaging X%"). Strip them at the source so
+    Claude can't quote them.
+    """
     if not intel_context:
         return ""
     carrier_intel = intel_context.get("carrier_intelligence", {})
-    settlement = intel_context.get("settlement_prediction", {})
-    score = carrier_intel.get("carrier_score", {})
     args = carrier_intel.get("general_effective_arguments", [])
     denials = carrier_intel.get("anticipated_denials", [])
 
     lines = []
-    if score.get("total_claims"):
-        lines.append(f"HISTORICAL DATA: {score.get('win_rate_pct', 0)}% win rate across {score['total_claims']} claims. "
-                     f"Avg underpayment: {score.get('avg_underpayment_pct', 0)}%.")
     if args:
-        arg_strs = [f"{a['argument']} (${a.get('dollar_impact', 0):,.0f} impact)"
-                    for a in args[:3] if a.get("argument")]
+        arg_strs = [a["argument"] for a in args[:3] if a.get("argument")]
         if arg_strs:
-            lines.append("Top arguments: " + "; ".join(arg_strs))
+            lines.append("Top effective arguments: " + "; ".join(arg_strs))
     if denials:
-        denial_strs = [f"{d['tactic_type']} ({d['count']}x)" for d in denials[:3] if isinstance(d, dict) and d.get("tactic_type")]
+        denial_strs = [d["tactic_type"] for d in denials[:3] if isinstance(d, dict) and d.get("tactic_type")]
         if denial_strs:
-            lines.append("Common denials: " + ", ".join(denial_strs))
-    if settlement.get("data_points", 0) >= 2:
-        rng = settlement.get("predicted_settlement_range", {})
-        if rng and rng.get("low") is not None:
-            lines.append(f"Settlement prediction: ${rng.get('low', 0):,.0f}-${rng.get('high', 0):,.0f} "
-                        f"({settlement['confidence']} confidence)")
+            lines.append("Common carrier denial patterns to preempt: " + ", ".join(denial_strs))
     if not lines:
         return ""
-    return "\n\n" + "\n".join(lines) + "\nWeave relevant patterns where evidence supports them.\n"
+    return (
+        "\n\nINTERNAL STEERING CONTEXT (do NOT quote or reference in output — this is only for shaping which arguments you emphasize):\n"
+        + "\n".join(lines)
+        + "\n"
+    )
 
 
 from date_utils import format_date_human as _format_date_human
@@ -1459,6 +1482,92 @@ def _enforce_property_address(paragraphs: list, canonical_address: str) -> list:
     return [pattern.sub(_replace, p) if isinstance(p, str) else p for p in paragraphs]
 
 
+# Phrases that must NEVER appear in customer/carrier-facing narrative.
+# These are the signatures of weasel-advocacy language — claims about historical
+# carrier behavior, underpayment statistics, or pattern rhetoric not grounded
+# in THIS property's evidence. Last-line defense behind the prompt rules.
+_WEASEL_PATTERNS = [
+    re.compile(r"\bhistorical\s+claim\s+(data|patterns?)\b", re.IGNORECASE),
+    re.compile(r"\bpattern\s+of\s+(significant\s+)?(underpayment|undervaluation)\b", re.IGNORECASE),
+    re.compile(r"\bconsistent\s+underval(ua|u)tion\b", re.IGNORECASE),
+    re.compile(r"\bsignificant\s+underpayment\b", re.IGNORECASE),
+    re.compile(r"\baveraging\s+(over\s+)?\d+\s*%", re.IGNORECASE),
+    re.compile(r"\bavg\.?\s+underpayment\b", re.IGNORECASE),
+    re.compile(r"\bunderpayment\s+(percentage|pct|rate|averaging)\b", re.IGNORECASE),
+    re.compile(r"\bhistory\s+of\s+(significant\s+)?underpay(ing|ment)\b", re.IGNORECASE),
+    re.compile(r"\bexcessive\s+depreciation\s+(and|&)\s+omission\b", re.IGNORECASE),
+]
+
+
+def _scrub_wrong_state_codes(paragraphs: list, state: str) -> list:
+    """Replace NY-only code citations with the correct jurisdiction when the
+    property is in another state. Prompts tell Claude not to do this, but it
+    sometimes leaks RCNYS/11 NYCRR/§ 2601 from training exposure.
+
+    Surgical replacement — keeps the sentence structure, swaps only the
+    code prefix. For non-NY states we also drop "11 NYCRR" / "§ 2601"
+    phrases entirely since they're NY-specific advocacy regs with no
+    equivalent elsewhere.
+    """
+    if not paragraphs:
+        return paragraphs
+    st = (state or "").upper()
+    if st == "NY":
+        return paragraphs
+    target_prefix = _STATE_CODE_PREFIX.get(st, "IRC")
+    rcnys_pat = re.compile(r"\bRCNYS\b")
+    nycrr_pat = re.compile(r"\s*(?:under|per)?\s*11\s*NYCRR(?:\s*§?\s*[\d.]+)?", re.IGNORECASE)
+    ny2601_pat = re.compile(r"\s*(?:under|per)?\s*§\s*2601(?:\.\d+)?", re.IGNORECASE)
+    swaps = 0
+    out = []
+    for p in paragraphs:
+        if not isinstance(p, str):
+            out.append(p)
+            continue
+        new_p, n1 = rcnys_pat.subn(target_prefix, p)
+        swaps += n1
+        new_p, n2 = nycrr_pat.subn("", new_p)
+        swaps += n2
+        new_p, n3 = ny2601_pat.subn("", new_p)
+        swaps += n3
+        out.append(new_p)
+    if swaps:
+        print(f"[STATE-CODE-SCRUB] Replaced/removed {swaps} NY-only code citations (state={st}, target={target_prefix})", flush=True)
+    return out
+
+
+def _strip_weasel_advocacy(paragraphs: list) -> list:
+    """Drop any sentence containing banned advocacy-statistic language.
+
+    The forensic + conclusion prompts forbid this, but Claude occasionally
+    echoes intel_context stats into the narrative. This is a belt-and-suspenders
+    filter at the paragraph level — we drop only the offending *sentence*, not
+    the whole paragraph, so the surrounding evidence-grounded narrative survives.
+    """
+    if not paragraphs:
+        return paragraphs
+    dropped = 0
+    out = []
+    for p in paragraphs:
+        if not isinstance(p, str):
+            out.append(p)
+            continue
+        sentences = re.split(r"(?<=[.!?])\s+", p)
+        kept = []
+        for s in sentences:
+            if any(pat.search(s) for pat in _WEASEL_PATTERNS):
+                dropped += 1
+                continue
+            kept.append(s)
+        out.append(" ".join(kept).strip() if kept else "")
+    out = [p for p in out if p]
+    if dropped:
+        print(f"[WEASEL-FILTER] Stripped {dropped} sentence(s) with advocacy-statistic language", flush=True)
+    else:
+        print(f"[WEASEL-FILTER] No banned phrases in {len(paragraphs)} paragraph(s)", flush=True)
+    return out
+
+
 def synthesize_executive_summary(
     client: anthropic.Anthropic,
     damage_summary: str,
@@ -1470,6 +1579,7 @@ def synthesize_executive_summary(
     intel_context: dict = None,
     property_address: str = "",
     date_of_loss: str = "",
+    state: str = "",
 ) -> list[str]:
     """Use Claude to synthesize raw damage data into a structured executive summary.
     Returns a list of paragraph strings (3-5 paragraphs)."""
@@ -1485,14 +1595,26 @@ def synthesize_executive_summary(
     intel_section = _build_intel_section(intel_context)
 
     dol_display = _format_date_human(date_of_loss) if date_of_loss else ""
+    state_u = (state or "").upper()
+    state_code_prefix = _STATE_CODE_PREFIX.get(state_u, "IRC")
+    state_code_guidance = f"{state_code_prefix} (or generic IRC)" if state_u else "IRC"
     prompt = f"""You are writing the Executive Summary for a forensic causation report on a storm-damaged property.
 Property address: {property_address}
+Property state: {state_u or 'unknown'}
 Date of loss: {dol_display or 'not specified'}
 The roofing material is: {material}
 
 CRITICAL: The property address is EXACTLY "{property_address}". Use this address verbatim in the report. NEVER change the house number even if a photo appears to show a different number.
 
 CRITICAL: The date of loss is EXACTLY "{dol_display or 'not specified'}". When you reference the date of loss in the report, write it exactly as given. NEVER invent, guess, or paraphrase a different date. NEVER confuse the date of loss with the inspection date. If the date of loss is "not specified", write "the reported storm event" instead of making up a date.
+
+CRITICAL — BUILDING CODE JURISDICTION: The property is in state "{state_u or 'unknown'}". When you cite building codes, you MUST use the correct jurisdiction:
+- OH (Ohio) → cite "RCO" (Residential Code of Ohio) or the underlying IRC section
+- NY (New York) → cite "RCNYS" (Residential Code of New York State)
+- PA → cite "UCC" or IRC
+- NJ → cite "NJUCC" or IRC
+- Unknown or other states → cite the generic "IRC" (International Residential Code)
+For THIS property, use "{state_code_guidance}" as your code prefix. NEVER cite "RCNYS" or "11 NYCRR" or "§ 2601" unless the state is NY. Doing so = fabricated/inapplicable code citation = report ships with false authority = credibility destroyed with the carrier.
 
 Raw damage analysis from photo inspection:
 {damage_summary[:3000]}
@@ -1520,6 +1642,7 @@ RULES:
 - Weave evidence together gracefully — build the case paragraph by paragraph
 - Reference specific evidence (chalk testing, fracture patterns, code requirements) without being exhaustive
 - CRITICAL UPPA COMPLIANCE: This is written for a CONTRACTOR (not a public adjuster or attorney). NEVER use "on behalf of," "demand," "appeal," cite 11 NYCRR, § 2601, or any advocacy/regulatory language. Contractors document and recommend — they do NOT advocate or negotiate.
+- CRITICAL — NO ADVOCACY STATISTICS: This is a customer/carrier-facing document. NEVER cite carrier history, historical claim patterns, prior-claim data for this property, average underpayment percentages, win rates, or phrases like "consistent undervaluation", "significant underpayment", "pattern of", "averaging X%", or "undervalued". The CARRIER INTELLIGENCE block above is internal context to steer your argument quality — it is NOT source material to quote. Ground every statement in THIS property's documented evidence only.
 - CRITICAL: This is a SINGLE property at a single address. Multiple structures (main dwelling, garage, shed, porch) are all part of ONE property. NEVER reference "two properties", "both properties", or "multiple properties."
 - The inspection documented exactly {photo_count} photographs. Do NOT fabricate photo counts. If you reference photo counts, use exactly {photo_count}.
 
@@ -1548,6 +1671,8 @@ def synthesize_conclusion(
     property_address: str = "",
     storm_event: str = "",
     finding_count: int = 0,
+    date_of_loss: str = "",
+    state: str = "",
 ) -> list[str]:
     """Use Claude to synthesize a structured conclusion. Returns list of paragraph strings."""
     carrier_rcv = carrier_data.get("carrier_rcv", 0) if carrier_data else 0
@@ -1555,11 +1680,28 @@ def synthesize_conclusion(
     violations_text = "\n".join(f"- {v.get('code','')}: {v.get('requirement', v.get('description',''))}" for v in code_violations[:10])
     intel_section = _build_intel_section(intel_context)
 
+    dol_display = _format_date_human(date_of_loss) if date_of_loss else (storm_event or "")
+    state_u = (state or "").upper()
+    state_code_prefix = _STATE_CODE_PREFIX.get(state_u, "IRC")
+    state_code_guidance = f"{state_code_prefix} (or generic IRC)" if state_u else "IRC"
+
     prompt = f"""You are writing the Conclusion & Scope Determination section for a forensic causation report.
 Property address: {property_address}
+Property state: {state_u or 'unknown'}
+Date of loss: {dol_display or 'not specified'}
 Roofing material: {material}
 
 CRITICAL: The property address is EXACTLY "{property_address}". Use this address verbatim anywhere you reference the property. NEVER change the house number, street name, city, or ZIP even if a photo appears to show a different number. Do not invent or paraphrase the address.
+
+CRITICAL: The date of loss is EXACTLY "{dol_display or 'not specified'}". Any storm date referenced in this section MUST be written exactly as given. NEVER invent, paraphrase, or substitute a different date. If the damage summary below mentions a different date, IGNORE it — only the date above is authoritative. If "not specified", write "the reported storm event" instead.
+
+CRITICAL — BUILDING CODE JURISDICTION: The property is in state "{state_u or 'unknown'}". When you cite building codes, you MUST use the correct jurisdiction:
+- OH (Ohio) → cite "RCO" or the underlying IRC section
+- NY (New York) → cite "RCNYS"
+- PA → cite "UCC" or IRC
+- NJ → cite "NJUCC" or IRC
+- Unknown or other states → cite the generic "IRC"
+For THIS property, use "{state_code_guidance}". NEVER cite "RCNYS" or "11 NYCRR" or "§ 2601" unless the state is NY. Wrong-jurisdiction codes = fabricated citations = credibility destroyed.
 
 Key forensic findings:
 {findings_text}
@@ -1587,6 +1729,7 @@ RULES:
 - Build toward the conclusion logically
 - Do NOT pad with filler or repeat minor wear details
 - CRITICAL UPPA COMPLIANCE: This is written for a CONTRACTOR. NEVER use "on behalf of," "demand," "appeal," cite 11 NYCRR, § 2601, or any advocacy language. Use factual documentation language — "our analysis identifies," "the documented damage requires," NOT "we demand" or "the carrier must."
+- CRITICAL — NO ADVOCACY STATISTICS: This is a customer/carrier-facing document. NEVER cite carrier history, historical claim patterns, prior-claim data for this property, average underpayment percentages, win rates, or phrases like "consistent undervaluation", "significant underpayment", "pattern of", "averaging X%", or "undervalued". The CARRIER INTELLIGENCE block above is internal context to steer your argument quality — it is NOT source material to quote. Ground every statement in THIS property's documented evidence only.
 - CRITICAL: This is a SINGLE property at ONE address. Multiple structures (main dwelling, garage, shed, porch) are all part of ONE property. NEVER say "two properties", "both properties", or "multiple properties."
 
 Return ONLY a JSON array of paragraph strings: ["paragraph 1...", "paragraph 2...", ...]"""
@@ -2135,7 +2278,7 @@ def build_claim_config(
             "ceo_title": (company_profile or {}).get("contact_title", ""),
             "email": (company_profile or {}).get("email", ""),
             "cell_phone": (company_profile or {}).get("phone", ""),
-            "office_phone": (company_profile or {}).get("office_phone", "267-332-0197"),
+            "office_phone": (company_profile or {}).get("office_phone", ""),
             "website": (company_profile or {}).get("website", ""),
         },
         "property": {
@@ -2184,6 +2327,7 @@ def build_claim_config(
         "financials": {
             "tax_rate": tax_rate,
             "price_list": STATE_PRICE_LIST.get(state, "NYBI26"),
+            "price_list_is_proxy": STATE_PRICE_LIST_IS_PROXY.get(state, False),
             "deductible": carrier_data.get("carrier_deductible", 0) if carrier_data else 0,
         },
         "structures": structs,  # shingle_type populated below from photo analysis
@@ -2277,6 +2421,9 @@ def build_claim_config(
     # Set correct price list for state if not from carrier
     if not config["financials"].get("price_list"):
         config["financials"]["price_list"] = STATE_PRICE_LIST.get(state, "NYBI26")
+    if state in STATE_PRICE_LIST_IS_PROXY:
+        config["financials"]["price_list_is_proxy"] = True
+        print(f"[PRICING] WARNING: {state} has no native Xactimate market data; using {config['financials']['price_list']} as regional proxy. Add Ohio pricing via Alfonso's data-collection pipeline.")
 
     # Clean trade names: underscores → spaces for display
     trades = [t.replace("_", " ").title() for t in trades]
@@ -3859,7 +4006,10 @@ async def process_claim(claim_id: str):
             except Exception as e:
                 print(f"[PROCESS] Domain admin lookup failed: {e}", flush=True)
 
-    _usarm_defaults = {
+    # Identity fields — only use USARM values when NO user profile exists.
+    # Never fill these from USARM for a user's profile; that leaked the
+    # office phone / address into users' PDFs (see Dominic 2026-04-16).
+    _usarm_identity = {
         "company_name": "USA ROOF MASTERS",
         "address": "3070 Bristol Pike, Building 1, Suite 122",
         "city_state_zip": "Bensalem, PA 19020",
@@ -3869,14 +4019,15 @@ async def process_claim(claim_id: str):
         "phone": "267-679-1504",
         "office_phone": "267-332-0197",
         "website": "www.USARoofMasters.com",
+    }
+    _neutral_defaults = {
         "user_role": "contractor",
     }
     if not company_profile:
-        company_profile = dict(_usarm_defaults)
+        company_profile = {**_usarm_identity, **_neutral_defaults}
         print("[PROCESS] No company profile — using USARM defaults")
     else:
-        # Fill in any empty fields with USARM defaults (users may leave fields blank)
-        for key, default_val in _usarm_defaults.items():
+        for key, default_val in _neutral_defaults.items():
             if not company_profile.get(key):
                 company_profile[key] = default_val
 
@@ -4125,6 +4276,7 @@ async def process_claim(claim_id: str):
                 user_notes=claim.get("user_notes"),
                 corrections=few_shot_corrections,
                 estimate_request=claim.get("estimate_request"),
+                date_of_loss=claim.get("date_of_loss"),
             )
 
             # ── Cache the result for future reprocesses ──
@@ -4466,6 +4618,27 @@ async def process_claim(claim_id: str):
                                 print(f"[NOAA] Failed to persist weather data: {we}")
                     else:
                         print(f"[NOAA] No storm events found for {address_str} on {storm_date}")
+                        # Fallback: NCEI Storm Events DB has ~60-day publication
+                        # latency, so recent storms won't be there yet. If the
+                        # claims row already has weather_data (from a prior
+                        # successful query OR from a manual seed), use that to
+                        # populate config.weather.noaa so the wind chart still
+                        # renders.
+                        try:
+                            existing = sb.table("claims").select("weather_data").eq("id", claim_id).single().execute()
+                            pre_seeded = (existing.data or {}).get("weather_data") or None
+                            if pre_seeded and pre_seeded.get("event_count", 0) > 0:
+                                max_wind = pre_seeded.get("max_wind_mph", 0) or 0
+                                max_hail = pre_seeded.get("max_hail_inches", 0) or 0
+                                config.setdefault("weather", {}).setdefault("noaa", {})
+                                config["weather"]["noaa"]["max_wind_mph"] = max_wind
+                                config["weather"]["noaa"]["max_hail_inches"] = max_hail
+                                config["weather"]["noaa"]["event_count"] = pre_seeded.get("event_count", 0)
+                                config["weather"]["noaa"]["events"] = pre_seeded.get("events", [])
+                                config["weather"]["noaa"]["source_note"] = "Pre-seeded weather_data used (NCEI Storm Events DB has ~60-day publication lag)"
+                                print(f"[NOAA] Using pre-seeded weather_data: max_wind={max_wind}mph, max_hail={max_hail}\", events={pre_seeded.get('event_count', 0)}")
+                        except Exception as fe:
+                            print(f"[NOAA] Pre-seed fallback skipped: {fe}")
                 else:
                     print(f"[NOAA] Could not geocode address: {address_str}")
         except Exception as e:
@@ -4542,9 +4715,12 @@ async def process_claim(claim_id: str):
                 intel_context=intel_context,
                 property_address=exec_address,
                 date_of_loss=exec_dol,
+                state=config.get("property", {}).get("state", "") or state,
             )
             if isinstance(exec_paragraphs, list):
                 exec_paragraphs = _enforce_property_address(exec_paragraphs, exec_address)
+                exec_paragraphs = _scrub_wrong_state_codes(exec_paragraphs, config.get("property", {}).get("state", "") or state)
+                exec_paragraphs = _strip_weasel_advocacy(exec_paragraphs)
             config["forensic_findings"]["executive_summary"] = exec_paragraphs
         except Exception as e:
             print(f"[PROCESS] Executive summary synthesis failed (non-fatal): {e}")
@@ -4566,11 +4742,15 @@ async def process_claim(claim_id: str):
                 property_address=conclusion_address,
                 storm_event=conclusion_storm,
                 finding_count=conclusion_count,
+                date_of_loss=raw_storm,
+                state=config.get("property", {}).get("state", "") or state,
             )
             if conclusion_paragraphs and isinstance(conclusion_paragraphs, list):
                 address = conclusion_address or "the property"
                 conclusion_paragraphs = [p for p in conclusion_paragraphs if isinstance(p, str)]
                 conclusion_paragraphs = _enforce_property_address(conclusion_paragraphs, address)
+                conclusion_paragraphs = _scrub_wrong_state_codes(conclusion_paragraphs, config.get("property", {}).get("state", "") or state)
+                conclusion_paragraphs = _strip_weasel_advocacy(conclusion_paragraphs)
                 config["forensic_findings"]["conclusion_paragraphs"] = conclusion_paragraphs
             else:
                 print(f"[PROCESS] Conclusion synthesis returned {type(conclusion_paragraphs)} — skipping placeholder replacement")

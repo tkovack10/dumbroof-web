@@ -273,35 +273,38 @@ class NOAAClient:
 
         return storm_data
 
+    # Distance threshold (miles) for the state-wide fallback query. Adjacent
+    # counties are typically 15-40 mi away; storms straddle county lines so we
+    # cast a wide net but exclude the other end of the state.
+    _STATEWIDE_FALLBACK_RADIUS_MI = 50.0
+
     def _query_storm_events_db(self, lat: float, lon: float, dol: datetime,
                                 state_fips: str, county_fips: str, county_name: str,
                                 storm_data: NOAAStormData) -> List[NOAAStormEvent]:
         """Query NOAA Storm Events Database — authoritative verified reports.
         Same data source as https://www.ncei.noaa.gov/stormevents/
-        Filters: county, date range, event type (hail + thunderstorm wind)
+        Filters: county, date range, event type (hail + thunderstorm wind).
+
+        If the target county has zero events (common for storm tracks that
+        graze one county and hit the next — e.g. Laura, OH [Miami County]
+        missed a 59mph event 22 mi south in Vandalia [Montgomery County]),
+        falls back to a state-wide query filtered by haversine distance
+        (<= _STATEWIDE_FALLBACK_RADIUS_MI from the property).
         """
         state_name = _STATE_NAMES.get(state_fips, "")
         if not state_name:
             print(f"[NOAA] Unknown state FIPS: {state_fips}")
             return []
 
-        # Search ±2 days around DOL
         start = dol - timedelta(days=2)
         end = dol + timedelta(days=2)
-
-        # Build county param: "BROOME:7" format
-        county_clean = county_name.replace(" COUNTY", "").replace(" PARISH", "")
-        county_fips_short = county_fips.lstrip("0") or "0"
-
-        # Build URL with multiple eventType params (hail + thunderstorm wind)
-        base_params = {
+        common_params = {
             "beginDate_mm": f"{start.month:02d}",
             "beginDate_dd": f"{start.day:02d}",
             "beginDate_yyyy": str(start.year),
             "endDate_mm": f"{end.month:02d}",
             "endDate_dd": f"{end.day:02d}",
             "endDate_yyyy": str(end.year),
-            "county": f"{county_clean}:{county_fips_short}",
             "hailfilter": "0.00",
             "tornfilter": "0",
             "windfilter": "000",
@@ -309,69 +312,81 @@ class NOAAClient:
             "submitbutton": "Search",
             "statefips": f"{state_fips},{state_name.replace(' ', '+')}",
         }
+        county_clean = county_name.replace(" COUNTY", "").replace(" PARISH", "")
+        county_fips_short = county_fips.lstrip("0") or "0"
 
+        county_params = dict(common_params)
+        county_params["county"] = f"{county_clean}:{county_fips_short}"
+        events = self._fetch_storm_events(lat, lon, county_params, storm_data, max_distance_mi=None)
+
+        # Fallback: widen to state-wide with distance filter when county is empty.
+        # This catches storm tracks that deposited damage in adjacent counties.
+        if not events:
+            print(f"[NOAA] {county_clean} county query empty — widening to statewide within {self._STATEWIDE_FALLBACK_RADIUS_MI:.0f} mi")
+            events = self._fetch_storm_events(
+                lat, lon, common_params, storm_data,
+                max_distance_mi=self._STATEWIDE_FALLBACK_RADIUS_MI,
+            )
+
+        hail_count = sum(1 for e in events if e.magnitude_type == "hail_inches")
+        wind_count = sum(1 for e in events if e.magnitude_type == "wind_mph")
+        print(f"[NOAA] Storm Events DB: {len(events)} events ({hail_count} hail, {wind_count} wind)")
+        return events
+
+    def _fetch_storm_events(self, lat: float, lon: float, base_params: dict,
+                             storm_data: NOAAStormData,
+                             max_distance_mi: Optional[float] = None) -> List[NOAAStormEvent]:
+        """Fetch & parse one Storm Events CSV query. Filters rows by distance
+        when max_distance_mi is supplied (statewide fallback)."""
         query_parts = []
         for k, v in base_params.items():
             query_parts.append(f"{k}={urllib.parse.quote(str(v), safe='+:')}")
-        # Multiple eventType params — hail + thunderstorm wind
         for evt_type in ["(C) Hail", "(C) Thunderstorm Wind"]:
             query_parts.append(f"eventType={urllib.parse.quote(evt_type, safe='+')}")
-
         url = f"{self.STORM_EVENTS_BASE}/csv?{'&'.join(query_parts)}"
         storm_data.query_urls.append(url)
         print(f"[NOAA] Storm Events URL: {url}")
 
-        all_events = []
+        all_events: List[NOAAStormEvent] = []
         try:
             content = _fetch_url(url)
             if not content:
                 print("[NOAA] Storm Events: empty response")
                 return all_events
-
-            # Check if response is CSV (has EVENT_ID column header)
             first_line = content.split("\n")[0] if content else ""
             if "EVENT_ID" not in first_line:
                 print(f"[NOAA] Storm Events response not CSV. First 200 chars: {content[:200]}")
                 return all_events
-
             reader = csv.DictReader(io.StringIO(content))
             rows = list(reader)
-            if rows:
-                cols = list(rows[0].keys())
-                print(f"[NOAA] CSV: {len(rows)} rows, columns: {cols[:10]}...")
-            else:
+            if not rows:
                 print("[NOAA] CSV parsed but 0 data rows")
                 return all_events
-
+            print(f"[NOAA] CSV: {len(rows)} rows")
             for row in rows:
                 try:
                     evt_lat = float(row.get("BEGIN_LAT") or 0)
                     evt_lon = float(row.get("BEGIN_LON") or 0)
                     if evt_lat == 0 or evt_lon == 0:
                         continue
-
                     dist = _haversine_miles(lat, lon, evt_lat, evt_lon)
-
+                    if max_distance_mi is not None and dist > max_distance_mi:
+                        continue
                     event_type = row.get("EVENT_TYPE", "").strip()
                     mag = float(row.get("MAGNITUDE") or 0)
-
                     if "hail" in event_type.lower():
                         mag_type = "hail_inches"
                     elif "wind" in event_type.lower():
                         mag_type = "wind_mph"
                     else:
-                        continue  # Skip unknown event types
-
+                        continue
                     evt_date = row.get("BEGIN_DATE", row.get("BEGIN_DATE_TIME", "")).strip()
                     evt_time = row.get("BEGIN_TIME", "").strip()
                     narrative = row.get("EVENT_NARRATIVE", "").strip()
                     location = row.get("BEGIN_LOCATION", row.get("CZ_NAME", "")).strip()
-
-                    # Capture episode narrative (storm-wide NWS description)
                     ep_narr = row.get("EPISODE_NARRATIVE", "").strip()
                     if ep_narr and not storm_data.episode_narrative:
                         storm_data.episode_narrative = ep_narr.replace("||", " ")
-
                     all_events.append(NOAAStormEvent(
                         source="STORM_EVENTS_DB",
                         event_type=event_type,
@@ -389,14 +404,9 @@ class NOAAClient:
                 except (KeyError, ValueError) as e:
                     print(f"[NOAA] Row parse error: {e}")
                     continue
-
         except Exception as e:
             print(f"[NOAA] Storm Events DB error: {e}")
             storm_data.query_urls[-1] += f" (error: {e})"
-
-        hail_count = sum(1 for e in all_events if e.magnitude_type == "hail_inches")
-        wind_count = sum(1 for e in all_events if e.magnitude_type == "wind_mph")
-        print(f"[NOAA] Storm Events DB: {len(all_events)} events ({hail_count} hail, {wind_count} wind) in {county_clean} county")
         return all_events
 
     def _query_spc_daily(self, lat: float, lon: float, dol: datetime,

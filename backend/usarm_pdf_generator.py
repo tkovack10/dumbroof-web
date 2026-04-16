@@ -1428,10 +1428,23 @@ def _build_noaa_citation(weather):
         html += '<tr><th>Source</th><th>Type</th><th>Magnitude</th><th>Distance</th><th>Detail</th></tr>\n'
         for evt in events[:10]:  # Limit to top 10
             src = evt.get("source", "").replace("SWDI_", "").replace("SPC_", "SPC ")
-            mag = f'{evt["magnitude"]}"' if evt.get("magnitude_type") == "hail_inches" else f'{evt["magnitude"]} mph'
+            # Robust magnitude extraction — seeded/manual weather data may use
+            # `wind_speed`/`hail_size` instead of `magnitude`/`magnitude_type`.
+            raw_mag = evt.get("magnitude")
+            mag_type = evt.get("magnitude_type", "")
+            if raw_mag is None:
+                if evt.get("hail_size") is not None:
+                    raw_mag = evt["hail_size"]
+                    mag_type = mag_type or "hail_inches"
+                elif evt.get("wind_speed") is not None:
+                    raw_mag = evt["wind_speed"]
+                    mag_type = mag_type or "wind_mph"
+                else:
+                    continue  # nothing to display for this event
+            mag = f'{raw_mag}"' if mag_type == "hail_inches" else f'{raw_mag} mph'
             dist = f'{evt.get("distance_miles", 0):.1f} mi'
             detail = evt.get("source_detail", "")[:50]
-            color = 'color:#c8102e;font-weight:700;' if evt.get("magnitude_type") == "hail_inches" else ''
+            color = 'color:#c8102e;font-weight:700;' if mag_type == "hail_inches" else ''
             html += f'<tr><td>{src}</td><td>{evt.get("event_type", "")}</td><td style="{color}">{mag}</td><td>{dist}</td><td>{detail}</td></tr>\n'
         html += '</table>\n'
 
@@ -3199,6 +3212,20 @@ def build_appeal_letter(config):
     if not cc_line and appeal.get("cc_recipients"):
         cc_line = ", ".join(appeal["cc_recipients"])
 
+    # Build contact line conditionally — small contractors often have one phone,
+    # not an office + cell pair. Empty values must not render as "None" or blank labels.
+    _contact_bits = []
+    _office = (company.get("office_phone") or "").strip()
+    _cell = (company.get("cell_phone") or "").strip()
+    _email = (company.get("email") or "").strip()
+    if _office:
+        _contact_bits.append(f"Office: {_office}")
+    if _cell:
+        _contact_bits.append(f"Cell: {_cell}" if _office else _cell)
+    if _email:
+        _contact_bits.append(_email)
+    contact_line = " | ".join(_contact_bits)
+
     html = f"""<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -3216,7 +3243,7 @@ h2 {{ font-size: 13pt; }}
     <img src="{logo_b64}" alt="{company['name']}" style="height:60pt; width:auto; margin-bottom:8pt;"><br>
     <div style="font-size:18pt; font-weight:800; color:#0d2137; letter-spacing:2pt;">{company['name']}</div>
     <div style="font-size:9pt; color:#666;">{company['address']} | {company['city_state_zip']}<br>
-    Office: {company['office_phone']} | Cell: {company['cell_phone']} | {company['email']}</div>
+    {contact_line}</div>
 </div>
 
 <hr style="border:none; border-top:2px solid #0d2137; margin:16pt 0;">

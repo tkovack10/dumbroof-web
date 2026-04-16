@@ -152,14 +152,20 @@ async def debug_profile(user_id: str):
 
 @app.post("/api/reprocess/{claim_id}")
 async def reprocess_claim(claim_id: str, background_tasks: BackgroundTasks):
-    """Re-process a claim after additional documents are uploaded."""
+    """Re-process a claim after additional documents are uploaded.
+
+    Clears cached_photo_analysis so the photo narrative is regenerated
+    fresh — otherwise stale DOL/address strings baked into the cache
+    would survive DOL edits or address corrections.
+    """
     sb = get_supabase_client()
-    # Verify claim exists
     result = sb.table("claims").select("id, status").eq("id", claim_id).single().execute()
     if not result.data:
         raise HTTPException(status_code=404, detail="Claim not found")
-    # Set status to processing directly — don't use "uploaded" to avoid poller race condition
-    sb.table("claims").update({"status": "processing"}).eq("id", claim_id).execute()
+    sb.table("claims").update({
+        "status": "processing",
+        "cached_photo_analysis": None,
+    }).eq("id", claim_id).execute()
     background_tasks.add_task(run_processing, claim_id)
     return {"status": "reprocessing", "claim_id": claim_id}
 
@@ -1130,7 +1136,7 @@ async def claim_brain_chat(claim_id: str, body: ChatMessage):
             max_tool_rounds = 3
             for _round in range(max_tool_rounds):
                 response = client.messages.create(
-                    model="claude-sonnet-4-20250514",
+                    model="claude-opus-4-6",
                     max_tokens=4096,
                     system=system_prompt,
                     messages=messages,
@@ -1248,7 +1254,7 @@ async def claim_brain_chat(claim_id: str, body: ChatMessage):
                 log_processing_step(
                     claim_id=claim_id,
                     step_name="claim_brain_chat",
-                    model="claude-sonnet-4-20250514",
+                    model="claude-opus-4-6",
                     prompt_tokens=int(prompt_tokens * 1.3),
                     completion_tokens=int(completion_tokens * 1.3),
                 )

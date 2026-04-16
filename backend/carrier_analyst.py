@@ -45,13 +45,13 @@ def analyze_carrier_scope(
             response = call_claude_fn(
                 claude_client,
                 _step_name="carrier_analyst",
-                model="claude-sonnet-4-6",
+                model="claude-opus-4-6",
                 max_tokens=2048,
                 messages=[{"role": "user", "content": prompt}],
             )
         else:
             response = claude_client.messages.create(
-                model="claude-sonnet-4-6",
+                model="claude-opus-4-6",
                 max_tokens=2048,
                 messages=[{"role": "user", "content": prompt}],
             )
