@@ -10,11 +10,15 @@ import { sendCapiEvent, CapiEventName, extractMetaTracking } from "@/lib/meta-co
 async function notifyNewSignup(email: string) {
   try {
     const origin = process.env.NEXT_PUBLIC_APP_URL || "https://www.dumbroof.ai";
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 8000);
     await fetch(`${origin}/api/notify-signup`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email, source: "google_oauth" }),
+      signal: controller.signal,
     });
+    clearTimeout(timeout);
   } catch {
     // Non-fatal
   }
@@ -47,8 +51,10 @@ export async function GET(request: Request) {
           .eq("user_id", user.id);
 
         if (count === 0) {
-          // New user — notify team + send welcome email (both handled by notifyNewSignup)
-          notifyNewSignup(user.email || "unknown");
+          // New user — notify team + send welcome email (both handled by notifyNewSignup).
+          // MUST await: fire-and-forget here gets killed when Vercel terminates the
+          // function on redirect. 2026-04-06 burst of 7 signups missed welcome this way.
+          await notifyNewSignup(user.email || "unknown");
 
           // Fire Meta CAPI Lead event server-side. iOS 14+ blocks the
           // browser pixel for ~25-40% of users. Without this, Meta's
