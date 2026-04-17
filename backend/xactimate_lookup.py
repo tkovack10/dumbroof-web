@@ -78,6 +78,7 @@ DEFAULT_MARKETS = {
     "MI": "MIDE8X_APR26",   # Detroit
     "IL": "ILCC8X_APR26",   # Chicago
     "MN": "MNMN8X_APR26",   # Minneapolis (pending: 12/22 priced)
+    "TX": "TXDF8X_APR26",   # Dallas-Fort Worth — largest TX metro (Alfonso 2026-04-17, 24 markets)
 }
 
 # Negative keyword exclusions for scope comparison matching (PRE-COMPILED)

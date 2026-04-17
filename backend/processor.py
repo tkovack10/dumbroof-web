@@ -139,12 +139,13 @@ _PRICING_CACHE = {"nybi26": PRICING}
 
 # Canonical state → price list display label (shown in PDF estimate header).
 # Actual price overlay comes from XactRegistry.resolve_market() + all-markets.json,
-# which now covers 84 markets across NY/NJ/PA/MD/DE/OH/MI/IL/MN as of 2026-04-16.
+# which now covers 108 markets across NY/NJ/PA/MD/DE/OH/MI/IL/MN/TX as of 2026-04-17.
 STATE_PRICE_LIST = {
     "NY": "NYBI26", "PA": "PAPI26", "NJ": "NJBI26",
     "OH": "OHDT26", "MI": "MIDE26", "IL": "ILCC26", "MN": "MNMN26",
+    "TX": "TXDF26",
 }
-STATE_PRICE_LIST_IS_PROXY = {}  # Midwest (OH/MI/IL/MN) now native as of 2026-04-16
+STATE_PRICE_LIST_IS_PROXY = {}  # Midwest (OH/MI/IL/MN) + TX (24 mkts, Alfonso 2026-04-17) native
 
 
 # Alfonso's description → build_line_items() pricing key mapping

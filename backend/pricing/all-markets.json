@@ -1,5 +1,5 @@
 {
-  "generated": "2026-04-16",
+  "generated": "2026-04-17",
   "priceListVersion": "MAR26",
   "profile": "8D",
   "note": "NY/NJ/PA prices from Xactimate Online Excel exports + xactimate-prices.html (MAR26). 6 items (RFG RGVC, STP7, HIGH, CLN DMPW, GEN PRMT, CLN GCLN) require Xactimate Desktop. Other markets need price list requests via Xactimate.",
@@ -12280,6 +12280,3534 @@
         },
         "RFG CHFL": {
           "price": 494.03,
+          "unit": "EA",
+          "description": "Chimney flashing avg (32x36) R&R",
+          "xactCode": "RFG FLCH"
+        },
+        "RFG RGVC": {
+          "price": null,
+          "unit": "LF",
+          "description": "Continuous ridge vent R&R",
+          "xactCode": "RFG RGVC",
+          "note": "NEEDS_DESKTOP"
+        },
+        "RFG STP7_R": {
+          "price": null,
+          "unit": "SQ",
+          "description": "Steep 7/12-9/12 - Remove",
+          "xactCode": "RFG STP7",
+          "note": "NEEDS_DESKTOP"
+        },
+        "RFG STP7": {
+          "price": null,
+          "unit": "SQ",
+          "description": "Steep 7/12-9/12 - Install",
+          "xactCode": "RFG STP7",
+          "note": "NEEDS_DESKTOP"
+        },
+        "RFG HIGH_R": {
+          "price": null,
+          "unit": "SQ",
+          "description": "High roof 2+ stories - Remove",
+          "xactCode": "RFG HIGH",
+          "note": "NEEDS_DESKTOP"
+        },
+        "RFG HIGH": {
+          "price": null,
+          "unit": "SQ",
+          "description": "High roof 2+ stories - Install",
+          "xactCode": "RFG HIGH",
+          "note": "NEEDS_DESKTOP"
+        },
+        "CLN DMPW": {
+          "price": null,
+          "unit": "EA",
+          "description": "Dumpster ~30 yards",
+          "xactCode": "CLN DMPW",
+          "note": "NEEDS_DESKTOP"
+        },
+        "GEN PRMT": {
+          "price": null,
+          "unit": "EA",
+          "description": "Permits & fees",
+          "xactCode": "GEN PRMT",
+          "note": "NEEDS_DESKTOP"
+        },
+        "CLN GCLN": {
+          "price": null,
+          "unit": "HR",
+          "description": "General clean-up",
+          "xactCode": "CLN GCLN",
+          "note": "NEEDS_DESKTOP"
+        },
+        "SFG GUTW": {
+          "price": null,
+          "unit": "LF",
+          "description": "Gutter/DS aluminum up to 5\"",
+          "xactCode": "SFG GUTA"
+        },
+        "SFG DNSW": {
+          "price": null,
+          "unit": "LF",
+          "description": "Downspout aluminum up to 5\"",
+          "xactCode": "SFG GUTA"
+        }
+      }
+    },
+    "TXAB8X_APR26": {
+      "name": "Abilene Texas March 2026",
+      "zip": "",
+      "pending": true,
+      "items": {
+        "RFG SHTG": {
+          "price": 61.42,
+          "unit": "SQ",
+          "description": "Laminated shingle - Remove",
+          "xactCode": "RFG 300S"
+        },
+        "RFG LAMI": {
+          "price": 259.64,
+          "unit": "SQ",
+          "description": "Laminated shingle - Install",
+          "xactCode": "RFG 300S"
+        },
+        "RFG RDGC": {
+          "price": 8.82,
+          "unit": "LF",
+          "description": "Hip/Ridge cap Standard R&R",
+          "xactCode": "RFG RIDGCS"
+        },
+        "RFG STRT": {
+          "price": 1.83,
+          "unit": "LF",
+          "description": "Starter strip - universal",
+          "xactCode": "RFG ASTR-"
+        },
+        "RFG FELT30": {
+          "price": 43.83,
+          "unit": "SQ",
+          "description": "Roofing felt - 30 lb.",
+          "xactCode": "RFG FELT30"
+        },
+        "RFG I&W": {
+          "price": 1.65,
+          "unit": "SF",
+          "description": "Ice & water barrier",
+          "xactCode": "RFG IWS"
+        },
+        "RFG DRPE": {
+          "price": 3.14,
+          "unit": "LF",
+          "description": "Drip edge - Remove",
+          "xactCode": "RFG DRIP"
+        },
+        "RFG DRIP": {
+          "price": 3.14,
+          "unit": "LF",
+          "description": "Drip edge - Install",
+          "xactCode": "RFG DRIP"
+        },
+        "RFG STPF_R": {
+          "price": 10.27,
+          "unit": "LF",
+          "description": "Step flashing - Remove",
+          "xactCode": "RFG STEP"
+        },
+        "RFG STPF": {
+          "price": 10.27,
+          "unit": "LF",
+          "description": "Step flashing - Install",
+          "xactCode": "RFG STEP"
+        },
+        "RFG JKFL": {
+          "price": 59.09,
+          "unit": "EA",
+          "description": "Pipe jack R&R",
+          "xactCode": "RFG FLPIPE"
+        },
+        "RFG CHFL": {
+          "price": 445.09,
+          "unit": "EA",
+          "description": "Chimney flashing avg (32x36) R&R",
+          "xactCode": "RFG FLCH"
+        },
+        "RFG RGVC": {
+          "price": null,
+          "unit": "LF",
+          "description": "Continuous ridge vent R&R",
+          "xactCode": "RFG RGVC",
+          "note": "NEEDS_DESKTOP"
+        },
+        "RFG STP7_R": {
+          "price": null,
+          "unit": "SQ",
+          "description": "Steep 7/12-9/12 - Remove",
+          "xactCode": "RFG STP7",
+          "note": "NEEDS_DESKTOP"
+        },
+        "RFG STP7": {
+          "price": null,
+          "unit": "SQ",
+          "description": "Steep 7/12-9/12 - Install",
+          "xactCode": "RFG STP7",
+          "note": "NEEDS_DESKTOP"
+        },
+        "RFG HIGH_R": {
+          "price": null,
+          "unit": "SQ",
+          "description": "High roof 2+ stories - Remove",
+          "xactCode": "RFG HIGH",
+          "note": "NEEDS_DESKTOP"
+        },
+        "RFG HIGH": {
+          "price": null,
+          "unit": "SQ",
+          "description": "High roof 2+ stories - Install",
+          "xactCode": "RFG HIGH",
+          "note": "NEEDS_DESKTOP"
+        },
+        "CLN DMPW": {
+          "price": null,
+          "unit": "EA",
+          "description": "Dumpster ~30 yards",
+          "xactCode": "CLN DMPW",
+          "note": "NEEDS_DESKTOP"
+        },
+        "GEN PRMT": {
+          "price": null,
+          "unit": "EA",
+          "description": "Permits & fees",
+          "xactCode": "GEN PRMT",
+          "note": "NEEDS_DESKTOP"
+        },
+        "CLN GCLN": {
+          "price": null,
+          "unit": "HR",
+          "description": "General clean-up",
+          "xactCode": "CLN GCLN",
+          "note": "NEEDS_DESKTOP"
+        },
+        "SFG GUTW": {
+          "price": null,
+          "unit": "LF",
+          "description": "Gutter/DS aluminum up to 5\"",
+          "xactCode": "SFG GUTA"
+        },
+        "SFG DNSW": {
+          "price": null,
+          "unit": "LF",
+          "description": "Downspout aluminum up to 5\"",
+          "xactCode": "SFG GUTA"
+        }
+      }
+    },
+    "TXAM8X_APR26": {
+      "name": "Amarillo Texas March 2026",
+      "zip": "",
+      "pending": true,
+      "items": {
+        "RFG SHTG": {
+          "price": 56.62,
+          "unit": "SQ",
+          "description": "Laminated shingle - Remove",
+          "xactCode": "RFG 300S"
+        },
+        "RFG LAMI": {
+          "price": 284.01,
+          "unit": "SQ",
+          "description": "Laminated shingle - Install",
+          "xactCode": "RFG 300S"
+        },
+        "RFG RDGC": {
+          "price": 9.47,
+          "unit": "LF",
+          "description": "Hip/Ridge cap Standard R&R",
+          "xactCode": "RFG RIDGCS"
+        },
+        "RFG STRT": {
+          "price": 1.98,
+          "unit": "LF",
+          "description": "Starter strip - universal",
+          "xactCode": "RFG ASTR-"
+        },
+        "RFG FELT30": {
+          "price": 42.17,
+          "unit": "SQ",
+          "description": "Roofing felt - 30 lb.",
+          "xactCode": "RFG FELT30"
+        },
+        "RFG I&W": {
+          "price": 1.85,
+          "unit": "SF",
+          "description": "Ice & water barrier",
+          "xactCode": "RFG IWS"
+        },
+        "RFG DRPE": {
+          "price": 3.29,
+          "unit": "LF",
+          "description": "Drip edge - Remove",
+          "xactCode": "RFG DRIP"
+        },
+        "RFG DRIP": {
+          "price": 3.29,
+          "unit": "LF",
+          "description": "Drip edge - Install",
+          "xactCode": "RFG DRIP"
+        },
+        "RFG STPF_R": {
+          "price": 11.65,
+          "unit": "LF",
+          "description": "Step flashing - Remove",
+          "xactCode": "RFG STEP"
+        },
+        "RFG STPF": {
+          "price": 11.65,
+          "unit": "LF",
+          "description": "Step flashing - Install",
+          "xactCode": "RFG STEP"
+        },
+        "RFG JKFL": {
+          "price": 61.86,
+          "unit": "EA",
+          "description": "Pipe jack R&R",
+          "xactCode": "RFG FLPIPE"
+        },
+        "RFG CHFL": {
+          "price": 498.24,
+          "unit": "EA",
+          "description": "Chimney flashing avg (32x36) R&R",
+          "xactCode": "RFG FLCH"
+        },
+        "RFG RGVC": {
+          "price": null,
+          "unit": "LF",
+          "description": "Continuous ridge vent R&R",
+          "xactCode": "RFG RGVC",
+          "note": "NEEDS_DESKTOP"
+        },
+        "RFG STP7_R": {
+          "price": null,
+          "unit": "SQ",
+          "description": "Steep 7/12-9/12 - Remove",
+          "xactCode": "RFG STP7",
+          "note": "NEEDS_DESKTOP"
+        },
+        "RFG STP7": {
+          "price": null,
+          "unit": "SQ",
+          "description": "Steep 7/12-9/12 - Install",
+          "xactCode": "RFG STP7",
+          "note": "NEEDS_DESKTOP"
+        },
+        "RFG HIGH_R": {
+          "price": null,
+          "unit": "SQ",
+          "description": "High roof 2+ stories - Remove",
+          "xactCode": "RFG HIGH",
+          "note": "NEEDS_DESKTOP"
+        },
+        "RFG HIGH": {
+          "price": null,
+          "unit": "SQ",
+          "description": "High roof 2+ stories - Install",
+          "xactCode": "RFG HIGH",
+          "note": "NEEDS_DESKTOP"
+        },
+        "CLN DMPW": {
+          "price": null,
+          "unit": "EA",
+          "description": "Dumpster ~30 yards",
+          "xactCode": "CLN DMPW",
+          "note": "NEEDS_DESKTOP"
+        },
+        "GEN PRMT": {
+          "price": null,
+          "unit": "EA",
+          "description": "Permits & fees",
+          "xactCode": "GEN PRMT",
+          "note": "NEEDS_DESKTOP"
+        },
+        "CLN GCLN": {
+          "price": null,
+          "unit": "HR",
+          "description": "General clean-up",
+          "xactCode": "CLN GCLN",
+          "note": "NEEDS_DESKTOP"
+        },
+        "SFG GUTW": {
+          "price": null,
+          "unit": "LF",
+          "description": "Gutter/DS aluminum up to 5\"",
+          "xactCode": "SFG GUTA"
+        },
+        "SFG DNSW": {
+          "price": null,
+          "unit": "LF",
+          "description": "Downspout aluminum up to 5\"",
+          "xactCode": "SFG GUTA"
+        }
+      }
+    },
+    "TXAU8X_APR26": {
+      "name": "Austin Texas March 2026",
+      "zip": "",
+      "pending": true,
+      "items": {
+        "RFG SHTG": {
+          "price": 75.83,
+          "unit": "SQ",
+          "description": "Laminated shingle - Remove",
+          "xactCode": "RFG 300S"
+        },
+        "RFG LAMI": {
+          "price": 303.52,
+          "unit": "SQ",
+          "description": "Laminated shingle - Install",
+          "xactCode": "RFG 300S"
+        },
+        "RFG RDGC": {
+          "price": 10.59,
+          "unit": "LF",
+          "description": "Hip/Ridge cap Standard R&R",
+          "xactCode": "RFG RIDGCS"
+        },
+        "RFG STRT": {
+          "price": 2.12,
+          "unit": "LF",
+          "description": "Starter strip - universal",
+          "xactCode": "RFG ASTR-"
+        },
+        "RFG FELT30": {
+          "price": 49.66,
+          "unit": "SQ",
+          "description": "Roofing felt - 30 lb.",
+          "xactCode": "RFG FELT30"
+        },
+        "RFG I&W": {
+          "price": 2.08,
+          "unit": "SF",
+          "description": "Ice & water barrier",
+          "xactCode": "RFG IWS"
+        },
+        "RFG DRPE": {
+          "price": 3.68,
+          "unit": "LF",
+          "description": "Drip edge - Remove",
+          "xactCode": "RFG DRIP"
+        },
+        "RFG DRIP": {
+          "price": 3.68,
+          "unit": "LF",
+          "description": "Drip edge - Install",
+          "xactCode": "RFG DRIP"
+        },
+        "RFG STPF_R": {
+          "price": 12.73,
+          "unit": "LF",
+          "description": "Step flashing - Remove",
+          "xactCode": "RFG STEP"
+        },
+        "RFG STPF": {
+          "price": 12.73,
+          "unit": "LF",
+          "description": "Step flashing - Install",
+          "xactCode": "RFG STEP"
+        },
+        "RFG JKFL": {
+          "price": 69.66,
+          "unit": "EA",
+          "description": "Pipe jack R&R",
+          "xactCode": "RFG FLPIPE"
+        },
+        "RFG CHFL": {
+          "price": 544.45,
+          "unit": "EA",
+          "description": "Chimney flashing avg (32x36) R&R",
+          "xactCode": "RFG FLCH"
+        },
+        "RFG RGVC": {
+          "price": null,
+          "unit": "LF",
+          "description": "Continuous ridge vent R&R",
+          "xactCode": "RFG RGVC",
+          "note": "NEEDS_DESKTOP"
+        },
+        "RFG STP7_R": {
+          "price": null,
+          "unit": "SQ",
+          "description": "Steep 7/12-9/12 - Remove",
+          "xactCode": "RFG STP7",
+          "note": "NEEDS_DESKTOP"
+        },
+        "RFG STP7": {
+          "price": null,
+          "unit": "SQ",
+          "description": "Steep 7/12-9/12 - Install",
+          "xactCode": "RFG STP7",
+          "note": "NEEDS_DESKTOP"
+        },
+        "RFG HIGH_R": {
+          "price": null,
+          "unit": "SQ",
+          "description": "High roof 2+ stories - Remove",
+          "xactCode": "RFG HIGH",
+          "note": "NEEDS_DESKTOP"
+        },
+        "RFG HIGH": {
+          "price": null,
+          "unit": "SQ",
+          "description": "High roof 2+ stories - Install",
+          "xactCode": "RFG HIGH",
+          "note": "NEEDS_DESKTOP"
+        },
+        "CLN DMPW": {
+          "price": null,
+          "unit": "EA",
+          "description": "Dumpster ~30 yards",
+          "xactCode": "CLN DMPW",
+          "note": "NEEDS_DESKTOP"
+        },
+        "GEN PRMT": {
+          "price": null,
+          "unit": "EA",
+          "description": "Permits & fees",
+          "xactCode": "GEN PRMT",
+          "note": "NEEDS_DESKTOP"
+        },
+        "CLN GCLN": {
+          "price": null,
+          "unit": "HR",
+          "description": "General clean-up",
+          "xactCode": "CLN GCLN",
+          "note": "NEEDS_DESKTOP"
+        },
+        "SFG GUTW": {
+          "price": null,
+          "unit": "LF",
+          "description": "Gutter/DS aluminum up to 5\"",
+          "xactCode": "SFG GUTA"
+        },
+        "SFG DNSW": {
+          "price": null,
+          "unit": "LF",
+          "description": "Downspout aluminum up to 5\"",
+          "xactCode": "SFG GUTA"
+        }
+      }
+    },
+    "TXBC8X_APR26": {
+      "name": "Bay City Texas March 2026",
+      "zip": "",
+      "pending": true,
+      "items": {
+        "RFG SHTG": {
+          "price": 64.61,
+          "unit": "SQ",
+          "description": "Laminated shingle - Remove",
+          "xactCode": "RFG 300S"
+        },
+        "RFG LAMI": {
+          "price": 249.22,
+          "unit": "SQ",
+          "description": "Laminated shingle - Install",
+          "xactCode": "RFG 300S"
+        },
+        "RFG RDGC": {
+          "price": 8.43,
+          "unit": "LF",
+          "description": "Hip/Ridge cap Standard R&R",
+          "xactCode": "RFG RIDGCS"
+        },
+        "RFG STRT": {
+          "price": 1.69,
+          "unit": "LF",
+          "description": "Starter strip - universal",
+          "xactCode": "RFG ASTR-"
+        },
+        "RFG FELT30": {
+          "price": 38.98,
+          "unit": "SQ",
+          "description": "Roofing felt - 30 lb.",
+          "xactCode": "RFG FELT30"
+        },
+        "RFG I&W": {
+          "price": 1.55,
+          "unit": "SF",
+          "description": "Ice & water barrier",
+          "xactCode": "RFG IWS"
+        },
+        "RFG DRPE": {
+          "price": 3.01,
+          "unit": "LF",
+          "description": "Drip edge - Remove",
+          "xactCode": "RFG DRIP"
+        },
+        "RFG DRIP": {
+          "price": 3.01,
+          "unit": "LF",
+          "description": "Drip edge - Install",
+          "xactCode": "RFG DRIP"
+        },
+        "RFG STPF_R": {
+          "price": 9.7,
+          "unit": "LF",
+          "description": "Step flashing - Remove",
+          "xactCode": "RFG STEP"
+        },
+        "RFG STPF": {
+          "price": 9.7,
+          "unit": "LF",
+          "description": "Step flashing - Install",
+          "xactCode": "RFG STEP"
+        },
+        "RFG JKFL": {
+          "price": 56.81,
+          "unit": "EA",
+          "description": "Pipe jack R&R",
+          "xactCode": "RFG FLPIPE"
+        },
+        "RFG CHFL": {
+          "price": 422.76,
+          "unit": "EA",
+          "description": "Chimney flashing avg (32x36) R&R",
+          "xactCode": "RFG FLCH"
+        },
+        "RFG RGVC": {
+          "price": null,
+          "unit": "LF",
+          "description": "Continuous ridge vent R&R",
+          "xactCode": "RFG RGVC",
+          "note": "NEEDS_DESKTOP"
+        },
+        "RFG STP7_R": {
+          "price": null,
+          "unit": "SQ",
+          "description": "Steep 7/12-9/12 - Remove",
+          "xactCode": "RFG STP7",
+          "note": "NEEDS_DESKTOP"
+        },
+        "RFG STP7": {
+          "price": null,
+          "unit": "SQ",
+          "description": "Steep 7/12-9/12 - Install",
+          "xactCode": "RFG STP7",
+          "note": "NEEDS_DESKTOP"
+        },
+        "RFG HIGH_R": {
+          "price": null,
+          "unit": "SQ",
+          "description": "High roof 2+ stories - Remove",
+          "xactCode": "RFG HIGH",
+          "note": "NEEDS_DESKTOP"
+        },
+        "RFG HIGH": {
+          "price": null,
+          "unit": "SQ",
+          "description": "High roof 2+ stories - Install",
+          "xactCode": "RFG HIGH",
+          "note": "NEEDS_DESKTOP"
+        },
+        "CLN DMPW": {
+          "price": null,
+          "unit": "EA",
+          "description": "Dumpster ~30 yards",
+          "xactCode": "CLN DMPW",
+          "note": "NEEDS_DESKTOP"
+        },
+        "GEN PRMT": {
+          "price": null,
+          "unit": "EA",
+          "description": "Permits & fees",
+          "xactCode": "GEN PRMT",
+          "note": "NEEDS_DESKTOP"
+        },
+        "CLN GCLN": {
+          "price": null,
+          "unit": "HR",
+          "description": "General clean-up",
+          "xactCode": "CLN GCLN",
+          "note": "NEEDS_DESKTOP"
+        },
+        "SFG GUTW": {
+          "price": null,
+          "unit": "LF",
+          "description": "Gutter/DS aluminum up to 5\"",
+          "xactCode": "SFG GUTA"
+        },
+        "SFG DNSW": {
+          "price": null,
+          "unit": "LF",
+          "description": "Downspout aluminum up to 5\"",
+          "xactCode": "SFG GUTA"
+        }
+      }
+    },
+    "TXBM8X_APR26": {
+      "name": "Beaumont Texas March 2026",
+      "zip": "",
+      "pending": true,
+      "items": {
+        "RFG SHTG": {
+          "price": 67.29,
+          "unit": "SQ",
+          "description": "Laminated shingle - Remove",
+          "xactCode": "RFG 300S"
+        },
+        "RFG LAMI": {
+          "price": 234.89,
+          "unit": "SQ",
+          "description": "Laminated shingle - Install",
+          "xactCode": "RFG 300S"
+        },
+        "RFG RDGC": {
+          "price": 7.86,
+          "unit": "LF",
+          "description": "Hip/Ridge cap Standard R&R",
+          "xactCode": "RFG RIDGCS"
+        },
+        "RFG STRT": {
+          "price": 1.59,
+          "unit": "LF",
+          "description": "Starter strip - universal",
+          "xactCode": "RFG ASTR-"
+        },
+        "RFG FELT30": {
+          "price": 39.83,
+          "unit": "SQ",
+          "description": "Roofing felt - 30 lb.",
+          "xactCode": "RFG FELT30"
+        },
+        "RFG I&W": {
+          "price": 1.53,
+          "unit": "SF",
+          "description": "Ice & water barrier",
+          "xactCode": "RFG IWS"
+        },
+        "RFG DRPE": {
+          "price": 2.97,
+          "unit": "LF",
+          "description": "Drip edge - Remove",
+          "xactCode": "RFG DRIP"
+        },
+        "RFG DRIP": {
+          "price": 2.97,
+          "unit": "LF",
+          "description": "Drip edge - Install",
+          "xactCode": "RFG DRIP"
+        },
+        "RFG STPF_R": {
+          "price": 9.24,
+          "unit": "LF",
+          "description": "Step flashing - Remove",
+          "xactCode": "RFG STEP"
+        },
+        "RFG STPF": {
+          "price": 9.24,
+          "unit": "LF",
+          "description": "Step flashing - Install",
+          "xactCode": "RFG STEP"
+        },
+        "RFG JKFL": {
+          "price": 55.99,
+          "unit": "EA",
+          "description": "Pipe jack R&R",
+          "xactCode": "RFG FLPIPE"
+        },
+        "RFG CHFL": {
+          "price": 408.76,
+          "unit": "EA",
+          "description": "Chimney flashing avg (32x36) R&R",
+          "xactCode": "RFG FLCH"
+        },
+        "RFG RGVC": {
+          "price": null,
+          "unit": "LF",
+          "description": "Continuous ridge vent R&R",
+          "xactCode": "RFG RGVC",
+          "note": "NEEDS_DESKTOP"
+        },
+        "RFG STP7_R": {
+          "price": null,
+          "unit": "SQ",
+          "description": "Steep 7/12-9/12 - Remove",
+          "xactCode": "RFG STP7",
+          "note": "NEEDS_DESKTOP"
+        },
+        "RFG STP7": {
+          "price": null,
+          "unit": "SQ",
+          "description": "Steep 7/12-9/12 - Install",
+          "xactCode": "RFG STP7",
+          "note": "NEEDS_DESKTOP"
+        },
+        "RFG HIGH_R": {
+          "price": null,
+          "unit": "SQ",
+          "description": "High roof 2+ stories - Remove",
+          "xactCode": "RFG HIGH",
+          "note": "NEEDS_DESKTOP"
+        },
+        "RFG HIGH": {
+          "price": null,
+          "unit": "SQ",
+          "description": "High roof 2+ stories - Install",
+          "xactCode": "RFG HIGH",
+          "note": "NEEDS_DESKTOP"
+        },
+        "CLN DMPW": {
+          "price": null,
+          "unit": "EA",
+          "description": "Dumpster ~30 yards",
+          "xactCode": "CLN DMPW",
+          "note": "NEEDS_DESKTOP"
+        },
+        "GEN PRMT": {
+          "price": null,
+          "unit": "EA",
+          "description": "Permits & fees",
+          "xactCode": "GEN PRMT",
+          "note": "NEEDS_DESKTOP"
+        },
+        "CLN GCLN": {
+          "price": null,
+          "unit": "HR",
+          "description": "General clean-up",
+          "xactCode": "CLN GCLN",
+          "note": "NEEDS_DESKTOP"
+        },
+        "SFG GUTW": {
+          "price": null,
+          "unit": "LF",
+          "description": "Gutter/DS aluminum up to 5\"",
+          "xactCode": "SFG GUTA"
+        },
+        "SFG DNSW": {
+          "price": null,
+          "unit": "LF",
+          "description": "Downspout aluminum up to 5\"",
+          "xactCode": "SFG GUTA"
+        }
+      }
+    },
+    "TXBT8X_APR26": {
+      "name": "Belton Texas March 2026",
+      "zip": "",
+      "pending": true,
+      "items": {
+        "RFG SHTG": {
+          "price": 57.08,
+          "unit": "SQ",
+          "description": "Laminated shingle - Remove",
+          "xactCode": "RFG 300S"
+        },
+        "RFG LAMI": {
+          "price": 288.43,
+          "unit": "SQ",
+          "description": "Laminated shingle - Install",
+          "xactCode": "RFG 300S"
+        },
+        "RFG RDGC": {
+          "price": 9.74,
+          "unit": "LF",
+          "description": "Hip/Ridge cap Standard R&R",
+          "xactCode": "RFG RIDGCS"
+        },
+        "RFG STRT": {
+          "price": 2.04,
+          "unit": "LF",
+          "description": "Starter strip - universal",
+          "xactCode": "RFG ASTR-"
+        },
+        "RFG FELT30": {
+          "price": 46.4,
+          "unit": "SQ",
+          "description": "Roofing felt - 30 lb.",
+          "xactCode": "RFG FELT30"
+        },
+        "RFG I&W": {
+          "price": 1.94,
+          "unit": "SF",
+          "description": "Ice & water barrier",
+          "xactCode": "RFG IWS"
+        },
+        "RFG DRPE": {
+          "price": 3.45,
+          "unit": "LF",
+          "description": "Drip edge - Remove",
+          "xactCode": "RFG DRIP"
+        },
+        "RFG DRIP": {
+          "price": 3.45,
+          "unit": "LF",
+          "description": "Drip edge - Install",
+          "xactCode": "RFG DRIP"
+        },
+        "RFG STPF_R": {
+          "price": 11.9,
+          "unit": "LF",
+          "description": "Step flashing - Remove",
+          "xactCode": "RFG STEP"
+        },
+        "RFG STPF": {
+          "price": 11.9,
+          "unit": "LF",
+          "description": "Step flashing - Install",
+          "xactCode": "RFG STEP"
+        },
+        "RFG JKFL": {
+          "price": 65.12,
+          "unit": "EA",
+          "description": "Pipe jack R&R",
+          "xactCode": "RFG FLPIPE"
+        },
+        "RFG CHFL": {
+          "price": 508.4,
+          "unit": "EA",
+          "description": "Chimney flashing avg (32x36) R&R",
+          "xactCode": "RFG FLCH"
+        },
+        "RFG RGVC": {
+          "price": null,
+          "unit": "LF",
+          "description": "Continuous ridge vent R&R",
+          "xactCode": "RFG RGVC",
+          "note": "NEEDS_DESKTOP"
+        },
+        "RFG STP7_R": {
+          "price": null,
+          "unit": "SQ",
+          "description": "Steep 7/12-9/12 - Remove",
+          "xactCode": "RFG STP7",
+          "note": "NEEDS_DESKTOP"
+        },
+        "RFG STP7": {
+          "price": null,
+          "unit": "SQ",
+          "description": "Steep 7/12-9/12 - Install",
+          "xactCode": "RFG STP7",
+          "note": "NEEDS_DESKTOP"
+        },
+        "RFG HIGH_R": {
+          "price": null,
+          "unit": "SQ",
+          "description": "High roof 2+ stories - Remove",
+          "xactCode": "RFG HIGH",
+          "note": "NEEDS_DESKTOP"
+        },
+        "RFG HIGH": {
+          "price": null,
+          "unit": "SQ",
+          "description": "High roof 2+ stories - Install",
+          "xactCode": "RFG HIGH",
+          "note": "NEEDS_DESKTOP"
+        },
+        "CLN DMPW": {
+          "price": null,
+          "unit": "EA",
+          "description": "Dumpster ~30 yards",
+          "xactCode": "CLN DMPW",
+          "note": "NEEDS_DESKTOP"
+        },
+        "GEN PRMT": {
+          "price": null,
+          "unit": "EA",
+          "description": "Permits & fees",
+          "xactCode": "GEN PRMT",
+          "note": "NEEDS_DESKTOP"
+        },
+        "CLN GCLN": {
+          "price": null,
+          "unit": "HR",
+          "description": "General clean-up",
+          "xactCode": "CLN GCLN",
+          "note": "NEEDS_DESKTOP"
+        },
+        "SFG GUTW": {
+          "price": null,
+          "unit": "LF",
+          "description": "Gutter/DS aluminum up to 5\"",
+          "xactCode": "SFG GUTA"
+        },
+        "SFG DNSW": {
+          "price": null,
+          "unit": "LF",
+          "description": "Downspout aluminum up to 5\"",
+          "xactCode": "SFG GUTA"
+        }
+      }
+    },
+    "TXCS8X_APR26": {
+      "name": "College Station Texas March 2026",
+      "zip": "",
+      "pending": true,
+      "items": {
+        "RFG SHTG": {
+          "price": 54.21,
+          "unit": "SQ",
+          "description": "Laminated shingle - Remove",
+          "xactCode": "RFG 300S"
+        },
+        "RFG LAMI": {
+          "price": 253.13,
+          "unit": "SQ",
+          "description": "Laminated shingle - Install",
+          "xactCode": "RFG 300S"
+        },
+        "RFG RDGC": {
+          "price": 8.38,
+          "unit": "LF",
+          "description": "Hip/Ridge cap Standard R&R",
+          "xactCode": "RFG RIDGCS"
+        },
+        "RFG STRT": {
+          "price": 1.7,
+          "unit": "LF",
+          "description": "Starter strip - universal",
+          "xactCode": "RFG ASTR-"
+        },
+        "RFG FELT30": {
+          "price": 43.96,
+          "unit": "SQ",
+          "description": "Roofing felt - 30 lb.",
+          "xactCode": "RFG FELT30"
+        },
+        "RFG I&W": {
+          "price": 1.68,
+          "unit": "SF",
+          "description": "Ice & water barrier",
+          "xactCode": "RFG IWS"
+        },
+        "RFG DRPE": {
+          "price": 3.14,
+          "unit": "LF",
+          "description": "Drip edge - Remove",
+          "xactCode": "RFG DRIP"
+        },
+        "RFG DRIP": {
+          "price": 3.14,
+          "unit": "LF",
+          "description": "Drip edge - Install",
+          "xactCode": "RFG DRIP"
+        },
+        "RFG STPF_R": {
+          "price": 10.24,
+          "unit": "LF",
+          "description": "Step flashing - Remove",
+          "xactCode": "RFG STEP"
+        },
+        "RFG STPF": {
+          "price": 10.24,
+          "unit": "LF",
+          "description": "Step flashing - Install",
+          "xactCode": "RFG STEP"
+        },
+        "RFG JKFL": {
+          "price": 58.42,
+          "unit": "EA",
+          "description": "Pipe jack R&R",
+          "xactCode": "RFG FLPIPE"
+        },
+        "RFG CHFL": {
+          "price": 443.48,
+          "unit": "EA",
+          "description": "Chimney flashing avg (32x36) R&R",
+          "xactCode": "RFG FLCH"
+        },
+        "RFG RGVC": {
+          "price": null,
+          "unit": "LF",
+          "description": "Continuous ridge vent R&R",
+          "xactCode": "RFG RGVC",
+          "note": "NEEDS_DESKTOP"
+        },
+        "RFG STP7_R": {
+          "price": null,
+          "unit": "SQ",
+          "description": "Steep 7/12-9/12 - Remove",
+          "xactCode": "RFG STP7",
+          "note": "NEEDS_DESKTOP"
+        },
+        "RFG STP7": {
+          "price": null,
+          "unit": "SQ",
+          "description": "Steep 7/12-9/12 - Install",
+          "xactCode": "RFG STP7",
+          "note": "NEEDS_DESKTOP"
+        },
+        "RFG HIGH_R": {
+          "price": null,
+          "unit": "SQ",
+          "description": "High roof 2+ stories - Remove",
+          "xactCode": "RFG HIGH",
+          "note": "NEEDS_DESKTOP"
+        },
+        "RFG HIGH": {
+          "price": null,
+          "unit": "SQ",
+          "description": "High roof 2+ stories - Install",
+          "xactCode": "RFG HIGH",
+          "note": "NEEDS_DESKTOP"
+        },
+        "CLN DMPW": {
+          "price": null,
+          "unit": "EA",
+          "description": "Dumpster ~30 yards",
+          "xactCode": "CLN DMPW",
+          "note": "NEEDS_DESKTOP"
+        },
+        "GEN PRMT": {
+          "price": null,
+          "unit": "EA",
+          "description": "Permits & fees",
+          "xactCode": "GEN PRMT",
+          "note": "NEEDS_DESKTOP"
+        },
+        "CLN GCLN": {
+          "price": null,
+          "unit": "HR",
+          "description": "General clean-up",
+          "xactCode": "CLN GCLN",
+          "note": "NEEDS_DESKTOP"
+        },
+        "SFG GUTW": {
+          "price": null,
+          "unit": "LF",
+          "description": "Gutter/DS aluminum up to 5\"",
+          "xactCode": "SFG GUTA"
+        },
+        "SFG DNSW": {
+          "price": null,
+          "unit": "LF",
+          "description": "Downspout aluminum up to 5\"",
+          "xactCode": "SFG GUTA"
+        }
+      }
+    },
+    "TXCC8X_APR26": {
+      "name": "Corpus Christi Texas March 2026",
+      "zip": "",
+      "pending": true,
+      "items": {
+        "RFG SHTG": {
+          "price": 64.98,
+          "unit": "SQ",
+          "description": "Laminated shingle - Remove",
+          "xactCode": "RFG 300S"
+        },
+        "RFG LAMI": {
+          "price": 299.76,
+          "unit": "SQ",
+          "description": "Laminated shingle - Install",
+          "xactCode": "RFG 300S"
+        },
+        "RFG RDGC": {
+          "price": 10.9,
+          "unit": "LF",
+          "description": "Hip/Ridge cap Standard R&R",
+          "xactCode": "RFG RIDGCS"
+        },
+        "RFG STRT": {
+          "price": 2.32,
+          "unit": "LF",
+          "description": "Starter strip - universal",
+          "xactCode": "RFG ASTR-"
+        },
+        "RFG FELT30": {
+          "price": 54.36,
+          "unit": "SQ",
+          "description": "Roofing felt - 30 lb.",
+          "xactCode": "RFG FELT30"
+        },
+        "RFG I&W": {
+          "price": 2.14,
+          "unit": "SF",
+          "description": "Ice & water barrier",
+          "xactCode": "RFG IWS"
+        },
+        "RFG DRPE": {
+          "price": 3.84,
+          "unit": "LF",
+          "description": "Drip edge - Remove",
+          "xactCode": "RFG DRIP"
+        },
+        "RFG DRIP": {
+          "price": 3.84,
+          "unit": "LF",
+          "description": "Drip edge - Install",
+          "xactCode": "RFG DRIP"
+        },
+        "RFG STPF_R": {
+          "price": 13.8,
+          "unit": "LF",
+          "description": "Step flashing - Remove",
+          "xactCode": "RFG STEP"
+        },
+        "RFG STPF": {
+          "price": 13.8,
+          "unit": "LF",
+          "description": "Step flashing - Install",
+          "xactCode": "RFG STEP"
+        },
+        "RFG JKFL": {
+          "price": 73.24,
+          "unit": "EA",
+          "description": "Pipe jack R&R",
+          "xactCode": "RFG FLPIPE"
+        },
+        "RFG CHFL": {
+          "price": 581.97,
+          "unit": "EA",
+          "description": "Chimney flashing avg (32x36) R&R",
+          "xactCode": "RFG FLCH"
+        },
+        "RFG RGVC": {
+          "price": null,
+          "unit": "LF",
+          "description": "Continuous ridge vent R&R",
+          "xactCode": "RFG RGVC",
+          "note": "NEEDS_DESKTOP"
+        },
+        "RFG STP7_R": {
+          "price": null,
+          "unit": "SQ",
+          "description": "Steep 7/12-9/12 - Remove",
+          "xactCode": "RFG STP7",
+          "note": "NEEDS_DESKTOP"
+        },
+        "RFG STP7": {
+          "price": null,
+          "unit": "SQ",
+          "description": "Steep 7/12-9/12 - Install",
+          "xactCode": "RFG STP7",
+          "note": "NEEDS_DESKTOP"
+        },
+        "RFG HIGH_R": {
+          "price": null,
+          "unit": "SQ",
+          "description": "High roof 2+ stories - Remove",
+          "xactCode": "RFG HIGH",
+          "note": "NEEDS_DESKTOP"
+        },
+        "RFG HIGH": {
+          "price": null,
+          "unit": "SQ",
+          "description": "High roof 2+ stories - Install",
+          "xactCode": "RFG HIGH",
+          "note": "NEEDS_DESKTOP"
+        },
+        "CLN DMPW": {
+          "price": null,
+          "unit": "EA",
+          "description": "Dumpster ~30 yards",
+          "xactCode": "CLN DMPW",
+          "note": "NEEDS_DESKTOP"
+        },
+        "GEN PRMT": {
+          "price": null,
+          "unit": "EA",
+          "description": "Permits & fees",
+          "xactCode": "GEN PRMT",
+          "note": "NEEDS_DESKTOP"
+        },
+        "CLN GCLN": {
+          "price": null,
+          "unit": "HR",
+          "description": "General clean-up",
+          "xactCode": "CLN GCLN",
+          "note": "NEEDS_DESKTOP"
+        },
+        "SFG GUTW": {
+          "price": null,
+          "unit": "LF",
+          "description": "Gutter/DS aluminum up to 5\"",
+          "xactCode": "SFG GUTA"
+        },
+        "SFG DNSW": {
+          "price": null,
+          "unit": "LF",
+          "description": "Downspout aluminum up to 5\"",
+          "xactCode": "SFG GUTA"
+        }
+      }
+    },
+    "TXDF8X_APR26": {
+      "name": "Dallas-Fort Worth Texas March 2026",
+      "zip": "",
+      "pending": true,
+      "items": {
+        "RFG SHTG": {
+          "price": 68.75,
+          "unit": "SQ",
+          "description": "Laminated shingle - Remove",
+          "xactCode": "RFG 300S"
+        },
+        "RFG LAMI": {
+          "price": 285.27,
+          "unit": "SQ",
+          "description": "Laminated shingle - Install",
+          "xactCode": "RFG 300S"
+        },
+        "RFG RDGC": {
+          "price": 10.14,
+          "unit": "LF",
+          "description": "Hip/Ridge cap Standard R&R",
+          "xactCode": "RFG RIDGCS"
+        },
+        "RFG STRT": {
+          "price": 2.07,
+          "unit": "LF",
+          "description": "Starter strip - universal",
+          "xactCode": "RFG ASTR-"
+        },
+        "RFG FELT30": {
+          "price": 48.21,
+          "unit": "SQ",
+          "description": "Roofing felt - 30 lb.",
+          "xactCode": "RFG FELT30"
+        },
+        "RFG I&W": {
+          "price": 1.96,
+          "unit": "SF",
+          "description": "Ice & water barrier",
+          "xactCode": "RFG IWS"
+        },
+        "RFG DRPE": {
+          "price": 3.59,
+          "unit": "LF",
+          "description": "Drip edge - Remove",
+          "xactCode": "RFG DRIP"
+        },
+        "RFG DRIP": {
+          "price": 3.59,
+          "unit": "LF",
+          "description": "Drip edge - Install",
+          "xactCode": "RFG DRIP"
+        },
+        "RFG STPF_R": {
+          "price": 12.28,
+          "unit": "LF",
+          "description": "Step flashing - Remove",
+          "xactCode": "RFG STEP"
+        },
+        "RFG STPF": {
+          "price": 12.28,
+          "unit": "LF",
+          "description": "Step flashing - Install",
+          "xactCode": "RFG STEP"
+        },
+        "RFG JKFL": {
+          "price": 67.85,
+          "unit": "EA",
+          "description": "Pipe jack R&R",
+          "xactCode": "RFG FLPIPE"
+        },
+        "RFG CHFL": {
+          "price": 525.12,
+          "unit": "EA",
+          "description": "Chimney flashing avg (32x36) R&R",
+          "xactCode": "RFG FLCH"
+        },
+        "RFG RGVC": {
+          "price": null,
+          "unit": "LF",
+          "description": "Continuous ridge vent R&R",
+          "xactCode": "RFG RGVC",
+          "note": "NEEDS_DESKTOP"
+        },
+        "RFG STP7_R": {
+          "price": null,
+          "unit": "SQ",
+          "description": "Steep 7/12-9/12 - Remove",
+          "xactCode": "RFG STP7",
+          "note": "NEEDS_DESKTOP"
+        },
+        "RFG STP7": {
+          "price": null,
+          "unit": "SQ",
+          "description": "Steep 7/12-9/12 - Install",
+          "xactCode": "RFG STP7",
+          "note": "NEEDS_DESKTOP"
+        },
+        "RFG HIGH_R": {
+          "price": null,
+          "unit": "SQ",
+          "description": "High roof 2+ stories - Remove",
+          "xactCode": "RFG HIGH",
+          "note": "NEEDS_DESKTOP"
+        },
+        "RFG HIGH": {
+          "price": null,
+          "unit": "SQ",
+          "description": "High roof 2+ stories - Install",
+          "xactCode": "RFG HIGH",
+          "note": "NEEDS_DESKTOP"
+        },
+        "CLN DMPW": {
+          "price": null,
+          "unit": "EA",
+          "description": "Dumpster ~30 yards",
+          "xactCode": "CLN DMPW",
+          "note": "NEEDS_DESKTOP"
+        },
+        "GEN PRMT": {
+          "price": null,
+          "unit": "EA",
+          "description": "Permits & fees",
+          "xactCode": "GEN PRMT",
+          "note": "NEEDS_DESKTOP"
+        },
+        "CLN GCLN": {
+          "price": null,
+          "unit": "HR",
+          "description": "General clean-up",
+          "xactCode": "CLN GCLN",
+          "note": "NEEDS_DESKTOP"
+        },
+        "SFG GUTW": {
+          "price": null,
+          "unit": "LF",
+          "description": "Gutter/DS aluminum up to 5\"",
+          "xactCode": "SFG GUTA"
+        },
+        "SFG DNSW": {
+          "price": null,
+          "unit": "LF",
+          "description": "Downspout aluminum up to 5\"",
+          "xactCode": "SFG GUTA"
+        }
+      }
+    },
+    "TXEP8X_APR26": {
+      "name": "El Paso Texas March 2026",
+      "zip": "",
+      "pending": true,
+      "items": {
+        "RFG SHTG": {
+          "price": 55.75,
+          "unit": "SQ",
+          "description": "Laminated shingle - Remove",
+          "xactCode": "RFG 300S"
+        },
+        "RFG LAMI": {
+          "price": 256.41,
+          "unit": "SQ",
+          "description": "Laminated shingle - Install",
+          "xactCode": "RFG 300S"
+        },
+        "RFG RDGC": {
+          "price": 8.76,
+          "unit": "LF",
+          "description": "Hip/Ridge cap Standard R&R",
+          "xactCode": "RFG RIDGCS"
+        },
+        "RFG STRT": {
+          "price": 1.88,
+          "unit": "LF",
+          "description": "Starter strip - universal",
+          "xactCode": "RFG ASTR-"
+        },
+        "RFG FELT30": {
+          "price": 41.34,
+          "unit": "SQ",
+          "description": "Roofing felt - 30 lb.",
+          "xactCode": "RFG FELT30"
+        },
+        "RFG I&W": {
+          "price": 1.73,
+          "unit": "SF",
+          "description": "Ice & water barrier",
+          "xactCode": "RFG IWS"
+        },
+        "RFG DRPE": {
+          "price": 3.12,
+          "unit": "LF",
+          "description": "Drip edge - Remove",
+          "xactCode": "RFG DRIP"
+        },
+        "RFG DRIP": {
+          "price": 3.12,
+          "unit": "LF",
+          "description": "Drip edge - Install",
+          "xactCode": "RFG DRIP"
+        },
+        "RFG STPF_R": {
+          "price": 10.94,
+          "unit": "LF",
+          "description": "Step flashing - Remove",
+          "xactCode": "RFG STEP"
+        },
+        "RFG STPF": {
+          "price": 10.94,
+          "unit": "LF",
+          "description": "Step flashing - Install",
+          "xactCode": "RFG STEP"
+        },
+        "RFG JKFL": {
+          "price": 58.35,
+          "unit": "EA",
+          "description": "Pipe jack R&R",
+          "xactCode": "RFG FLPIPE"
+        },
+        "RFG CHFL": {
+          "price": 468.32,
+          "unit": "EA",
+          "description": "Chimney flashing avg (32x36) R&R",
+          "xactCode": "RFG FLCH"
+        },
+        "RFG RGVC": {
+          "price": null,
+          "unit": "LF",
+          "description": "Continuous ridge vent R&R",
+          "xactCode": "RFG RGVC",
+          "note": "NEEDS_DESKTOP"
+        },
+        "RFG STP7_R": {
+          "price": null,
+          "unit": "SQ",
+          "description": "Steep 7/12-9/12 - Remove",
+          "xactCode": "RFG STP7",
+          "note": "NEEDS_DESKTOP"
+        },
+        "RFG STP7": {
+          "price": null,
+          "unit": "SQ",
+          "description": "Steep 7/12-9/12 - Install",
+          "xactCode": "RFG STP7",
+          "note": "NEEDS_DESKTOP"
+        },
+        "RFG HIGH_R": {
+          "price": null,
+          "unit": "SQ",
+          "description": "High roof 2+ stories - Remove",
+          "xactCode": "RFG HIGH",
+          "note": "NEEDS_DESKTOP"
+        },
+        "RFG HIGH": {
+          "price": null,
+          "unit": "SQ",
+          "description": "High roof 2+ stories - Install",
+          "xactCode": "RFG HIGH",
+          "note": "NEEDS_DESKTOP"
+        },
+        "CLN DMPW": {
+          "price": null,
+          "unit": "EA",
+          "description": "Dumpster ~30 yards",
+          "xactCode": "CLN DMPW",
+          "note": "NEEDS_DESKTOP"
+        },
+        "GEN PRMT": {
+          "price": null,
+          "unit": "EA",
+          "description": "Permits & fees",
+          "xactCode": "GEN PRMT",
+          "note": "NEEDS_DESKTOP"
+        },
+        "CLN GCLN": {
+          "price": null,
+          "unit": "HR",
+          "description": "General clean-up",
+          "xactCode": "CLN GCLN",
+          "note": "NEEDS_DESKTOP"
+        },
+        "SFG GUTW": {
+          "price": null,
+          "unit": "LF",
+          "description": "Gutter/DS aluminum up to 5\"",
+          "xactCode": "SFG GUTA"
+        },
+        "SFG DNSW": {
+          "price": null,
+          "unit": "LF",
+          "description": "Downspout aluminum up to 5\"",
+          "xactCode": "SFG GUTA"
+        }
+      }
+    },
+    "TXGA8X_APR26": {
+      "name": "Galveston Texas March 2026",
+      "zip": "",
+      "pending": true,
+      "items": {
+        "RFG SHTG": {
+          "price": 67.53,
+          "unit": "SQ",
+          "description": "Laminated shingle - Remove",
+          "xactCode": "RFG 300S"
+        },
+        "RFG LAMI": {
+          "price": 264.24,
+          "unit": "SQ",
+          "description": "Laminated shingle - Install",
+          "xactCode": "RFG 300S"
+        },
+        "RFG RDGC": {
+          "price": 8.97,
+          "unit": "LF",
+          "description": "Hip/Ridge cap Standard R&R",
+          "xactCode": "RFG RIDGCS"
+        },
+        "RFG STRT": {
+          "price": 1.79,
+          "unit": "LF",
+          "description": "Starter strip - universal",
+          "xactCode": "RFG ASTR-"
+        },
+        "RFG FELT30": {
+          "price": 44.31,
+          "unit": "SQ",
+          "description": "Roofing felt - 30 lb.",
+          "xactCode": "RFG FELT30"
+        },
+        "RFG I&W": {
+          "price": 1.79,
+          "unit": "SF",
+          "description": "Ice & water barrier",
+          "xactCode": "RFG IWS"
+        },
+        "RFG DRPE": {
+          "price": 3.24,
+          "unit": "LF",
+          "description": "Drip edge - Remove",
+          "xactCode": "RFG DRIP"
+        },
+        "RFG DRIP": {
+          "price": 3.24,
+          "unit": "LF",
+          "description": "Drip edge - Install",
+          "xactCode": "RFG DRIP"
+        },
+        "RFG STPF_R": {
+          "price": 10.54,
+          "unit": "LF",
+          "description": "Step flashing - Remove",
+          "xactCode": "RFG STEP"
+        },
+        "RFG STPF": {
+          "price": 10.54,
+          "unit": "LF",
+          "description": "Step flashing - Install",
+          "xactCode": "RFG STEP"
+        },
+        "RFG JKFL": {
+          "price": 60.9,
+          "unit": "EA",
+          "description": "Pipe jack R&R",
+          "xactCode": "RFG FLPIPE"
+        },
+        "RFG CHFL": {
+          "price": 459.7,
+          "unit": "EA",
+          "description": "Chimney flashing avg (32x36) R&R",
+          "xactCode": "RFG FLCH"
+        },
+        "RFG RGVC": {
+          "price": null,
+          "unit": "LF",
+          "description": "Continuous ridge vent R&R",
+          "xactCode": "RFG RGVC",
+          "note": "NEEDS_DESKTOP"
+        },
+        "RFG STP7_R": {
+          "price": null,
+          "unit": "SQ",
+          "description": "Steep 7/12-9/12 - Remove",
+          "xactCode": "RFG STP7",
+          "note": "NEEDS_DESKTOP"
+        },
+        "RFG STP7": {
+          "price": null,
+          "unit": "SQ",
+          "description": "Steep 7/12-9/12 - Install",
+          "xactCode": "RFG STP7",
+          "note": "NEEDS_DESKTOP"
+        },
+        "RFG HIGH_R": {
+          "price": null,
+          "unit": "SQ",
+          "description": "High roof 2+ stories - Remove",
+          "xactCode": "RFG HIGH",
+          "note": "NEEDS_DESKTOP"
+        },
+        "RFG HIGH": {
+          "price": null,
+          "unit": "SQ",
+          "description": "High roof 2+ stories - Install",
+          "xactCode": "RFG HIGH",
+          "note": "NEEDS_DESKTOP"
+        },
+        "CLN DMPW": {
+          "price": null,
+          "unit": "EA",
+          "description": "Dumpster ~30 yards",
+          "xactCode": "CLN DMPW",
+          "note": "NEEDS_DESKTOP"
+        },
+        "GEN PRMT": {
+          "price": null,
+          "unit": "EA",
+          "description": "Permits & fees",
+          "xactCode": "GEN PRMT",
+          "note": "NEEDS_DESKTOP"
+        },
+        "CLN GCLN": {
+          "price": null,
+          "unit": "HR",
+          "description": "General clean-up",
+          "xactCode": "CLN GCLN",
+          "note": "NEEDS_DESKTOP"
+        },
+        "SFG GUTW": {
+          "price": null,
+          "unit": "LF",
+          "description": "Gutter/DS aluminum up to 5\"",
+          "xactCode": "SFG GUTA"
+        },
+        "SFG DNSW": {
+          "price": null,
+          "unit": "LF",
+          "description": "Downspout aluminum up to 5\"",
+          "xactCode": "SFG GUTA"
+        }
+      }
+    },
+    "TXHO8X_APR26": {
+      "name": "Houston Texas March 2026",
+      "zip": "",
+      "pending": true,
+      "items": {
+        "RFG SHTG": {
+          "price": 73.51,
+          "unit": "SQ",
+          "description": "Laminated shingle - Remove",
+          "xactCode": "RFG 300S"
+        },
+        "RFG LAMI": {
+          "price": 269.32,
+          "unit": "SQ",
+          "description": "Laminated shingle - Install",
+          "xactCode": "RFG 300S"
+        },
+        "RFG RDGC": {
+          "price": 9.21,
+          "unit": "LF",
+          "description": "Hip/Ridge cap Standard R&R",
+          "xactCode": "RFG RIDGCS"
+        },
+        "RFG STRT": {
+          "price": 1.9,
+          "unit": "LF",
+          "description": "Starter strip - universal",
+          "xactCode": "RFG ASTR-"
+        },
+        "RFG FELT30": {
+          "price": 46.44,
+          "unit": "SQ",
+          "description": "Roofing felt - 30 lb.",
+          "xactCode": "RFG FELT30"
+        },
+        "RFG I&W": {
+          "price": 1.83,
+          "unit": "SF",
+          "description": "Ice & water barrier",
+          "xactCode": "RFG IWS"
+        },
+        "RFG DRPE": {
+          "price": 3.42,
+          "unit": "LF",
+          "description": "Drip edge - Remove",
+          "xactCode": "RFG DRIP"
+        },
+        "RFG DRIP": {
+          "price": 3.42,
+          "unit": "LF",
+          "description": "Drip edge - Install",
+          "xactCode": "RFG DRIP"
+        },
+        "RFG STPF_R": {
+          "price": 11.22,
+          "unit": "LF",
+          "description": "Step flashing - Remove",
+          "xactCode": "RFG STEP"
+        },
+        "RFG STPF": {
+          "price": 11.22,
+          "unit": "LF",
+          "description": "Step flashing - Install",
+          "xactCode": "RFG STEP"
+        },
+        "RFG JKFL": {
+          "price": 64.44,
+          "unit": "EA",
+          "description": "Pipe jack R&R",
+          "xactCode": "RFG FLPIPE"
+        },
+        "RFG CHFL": {
+          "price": 487.02,
+          "unit": "EA",
+          "description": "Chimney flashing avg (32x36) R&R",
+          "xactCode": "RFG FLCH"
+        },
+        "RFG RGVC": {
+          "price": null,
+          "unit": "LF",
+          "description": "Continuous ridge vent R&R",
+          "xactCode": "RFG RGVC",
+          "note": "NEEDS_DESKTOP"
+        },
+        "RFG STP7_R": {
+          "price": null,
+          "unit": "SQ",
+          "description": "Steep 7/12-9/12 - Remove",
+          "xactCode": "RFG STP7",
+          "note": "NEEDS_DESKTOP"
+        },
+        "RFG STP7": {
+          "price": null,
+          "unit": "SQ",
+          "description": "Steep 7/12-9/12 - Install",
+          "xactCode": "RFG STP7",
+          "note": "NEEDS_DESKTOP"
+        },
+        "RFG HIGH_R": {
+          "price": null,
+          "unit": "SQ",
+          "description": "High roof 2+ stories - Remove",
+          "xactCode": "RFG HIGH",
+          "note": "NEEDS_DESKTOP"
+        },
+        "RFG HIGH": {
+          "price": null,
+          "unit": "SQ",
+          "description": "High roof 2+ stories - Install",
+          "xactCode": "RFG HIGH",
+          "note": "NEEDS_DESKTOP"
+        },
+        "CLN DMPW": {
+          "price": null,
+          "unit": "EA",
+          "description": "Dumpster ~30 yards",
+          "xactCode": "CLN DMPW",
+          "note": "NEEDS_DESKTOP"
+        },
+        "GEN PRMT": {
+          "price": null,
+          "unit": "EA",
+          "description": "Permits & fees",
+          "xactCode": "GEN PRMT",
+          "note": "NEEDS_DESKTOP"
+        },
+        "CLN GCLN": {
+          "price": null,
+          "unit": "HR",
+          "description": "General clean-up",
+          "xactCode": "CLN GCLN",
+          "note": "NEEDS_DESKTOP"
+        },
+        "SFG GUTW": {
+          "price": null,
+          "unit": "LF",
+          "description": "Gutter/DS aluminum up to 5\"",
+          "xactCode": "SFG GUTA"
+        },
+        "SFG DNSW": {
+          "price": null,
+          "unit": "LF",
+          "description": "Downspout aluminum up to 5\"",
+          "xactCode": "SFG GUTA"
+        }
+      }
+    },
+    "TXLB8X_APR26": {
+      "name": "Lubbock Texas March 2026",
+      "zip": "",
+      "pending": true,
+      "items": {
+        "RFG SHTG": {
+          "price": 56.61,
+          "unit": "SQ",
+          "description": "Laminated shingle - Remove",
+          "xactCode": "RFG 300S"
+        },
+        "RFG LAMI": {
+          "price": 274.75,
+          "unit": "SQ",
+          "description": "Laminated shingle - Install",
+          "xactCode": "RFG 300S"
+        },
+        "RFG RDGC": {
+          "price": 9.57,
+          "unit": "LF",
+          "description": "Hip/Ridge cap Standard R&R",
+          "xactCode": "RFG RIDGCS"
+        },
+        "RFG STRT": {
+          "price": 2.0,
+          "unit": "LF",
+          "description": "Starter strip - universal",
+          "xactCode": "RFG ASTR-"
+        },
+        "RFG FELT30": {
+          "price": 47.3,
+          "unit": "SQ",
+          "description": "Roofing felt - 30 lb.",
+          "xactCode": "RFG FELT30"
+        },
+        "RFG I&W": {
+          "price": 1.91,
+          "unit": "SF",
+          "description": "Ice & water barrier",
+          "xactCode": "RFG IWS"
+        },
+        "RFG DRPE": {
+          "price": 3.41,
+          "unit": "LF",
+          "description": "Drip edge - Remove",
+          "xactCode": "RFG DRIP"
+        },
+        "RFG DRIP": {
+          "price": 3.41,
+          "unit": "LF",
+          "description": "Drip edge - Install",
+          "xactCode": "RFG DRIP"
+        },
+        "RFG STPF_R": {
+          "price": 11.58,
+          "unit": "LF",
+          "description": "Step flashing - Remove",
+          "xactCode": "RFG STEP"
+        },
+        "RFG STPF": {
+          "price": 11.58,
+          "unit": "LF",
+          "description": "Step flashing - Install",
+          "xactCode": "RFG STEP"
+        },
+        "RFG JKFL": {
+          "price": 61.35,
+          "unit": "EA",
+          "description": "Pipe jack R&R",
+          "xactCode": "RFG FLPIPE"
+        },
+        "RFG CHFL": {
+          "price": 496.34,
+          "unit": "EA",
+          "description": "Chimney flashing avg (32x36) R&R",
+          "xactCode": "RFG FLCH"
+        },
+        "RFG RGVC": {
+          "price": null,
+          "unit": "LF",
+          "description": "Continuous ridge vent R&R",
+          "xactCode": "RFG RGVC",
+          "note": "NEEDS_DESKTOP"
+        },
+        "RFG STP7_R": {
+          "price": null,
+          "unit": "SQ",
+          "description": "Steep 7/12-9/12 - Remove",
+          "xactCode": "RFG STP7",
+          "note": "NEEDS_DESKTOP"
+        },
+        "RFG STP7": {
+          "price": null,
+          "unit": "SQ",
+          "description": "Steep 7/12-9/12 - Install",
+          "xactCode": "RFG STP7",
+          "note": "NEEDS_DESKTOP"
+        },
+        "RFG HIGH_R": {
+          "price": null,
+          "unit": "SQ",
+          "description": "High roof 2+ stories - Remove",
+          "xactCode": "RFG HIGH",
+          "note": "NEEDS_DESKTOP"
+        },
+        "RFG HIGH": {
+          "price": null,
+          "unit": "SQ",
+          "description": "High roof 2+ stories - Install",
+          "xactCode": "RFG HIGH",
+          "note": "NEEDS_DESKTOP"
+        },
+        "CLN DMPW": {
+          "price": null,
+          "unit": "EA",
+          "description": "Dumpster ~30 yards",
+          "xactCode": "CLN DMPW",
+          "note": "NEEDS_DESKTOP"
+        },
+        "GEN PRMT": {
+          "price": null,
+          "unit": "EA",
+          "description": "Permits & fees",
+          "xactCode": "GEN PRMT",
+          "note": "NEEDS_DESKTOP"
+        },
+        "CLN GCLN": {
+          "price": null,
+          "unit": "HR",
+          "description": "General clean-up",
+          "xactCode": "CLN GCLN",
+          "note": "NEEDS_DESKTOP"
+        },
+        "SFG GUTW": {
+          "price": null,
+          "unit": "LF",
+          "description": "Gutter/DS aluminum up to 5\"",
+          "xactCode": "SFG GUTA"
+        },
+        "SFG DNSW": {
+          "price": null,
+          "unit": "LF",
+          "description": "Downspout aluminum up to 5\"",
+          "xactCode": "SFG GUTA"
+        }
+      }
+    },
+    "TXMC8X_APR26": {
+      "name": "Mcallen Texas March 2026",
+      "zip": "",
+      "pending": true,
+      "items": {
+        "RFG SHTG": {
+          "price": 53.06,
+          "unit": "SQ",
+          "description": "Laminated shingle - Remove",
+          "xactCode": "RFG 300S"
+        },
+        "RFG LAMI": {
+          "price": 244.65,
+          "unit": "SQ",
+          "description": "Laminated shingle - Install",
+          "xactCode": "RFG 300S"
+        },
+        "RFG RDGC": {
+          "price": 8.14,
+          "unit": "LF",
+          "description": "Hip/Ridge cap Standard R&R",
+          "xactCode": "RFG RIDGCS"
+        },
+        "RFG STRT": {
+          "price": 1.64,
+          "unit": "LF",
+          "description": "Starter strip - universal",
+          "xactCode": "RFG ASTR-"
+        },
+        "RFG FELT30": {
+          "price": 40.37,
+          "unit": "SQ",
+          "description": "Roofing felt - 30 lb.",
+          "xactCode": "RFG FELT30"
+        },
+        "RFG I&W": {
+          "price": 1.63,
+          "unit": "SF",
+          "description": "Ice & water barrier",
+          "xactCode": "RFG IWS"
+        },
+        "RFG DRPE": {
+          "price": 3.02,
+          "unit": "LF",
+          "description": "Drip edge - Remove",
+          "xactCode": "RFG DRIP"
+        },
+        "RFG DRIP": {
+          "price": 3.02,
+          "unit": "LF",
+          "description": "Drip edge - Install",
+          "xactCode": "RFG DRIP"
+        },
+        "RFG STPF_R": {
+          "price": 9.83,
+          "unit": "LF",
+          "description": "Step flashing - Remove",
+          "xactCode": "RFG STEP"
+        },
+        "RFG STPF": {
+          "price": 9.83,
+          "unit": "LF",
+          "description": "Step flashing - Install",
+          "xactCode": "RFG STEP"
+        },
+        "RFG JKFL": {
+          "price": 56.29,
+          "unit": "EA",
+          "description": "Pipe jack R&R",
+          "xactCode": "RFG FLPIPE"
+        },
+        "RFG CHFL": {
+          "price": 426.26,
+          "unit": "EA",
+          "description": "Chimney flashing avg (32x36) R&R",
+          "xactCode": "RFG FLCH"
+        },
+        "RFG RGVC": {
+          "price": null,
+          "unit": "LF",
+          "description": "Continuous ridge vent R&R",
+          "xactCode": "RFG RGVC",
+          "note": "NEEDS_DESKTOP"
+        },
+        "RFG STP7_R": {
+          "price": null,
+          "unit": "SQ",
+          "description": "Steep 7/12-9/12 - Remove",
+          "xactCode": "RFG STP7",
+          "note": "NEEDS_DESKTOP"
+        },
+        "RFG STP7": {
+          "price": null,
+          "unit": "SQ",
+          "description": "Steep 7/12-9/12 - Install",
+          "xactCode": "RFG STP7",
+          "note": "NEEDS_DESKTOP"
+        },
+        "RFG HIGH_R": {
+          "price": null,
+          "unit": "SQ",
+          "description": "High roof 2+ stories - Remove",
+          "xactCode": "RFG HIGH",
+          "note": "NEEDS_DESKTOP"
+        },
+        "RFG HIGH": {
+          "price": null,
+          "unit": "SQ",
+          "description": "High roof 2+ stories - Install",
+          "xactCode": "RFG HIGH",
+          "note": "NEEDS_DESKTOP"
+        },
+        "CLN DMPW": {
+          "price": null,
+          "unit": "EA",
+          "description": "Dumpster ~30 yards",
+          "xactCode": "CLN DMPW",
+          "note": "NEEDS_DESKTOP"
+        },
+        "GEN PRMT": {
+          "price": null,
+          "unit": "EA",
+          "description": "Permits & fees",
+          "xactCode": "GEN PRMT",
+          "note": "NEEDS_DESKTOP"
+        },
+        "CLN GCLN": {
+          "price": null,
+          "unit": "HR",
+          "description": "General clean-up",
+          "xactCode": "CLN GCLN",
+          "note": "NEEDS_DESKTOP"
+        },
+        "SFG GUTW": {
+          "price": null,
+          "unit": "LF",
+          "description": "Gutter/DS aluminum up to 5\"",
+          "xactCode": "SFG GUTA"
+        },
+        "SFG DNSW": {
+          "price": null,
+          "unit": "LF",
+          "description": "Downspout aluminum up to 5\"",
+          "xactCode": "SFG GUTA"
+        }
+      }
+    },
+    "TXMI8X_APR26": {
+      "name": "Midland Texas March 2026",
+      "zip": "",
+      "pending": true,
+      "items": {
+        "RFG SHTG": {
+          "price": 63.34,
+          "unit": "SQ",
+          "description": "Laminated shingle - Remove",
+          "xactCode": "RFG 300S"
+        },
+        "RFG LAMI": {
+          "price": 278.19,
+          "unit": "SQ",
+          "description": "Laminated shingle - Install",
+          "xactCode": "RFG 300S"
+        },
+        "RFG RDGC": {
+          "price": 9.79,
+          "unit": "LF",
+          "description": "Hip/Ridge cap Standard R&R",
+          "xactCode": "RFG RIDGCS"
+        },
+        "RFG STRT": {
+          "price": 1.99,
+          "unit": "LF",
+          "description": "Starter strip - universal",
+          "xactCode": "RFG ASTR-"
+        },
+        "RFG FELT30": {
+          "price": 48.16,
+          "unit": "SQ",
+          "description": "Roofing felt - 30 lb.",
+          "xactCode": "RFG FELT30"
+        },
+        "RFG I&W": {
+          "price": 1.92,
+          "unit": "SF",
+          "description": "Ice & water barrier",
+          "xactCode": "RFG IWS"
+        },
+        "RFG DRPE": {
+          "price": 3.33,
+          "unit": "LF",
+          "description": "Drip edge - Remove",
+          "xactCode": "RFG DRIP"
+        },
+        "RFG DRIP": {
+          "price": 3.33,
+          "unit": "LF",
+          "description": "Drip edge - Install",
+          "xactCode": "RFG DRIP"
+        },
+        "RFG STPF_R": {
+          "price": 11.73,
+          "unit": "LF",
+          "description": "Step flashing - Remove",
+          "xactCode": "RFG STEP"
+        },
+        "RFG STPF": {
+          "price": 11.73,
+          "unit": "LF",
+          "description": "Step flashing - Install",
+          "xactCode": "RFG STEP"
+        },
+        "RFG JKFL": {
+          "price": 62.67,
+          "unit": "EA",
+          "description": "Pipe jack R&R",
+          "xactCode": "RFG FLPIPE"
+        },
+        "RFG CHFL": {
+          "price": 503.62,
+          "unit": "EA",
+          "description": "Chimney flashing avg (32x36) R&R",
+          "xactCode": "RFG FLCH"
+        },
+        "RFG RGVC": {
+          "price": null,
+          "unit": "LF",
+          "description": "Continuous ridge vent R&R",
+          "xactCode": "RFG RGVC",
+          "note": "NEEDS_DESKTOP"
+        },
+        "RFG STP7_R": {
+          "price": null,
+          "unit": "SQ",
+          "description": "Steep 7/12-9/12 - Remove",
+          "xactCode": "RFG STP7",
+          "note": "NEEDS_DESKTOP"
+        },
+        "RFG STP7": {
+          "price": null,
+          "unit": "SQ",
+          "description": "Steep 7/12-9/12 - Install",
+          "xactCode": "RFG STP7",
+          "note": "NEEDS_DESKTOP"
+        },
+        "RFG HIGH_R": {
+          "price": null,
+          "unit": "SQ",
+          "description": "High roof 2+ stories - Remove",
+          "xactCode": "RFG HIGH",
+          "note": "NEEDS_DESKTOP"
+        },
+        "RFG HIGH": {
+          "price": null,
+          "unit": "SQ",
+          "description": "High roof 2+ stories - Install",
+          "xactCode": "RFG HIGH",
+          "note": "NEEDS_DESKTOP"
+        },
+        "CLN DMPW": {
+          "price": null,
+          "unit": "EA",
+          "description": "Dumpster ~30 yards",
+          "xactCode": "CLN DMPW",
+          "note": "NEEDS_DESKTOP"
+        },
+        "GEN PRMT": {
+          "price": null,
+          "unit": "EA",
+          "description": "Permits & fees",
+          "xactCode": "GEN PRMT",
+          "note": "NEEDS_DESKTOP"
+        },
+        "CLN GCLN": {
+          "price": null,
+          "unit": "HR",
+          "description": "General clean-up",
+          "xactCode": "CLN GCLN",
+          "note": "NEEDS_DESKTOP"
+        },
+        "SFG GUTW": {
+          "price": null,
+          "unit": "LF",
+          "description": "Gutter/DS aluminum up to 5\"",
+          "xactCode": "SFG GUTA"
+        },
+        "SFG DNSW": {
+          "price": null,
+          "unit": "LF",
+          "description": "Downspout aluminum up to 5\"",
+          "xactCode": "SFG GUTA"
+        }
+      }
+    },
+    "TXSN8X_APR26": {
+      "name": "San Angelo Texas March 2026",
+      "zip": "",
+      "pending": true,
+      "items": {
+        "RFG SHTG": {
+          "price": 59.06,
+          "unit": "SQ",
+          "description": "Laminated shingle - Remove",
+          "xactCode": "RFG 300S"
+        },
+        "RFG LAMI": {
+          "price": 252.44,
+          "unit": "SQ",
+          "description": "Laminated shingle - Install",
+          "xactCode": "RFG 300S"
+        },
+        "RFG RDGC": {
+          "price": 8.51,
+          "unit": "LF",
+          "description": "Hip/Ridge cap Standard R&R",
+          "xactCode": "RFG RIDGCS"
+        },
+        "RFG STRT": {
+          "price": 1.75,
+          "unit": "LF",
+          "description": "Starter strip - universal",
+          "xactCode": "RFG ASTR-"
+        },
+        "RFG FELT30": {
+          "price": 41.21,
+          "unit": "SQ",
+          "description": "Roofing felt - 30 lb.",
+          "xactCode": "RFG FELT30"
+        },
+        "RFG I&W": {
+          "price": 1.66,
+          "unit": "SF",
+          "description": "Ice & water barrier",
+          "xactCode": "RFG IWS"
+        },
+        "RFG DRPE": {
+          "price": 2.97,
+          "unit": "LF",
+          "description": "Drip edge - Remove",
+          "xactCode": "RFG DRIP"
+        },
+        "RFG DRIP": {
+          "price": 2.97,
+          "unit": "LF",
+          "description": "Drip edge - Install",
+          "xactCode": "RFG DRIP"
+        },
+        "RFG STPF_R": {
+          "price": 10.06,
+          "unit": "LF",
+          "description": "Step flashing - Remove",
+          "xactCode": "RFG STEP"
+        },
+        "RFG STPF": {
+          "price": 10.06,
+          "unit": "LF",
+          "description": "Step flashing - Install",
+          "xactCode": "RFG STEP"
+        },
+        "RFG JKFL": {
+          "price": 55.6,
+          "unit": "EA",
+          "description": "Pipe jack R&R",
+          "xactCode": "RFG FLPIPE"
+        },
+        "RFG CHFL": {
+          "price": 437.46,
+          "unit": "EA",
+          "description": "Chimney flashing avg (32x36) R&R",
+          "xactCode": "RFG FLCH"
+        },
+        "RFG RGVC": {
+          "price": null,
+          "unit": "LF",
+          "description": "Continuous ridge vent R&R",
+          "xactCode": "RFG RGVC",
+          "note": "NEEDS_DESKTOP"
+        },
+        "RFG STP7_R": {
+          "price": null,
+          "unit": "SQ",
+          "description": "Steep 7/12-9/12 - Remove",
+          "xactCode": "RFG STP7",
+          "note": "NEEDS_DESKTOP"
+        },
+        "RFG STP7": {
+          "price": null,
+          "unit": "SQ",
+          "description": "Steep 7/12-9/12 - Install",
+          "xactCode": "RFG STP7",
+          "note": "NEEDS_DESKTOP"
+        },
+        "RFG HIGH_R": {
+          "price": null,
+          "unit": "SQ",
+          "description": "High roof 2+ stories - Remove",
+          "xactCode": "RFG HIGH",
+          "note": "NEEDS_DESKTOP"
+        },
+        "RFG HIGH": {
+          "price": null,
+          "unit": "SQ",
+          "description": "High roof 2+ stories - Install",
+          "xactCode": "RFG HIGH",
+          "note": "NEEDS_DESKTOP"
+        },
+        "CLN DMPW": {
+          "price": null,
+          "unit": "EA",
+          "description": "Dumpster ~30 yards",
+          "xactCode": "CLN DMPW",
+          "note": "NEEDS_DESKTOP"
+        },
+        "GEN PRMT": {
+          "price": null,
+          "unit": "EA",
+          "description": "Permits & fees",
+          "xactCode": "GEN PRMT",
+          "note": "NEEDS_DESKTOP"
+        },
+        "CLN GCLN": {
+          "price": null,
+          "unit": "HR",
+          "description": "General clean-up",
+          "xactCode": "CLN GCLN",
+          "note": "NEEDS_DESKTOP"
+        },
+        "SFG GUTW": {
+          "price": null,
+          "unit": "LF",
+          "description": "Gutter/DS aluminum up to 5\"",
+          "xactCode": "SFG GUTA"
+        },
+        "SFG DNSW": {
+          "price": null,
+          "unit": "LF",
+          "description": "Downspout aluminum up to 5\"",
+          "xactCode": "SFG GUTA"
+        }
+      }
+    },
+    "TXSA8X_APR26": {
+      "name": "San Antonio Texas March 2026",
+      "zip": "",
+      "pending": true,
+      "items": {
+        "RFG SHTG": {
+          "price": 69.27,
+          "unit": "SQ",
+          "description": "Laminated shingle - Remove",
+          "xactCode": "RFG 300S"
+        },
+        "RFG LAMI": {
+          "price": 273.08,
+          "unit": "SQ",
+          "description": "Laminated shingle - Install",
+          "xactCode": "RFG 300S"
+        },
+        "RFG RDGC": {
+          "price": 9.28,
+          "unit": "LF",
+          "description": "Hip/Ridge cap Standard R&R",
+          "xactCode": "RFG RIDGCS"
+        },
+        "RFG STRT": {
+          "price": 1.89,
+          "unit": "LF",
+          "description": "Starter strip - universal",
+          "xactCode": "RFG ASTR-"
+        },
+        "RFG FELT30": {
+          "price": 43.59,
+          "unit": "SQ",
+          "description": "Roofing felt - 30 lb.",
+          "xactCode": "RFG FELT30"
+        },
+        "RFG I&W": {
+          "price": 1.82,
+          "unit": "SF",
+          "description": "Ice & water barrier",
+          "xactCode": "RFG IWS"
+        },
+        "RFG DRPE": {
+          "price": 3.28,
+          "unit": "LF",
+          "description": "Drip edge - Remove",
+          "xactCode": "RFG DRIP"
+        },
+        "RFG DRIP": {
+          "price": 3.28,
+          "unit": "LF",
+          "description": "Drip edge - Install",
+          "xactCode": "RFG DRIP"
+        },
+        "RFG STPF_R": {
+          "price": 11.12,
+          "unit": "LF",
+          "description": "Step flashing - Remove",
+          "xactCode": "RFG STEP"
+        },
+        "RFG STPF": {
+          "price": 11.12,
+          "unit": "LF",
+          "description": "Step flashing - Install",
+          "xactCode": "RFG STEP"
+        },
+        "RFG JKFL": {
+          "price": 62.24,
+          "unit": "EA",
+          "description": "Pipe jack R&R",
+          "xactCode": "RFG FLPIPE"
+        },
+        "RFG CHFL": {
+          "price": 478.08,
+          "unit": "EA",
+          "description": "Chimney flashing avg (32x36) R&R",
+          "xactCode": "RFG FLCH"
+        },
+        "RFG RGVC": {
+          "price": null,
+          "unit": "LF",
+          "description": "Continuous ridge vent R&R",
+          "xactCode": "RFG RGVC",
+          "note": "NEEDS_DESKTOP"
+        },
+        "RFG STP7_R": {
+          "price": null,
+          "unit": "SQ",
+          "description": "Steep 7/12-9/12 - Remove",
+          "xactCode": "RFG STP7",
+          "note": "NEEDS_DESKTOP"
+        },
+        "RFG STP7": {
+          "price": null,
+          "unit": "SQ",
+          "description": "Steep 7/12-9/12 - Install",
+          "xactCode": "RFG STP7",
+          "note": "NEEDS_DESKTOP"
+        },
+        "RFG HIGH_R": {
+          "price": null,
+          "unit": "SQ",
+          "description": "High roof 2+ stories - Remove",
+          "xactCode": "RFG HIGH",
+          "note": "NEEDS_DESKTOP"
+        },
+        "RFG HIGH": {
+          "price": null,
+          "unit": "SQ",
+          "description": "High roof 2+ stories - Install",
+          "xactCode": "RFG HIGH",
+          "note": "NEEDS_DESKTOP"
+        },
+        "CLN DMPW": {
+          "price": null,
+          "unit": "EA",
+          "description": "Dumpster ~30 yards",
+          "xactCode": "CLN DMPW",
+          "note": "NEEDS_DESKTOP"
+        },
+        "GEN PRMT": {
+          "price": null,
+          "unit": "EA",
+          "description": "Permits & fees",
+          "xactCode": "GEN PRMT",
+          "note": "NEEDS_DESKTOP"
+        },
+        "CLN GCLN": {
+          "price": null,
+          "unit": "HR",
+          "description": "General clean-up",
+          "xactCode": "CLN GCLN",
+          "note": "NEEDS_DESKTOP"
+        },
+        "SFG GUTW": {
+          "price": null,
+          "unit": "LF",
+          "description": "Gutter/DS aluminum up to 5\"",
+          "xactCode": "SFG GUTA"
+        },
+        "SFG DNSW": {
+          "price": null,
+          "unit": "LF",
+          "description": "Downspout aluminum up to 5\"",
+          "xactCode": "SFG GUTA"
+        }
+      }
+    },
+    "TXSH8X_APR26": {
+      "name": "Shermen Texas March 2026",
+      "zip": "",
+      "pending": true,
+      "items": {
+        "RFG SHTG": {
+          "price": 60.29,
+          "unit": "SQ",
+          "description": "Laminated shingle - Remove",
+          "xactCode": "RFG 300S"
+        },
+        "RFG LAMI": {
+          "price": 284.25,
+          "unit": "SQ",
+          "description": "Laminated shingle - Install",
+          "xactCode": "RFG 300S"
+        },
+        "RFG RDGC": {
+          "price": 9.75,
+          "unit": "LF",
+          "description": "Hip/Ridge cap Standard R&R",
+          "xactCode": "RFG RIDGCS"
+        },
+        "RFG STRT": {
+          "price": 2.03,
+          "unit": "LF",
+          "description": "Starter strip - universal",
+          "xactCode": "RFG ASTR-"
+        },
+        "RFG FELT30": {
+          "price": 45.96,
+          "unit": "SQ",
+          "description": "Roofing felt - 30 lb.",
+          "xactCode": "RFG FELT30"
+        },
+        "RFG I&W": {
+          "price": 1.91,
+          "unit": "SF",
+          "description": "Ice & water barrier",
+          "xactCode": "RFG IWS"
+        },
+        "RFG DRPE": {
+          "price": 3.51,
+          "unit": "LF",
+          "description": "Drip edge - Remove",
+          "xactCode": "RFG DRIP"
+        },
+        "RFG DRIP": {
+          "price": 3.51,
+          "unit": "LF",
+          "description": "Drip edge - Install",
+          "xactCode": "RFG DRIP"
+        },
+        "RFG STPF_R": {
+          "price": 12.21,
+          "unit": "LF",
+          "description": "Step flashing - Remove",
+          "xactCode": "RFG STEP"
+        },
+        "RFG STPF": {
+          "price": 12.21,
+          "unit": "LF",
+          "description": "Step flashing - Install",
+          "xactCode": "RFG STEP"
+        },
+        "RFG JKFL": {
+          "price": 66.76,
+          "unit": "EA",
+          "description": "Pipe jack R&R",
+          "xactCode": "RFG FLPIPE"
+        },
+        "RFG CHFL": {
+          "price": 519.41,
+          "unit": "EA",
+          "description": "Chimney flashing avg (32x36) R&R",
+          "xactCode": "RFG FLCH"
+        },
+        "RFG RGVC": {
+          "price": null,
+          "unit": "LF",
+          "description": "Continuous ridge vent R&R",
+          "xactCode": "RFG RGVC",
+          "note": "NEEDS_DESKTOP"
+        },
+        "RFG STP7_R": {
+          "price": null,
+          "unit": "SQ",
+          "description": "Steep 7/12-9/12 - Remove",
+          "xactCode": "RFG STP7",
+          "note": "NEEDS_DESKTOP"
+        },
+        "RFG STP7": {
+          "price": null,
+          "unit": "SQ",
+          "description": "Steep 7/12-9/12 - Install",
+          "xactCode": "RFG STP7",
+          "note": "NEEDS_DESKTOP"
+        },
+        "RFG HIGH_R": {
+          "price": null,
+          "unit": "SQ",
+          "description": "High roof 2+ stories - Remove",
+          "xactCode": "RFG HIGH",
+          "note": "NEEDS_DESKTOP"
+        },
+        "RFG HIGH": {
+          "price": null,
+          "unit": "SQ",
+          "description": "High roof 2+ stories - Install",
+          "xactCode": "RFG HIGH",
+          "note": "NEEDS_DESKTOP"
+        },
+        "CLN DMPW": {
+          "price": null,
+          "unit": "EA",
+          "description": "Dumpster ~30 yards",
+          "xactCode": "CLN DMPW",
+          "note": "NEEDS_DESKTOP"
+        },
+        "GEN PRMT": {
+          "price": null,
+          "unit": "EA",
+          "description": "Permits & fees",
+          "xactCode": "GEN PRMT",
+          "note": "NEEDS_DESKTOP"
+        },
+        "CLN GCLN": {
+          "price": null,
+          "unit": "HR",
+          "description": "General clean-up",
+          "xactCode": "CLN GCLN",
+          "note": "NEEDS_DESKTOP"
+        },
+        "SFG GUTW": {
+          "price": null,
+          "unit": "LF",
+          "description": "Gutter/DS aluminum up to 5\"",
+          "xactCode": "SFG GUTA"
+        },
+        "SFG DNSW": {
+          "price": null,
+          "unit": "LF",
+          "description": "Downspout aluminum up to 5\"",
+          "xactCode": "SFG GUTA"
+        }
+      }
+    },
+    "TXTE8X_APR26": {
+      "name": "Texarkana Texas March 2026",
+      "zip": "",
+      "pending": true,
+      "items": {
+        "RFG SHTG": {
+          "price": 56.3,
+          "unit": "SQ",
+          "description": "Laminated shingle - Remove",
+          "xactCode": "RFG 300S"
+        },
+        "RFG LAMI": {
+          "price": 223.29,
+          "unit": "SQ",
+          "description": "Laminated shingle - Install",
+          "xactCode": "RFG 300S"
+        },
+        "RFG RDGC": {
+          "price": 7.01,
+          "unit": "LF",
+          "description": "Hip/Ridge cap Standard R&R",
+          "xactCode": "RFG RIDGCS"
+        },
+        "RFG STRT": {
+          "price": 1.44,
+          "unit": "LF",
+          "description": "Starter strip - universal",
+          "xactCode": "RFG ASTR-"
+        },
+        "RFG FELT30": {
+          "price": 34.49,
+          "unit": "SQ",
+          "description": "Roofing felt - 30 lb.",
+          "xactCode": "RFG FELT30"
+        },
+        "RFG I&W": {
+          "price": 1.4,
+          "unit": "SF",
+          "description": "Ice & water barrier",
+          "xactCode": "RFG IWS"
+        },
+        "RFG DRPE": {
+          "price": 2.74,
+          "unit": "LF",
+          "description": "Drip edge - Remove",
+          "xactCode": "RFG DRIP"
+        },
+        "RFG DRIP": {
+          "price": 2.74,
+          "unit": "LF",
+          "description": "Drip edge - Install",
+          "xactCode": "RFG DRIP"
+        },
+        "RFG STPF_R": {
+          "price": 8.31,
+          "unit": "LF",
+          "description": "Step flashing - Remove",
+          "xactCode": "RFG STEP"
+        },
+        "RFG STPF": {
+          "price": 8.31,
+          "unit": "LF",
+          "description": "Step flashing - Install",
+          "xactCode": "RFG STEP"
+        },
+        "RFG JKFL": {
+          "price": 50.76,
+          "unit": "EA",
+          "description": "Pipe jack R&R",
+          "xactCode": "RFG FLPIPE"
+        },
+        "RFG CHFL": {
+          "price": 368.3,
+          "unit": "EA",
+          "description": "Chimney flashing avg (32x36) R&R",
+          "xactCode": "RFG FLCH"
+        },
+        "RFG RGVC": {
+          "price": null,
+          "unit": "LF",
+          "description": "Continuous ridge vent R&R",
+          "xactCode": "RFG RGVC",
+          "note": "NEEDS_DESKTOP"
+        },
+        "RFG STP7_R": {
+          "price": null,
+          "unit": "SQ",
+          "description": "Steep 7/12-9/12 - Remove",
+          "xactCode": "RFG STP7",
+          "note": "NEEDS_DESKTOP"
+        },
+        "RFG STP7": {
+          "price": null,
+          "unit": "SQ",
+          "description": "Steep 7/12-9/12 - Install",
+          "xactCode": "RFG STP7",
+          "note": "NEEDS_DESKTOP"
+        },
+        "RFG HIGH_R": {
+          "price": null,
+          "unit": "SQ",
+          "description": "High roof 2+ stories - Remove",
+          "xactCode": "RFG HIGH",
+          "note": "NEEDS_DESKTOP"
+        },
+        "RFG HIGH": {
+          "price": null,
+          "unit": "SQ",
+          "description": "High roof 2+ stories - Install",
+          "xactCode": "RFG HIGH",
+          "note": "NEEDS_DESKTOP"
+        },
+        "CLN DMPW": {
+          "price": null,
+          "unit": "EA",
+          "description": "Dumpster ~30 yards",
+          "xactCode": "CLN DMPW",
+          "note": "NEEDS_DESKTOP"
+        },
+        "GEN PRMT": {
+          "price": null,
+          "unit": "EA",
+          "description": "Permits & fees",
+          "xactCode": "GEN PRMT",
+          "note": "NEEDS_DESKTOP"
+        },
+        "CLN GCLN": {
+          "price": null,
+          "unit": "HR",
+          "description": "General clean-up",
+          "xactCode": "CLN GCLN",
+          "note": "NEEDS_DESKTOP"
+        },
+        "SFG GUTW": {
+          "price": null,
+          "unit": "LF",
+          "description": "Gutter/DS aluminum up to 5\"",
+          "xactCode": "SFG GUTA"
+        },
+        "SFG DNSW": {
+          "price": null,
+          "unit": "LF",
+          "description": "Downspout aluminum up to 5\"",
+          "xactCode": "SFG GUTA"
+        }
+      }
+    },
+    "TXTW8X_APR26": {
+      "name": "The Woodlands Texas March 2026",
+      "zip": "",
+      "pending": true,
+      "items": {
+        "RFG SHTG": {
+          "price": 70.3,
+          "unit": "SQ",
+          "description": "Laminated shingle - Remove",
+          "xactCode": "RFG 300S"
+        },
+        "RFG LAMI": {
+          "price": 275.79,
+          "unit": "SQ",
+          "description": "Laminated shingle - Install",
+          "xactCode": "RFG 300S"
+        },
+        "RFG RDGC": {
+          "price": 9.35,
+          "unit": "LF",
+          "description": "Hip/Ridge cap Standard R&R",
+          "xactCode": "RFG RIDGCS"
+        },
+        "RFG STRT": {
+          "price": 1.92,
+          "unit": "LF",
+          "description": "Starter strip - universal",
+          "xactCode": "RFG ASTR-"
+        },
+        "RFG FELT30": {
+          "price": 40.7,
+          "unit": "SQ",
+          "description": "Roofing felt - 30 lb.",
+          "xactCode": "RFG FELT30"
+        },
+        "RFG I&W": {
+          "price": 1.83,
+          "unit": "SF",
+          "description": "Ice & water barrier",
+          "xactCode": "RFG IWS"
+        },
+        "RFG DRPE": {
+          "price": 3.42,
+          "unit": "LF",
+          "description": "Drip edge - Remove",
+          "xactCode": "RFG DRIP"
+        },
+        "RFG DRIP": {
+          "price": 3.42,
+          "unit": "LF",
+          "description": "Drip edge - Install",
+          "xactCode": "RFG DRIP"
+        },
+        "RFG STPF_R": {
+          "price": 11.41,
+          "unit": "LF",
+          "description": "Step flashing - Remove",
+          "xactCode": "RFG STEP"
+        },
+        "RFG STPF": {
+          "price": 11.41,
+          "unit": "LF",
+          "description": "Step flashing - Install",
+          "xactCode": "RFG STEP"
+        },
+        "RFG JKFL": {
+          "price": 64.89,
+          "unit": "EA",
+          "description": "Pipe jack R&R",
+          "xactCode": "RFG FLPIPE"
+        },
+        "RFG CHFL": {
+          "price": 491.7,
+          "unit": "EA",
+          "description": "Chimney flashing avg (32x36) R&R",
+          "xactCode": "RFG FLCH"
+        },
+        "RFG RGVC": {
+          "price": null,
+          "unit": "LF",
+          "description": "Continuous ridge vent R&R",
+          "xactCode": "RFG RGVC",
+          "note": "NEEDS_DESKTOP"
+        },
+        "RFG STP7_R": {
+          "price": null,
+          "unit": "SQ",
+          "description": "Steep 7/12-9/12 - Remove",
+          "xactCode": "RFG STP7",
+          "note": "NEEDS_DESKTOP"
+        },
+        "RFG STP7": {
+          "price": null,
+          "unit": "SQ",
+          "description": "Steep 7/12-9/12 - Install",
+          "xactCode": "RFG STP7",
+          "note": "NEEDS_DESKTOP"
+        },
+        "RFG HIGH_R": {
+          "price": null,
+          "unit": "SQ",
+          "description": "High roof 2+ stories - Remove",
+          "xactCode": "RFG HIGH",
+          "note": "NEEDS_DESKTOP"
+        },
+        "RFG HIGH": {
+          "price": null,
+          "unit": "SQ",
+          "description": "High roof 2+ stories - Install",
+          "xactCode": "RFG HIGH",
+          "note": "NEEDS_DESKTOP"
+        },
+        "CLN DMPW": {
+          "price": null,
+          "unit": "EA",
+          "description": "Dumpster ~30 yards",
+          "xactCode": "CLN DMPW",
+          "note": "NEEDS_DESKTOP"
+        },
+        "GEN PRMT": {
+          "price": null,
+          "unit": "EA",
+          "description": "Permits & fees",
+          "xactCode": "GEN PRMT",
+          "note": "NEEDS_DESKTOP"
+        },
+        "CLN GCLN": {
+          "price": null,
+          "unit": "HR",
+          "description": "General clean-up",
+          "xactCode": "CLN GCLN",
+          "note": "NEEDS_DESKTOP"
+        },
+        "SFG GUTW": {
+          "price": null,
+          "unit": "LF",
+          "description": "Gutter/DS aluminum up to 5\"",
+          "xactCode": "SFG GUTA"
+        },
+        "SFG DNSW": {
+          "price": null,
+          "unit": "LF",
+          "description": "Downspout aluminum up to 5\"",
+          "xactCode": "SFG GUTA"
+        }
+      }
+    },
+    "TXTY8X_APR26": {
+      "name": "Tyler Texas March 2026",
+      "zip": "",
+      "pending": true,
+      "items": {
+        "RFG SHTG": {
+          "price": 66.34,
+          "unit": "SQ",
+          "description": "Laminated shingle - Remove",
+          "xactCode": "RFG 300S"
+        },
+        "RFG LAMI": {
+          "price": 227.18,
+          "unit": "SQ",
+          "description": "Laminated shingle - Install",
+          "xactCode": "RFG 300S"
+        },
+        "RFG RDGC": {
+          "price": 7.37,
+          "unit": "LF",
+          "description": "Hip/Ridge cap Standard R&R",
+          "xactCode": "RFG RIDGCS"
+        },
+        "RFG STRT": {
+          "price": 1.49,
+          "unit": "LF",
+          "description": "Starter strip - universal",
+          "xactCode": "RFG ASTR-"
+        },
+        "RFG FELT30": {
+          "price": 36.5,
+          "unit": "SQ",
+          "description": "Roofing felt - 30 lb.",
+          "xactCode": "RFG FELT30"
+        },
+        "RFG I&W": {
+          "price": 1.53,
+          "unit": "SF",
+          "description": "Ice & water barrier",
+          "xactCode": "RFG IWS"
+        },
+        "RFG DRPE": {
+          "price": 2.82,
+          "unit": "LF",
+          "description": "Drip edge - Remove",
+          "xactCode": "RFG DRIP"
+        },
+        "RFG DRIP": {
+          "price": 2.82,
+          "unit": "LF",
+          "description": "Drip edge - Install",
+          "xactCode": "RFG DRIP"
+        },
+        "RFG STPF_R": {
+          "price": 8.39,
+          "unit": "LF",
+          "description": "Step flashing - Remove",
+          "xactCode": "RFG STEP"
+        },
+        "RFG STPF": {
+          "price": 8.39,
+          "unit": "LF",
+          "description": "Step flashing - Install",
+          "xactCode": "RFG STEP"
+        },
+        "RFG JKFL": {
+          "price": 52.49,
+          "unit": "EA",
+          "description": "Pipe jack R&R",
+          "xactCode": "RFG FLPIPE"
+        },
+        "RFG CHFL": {
+          "price": 376.82,
+          "unit": "EA",
+          "description": "Chimney flashing avg (32x36) R&R",
+          "xactCode": "RFG FLCH"
+        },
+        "RFG RGVC": {
+          "price": null,
+          "unit": "LF",
+          "description": "Continuous ridge vent R&R",
+          "xactCode": "RFG RGVC",
+          "note": "NEEDS_DESKTOP"
+        },
+        "RFG STP7_R": {
+          "price": null,
+          "unit": "SQ",
+          "description": "Steep 7/12-9/12 - Remove",
+          "xactCode": "RFG STP7",
+          "note": "NEEDS_DESKTOP"
+        },
+        "RFG STP7": {
+          "price": null,
+          "unit": "SQ",
+          "description": "Steep 7/12-9/12 - Install",
+          "xactCode": "RFG STP7",
+          "note": "NEEDS_DESKTOP"
+        },
+        "RFG HIGH_R": {
+          "price": null,
+          "unit": "SQ",
+          "description": "High roof 2+ stories - Remove",
+          "xactCode": "RFG HIGH",
+          "note": "NEEDS_DESKTOP"
+        },
+        "RFG HIGH": {
+          "price": null,
+          "unit": "SQ",
+          "description": "High roof 2+ stories - Install",
+          "xactCode": "RFG HIGH",
+          "note": "NEEDS_DESKTOP"
+        },
+        "CLN DMPW": {
+          "price": null,
+          "unit": "EA",
+          "description": "Dumpster ~30 yards",
+          "xactCode": "CLN DMPW",
+          "note": "NEEDS_DESKTOP"
+        },
+        "GEN PRMT": {
+          "price": null,
+          "unit": "EA",
+          "description": "Permits & fees",
+          "xactCode": "GEN PRMT",
+          "note": "NEEDS_DESKTOP"
+        },
+        "CLN GCLN": {
+          "price": null,
+          "unit": "HR",
+          "description": "General clean-up",
+          "xactCode": "CLN GCLN",
+          "note": "NEEDS_DESKTOP"
+        },
+        "SFG GUTW": {
+          "price": null,
+          "unit": "LF",
+          "description": "Gutter/DS aluminum up to 5\"",
+          "xactCode": "SFG GUTA"
+        },
+        "SFG DNSW": {
+          "price": null,
+          "unit": "LF",
+          "description": "Downspout aluminum up to 5\"",
+          "xactCode": "SFG GUTA"
+        }
+      }
+    },
+    "TXVC8X_APR26": {
+      "name": "Victoria Texas March 2026",
+      "zip": "",
+      "pending": true,
+      "items": {
+        "RFG SHTG": {
+          "price": 58.55,
+          "unit": "SQ",
+          "description": "Laminated shingle - Remove",
+          "xactCode": "RFG 300S"
+        },
+        "RFG LAMI": {
+          "price": 266.93,
+          "unit": "SQ",
+          "description": "Laminated shingle - Install",
+          "xactCode": "RFG 300S"
+        },
+        "RFG RDGC": {
+          "price": 9.16,
+          "unit": "LF",
+          "description": "Hip/Ridge cap Standard R&R",
+          "xactCode": "RFG RIDGCS"
+        },
+        "RFG STRT": {
+          "price": 1.78,
+          "unit": "LF",
+          "description": "Starter strip - universal",
+          "xactCode": "RFG ASTR-"
+        },
+        "RFG FELT30": {
+          "price": 41.34,
+          "unit": "SQ",
+          "description": "Roofing felt - 30 lb.",
+          "xactCode": "RFG FELT30"
+        },
+        "RFG I&W": {
+          "price": 1.74,
+          "unit": "SF",
+          "description": "Ice & water barrier",
+          "xactCode": "RFG IWS"
+        },
+        "RFG DRPE": {
+          "price": 3.21,
+          "unit": "LF",
+          "description": "Drip edge - Remove",
+          "xactCode": "RFG DRIP"
+        },
+        "RFG DRIP": {
+          "price": 3.21,
+          "unit": "LF",
+          "description": "Drip edge - Install",
+          "xactCode": "RFG DRIP"
+        },
+        "RFG STPF_R": {
+          "price": 10.66,
+          "unit": "LF",
+          "description": "Step flashing - Remove",
+          "xactCode": "RFG STEP"
+        },
+        "RFG STPF": {
+          "price": 10.66,
+          "unit": "LF",
+          "description": "Step flashing - Install",
+          "xactCode": "RFG STEP"
+        },
+        "RFG JKFL": {
+          "price": 60.16,
+          "unit": "EA",
+          "description": "Pipe jack R&R",
+          "xactCode": "RFG FLPIPE"
+        },
+        "RFG CHFL": {
+          "price": 459.52,
+          "unit": "EA",
+          "description": "Chimney flashing avg (32x36) R&R",
+          "xactCode": "RFG FLCH"
+        },
+        "RFG RGVC": {
+          "price": null,
+          "unit": "LF",
+          "description": "Continuous ridge vent R&R",
+          "xactCode": "RFG RGVC",
+          "note": "NEEDS_DESKTOP"
+        },
+        "RFG STP7_R": {
+          "price": null,
+          "unit": "SQ",
+          "description": "Steep 7/12-9/12 - Remove",
+          "xactCode": "RFG STP7",
+          "note": "NEEDS_DESKTOP"
+        },
+        "RFG STP7": {
+          "price": null,
+          "unit": "SQ",
+          "description": "Steep 7/12-9/12 - Install",
+          "xactCode": "RFG STP7",
+          "note": "NEEDS_DESKTOP"
+        },
+        "RFG HIGH_R": {
+          "price": null,
+          "unit": "SQ",
+          "description": "High roof 2+ stories - Remove",
+          "xactCode": "RFG HIGH",
+          "note": "NEEDS_DESKTOP"
+        },
+        "RFG HIGH": {
+          "price": null,
+          "unit": "SQ",
+          "description": "High roof 2+ stories - Install",
+          "xactCode": "RFG HIGH",
+          "note": "NEEDS_DESKTOP"
+        },
+        "CLN DMPW": {
+          "price": null,
+          "unit": "EA",
+          "description": "Dumpster ~30 yards",
+          "xactCode": "CLN DMPW",
+          "note": "NEEDS_DESKTOP"
+        },
+        "GEN PRMT": {
+          "price": null,
+          "unit": "EA",
+          "description": "Permits & fees",
+          "xactCode": "GEN PRMT",
+          "note": "NEEDS_DESKTOP"
+        },
+        "CLN GCLN": {
+          "price": null,
+          "unit": "HR",
+          "description": "General clean-up",
+          "xactCode": "CLN GCLN",
+          "note": "NEEDS_DESKTOP"
+        },
+        "SFG GUTW": {
+          "price": null,
+          "unit": "LF",
+          "description": "Gutter/DS aluminum up to 5\"",
+          "xactCode": "SFG GUTA"
+        },
+        "SFG DNSW": {
+          "price": null,
+          "unit": "LF",
+          "description": "Downspout aluminum up to 5\"",
+          "xactCode": "SFG GUTA"
+        }
+      }
+    },
+    "TXWA8X_APR26": {
+      "name": "Waco Texas March 2026",
+      "zip": "",
+      "pending": true,
+      "items": {
+        "RFG SHTG": {
+          "price": 59.33,
+          "unit": "SQ",
+          "description": "Laminated shingle - Remove",
+          "xactCode": "RFG 300S"
+        },
+        "RFG LAMI": {
+          "price": 243.44,
+          "unit": "SQ",
+          "description": "Laminated shingle - Install",
+          "xactCode": "RFG 300S"
+        },
+        "RFG RDGC": {
+          "price": 8.19,
+          "unit": "LF",
+          "description": "Hip/Ridge cap Standard R&R",
+          "xactCode": "RFG RIDGCS"
+        },
+        "RFG STRT": {
+          "price": 1.72,
+          "unit": "LF",
+          "description": "Starter strip - universal",
+          "xactCode": "RFG ASTR-"
+        },
+        "RFG FELT30": {
+          "price": 38.78,
+          "unit": "SQ",
+          "description": "Roofing felt - 30 lb.",
+          "xactCode": "RFG FELT30"
+        },
+        "RFG I&W": {
+          "price": 1.59,
+          "unit": "SF",
+          "description": "Ice & water barrier",
+          "xactCode": "RFG IWS"
+        },
+        "RFG DRPE": {
+          "price": 3.03,
+          "unit": "LF",
+          "description": "Drip edge - Remove",
+          "xactCode": "RFG DRIP"
+        },
+        "RFG DRIP": {
+          "price": 3.03,
+          "unit": "LF",
+          "description": "Drip edge - Install",
+          "xactCode": "RFG DRIP"
+        },
+        "RFG STPF_R": {
+          "price": 9.83,
+          "unit": "LF",
+          "description": "Step flashing - Remove",
+          "xactCode": "RFG STEP"
+        },
+        "RFG STPF": {
+          "price": 9.83,
+          "unit": "LF",
+          "description": "Step flashing - Install",
+          "xactCode": "RFG STEP"
+        },
+        "RFG JKFL": {
+          "price": 56.81,
+          "unit": "EA",
+          "description": "Pipe jack R&R",
+          "xactCode": "RFG FLPIPE"
+        },
+        "RFG CHFL": {
+          "price": 427.01,
+          "unit": "EA",
+          "description": "Chimney flashing avg (32x36) R&R",
+          "xactCode": "RFG FLCH"
+        },
+        "RFG RGVC": {
+          "price": null,
+          "unit": "LF",
+          "description": "Continuous ridge vent R&R",
+          "xactCode": "RFG RGVC",
+          "note": "NEEDS_DESKTOP"
+        },
+        "RFG STP7_R": {
+          "price": null,
+          "unit": "SQ",
+          "description": "Steep 7/12-9/12 - Remove",
+          "xactCode": "RFG STP7",
+          "note": "NEEDS_DESKTOP"
+        },
+        "RFG STP7": {
+          "price": null,
+          "unit": "SQ",
+          "description": "Steep 7/12-9/12 - Install",
+          "xactCode": "RFG STP7",
+          "note": "NEEDS_DESKTOP"
+        },
+        "RFG HIGH_R": {
+          "price": null,
+          "unit": "SQ",
+          "description": "High roof 2+ stories - Remove",
+          "xactCode": "RFG HIGH",
+          "note": "NEEDS_DESKTOP"
+        },
+        "RFG HIGH": {
+          "price": null,
+          "unit": "SQ",
+          "description": "High roof 2+ stories - Install",
+          "xactCode": "RFG HIGH",
+          "note": "NEEDS_DESKTOP"
+        },
+        "CLN DMPW": {
+          "price": null,
+          "unit": "EA",
+          "description": "Dumpster ~30 yards",
+          "xactCode": "CLN DMPW",
+          "note": "NEEDS_DESKTOP"
+        },
+        "GEN PRMT": {
+          "price": null,
+          "unit": "EA",
+          "description": "Permits & fees",
+          "xactCode": "GEN PRMT",
+          "note": "NEEDS_DESKTOP"
+        },
+        "CLN GCLN": {
+          "price": null,
+          "unit": "HR",
+          "description": "General clean-up",
+          "xactCode": "CLN GCLN",
+          "note": "NEEDS_DESKTOP"
+        },
+        "SFG GUTW": {
+          "price": null,
+          "unit": "LF",
+          "description": "Gutter/DS aluminum up to 5\"",
+          "xactCode": "SFG GUTA"
+        },
+        "SFG DNSW": {
+          "price": null,
+          "unit": "LF",
+          "description": "Downspout aluminum up to 5\"",
+          "xactCode": "SFG GUTA"
+        }
+      }
+    },
+    "TXWF8X_APR26": {
+      "name": "Wichita Falls Texas March 2026",
+      "zip": "",
+      "pending": true,
+      "items": {
+        "RFG SHTG": {
+          "price": 57.67,
+          "unit": "SQ",
+          "description": "Laminated shingle - Remove",
+          "xactCode": "RFG 300S"
+        },
+        "RFG LAMI": {
+          "price": 232.82,
+          "unit": "SQ",
+          "description": "Laminated shingle - Install",
+          "xactCode": "RFG 300S"
+        },
+        "RFG RDGC": {
+          "price": 7.75,
+          "unit": "LF",
+          "description": "Hip/Ridge cap Standard R&R",
+          "xactCode": "RFG RIDGCS"
+        },
+        "RFG STRT": {
+          "price": 1.53,
+          "unit": "LF",
+          "description": "Starter strip - universal",
+          "xactCode": "RFG ASTR-"
+        },
+        "RFG FELT30": {
+          "price": 36.21,
+          "unit": "SQ",
+          "description": "Roofing felt - 30 lb.",
+          "xactCode": "RFG FELT30"
+        },
+        "RFG I&W": {
+          "price": 1.48,
+          "unit": "SF",
+          "description": "Ice & water barrier",
+          "xactCode": "RFG IWS"
+        },
+        "RFG DRPE": {
+          "price": 2.87,
+          "unit": "LF",
+          "description": "Drip edge - Remove",
+          "xactCode": "RFG DRIP"
+        },
+        "RFG DRIP": {
+          "price": 2.87,
+          "unit": "LF",
+          "description": "Drip edge - Install",
+          "xactCode": "RFG DRIP"
+        },
+        "RFG STPF_R": {
+          "price": 8.95,
+          "unit": "LF",
+          "description": "Step flashing - Remove",
+          "xactCode": "RFG STEP"
+        },
+        "RFG STPF": {
+          "price": 8.95,
+          "unit": "LF",
+          "description": "Step flashing - Install",
+          "xactCode": "RFG STEP"
+        },
+        "RFG JKFL": {
+          "price": 53.66,
+          "unit": "EA",
+          "description": "Pipe jack R&R",
+          "xactCode": "RFG FLPIPE"
+        },
+        "RFG CHFL": {
+          "price": 393.27,
           "unit": "EA",
           "description": "Chimney flashing avg (32x36) R&R",
           "xactCode": "RFG FLCH"
