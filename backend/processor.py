@@ -3716,23 +3716,101 @@ GENERATOR_PATH = next((g for g in _GENERATOR_CANDIDATES if os.path.exists(g)), _
 
 
 def load_carrier_playbook(carrier_name: str) -> str:
-    """Load carrier playbook markdown for synthesis context. Returns empty string if not found."""
+    """Load carrier playbook for synthesis context.
+
+    Returns a combined string of:
+      1. Static baseline markdown (hand-curated intel shipped in repo, if any)
+      2. LIVE carrier data pulled from Supabase `claim_outcomes` + `carrier_tactics`
+         — wins, movement, effective tactics, recent settlements
+
+    Before 2026-04-17, this function only read the filesystem markdown, which
+    was ephemeral on Railway (reset on every deploy). Every accumulated claim
+    entry was lost at the next `railway up`. The new path reads Supabase on
+    every call — always fresh, survives deploys, no git sync required.
+
+    Returns empty string if carrier_name is empty. Total output capped at
+    3000 chars for prompt manageability.
+    """
     if not carrier_name:
         return ""
+
     slug = carrier_name.lower().replace("/", "-").replace(" ", "-").replace("--", "-").strip("-")
-    # Check backend local copy first, then platform directory
+
+    # 1. Static baseline from filesystem (hand-curated intel, keeps working
+    #    for carriers we've manually written playbooks for)
+    static_content = ""
     for base in [os.path.join(BACKEND_DIR, "carrier_playbooks"),
                  os.path.join(os.path.expanduser("~/USARM-Claims-Platform"), "carrier_playbooks")]:
         path = os.path.join(base, f"{slug}.md")
         if os.path.exists(path):
             try:
                 with open(path) as f:
-                    content = f.read()
-                # Return first 2000 chars to keep prompt manageable
-                return content[:2000]
+                    static_content = f.read()[:1500]  # leave headroom for live data
+                break
             except Exception:
                 pass
-    return ""
+
+    # 2. Live data from Supabase — cumulative across all claims, persists
+    #    across Railway deploys because it lives in Postgres, not the filesystem.
+    live_section = ""
+    try:
+        sb = get_supabase_client()
+        if sb:
+            outcomes_resp = sb.table("claim_outcomes") \
+                .select("slug,win,usarm_rcv,original_carrier_rcv,current_carrier_rcv,settlement_amount,movement_amount,movement_pct,date_of_loss") \
+                .eq("carrier", carrier_name) \
+                .order("created_at", desc=True) \
+                .limit(25) \
+                .execute()
+            outcomes = outcomes_resp.data or []
+
+            tactics_resp = sb.table("carrier_tactics") \
+                .select("tactic_type,description,counter_argument,effective,trade,settlement_impact") \
+                .eq("carrier", carrier_name) \
+                .order("created_at", desc=True) \
+                .limit(30) \
+                .execute()
+            tactics = tactics_resp.data or []
+
+            if outcomes or tactics:
+                wins = [o for o in outcomes if o.get("win")]
+                total_move = sum((o.get("movement_amount") or 0) for o in wins)
+                win_rate = round(len(wins) / len(outcomes) * 100, 1) if outcomes else 0.0
+                avg_move = round(total_move / len(wins), 0) if wins else 0
+
+                live_section = f"\n\n## LIVE CARRIER INTEL — {carrier_name}\n"
+                live_section += f"- Recent claims tracked: {len(outcomes)}\n"
+                live_section += f"- Wins: {len(wins)} ({win_rate}% win rate)\n"
+                if wins:
+                    live_section += f"- Total movement won: ${total_move:,.0f} (avg ${avg_move:,.0f}/win)\n"
+
+                effective = [t for t in tactics if t.get("effective")]
+                if effective:
+                    live_section += f"\n### Proven counter-arguments against {carrier_name}:\n"
+                    for t in effective[:8]:
+                        ttype = t.get("tactic_type") or "?"
+                        trade = t.get("trade") or ""
+                        desc = (t.get("description") or "")[:140]
+                        counter = (t.get("counter_argument") or "")[:200]
+                        prefix = f"- **{ttype}**" + (f" [{trade}]" if trade else "")
+                        live_section += f"{prefix}: {desc}\n"
+                        if counter:
+                            live_section += f"  Counter: {counter}\n"
+
+                if wins:
+                    live_section += f"\n### Recent wins (reference these for credibility):\n"
+                    for w in wins[:5]:
+                        mvmt = w.get("movement_amount") or 0
+                        pct = w.get("movement_pct") or 0
+                        # slug is like "51-camden-rd-hillsborough-township-nj-08844-..."
+                        # Trim trailing timestamp + truncate for readability
+                        slug = (w.get("slug") or "unknown").rsplit("-", 1)[0][:60]
+                        live_section += f"- {slug}: +${mvmt:,.0f} ({pct:.1f}% movement)\n"
+    except Exception as e:
+        print(f"[PLAYBOOK] Supabase live data fetch failed for {carrier_name} (non-fatal): {e}")
+
+    combined = static_content + live_section
+    return combined[:3000]
 
 
 def load_reference_file(name: str) -> str:
