@@ -119,7 +119,7 @@ CRITICAL issues (block delivery — customer cannot see this report):
 MEDIUM issues (log but do not block):
 - AI ARTIFACTS — phrases like "As an AI", "I'd be happy to", "I cannot provide", "I'll do my best".
 - FABRICATED INSPECTOR NAMES — any inspector name that is not `canonical_ceo_name` or a recognizable company employee. If no inspector name is mentioned, this is fine.
-- PHOTO COUNT DRIFT — prose references a photo count that differs from `photo_count` (within ±5 is fine).
+- PHOTO COUNT DRIFT — prose explicitly claims "X photographs" / "X photos" where X differs from `photo_count` by more than 5. Smaller deltas are fine.
 - WEASEL ADVOCACY — borderline advocacy language for contractor reports ("the carrier should consider", "we recommend the carrier").
 
 LOW issues (cosmetic):
@@ -131,6 +131,12 @@ RULES:
 - If the canonical field is empty string, do NOT flag the prose for mentioning or not mentioning that field.
 - Do NOT invent issues. Only flag facts that are demonstrably wrong.
 - When in doubt, do NOT flag — Tom would rather let a stylistic issue through than false-positive block a good report.
+
+CRITICAL LIST IS CLOSED. Only the seven numbered items above (ADDRESS / DATE-OF-LOSS / CARRIER / HOMEOWNER / UPPA / MULTIPLE-PROPERTIES / FABRICATED WEATHER) are ever critical. Do NOT invent new critical categories (e.g. PHOTO_COUNT_MISMATCH_AS_FINDINGS, CONSISTENCY_DRIFT, etc.). If an issue doesn't fit the seven, it is medium or low.
+
+"FINDINGS" IS NOT "PHOTOS". Counts of "findings", "observations", "documented items", "damage points", "defects", or "deficiencies" are NOT photo counts — one photo can contain several findings, and some findings span multiple photos. Never flag a findings-count sentence as a photo-count drift. Only flag PHOTO COUNT DRIFT when the prose literally says "N photographs" / "N photos" / "N images".
+
+PHOTO COUNT DRIFT IS ALWAYS MEDIUM. Even if the photo count is wildly off, it is medium — never critical. A wrong photo count does not block delivery.
 
 Return ONLY valid JSON matching this exact schema:
 ```json

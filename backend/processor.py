@@ -2267,8 +2267,11 @@ def build_claim_config(
             photo_map[key] = filename
             _img_idx += 1
 
-    # Sanitize contact_name — reject AI/bot names so USARM defaults apply
-    _contact_name = (company_profile or {}).get("contact_name", "")
+    # Sanitize contact_name — reject AI/bot names so USARM defaults apply.
+    # Use `or ""` not `get(k, "")` because Supabase returns NULL columns as
+    # explicit None, which defeats the dict-default and would crash .lower().
+    _cp = company_profile or {}
+    _contact_name = _cp.get("contact_name") or ""
     _bad_name_words = ["dumb roof", "ai analysis", "automated", "bot", "ai agent"]
     if any(w in _contact_name.lower() for w in _bad_name_words):
         _contact_name = ""
@@ -2276,15 +2279,15 @@ def build_claim_config(
     config = {
         "phase": phase,
         "company": {
-            "name": (company_profile or {}).get("company_name", ""),
-            "address": (company_profile or {}).get("address", ""),
-            "city_state_zip": (company_profile or {}).get("city_state_zip", ""),
+            "name": _cp.get("company_name") or "",
+            "address": _cp.get("address") or "",
+            "city_state_zip": _cp.get("city_state_zip") or "",
             "ceo_name": _contact_name,
-            "ceo_title": (company_profile or {}).get("contact_title", ""),
-            "email": (company_profile or {}).get("email", ""),
-            "cell_phone": (company_profile or {}).get("phone", ""),
-            "office_phone": (company_profile or {}).get("office_phone", ""),
-            "website": (company_profile or {}).get("website", ""),
+            "ceo_title": _cp.get("contact_title") or "",
+            "email": _cp.get("email") or "",
+            "cell_phone": _cp.get("phone") or "",
+            "office_phone": _cp.get("office_phone") or "",
+            "website": _cp.get("website") or "",
         },
         "property": {
             "address": claim.get("address", "") or prop.get("address", ""),
@@ -3823,6 +3826,102 @@ def _merge_measurement_extractions(extractions: list[dict]) -> dict:
     if len(extractions) <= 1:
         return extractions[0] if extractions else {}
 
+    # Drop extractions with no measurable content. Carrier estimates, coverage
+    # letters, and other non-measurement PDFs accidentally dropped in the
+    # measurements slot extract to zero-area structures — if kept, they inflate
+    # the structure count and cause per-structure line items to be duplicated
+    # (doubled roofs, tripled penetrations). See Mauricio/Skylight 123 case.
+    #
+    # A real roof-measurement report (EagleView/HOVER/GAF) has linear
+    # measurements — ridge/eave/valley/rake LF. Carrier estimates may parse a
+    # roof_area_sf from "30 SQ" line items but never list those linear LFs, so
+    # requiring at least one linear measurement > 0 filters them out cleanly.
+    def _has_linear_measurements(meas: dict) -> bool:
+        return any((meas or {}).get(k, 0) > 0
+                   for k in ("ridge", "eave", "valley", "rake", "hip"))
+
+    def _has_content(e: dict) -> bool:
+        # Walls-only reports pass regardless of linear measurements.
+        if e.get("walls", {}).get("total_wall_area_sf", 0) > 0:
+            return True
+        has_area = (
+            e.get("total_roof_area_sf", 0) > 0
+            or any(s.get("roof_area_sf", 0) > 0 for s in e.get("structures", []))
+        )
+        if not has_area:
+            return False
+        # Require evidence this is a real measurement report, not a carrier scope.
+        if _has_linear_measurements(e.get("measurements")):
+            return True
+        for s in e.get("structures", []):
+            if _has_linear_measurements(s.get("measurements")):
+                return True
+        return False
+
+    valid = [e for e in extractions if _has_content(e)]
+    # Fallback: never drop everything — if filter would nuke all extractions,
+    # keep originals so downstream still gets something.
+    if valid and len(valid) < len(extractions):
+        print(f"[MERGE] Dropped {len(extractions) - len(valid)} extractions lacking "
+              f"roof area + linear measurements (likely misfiled carrier/coverage docs)")
+        extractions = valid
+
+    # Dedup same-property extractions. When a user uploads an EagleView plus a
+    # carrier Xactimate for the same home, Claude extracts similar roof areas
+    # from both (the carrier reads "30 SQ" from line items, the EagleView
+    # reports the true measurement). Without dedup, both become "structures"
+    # and every penetration is doubled. Same-property = roof areas within ±15%.
+    def _total_roof_sf(e: dict) -> float:
+        total = e.get("total_roof_area_sf", 0) or 0
+        if total > 0:
+            return total
+        return sum((s.get("roof_area_sf", 0) or 0) for s in e.get("structures", []))
+
+    def _richness_score(e: dict) -> int:
+        """Higher score = denser measurement data. Real EagleView > carrier scope."""
+        score = 0
+        meas = e.get("measurements") or {}
+        for k in ("ridge", "eave", "valley", "rake", "hip", "drip_edge", "step_flashing"):
+            if meas.get(k, 0) > 0:
+                score += 1
+        for s in e.get("structures", []):
+            for p in (s.get("pitches") or []):
+                if (p.get("area_sf", 0) or 0) > 0:
+                    score += 2  # pitch-level areas are an EagleView signature
+            if s.get("facets", 0) > 0:
+                score += 1
+            if (s.get("measurements") or {}).get("eave", 0) > 0:
+                score += 1
+        if (e.get("walls") or {}).get("total_wall_area_sf", 0) > 0:
+            score += 5
+        return score
+
+    if len(extractions) > 1:
+        deduped = []
+        for e in extractions:
+            e_area = _total_roof_sf(e)
+            matched_idx = None
+            for i, kept in enumerate(deduped):
+                k_area = _total_roof_sf(kept)
+                if not e_area or not k_area:
+                    continue
+                if abs(e_area - k_area) / max(e_area, k_area) <= 0.15:
+                    matched_idx = i
+                    break
+            if matched_idx is None:
+                deduped.append(e)
+            else:
+                # Same property — keep the richer extraction.
+                if _richness_score(e) > _richness_score(deduped[matched_idx]):
+                    deduped[matched_idx] = e
+        if len(deduped) < len(extractions):
+            print(f"[MERGE] Deduped {len(extractions) - len(deduped)} same-property extractions "
+                  f"(roof areas within 15% — kept richer EagleView-style data)")
+            extractions = deduped
+
+    if len(extractions) <= 1:
+        return extractions[0] if extractions else {}
+
     # Partition: which files have walls data vs. roof-only?
     walls_indices = [i for i, e in enumerate(extractions)
                      if e.get("walls", {}).get("total_wall_area_sf", 0) > 0]
@@ -3848,13 +3947,16 @@ def _merge_measurement_extractions(extractions: list[dict]) -> dict:
     for result in extractions:
         if not merged:
             merged = dict(result)
-        for s in result.get("structures", []):
+        for idx, s in enumerate(result.get("structures", [])):
             s = dict(s)  # Clone to avoid mutating caller's data
             if not s.get("name") or s["name"] == "Main Roof":
                 s["name"] = f"Structure {len(all_structures) + 1}"
             if not s.get("measurements") and result.get("measurements"):
                 s["measurements"] = result["measurements"]
-            if not s.get("penetrations") and result.get("penetrations"):
+            # Claim-wide penetrations only belong to the primary structure of
+            # each extraction — attaching them to every structure multiplies
+            # chimneys/skylights/vents by N.
+            if idx == 0 and not s.get("penetrations") and result.get("penetrations"):
                 s["penetrations"] = result["penetrations"]
             all_structures.append(s)
 
@@ -4219,16 +4321,26 @@ async def process_claim(claim_id: str):
                 return meas_override
             if not measurement_paths:
                 return {}
-            if len(measurement_paths) == 1:
-                resolved = resolve_eml_to_document(measurement_paths[0], source_dir)
+            # Resolve .eml wrappers, then keep only files Claude can ingest as a
+            # document block (PDFs). EagleView exports ship a PDF + XML pair —
+            # the XML has no dedicated parser and Anthropic rejects it when sent
+            # as application/pdf, which crashes the whole extraction via
+            # asyncio.gather. The PDF carries the same measurements visually.
+            resolved_paths = [resolve_eml_to_document(mpath, source_dir) for mpath in measurement_paths]
+            pdf_paths = [p for p in resolved_paths if p.lower().endswith(".pdf")]
+            skipped = [os.path.basename(p) for p in resolved_paths if not p.lower().endswith(".pdf")]
+            if skipped:
+                print(f"[PROCESS] Skipping non-PDF measurement files (no parser): {skipped}")
+            if not pdf_paths:
+                return {}
+            if len(pdf_paths) == 1:
                 print("[PROCESS] Extracting measurements...")
-                return await asyncio.to_thread(extract_measurements, claude, resolved)
+                return await asyncio.to_thread(extract_measurements, claude, pdf_paths[0])
 
             # Multiple measurement files — extract in parallel, then smart-merge
-            resolved_paths = [resolve_eml_to_document(mpath, source_dir) for mpath in measurement_paths]
-            print(f"[PROCESS] Extracting measurements from {len(resolved_paths)} files in parallel...")
+            print(f"[PROCESS] Extracting measurements from {len(pdf_paths)} files in parallel...")
             extractions = list(await asyncio.gather(*[
-                asyncio.to_thread(extract_measurements, claude, p) for p in resolved_paths
+                asyncio.to_thread(extract_measurements, claude, p) for p in pdf_paths
             ]))
 
             return _merge_measurement_extractions(extractions)
