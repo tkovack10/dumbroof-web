@@ -28,6 +28,7 @@ interface Photo {
 
 interface Props {
   claimId: string;
+  refreshKey?: string | null;
 }
 
 type Tab = "estimate" | "damage" | "codes";
@@ -43,7 +44,7 @@ const SECTION_ORDER: Record<string, number> = {
   "ROOFING": 0, "SIDING": 1, "GUTTERS": 2, "INTERIOR": 3, "GENERAL": 4,
 };
 
-export function EstimateView({ claimId }: Props) {
+export function EstimateView({ claimId, refreshKey }: Props) {
   const [items, setItems] = useState<LineItem[]>([]);
   const [photos, setPhotos] = useState<Photo[]>([]);
   const [comparisonRows, setComparisonRows] = useState<ScopeComparisonRow[]>([]);
@@ -84,7 +85,7 @@ export function EstimateView({ claimId }: Props) {
       }
     }
     fetchData();
-  }, [claimId]);
+  }, [claimId, refreshKey]);
 
   if (loading || items.length === 0) return null;
 

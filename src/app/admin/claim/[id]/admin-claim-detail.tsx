@@ -471,12 +471,12 @@ export function AdminClaimDetail({ claim: initialClaim, userInfo }: Props) {
 
         {/* Scope Comparison — only when scope_comparison data exists */}
         {isReady && claim.scope_comparison && (
-          <ScopeComparison claimId={claim.id} carrierName={claim.carrier} />
+          <ScopeComparison claimId={claim.id} carrierName={claim.carrier} refreshKey={claim.last_processed_at} />
         )}
 
         {/* Estimate & Damage Assessment */}
         {isReady && (
-          <EstimateView claimId={claim.id} />
+          <EstimateView claimId={claim.id} refreshKey={claim.last_processed_at} />
         )}
 
         {/* Supplement Composer */}

@@ -1115,7 +1115,7 @@ export default function ClaimDetailPage() {
 
         {/* Scope Comparison — only when scope_comparison data exists */}
         {isReady && claim.scope_comparison && !isForensicOnly && (
-          <ScopeComparison claimId={claim.id} carrierName={claim.carrier} />
+          <ScopeComparison claimId={claim.id} carrierName={claim.carrier} refreshKey={claim.last_processed_at} />
         )}
         {isReady && isForensicOnly && !(claim.measurement_files?.length) && (
           <LockedCard title="Line-by-Line Carrier Comparison" description="Compare your scope against the carrier's to find every underpayment and missing item." />
@@ -1123,7 +1123,7 @@ export default function ClaimDetailPage() {
 
         {/* Estimate & Damage Assessment */}
         {isReady && !isForensicOnly && (
-          <div id="lifecycle-estimate"><EstimateView claimId={claim.id} /></div>
+          <div id="lifecycle-estimate"><EstimateView claimId={claim.id} refreshKey={claim.last_processed_at} /></div>
         )}
 
         {/* Estimate Configuration — any claim with measurements can configure roof/gutters/siding */}

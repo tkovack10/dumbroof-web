@@ -11,6 +11,7 @@ import type {
 interface Props {
   claimId: string;
   carrierName: string;
+  refreshKey?: string | null;
 }
 
 const STATUS_STYLES: Record<string, { chip: string; row: string; label: string }> = {
@@ -23,7 +24,7 @@ const STATUS_STYLES: Record<string, { chip: string; row: string; label: string }
 
 type Tab = "roofing" | "siding" | "missing" | "financial";
 
-export function ScopeComparison({ claimId, carrierName }: Props) {
+export function ScopeComparison({ claimId, carrierName, refreshKey }: Props) {
   const [data, setData] = useState<ScopeComparisonResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -49,7 +50,7 @@ export function ScopeComparison({ claimId, carrierName }: Props) {
       }
     }
     fetchData();
-  }, [claimId]);
+  }, [claimId, refreshKey]);
 
   if (loading) return null;
   if (error || !data) return null;
