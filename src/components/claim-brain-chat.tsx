@@ -593,6 +593,20 @@ export function ClaimBrainChat({
     scrollToBottom();
   }, [messages, scrollToBottom]);
 
+  // Drop-to-attach creates an expectation that dragging files anywhere is safe.
+  // Without this, a stray drop outside the panel triggers the browser's default
+  // "open file in tab" behavior and navigates away from the claim.
+  useEffect(() => {
+    if (!isOpen) return;
+    const prevent = (e: DragEvent) => { e.preventDefault(); };
+    window.addEventListener("dragover", prevent);
+    window.addEventListener("drop", prevent);
+    return () => {
+      window.removeEventListener("dragover", prevent);
+      window.removeEventListener("drop", prevent);
+    };
+  }, [isOpen]);
+
   useEffect(() => {
     let cancelled = false;
     const loadHistory = async () => {

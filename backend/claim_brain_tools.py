@@ -350,7 +350,13 @@ def _audit_log(
     """Insert one row into claim_brain_audit. Non-fatal — swallows errors."""
     try:
         # Supabase jsonb expects a dict (NOT pre-serialized JSON); truncate oversize inputs.
-        safe_input = tool_input if isinstance(tool_input, dict) else {"_raw": str(tool_input)[:2000]}
+        safe_input: Any = tool_input if isinstance(tool_input, dict) else {"_raw": str(tool_input)[:2000]}
+        # Cap total serialized size to keep audit rows small and predictable.
+        try:
+            if len(json.dumps(safe_input, default=str)) > 10000:
+                safe_input = {"_truncated": True, "tool_name": tool_name}
+        except Exception:
+            safe_input = {"_truncated": True, "tool_name": tool_name}
         summary = (result.get("message") or "")[:500] if isinstance(result, dict) else ""
         sb.table("claim_brain_audit").insert({
             "claim_id": claim_id,
@@ -798,21 +804,23 @@ async def _handle_check_carrier_emails(sb, claim_id, user_id, claim_data):
 # ═══════════════════════════════════════════
 
 def _claim_state(claim_data: dict) -> str:
-    """Infer two-letter state code from claim data. Fallback to NY."""
-    # Prefer explicit state column
+    """Infer two-letter state code from claim data.
+
+    Returns "" when unknown. Callers should NOT silently default — a wrong state
+    can misroute pricing now that we have 84-market data (NY/NJ/PA/MD/DE/OH/MI/
+    IL/MN/TX). Treat empty-return as "ask the user" rather than "default to NY".
+    """
     state = (claim_data.get("state") or "").strip().upper()
     if len(state) == 2:
         return state
-    # Fall back to parsing city_state_zip
     csz = claim_data.get("city_state_zip") or ""
     import re
     m = re.search(r"\b([A-Z]{2})\b\s*\d{5}", csz)
     if m:
-        return m.group(1)
-    # Last resort — parse the address
+        return m.group(1).upper()
     addr = claim_data.get("address") or ""
     m = re.search(r",\s*([A-Z]{2})\s", addr)
-    return m.group(1) if m else "NY"
+    return m.group(1).upper() if m else ""
 
 
 def _handle_get_scope_comparison(claim_data: dict, tool_input: dict) -> dict:
@@ -906,12 +914,19 @@ def _handle_lookup_xactimate_price(claim_data: dict, tool_input: dict) -> dict:
     if not description:
         return {"action": "error", "message": "description is required"}
 
-    state = (tool_input.get("state") or _claim_state(claim_data)).upper()
+    explicit_state = (tool_input.get("state") or "").strip().upper()
+    resolved_state = explicit_state or _claim_state(claim_data)
+    if not resolved_state:
+        return {
+            "action": "complete",
+            "type": "xactimate_price",
+            "data": {"description": description, "state": None, "match": None},
+            "message": "State unknown for this claim — pass state explicitly to avoid misrouted pricing.",
+        }
 
     try:
         from xactimate_lookup import XactRegistry
         reg = XactRegistry()
-        # Use the existing lookup method — it returns best match
         match = reg.lookup_price(description)
     except Exception as e:
         return {"action": "error", "message": f"Xactimate registry unavailable: {e}"}
@@ -920,24 +935,50 @@ def _handle_lookup_xactimate_price(claim_data: dict, tool_input: dict) -> dict:
         return {
             "action": "complete",
             "type": "xactimate_price",
-            "data": {"description": description, "state": state, "match": None},
+            "data": {"description": description, "state": resolved_state, "match": None},
             "message": f"No Xactimate match found for '{description}'.",
         }
+
+    # Canonical registry shape (verified in xactimate_prices.json): xact_code, action,
+    # description, unit, unit_price. Older/alias shapes may use price or install_price.
+    code = match.get("xact_code") or match.get("code") or ""
+    raw_price = (
+        match.get("unit_price")
+        or match.get("install_price")
+        or match.get("price")
+        or 0
+    )
+    try:
+        price = float(raw_price or 0)
+    except (TypeError, ValueError):
+        price = 0.0
+    unit = match.get("unit") or "unit"
 
     return {
         "action": "complete",
         "type": "xactimate_price",
         "data": {
             "description": description,
-            "state": state,
-            "match": match,
+            "state": resolved_state,
+            "match": {
+                **match,
+                "code": code,
+                "price": price,
+                "unit": unit,
+            },
         },
-        "message": f"Found: {match.get('code') or description} — ${match.get('price') or match.get('install_price') or 0:.2f}/{match.get('unit') or 'unit'}",
+        "message": f"Found: {code or description} — ${price:.2f}/{unit}",
     }
 
 
 def _handle_get_noaa_weather(claim_data: dict, tool_input: dict) -> dict:
-    """Query NOAA for storm events near the claim around its date of loss."""
+    """Query NOAA for storm events near the claim around its date of loss.
+
+    NOAAClient.query(lat, lon, date_of_loss, address="") uses its own internal
+    date window — the window_days input parameter is accepted in the tool schema
+    for forward-compatibility but is not passed through. Document this in the
+    response so Claude doesn't lie about a custom window being applied.
+    """
     dol = claim_data.get("date_of_loss") or ""
     if not dol:
         return {
@@ -957,20 +998,15 @@ def _handle_get_noaa_weather(claim_data: dict, tool_input: dict) -> dict:
             "message": "Claim is not geocoded — reprocess to geocode it, then ask again.",
         }
 
-    window = int(tool_input.get("window_days") or 3)
-
     try:
         from noaa_weather.api import NOAAClient
         client = NOAAClient()
-        data = client.query(float(lat), float(lon), str(dol), window_days=window)
-    except TypeError:
-        # Signature may vary — retry without kwargs
-        try:
-            from noaa_weather.api import NOAAClient
-            client = NOAAClient()
-            data = client.query(float(lat), float(lon), str(dol))
-        except Exception as e:
-            return {"action": "error", "message": f"NOAA query failed: {e}"}
+        data = client.query(
+            float(lat),
+            float(lon),
+            str(dol),
+            address=claim_data.get("address", "") or "",
+        )
     except Exception as e:
         return {"action": "error", "message": f"NOAA query failed: {e}"}
 
@@ -998,10 +1034,9 @@ def _handle_get_noaa_weather(claim_data: dict, tool_input: dict) -> dict:
         "data": {
             "events": events,
             "date_of_loss": dol,
-            "window_days": window,
             "total": len(events),
         },
-        "message": f"{len(events)} NOAA storm event{'s' if len(events) != 1 else ''} within {window} days of {dol}.",
+        "message": f"{len(events)} NOAA storm event{'s' if len(events) != 1 else ''} near {dol}.",
     }
 
 
@@ -1141,9 +1176,14 @@ async def _handle_classify_uploaded_file(sb: Client, claim_id: str, tool_input: 
         "\"suggested_action\": \"one-sentence next step\"}"
     )
 
-    try:
-        msg = client.messages.create(
-            model="claude-sonnet-4-5",
+    # Matches the model used elsewhere in this backend (processor, carrier_analyst,
+    # repair_processor, main.py chat) so billing/quota behave predictably.
+    primary_model = os.environ.get("CLAIM_BRAIN_VISION_MODEL", "claude-opus-4-6")
+    fallback_model = "claude-sonnet-4-6"
+
+    def _call_vision(model_name: str):
+        return client.messages.create(
+            model=model_name,
             max_tokens=512,
             messages=[{
                 "role": "user",
@@ -1153,22 +1193,17 @@ async def _handle_classify_uploaded_file(sb: Client, claim_id: str, tool_input: 
                 ],
             }],
         )
-    except Exception as e:
-        # Model name fallback if the pinned one rejects
+
+    try:
+        msg = _call_vision(primary_model)
+    except Exception as e_primary:
         try:
-            msg = client.messages.create(
-                model="claude-opus-4-6",
-                max_tokens=512,
-                messages=[{
-                    "role": "user",
-                    "content": [
-                        doc_block,
-                        {"type": "text", "text": classify_prompt},
-                    ],
-                }],
-            )
-        except Exception as e2:
-            return {"action": "error", "message": f"Vision classification failed: {e2}"}
+            msg = _call_vision(fallback_model)
+        except Exception as e_fallback:
+            return {
+                "action": "error",
+                "message": f"Vision classification failed. Primary ({primary_model}): {e_primary}. Fallback ({fallback_model}): {e_fallback}",
+            }
 
     raw_text = ""
     for block in msg.content:
