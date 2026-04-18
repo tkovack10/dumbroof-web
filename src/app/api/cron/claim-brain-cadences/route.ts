@@ -11,11 +11,24 @@ const BCC = "claims@dumbroof.ai";
 // Richard's scheduled follow-ups live in claim_brain_cadence_sends. This cron fires
 // every pending row whose scheduled_at has passed. Each send records via Resend and
 // flips the row to status=sent (or failed).
+//
+// Safety guard: each row's subject MUST be the claim number (platform rule — carriers
+// auto-reject anything else). Any row that fails the guard is marked `failed` without
+// being sent. This protects against future paths that might bypass the preview.
+function isValidClaimNumberSubject(subject: string | null | undefined): boolean {
+  if (!subject) return false;
+  const s = subject.trim();
+  // Claim numbers are short, no whitespace, and typically alphanumeric with dashes.
+  return s.length > 0 && s.length <= 40 && !/\s/.test(s);
+}
+
 export async function GET(req: NextRequest) {
   // Vercel Cron includes its secret header; reject anything else.
+  // Trim the env var to dodge the well-documented trailing-newline issue.
   const auth = req.headers.get("authorization");
   const vercelCronHeader = req.headers.get("x-vercel-cron");
-  if (!vercelCronHeader && auth !== `Bearer ${process.env.CRON_SECRET}`) {
+  const expectedSecret = process.env.CRON_SECRET?.trim();
+  if (!vercelCronHeader && auth !== `Bearer ${expectedSecret}`) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -42,18 +55,51 @@ export async function GET(req: NextRequest) {
 
   for (const row of rows) {
     try {
+      // Subject must be the claim number only. If a row ever lands here with a
+      // malformed subject, fail loudly rather than send something carriers reject.
+      if (!isValidClaimNumberSubject(row.subject)) {
+        await supabaseAdmin
+          .from("claim_brain_cadence_sends")
+          .update({
+            status: "failed",
+            error: `Subject failed claim-number format guard: "${row.subject}"`,
+          })
+          .eq("id", row.id);
+        results.failed++;
+        continue;
+      }
+
       // Download any attachments from Supabase storage
       const attachments: Array<{ filename: string; content: Buffer }> = [];
+      const missingAttachments: string[] = [];
       for (const path of (row.attachment_paths || []) as string[]) {
         try {
           const { data: file } = await supabaseAdmin.storage.from("claim-documents").download(path);
           if (file) {
             const buf = Buffer.from(await file.arrayBuffer());
             attachments.push({ filename: path.split("/").pop() || "attachment", content: buf });
+          } else {
+            missingAttachments.push(path);
           }
         } catch (e) {
           console.warn(`[cadence] attachment download failed ${path}:`, e);
+          missingAttachments.push(path);
         }
+      }
+
+      // Refuse to send a follow-up with missing attachments — the first send
+      // promised these files would come through on each round. Silently sending
+      // without them would mislead the adjuster.
+      if (missingAttachments.length > 0) {
+        await supabaseAdmin
+          .from("claim_brain_cadence_sends")
+          .update({
+            status: "failed",
+            error: `Missing ${missingAttachments.length} attachment(s): ${missingAttachments.join(", ")}`,
+          })
+          .eq("id", row.id);
+        results.failed++;
+        continue;
       }
 
       const cc: string[] = [];

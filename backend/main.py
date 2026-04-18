@@ -1426,38 +1426,67 @@ async def approve_brain_action(claim_id: str, body: ToolApproval, background_tas
             }
 
         # ─── R3: attach_to_claim ───
+        # processor.py reads these columns as lists of BARE FILENAMES and expects
+        # each file to live at `{claim.file_path}/{canonical_subfolder}/{filename}`.
+        # Chat uploads land in `{claim.file_path}/chat-uploads/...`, so we must
+        # COPY the file into the canonical subfolder BEFORE writing the column.
         if tool_name == "attach_to_claim":
             from claim_brain_tools import _DOC_TYPE_TO_COLUMN
             preview = tool_result.get("preview") or {}
             doc_type = (preview.get("doc_type") or "").upper()
             storage_path = preview.get("storage_path")
-            filename = preview.get("filename")
+            filename = preview.get("filename") or (storage_path.rsplit("/", 1)[-1] if storage_path else "")
             column = _DOC_TYPE_TO_COLUMN.get(doc_type)
-            if not column or not storage_path:
-                raise ValueError("Invalid attach preview — missing column or storage_path.")
-            # Append to the existing JSONB array (or ARRAY for other_files).
+            if not column or not storage_path or not filename:
+                raise ValueError("Invalid attach preview — missing column, storage_path, or filename.")
+
+            _DOC_TYPE_TO_SUBFOLDER = {
+                "AOB": "aob",
+                "COC": "coc",
+                "CARRIER_SCOPE": "scope",
+                "EAGLEVIEW": "measurements",
+                "CONTRACT": "other",
+                "OTHER": "other",
+            }
+            subfolder = _DOC_TYPE_TO_SUBFOLDER.get(doc_type, "other")
+
+            claim_file_path = (claim_row.get("file_path") or "").rstrip("/")
+            if not claim_file_path:
+                raise ValueError("Claim has no file_path — cannot attach.")
+
+            canonical_storage_path = f"{claim_file_path}/{subfolder}/{filename}"
+
+            # Copy chat upload into canonical subfolder so processor can find it.
+            if storage_path != canonical_storage_path:
+                try:
+                    content = sb.storage.from_("claim-documents").download(storage_path)
+                    sb.storage.from_("claim-documents").upload(
+                        canonical_storage_path, content,
+                        {"content-type": "application/octet-stream", "upsert": "true"},
+                    )
+                except Exception as copy_err:
+                    raise RuntimeError(f"Failed to copy file to {canonical_storage_path}: {copy_err}")
+
+            # Append bare filename to column (matches processor.py contract).
             import json as _json
-            if column == "other_files":
-                existing = claim_row.get("other_files") or []
-                existing = list(existing) + [storage_path]
-                sb.table("claims").update({column: existing}).eq("id", claim_id).execute()
-            else:
-                existing = claim_row.get(column) or []
-                if isinstance(existing, str):
-                    try:
-                        existing = _json.loads(existing)
-                    except Exception:
-                        existing = []
-                entry = {"path": storage_path, "filename": filename, "attached_by": "claim_brain", "attached_at": datetime.utcnow().isoformat() + "Z"}
-                if isinstance(existing, list) and all(isinstance(e, dict) for e in existing):
-                    new_arr = existing + [entry]
-                else:
-                    # Pre-existing rows sometimes stored bare paths — migrate inline.
-                    new_arr = [e if isinstance(e, dict) else {"path": e, "filename": str(e).rsplit("/", 1)[-1]} for e in (existing or [])]
-                    new_arr.append(entry)
-                sb.table("claims").update({column: new_arr}).eq("id", claim_id).execute()
+            raw_existing = claim_row.get(column)
+            if isinstance(raw_existing, str):
+                try:
+                    raw_existing = _json.loads(raw_existing)
+                except Exception:
+                    raw_existing = []
+            existing: list = list(raw_existing) if isinstance(raw_existing, list) else []
+            if filename not in existing:
+                existing.append(filename)
+            sb.table("claims").update({column: existing}).eq("id", claim_id).execute()
+
             _audit_log(sb, claim_id, user_id, tool_name, preview, {"action": "sent", "message": f"attached to {column}"}, 0)
-            return {"status": "sent", "message": f"{filename} attached as {doc_type}.", "column": column}
+            return {
+                "status": "sent",
+                "message": f"{filename} attached as {doc_type}.",
+                "column": column,
+                "canonical_path": canonical_storage_path,
+            }
 
         # ─── R3: trigger_reprocess ───
         # Mirrors POST /api/reprocess/{claim_id}: flip status + clear cached analysis,
@@ -1473,10 +1502,15 @@ async def approve_brain_action(claim_id: str, body: ToolApproval, background_tas
             return {"status": "sent", "message": "Reprocess requested — you'll see updated results in 1-2 minutes."}
 
         # ─── R4: send_to_carrier ───
+        # If the user approved a send with N attachments and even one fails to
+        # download, refuse rather than silently ship an email with missing files.
+        # Adjusters won't know an AOB was "included" but actually absent.
         if tool_name == "send_to_carrier":
             preview = tool_result.get("preview") or {}
+            requested = list(preview.get("attachment_paths") or [])
             resolved_attachments = []
-            for path in (preview.get("attachment_paths") or []):
+            failed_paths: list[str] = []
+            for path in requested:
                 try:
                     content = sb.storage.from_("claim-documents").download(path)
                     resolved_attachments.append({
@@ -1485,6 +1519,13 @@ async def approve_brain_action(claim_id: str, body: ToolApproval, background_tas
                     })
                 except Exception as ae:
                     print(f"[WARN] Attach download failed {path}: {ae}")
+                    failed_paths.append(path)
+
+            if failed_paths:
+                err = f"Refusing to send — {len(failed_paths)}/{len(requested)} attachment(s) failed to download: {failed_paths}"
+                _audit_log(sb, claim_id, user_id, tool_name, preview, {"action": "error", "message": err}, 0, error=err)
+                return {"status": "error", "message": err}
+
             email_result = send_claim_email(
                 sb=sb,
                 claim_id=claim_id,
@@ -1527,14 +1568,19 @@ async def approve_brain_action(claim_id: str, body: ToolApproval, background_tas
             }
 
         # ─── R4: cancel_cadence ───
+        # supabase-py's .update().execute() return shape for .data is unreliable
+        # across SDK versions. Count pending rows FIRST, then update — the count
+        # query is authoritative.
         if tool_name == "cancel_cadence":
             preview = tool_result.get("preview") or {}
-            res = sb.table("claim_brain_cadence_sends").update({
-                "status": "cancelled",
-                "cancelled_at": datetime.utcnow().isoformat() + "Z",
-                "cancellation_reason": preview.get("reason"),
-            }).eq("claim_id", claim_id).eq("status", "pending").execute()
-            cancelled = len(res.data or [])
+            count_res = sb.table("claim_brain_cadence_sends").select("id", count="exact").eq("claim_id", claim_id).eq("status", "pending").execute()
+            cancelled = count_res.count or 0
+            if cancelled > 0:
+                sb.table("claim_brain_cadence_sends").update({
+                    "status": "cancelled",
+                    "cancelled_at": datetime.utcnow().isoformat() + "Z",
+                    "cancellation_reason": preview.get("reason"),
+                }).eq("claim_id", claim_id).eq("status", "pending").execute()
             _audit_log(sb, claim_id, user_id, tool_name, preview, {"action": "sent", "message": f"cancelled {cancelled} pending follow-ups"}, 0)
             return {"status": "sent", "message": f"Cancelled {cancelled} pending follow-up{'s' if cancelled != 1 else ''}."}
 
