@@ -23,6 +23,10 @@
     {
       "path": "/api/cron/reactivation-emails",
       "schedule": "0 15 * * *"
+    },
+    {
+      "path": "/api/cron/claim-brain-cadences",
+      "schedule": "0 * * * *"
     }
   ]
 }

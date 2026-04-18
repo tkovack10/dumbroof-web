@@ -1039,11 +1039,23 @@ actionable (send emails, generate documents, check status), USE the appropriate 
 ### FILE CLASSIFICATION (when the user drops something in chat)
 - **classify_uploaded_file** — Claude Vision figures out what an uploaded file is (AOB / COC / CARRIER_SCOPE / EAGLEVIEW / SUPPLEMENT_RESPONSE / CONTRACT / PHOTO / OTHER). WHENEVER the user's message includes a storage_path attachment, CALL THIS FIRST for every file, then propose routing.
 
-**Agentic behavior**: You can chain tools. A typical "analyze and draft" flow:
-  1. get_scope_comparison (gaps_only) → see the gaps
-  2. lookup_xactimate_price for uncertain items → back numbers with pricing
-  3. get_carrier_playbook → check if the carrier has a pattern on this gap
-  4. send_supplement_email → present the draft for approval
+### AGENTIC WRITES (approval-gated, one confirm per action)
+- **attach_to_claim** — Route an uploaded file into the correct slot on the claim (aob_files / coc_files / scope_files / measurement_files / other_files). Call ONLY after classify_uploaded_file returns confidence >= 0.90. If confidence is < 0.90, ASK THE USER to confirm the type before calling this tool.
+- **trigger_reprocess** — Re-run the whole claim pipeline (photos → estimate → scope comparison → scores → PDFs). Use after a new CARRIER_SCOPE or EAGLEVIEW is attached. Takes ~90s.
+- **send_to_carrier** — Generic carrier email with attachments. Subject is always the claim number (enforced server-side — don't fight it).
+- **schedule_follow_up_cadence** — Write follow-up emails to claim_brain_cadence_sends. Typical AOB cadence: days=[3,7,14,21]. Supplement: days=[3,7,15]. A cron job sends each follow-up when the scheduled_at arrives.
+- **cancel_cadence** — Kill all pending follow-ups on this claim. Use when the carrier has responded or the claim closed.
+
+**Agentic chain — "drop AOB → send to carrier with cadence" (Tom's flagship flow):**
+  1. User drops AOB into chat → classify_uploaded_file → returns AOB, 0.98 confidence
+  2. attach_to_claim(doc_type=AOB, confidence=0.98) → preview → user approves
+  3. send_to_carrier(attachments=[aob_path]) → preview with claim number as subject → user approves
+  4. schedule_follow_up_cadence(cadence_type=aob_submission, days=[3,7,14,21]) → preview → user approves
+  Each step is a separate preview card. Propose them in sequence; don't bundle.
+
+**Other chains:**
+- Analyze → draft: get_scope_comparison → lookup_xactimate_price → get_carrier_playbook → send_supplement_email
+- New carrier scope arrived: classify_uploaded_file → attach_to_claim(CARRIER_SCOPE) → trigger_reprocess → (after user confirms reprocess is done) get_scope_comparison to see deltas
 
 **IMPORTANT**: All emails require user approval before sending. When you use an email tool,
 the user will see a preview card and must click "Approve" before anything sends. Tell the
@@ -1344,9 +1356,22 @@ async def claim_brain_chat(claim_id: str, body: ChatMessage):
 
 
 @app.post("/api/claim-brain/{claim_id}/approve-action")
-async def approve_brain_action(claim_id: str, body: ToolApproval):
-    """Approve or reject a pending Claim Brain tool action (email send, etc.)."""
+async def approve_brain_action(claim_id: str, body: ToolApproval, background_tasks: BackgroundTasks):
+    """Approve or reject a pending Claim Brain tool action.
+
+    Dispatches by tool_name. Each write tool has its own execute path:
+      - email tools (send_supplement_email, send_aob_*, send_custom_email,
+        generate_invoice, generate_coc): ships the draft via send_claim_email.
+      - attach_to_claim: append to the claim's {doc_type}_files JSONB column.
+      - trigger_reprocess: enqueue /reprocess (idempotent).
+      - send_to_carrier: same as the email tools but with explicit claim-number
+        subject + multi-attachment support.
+      - schedule_follow_up_cadence: insert rows into claim_brain_cadence_sends.
+      - cancel_cadence: mark pending rows cancelled.
+    """
+    from datetime import datetime
     from claim_brain_email import send_claim_email
+    from claim_brain_tools import _audit_log
 
     sb = get_supabase_client()
 
@@ -1356,49 +1381,196 @@ async def approve_brain_action(claim_id: str, body: ToolApproval):
     if not tool_result:
         raise HTTPException(status_code=404, detail="No pending action found with that ID")
 
+    tool_name = tool_result.get("tool_name", "")
+
+    # Load claim (always needed)
+    claim_result = sb.table("claims").select("*").eq("id", claim_id).single().execute()
+    claim_row = claim_result.data or {}
+    user_id = claim_row.get("user_id", "")
+
     if not body.approved:
+        _audit_log(sb, claim_id, user_id, tool_name, {"approval_id": body.tool_call_id}, {"action": "discarded", "message": "user discarded"}, 0)
         return {"status": "discarded", "message": "Action was discarded by user."}
 
-    # Execute the approved action (send the email)
-    draft = tool_result.get("draft")
-    if not draft:
-        return {"status": "complete", "message": "Action approved (no email to send)."}
-
-    # Load claim for user_id
-    claim_result = sb.table("claims").select("user_id, file_path").eq("id", claim_id).single().execute()
-    user_id = claim_result.data.get("user_id", "") if claim_result.data else ""
-
     try:
-        # Download attachment content from Supabase Storage
-        resolved_attachments = []
-        for att in (draft.get("attachments") or []):
-            try:
-                content = sb.storage.from_("claim-documents").download(att["path"])
-                resolved_attachments.append({
-                    "filename": att["filename"],
-                    "content": content,
-                })
-            except Exception as ae:
-                print(f"[WARN] Failed to download attachment {att['path']}: {ae}")
+        # ─── Email-type draft (supplement / AOB / custom / invoice / coc-with-send) ───
+        draft = tool_result.get("draft")
+        if draft:
+            resolved_attachments = []
+            for att in (draft.get("attachments") or []):
+                try:
+                    content = sb.storage.from_("claim-documents").download(att["path"])
+                    resolved_attachments.append({
+                        "filename": att["filename"],
+                        "content": content,
+                    })
+                except Exception as ae:
+                    print(f"[WARN] Failed to download attachment {att['path']}: {ae}")
 
-        email_result = send_claim_email(
-            sb=sb,
-            claim_id=claim_id,
-            user_id=user_id,
-            to_email=draft["to"],
-            subject=draft["subject"],
-            body_html=draft["body_html"],
-            cc=draft.get("cc"),
-            attachments=resolved_attachments if resolved_attachments else None,
-            email_type=tool_result.get("tool_name", "custom"),
-        )
-        return {
-            "status": "sent",
-            "message": f"Email sent to {draft['to']}",
-            "email_id": email_result.get("email_id"),
-        }
+            email_result = send_claim_email(
+                sb=sb,
+                claim_id=claim_id,
+                user_id=user_id,
+                to_email=draft["to"],
+                subject=draft["subject"],
+                body_html=draft["body_html"],
+                cc=draft.get("cc"),
+                attachments=resolved_attachments if resolved_attachments else None,
+                email_type=tool_name or "custom",
+            )
+            _audit_log(sb, claim_id, user_id, tool_name, {"approval_id": body.tool_call_id}, {"action": "sent", "message": f"email sent to {draft['to']}"}, 0)
+            return {
+                "status": "sent",
+                "message": f"Email sent to {draft['to']}",
+                "email_id": email_result.get("email_id"),
+            }
+
+        # ─── R3: attach_to_claim ───
+        if tool_name == "attach_to_claim":
+            from claim_brain_tools import _DOC_TYPE_TO_COLUMN
+            preview = tool_result.get("preview") or {}
+            doc_type = (preview.get("doc_type") or "").upper()
+            storage_path = preview.get("storage_path")
+            filename = preview.get("filename")
+            column = _DOC_TYPE_TO_COLUMN.get(doc_type)
+            if not column or not storage_path:
+                raise ValueError("Invalid attach preview — missing column or storage_path.")
+            # Append to the existing JSONB array (or ARRAY for other_files).
+            import json as _json
+            if column == "other_files":
+                existing = claim_row.get("other_files") or []
+                existing = list(existing) + [storage_path]
+                sb.table("claims").update({column: existing}).eq("id", claim_id).execute()
+            else:
+                existing = claim_row.get(column) or []
+                if isinstance(existing, str):
+                    try:
+                        existing = _json.loads(existing)
+                    except Exception:
+                        existing = []
+                entry = {"path": storage_path, "filename": filename, "attached_by": "claim_brain", "attached_at": datetime.utcnow().isoformat() + "Z"}
+                if isinstance(existing, list) and all(isinstance(e, dict) for e in existing):
+                    new_arr = existing + [entry]
+                else:
+                    # Pre-existing rows sometimes stored bare paths — migrate inline.
+                    new_arr = [e if isinstance(e, dict) else {"path": e, "filename": str(e).rsplit("/", 1)[-1]} for e in (existing or [])]
+                    new_arr.append(entry)
+                sb.table("claims").update({column: new_arr}).eq("id", claim_id).execute()
+            _audit_log(sb, claim_id, user_id, tool_name, preview, {"action": "sent", "message": f"attached to {column}"}, 0)
+            return {"status": "sent", "message": f"{filename} attached as {doc_type}.", "column": column}
+
+        # ─── R3: trigger_reprocess ───
+        # Mirrors POST /api/reprocess/{claim_id}: flip status + clear cached analysis,
+        # then enqueue processor in background.
+        if tool_name == "trigger_reprocess":
+            preview = tool_result.get("preview") or {}
+            sb.table("claims").update({
+                "status": "processing",
+                "cached_photo_analysis": None,
+            }).eq("id", claim_id).execute()
+            background_tasks.add_task(run_processing, claim_id)
+            _audit_log(sb, claim_id, user_id, tool_name, preview, {"action": "sent", "message": f"reprocess requested ({preview.get('reason', '')})"}, 0)
+            return {"status": "sent", "message": "Reprocess requested — you'll see updated results in 1-2 minutes."}
+
+        # ─── R4: send_to_carrier ───
+        if tool_name == "send_to_carrier":
+            preview = tool_result.get("preview") or {}
+            resolved_attachments = []
+            for path in (preview.get("attachment_paths") or []):
+                try:
+                    content = sb.storage.from_("claim-documents").download(path)
+                    resolved_attachments.append({
+                        "filename": path.rsplit("/", 1)[-1],
+                        "content": content,
+                    })
+                except Exception as ae:
+                    print(f"[WARN] Attach download failed {path}: {ae}")
+            email_result = send_claim_email(
+                sb=sb,
+                claim_id=claim_id,
+                user_id=user_id,
+                to_email=preview["to_email"],
+                subject=preview["subject"],
+                body_html=preview["body_html"],
+                cc=preview.get("cc"),
+                attachments=resolved_attachments if resolved_attachments else None,
+                email_type="carrier_custom",
+            )
+            _audit_log(sb, claim_id, user_id, tool_name, preview, {"action": "sent", "message": f"sent to {preview['to_email']}"}, 0)
+            return {"status": "sent", "message": f"Sent to {preview['to_email']}.", "email_id": email_result.get("email_id")}
+
+        # ─── R4: schedule_follow_up_cadence ───
+        if tool_name == "schedule_follow_up_cadence":
+            preview = tool_result.get("preview") or {}
+            rows_to_insert = []
+            for item in preview.get("schedule", []):
+                rows_to_insert.append({
+                    "claim_id": claim_id,
+                    "user_id": user_id or None,
+                    "cadence_type": preview.get("cadence_type"),
+                    "followup_number": item.get("followup_number"),
+                    "scheduled_at": item.get("scheduled_at"),
+                    "to_email": preview.get("to_email"),
+                    "cc": preview.get("cc"),
+                    "subject": preview.get("subject"),
+                    "body_html": _build_cadence_body_html(claim_row, preview, item),
+                    "attachment_paths": preview.get("attachment_paths") or [],
+                    "status": "pending",
+                })
+            if rows_to_insert:
+                sb.table("claim_brain_cadence_sends").insert(rows_to_insert).execute()
+            _audit_log(sb, claim_id, user_id, tool_name, preview, {"action": "sent", "message": f"scheduled {len(rows_to_insert)} follow-ups"}, 0)
+            return {
+                "status": "sent",
+                "message": f"Scheduled {len(rows_to_insert)} follow-up{'s' if len(rows_to_insert) != 1 else ''}.",
+                "scheduled_count": len(rows_to_insert),
+            }
+
+        # ─── R4: cancel_cadence ───
+        if tool_name == "cancel_cadence":
+            preview = tool_result.get("preview") or {}
+            res = sb.table("claim_brain_cadence_sends").update({
+                "status": "cancelled",
+                "cancelled_at": datetime.utcnow().isoformat() + "Z",
+                "cancellation_reason": preview.get("reason"),
+            }).eq("claim_id", claim_id).eq("status", "pending").execute()
+            cancelled = len(res.data or [])
+            _audit_log(sb, claim_id, user_id, tool_name, preview, {"action": "sent", "message": f"cancelled {cancelled} pending follow-ups"}, 0)
+            return {"status": "sent", "message": f"Cancelled {cancelled} pending follow-up{'s' if cancelled != 1 else ''}."}
+
+        # Unknown tool or preview-but-no-draft fallthrough
+        return {"status": "complete", "message": "Action approved."}
+
     except Exception as e:
-        return {"status": "error", "message": f"Failed to send: {str(e)}"}
+        _audit_log(sb, claim_id, user_id, tool_name, tool_result.get("preview") or {}, {"action": "error", "message": str(e)}, 0, error=str(e))
+        return {"status": "error", "message": f"Failed: {str(e)}"}
+
+
+def _build_cadence_body_html(claim_row: dict, preview: dict, item: dict) -> str:
+    """Build the follow-up email body for a single cadence send."""
+    followup_number = item.get("followup_number", 1)
+    days = item.get("offset_days", 0)
+    cadence_type = preview.get("cadence_type", "")
+    address = claim_row.get("address") or "the subject property"
+    carrier = claim_row.get("carrier") or "your office"
+    claim_number = preview.get("subject") or claim_row.get("claim_number") or ""
+
+    tone_map = {
+        1: "professional follow-up",
+        2: "firmer follow-up requesting acknowledgment",
+        3: "urgent follow-up flagging the delay",
+        4: "final follow-up before escalation",
+    }
+    tone_label = tone_map.get(followup_number, f"follow-up {followup_number}")
+
+    return (
+        f"<p>Following up on our prior correspondence regarding the claim at <strong>{address}</strong> "
+        f"(claim number <strong>{claim_number}</strong>).</p>"
+        f"<p>It has been approximately {days} days and we have not yet received a response from {carrier}. "
+        f"Please confirm receipt and provide a status update at your earliest convenience.</p>"
+        f"<p>The attached documentation remains available for your review.</p>"
+        f"<!-- Richard {cadence_type} {tone_label} -->"
+    )
 
 
 @app.post("/api/claim-brain/{claim_id}/reset")

@@ -300,6 +300,132 @@ CLAIM_BRAIN_TOOLS = [
         },
     },
     # ─────────────────────────────────────────────
+    # R3 — Destructive writes. Approval-gated.
+    # ─────────────────────────────────────────────
+    {
+        "name": "attach_to_claim",
+        "description": (
+            "Attach a file (uploaded to chat) to the claim under the correct document slot: "
+            "AOB / COC / CARRIER_SCOPE / EAGLEVIEW / CONTRACT / OTHER. Use AFTER "
+            "classify_uploaded_file has returned a classification with confidence >= 0.90. "
+            "If confidence is below 0.90, ASK THE USER first rather than calling this tool. "
+            "REQUIRES USER APPROVAL — returns a preview and waits."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "storage_path": {"type": "string", "description": "Supabase storage path of the uploaded file."},
+                "doc_type": {
+                    "type": "string",
+                    "enum": ["AOB", "COC", "CARRIER_SCOPE", "EAGLEVIEW", "CONTRACT", "OTHER"],
+                    "description": "Classification from classify_uploaded_file.",
+                },
+                "filename": {"type": "string", "description": "Original filename."},
+                "classification_confidence": {
+                    "type": "number",
+                    "description": "Confidence score 0.0-1.0 from classify_uploaded_file.",
+                },
+            },
+            "required": ["storage_path", "doc_type", "filename"],
+        },
+    },
+    {
+        "name": "trigger_reprocess",
+        "description": (
+            "Re-run the full claim processing pipeline — regenerates photo annotations, "
+            "estimate, scope comparison, damage scores, and PDFs. Use after a new carrier "
+            "scope or updated measurements have been attached. Takes 1-2 minutes to complete. "
+            "REQUIRES USER APPROVAL."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "reason": {
+                    "type": "string",
+                    "description": "Why reprocessing is needed — e.g. 'new carrier scope attached' or 'updated EagleView measurements'.",
+                },
+            },
+            "required": ["reason"],
+        },
+    },
+    # ─────────────────────────────────────────────
+    # R4 — Agentic sends + cadence. Approval-gated.
+    # ─────────────────────────────────────────────
+    {
+        "name": "send_to_carrier",
+        "description": (
+            "Generic email-send to the insurance carrier with one or more attachments "
+            "(already uploaded to Supabase storage). Use when the specific-purpose email "
+            "tools (send_supplement_email / send_aob_to_carrier / generate_coc) don't fit. "
+            "Subject MUST be the claim number only — platform rule, carriers auto-reject "
+            "anything else. REQUIRES USER APPROVAL."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "to_email": {"type": "string", "description": "Carrier adjuster email."},
+                "cc": {"type": "string", "description": "Comma-separated CC list. Optional."},
+                "body_html": {"type": "string", "description": "Email body. HTML supported."},
+                "attachment_paths": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "Supabase storage paths to attach.",
+                },
+            },
+            "required": ["to_email", "body_html"],
+        },
+    },
+    {
+        "name": "schedule_follow_up_cadence",
+        "description": (
+            "Schedule a series of follow-up emails to the carrier if they don't respond. "
+            "Writes rows to claim_brain_cadence_sends; a cron sends them at scheduled_at. "
+            "Typical AOB cadence: days [3, 7, 14, 21]. Typical supplement cadence: [3, 7, 15]. "
+            "All follow-ups must include the claim number in the subject. REQUIRES APPROVAL."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "cadence_type": {
+                    "type": "string",
+                    "enum": ["aob_submission", "supplement", "coc", "custom"],
+                    "description": "What kind of cadence this is.",
+                },
+                "to_email": {"type": "string", "description": "Carrier adjuster email."},
+                "cc": {"type": "string", "description": "CC list. Optional."},
+                "days": {
+                    "type": "array",
+                    "items": {"type": "integer"},
+                    "description": "Day offsets from now for each follow-up. e.g. [3, 7, 14].",
+                },
+                "attachment_paths": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "Supabase storage paths to re-attach on each follow-up.",
+                },
+            },
+            "required": ["cadence_type", "to_email", "days"],
+        },
+    },
+    {
+        "name": "cancel_cadence",
+        "description": (
+            "Cancel all pending follow-up sends for this claim. Use when the carrier has "
+            "responded, the claim has closed, or the user no longer wants follow-ups. "
+            "Does NOT affect already-sent emails. REQUIRES APPROVAL."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "reason": {
+                    "type": "string",
+                    "description": "Why cancelling — e.g. 'carrier approved', 'user request', 'claim closed'.",
+                },
+            },
+            "required": ["reason"],
+        },
+    },
+    # ─────────────────────────────────────────────
     # R2 — Classify uploaded files. No side effects.
     # ─────────────────────────────────────────────
     {
@@ -435,6 +561,18 @@ async def execute_tool(
         # ─── R2 classify ──────────────────────────────
         elif tool_name == "classify_uploaded_file":
             result = await _handle_classify_uploaded_file(sb, claim_id, tool_input)
+        # ─── R3 destructive writes (preview → approval) ──
+        elif tool_name == "attach_to_claim":
+            result = _handle_preview_attach_to_claim(claim_data, tool_input)
+        elif tool_name == "trigger_reprocess":
+            result = _handle_preview_trigger_reprocess(claim_data, tool_input)
+        # ─── R4 agentic sends + cadence (preview → approval) ──
+        elif tool_name == "send_to_carrier":
+            result = _handle_preview_send_to_carrier(claim_data, tool_input)
+        elif tool_name == "schedule_follow_up_cadence":
+            result = _handle_preview_schedule_cadence(claim_data, tool_input)
+        elif tool_name == "cancel_cadence":
+            result = _handle_preview_cancel_cadence(sb, claim_id, tool_input)
         else:
             result = {"action": "error", "message": f"Unknown tool: {tool_name}"}
     except Exception as e:
@@ -1252,6 +1390,227 @@ async def _handle_classify_uploaded_file(sb: Client, claim_id: str, tool_input: 
             f"Classified '{filename or 'file'}' as {classification} "
             f"({int(confidence * 100)}% confidence)."
         ),
+    }
+
+
+# ═══════════════════════════════════════════
+# R3 + R4 — DESTRUCTIVE WRITE PREVIEWS
+#
+# Each tool here returns `action: "preview"` with a `tool_name` + `tool_input`
+# snapshot. Nothing is executed until the frontend POSTs to the approve-action
+# endpoint, which dispatches to the corresponding execute_* function in main.py.
+# ═══════════════════════════════════════════
+
+_DOC_TYPE_TO_COLUMN = {
+    "AOB": "aob_files",
+    "COC": "coc_files",
+    "CARRIER_SCOPE": "scope_files",
+    "EAGLEVIEW": "measurement_files",
+    "CONTRACT": "other_files",
+    "OTHER": "other_files",
+}
+
+
+def _handle_preview_attach_to_claim(claim_data: dict, tool_input: dict) -> dict:
+    storage_path = (tool_input.get("storage_path") or "").strip()
+    doc_type = (tool_input.get("doc_type") or "").strip().upper()
+    filename = tool_input.get("filename") or storage_path.rsplit("/", 1)[-1]
+    confidence = tool_input.get("classification_confidence")
+
+    if not storage_path or not doc_type:
+        return {"action": "error", "message": "storage_path and doc_type are required."}
+
+    if doc_type not in _DOC_TYPE_TO_COLUMN:
+        return {"action": "error", "message": f"Unsupported doc_type: {doc_type}"}
+
+    # Safety gate — refuse to attach when classification confidence is low.
+    # When confidence isn't provided we err on the side of allowing (Claude might
+    # be calling this from a user-verified context), but we flag it in the preview.
+    if confidence is not None:
+        try:
+            if float(confidence) < 0.9:
+                return {
+                    "action": "error",
+                    "message": (
+                        f"Classification confidence {confidence} is below 0.9 — ask the user "
+                        f"to confirm the document type before attaching. Do not call this tool "
+                        f"again until the user explicitly confirms."
+                    ),
+                }
+        except (TypeError, ValueError):
+            pass
+
+    return {
+        "action": "preview",
+        "type": "attach_to_claim",
+        "tool_name": "attach_to_claim",
+        "preview": {
+            "action_label": "Attach to Claim",
+            "doc_type": doc_type,
+            "column": _DOC_TYPE_TO_COLUMN[doc_type],
+            "filename": filename,
+            "storage_path": storage_path,
+            "claim_address": claim_data.get("address"),
+            "classification_confidence": confidence,
+        },
+        "message": f"Ready to attach {filename} as {doc_type} on this claim.",
+    }
+
+
+def _handle_preview_trigger_reprocess(claim_data: dict, tool_input: dict) -> dict:
+    reason = (tool_input.get("reason") or "").strip()
+    return {
+        "action": "preview",
+        "type": "trigger_reprocess",
+        "tool_name": "trigger_reprocess",
+        "preview": {
+            "action_label": "Reprocess Claim",
+            "reason": reason,
+            "claim_address": claim_data.get("address"),
+            "estimated_duration_seconds": 90,
+            "regenerates": [
+                "Photo annotations",
+                "Estimate + line items",
+                "Scope comparison",
+                "Damage / approval scores",
+                "PDF documents",
+            ],
+        },
+        "message": f"Ready to reprocess this claim. Reason: {reason or 'not specified'}.",
+    }
+
+
+def _resolve_claim_number_or_error(claim_data: dict) -> Optional[str]:
+    """Return the claim number or None. Carrier sends without a claim number
+    must fail loudly — CLAUDE.md rule, State Farm + others auto-reject.
+    """
+    cn = (claim_data.get("claim_number") or "").strip()
+    if cn:
+        return cn
+    prev = claim_data.get("previous_carrier_data") or {}
+    if isinstance(prev, dict):
+        cn = (prev.get("claim_number") or "").strip()
+        if cn:
+            return cn
+    return None
+
+
+def _handle_preview_send_to_carrier(claim_data: dict, tool_input: dict) -> dict:
+    to_email = (tool_input.get("to_email") or "").strip()
+    cc = tool_input.get("cc") or None
+    body_html = tool_input.get("body_html") or ""
+    attachment_paths = tool_input.get("attachment_paths") or []
+
+    if not to_email:
+        return {"action": "error", "message": "to_email is required"}
+    if not body_html:
+        return {"action": "error", "message": "body_html is required"}
+
+    claim_number = _resolve_claim_number_or_error(claim_data)
+    if not claim_number:
+        return {
+            "action": "error",
+            "message": (
+                "Claim number missing — every carrier email MUST have the claim number as "
+                "the subject. Ask the user for it before calling this tool again."
+            ),
+        }
+
+    return {
+        "action": "preview",
+        "type": "send_to_carrier",
+        "tool_name": "send_to_carrier",
+        "preview": {
+            "action_label": "Send to Carrier",
+            "to_email": to_email,
+            "cc": cc,
+            "subject": claim_number,  # platform rule
+            "body_html": body_html,
+            "attachment_paths": list(attachment_paths),
+            "attachment_count": len(attachment_paths),
+            "claim_address": claim_data.get("address"),
+            "carrier": claim_data.get("carrier"),
+        },
+        "message": f"Ready to send to {to_email} with {len(attachment_paths)} attachment{'s' if len(attachment_paths) != 1 else ''}.",
+    }
+
+
+def _handle_preview_schedule_cadence(claim_data: dict, tool_input: dict) -> dict:
+    cadence_type = (tool_input.get("cadence_type") or "").strip()
+    to_email = (tool_input.get("to_email") or "").strip()
+    cc = tool_input.get("cc") or None
+    days = tool_input.get("days") or []
+    attachment_paths = tool_input.get("attachment_paths") or []
+
+    if not cadence_type or not to_email or not days:
+        return {"action": "error", "message": "cadence_type, to_email, and days are required"}
+
+    try:
+        days_int = [int(d) for d in days if d is not None]
+    except (TypeError, ValueError):
+        return {"action": "error", "message": "days must be a list of integers"}
+    if not days_int:
+        return {"action": "error", "message": "days must contain at least one offset"}
+
+    claim_number = _resolve_claim_number_or_error(claim_data)
+    if not claim_number:
+        return {
+            "action": "error",
+            "message": "Cadence follow-ups require a claim number. Ask the user before scheduling.",
+        }
+
+    from datetime import datetime, timedelta, timezone
+    now = datetime.now(timezone.utc)
+    schedule = [
+        {
+            "followup_number": i + 1,
+            "offset_days": d,
+            "scheduled_at": (now + timedelta(days=d)).isoformat(),
+        }
+        for i, d in enumerate(days_int)
+    ]
+
+    return {
+        "action": "preview",
+        "type": "schedule_follow_up_cadence",
+        "tool_name": "schedule_follow_up_cadence",
+        "preview": {
+            "action_label": "Schedule Follow-Ups",
+            "cadence_type": cadence_type,
+            "to_email": to_email,
+            "cc": cc,
+            "subject": claim_number,
+            "days": days_int,
+            "schedule": schedule,
+            "attachment_paths": list(attachment_paths),
+            "claim_address": claim_data.get("address"),
+            "carrier": claim_data.get("carrier"),
+        },
+        "message": f"Ready to schedule {len(days_int)} follow-up{'s' if len(days_int) != 1 else ''} at days {days_int}.",
+    }
+
+
+def _handle_preview_cancel_cadence(sb: Client, claim_id: str, tool_input: dict) -> dict:
+    reason = (tool_input.get("reason") or "").strip() or "no reason provided"
+    # Count pending sends so the preview shows what will be cancelled
+    try:
+        res = sb.table("claim_brain_cadence_sends").select(
+            "id", count="exact"
+        ).eq("claim_id", claim_id).eq("status", "pending").execute()
+        pending_count = res.count or 0
+    except Exception:
+        pending_count = 0
+
+    return {
+        "action": "preview",
+        "type": "cancel_cadence",
+        "tool_name": "cancel_cadence",
+        "preview": {
+            "action_label": "Cancel Pending Follow-Ups",
+            "reason": reason,
+            "pending_count": pending_count,
+        },
+        "message": f"Ready to cancel {pending_count} pending follow-up{'s' if pending_count != 1 else ''}. Reason: {reason}.",
     }
 
 

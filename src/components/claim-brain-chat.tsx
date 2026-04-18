@@ -24,6 +24,7 @@ interface ToolAction {
     body_html: string;
     attachments?: { path: string; filename: string }[];
   };
+  preview?: Record<string, unknown>;
   pdf_path?: string;
   sign_link?: string;
   data?: Record<string, unknown>;
@@ -116,6 +117,11 @@ const TOOL_ICONS: Record<string, string> = {
   search_photos: "📸",
   get_damage_scores: "🎯",
   classify_uploaded_file: "🗂️",
+  attach_to_claim: "📥",
+  trigger_reprocess: "🔄",
+  send_to_carrier: "🚀",
+  schedule_follow_up_cadence: "⏱️",
+  cancel_cadence: "🛑",
 };
 
 const TOOL_LABELS: Record<string, string> = {
@@ -134,6 +140,11 @@ const TOOL_LABELS: Record<string, string> = {
   search_photos: "Photo Search",
   get_damage_scores: "Damage Scores",
   classify_uploaded_file: "File Classification",
+  attach_to_claim: "Attach to Claim",
+  trigger_reprocess: "Reprocess Claim",
+  send_to_carrier: "Send to Carrier",
+  schedule_follow_up_cadence: "Schedule Follow-Ups",
+  cancel_cadence: "Cancel Follow-Ups",
 };
 
 const QUICK_ACTIONS = [
@@ -433,7 +444,111 @@ function ToolActionCard({
     );
   }
 
-  // Preview card (needs approval)
+  // R3/R4 — Destructive-write previews. Uses action.preview (not action.draft).
+  if (action.action === "preview" && action.preview) {
+    const p = action.preview as Record<string, unknown>;
+    const statusColor =
+      status === "sent" ? "bg-emerald-500/5 border-emerald-500/20" :
+      status === "discarded" ? "bg-white/5 border-white/10 opacity-50" :
+      status === "error" ? "bg-red-500/5 border-red-500/20" :
+      "bg-amber-500/5 border-amber-500/20";
+    const headerColor =
+      status === "sent" ? "text-emerald-400" :
+      status === "error" ? "text-red-400" :
+      "text-amber-400";
+    return (
+      <div className={`border rounded-lg p-3 my-2 ${statusColor}`}>
+        <div className={`flex items-center gap-1.5 text-xs font-medium ${headerColor}`}>
+          {icon} {label}
+          {status === "sent" && " — Done"}
+          {status === "discarded" && " — Cancelled"}
+          {status === "error" && " — Failed"}
+          {status === "approving" && " — Working..."}
+        </div>
+
+        {/* Preview details — render per tool type */}
+        <div className="mt-1.5 text-[11px] text-white/60 space-y-0.5">
+          {action.tool_name === "attach_to_claim" && (
+            <>
+              <div><span className="text-white/40">File:</span> {String(p.filename || "")}</div>
+              <div><span className="text-white/40">Doc type:</span> {String(p.doc_type || "")}</div>
+              <div><span className="text-white/40">Slot:</span> <code className="text-white/70">{String(p.column || "")}</code></div>
+              {typeof p.classification_confidence === "number" && (
+                <div><span className="text-white/40">Confidence:</span> {Math.round((p.classification_confidence as number) * 100)}%</div>
+              )}
+            </>
+          )}
+          {action.tool_name === "trigger_reprocess" && (
+            <>
+              <div><span className="text-white/40">Reason:</span> {String(p.reason || "not specified")}</div>
+              <div><span className="text-white/40">Duration:</span> ~{String(p.estimated_duration_seconds || 90)}s</div>
+              <div className="text-white/40">Regenerates: {((p.regenerates as string[]) || []).join(", ")}</div>
+            </>
+          )}
+          {action.tool_name === "send_to_carrier" && (
+            <>
+              <div><span className="text-white/40">To:</span> {String(p.to_email || "")}</div>
+              {p.cc && <div><span className="text-white/40">CC:</span> {String(p.cc)}</div>}
+              <div><span className="text-white/40">Subject:</span> <span className="text-white">{String(p.subject || "")}</span></div>
+              {typeof p.attachment_count === "number" && p.attachment_count > 0 && (
+                <div><span className="text-white/40">Attachments:</span> {String(p.attachment_count)}</div>
+              )}
+              <button
+                onClick={() => setExpanded(!expanded)}
+                className="text-[10px] text-white/30 hover:text-white/60 mt-1"
+              >
+                {expanded ? "Hide body" : "Show body"}
+              </button>
+              {expanded && (
+                <div className="mt-1 p-2 bg-white/5 rounded text-[11px] text-white/60 max-h-40 overflow-y-auto"
+                  dangerouslySetInnerHTML={{ __html: String(p.body_html || "") }}
+                />
+              )}
+            </>
+          )}
+          {action.tool_name === "schedule_follow_up_cadence" && (
+            <>
+              <div><span className="text-white/40">Cadence:</span> {String(p.cadence_type || "")}</div>
+              <div><span className="text-white/40">To:</span> {String(p.to_email || "")}</div>
+              <div><span className="text-white/40">Subject:</span> <span className="text-white">{String(p.subject || "")}</span></div>
+              <div><span className="text-white/40">Days:</span> [{((p.days as number[]) || []).join(", ")}]</div>
+              {((p.attachment_paths as string[]) || []).length > 0 && (
+                <div><span className="text-white/40">Attachments on each send:</span> {((p.attachment_paths as string[]) || []).length}</div>
+              )}
+            </>
+          )}
+          {action.tool_name === "cancel_cadence" && (
+            <>
+              <div><span className="text-white/40">Pending follow-ups:</span> {String(p.pending_count || 0)}</div>
+              <div><span className="text-white/40">Reason:</span> {String(p.reason || "")}</div>
+            </>
+          )}
+        </div>
+
+        {status === "pending" && (
+          <div className="flex gap-2 mt-2.5">
+            <button
+              onClick={handleApprove}
+              className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-medium py-1.5 rounded-lg transition-colors"
+            >
+              Approve
+            </button>
+            <button
+              onClick={handleDiscard}
+              className="px-3 bg-white/5 hover:bg-white/10 text-white/50 text-[11px] py-1.5 rounded-lg transition-colors"
+            >
+              Discard
+            </button>
+          </div>
+        )}
+        {status === "approving" && (
+          <div className="mt-2 text-[11px] text-amber-400 animate-pulse">Working...</div>
+        )}
+      </div>
+    );
+  }
+
+  // Email / draft-based preview card (existing — send_supplement_email, etc.)
   return (
     <div className={`border rounded-lg p-3 my-2 ${
       status === "sent" ? "bg-emerald-500/5 border-emerald-500/20" :
