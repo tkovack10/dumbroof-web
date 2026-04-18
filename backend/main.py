@@ -1018,7 +1018,15 @@ Use "supplement" or "scope clarification" — never "appeal".
 You have tools to perform real actions on this claim. When the user asks you to do something
 actionable (send emails, generate documents, check status), USE the appropriate tool.
 
-Available actions:
+### READ-ONLY INTELLIGENCE (no approval needed — use liberally to back up your answers)
+- **get_scope_comparison** — Line-by-line deltas between carrier scope and contractor estimate. Pass `gaps_only: true` to surface only the items with variance. ALWAYS use this when asked about gaps, variance, or "what did the carrier miss".
+- **get_carrier_playbook** — Pulls tactical intel on this carrier (denial patterns, winning arguments, inspector tendencies). CALL THIS BEFORE drafting any carrier-facing email.
+- **lookup_xactimate_price** — Current price for a line item by description + state. Use when citing dollar amounts in supplement arguments.
+- **get_noaa_weather** — Verified NOAA storm events near the property on/around the date of loss. Use when building causation arguments.
+- **search_photos** — Filter photos by damage_type / material / trade / severity. Use when assembling evidence or answering "do we have X?"
+- **get_damage_scores** — Returns the Damage Score (DS) and Technical Approval Score (TAS) with grades.
+
+### WRITE TOOLS (require user approval before anything ships)
 - **send_supplement_email** — Draft & send supplement email to carrier adjuster
 - **generate_invoice** — Create invoice PDF for homeowner or carrier (with optional Stripe link)
 - **generate_coc** — Create Certificate of Completion and optionally send to carrier
@@ -1026,7 +1034,16 @@ Available actions:
 - **send_aob_for_signature** — Generate AOB and send to homeowner for digital signature
 - **send_custom_email** — Send any custom email related to this claim
 - **check_claim_status** — Pull current financials, emails, and next actions
-- **check_carrier_emails** — Search the user's Gmail for carrier emails matching this claim number (only reads claim-related emails, never personal). Use this when the user asks "has the carrier responded?", "any emails from the adjuster?", or when you want to check for carrier movement.
+- **check_carrier_emails** — Search user's Gmail for carrier emails matching the claim number (never touches personal email).
+
+### FILE CLASSIFICATION (when the user drops something in chat)
+- **classify_uploaded_file** — Claude Vision figures out what an uploaded file is (AOB / COC / CARRIER_SCOPE / EAGLEVIEW / SUPPLEMENT_RESPONSE / CONTRACT / PHOTO / OTHER). WHENEVER the user's message includes a storage_path attachment, CALL THIS FIRST for every file, then propose routing.
+
+**Agentic behavior**: You can chain tools. A typical "analyze and draft" flow:
+  1. get_scope_comparison (gaps_only) → see the gaps
+  2. lookup_xactimate_price for uncertain items → back numbers with pricing
+  3. get_carrier_playbook → check if the carrier has a pattern on this gap
+  4. send_supplement_email → present the draft for approval
 
 **IMPORTANT**: All emails require user approval before sending. When you use an email tool,
 the user will see a preview card and must click "Approve" before anything sends. Tell the
@@ -1055,10 +1072,17 @@ def _load_carrier_playbook(carrier_name: str) -> str:
     return ""
 
 
+class ChatAttachment(BaseModel):
+    storage_path: str
+    filename: str | None = None
+    content_type: str | None = None
+
+
 class ChatMessage(BaseModel):
     message: str
     user_id: str | None = None
     locale: str | None = "en"
+    attachments: list[ChatAttachment] | None = None
 
 
 class ToolApproval(BaseModel):
@@ -1106,7 +1130,24 @@ async def claim_brain_chat(claim_id: str, body: ChatMessage):
     # Get or create conversation
     if claim_id not in _brain_conversations:
         _brain_conversations[claim_id] = []
-    _brain_conversations[claim_id].append({"role": "user", "content": body.message})
+
+    # Build the user message content — text + any attachments the user dropped in chat.
+    # Attachments arrive as Supabase storage paths and are surfaced to Claude as a
+    # structured text block so it knows to call classify_uploaded_file on each one.
+    user_content: Any = body.message
+    if body.attachments:
+        attach_lines = []
+        for a in body.attachments:
+            fname = a.filename or a.storage_path.rsplit("/", 1)[-1]
+            attach_lines.append(f"- storage_path: {a.storage_path} | filename: {fname}")
+        attach_block = (
+            "\n\n[User dropped " + str(len(body.attachments)) + " file(s) into this chat. "
+            "Call classify_uploaded_file on each before proposing next steps.]\n"
+            + "\n".join(attach_lines)
+        )
+        user_content = (body.message or "") + attach_block
+
+    _brain_conversations[claim_id].append({"role": "user", "content": user_content})
 
     # Keep last 50 messages to manage context window
     if len(_brain_conversations[claim_id]) > 50:
@@ -1132,8 +1173,12 @@ async def claim_brain_chat(claim_id: str, body: ChatMessage):
             full_text_parts = []
             tool_results_for_frontend = []
 
-            # Tool use loop — may iterate if Claude calls tools
-            max_tool_rounds = 3
+            # Tool use loop — may iterate if Claude calls tools.
+            # Rounds, not individual tool calls — Claude can fire multiple tools per round.
+            # Bumped from 3 to 10 to support agentic multi-step plans (R1+R2 spec).
+            max_tool_rounds = 10
+            total_tool_calls = 0
+            max_total_tool_calls = 20  # hard cap across the whole turn
             for _round in range(max_tool_rounds):
                 response = client.messages.create(
                     model="claude-opus-4-6",
@@ -1157,6 +1202,20 @@ async def claim_brain_chat(claim_id: str, body: ChatMessage):
                         tool_name = block.name
                         tool_input = block.input
                         tool_use_id = block.id
+
+                        # Enforce hard cap — refuse rather than run away.
+                        if total_tool_calls >= max_total_tool_calls:
+                            tool_use_results.append({
+                                "type": "tool_result",
+                                "tool_use_id": tool_use_id,
+                                "content": json.dumps({
+                                    "error": f"Tool call limit reached ({max_total_tool_calls} per turn). "
+                                             "Summarize what you've found and stop calling tools."
+                                }),
+                                "is_error": True,
+                            })
+                            continue
+                        total_tool_calls += 1
 
                         # Stream a status message to the user
                         status_msg = f"\n\n*Executing: {tool_name}...*\n\n"

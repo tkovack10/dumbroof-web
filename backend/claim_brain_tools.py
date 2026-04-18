@@ -1,20 +1,28 @@
 """
 Claim Brain — Tool Definitions + Execution
 =============================================
-Tools that Claim Brain can invoke during chat. Each tool:
-  1. Generates the artifact (PDF, email draft)
-  2. Returns a preview to the user for approval
-  3. Executes on approval (sends email, uploads PDF)
+Tools that Claim Brain can invoke during chat. Two classes:
 
-Tool calls go through an APPROVAL GATE — nothing sends without user clicking "Approve."
+  1. READ-ONLY TOOLS (R1) — fetch context for Richard. No approval gate.
+     Examples: get_scope_comparison, lookup_xactimate_price, search_photos.
+
+  2. DRAFT / CLASSIFY TOOLS (R2) — inspect user uploads, produce drafts.
+     No side effects. Examples: classify_uploaded_file, send_custom_email (draft).
+
+  3. WRITE TOOLS (existing) — produce a preview and wait for user approval
+     before anything ships. Examples: send_supplement_email, generate_coc.
+
+Every invocation is recorded to public.claim_brain_audit.
 """
 
 from __future__ import annotations
 import os
 import json
+import time
 import base64
+import traceback
 from datetime import datetime
-from typing import Optional
+from typing import Optional, Any
 
 from supabase import Client
 
@@ -153,12 +161,211 @@ CLAIM_BRAIN_TOOLS = [
             "required": [],
         },
     },
+    # ─────────────────────────────────────────────
+    # R1 — Read-only tools. No approval gate.
+    # ─────────────────────────────────────────────
+    {
+        "name": "get_scope_comparison",
+        "description": (
+            "Return the line-by-line scope comparison between the contractor estimate "
+            "and the carrier scope for this claim. Use this when the user asks 'what did "
+            "the carrier miss?', 'where are the gaps?', or 'break down the variance'. "
+            "Returns every row with carrier $, contractor $, delta, and notes. Can filter "
+            "to only rows with a positive delta (money the carrier owes)."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "gaps_only": {
+                    "type": "boolean",
+                    "description": "If true, return only rows where contractor > carrier (actual gaps).",
+                    "default": False,
+                },
+                "limit": {
+                    "type": "integer",
+                    "description": "Max rows to return. Default 50.",
+                    "default": 50,
+                },
+            },
+            "required": [],
+        },
+    },
+    {
+        "name": "get_carrier_playbook",
+        "description": (
+            "Return tactical intelligence for the carrier on this claim — known "
+            "denial patterns, typical underpayment tactics, winning supplement "
+            "arguments, inspector patterns. Use this BEFORE drafting any carrier-facing "
+            "email or argument. Returns the full playbook markdown if available."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {},
+            "required": [],
+        },
+    },
+    {
+        "name": "lookup_xactimate_price",
+        "description": (
+            "Look up the current Xactimate price for a line item by description or code. "
+            "Returns code, install price, remove price, and unit. Uses the state/market "
+            "from this claim (NY/NJ/PA/MD/DE/OH/MI/IL/MN/TX) if available. Use this when "
+            "the user asks 'what does step flashing cost?', 'price for drip edge in NJ', "
+            "or when building a supplement argument that needs dollar figures."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "description": {
+                    "type": "string",
+                    "description": "Free-text description, e.g. 'step flashing', 'ice and water', 'drip edge'.",
+                },
+                "state": {
+                    "type": "string",
+                    "description": "Two-letter state code. Defaults to claim's state.",
+                },
+            },
+            "required": ["description"],
+        },
+    },
+    {
+        "name": "get_noaa_weather",
+        "description": (
+            "Look up verified NOAA storm events (hail, high wind, severe thunderstorm) "
+            "for the claim's county around the date of loss. Use this when building a "
+            "causation argument or verifying the storm the carrier is disputing. Returns "
+            "events with date, magnitude, distance from property. Requires claim to have "
+            "a date_of_loss and geocodable address."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "window_days": {
+                    "type": "integer",
+                    "description": "Days before/after date of loss to search. Default 3.",
+                    "default": 3,
+                },
+            },
+            "required": [],
+        },
+    },
+    {
+        "name": "search_photos",
+        "description": (
+            "Search the claim's photo set by damage type, material, trade, or severity. "
+            "Returns matching annotation_keys + descriptions. Use this when asked "
+            "'do we have hail photos?', 'find shingle damage photos', or when assembling "
+            "evidence for a supplement argument."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "damage_type": {
+                    "type": "string",
+                    "description": "e.g. hail, wind, mechanical, granule_loss",
+                },
+                "material": {
+                    "type": "string",
+                    "description": "e.g. shingle, siding, gutter, flashing",
+                },
+                "trade": {
+                    "type": "string",
+                    "description": "e.g. roofing, siding, gutters",
+                },
+                "severity": {
+                    "type": "string",
+                    "description": "e.g. minor, moderate, severe",
+                },
+                "limit": {
+                    "type": "integer",
+                    "description": "Max photos to return. Default 20.",
+                    "default": 20,
+                },
+            },
+            "required": [],
+        },
+    },
+    {
+        "name": "get_damage_scores",
+        "description": (
+            "Return the Damage Score (DS — photo-based evidence strength) and "
+            "Technical Approval Score (TAS — likelihood of carrier approval) for this "
+            "claim, with grade letter and component breakdown. Use when asked 'how "
+            "strong is this claim?', 'will the carrier approve this?', or for training."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {},
+            "required": [],
+        },
+    },
+    # ─────────────────────────────────────────────
+    # R2 — Classify uploaded files. No side effects.
+    # ─────────────────────────────────────────────
+    {
+        "name": "classify_uploaded_file",
+        "description": (
+            "Classify a file the user just dropped into this chat. Uses Claude Vision to "
+            "determine what kind of document it is: AOB (Assignment of Benefits), COC "
+            "(Certificate of Completion), CARRIER_SCOPE (carrier's estimate/adjuster "
+            "report), EAGLEVIEW (measurement report), SUPPLEMENT_RESPONSE (carrier "
+            "replying to a supplement), CONTRACT, PHOTO, or OTHER. Returns "
+            "classification + confidence + suggested next action. USE THIS TOOL "
+            "AUTOMATICALLY whenever the user message includes attachments — it is the "
+            "gateway to routing the file correctly. Does NOT attach the file to the "
+            "claim or send anything — that requires a separate approved tool."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "storage_path": {
+                    "type": "string",
+                    "description": "Supabase storage path of the uploaded file (from claim-documents bucket).",
+                },
+                "filename": {
+                    "type": "string",
+                    "description": "Original filename, used as a hint.",
+                },
+            },
+            "required": ["storage_path"],
+        },
+    },
 ]
 
 
 # ═══════════════════════════════════════════
 # TOOL EXECUTION
 # ═══════════════════════════════════════════
+
+def _audit_log(
+    sb: Client,
+    claim_id: str,
+    user_id: str,
+    tool_name: str,
+    tool_input: dict,
+    result: dict,
+    duration_ms: int,
+    error: Optional[str] = None,
+) -> None:
+    """Insert one row into claim_brain_audit. Non-fatal — swallows errors."""
+    try:
+        # Supabase jsonb expects a dict (NOT pre-serialized JSON); truncate oversize inputs.
+        safe_input = tool_input if isinstance(tool_input, dict) else {"_raw": str(tool_input)[:2000]}
+        summary = (result.get("message") or "")[:500] if isinstance(result, dict) else ""
+        sb.table("claim_brain_audit").insert({
+            "claim_id": claim_id,
+            "user_id": user_id or None,
+            "tool_name": tool_name,
+            "tool_input": safe_input,
+            "action": (result.get("action") if isinstance(result, dict) else None),
+            "result_summary": summary,
+            "approval_id": (result.get("approval_id") if isinstance(result, dict) else None),
+            "duration_ms": duration_ms,
+            "error": error,
+        }).execute()
+    except Exception as e:
+        print(f"[BRAIN AUDIT] Failed to log tool invocation (non-fatal): {e}")
+
 
 async def execute_tool(
     sb: Client,
@@ -169,43 +376,70 @@ async def execute_tool(
 ) -> dict:
     """
     Execute a Claim Brain tool call. Returns a result dict with:
-      - action: "preview" (needs user approval) or "complete" (done)
+      - action: "preview" (needs user approval) or "complete" (done) or "error"
       - For previews: draft content, PDF preview, approval buttons
-      - For completed: confirmation message
+      - For completed: confirmation message + data payload
+
+    Every invocation is logged to public.claim_brain_audit.
     """
+    start = time.time()
+    result: dict = {"action": "error", "message": "Unknown error"}
+    err: Optional[str] = None
+    try:
+        # Load claim + profile (needed by every handler)
+        claim_result = sb.table("claims").select("*").eq("id", claim_id).single().execute()
+        claim_data = claim_result.data or {}
 
-    # Load claim + profile
-    claim_result = sb.table("claims").select("*").eq("id", claim_id).single().execute()
-    claim_data = claim_result.data or {}
+        try:
+            profile_result = sb.table("company_profiles").select("*").eq("user_id", user_id).limit(1).execute()
+            company_profile = (profile_result.data or [{}])[0] if profile_result.data else {}
+        except Exception:
+            company_profile = {}
 
-    profile_result = sb.table("company_profiles").select("*").eq("user_id", user_id).single().execute()
-    company_profile = profile_result.data or {}
+        # ─── Write tools (existing) ───────────────────
+        if tool_name == "send_supplement_email":
+            result = await _handle_supplement_email(sb, claim_id, user_id, claim_data, company_profile, tool_input)
+        elif tool_name == "generate_invoice":
+            result = await _handle_generate_invoice(sb, claim_id, user_id, claim_data, company_profile, tool_input)
+        elif tool_name == "generate_coc":
+            result = await _handle_generate_coc(sb, claim_id, user_id, claim_data, company_profile, tool_input)
+        elif tool_name == "send_aob_to_carrier":
+            result = await _handle_aob_to_carrier(sb, claim_id, user_id, claim_data, company_profile, tool_input)
+        elif tool_name == "send_aob_for_signature":
+            result = await _handle_aob_for_signature(sb, claim_id, user_id, claim_data, company_profile, tool_input)
+        elif tool_name == "send_custom_email":
+            result = await _handle_custom_email(sb, claim_id, user_id, claim_data, company_profile, tool_input)
+        elif tool_name == "check_claim_status":
+            result = await _handle_check_status(sb, claim_id, claim_data)
+        elif tool_name == "check_carrier_emails":
+            result = await _handle_check_carrier_emails(sb, claim_id, user_id, claim_data)
+        # ─── R1 read-only tools ───────────────────────
+        elif tool_name == "get_scope_comparison":
+            result = _handle_get_scope_comparison(claim_data, tool_input)
+        elif tool_name == "get_carrier_playbook":
+            result = _handle_get_carrier_playbook(claim_data)
+        elif tool_name == "lookup_xactimate_price":
+            result = _handle_lookup_xactimate_price(claim_data, tool_input)
+        elif tool_name == "get_noaa_weather":
+            result = _handle_get_noaa_weather(claim_data, tool_input)
+        elif tool_name == "search_photos":
+            result = _handle_search_photos(sb, claim_id, tool_input)
+        elif tool_name == "get_damage_scores":
+            result = _handle_get_damage_scores(claim_data)
+        # ─── R2 classify ──────────────────────────────
+        elif tool_name == "classify_uploaded_file":
+            result = await _handle_classify_uploaded_file(sb, claim_id, tool_input)
+        else:
+            result = {"action": "error", "message": f"Unknown tool: {tool_name}"}
+    except Exception as e:
+        err = f"{type(e).__name__}: {e}"
+        print(f"[BRAIN TOOL ERROR] {tool_name}: {err}\n{traceback.format_exc()}")
+        result = {"action": "error", "message": err}
+    finally:
+        duration_ms = int((time.time() - start) * 1000)
+        _audit_log(sb, claim_id, user_id, tool_name, tool_input, result, duration_ms, err)
 
-    if tool_name == "send_supplement_email":
-        return await _handle_supplement_email(sb, claim_id, user_id, claim_data, company_profile, tool_input)
-
-    elif tool_name == "generate_invoice":
-        return await _handle_generate_invoice(sb, claim_id, user_id, claim_data, company_profile, tool_input)
-
-    elif tool_name == "generate_coc":
-        return await _handle_generate_coc(sb, claim_id, user_id, claim_data, company_profile, tool_input)
-
-    elif tool_name == "send_aob_to_carrier":
-        return await _handle_aob_to_carrier(sb, claim_id, user_id, claim_data, company_profile, tool_input)
-
-    elif tool_name == "send_aob_for_signature":
-        return await _handle_aob_for_signature(sb, claim_id, user_id, claim_data, company_profile, tool_input)
-
-    elif tool_name == "send_custom_email":
-        return await _handle_custom_email(sb, claim_id, user_id, claim_data, company_profile, tool_input)
-
-    elif tool_name == "check_claim_status":
-        return await _handle_check_status(sb, claim_id, claim_data)
-
-    elif tool_name == "check_carrier_emails":
-        return await _handle_check_carrier_emails(sb, claim_id, user_id, claim_data)
-
-    return {"action": "error", "message": f"Unknown tool: {tool_name}"}
+    return result
 
 
 async def _handle_supplement_email(sb, claim_id, user_id, claim_data, company_profile, tool_input):
@@ -556,4 +790,462 @@ async def _handle_check_carrier_emails(sb, claim_id, user_id, claim_data):
             "searched_claim_numbers": claim_numbers,
         },
         "message": f"Found {len(email_summaries)} emails related to this claim.",
+    }
+
+
+# ═══════════════════════════════════════════
+# R1 — READ-ONLY HANDLERS
+# ═══════════════════════════════════════════
+
+def _claim_state(claim_data: dict) -> str:
+    """Infer two-letter state code from claim data. Fallback to NY."""
+    # Prefer explicit state column
+    state = (claim_data.get("state") or "").strip().upper()
+    if len(state) == 2:
+        return state
+    # Fall back to parsing city_state_zip
+    csz = claim_data.get("city_state_zip") or ""
+    import re
+    m = re.search(r"\b([A-Z]{2})\b\s*\d{5}", csz)
+    if m:
+        return m.group(1)
+    # Last resort — parse the address
+    addr = claim_data.get("address") or ""
+    m = re.search(r",\s*([A-Z]{2})\s", addr)
+    return m.group(1) if m else "NY"
+
+
+def _handle_get_scope_comparison(claim_data: dict, tool_input: dict) -> dict:
+    """Return the line-by-line scope comparison rows, optionally filtered to gaps."""
+    rows = claim_data.get("scope_comparison") or []
+    if not rows:
+        return {
+            "action": "complete",
+            "type": "scope_comparison",
+            "data": {"rows": [], "total_gap": 0, "row_count": 0},
+            "message": "No scope comparison data on this claim yet. Reprocess with a carrier scope to generate one.",
+        }
+
+    gaps_only = bool(tool_input.get("gaps_only"))
+    limit = int(tool_input.get("limit") or 50)
+
+    normalized = []
+    for r in rows:
+        if not isinstance(r, dict):
+            continue
+        carrier_amt = float(r.get("carrier_amount") or 0)
+        usarm_amt = float(r.get("usarm_amount") or 0)
+        delta = usarm_amt - carrier_amt
+        if gaps_only and delta <= 0:
+            continue
+        normalized.append({
+            "item": r.get("checklist_desc") or r.get("usarm_desc") or r.get("carrier_desc") or "Unknown",
+            "carrier_amount": carrier_amt,
+            "usarm_amount": usarm_amt,
+            "delta": delta,
+            "status": r.get("status"),
+            "note": r.get("note") or r.get("notes"),
+        })
+
+    normalized.sort(key=lambda x: x["delta"], reverse=True)
+    total_gap = sum(r["delta"] for r in normalized if r["delta"] > 0)
+
+    return {
+        "action": "complete",
+        "type": "scope_comparison",
+        "data": {
+            "rows": normalized[:limit],
+            "total_gap": round(total_gap, 2),
+            "row_count": len(normalized),
+            "truncated": len(normalized) > limit,
+        },
+        "message": (
+            f"{len(normalized)} row{'s' if len(normalized) != 1 else ''} — "
+            f"${total_gap:,.2f} in gaps."
+        ),
+    }
+
+
+def _handle_get_carrier_playbook(claim_data: dict) -> dict:
+    """Return the carrier playbook markdown, if available."""
+    carrier = (claim_data.get("carrier") or "").strip()
+    if not carrier:
+        return {
+            "action": "complete",
+            "type": "carrier_playbook",
+            "data": {"carrier": None, "playbook": None},
+            "message": "No carrier on this claim.",
+        }
+
+    # Reuse the existing loader (file-based on Railway).
+    try:
+        from main import _load_carrier_playbook  # type: ignore
+        playbook = _load_carrier_playbook(carrier) or ""
+    except Exception:
+        playbook = ""
+
+    if not playbook:
+        return {
+            "action": "complete",
+            "type": "carrier_playbook",
+            "data": {"carrier": carrier, "playbook": None},
+            "message": f"No playbook on file for {carrier}.",
+        }
+
+    return {
+        "action": "complete",
+        "type": "carrier_playbook",
+        "data": {"carrier": carrier, "playbook": playbook[:8000]},
+        "message": f"Loaded {carrier} playbook ({len(playbook)} chars).",
+    }
+
+
+def _handle_lookup_xactimate_price(claim_data: dict, tool_input: dict) -> dict:
+    """Look up an Xactimate price for a line item description."""
+    description = (tool_input.get("description") or "").strip()
+    if not description:
+        return {"action": "error", "message": "description is required"}
+
+    state = (tool_input.get("state") or _claim_state(claim_data)).upper()
+
+    try:
+        from xactimate_lookup import XactRegistry
+        reg = XactRegistry()
+        # Use the existing lookup method — it returns best match
+        match = reg.lookup_price(description)
+    except Exception as e:
+        return {"action": "error", "message": f"Xactimate registry unavailable: {e}"}
+
+    if not match:
+        return {
+            "action": "complete",
+            "type": "xactimate_price",
+            "data": {"description": description, "state": state, "match": None},
+            "message": f"No Xactimate match found for '{description}'.",
+        }
+
+    return {
+        "action": "complete",
+        "type": "xactimate_price",
+        "data": {
+            "description": description,
+            "state": state,
+            "match": match,
+        },
+        "message": f"Found: {match.get('code') or description} — ${match.get('price') or match.get('install_price') or 0:.2f}/{match.get('unit') or 'unit'}",
+    }
+
+
+def _handle_get_noaa_weather(claim_data: dict, tool_input: dict) -> dict:
+    """Query NOAA for storm events near the claim around its date of loss."""
+    dol = claim_data.get("date_of_loss") or ""
+    if not dol:
+        return {
+            "action": "complete",
+            "type": "noaa_weather",
+            "data": {"events": [], "reason": "no_date_of_loss"},
+            "message": "No date of loss on this claim — cannot query NOAA.",
+        }
+
+    lat = claim_data.get("lat") or claim_data.get("latitude")
+    lon = claim_data.get("lng") or claim_data.get("lon") or claim_data.get("longitude")
+    if lat is None or lon is None:
+        return {
+            "action": "complete",
+            "type": "noaa_weather",
+            "data": {"events": [], "reason": "no_geocode"},
+            "message": "Claim is not geocoded — reprocess to geocode it, then ask again.",
+        }
+
+    window = int(tool_input.get("window_days") or 3)
+
+    try:
+        from noaa_weather.api import NOAAClient
+        client = NOAAClient()
+        data = client.query(float(lat), float(lon), str(dol), window_days=window)
+    except TypeError:
+        # Signature may vary — retry without kwargs
+        try:
+            from noaa_weather.api import NOAAClient
+            client = NOAAClient()
+            data = client.query(float(lat), float(lon), str(dol))
+        except Exception as e:
+            return {"action": "error", "message": f"NOAA query failed: {e}"}
+    except Exception as e:
+        return {"action": "error", "message": f"NOAA query failed: {e}"}
+
+    # data may be a NOAAStormData with .events, or a list — normalize.
+    events_raw = []
+    if hasattr(data, "events"):
+        events_raw = data.events or []
+    elif isinstance(data, list):
+        events_raw = data
+    elif isinstance(data, dict):
+        events_raw = data.get("events") or []
+
+    events = []
+    for e in events_raw[:15]:
+        if hasattr(e, "to_summary"):
+            events.append(e.to_summary())
+        elif hasattr(e, "to_dict"):
+            events.append(e.to_dict())
+        elif isinstance(e, dict):
+            events.append(e)
+
+    return {
+        "action": "complete",
+        "type": "noaa_weather",
+        "data": {
+            "events": events,
+            "date_of_loss": dol,
+            "window_days": window,
+            "total": len(events),
+        },
+        "message": f"{len(events)} NOAA storm event{'s' if len(events) != 1 else ''} within {window} days of {dol}.",
+    }
+
+
+def _handle_search_photos(sb: Client, claim_id: str, tool_input: dict) -> dict:
+    """Search the claim's photos by damage_type / material / trade / severity."""
+    query = sb.table("photos").select(
+        "annotation_key, annotation_text, damage_type, material, trade, severity"
+    ).eq("claim_id", claim_id)
+
+    damage_type = tool_input.get("damage_type")
+    material = tool_input.get("material")
+    trade = tool_input.get("trade")
+    severity = tool_input.get("severity")
+
+    if damage_type:
+        query = query.eq("damage_type", damage_type)
+    if material:
+        query = query.eq("material", material)
+    if trade:
+        query = query.eq("trade", trade)
+    if severity:
+        query = query.eq("severity", severity)
+
+    limit = int(tool_input.get("limit") or 20)
+    result = query.limit(limit).execute()
+    photos = result.data or []
+
+    return {
+        "action": "complete",
+        "type": "photo_search",
+        "data": {
+            "photos": photos,
+            "total": len(photos),
+            "filters": {
+                "damage_type": damage_type,
+                "material": material,
+                "trade": trade,
+                "severity": severity,
+            },
+        },
+        "message": f"{len(photos)} photo{'s' if len(photos) != 1 else ''} matched.",
+    }
+
+
+def _handle_get_damage_scores(claim_data: dict) -> dict:
+    """Return damage score + approval score + grade."""
+    ds = claim_data.get("damage_score")
+    tas = claim_data.get("approval_score")
+    ds_grade = claim_data.get("damage_grade") or ""
+    tas_grade = claim_data.get("approval_grade") or ""
+    if ds is None and tas is None:
+        return {
+            "action": "complete",
+            "type": "damage_scores",
+            "data": {"damage_score": None, "approval_score": None},
+            "message": "No scores computed yet. Reprocess the claim to generate them.",
+        }
+
+    return {
+        "action": "complete",
+        "type": "damage_scores",
+        "data": {
+            "damage_score": ds,
+            "damage_grade": ds_grade,
+            "approval_score": tas,
+            "approval_grade": tas_grade,
+            "photo_integrity": claim_data.get("photo_integrity") or {},
+        },
+        "message": f"DS: {ds} ({ds_grade}) | TAS: {tas} ({tas_grade})",
+    }
+
+
+# ═══════════════════════════════════════════
+# R2 — CLASSIFY UPLOADED FILE
+# ═══════════════════════════════════════════
+
+async def _handle_classify_uploaded_file(sb: Client, claim_id: str, tool_input: dict) -> dict:
+    """
+    Claude Vision classifies a user-uploaded file into one of:
+      AOB, COC, CARRIER_SCOPE, EAGLEVIEW, SUPPLEMENT_RESPONSE, CONTRACT, PHOTO, OTHER
+    """
+    storage_path = (tool_input.get("storage_path") or "").strip()
+    filename = tool_input.get("filename") or storage_path.rsplit("/", 1)[-1] if storage_path else ""
+    if not storage_path:
+        return {"action": "error", "message": "storage_path is required"}
+
+    # Download file from Supabase Storage
+    try:
+        file_bytes = sb.storage.from_("claim-documents").download(storage_path)
+    except Exception as e:
+        return {"action": "error", "message": f"Failed to download file: {e}"}
+
+    if not file_bytes:
+        return {"action": "error", "message": "Empty file downloaded."}
+
+    # Determine media type from extension
+    lower = (filename or storage_path).lower()
+    is_pdf = lower.endswith(".pdf")
+    is_image = any(lower.endswith(ext) for ext in (".jpg", ".jpeg", ".png", ".webp", ".heic", ".heif"))
+
+    import anthropic
+    client = anthropic.Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
+
+    # Build multimodal content for Vision
+    b64 = base64.standard_b64encode(file_bytes).decode("utf-8")
+    if is_pdf:
+        doc_block = {
+            "type": "document",
+            "source": {"type": "base64", "media_type": "application/pdf", "data": b64},
+        }
+    elif is_image:
+        media = "image/jpeg"
+        if lower.endswith(".png"): media = "image/png"
+        elif lower.endswith(".webp"): media = "image/webp"
+        doc_block = {
+            "type": "image",
+            "source": {"type": "base64", "media_type": media, "data": b64},
+        }
+    else:
+        # Unsupported file — classify by filename only
+        return _classify_by_filename(filename or storage_path, storage_path)
+
+    classify_prompt = (
+        "You are classifying a document for an insurance claim workflow. "
+        "Identify which ONE of these categories this document is:\n\n"
+        "- AOB: Assignment of Benefits (signed or unsigned)\n"
+        "- COC: Certificate of Completion / Completion certificate\n"
+        "- CARRIER_SCOPE: Insurance carrier's estimate or adjuster report (Xactimate/ESX/PDF)\n"
+        "- EAGLEVIEW: EagleView / Hover measurement report\n"
+        "- SUPPLEMENT_RESPONSE: A carrier email or letter responding to a prior supplement\n"
+        "- CONTRACT: Homeowner/contractor agreement (scope of work)\n"
+        "- PHOTO: A damage photograph\n"
+        "- OTHER: Anything else\n\n"
+        "Respond with ONLY a JSON object, no prose. Schema:\n"
+        "{\"classification\": \"<CATEGORY>\", \"confidence\": 0.0-1.0, "
+        "\"signals\": [\"short evidence 1\", \"short evidence 2\"], "
+        "\"suggested_action\": \"one-sentence next step\"}"
+    )
+
+    try:
+        msg = client.messages.create(
+            model="claude-sonnet-4-5",
+            max_tokens=512,
+            messages=[{
+                "role": "user",
+                "content": [
+                    doc_block,
+                    {"type": "text", "text": classify_prompt},
+                ],
+            }],
+        )
+    except Exception as e:
+        # Model name fallback if the pinned one rejects
+        try:
+            msg = client.messages.create(
+                model="claude-opus-4-6",
+                max_tokens=512,
+                messages=[{
+                    "role": "user",
+                    "content": [
+                        doc_block,
+                        {"type": "text", "text": classify_prompt},
+                    ],
+                }],
+            )
+        except Exception as e2:
+            return {"action": "error", "message": f"Vision classification failed: {e2}"}
+
+    raw_text = ""
+    for block in msg.content:
+        if getattr(block, "type", None) == "text":
+            raw_text += block.text
+
+    # Extract JSON (model sometimes wraps in markdown)
+    parsed: dict[str, Any] = {}
+    try:
+        raw_stripped = raw_text.strip()
+        if raw_stripped.startswith("```"):
+            # strip fences
+            raw_stripped = raw_stripped.split("```", 2)[1]
+            if raw_stripped.startswith("json"):
+                raw_stripped = raw_stripped[4:]
+            raw_stripped = raw_stripped.strip("`").strip()
+        parsed = json.loads(raw_stripped)
+    except Exception:
+        # Last-ditch: look for a brace-enclosed section
+        import re
+        m = re.search(r"\{.*\}", raw_text, re.DOTALL)
+        if m:
+            try:
+                parsed = json.loads(m.group(0))
+            except Exception:
+                parsed = {}
+
+    classification = (parsed.get("classification") or "OTHER").upper()
+    confidence = float(parsed.get("confidence") or 0.0)
+    signals = parsed.get("signals") or []
+    suggested_action = parsed.get("suggested_action") or ""
+
+    return {
+        "action": "complete",
+        "type": "file_classification",
+        "data": {
+            "storage_path": storage_path,
+            "filename": filename,
+            "classification": classification,
+            "confidence": confidence,
+            "signals": signals,
+            "suggested_action": suggested_action,
+            "low_confidence": confidence < 0.9,
+        },
+        "message": (
+            f"Classified '{filename or 'file'}' as {classification} "
+            f"({int(confidence * 100)}% confidence)."
+        ),
+    }
+
+
+def _classify_by_filename(filename: str, storage_path: str) -> dict:
+    """Fallback classifier when we can't use Vision (unsupported file type)."""
+    lower = filename.lower()
+    classification = "OTHER"
+    if "aob" in lower or "assignment" in lower:
+        classification = "AOB"
+    elif "coc" in lower or "completion" in lower:
+        classification = "COC"
+    elif "eagleview" in lower or "measure" in lower or "hover" in lower:
+        classification = "EAGLEVIEW"
+    elif "estimate" in lower or "scope" in lower or "xactimate" in lower:
+        classification = "CARRIER_SCOPE"
+    elif "contract" in lower:
+        classification = "CONTRACT"
+
+    return {
+        "action": "complete",
+        "type": "file_classification",
+        "data": {
+            "storage_path": storage_path,
+            "filename": filename,
+            "classification": classification,
+            "confidence": 0.5,
+            "signals": ["filename-based fallback — unsupported file type for Vision"],
+            "suggested_action": "Verify classification with user before taking action.",
+            "low_confidence": True,
+        },
+        "message": f"Classified '{filename}' as {classification} by filename (low confidence).",
     }
