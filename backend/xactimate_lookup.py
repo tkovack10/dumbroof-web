@@ -81,6 +81,38 @@ DEFAULT_MARKETS = {
     "TX": "TXDF8X_APR26",   # Dallas-Fort Worth — largest TX metro (Alfonso 2026-04-17, 24 markets)
 }
 
+# Full state name → 2-letter code. Upstream address parsers are inconsistent
+# about whether they return "TX" or "Texas"; resolve_market needs to handle
+# both so a Texas claim doesn't silently fall through to NY default pricing.
+_STATE_NAME_TO_CODE = {
+    "alabama": "AL", "alaska": "AK", "arizona": "AZ", "arkansas": "AR",
+    "california": "CA", "colorado": "CO", "connecticut": "CT", "delaware": "DE",
+    "florida": "FL", "georgia": "GA", "hawaii": "HI", "idaho": "ID",
+    "illinois": "IL", "indiana": "IN", "iowa": "IA", "kansas": "KS",
+    "kentucky": "KY", "louisiana": "LA", "maine": "ME", "maryland": "MD",
+    "massachusetts": "MA", "michigan": "MI", "minnesota": "MN", "mississippi": "MS",
+    "missouri": "MO", "montana": "MT", "nebraska": "NE", "nevada": "NV",
+    "new hampshire": "NH", "new jersey": "NJ", "new mexico": "NM", "new york": "NY",
+    "north carolina": "NC", "north dakota": "ND", "ohio": "OH", "oklahoma": "OK",
+    "oregon": "OR", "pennsylvania": "PA", "rhode island": "RI", "south carolina": "SC",
+    "south dakota": "SD", "tennessee": "TN", "texas": "TX", "utah": "UT",
+    "vermont": "VT", "virginia": "VA", "washington": "WA", "west virginia": "WV",
+    "wisconsin": "WI", "wyoming": "WY", "district of columbia": "DC",
+}
+
+
+def _normalize_state(state) -> str:
+    """Accept either a 2-letter code or a full state name; return 2-letter uppercase.
+
+    Returns empty string if state is falsy or unrecognizable. Never raises.
+    """
+    if not state:
+        return ""
+    s = str(state).strip()
+    if len(s) == 2:
+        return s.upper()
+    return _STATE_NAME_TO_CODE.get(s.lower(), s.upper()[:2])
+
 # Negative keyword exclusions for scope comparison matching (PRE-COMPILED)
 # If carrier desc matches pattern[0] AND usarm desc matches pattern[1], REJECT the match
 NEGATIVE_EXCLUSIONS = [
@@ -339,8 +371,11 @@ class XactRegistry:
 
         Returns market code string. For states not in DEFAULT_MARKETS, returns
         the default NY market with a warning (pricing will be approximate).
+
+        Accepts either a 2-letter state code or a full state name; address
+        parsers upstream are inconsistent about which they return.
         """
-        state_upper = (state or "").upper().strip()
+        state_upper = _normalize_state(state)
         if not state_upper:
             logger.warning("No state provided for market resolution, defaulting to NY")
             return DEFAULT_MARKETS["NY"]

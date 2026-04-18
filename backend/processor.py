@@ -3911,30 +3911,20 @@ def _merge_measurement_extractions(extractions: list[dict]) -> dict:
     # the structure count and cause per-structure line items to be duplicated
     # (doubled roofs, tripled penetrations). See Mauricio/Skylight 123 case.
     #
-    # A real roof-measurement report (EagleView/HOVER/GAF) has linear
-    # measurements — ridge/eave/valley/rake LF. Carrier estimates may parse a
-    # roof_area_sf from "30 SQ" line items but never list those linear LFs, so
-    # requiring at least one linear measurement > 0 filters them out cleanly.
-    def _has_linear_measurements(meas: dict) -> bool:
-        return any((meas or {}).get(k, 0) > 0
-                   for k in ("ridge", "eave", "valley", "rake", "hip"))
-
+    # We accept anything with roof area OR walls. Discrimination between a
+    # real EagleView and a carrier scope that happens to quote area happens
+    # downstream in the same-property dedup via _richness_score, which
+    # rewards pitch-level areas + linear LFs + walls data. An earlier
+    # iteration *required* linear measurements here, which could silently
+    # drop a legit EagleView whose linear LF extraction happened to fail,
+    # inverting intent.
     def _has_content(e: dict) -> bool:
-        # Walls-only reports pass regardless of linear measurements.
         if e.get("walls", {}).get("total_wall_area_sf", 0) > 0:
             return True
-        has_area = (
-            e.get("total_roof_area_sf", 0) > 0
-            or any(s.get("roof_area_sf", 0) > 0 for s in e.get("structures", []))
-        )
-        if not has_area:
-            return False
-        # Require evidence this is a real measurement report, not a carrier scope.
-        if _has_linear_measurements(e.get("measurements")):
+        if e.get("total_roof_area_sf", 0) > 0:
             return True
-        for s in e.get("structures", []):
-            if _has_linear_measurements(s.get("measurements")):
-                return True
+        if any(s.get("roof_area_sf", 0) > 0 for s in e.get("structures", [])):
+            return True
         return False
 
     valid = [e for e in extractions if _has_content(e)]

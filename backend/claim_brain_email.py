@@ -137,11 +137,17 @@ def send_via_gmail(
         msg["Cc"] = cc
 
     # Oversight BCC — combine default DumbRoof team list with any caller-provided extras.
+    # Dedup is case-insensitive: historical profiles store mixed-case emails
+    # (e.g. "TKovack@USARoofMasters.com"), and Resend does NOT dedup addresses
+    # that differ only in case, so Tom was getting BCC'd twice on his own claim
+    # emails under the Resend fallback.
     bcc_list = list(DUMBROOF_TEAM_BCC)
     if bcc:
+        seen_lower = {a.lower() for a in bcc_list}
         for addr in [a.strip() for a in bcc.split(",") if a.strip()]:
-            if addr not in bcc_list:
+            if addr.lower() not in seen_lower:
                 bcc_list.append(addr)
+                seen_lower.add(addr.lower())
     msg["Bcc"] = ", ".join(bcc_list)
 
     msg.attach(MIMEText(body_html, "html"))
@@ -319,11 +325,15 @@ def send_via_resend(
         payload["cc"] = [cc]
 
     # Oversight BCC — combine DumbRoof team list with any caller-provided extras.
+    # Case-insensitive dedup: see send_via_gmail comment for the Resend-
+    # specific reason this matters.
     bcc_list = list(DUMBROOF_TEAM_BCC)
     if bcc:
+        seen_lower = {a.lower() for a in bcc_list}
         for addr in [a.strip() for a in bcc.split(",") if a.strip()]:
-            if addr not in bcc_list:
+            if addr.lower() not in seen_lower:
                 bcc_list.append(addr)
+                seen_lower.add(addr.lower())
     payload["bcc"] = bcc_list
     if attachments:
         payload["attachments"] = [
@@ -380,8 +390,10 @@ def send_claim_email(
     # External recipients (carriers, adjusters, homeowners) must not see an
     # internal company address on the Cc line — especially not a USA Roof
     # Masters address on an email sent from another roofing company's account.
+    # Case-insensitive + whitespace-trimmed comparison so "Foo@bar.com " vs
+    # "foo@bar.com" doesn't slip through as a false mismatch.
     extra_bcc = None
-    if admin_email and admin_email != to_email:
+    if admin_email and admin_email.strip().lower() != (to_email or "").strip().lower():
         extra_bcc = admin_email
 
     result = {}
