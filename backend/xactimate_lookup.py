@@ -127,6 +127,30 @@ def _get_all_markets():
             _all_markets_cache = {}
     return _all_markets_cache
 
+
+# Module-level cache for city_aliases.json — hand-curated suburb → market routing
+CITY_ALIASES_PATH = os.path.join(os.path.dirname(__file__), "pricing", "city_aliases.json")
+_city_aliases_cache = None
+
+
+def _get_city_aliases():
+    """Load and cache city_aliases.json. Strips comment keys (prefixed with _)."""
+    global _city_aliases_cache
+    if _city_aliases_cache is None:
+        try:
+            if os.path.exists(CITY_ALIASES_PATH):
+                with open(CITY_ALIASES_PATH) as f:
+                    raw = json.load(f)
+                _city_aliases_cache = {
+                    k.lower().strip(): v for k, v in raw.items() if not k.startswith("_")
+                }
+            else:
+                _city_aliases_cache = {}
+        except (json.JSONDecodeError, OSError) as e:
+            logger.warning("Failed to load city_aliases.json: %s", e)
+            _city_aliases_cache = {}
+    return _city_aliases_cache
+
 # Prefixes/stopwords stripped during fuzzy matching
 _PFX_RE = re.compile(
     r"^(r&r\s+|remove\s+|tear\s*off\s+|tear\s*out\s+|install\s+|detach\s*&?\s*reset\s+)", re.IGNORECASE
@@ -275,6 +299,13 @@ class XactRegistry:
     def resolve_market(state, zip_code=None, city=None):
         """Resolve state/zip/city to the best market code in all-markets.json.
 
+        Resolution order (highest precedence first):
+          1. City alias table (pricing/city_aliases.json) — hand-curated
+             suburb→market routing for common metros (Plano→Dallas,
+             Katy→Houston, King of Prussia→Philadelphia, etc.)
+          2. Fuzzy city match against market NAME field
+          3. DEFAULT_MARKETS[state] fallback
+
         Returns market code string. For states not in DEFAULT_MARKETS, returns
         the default NY market with a warning (pricing will be approximate).
         """
@@ -291,7 +322,21 @@ class XactRegistry:
         if not city and not zip_code:
             return default
 
-        # Try to find a better market match by city name using cached data
+        # 1. Alias table — hand-curated suburb → market lookup. Keyed by
+        #    lowercased "city,state" (comma-separated, no space). Wins over
+        #    fuzzy matching because e.g. "Plano" won't substring-match
+        #    "Dallas-Fort Worth Texas" in the market name.
+        if city:
+            alias_key = f"{city.lower().strip()},{state_upper.lower()}"
+            aliases = _get_city_aliases()
+            if alias_key in aliases:
+                aliased = aliases[alias_key]
+                # Safety: only return if the aliased market actually exists
+                if aliased in _get_all_markets().get("markets", {}):
+                    logger.debug("Market resolved via alias: %s → %s", alias_key, aliased)
+                    return aliased
+
+        # 2. Fuzzy city match against market names (e.g. "Dallas" in "Dallas-Fort Worth Texas")
         if city:
             city_lower = city.lower().strip()
             try:
@@ -305,6 +350,7 @@ class XactRegistry:
             except (KeyError, AttributeError) as e:
                 logger.debug("City matching failed for %s: %s", city, e)
 
+        # 3. State default
         return default
 
     # ------------------------------------------------------------------
