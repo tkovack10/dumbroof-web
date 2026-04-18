@@ -151,6 +151,30 @@ def _get_city_aliases():
             _city_aliases_cache = {}
     return _city_aliases_cache
 
+
+# Module-level cache for zip_to_market.json — 3-digit ZIP prefix → market routing
+ZIP_TO_MARKET_PATH = os.path.join(os.path.dirname(__file__), "pricing", "zip_to_market.json")
+_zip_to_market_cache = None
+
+
+def _get_zip_to_market():
+    """Load and cache zip_to_market.json. Strips comment keys (prefixed with _)."""
+    global _zip_to_market_cache
+    if _zip_to_market_cache is None:
+        try:
+            if os.path.exists(ZIP_TO_MARKET_PATH):
+                with open(ZIP_TO_MARKET_PATH) as f:
+                    raw = json.load(f)
+                _zip_to_market_cache = {
+                    k.strip(): v for k, v in raw.items() if not k.startswith("_")
+                }
+            else:
+                _zip_to_market_cache = {}
+        except (json.JSONDecodeError, OSError) as e:
+            logger.warning("Failed to load zip_to_market.json: %s", e)
+            _zip_to_market_cache = {}
+    return _zip_to_market_cache
+
 # Prefixes/stopwords stripped during fuzzy matching
 _PFX_RE = re.compile(
     r"^(r&r\s+|remove\s+|tear\s*off\s+|tear\s*out\s+|install\s+|detach\s*&?\s*reset\s+)", re.IGNORECASE
@@ -302,9 +326,16 @@ class XactRegistry:
         Resolution order (highest precedence first):
           1. City alias table (pricing/city_aliases.json) — hand-curated
              suburb→market routing for common metros (Plano→Dallas,
-             Katy→Houston, King of Prussia→Philadelphia, etc.)
-          2. Fuzzy city match against market NAME field
-          3. DEFAULT_MARKETS[state] fallback
+             Katy→Houston, King of Prussia→Philadelphia, etc.). Wins first
+             because aliases are explicitly curated.
+          2. ZIP prefix table (pricing/zip_to_market.json) — first 3 digits
+             of the ZIP → market. Covers 278 prefixes across all 10 states
+             we have pricing for, so most addresses resolve without a city
+             alias. Sanity-checks that the prefix's market matches the
+             claim's state.
+          3. Fuzzy city match against market NAME field (e.g. "Dallas" in
+             "Dallas-Fort Worth Texas").
+          4. DEFAULT_MARKETS[state] fallback.
 
         Returns market code string. For states not in DEFAULT_MARKETS, returns
         the default NY market with a warning (pricing will be approximate).
@@ -322,6 +353,8 @@ class XactRegistry:
         if not city and not zip_code:
             return default
 
+        markets_dict = _get_all_markets().get("markets", {})
+
         # 1. Alias table — hand-curated suburb → market lookup. Keyed by
         #    lowercased "city,state" (comma-separated, no space). Wins over
         #    fuzzy matching because e.g. "Plano" won't substring-match
@@ -331,17 +364,28 @@ class XactRegistry:
             aliases = _get_city_aliases()
             if alias_key in aliases:
                 aliased = aliases[alias_key]
-                # Safety: only return if the aliased market actually exists
-                if aliased in _get_all_markets().get("markets", {}):
+                if aliased in markets_dict:
                     logger.debug("Market resolved via alias: %s → %s", alias_key, aliased)
                     return aliased
 
-        # 2. Fuzzy city match against market names (e.g. "Dallas" in "Dallas-Fort Worth Texas")
+        # 2. ZIP prefix table — fast, works even when city name is missing or garbled.
+        #    Safety: the zip prefix must resolve to a market in the claim's state,
+        #    otherwise we ignore it (protects against out-of-state zips).
+        if zip_code:
+            zip_clean = "".join(c for c in str(zip_code) if c.isdigit())[:5]
+            if len(zip_clean) >= 3:
+                prefix = zip_clean[:3]
+                zip_map = _get_zip_to_market()
+                mapped = zip_map.get(prefix)
+                if mapped and mapped in markets_dict and mapped.startswith(state_upper):
+                    logger.debug("Market resolved via ZIP prefix: %s → %s", prefix, mapped)
+                    return mapped
+
+        # 3. Fuzzy city match against market names (e.g. "Dallas" in "Dallas-Fort Worth Texas")
         if city:
             city_lower = city.lower().strip()
             try:
-                all_data = _get_all_markets()
-                for code, mdata in all_data.get("markets", {}).items():
+                for code, mdata in markets_dict.items():
                     if not code.startswith(state_upper):
                         continue
                     mname = mdata.get("name", "").lower()
@@ -350,7 +394,7 @@ class XactRegistry:
             except (KeyError, AttributeError) as e:
                 logger.debug("City matching failed for %s: %s", city, e)
 
-        # 3. State default
+        # 4. State default
         return default
 
     # ------------------------------------------------------------------
