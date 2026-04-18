@@ -576,6 +576,11 @@ export function InstallSupplementBuilder({ claimId, claimAddress, carrierName, u
                     }
                     // Send email to carrier if address provided
                     if (carrierEmail) {
+                      if (!claimNum?.trim()) {
+                        alert("Claim number is required before sending to carrier. Carriers auto-reject emails without a claim number in the subject.");
+                        setSubmitting(false);
+                        return;
+                      }
                       const allPhotoPaths = [...draftItems.flatMap((i) => i.photo_paths || []), ...importedPhotoPaths];
                       const itemLines = draftItems.map(
                         (i) => `<tr><td style="padding:4px 8px;border:1px solid #ddd;">${i.description}</td><td style="padding:4px 8px;border:1px solid #ddd;">${i.qty} ${i.unit}</td><td style="padding:4px 8px;border:1px solid #ddd;">$${(i.qty * i.unit_price).toFixed(2)}</td><td style="padding:4px 8px;border:1px solid #ddd;">${i.reason || ""}</td></tr>`
@@ -587,7 +592,7 @@ export function InstallSupplementBuilder({ claimId, claimAddress, carrierName, u
                         body: JSON.stringify({
                           claim_id: claimId,
                           to_email: carrierEmail,
-                          subject: claimNum ? `Claim #${claimNum} — Install Supplement` : `Install Supplement — ${claimAddress}`,
+                          subject: claimNum.trim(),
                           body_html: emailBody,
                           attachment_paths: allPhotoPaths,
                           email_type: "install_supplement",

@@ -45,12 +45,14 @@ export function SendDocumentsBlock({ claimId, claimAddress, claimNumber, adjuste
     });
   };
 
-  const subject = editClaimNumber.trim()
-    ? `Claim #${editClaimNumber.trim()}`
-    : `Inspection Report — ${claimAddress}`;
+  const subject = editClaimNumber.trim() || `Inspection Report — ${claimAddress}`;
 
   const handleSend = async () => {
     if (!recipientEmail || selectedFiles.size === 0) return;
+    if (recipientType === "carrier" && !editClaimNumber.trim()) {
+      alert("Claim number is required before sending to carrier. Carriers auto-reject emails without a claim number in the subject.");
+      return;
+    }
     setSending(true);
     setSent(false);
 

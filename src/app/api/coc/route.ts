@@ -122,10 +122,28 @@ export async function PUT(req: NextRequest) {
   const userId = auth.user.id;
 
   const body = await req.json();
-  const { claim_id, pdf_path, to_email, cc, recipient_type, completion_photo_paths } = body;
+  const { claim_id, pdf_path, to_email, cc, recipient_type, completion_photo_paths, claim_number } = body;
 
   if (!claim_id || !pdf_path || !to_email) {
     return NextResponse.json({ error: "claim_id, pdf_path, and to_email required" }, { status: 400 });
+  }
+
+  // Carrier emails MUST contain the claim number in the subject (carriers auto-reject otherwise).
+  // Look it up from the claims table if the caller didn't pass one through.
+  let resolvedClaimNumber = (claim_number || "").trim();
+  if (!resolvedClaimNumber) {
+    const { data: claimRow } = await supabaseAdmin
+      .from("claims")
+      .select("claim_number")
+      .eq("id", claim_id)
+      .limit(1);
+    resolvedClaimNumber = (claimRow?.[0]?.claim_number || "").trim();
+  }
+  if (recipient_type === "carrier" && !resolvedClaimNumber) {
+    return NextResponse.json(
+      { error: "Claim number is required before sending to carrier. Carriers auto-reject emails without a claim number in the subject." },
+      { status: 400 }
+    );
   }
 
   const authorized = await canAccessClaim(userId, claim_id);
@@ -140,6 +158,9 @@ export async function PUT(req: NextRequest) {
       allAttachments.push(...completion_photo_paths);
     }
 
+    // Subject = claim number ONLY (carrier rule). Homeowner falls back to a readable label.
+    const subject = resolvedClaimNumber || "Certificate of Substantial Completion";
+
     const res = await fetch(`${BACKEND_URL}/api/supplement-email/send`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -147,7 +168,7 @@ export async function PUT(req: NextRequest) {
         claim_id,
         user_id: userId,
         to_email,
-        subject: `Certificate of Substantial Completion`,
+        subject,
         body_html: `<p>Please find attached the Certificate of Substantial Completion for the referenced property.</p><p>All work has been completed in accordance with the approved scope and applicable building codes.</p>${(completion_photo_paths?.length || 0) > 0 ? `<p>${completion_photo_paths.length} completion photo${completion_photo_paths.length !== 1 ? "s" : ""} attached.</p>` : ""}<p>Please process final payment at your earliest convenience.</p>`,
         cc: cc || null,
         attachment_paths: allAttachments,

@@ -47,6 +47,15 @@ export async function POST(req: NextRequest) {
 
   const claim = claimRows?.[0] || { address: "", carrier: "", claim_number: "" };
 
+  // Carrier emails MUST contain the claim number in the subject — carriers auto-reject otherwise.
+  const resolvedClaimNumber = (claim_number || claim.claim_number || "").trim();
+  if (!resolvedClaimNumber) {
+    return NextResponse.json(
+      { error: "Claim number is required before sending to carrier. Carriers auto-reject emails without a claim number in the subject." },
+      { status: 400 }
+    );
+  }
+
   const { data: cpRows } = await supabaseAdmin
     .from("company_profiles")
     .select("company_name, email, phone, address, city_state_zip, contact_name, w9_path")
@@ -95,7 +104,7 @@ export async function POST(req: NextRequest) {
         claim_id: sig.claim_id,
         user_id: userId,
         to_email: carrier_email,
-        subject: `${docLabel} — ${claim.address}${(claim_number || claim.claim_number) ? ` — Claim #${claim_number || claim.claim_number}` : ""}`,
+        subject: resolvedClaimNumber,
         body_html: emailBody,
         cc: company?.email || null,
         attachment_paths: attachmentPaths.length > 0 ? attachmentPaths : undefined,

@@ -165,18 +165,41 @@ export function CocBuilder({ claimId, claimAddress, carrierName, userId, filePat
 
   const sendCoc = async (recipientType: "carrier" | "homeowner") => {
     if (!sendEmail || !pdfPath) return;
+    if (recipientType === "carrier" && !claimNum.trim()) {
+      alert("Claim number is required before sending to carrier. Carriers auto-reject emails without a claim number in the subject.");
+      return;
+    }
     setSending(recipientType);
     try {
+      // Auto-upload any photos still pending — otherwise they'd silently drop from the email.
+      let photoPaths = completionPhotoPaths;
+      if (completionPhotos.length > 0) {
+        setUploadingPhotos(true);
+        try {
+          const newPaths: string[] = [];
+          for (const file of completionPhotos) {
+            const path = await uploadFile(file, "completion-photos");
+            newPaths.push(path);
+          }
+          photoPaths = [...completionPhotoPaths, ...newPaths];
+          setCompletionPhotoPaths(photoPaths);
+          setCompletionPhotos([]);
+        } finally {
+          setUploadingPhotos(false);
+        }
+      }
+
       const res = await fetch("/api/coc", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           claim_id: claimId,
+          claim_number: claimNum.trim() || undefined,
           pdf_path: pdfPath,
           to_email: sendEmail,
           cc: sendCc || null,
           recipient_type: recipientType,
-          completion_photo_paths: completionPhotoPaths.length > 0 ? completionPhotoPaths : undefined,
+          completion_photo_paths: photoPaths.length > 0 ? photoPaths : undefined,
         }),
       });
 
@@ -185,6 +208,9 @@ export function CocBuilder({ claimId, claimAddress, carrierName, userId, filePat
         setSendEmail("");
         setSendCc("");
         await fetchExisting();
+      } else {
+        const err = await res.json().catch(() => ({}));
+        alert(err.error || "Failed to send COC email");
       }
     } catch { /* ignore */ }
     setSending(null);
