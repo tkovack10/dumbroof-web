@@ -1541,8 +1541,27 @@ async def approve_brain_action(claim_id: str, body: ToolApproval, background_tas
             return {"status": "sent", "message": f"Sent to {preview['to_email']}.", "email_id": email_result.get("email_id")}
 
         # ─── R4: schedule_follow_up_cadence ───
+        # Capture the most recent carrier-facing send so each follow-up can
+        # quote the original body (adjusters need the context).
         if tool_name == "schedule_follow_up_cadence":
             preview = tool_result.get("preview") or {}
+            previous_body_html = None
+            previous_subject = None
+            previous_sent_at = None
+            try:
+                prev_res = sb.table("claim_emails").select(
+                    "subject, body_html, sent_at, email_type"
+                ).eq("claim_id", claim_id).in_(
+                    "email_type",
+                    ["carrier_custom", "supplement", "aob", "coc", "send_supplement_email", "send_aob_to_carrier"],
+                ).order("sent_at", desc=True).limit(1).execute()
+                prev = (prev_res.data or [{}])[0] if prev_res.data else {}
+                previous_body_html = prev.get("body_html")
+                previous_subject = prev.get("subject")
+                previous_sent_at = prev.get("sent_at")
+            except Exception as e:
+                print(f"[cadence] prev-send lookup failed (non-fatal): {e}")
+
             rows_to_insert = []
             for item in preview.get("schedule", []):
                 rows_to_insert.append({
@@ -1554,8 +1573,11 @@ async def approve_brain_action(claim_id: str, body: ToolApproval, background_tas
                     "to_email": preview.get("to_email"),
                     "cc": preview.get("cc"),
                     "subject": preview.get("subject"),
-                    "body_html": _build_cadence_body_html(claim_row, preview, item),
+                    "body_html": _build_cadence_body_html(claim_row, preview, item, previous_body_html, previous_subject, previous_sent_at),
                     "attachment_paths": preview.get("attachment_paths") or [],
+                    "previous_body_html": previous_body_html,
+                    "previous_subject": previous_subject,
+                    "previous_sent_at": previous_sent_at,
                     "status": "pending",
                 })
             if rows_to_insert:
@@ -1592,8 +1614,20 @@ async def approve_brain_action(claim_id: str, body: ToolApproval, background_tas
         return {"status": "error", "message": f"Failed: {str(e)}"}
 
 
-def _build_cadence_body_html(claim_row: dict, preview: dict, item: dict) -> str:
-    """Build the follow-up email body for a single cadence send."""
+def _build_cadence_body_html(
+    claim_row: dict,
+    preview: dict,
+    item: dict,
+    previous_body_html: Optional[str] = None,
+    previous_subject: Optional[str] = None,
+    previous_sent_at: Optional[str] = None,
+) -> str:
+    """Build the follow-up email body for a single cadence send.
+
+    When a prior carrier-facing send exists, each follow-up inlines it as a
+    Gmail-style quoted block so the adjuster has full context. Without that
+    quote, follow-ups read as disconnected stubs.
+    """
     followup_number = item.get("followup_number", 1)
     days = item.get("offset_days", 0)
     cadence_type = preview.get("cadence_type", "")
@@ -1609,14 +1643,28 @@ def _build_cadence_body_html(claim_row: dict, preview: dict, item: dict) -> str:
     }
     tone_label = tone_map.get(followup_number, f"follow-up {followup_number}")
 
-    return (
+    top = (
         f"<p>Following up on our prior correspondence regarding the claim at <strong>{address}</strong> "
         f"(claim number <strong>{claim_number}</strong>).</p>"
         f"<p>It has been approximately {days} days and we have not yet received a response from {carrier}. "
         f"Please confirm receipt and provide a status update at your earliest convenience.</p>"
         f"<p>The attached documentation remains available for your review.</p>"
-        f"<!-- Richard {cadence_type} {tone_label} -->"
     )
+
+    if previous_body_html:
+        sent_line = f" on {previous_sent_at[:10]}" if previous_sent_at else ""
+        subj_line = f" — Subject: <strong>{previous_subject}</strong>" if previous_subject else ""
+        top += (
+            f"<hr style='border:none;border-top:1px solid #ddd;margin:24px 0 12px' />"
+            f"<p style='color:#666;font-size:12px;margin-bottom:8px'>"
+            f"On our original correspondence{sent_line}{subj_line}, we wrote:"
+            f"</p>"
+            f"<blockquote style='margin:0;padding:0 12px;border-left:3px solid #ccc;color:#555'>"
+            f"{previous_body_html}"
+            f"</blockquote>"
+        )
+
+    return top + f"<!-- Richard {cadence_type} {tone_label} -->"
 
 
 @app.post("/api/claim-brain/{claim_id}/reset")
@@ -1644,6 +1692,87 @@ class DirectEmailRequest(BaseModel):
     cc: str | None = None
     attachment_paths: list[str] | None = None  # Supabase storage paths to attach
     email_type: str = "supplement"  # supplement | install_supplement | coc | aob | invoice
+
+
+@app.get("/api/claim-brain/{claim_id}/suggestions")
+async def claim_brain_suggestions(claim_id: str):
+    """Proactive nudges Richard can surface when the user opens a claim.
+
+    Computed from scope_comparison (biggest gaps), pending cadences, recent
+    carrier emails, and missing docs. Frontend shows them as tappable cards.
+    Each suggestion has a `prompt` the chat can auto-send.
+    """
+    sb = get_supabase_client()
+    result = sb.table("claims").select(
+        "address, carrier, claim_number, phase, status, scope_comparison, scope_files, aob_files"
+    ).eq("id", claim_id).single().execute()
+    claim = result.data or {}
+
+    suggestions: list[dict] = []
+
+    # 1. Top scope-comparison gaps — highest dollar deltas
+    scope_rows = claim.get("scope_comparison") or []
+    gaps = []
+    for r in scope_rows:
+        if not isinstance(r, dict):
+            continue
+        carrier_amt = float(r.get("carrier_amount") or 0)
+        usarm_amt = float(r.get("usarm_amount") or 0)
+        delta = usarm_amt - carrier_amt
+        if delta > 50:  # ignore trivial deltas
+            gaps.append({
+                "item": r.get("checklist_desc") or r.get("usarm_desc") or r.get("carrier_desc") or "item",
+                "delta": delta,
+            })
+    gaps.sort(key=lambda g: g["delta"], reverse=True)
+    for g in gaps[:3]:
+        suggestions.append({
+            "type": "scope_gap",
+            "icon": "📐",
+            "title": f"Carrier underscoped {g['item']}",
+            "description": f"${g['delta']:,.0f} gap — want me to draft a supplement?",
+            "prompt": f"Draft a supplement argument for the {g['item']} line item — carrier was short by ${g['delta']:,.0f}. Use the playbook and cite Xactimate pricing.",
+        })
+
+    # 2. Pending cadences — show a note about what's queued up
+    try:
+        cad_res = sb.table("claim_brain_cadence_sends").select(
+            "followup_number, scheduled_at, cadence_type", count="exact"
+        ).eq("claim_id", claim_id).eq("status", "pending").order("scheduled_at", desc=False).limit(3).execute()
+        pending = cad_res.data or []
+        if pending:
+            next_at = pending[0].get("scheduled_at") or ""
+            suggestions.append({
+                "type": "cadence_pending",
+                "icon": "⏱️",
+                "title": f"{len(pending)} follow-up{'s' if len(pending) != 1 else ''} queued",
+                "description": f"Next: {next_at[:10]}. Review or cancel?",
+                "prompt": "Show me all pending follow-ups on this claim.",
+            })
+    except Exception as e:
+        print(f"[suggestions] cadence lookup failed (non-fatal): {e}")
+
+    # 3. Missing carrier scope — can't run comparison without it
+    if not scope_rows and not claim.get("scope_files"):
+        suggestions.append({
+            "type": "missing_scope",
+            "icon": "📥",
+            "title": "No carrier scope attached yet",
+            "description": "Drop the adjuster report when you get it and I'll run the comparison.",
+            "prompt": "What should I be doing before the carrier scope comes in?",
+        })
+
+    # 4. No AOB attached — reminder if claim is in progress
+    if not claim.get("aob_files") and claim.get("phase") in ("pre_scope", "inspection", "post_scope"):
+        suggestions.append({
+            "type": "missing_aob",
+            "icon": "✍️",
+            "title": "No AOB on file",
+            "description": "Want me to generate one and send for signature?",
+            "prompt": "Generate an AOB for the homeowner to sign.",
+        })
+
+    return {"suggestions": suggestions[:4]}
 
 
 @app.get("/api/claim-brain/{claim_id}/history")

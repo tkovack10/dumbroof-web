@@ -38,6 +38,14 @@ interface PendingAttachment {
   error?: string;
 }
 
+interface Suggestion {
+  type: string;
+  icon: string;
+  title: string;
+  description: string;
+  prompt: string;
+}
+
 interface ClaimBrainChatProps {
   claimId: string;
   claimAddress?: string;
@@ -648,6 +656,8 @@ export function ClaimBrainChat({
   const [isOpen, setIsOpen] = useState(false);
   const [pending, setPending] = useState<PendingAttachment[]>([]);
   const [dragActive, setDragActive] = useState(false);
+  const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
+  const [bulkApproving, setBulkApproving] = useState(false);
   const chatAreaRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -742,6 +752,20 @@ export function ClaimBrainChat({
     loadHistory();
     return () => { cancelled = true; };
   }, [claimId, BACKEND_URL]);
+
+  // Proactive Richard — fetch suggestions whenever the chat opens.
+  useEffect(() => {
+    if (!isOpen) return;
+    let cancelled = false;
+    fetch(`${BACKEND_URL}/api/claim-brain/${claimId}/suggestions`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (cancelled || !data) return;
+        setSuggestions((data.suggestions || []) as Suggestion[]);
+      })
+      .catch(() => { /* silent */ });
+    return () => { cancelled = true; };
+  }, [isOpen, claimId, BACKEND_URL]);
 
   const sendMessage = async (messageText?: string) => {
     const msg = messageText || input.trim();
@@ -891,19 +915,41 @@ export function ClaimBrainChat({
     console.log(`Tool action ${approvalId}: ${status}`);
   };
 
-  // Floating button when closed — with first-time tooltip
+  // Preload suggestions so the closed brain button can show a badge
+  // if there are pending nudges (even before the panel is opened).
+  useEffect(() => {
+    if (isOpen) return;
+    let cancelled = false;
+    fetch(`${BACKEND_URL}/api/claim-brain/${claimId}/suggestions`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (cancelled || !data) return;
+        setSuggestions((data.suggestions || []) as Suggestion[]);
+      })
+      .catch(() => { /* silent */ });
+    return () => { cancelled = true; };
+  }, [isOpen, claimId, BACKEND_URL]);
+
+  // Floating button when closed — with first-time tooltip + suggestion badge
   if (!isOpen) {
     return (
       <div className="fixed bottom-6 right-6 z-50 group">
         <div className="absolute bottom-full right-0 mb-2 w-52 bg-[rgb(15,18,35)] border border-[var(--border-glass)] rounded-xl px-3 py-2 text-xs text-[var(--gray)] opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none shadow-xl">
-          AI assistant that knows everything about this claim. Ask it anything.
+          {suggestions.length > 0
+            ? `${suggestions.length} suggestion${suggestions.length !== 1 ? "s" : ""} ready — click to see.`
+            : "AI assistant that knows everything about this claim. Ask it anything."}
         </div>
         <button
           onClick={() => setIsOpen(true)}
-          className="bg-[#0f1729] hover:bg-[#1a2540] text-white w-14 h-14 rounded-full shadow-lg flex items-center justify-center transition-all hover:scale-105 border border-white/10"
-          title="Open Claim Brain"
+          className="relative bg-[#0f1729] hover:bg-[#1a2540] text-white w-14 h-14 rounded-full shadow-lg flex items-center justify-center transition-all hover:scale-105 border border-white/10"
+          title={suggestions.length > 0 ? `${suggestions.length} suggestion${suggestions.length !== 1 ? "s" : ""}` : "Open Claim Brain"}
         >
           <span className="text-2xl">🧠</span>
+          {suggestions.length > 0 && (
+            <span className="absolute -top-1 -right-1 bg-emerald-500 text-white text-[10px] font-bold rounded-full w-5 h-5 flex items-center justify-center border-2 border-[#0f1729]">
+              {suggestions.length}
+            </span>
+          )}
         </button>
       </div>
     );
@@ -977,16 +1023,42 @@ export function ClaimBrainChat({
       {/* Chat messages */}
       <div ref={chatAreaRef} className="flex-1 overflow-y-auto p-4 space-y-4">
         {messages.length === 0 ? (
-          <div className="text-center py-8">
-            <div className="text-3xl mb-3">🧠</div>
-            <div className="text-white text-sm font-medium mb-1">
-              Claim Brain — Ready
+          <div className="py-6">
+            <div className="text-center mb-4">
+              <div className="text-3xl mb-3">🧠</div>
+              <div className="text-white text-sm font-medium mb-1">
+                Claim Brain — Ready
+              </div>
+              <div className="text-white/40 text-xs max-w-[280px] mx-auto">
+                I know every document, line item, and dollar on this claim. Ask me
+                anything — or tell me to take action.
+              </div>
             </div>
-            <div className="text-white/40 text-xs max-w-[280px] mx-auto">
-              I know every document, line item, and dollar on this claim. Ask me
-              anything — or tell me to take action.
-            </div>
-            <div className="flex flex-wrap gap-1.5 justify-center mt-4">
+
+            {suggestions.length > 0 && (
+              <div className="mb-4 space-y-2">
+                <div className="text-[10px] uppercase tracking-wider text-white/40 font-semibold px-1">
+                  Suggestions for this claim
+                </div>
+                {suggestions.map((s, i) => (
+                  <button
+                    key={`${s.type}-${i}`}
+                    onClick={() => sendMessage(s.prompt)}
+                    className="w-full text-left p-3 rounded-xl border border-emerald-500/20 bg-emerald-500/[0.04] hover:bg-emerald-500/10 hover:border-emerald-500/40 transition-colors"
+                  >
+                    <div className="flex items-start gap-2">
+                      <span className="text-lg leading-none">{s.icon}</span>
+                      <div className="flex-1 min-w-0">
+                        <div className="text-xs text-emerald-300 font-semibold truncate">{s.title}</div>
+                        <div className="text-[11px] text-white/60 mt-0.5">{s.description}</div>
+                      </div>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
+
+            <div className="flex flex-wrap gap-1.5 justify-center">
               {QUICK_ACTIONS.map((action) => (
                 <button
                   key={action.label}
@@ -1032,6 +1104,60 @@ export function ClaimBrainChat({
                           : ""
                       }
                     />
+                    {/* Batched approval — when an assistant turn produced 2+ previews, */}
+                    {/* offer a single "Approve plan" button that walks them in sequence. */}
+                    {(() => {
+                      const previews = (msg.toolActions || []).filter(
+                        (a) => a.action === "preview" && a.approval_id,
+                      );
+                      if (previews.length < 2) return null;
+                      return (
+                        <div className="mt-2 mb-1 flex items-center gap-2 rounded-lg bg-blue-500/[0.06] border border-blue-500/20 px-3 py-2">
+                          <div className="flex-1">
+                            <div className="text-xs font-semibold text-blue-300">
+                              {previews.length}-step plan ready
+                            </div>
+                            <div className="text-[10px] text-white/50">
+                              Approves each step in order. Stops on first error.
+                            </div>
+                          </div>
+                          <button
+                            disabled={bulkApproving}
+                            onClick={async () => {
+                              setBulkApproving(true);
+                              try {
+                                for (const action of previews) {
+                                  if (!action.approval_id) continue;
+                                  const res = await fetch(
+                                    `${BACKEND_URL}/api/claim-brain/${claimId}/approve-action`,
+                                    {
+                                      method: "POST",
+                                      headers: { "Content-Type": "application/json" },
+                                      body: JSON.stringify({
+                                        tool_call_id: action.approval_id,
+                                        approved: true,
+                                      }),
+                                    },
+                                  );
+                                  const data = await res.json().catch(() => ({}));
+                                  if (data.status !== "sent" && data.status !== "complete") {
+                                    console.warn(`[bulk-approve] step failed:`, action.tool_name, data);
+                                    break;
+                                  }
+                                }
+                              } finally {
+                                setBulkApproving(false);
+                                // Force a refresh by re-opening (nudge state)
+                                // The per-card approve buttons will have updated via their own handlers if clicked manually.
+                              }
+                            }}
+                            className="text-[11px] font-semibold px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 text-white transition-colors"
+                          >
+                            {bulkApproving ? "Approving..." : `Approve plan (${previews.length})`}
+                          </button>
+                        </div>
+                      );
+                    })()}
                     {/* Tool action cards */}
                     {msg.toolActions && msg.toolActions.map((action, j) => (
                       <ToolActionCard
