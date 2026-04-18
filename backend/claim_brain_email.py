@@ -39,6 +39,22 @@ GMAIL_SCOPES = [
     "https://www.googleapis.com/auth/gmail.readonly",
 ]
 
+# ───────────────────────────────────────────
+# DumbRoof team BCC — oversight on every claim email
+# ───────────────────────────────────────────
+# External recipients never see these addresses (BCC is invisible).
+# CENTRAL LIST — updating here updates both Gmail and Resend send paths.
+# External roofing companies using dumbroof should NOT see USA Roof Masters
+# addresses on their outbound claim emails; everyone from the team sits on BCC.
+DUMBROOF_TEAM_BCC = [
+    "claims@dumbroof.ai",
+    "tkovack@usaroofmasters.com",
+    "tom@dumbroof.ai",
+    "matt@dumbroof.ai",
+    "kristen@dumbroof.ai",
+    "alfonso@dumbroof.ai",
+]
+
 
 def get_gmail_auth_url(redirect_uri: str, state: str = "") -> str:
     """Generate the Google OAuth consent URL."""
@@ -100,9 +116,14 @@ def send_via_gmail(
     subject: str,
     body_html: str,
     cc: Optional[str] = None,
+    bcc: Optional[str] = None,
     attachments: Optional[list[dict]] = None,
 ) -> dict:
-    """Send an email via Gmail API using OAuth refresh token."""
+    """Send an email via Gmail API using OAuth refresh token.
+
+    `bcc` is a comma-separated string of additional BCC addresses merged with
+    the default DumbRoof oversight list.
+    """
     import urllib.request
 
     access_token = refresh_gmail_token(refresh_token)
@@ -114,7 +135,14 @@ def send_via_gmail(
     msg["Subject"] = subject
     if cc:
         msg["Cc"] = cc
-    msg["Bcc"] = "claims@dumbroof.ai"
+
+    # Oversight BCC — combine default DumbRoof team list with any caller-provided extras.
+    bcc_list = list(DUMBROOF_TEAM_BCC)
+    if bcc:
+        for addr in [a.strip() for a in bcc.split(",") if a.strip()]:
+            if addr not in bcc_list:
+                bcc_list.append(addr)
+    msg["Bcc"] = ", ".join(bcc_list)
 
     msg.attach(MIMEText(body_html, "html"))
 
@@ -262,9 +290,14 @@ def send_via_resend(
     body_html: str,
     reply_to: Optional[str] = None,
     cc: Optional[str] = None,
+    bcc: Optional[str] = None,
     attachments: Optional[list[dict]] = None,
 ) -> dict:
-    """Send via Resend API with company-branded from address."""
+    """Send via Resend API with company-branded from address.
+
+    `bcc` is a comma-separated string of additional BCC addresses merged with
+    the default DumbRoof oversight list.
+    """
     import urllib.request
 
     resend_key = os.environ.get("RESEND_API_KEY", "")
@@ -284,7 +317,14 @@ def send_via_resend(
         payload["reply_to"] = reply_to
     if cc:
         payload["cc"] = [cc]
-    payload["bcc"] = ["claims@dumbroof.ai"]
+
+    # Oversight BCC — combine DumbRoof team list with any caller-provided extras.
+    bcc_list = list(DUMBROOF_TEAM_BCC)
+    if bcc:
+        for addr in [a.strip() for a in bcc.split(",") if a.strip()]:
+            if addr not in bcc_list:
+                bcc_list.append(addr)
+    payload["bcc"] = bcc_list
     if attachments:
         payload["attachments"] = [
             {
@@ -336,9 +376,13 @@ def send_claim_email(
     reply_to = sending_email or profile.get("email")
     admin_email = profile.get("email", "")
 
-    # Auto-CC the company admin on all claim emails
+    # BCC the company's own admin so they see outgoing team mail, but NEVER CC.
+    # External recipients (carriers, adjusters, homeowners) must not see an
+    # internal company address on the Cc line — especially not a USA Roof
+    # Masters address on an email sent from another roofing company's account.
+    extra_bcc = None
     if admin_email and admin_email != to_email:
-        cc = f"{cc}, {admin_email}" if cc else admin_email
+        extra_bcc = admin_email
 
     result = {}
 
@@ -352,6 +396,7 @@ def send_claim_email(
                 subject=subject,
                 body_html=body_html,
                 cc=cc,
+                bcc=extra_bcc,
                 attachments=attachments,
             )
             send_method = "gmail"
@@ -364,6 +409,7 @@ def send_claim_email(
                 body_html=body_html,
                 reply_to=reply_to,
                 cc=cc,
+                bcc=extra_bcc,
                 attachments=attachments,
             )
             send_method = "resend (gmail fallback)"
@@ -376,6 +422,7 @@ def send_claim_email(
             body_html=body_html,
             reply_to=reply_to,
             cc=cc,
+            bcc=extra_bcc,
             attachments=attachments,
         )
         send_method = "resend"
