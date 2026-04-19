@@ -299,6 +299,31 @@ CLAIM_BRAIN_TOOLS = [
             "required": [],
         },
     },
+    {
+        "name": "coach_photo_documentation",
+        "description": (
+            "Analyze the current photo set for this claim and return specific, "
+            "actionable coaching instructions to strengthen the evidence before "
+            "sending to the carrier. Identifies gaps in the documentation against "
+            "the forensic photo checklist (test squares, chalk-contrast flashings, "
+            "labeled elevations, scale-reference close-ups, etc.) and returns step-"
+            "by-step instructions for each missing item. Use when the user asks "
+            "'what photos am I missing?', 'how do I document this better?', 'what "
+            "else should I photograph?', or whenever damage_score is below 70."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "focus_area": {
+                    "type": "string",
+                    "enum": ["roof", "siding", "gutters", "flashing", "interior", "all"],
+                    "description": "Limit coaching to one area. Default 'all'.",
+                    "default": "all",
+                },
+            },
+            "required": [],
+        },
+    },
     # ─────────────────────────────────────────────
     # R3 — Destructive writes. Approval-gated.
     # ─────────────────────────────────────────────
@@ -653,6 +678,8 @@ async def execute_tool(
             result = _handle_search_photos(sb, claim_id, tool_input)
         elif tool_name == "get_damage_scores":
             result = _handle_get_damage_scores(claim_data)
+        elif tool_name == "coach_photo_documentation":
+            result = _handle_coach_photo_documentation(sb, claim_id, claim_data, tool_input)
         # ─── R2 classify ──────────────────────────────
         elif tool_name == "classify_uploaded_file":
             result = await _handle_classify_uploaded_file(sb, claim_id, tool_input)
@@ -1719,6 +1746,312 @@ def _handle_preview_cancel_cadence(sb: Client, claim_id: str, tool_input: dict) 
             "pending_count": pending_count,
         },
         "message": f"Ready to cancel {pending_count} pending follow-up{'s' if pending_count != 1 else ''}. Reason: {reason}.",
+    }
+
+
+# ═══════════════════════════════════════════
+# PHOTO DOCUMENTATION COACHING
+# ═══════════════════════════════════════════
+
+# Forensic photo playbook — the "standard of evidence" that maximizes carrier
+# approval. Each entry checks the current photo set for a specific technique
+# and, if missing, returns a coaching step with the exact instruction.
+#
+# Richard calls coach_photo_documentation and this engine tells the user
+# EXACTLY what to shoot (including technique), not just "take more photos".
+
+
+def _photo_matches_any(photo: dict, keywords: list[str]) -> bool:
+    haystack = " ".join([
+        str(photo.get("annotation_text") or ""),
+        str(photo.get("damage_type") or ""),
+        str(photo.get("material") or ""),
+        str(photo.get("trade") or ""),
+        str(photo.get("annotation_key") or ""),
+    ]).lower()
+    return any(kw in haystack for kw in keywords)
+
+
+def _count_by_keywords(photos: list[dict], keywords: list[str]) -> int:
+    return sum(1 for p in photos if _photo_matches_any(p, keywords))
+
+
+def _analyze_photo_coverage(photos: list[dict], focus: str, claim_data: dict) -> dict:
+    """Build a coverage report from the claim's photo set."""
+    total = len(photos)
+
+    # Elevation coverage — overview shots of each side
+    has_front = _count_by_keywords(photos, ["front elevation", "front overview", "facade"])
+    has_rear = _count_by_keywords(photos, ["rear elevation", "back elevation", "rear overview"])
+    has_left = _count_by_keywords(photos, ["left elevation", "left side"])
+    has_right = _count_by_keywords(photos, ["right elevation", "right side"])
+    elevations_covered = sum(1 for x in [has_front, has_rear, has_left, has_right] if x > 0)
+
+    # Slope coverage
+    slope_photos = _count_by_keywords(photos, ["slope", "roof overview", "shingle"])
+
+    # Test square evidence — a high-value documentation technique that most
+    # contractors skip. Carriers explicitly ask for these (State Farm + Liberty).
+    test_squares = _count_by_keywords(
+        photos, ["test square", "10x10", "10 x 10", "10'x10'", "chalk circle", "marked hits"]
+    )
+
+    # Chalk-contrast flashings
+    chalk_flashing = sum(
+        1 for p in photos
+        if _photo_matches_any(p, ["flashing"]) and _photo_matches_any(p, ["chalk", "chalked"])
+    )
+
+    # Scale reference in close-ups (quarter / ruler / tape measure)
+    scale_refs = _count_by_keywords(photos, ["quarter", "coin", "ruler", "tape measure", "scale"])
+
+    # Flashings generally
+    chimney_flashing = _count_by_keywords(photos, ["chimney"])
+    step_flashing = _count_by_keywords(photos, ["step flashing"])
+    valley_photos = _count_by_keywords(photos, ["valley"])
+
+    # Siding
+    siding_photos = _count_by_keywords(photos, ["siding", "vinyl", "aluminum siding", "cedar"])
+
+    # Gutters
+    gutter_photos = _count_by_keywords(photos, ["gutter", "downspout"])
+
+    # Interior / attic
+    interior_photos = _count_by_keywords(photos, ["interior", "ceiling", "drywall", "attic"])
+
+    # Hail / wind close-ups
+    hail_close = _count_by_keywords(photos, ["hail", "bruise", "granule loss"])
+    wind_close = _count_by_keywords(photos, ["wind", "creased", "lifted"])
+
+    return {
+        "total_photos": total,
+        "elevations_covered": elevations_covered,  # 0-4
+        "slope_photos": slope_photos,
+        "test_squares": test_squares,
+        "chalk_flashing": chalk_flashing,
+        "scale_refs": scale_refs,
+        "chimney_flashing": chimney_flashing,
+        "step_flashing": step_flashing,
+        "valley_photos": valley_photos,
+        "siding_photos": siding_photos,
+        "gutter_photos": gutter_photos,
+        "interior_photos": interior_photos,
+        "hail_close": hail_close,
+        "wind_close": wind_close,
+    }
+
+
+def _generate_coaching_steps(coverage: dict, claim_data: dict, focus: str) -> list[dict]:
+    """For each gap in coverage, emit a step with a concrete instruction."""
+    steps: list[dict] = []
+    show_all = focus == "all"
+
+    # Elevations — critical baseline
+    if (show_all or focus == "roof") and coverage["elevations_covered"] < 4:
+        missing = 4 - coverage["elevations_covered"]
+        steps.append({
+            "title": "Cover all 4 elevations",
+            "importance": "critical",
+            "area": "roof",
+            "instruction": (
+                f"Missing {missing} elevation overview shot(s). Stand 15-20 feet back from "
+                "each side of the house and capture a ground-level photo showing the full "
+                "facade + roof edge. Label each photo by direction: front / rear / left / right. "
+                "Carriers use these as the baseline map for every other photo."
+            ),
+            "damage_score_impact": f"+{missing * 3} points",
+        })
+
+    # Test squares — the highest-leverage missing technique
+    if (show_all or focus == "roof") and coverage["test_squares"] == 0:
+        steps.append({
+            "title": "Mark test squares on each damaged slope",
+            "importance": "critical",
+            "area": "roof",
+            "instruction": (
+                "On each damaged slope, mark a 10×10 ft test square with chalk. "
+                "Shoot THREE photos per square:\n"
+                "  1. **Wide overview** of the square showing its location on the slope. "
+                "Use chalk to draw the square outline.\n"
+                "  2. **Marked damage**: circle every hail/wind hit inside the square with "
+                "chalk. Shoot directly above.\n"
+                "  3. **Close-up with scale**: pick the worst hit in the square, place a "
+                "quarter next to it, shoot from 12 inches away.\n"
+                "Write on a slate in the first photo: *\"Rear slope, H = [height] ft, W = "
+                "[width] ft\"* so the carrier can't dispute location."
+            ),
+            "damage_score_impact": "+15 points",
+        })
+
+    # Chalk-contrast flashings
+    if (show_all or focus == "flashing") and coverage["chalk_flashing"] == 0:
+        steps.append({
+            "title": "Chalk-contrast the flashings",
+            "importance": "high",
+            "area": "flashing",
+            "instruction": (
+                "Flashing dents and creases are nearly invisible in photos without contrast. "
+                "Rub chalk horizontally across each flashing surface — the chalk fills every "
+                "indentation and makes damage visible. Sequence:\n"
+                "  1. **Before**: wide shot of flashing location\n"
+                "  2. **Apply chalk**: run chalk across the metal\n"
+                "  3. **After**: close-up showing every chalked dent, with a ruler or quarter "
+                "for scale\n"
+                "Do this on: chimney flashing (all 4 sides), step flashing, counter flashing, "
+                "valley flashing, and drip edge."
+            ),
+            "damage_score_impact": "+10 points",
+        })
+
+    # Scale references in close-ups
+    if coverage["scale_refs"] < 3 and coverage["total_photos"] >= 5:
+        steps.append({
+            "title": "Add scale reference to close-up damage photos",
+            "importance": "high",
+            "area": "all",
+            "instruction": (
+                "Every close-up of damage needs a scale reference — quarter, ruler, or "
+                "tape measure — or the carrier will call the damage 'unmeasurable' and "
+                "discount it. For each hail bruise or wind-damaged shingle, place a quarter "
+                "in-frame and re-shoot from 12 inches away. Aim for 5+ scale-referenced "
+                "close-ups across the claim."
+            ),
+            "damage_score_impact": "+8 points",
+        })
+
+    # Chimney — carriers almost always scope this low
+    if (show_all or focus == "flashing") and coverage["chimney_flashing"] < 2:
+        steps.append({
+            "title": "Document chimney fully (all 4 sides)",
+            "importance": "medium",
+            "area": "flashing",
+            "instruction": (
+                "Shoot the chimney from all 4 sides. For each side: wide shot of the flashing "
+                "transition + close-up of the counter-flashing joint. If any side shows "
+                "dented flashing or rust streaks, chalk-contrast it per the 'Chalk-contrast' "
+                "step above. Carriers under-scope chimney work ~70% of the time."
+            ),
+            "damage_score_impact": "+5 points",
+        })
+
+    # Valleys
+    if (show_all or focus == "roof") and coverage["valley_photos"] == 0 and coverage["slope_photos"] > 0:
+        steps.append({
+            "title": "Capture all valleys",
+            "importance": "medium",
+            "area": "roof",
+            "instruction": (
+                "For every valley: one full-length overview + one close-up at mid-span "
+                "showing the ice-and-water barrier condition and any granule wash. Valleys "
+                "are where carriers hide 'partial repair' arguments — full photo coverage "
+                "kills that tactic."
+            ),
+            "damage_score_impact": "+4 points",
+        })
+
+    # Siding — only prompt if there's siding on the claim
+    trade_count = int(claim_data.get("trade_count") or 0)
+    if (show_all or focus == "siding") and coverage["siding_photos"] < 4 and trade_count >= 2:
+        steps.append({
+            "title": "Siding — every elevation",
+            "importance": "high",
+            "area": "siding",
+            "instruction": (
+                "Siding claims need: (a) overview of EACH elevation, (b) close-up of a hail "
+                "hit or crack with a quarter for scale, (c) corner shots showing the house "
+                "wrap behind the siding (if accessible) to document R703.2 compliance or "
+                "violation. Also shoot window wraps, shutters (if present), and j-channel "
+                "at corners."
+            ),
+            "damage_score_impact": "+8 points",
+        })
+
+    # Gutters
+    if (show_all or focus == "gutters") and coverage["gutter_photos"] < 2:
+        steps.append({
+            "title": "Gutter damage close-ups",
+            "importance": "medium",
+            "area": "gutters",
+            "instruction": (
+                "Shoot gutter damage from below (shows dents) AND from above at roof level "
+                "(shows the gutter apron / drip edge). Include end-caps and downspouts "
+                "separately — carriers often scope gutters but forget end-caps and splash "
+                "guards. Run chalk along dented sections for contrast."
+            ),
+            "damage_score_impact": "+4 points",
+        })
+
+    # Interior
+    if (show_all or focus == "interior") and coverage["interior_photos"] == 0:
+        steps.append({
+            "title": "Check for interior damage",
+            "importance": "low",
+            "area": "interior",
+            "instruction": (
+                "If there's any ceiling staining, drywall damage, or attic leakage, "
+                "document it: room overview + close-up of the stain + attic shot from "
+                "underneath showing the sheathing. Interior damage is often the ONLY way "
+                "to prove roof penetration when the carrier claims \"no visible exterior damage.\""
+            ),
+            "damage_score_impact": "+3 points if present",
+        })
+
+    # Hail close-ups — count-based
+    if coverage["hail_close"] < 5 and _count_by_keywords(claim_data.get("scope_comparison") or [], ["hail"]) > 0:
+        steps.append({
+            "title": "More hail-hit close-ups",
+            "importance": "high",
+            "area": "roof",
+            "instruction": (
+                "Hail claims need at least 5 close-ups of individual hits on shingles. "
+                "Each should show: (a) the bruise or granule-loss hole, (b) a scale "
+                "reference (quarter is ideal — hail is usually 1\"+). Shoot from directly "
+                "above, 12 inches away. Vary hit sizes and locations across slopes."
+            ),
+            "damage_score_impact": "+10 points",
+        })
+
+    return steps
+
+
+def _handle_coach_photo_documentation(sb: Client, claim_id: str, claim_data: dict, tool_input: dict) -> dict:
+    focus = (tool_input.get("focus_area") or "all").strip().lower()
+
+    try:
+        photos_res = sb.table("photos").select(
+            "annotation_key, annotation_text, damage_type, material, trade, severity"
+        ).eq("claim_id", claim_id).execute()
+        photos = photos_res.data or []
+    except Exception as e:
+        return {"action": "error", "message": f"Photo lookup failed: {e}"}
+
+    coverage = _analyze_photo_coverage(photos, focus, claim_data)
+    steps = _generate_coaching_steps(coverage, claim_data, focus)
+
+    total_impact = sum(
+        int(s.get("damage_score_impact", "0").replace("+", "").split()[0] or 0)
+        for s in steps
+        if "damage_score_impact" in s and s["damage_score_impact"].startswith("+")
+    ) if steps else 0
+
+    return {
+        "action": "complete",
+        "type": "photo_coaching",
+        "data": {
+            "photo_count": len(photos),
+            "focus": focus,
+            "coverage": coverage,
+            "coaching_steps": steps,
+            "estimated_damage_score_gain": total_impact,
+            "current_damage_score": claim_data.get("damage_score"),
+            "current_damage_grade": claim_data.get("damage_grade"),
+        },
+        "message": (
+            f"{len(steps)} coaching step{'s' if len(steps) != 1 else ''} "
+            f"to strengthen documentation"
+            + (f" (+{total_impact} DS points available)" if total_impact > 0 else "")
+            + "."
+        ),
     }
 
 

@@ -124,6 +124,7 @@ const TOOL_ICONS: Record<string, string> = {
   get_noaa_weather: "⛈️",
   search_photos: "📸",
   get_damage_scores: "🎯",
+  coach_photo_documentation: "📷",
   classify_uploaded_file: "🗂️",
   attach_to_claim: "📥",
   trigger_reprocess: "🔄",
@@ -152,6 +153,7 @@ const TOOL_LABELS: Record<string, string> = {
   get_noaa_weather: "NOAA Weather",
   search_photos: "Photo Search",
   get_damage_scores: "Damage Scores",
+  coach_photo_documentation: "Photo Coaching",
   classify_uploaded_file: "File Classification",
   attach_to_claim: "Attach to Claim",
   trigger_reprocess: "Reprocess Claim",
@@ -169,7 +171,7 @@ const QUICK_ACTIONS = [
   { label: "Claim status", prompt: "Where does this claim stand?" },
   { label: "Carrier gaps", prompt: "What did the carrier miss?" },
   { label: "Best argument", prompt: "What's our strongest supplement argument?" },
-  { label: "Photo gaps", prompt: "What photos am I missing?" },
+  { label: "Photo coaching", prompt: "What photos am I missing and how should I take them? Give me specific techniques." },
   { label: "Draft email", prompt: "Draft a supplement response to the adjuster" },
   { label: "Line items", prompt: "Break down the financials line by line" },
   { label: "Carrier emails", prompt: "Check if the carrier has responded to any emails on this claim" },
@@ -493,6 +495,80 @@ function ToolActionCard({
             </div>
           </div>
         </div>
+      </div>
+    );
+  }
+
+  // Photo coaching — forensic documentation plan
+  if (action.action === "complete" && action.type === "photo_coaching" && action.data) {
+    const d = action.data as {
+      photo_count?: number;
+      focus?: string;
+      coverage?: Record<string, number>;
+      coaching_steps?: Array<{
+        title: string;
+        importance: string;
+        area: string;
+        instruction: string;
+        damage_score_impact?: string;
+      }>;
+      estimated_damage_score_gain?: number;
+      current_damage_score?: number;
+      current_damage_grade?: string;
+    };
+    const steps = d.coaching_steps || [];
+    const impColor = (imp: string) =>
+      imp === "critical" ? "border-red-500/40 bg-red-500/5"
+        : imp === "high" ? "border-amber-500/40 bg-amber-500/5"
+        : imp === "medium" ? "border-blue-500/40 bg-blue-500/5"
+        : "border-white/10 bg-white/[0.02]";
+    const impBadge = (imp: string) =>
+      imp === "critical" ? "text-red-300"
+        : imp === "high" ? "text-amber-300"
+        : imp === "medium" ? "text-blue-300"
+        : "text-white/60";
+    return (
+      <div className="bg-purple-500/5 border border-purple-500/20 rounded-lg p-3 my-2">
+        <div className="flex items-center justify-between mb-2">
+          <div className="text-xs text-purple-300 font-medium">
+            {icon} {label}
+            <span className="text-white/40"> · {d.photo_count || 0} photos on claim</span>
+          </div>
+          {typeof d.estimated_damage_score_gain === "number" && d.estimated_damage_score_gain > 0 && (
+            <div className="text-[11px] text-emerald-400 font-semibold">
+              +{d.estimated_damage_score_gain} DS points available
+            </div>
+          )}
+        </div>
+        {steps.length === 0 ? (
+          <div className="text-[11px] text-white/50">
+            Documentation is solid — no gaps detected for {d.focus}.
+            {typeof d.current_damage_score === "number" && (
+              <span className="text-white/40"> Current DS: {d.current_damage_score} ({d.current_damage_grade}).</span>
+            )}
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {steps.map((s, i) => (
+              <div key={i} className={`rounded-md border ${impColor(s.importance)} p-2`}>
+                <div className="flex items-center justify-between mb-0.5">
+                  <div className={`text-[11px] font-semibold ${impBadge(s.importance)}`}>
+                    {i + 1}. {s.title}
+                  </div>
+                  <div className="flex items-center gap-2 text-[9px]">
+                    <span className="uppercase tracking-wide text-white/40">{s.importance}</span>
+                    {s.damage_score_impact && (
+                      <span className="text-emerald-300/80">{s.damage_score_impact}</span>
+                    )}
+                  </div>
+                </div>
+                <div className="text-[11px] text-white/70 whitespace-pre-wrap leading-snug">
+                  {s.instruction}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     );
   }

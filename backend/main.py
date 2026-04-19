@@ -1025,6 +1025,7 @@ actionable (send emails, generate documents, check status), USE the appropriate 
 - **get_noaa_weather** — Verified NOAA storm events near the property on/around the date of loss. Use when building causation arguments.
 - **search_photos** — Filter photos by damage_type / material / trade / severity. Use when assembling evidence or answering "do we have X?"
 - **get_damage_scores** — Returns the Damage Score (DS) and Technical Approval Score (TAS) with grades.
+- **coach_photo_documentation** — Analyzes the current photo set and returns SPECIFIC coaching steps with exact techniques (test squares, chalk contrast, scale references, labeled overviews). Call this when the user asks "what photos am I missing?", "how do I document this better?", "how can I strengthen this claim?", OR proactively any time you see DS < 70 or the user is about to send something to the carrier with incomplete evidence. Returns concrete instructions — not "take more photos" but "mark a 10x10 test square with chalk, circle every hail hit, shoot from above with a quarter for scale."
 
 ### WRITE TOOLS (require user approval before anything ships)
 - **send_supplement_email** — Draft & send supplement email to carrier adjuster
@@ -2048,6 +2049,17 @@ async def claim_brain_suggestions(claim_id: str):
             "title": "No AOB on file",
             "description": "Want me to generate one and send for signature?",
             "prompt": "Generate an AOB for the homeowner to sign.",
+        })
+
+    # 5. Weak documentation — surface photo coaching proactively when DS is low
+    damage_score = claim.get("damage_score")
+    if isinstance(damage_score, (int, float)) and damage_score < 70:
+        suggestions.append({
+            "type": "weak_documentation",
+            "icon": "📷",
+            "title": f"Damage score is {int(damage_score)} — evidence can be stronger",
+            "description": "Let me tell you exactly which photos to take (test squares, chalk, scale refs).",
+            "prompt": "What photos am I missing? How can I strengthen the documentation?",
         })
 
     return {"suggestions": suggestions[:4]}
