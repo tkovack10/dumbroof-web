@@ -618,8 +618,11 @@ def _extract_first_pages_pdf(pdf_path: str, n_pages: int = 3) -> Optional[bytes]
 
 
 def extract_roof_facets(client: anthropic.Anthropic, pdf_path: str) -> dict:
-    """Second Vision pass on an EagleView-style measurement PDF to extract per-facet
-    polygon geometry + north arrow + scale bar. Feeds the photo→slope mapping pipeline.
+    """Second Vision pass on a roof measurement PDF (EagleView, HOVER, GAF
+    QuickMeasure, AccuLynx, Roofr, or any similar vendor) to extract per-facet
+    polygon geometry + north arrow + scale bar. Feeds the photo→slope mapping
+    pipeline. Vendor-agnostic — works on any overhead roof diagram with
+    distinct slope outlines.
 
     Returns:
         {
@@ -632,12 +635,12 @@ def extract_roof_facets(client: anthropic.Anthropic, pdf_path: str) -> dict:
         }
 
     Safe to fail: returns {"roof_facets": []} on any error. Non-fatal — the rest
-    of the pipeline works without polygon data (photo→slope falls back to EXIF
-    heading).
+    of the pipeline still runs (photo→slope mapping falls back to GPS
+    triangulation against a cardinal-bucket skeleton when facets are empty).
     """
-    # Send only the first 3 pages — EagleView overhead diagrams are always
-    # near the front. Saves input tokens + stops Vision from extracting
-    # garbage facets off property-photo pages.
+    # Send only the first 3 pages — overhead diagrams are always near the
+    # front across every vendor. Saves input tokens + stops Vision from
+    # extracting garbage facets off property-photo pages.
     import base64 as _b64
     slim_bytes = _extract_first_pages_pdf(pdf_path, n_pages=3)
     if slim_bytes:
@@ -651,19 +654,24 @@ def extract_roof_facets(client: anthropic.Anthropic, pdf_path: str) -> dict:
             print(f"[FACETS] Could not read PDF {pdf_path}: {e}")
             return {"roof_facets": []}
 
-    prompt = """Look at the overhead roof diagram pages of this roof measurement report (typically the first 2-3 pages show the roof outline from directly above, with labeled facets/sections). Extract the per-facet geometry.
+    prompt = """This is a roof measurement report from one of many possible vendors (EagleView, HOVER, GAF QuickMeasure, AccuLynx, Roofr, Pitch Gauge, etc.). Find the OVERHEAD roof diagram — a top-down view of the roof outlined with labeled slopes/facets/planes. It's usually on one of the first 3 pages.
 
-For each labeled roof facet/slope (sections with pitch labels like "6/12" or facet IDs like "F1", "Facet 1", "N-1"), extract:
+If there is an overhead roof diagram, extract one entry per distinct slope plane (a slope is a continuous triangular/quadrilateral section of roof facing one direction):
 
-- facet_id: the PDF's own label if present (e.g., "F1", "Facet 1"), otherwise auto-number as F1, F2, F3...
-- pitch: the pitch value shown (e.g., "6/12", "8/12")
-- cardinal: primary facing direction relative to the north arrow, one of: N, NE, E, SE, S, SW, W, NW
-- area_pct: approximate percentage of total roof area this facet represents (0-100)
-- polygon_pixels: array of [x, y] corner coordinates tracing the facet outline. Normalize coordinates to a 0-1000 scale on BOTH axes (origin = top-left of the overhead diagram image). List corners in clockwise order.
+- facet_id: use the vendor's label verbatim if shown ("F1", "Facet 1", "A", "N-1", "Slope 3", etc.); if slopes aren't labeled, auto-number them F1, F2, F3... going clockwise from the top
+- pitch: the pitch value near that slope (accept any format — "6/12", "6:12", "27°", "6 / 12", "6 in 12")
+- cardinal: primary facing direction relative to the north arrow. One of: N, NE, E, SE, S, SW, W, NW. If the north arrow is missing, infer from typical orientations or use your best guess based on the diagram layout.
+- area_pct: approximate percentage of total roof area this slope represents (0-100). If the vendor shows square footage per slope, convert to percentage. Otherwise estimate from visual size.
+- polygon_pixels: array of [x, y] corner coordinates tracing the slope outline. Normalize to a 0-1000 scale on BOTH axes (origin = top-left of the overhead diagram). List corners in clockwise order.
 
 Also extract:
-- north_arrow_angle: degrees clockwise from image-up that the north arrow points (0 = up, 90 = right, 180 = down, 270 = left)
-- scale_bar: {"pixels": N, "feet": M} for the printed scale bar (if visible)
+- north_arrow_angle: degrees clockwise from image-up that the north arrow points (0 = up, 90 = right, 180 = down, 270 = left). If not shown, omit or set to 0.
+- scale_bar: {"pixels": N, "feet": M} for any printed scale bar (if visible)
+
+IMPORTANT:
+- Any top-down roof view with visible slope boundaries counts, even if not a formal "EagleView overhead diagram".
+- Include every visible slope even when the vendor labels only some of them.
+- If the only roof visual is a 3D perspective render (HOVER sometimes does this), skip polygon_pixels (set to []) but STILL include facet_id + cardinal + pitch + area_pct for each identifiable face. Those fields alone are enough for photo→slope mapping.
 
 Return ONLY valid JSON, no other text:
 {
