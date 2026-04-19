@@ -133,6 +133,27 @@ def _cardinal_distance(a: str, b: str) -> int:
     return min(diff, 8 - diff)
 
 
+def synthesize_cardinal_facets() -> list:
+    """Return a 4-cardinal skeleton of synthetic facets.
+
+    Used as a fallback when Vision facet extraction returns empty or when
+    the measurement PDF lacks an overhead diagram. A typical pitched roof
+    has 2-6 planes distributed across N/E/S/W cardinals. Seeding with these
+    4 directions lets GPS triangulation still bucket photos — the user
+    sees "which side of the house was photographed" even without polygon
+    geometry from the measurement report.
+
+    Empty cardinals (no photos assigned) just stay empty — they don't hurt
+    anything. Individual per-slope damage aggregation continues to work;
+    the overhead map in the UI degrades to the side-panel slope list.
+    """
+    return [
+        {"facet_id": card, "cardinal": card, "pitch": None,
+         "area_pct": 25.0, "polygon_pixels": []}
+        for card in ("N", "E", "S", "W")
+    ]
+
+
 def _normalize_cardinal(val: Optional[str]) -> Optional[str]:
     """Fold free-form direction strings into the 8-compass scheme.
 

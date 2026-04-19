@@ -127,9 +127,13 @@ export function RoofPhotoMap({
     <div className={`glass-card p-5 ${className ?? ""}`}>
       <div className="flex items-center justify-between mb-4">
         <div>
-          <h3 className="text-lg font-semibold text-white">Overhead Roof Map</h3>
+          <h3 className="text-lg font-semibold text-white">
+            {roofFacets?._synthesized ? "Photos by Slope Direction" : "Overhead Roof Map"}
+          </h3>
           <p className="text-xs text-[var(--gray-muted)] mt-1">
-            Click a slope to view its photos. Colors show per-slope damage %.
+            {roofFacets?._synthesized
+              ? "Overhead polygons weren't available in the measurement report. Photos are grouped by compass direction using GPS data."
+              : "Click a slope to view its photos. Colors show per-slope damage %."}
           </p>
         </div>
         {fullReroofTrigger && (
@@ -142,8 +146,10 @@ export function RoofPhotoMap({
         )}
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-        {/* Roof SVG canvas */}
+      <div className={`grid grid-cols-1 gap-4 ${roofFacets?._synthesized ? "" : "md:grid-cols-5"}`}>
+        {/* Roof SVG canvas — skipped entirely in synthesized mode since all
+            facets have empty polygon_pixels and would render as a blank panel. */}
+        {!roofFacets?._synthesized && (
         <div className="md:col-span-3 relative rounded-xl overflow-hidden bg-[rgb(10,14,39)] border border-white/10">
           <svg
             viewBox="0 0 1000 1000"
@@ -247,9 +253,12 @@ export function RoofPhotoMap({
             <span>≥ 50%</span>
           </div>
         </div>
+        )}
 
-        {/* Side panel — selected slope details + photos */}
-        <div className="md:col-span-2 flex flex-col gap-3">
+        {/* Side panel — selected slope details + photos. Spans full width
+            in synthesized mode so the layout isn't a tiny column on the left
+            with a missing SVG hole on the right. */}
+        <div className={`flex flex-col gap-3 ${roofFacets?._synthesized ? "" : "md:col-span-2"}`}>
           <SlopePanel
             facet={facets.find((f) => f.facet_id === selectedFacetId) ?? null}
             damage={selectedDamage}

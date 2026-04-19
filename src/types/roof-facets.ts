@@ -16,7 +16,11 @@ export interface RoofFacetsPayload {
   roof_facets: RoofFacet[];
   // Degrees clockwise from image-up (0 = north is up)
   north_arrow_angle?: number;
-  scale_bar?: { pixels: number; feet: number };
+  scale_bar?: { pixels: number; feet: number } | null;
+  // True when the backend synthesized a 4-cardinal skeleton because Vision
+  // couldn't extract facets from the measurement PDF. UI should render as a
+  // cardinal list/compass-rose rather than an overhead polygon map.
+  _synthesized?: boolean;
 }
 
 export interface SlopeDamageRow {

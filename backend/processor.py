@@ -4763,6 +4763,22 @@ async def process_claim(claim_id: str):
         # Facet extraction can fail silently — check payload shape before use.
         if isinstance(roof_facets_data, dict) and roof_facets_data.get("roof_facets"):
             config["roof_facets"] = roof_facets_data
+        elif claim.get("latitude") and claim.get("longitude"):
+            # Fallback: Vision extraction returned empty OR the measurement PDF
+            # lacks an overhead diagram (common for Property Owner reports,
+            # AccuLynx-proxied measurements, 3D-only HOVER reports). If we have
+            # a geocoded property centroid we can still run GPS triangulation
+            # against a 4-cardinal skeleton (N/E/S/W). User sees which side of
+            # the house each photo covers even without polygon geometry.
+            from slope_mapping import synthesize_cardinal_facets
+            config["roof_facets"] = {
+                "roof_facets": synthesize_cardinal_facets(),
+                "north_arrow_angle": 0,
+                "scale_bar": None,
+                "_synthesized": True,  # UI can render as cardinal-rose vs polygons
+            }
+            print(f"[FACETS] Vision returned 0; using 4-cardinal skeleton "
+                  f"(GPS triangulation against property centroid)")
 
         # Forensic-only: fix missing data and clear non-forensic sections
         if report_mode == "forensic_only":
