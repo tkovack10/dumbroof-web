@@ -1891,6 +1891,15 @@ def _analyze_photo_coverage(photos: list[dict], focus: str, claim_data: dict) ->
         photos, ["splatter", "splash mark", "splat", "impact mark", "pock mark", "driveway hit"]
     )
 
+    # Digital microscope photos — 10-50x magnification of hail impact sites.
+    # This is the premium forensic evidence that separates a legit hail claim
+    # from a "cosmetic" denial. Shows crushed-vs-powdered granules and
+    # granule-embedment-in-mat (downward-impact signature that ONLY hail
+    # produces).
+    microscope_photos = _count_by_keywords(
+        photos, ["microscope", "macro", "10x", "20x", "50x", "magnified", "magnification", "zoomed"]
+    )
+
     # ── Infer damage type from scope_comparison + photos ──
     scope_rows = claim_data.get("scope_comparison") or []
     scope_text = " ".join(
@@ -1929,6 +1938,7 @@ def _analyze_photo_coverage(photos: list[dict], focus: str, claim_data: dict) ->
         "soft_metal_photos": soft_metal_photos,
         "screen_photos": screen_photos,
         "splatter_photos": splatter_photos,
+        "microscope_photos": microscope_photos,
         # damage type inference
         "is_wind_claim": is_wind_claim,
         "is_hail_claim": is_hail_claim,
@@ -2278,6 +2288,44 @@ def _generate_coaching_steps(coverage: dict, claim_data: dict, focus: str) -> li
                 "measurable hail-size argument that backs up the NOAA storm data."
             ),
             "damage_score_impact": "+7 points",
+        })
+
+    # DIGITAL MICROSCOPE (hail claims) — the premium forensic evidence.
+    # Handheld USB microscopes are ~$30 on Amazon. 10-50x magnification of a
+    # hail impact site shows evidence that carriers simply cannot argue with,
+    # because the signatures are physically specific to downward-force impact.
+    if (show_all or focus == "roof") and coverage["is_hail_claim"] and coverage["microscope_photos"] == 0:
+        steps.append({
+            "title": "Digital microscope hail-impact photos (10-50x)",
+            "importance": "critical",
+            "area": "roof",
+            "instruction": (
+                "Use a handheld USB digital microscope (~$30 on Amazon) to photograph "
+                "individual hail impact sites at 10-50x magnification. This is the "
+                "evidence that ends 'cosmetic only' denials because the signatures "
+                "at this scale are physically specific to hail.\n\n"
+                "**What to look for (and label in the photo caption):**\n\n"
+                "  ✅ **Crushed granules** — granules broken into smaller but still-"
+                "solid particles. This is HAIL. Label: \"crushed granules, hail impact\".\n\n"
+                "  🚫 **Powdery residue** — fine dust (like sifted flour) around an "
+                "impact site. This is MAN-MADE damage (hammer/mallet, fraud indicator). "
+                "Do NOT submit this as hail evidence — it will get you denied for "
+                "misrepresentation. If you see it, note it honestly.\n\n"
+                "  ✅ **White threads / fiberglass visible** — those white threads are "
+                "the shingle MAT (the fiberglass mesh underneath the granule layer). "
+                "Visible mat = granule displacement has exposed the structural layer. "
+                "NORMAL after severe hail impact.\n\n"
+                "  ✅ **Granules pressed INTO the mat** — this is the nuclear signature. "
+                "Granules should NEVER be embedded in the mat under normal conditions. "
+                "Embedment means **downward force** hit that spot — which hail is the "
+                "only natural cause of. Foot traffic doesn't do this (wrong angle), "
+                "wind doesn't do this (no downward component). Label: \"granule "
+                "embedment into mat — downward impact signature\".\n\n"
+                "Shoot 5-8 impact sites. Vary slope (front / rear / sides). Each photo "
+                "should clearly show the damage feature + a reference (the microscope "
+                "barrel is usually ~1 inch = built-in scale)."
+            ),
+            "damage_score_impact": "+18 points",
         })
 
     # MAT EXPOSURE — thermal splitting indicator
