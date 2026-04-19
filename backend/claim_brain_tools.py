@@ -330,7 +330,7 @@ CLAIM_BRAIN_TOOLS = [
             "properties": {
                 "service": {
                     "type": "string",
-                    "enum": ["gmail", "companycam", "acculynx", "roofr", "hover", "gaf_quickmeasure", "jobnimbus", "servicetitan"],
+                    "enum": ["gmail", "microsoft_365", "generic_smtp", "companycam", "acculynx", "roofr", "hover", "gaf_quickmeasure", "jobnimbus", "servicetitan"],
                     "description": "Which integration to explain.",
                 },
             },
@@ -1916,6 +1916,71 @@ def _handle_preview_cancel_cadence(sb: Client, claim_id: str, tool_input: dict) 
 # ═══════════════════════════════════════════
 
 _INTEGRATION_PLAYBOOK = {
+    "microsoft_365": {
+        "display_name": "Microsoft 365 / Outlook",
+        "category": "Email",
+        "auth_type": "OAuth 2.0 (Microsoft Entra ID)",
+        "db_fields": ["microsoft_refresh_token", "microsoft_email", "microsoft_connected_at"],
+        "status": "coming_soon",
+        "unlocks": [
+            "Send all carrier emails from YOUR @yourcompany.com Microsoft-hosted address",
+            "Richard searches your Outlook inbox for carrier replies matching claim numbers",
+            "Automatic classification of incoming adjuster emails",
+        ],
+        "steps": [
+            "⚠️ Microsoft 365 OAuth is NOT live yet — we're finalizing the Azure AD app registration.",
+            "Expected live date: within 2-3 weeks. In the meantime, you have two options:",
+            "  • **Option A**: Connect via generic SMTP (app password). Works today. See the "
+            "'Generic SMTP' setup guide.",
+            "  • **Option B**: Use claims@dumbroof.ai as your sender (your company name is in the "
+            "display name). Works immediately with zero setup.",
+            "When Microsoft OAuth lands, you'll click 'Connect Outlook' in Settings → Email "
+            "Integration, sign in with your Microsoft 365 credentials, and approve Mail.Send + "
+            "Mail.Read scopes. Microsoft consent screen is cleaner than Google's — no scary "
+            "warning.",
+        ],
+        "gotchas": [
+            "Microsoft 365 admins: your tenant may require admin consent for third-party apps. "
+            "If OAuth fails, ask your IT admin to grant tenant-wide consent OR grant it user-by-user.",
+            "Shared mailboxes aren't directly supported via personal OAuth — use the mailbox owner's account.",
+        ],
+    },
+    "generic_smtp": {
+        "display_name": "Generic SMTP (Custom Email Provider)",
+        "category": "Email",
+        "auth_type": "SMTP credentials (app password)",
+        "db_fields": ["smtp_host", "smtp_port", "smtp_username", "smtp_password_encrypted", "smtp_from_email"],
+        "unlocks": [
+            "Send emails from ANY provider: GoDaddy, Namecheap, Zoho, self-hosted Exchange, Yahoo, custom domain, etc.",
+            "Your @yourcompany.com shows as the sender — carriers see you, not DumbRoof",
+            "Fallback for providers without OAuth (which is most non-Google/non-Microsoft providers)",
+        ],
+        "steps": [
+            "Find your email provider's SMTP settings. Common ones:",
+            "  • **GoDaddy / Microsoft 365 (non-OAuth)**: smtp.office365.com, port 587, STARTTLS",
+            "  • **Yahoo**: smtp.mail.yahoo.com, port 465 or 587",
+            "  • **Zoho**: smtp.zoho.com, port 465 or 587",
+            "  • **Namecheap Private Email**: mail.privateemail.com, port 465 or 587",
+            "  • **Custom domain via your own mail server**: check with your IT",
+            "Generate an **app password** (NOT your regular password) — most providers require this "
+            "for third-party SMTP access. Usually in Account Security → App Passwords.",
+            "Provide these values here or in Settings → Email:\n"
+            "  - SMTP host (e.g. smtp.office365.com)\n"
+            "  - SMTP port (usually 587 for STARTTLS or 465 for SSL)\n"
+            "  - SMTP username (usually your full email address)\n"
+            "  - App password (NOT your regular login password)\n"
+            "  - From email (your display 'from' address, usually same as username)",
+            "We send a test email to verify the credentials work. If it fails, we'll tell you "
+            "what went wrong.",
+        ],
+        "gotchas": [
+            "Regular passwords almost never work — providers require app passwords for third-party SMTP. "
+            "If you don't see an 'app passwords' option, 2FA may need to be enabled first.",
+            "SMTP passwords are encrypted at rest in our DB. Only the SMTP send process can decrypt them.",
+            "Some providers (Outlook.com free accounts) have disabled SMTP for new accounts entirely — "
+            "if you hit this, use Microsoft 365 OAuth instead once it's live.",
+        ],
+    },
     "gmail": {
         "display_name": "Gmail",
         "category": "Email",
@@ -2131,6 +2196,15 @@ def _handle_list_integrations(sb: Client, user_id: str) -> dict:
         "gmail": {
             "connected": bool(profile.get("gmail_refresh_token")),
             "sending_email": profile.get("sending_email") or profile.get("email"),
+        },
+        "microsoft_365": {
+            "connected": bool(profile.get("microsoft_refresh_token")),
+            "sending_email": profile.get("microsoft_email"),
+            "status": "coming_soon",
+        },
+        "generic_smtp": {
+            "connected": bool(profile.get("smtp_host") and profile.get("smtp_password_encrypted")),
+            "sending_email": profile.get("smtp_from_email"),
         },
         "companycam": {
             "connected": bool(profile.get("companycam_api_key")),

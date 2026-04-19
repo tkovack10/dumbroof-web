@@ -2158,6 +2158,342 @@ async def reset_claim_brain(claim_id: str):
 
 
 # ===================================================================
+# ADMIN BRAIN — settings-page assistant (no claim context)
+# ===================================================================
+# Same tool registry as the claim-brain endpoint, but the system prompt is
+# onboarding-focused and reads the user's company profile instead of a
+# specific claim. Keyed on user_id because admin actions are user-scoped
+# (integrations, team, templates, logo).
+# -------------------------------------------------------------------
+
+_admin_brain_conversations: dict = {}
+
+
+class AdminChatMessage(BaseModel):
+    message: str
+    user_id: str
+    locale: str | None = "en"
+
+
+def _build_admin_brain_prompt(company_profile: dict, integrations: dict) -> str:
+    from datetime import datetime
+    connected_count = sum(1 for v in integrations.values() if v.get("connected"))
+    total = len(integrations)
+    company_name = company_profile.get("company_name") or "your company"
+
+    missing_profile = [f for f in ["company_name", "address", "city_state_zip", "email", "phone", "logo_path", "contact_name"] if not company_profile.get(f)]
+    missing_integrations = [k for k, v in integrations.items() if not v.get("connected")]
+
+    return f"""You are Richard, the DumbRoof AI onboarding assistant for {company_name}.
+
+Your job is to help a roofing company admin set up their DumbRoof account fast. You walk them through connecting integrations, inviting team members, uploading their logo, and filling out company info. You're patient, concrete, and you always use the real tools instead of vague advice.
+
+Current date/time: {datetime.now().strftime('%Y-%m-%d %H:%M')}
+
+## ACCOUNT SNAPSHOT
+- **Company:** {company_name}
+- **Contact:** {company_profile.get('contact_name') or 'not set'}
+- **Email:** {company_profile.get('email') or 'not set'}
+- **Integrations connected:** {connected_count}/{total}
+- **Missing profile fields:** {', '.join(missing_profile) if missing_profile else 'none — profile complete ✓'}
+- **Not yet connected:** {', '.join(missing_integrations) if missing_integrations else 'none — all integrations connected ✓'}
+
+## TOOLS YOU CAN CALL
+- **list_integrations** — Always call this FIRST on a new conversation so you have fresh status
+- **get_integration_setup_guide(service)** — Step-by-step setup for: gmail, microsoft_365, generic_smtp, companycam, acculynx, roofr, hover, gaf_quickmeasure, jobnimbus, servicetitan
+- **save_integration_key(service, api_key, …)** — Save an API key the user pastes. Approval-gated.
+- **invite_team_member(email, role, name)** — Send a signup invite. Approval-gated.
+
+## BEHAVIOR RULES
+
+1. **Start every new conversation with list_integrations** so you know what's connected without asking.
+
+2. **When the user says "help me connect X"** → call get_integration_setup_guide(X) → show them the steps → offer to save the key when they paste it.
+
+3. **Email providers:** If they use Gmail → get_integration_setup_guide('gmail'). If they use Outlook/Microsoft 365 → get_integration_setup_guide('microsoft_365'); honestly tell them OAuth is launching soon and suggest generic_smtp as the interim path. If they use GoDaddy/Zoho/Yahoo/custom → get_integration_setup_guide('generic_smtp').
+
+4. **Honest about Google OAuth verification:** We're in review. Users WILL see the "Google hasn't verified this app" warning. Tell them to click Advanced → Proceed — this is expected, and it goes away once Google approves our submission.
+
+5. **Pasted API keys:** When the user pastes a key, IMMEDIATELY call save_integration_key (which returns a preview they approve). Don't lecture about security — we mask the key in the preview.
+
+6. **Team invites:** Default role is 'user' unless they explicitly say admin. Don't make them repeat the email — if you heard it clearly, just call invite_team_member.
+
+7. **Company profile fields (logo, address, templates):** These are edited in Settings UI directly. Tell the user where to click — we don't have a tool for these yet.
+
+8. **Be concise.** The user is a roofing contractor, not an IT admin. No jargon walls. Short answers + the next concrete step.
+
+## ONBOARDING CHECKLIST (reference, don't recite)
+
+1. Company profile complete (name, address, contact, phone, logo)
+2. Email sender connected (Gmail / Microsoft / SMTP)
+3. CompanyCam connected (if they use it) — unlocks photo import
+4. Measurements tool connected (EagleView / Hover / Roofr / GAF) — pick whichever they use
+5. CRM connected (AccuLynx / JobNimbus / ServiceTitan) — optional but big workflow win
+6. Team members invited
+
+When asked "what's left?", walk the checklist with current status and prioritize the biggest gaps first.
+"""
+
+
+@app.post("/api/admin-brain/chat")
+async def admin_brain_chat(body: AdminChatMessage):
+    """Settings-page assistant. User-scoped (no claim context)."""
+    from claim_brain_tools import CLAIM_BRAIN_TOOLS, execute_tool, _handle_list_integrations
+
+    sb = get_supabase_client()
+    user_id = (body.user_id or "").strip()
+    if not user_id:
+        raise HTTPException(status_code=400, detail="user_id required")
+
+    # Load company profile + integration status up-front so the system prompt
+    # is always informed about current state.
+    try:
+        prof_res = sb.table("company_profiles").select("*").eq("user_id", user_id).limit(1).execute()
+        company_profile = (prof_res.data or [{}])[0] if prof_res.data else {}
+    except Exception:
+        company_profile = {}
+
+    integrations_status = _handle_list_integrations(sb, user_id)
+    integrations = (integrations_status.get("data") or {}).get("integrations") or {}
+
+    system_prompt = _build_admin_brain_prompt(company_profile, integrations)
+
+    if body.locale == "es":
+        system_prompt += "\n\n## LANGUAGE: SPANISH\nRespond in Spanish. Technical terms (API, OAuth, Microsoft 365) stay in English.\n"
+
+    conv_key = f"admin:{user_id}"
+    if conv_key not in _admin_brain_conversations:
+        _admin_brain_conversations[conv_key] = []
+    _admin_brain_conversations[conv_key].append({"role": "user", "content": body.message})
+    if len(_admin_brain_conversations[conv_key]) > 50:
+        _admin_brain_conversations[conv_key] = _admin_brain_conversations[conv_key][-50:]
+
+    client = anthropic.Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
+
+    async def stream_response():
+        try:
+            messages = list(_admin_brain_conversations[conv_key])
+            full_text_parts: list[str] = []
+            max_tool_rounds = 10
+            total_tool_calls = 0
+            max_total_tool_calls = 20
+
+            # Admin brain runs tools user-scoped. claim_id is "admin" sentinel;
+            # execute_tool's admin-surface tools ignore it. Other tools would
+            # error — that's correct, the model shouldn't call claim tools here.
+            sentinel_claim_id = "admin"
+
+            for _round in range(max_tool_rounds):
+                response = client.messages.create(
+                    model="claude-opus-4-6",
+                    max_tokens=4096,
+                    system=system_prompt,
+                    messages=messages,
+                    tools=CLAIM_BRAIN_TOOLS,
+                )
+
+                has_tool_use = False
+                tool_use_results: list[dict] = []
+
+                for block in response.content:
+                    if block.type == "text":
+                        full_text_parts.append(block.text)
+                        yield f"data: {json.dumps({'text': block.text})}\n\n"
+                    elif block.type == "tool_use":
+                        has_tool_use = True
+                        if total_tool_calls >= max_total_tool_calls:
+                            tool_use_results.append({
+                                "type": "tool_result",
+                                "tool_use_id": block.id,
+                                "content": json.dumps({"error": "Tool call limit reached."}),
+                                "is_error": True,
+                            })
+                            continue
+                        total_tool_calls += 1
+
+                        status_msg = f"\n\n*Running: {block.name}...*\n\n"
+                        full_text_parts.append(status_msg)
+                        yield f"data: {json.dumps({'text': status_msg})}\n\n"
+
+                        try:
+                            tool_result = await execute_tool(sb, sentinel_claim_id, user_id, block.name, block.input)
+                        except Exception as te:
+                            tool_result = {"action": "error", "message": str(te)}
+
+                        if tool_result.get("action") == "preview":
+                            import uuid
+                            approval_id = str(uuid.uuid4())[:8]
+                            if conv_key not in _pending_tool_actions:
+                                _pending_tool_actions[conv_key] = {}
+                            _pending_tool_actions[conv_key][approval_id] = tool_result
+                            tool_result["approval_id"] = approval_id
+                            yield f"data: {json.dumps({'tool_action': tool_result})}\n\n"
+                            tool_use_results.append({
+                                "type": "tool_result",
+                                "tool_use_id": block.id,
+                                "content": json.dumps({"status": "preview_sent", "awaiting_user_approval": True}),
+                            })
+                        elif tool_result.get("action") == "complete":
+                            yield f"data: {json.dumps({'tool_action': tool_result})}\n\n"
+                            tool_use_results.append({
+                                "type": "tool_result",
+                                "tool_use_id": block.id,
+                                "content": json.dumps(tool_result.get("data", tool_result)),
+                            })
+                        else:
+                            tool_use_results.append({
+                                "type": "tool_result",
+                                "tool_use_id": block.id,
+                                "content": json.dumps({"error": tool_result.get("message", "failed")}),
+                                "is_error": True,
+                            })
+
+                if not has_tool_use:
+                    break
+
+                serialized_content = []
+                for block in response.content:
+                    if block.type == "text":
+                        serialized_content.append({"type": "text", "text": block.text})
+                    elif block.type == "tool_use":
+                        serialized_content.append({"type": "tool_use", "id": block.id, "name": block.name, "input": block.input})
+                messages.append({"role": "assistant", "content": serialized_content})
+                messages.append({"role": "user", "content": tool_use_results})
+
+                if response.stop_reason != "tool_use":
+                    break
+
+            full_response = "".join(full_text_parts)
+            _admin_brain_conversations[conv_key].append({"role": "assistant", "content": full_response})
+
+            yield f"data: {json.dumps({'done': True})}\n\n"
+        except Exception as e:
+            yield f"data: {json.dumps({'error': str(e)})}\n\n"
+
+    return StreamingResponse(stream_response(), media_type="text/event-stream")
+
+
+@app.post("/api/admin-brain/reset")
+async def reset_admin_brain(body: dict):
+    """Reset the admin brain conversation for a user."""
+    user_id = (body.get("user_id") or "").strip()
+    if not user_id:
+        raise HTTPException(status_code=400, detail="user_id required")
+    _admin_brain_conversations.pop(f"admin:{user_id}", None)
+    return {"status": "reset", "user_id": user_id}
+
+
+class AdminToolApproval(BaseModel):
+    tool_call_id: str
+    approved: bool
+    user_id: str
+    overrides: dict | None = None
+
+
+@app.post("/api/admin-brain/approve-action")
+async def approve_admin_action(body: AdminToolApproval, background_tasks: BackgroundTasks):
+    """Approve an admin-brain tool preview. Mirrors approve_brain_action but the
+    pending queue is keyed on the admin conv_key (admin:{user_id}) and there's
+    no claim context.
+    """
+    from claim_brain_tools import _audit_log, _KEY_SERVICE_FIELDS
+    sb = get_supabase_client()
+
+    user_id = (body.user_id or "").strip()
+    if not user_id:
+        raise HTTPException(status_code=400, detail="user_id required")
+
+    conv_key = f"admin:{user_id}"
+    pending = _pending_tool_actions.get(conv_key, {})
+    tool_result = pending.pop(body.tool_call_id, None)
+
+    if not tool_result:
+        raise HTTPException(status_code=404, detail="No pending admin action with that ID")
+
+    tool_name = tool_result.get("tool_name", "")
+
+    # Admin actions don't have claim_id context. Audit logs pass None.
+    if not body.approved:
+        _audit_log(sb, None, user_id, tool_name, {"approval_id": body.tool_call_id}, {"action": "discarded", "message": "user discarded"}, 0)
+        return {"status": "discarded", "message": "Action was discarded by user."}
+
+    # Only the admin-scoped tools are executable here (save_integration_key,
+    # invite_team_member). Anything else is a misrouted preview.
+    from datetime import datetime
+    try:
+        if tool_name == "save_integration_key":
+            preview = tool_result.get("preview") or {}
+            # Apply overrides if present
+            if body.overrides:
+                for k in ("api_key", "tenant_id", "client_id"):
+                    if k in body.overrides and body.overrides[k] is not None:
+                        preview[k] = body.overrides[k]
+            service = preview.get("service")
+            field_map = _KEY_SERVICE_FIELDS.get(service) or {}
+            if not field_map:
+                raise ValueError(f"Can't save keys for service={service}")
+
+            update_payload: dict = {}
+            now_iso = datetime.utcnow().isoformat() + "Z"
+            if service == "servicetitan":
+                update_payload[field_map["client_secret"]] = preview["api_key"]
+                update_payload[field_map["client_id"]] = preview.get("client_id")
+                update_payload[field_map["tenant_id"]] = preview.get("tenant_id")
+                update_payload[field_map["connected_at"]] = now_iso
+            else:
+                update_payload[field_map["api_key"]] = preview["api_key"]
+                update_payload[field_map["connected_at"]] = now_iso
+
+            existing = sb.table("company_profiles").select("id").eq("user_id", user_id).limit(1).execute()
+            if existing.data:
+                sb.table("company_profiles").update(update_payload).eq("user_id", user_id).execute()
+            else:
+                update_payload["user_id"] = user_id
+                sb.table("company_profiles").insert(update_payload).execute()
+
+            safe_preview = {k: v for k, v in preview.items() if k != "api_key"}
+            _audit_log(sb, None, user_id, tool_name, safe_preview, {"action": "sent", "message": f"saved {service} credentials"}, 0)
+            return {"status": "sent", "message": f"{preview.get('display_name') or service} connected."}
+
+        if tool_name == "invite_team_member":
+            preview = tool_result.get("preview") or {}
+            if body.overrides:
+                for k in ("email", "role", "name"):
+                    if k in body.overrides and body.overrides[k] is not None:
+                        preview[k] = body.overrides[k]
+            target_email = preview.get("email")
+            try:
+                if hasattr(sb.auth, "admin") and hasattr(sb.auth.admin, "invite_user_by_email"):
+                    sb.auth.admin.invite_user_by_email(target_email, {
+                        "data": {"invited_by": user_id, "role": preview.get("role", "user"), "name": preview.get("name")},
+                    })
+                else:
+                    try:
+                        sb.table("pending_invites").insert({
+                            "email": target_email,
+                            "invited_by": user_id,
+                            "role": preview.get("role"),
+                            "name": preview.get("name"),
+                            "company": preview.get("company"),
+                        }).execute()
+                    except Exception:
+                        pass
+            except Exception as e:
+                err = f"Invite failed: {e}"
+                _audit_log(sb, None, user_id, tool_name, preview, {"action": "error", "message": err}, 0, error=err)
+                return {"status": "error", "message": err}
+
+            _audit_log(sb, None, user_id, tool_name, preview, {"action": "sent", "message": f"invited {target_email}"}, 0)
+            return {"status": "sent", "message": f"Invited {target_email} as {preview.get('role')}."}
+
+        return {"status": "error", "message": f"Unknown admin tool: {tool_name}"}
+
+    except Exception as e:
+        _audit_log(sb, None, user_id, tool_name, tool_result.get("preview") or {}, {"action": "error", "message": str(e)}, 0, error=str(e))
+        return {"status": "error", "message": f"Failed: {str(e)}"}
+
+
+# ===================================================================
 # DIRECT EMAIL SEND — For Supplement Composer (bypasses Claim Brain chat)
 # ===================================================================
 

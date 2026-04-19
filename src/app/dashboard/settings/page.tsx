@@ -4,6 +4,7 @@ import { Suspense, useEffect, useState, useRef } from "react";
 import { useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { useBillingQuota } from "@/hooks/use-billing-quota";
+import { AdminBrainChat } from "@/components/admin-brain-chat";
 
 interface Forwarder {
   id: string;
@@ -30,6 +31,7 @@ function SettingsPageContent() {
   const stripeConnectSuccess = searchParams.get("stripe_connect") === "success";
   const passwordRef = useRef<HTMLDivElement>(null);
   const [loading, setLoading] = useState(true);
+  const [currentUserId, setCurrentUserId] = useState<string>("");
   const billing = useBillingQuota();
   const [portalLoading, setPortalLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -121,6 +123,7 @@ function SettingsPageContent() {
     async function loadProfile() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
+      setCurrentUserId(user.id);
 
       const { data } = await supabase
         .from("company_profiles")
@@ -331,6 +334,13 @@ function SettingsPageContent() {
             Your company info and logo will appear on all generated claim documents.
           </p>
         </div>
+
+        {/* Richard onboarding assistant — walks through integrations, team, email setup */}
+        {currentUserId && (
+          <div className="mb-8">
+            <AdminBrainChat userId={currentUserId} />
+          </div>
+        )}
 
         <form onSubmit={handleSave} className="space-y-8">
           {/* Logo Upload */}

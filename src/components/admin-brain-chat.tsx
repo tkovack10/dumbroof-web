@@ -1,0 +1,397 @@
+"use client";
+
+import { useState, useRef, useEffect, useCallback } from "react";
+
+interface Message {
+  role: "user" | "assistant";
+  content: string;
+  toolActions?: ToolAction[];
+}
+
+interface ToolAction {
+  action: "preview" | "complete" | "error";
+  type: string;
+  tool_name: string;
+  approval_id?: string;
+  message: string;
+  preview?: Record<string, unknown>;
+  data?: Record<string, unknown>;
+}
+
+interface AdminBrainChatProps {
+  userId: string;
+}
+
+const QUICK_SETUP_ACTIONS = [
+  { label: "What's connected?", prompt: "What's my current setup status?" },
+  { label: "Connect Gmail", prompt: "Help me connect Gmail" },
+  { label: "Connect Outlook", prompt: "Help me connect Microsoft 365 / Outlook" },
+  { label: "Connect CompanyCam", prompt: "Help me connect CompanyCam" },
+  { label: "Connect Hover", prompt: "Help me connect Hover" },
+  { label: "Connect AccuLynx", prompt: "Help me connect AccuLynx" },
+  { label: "Invite teammate", prompt: "I want to invite a new team member" },
+  { label: "What's left?", prompt: "What's left on my onboarding checklist?" },
+];
+
+function renderMarkdown(text: string): string {
+  if (!text) return "";
+  let html = text
+    .replace(/^### (.+)$/gm, '<!--h3-->$1<!--/h3-->')
+    .replace(/^## (.+)$/gm, '<!--h2-->$1<!--/h2-->')
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/&lt;!--h3--&gt;(.+?)&lt;!--\/h3--&gt;/g, '<h3 class="text-sm font-bold text-indigo-400 mt-3 mb-1">$1</h3>')
+    .replace(/&lt;!--h2--&gt;(.+?)&lt;!--\/h2--&gt;/g, '<h2 class="text-sm font-bold text-indigo-300 mt-3 mb-1">$1</h2>')
+    .replace(/\*\*(.+?)\*\*/g, '<strong class="text-white">$1</strong>')
+    .replace(/\*(.+?)\*/g, "<em>$1</em>")
+    .replace(/`(.+?)`/g, '<code class="bg-white/10 px-1 rounded text-xs">$1</code>')
+    .replace(/^- (.+)$/gm, '<li class="ml-4 text-sm">$1</li>');
+  html = html.replace(/((?:<li[^>]*>.*<\/li>\n?)+)/g, '<ul class="list-disc space-y-0.5 my-1">$1</ul>');
+  html = html.replace(/\n\n/g, "</p><p class=\"text-sm my-1\">");
+  html = html.replace(/\n/g, "<br>");
+  return '<p class="text-sm my-1">' + html + "</p>";
+}
+
+function IntegrationsStatusCard({ data }: { data: Record<string, unknown> }) {
+  const integrations = (data.integrations || {}) as Record<string, { connected: boolean; status?: string }>;
+  const count = data.connected_count as number;
+  const total = data.total_count as number;
+  const profileComplete = data.profile_complete as boolean;
+  return (
+    <div className="bg-indigo-500/5 border border-indigo-500/20 rounded-lg p-3 my-2">
+      <div className="flex items-center justify-between mb-2">
+        <div className="text-xs text-indigo-300 font-medium">🔌 Integration Status — {count}/{total} connected</div>
+        <div className={`text-[10px] ${profileComplete ? "text-emerald-300" : "text-amber-300"}`}>
+          {profileComplete ? "Profile ✓" : "Profile incomplete"}
+        </div>
+      </div>
+      <div className="grid grid-cols-2 gap-1 text-[11px]">
+        {Object.entries(integrations).map(([name, info]) => (
+          <div key={name} className="flex items-center gap-1">
+            <span className={info.connected ? "text-emerald-400" : info.status === "coming_soon" ? "text-amber-400" : "text-white/30"}>
+              {info.connected ? "●" : info.status === "coming_soon" ? "◐" : "○"}
+            </span>
+            <span className="text-white/70 capitalize">{name.replace(/_/g, " ")}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function SetupGuideCard({ data }: { data: Record<string, unknown> }) {
+  const displayName = data.display_name as string;
+  const category = data.category as string;
+  const authType = data.auth_type as string;
+  const unlocks = (data.unlocks || []) as string[];
+  const steps = (data.steps || []) as string[];
+  const gotchas = (data.gotchas || []) as string[];
+  return (
+    <div className="bg-indigo-500/5 border border-indigo-500/20 rounded-lg p-3 my-2">
+      <div className="text-xs text-indigo-300 font-medium mb-1">
+        📘 {displayName} Setup<span className="text-white/40 ml-2">· {category} · {authType}</span>
+      </div>
+      {unlocks.length > 0 && (
+        <div className="mt-2 p-2 rounded bg-emerald-500/10 border border-emerald-500/20">
+          <div className="text-[10px] text-emerald-300 font-semibold uppercase tracking-wide mb-1">Unlocks</div>
+          {unlocks.map((u, i) => <div key={i} className="text-[11px] text-white/70">✓ {u}</div>)}
+        </div>
+      )}
+      {steps.length > 0 && (
+        <div className="mt-2">
+          <div className="text-[10px] text-white/40 font-semibold uppercase tracking-wide mb-1">Steps</div>
+          <ol className="space-y-1">
+            {steps.map((s, i) => (
+              <li key={i} className="text-[11px] text-white/70 leading-snug">
+                <span className="text-indigo-300 font-semibold">{i + 1}.</span> {s}
+              </li>
+            ))}
+          </ol>
+        </div>
+      )}
+      {gotchas.length > 0 && (
+        <div className="mt-2 p-2 rounded bg-amber-500/10 border border-amber-500/20">
+          <div className="text-[10px] text-amber-300 font-semibold uppercase tracking-wide mb-1">Gotchas</div>
+          {gotchas.map((g, i) => <div key={i} className="text-[11px] text-white/70">⚠ {g}</div>)}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ApprovalCard({
+  action,
+  userId,
+  backendUrl,
+  onStatusUpdate,
+}: {
+  action: ToolAction;
+  userId: string;
+  backendUrl: string;
+  onStatusUpdate: (id: string, status: string) => void;
+}) {
+  const [status, setStatus] = useState<"pending" | "approving" | "sent" | "discarded" | "error">("pending");
+  const p = (action.preview || {}) as Record<string, unknown>;
+
+  const handleApprove = async () => {
+    if (!action.approval_id) return;
+    setStatus("approving");
+    try {
+      const res = await fetch(`${backendUrl}/api/admin-brain/approve-action`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tool_call_id: action.approval_id, approved: true, user_id: userId }),
+      });
+      const data = await res.json();
+      if (data.status === "sent" || data.status === "complete") {
+        setStatus("sent");
+        onStatusUpdate(action.approval_id, "sent");
+      } else {
+        setStatus("error");
+      }
+    } catch {
+      setStatus("error");
+    }
+  };
+
+  const handleDiscard = async () => {
+    if (!action.approval_id) return;
+    try {
+      await fetch(`${backendUrl}/api/admin-brain/approve-action`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tool_call_id: action.approval_id, approved: false, user_id: userId }),
+      });
+    } catch { /* ignore */ }
+    setStatus("discarded");
+    onStatusUpdate(action.approval_id, "discarded");
+  };
+
+  const statusColor =
+    status === "sent" ? "bg-emerald-500/5 border-emerald-500/20" :
+    status === "discarded" ? "bg-white/5 border-white/10 opacity-50" :
+    status === "error" ? "bg-red-500/5 border-red-500/20" :
+    "bg-amber-500/5 border-amber-500/20";
+
+  return (
+    <div className={`border rounded-lg p-3 my-2 ${statusColor}`}>
+      <div className="text-xs font-medium mb-2" style={{
+        color: status === "sent" ? "#34d399" : status === "error" ? "#f87171" : "#fbbf24",
+      }}>
+        {String(p.action_label || action.tool_name)}
+        {status === "sent" && " — Done"}
+        {status === "discarded" && " — Cancelled"}
+        {status === "error" && " — Failed"}
+        {status === "approving" && " — Working..."}
+      </div>
+      <div className="text-[11px] text-white/70 space-y-0.5">
+        {action.tool_name === "save_integration_key" && (
+          <>
+            <div><span className="text-white/40">Service:</span> <span className="text-white">{String(p.display_name || p.service || "")}</span></div>
+            <div><span className="text-white/40">API key:</span> <code className="text-white/80">{String(p.api_key_masked || "")}</code></div>
+          </>
+        )}
+        {action.tool_name === "invite_team_member" && (
+          <>
+            <div><span className="text-white/40">Email:</span> <span className="text-white">{String(p.email || "")}</span></div>
+            <div><span className="text-white/40">Role:</span> <span className="text-white">{String(p.role || "user")}</span></div>
+          </>
+        )}
+      </div>
+      {status === "pending" && (
+        <div className="flex gap-2 mt-2.5">
+          <button onClick={handleApprove} className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-medium py-1.5 rounded-lg transition-colors">Approve</button>
+          <button onClick={handleDiscard} className="px-3 bg-white/5 hover:bg-white/10 text-white/50 text-[11px] py-1.5 rounded-lg transition-colors">Discard</button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+export function AdminBrainChat({ userId }: AdminBrainChatProps) {
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [input, setInput] = useState("");
+  const [isStreaming, setIsStreaming] = useState(false);
+  const chatAreaRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
+
+  const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000";
+
+  useEffect(() => {
+    if (chatAreaRef.current) chatAreaRef.current.scrollTop = chatAreaRef.current.scrollHeight;
+  }, [messages]);
+
+  const sendMessage = useCallback(async (messageText?: string) => {
+    const msg = messageText || input.trim();
+    if (!msg || isStreaming) return;
+    setInput("");
+    setIsStreaming(true);
+
+    const newMessages: Message[] = [...messages, { role: "user", content: msg }];
+    setMessages(newMessages);
+    const assistantIndex = newMessages.length;
+    setMessages([...newMessages, { role: "assistant", content: "", toolActions: [] }]);
+
+    try {
+      const res = await fetch(`${BACKEND_URL}/api/admin-brain/chat`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: msg, user_id: userId }),
+      });
+      const reader = res.body?.getReader();
+      if (!reader) throw new Error("No reader");
+      const decoder = new TextDecoder();
+      let fullText = "";
+      const toolActions: ToolAction[] = [];
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        const chunk = decoder.decode(value, { stream: true });
+        for (const line of chunk.split("\n")) {
+          if (line.startsWith("data: ")) {
+            try {
+              const data = JSON.parse(line.slice(6));
+              if (data.text) {
+                fullText += data.text;
+                setMessages((prev) => {
+                  const updated = [...prev];
+                  updated[assistantIndex] = { role: "assistant", content: fullText, toolActions: [...toolActions] };
+                  return updated;
+                });
+              }
+              if (data.tool_action) {
+                toolActions.push(data.tool_action as ToolAction);
+                setMessages((prev) => {
+                  const updated = [...prev];
+                  updated[assistantIndex] = { role: "assistant", content: fullText, toolActions: [...toolActions] };
+                  return updated;
+                });
+              }
+              if (data.error) {
+                setMessages((prev) => {
+                  const updated = [...prev];
+                  updated[assistantIndex] = { role: "assistant", content: `Error: ${data.error}`, toolActions: [] };
+                  return updated;
+                });
+              }
+            } catch { /* ignore partial parse */ }
+          }
+        }
+      }
+    } catch (err) {
+      setMessages((prev) => {
+        const updated = [...prev];
+        updated[assistantIndex] = {
+          role: "assistant",
+          content: `Connection error: ${err instanceof Error ? err.message : "Unknown"}`,
+          toolActions: [],
+        };
+        return updated;
+      });
+    }
+    setIsStreaming(false);
+    inputRef.current?.focus();
+  }, [BACKEND_URL, userId, input, isStreaming, messages]);
+
+  const reset = async () => {
+    try {
+      await fetch(`${BACKEND_URL}/api/admin-brain/reset`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ user_id: userId }),
+      });
+    } catch { /* ignore */ }
+    setMessages([]);
+  };
+
+  const handleToolStatusUpdate = () => { /* noop — cards manage their own state */ };
+
+  return (
+    <div className="rounded-2xl border border-[var(--border-glass)] bg-[var(--bg-glass)] overflow-hidden">
+      <div className="px-4 py-3 border-b border-white/10 flex items-center justify-between bg-[rgb(15,18,35)]">
+        <div className="flex items-center gap-2">
+          <span className="text-lg">🧠</span>
+          <div>
+            <div className="text-white text-sm font-semibold">Richard — Setup Assistant</div>
+            <div className="text-white/40 text-[10px]">
+              Walk through integrations, team invites, and account setup
+            </div>
+          </div>
+        </div>
+        <button onClick={reset} className="text-white/30 hover:text-white/60 text-xs px-2 py-1 rounded transition-colors">Reset</button>
+      </div>
+
+      <div ref={chatAreaRef} className="max-h-[500px] overflow-y-auto p-4 space-y-4">
+        {messages.length === 0 ? (
+          <div className="py-6">
+            <div className="text-center mb-4">
+              <div className="text-3xl mb-3">🧠</div>
+              <div className="text-white text-sm font-medium mb-1">Richard — Setup Assistant</div>
+              <div className="text-white/50 text-xs max-w-[360px] mx-auto">
+                Ask me to connect your tools, invite team members, or walk you through anything
+                on your onboarding list.
+              </div>
+            </div>
+            <div className="flex flex-wrap gap-1.5 justify-center">
+              {QUICK_SETUP_ACTIONS.map((a) => (
+                <button
+                  key={a.label}
+                  onClick={() => sendMessage(a.prompt)}
+                  className="text-[11px] px-2.5 py-1 rounded-full border border-white/10 text-white/50 hover:text-indigo-300 hover:border-indigo-400/30 transition-colors"
+                >
+                  {a.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        ) : (
+          messages.map((msg, i) => (
+            <div key={i} className={`flex gap-2 ${msg.role === "user" ? "flex-row-reverse" : ""}`}>
+              <div className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs flex-shrink-0 ${
+                msg.role === "assistant" ? "bg-indigo-500/10 border border-indigo-500/20" : "bg-emerald-500/10 border border-emerald-500/20"
+              }`}>{msg.role === "assistant" ? "🧠" : "T"}</div>
+              <div className={`max-w-[85%] rounded-xl px-3 py-2 ${
+                msg.role === "user" ? "bg-indigo-600 text-white text-sm" : "bg-white/5 border border-white/10 text-white/80"
+              }`}>
+                {msg.role === "assistant" ? (
+                  <>
+                    <div dangerouslySetInnerHTML={{ __html: renderMarkdown(msg.content) }} />
+                    {msg.toolActions?.map((a, j) => {
+                      if (a.type === "integrations_status" && a.data) return <IntegrationsStatusCard key={j} data={a.data} />;
+                      if (a.type === "integration_setup_guide" && a.data) return <SetupGuideCard key={j} data={a.data} />;
+                      if (a.action === "preview") return <ApprovalCard key={j} action={a} userId={userId} backendUrl={BACKEND_URL} onStatusUpdate={handleToolStatusUpdate} />;
+                      return null;
+                    })}
+                  </>
+                ) : (
+                  <span className="text-sm">{msg.content}</span>
+                )}
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+
+      <div className="px-3 py-3 border-t border-white/10 bg-[rgb(15,18,35)]">
+        <div className="flex gap-2">
+          <textarea
+            ref={inputRef}
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(); } }}
+            placeholder="Ask Richard about setup..."
+            rows={1}
+            className="flex-1 bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-white text-sm placeholder-white/30 outline-none focus:border-indigo-500/50 resize-none"
+          />
+          <button
+            onClick={() => sendMessage()}
+            disabled={isStreaming || !input.trim()}
+            className="bg-indigo-600 hover:bg-indigo-500 disabled:opacity-30 text-white w-9 h-9 rounded-xl flex items-center justify-center transition-colors text-sm"
+          >→</button>
+        </div>
+      </div>
+    </div>
+  );
+}
