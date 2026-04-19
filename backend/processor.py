@@ -81,8 +81,14 @@ def _format_date(date_str: str) -> str:
     except ValueError:
         return date_str  # Already formatted or unparseable
 
-def _call_claude_with_retry(client, max_retries=3, _step_name="unknown", _metadata=None, **kwargs):
-    """Call Claude API with retry on rate limits + optional telemetry logging."""
+def _call_claude_with_retry(client, max_retries=4, _step_name="unknown", _metadata=None, **kwargs):
+    """Call Claude API with retry on all transient errors + optional telemetry logging.
+
+    Catches rate limits (429), internal errors (500), overloaded (529), and
+    connection/timeout errors. Non-transient errors (4xx auth etc.) raise
+    immediately. See telemetry.call_claude_logged for the authoritative
+    implementation; this fallback mirrors its behavior for standalone use.
+    """
     # If telemetry is enabled, use the logged version
     if _TELEMETRY_SB:
         return call_claude_logged(
@@ -90,17 +96,39 @@ def _call_claude_with_retry(client, max_retries=3, _step_name="unknown", _metada
             step_name=_step_name, max_retries=max_retries,
             metadata=_metadata, **kwargs,
         )
-    # Fallback: no telemetry (standalone usage, tests)
+    # Fallback: no telemetry (standalone usage, tests).
+    # Inherits retry classes + backoff from telemetry module so there's a
+    # single source of truth.
+    from telemetry import (
+        _RETRYABLE_ANTHROPIC_ERRORS,
+        _RATE_LIMIT_BACKOFF_SEC,
+        _TRANSIENT_BACKOFF_SEC,
+        _is_overloaded,
+    )
+    last_error = None
     for attempt in range(max_retries):
         try:
             return client.messages.create(**kwargs)
-        except anthropic.RateLimitError as e:
-            if attempt < max_retries - 1:
-                wait = 60 * (attempt + 1)
-                print(f"[RATE LIMIT] Waiting {wait}s before retry {attempt + 2}/{max_retries}...")
+        except _RETRYABLE_ANTHROPIC_ERRORS as e:
+            last_error = e
+            if attempt >= max_retries - 1:
+                raise
+            is_rate_limit = isinstance(e, getattr(anthropic, "RateLimitError", ()))
+            backoff = _RATE_LIMIT_BACKOFF_SEC if is_rate_limit else _TRANSIENT_BACKOFF_SEC
+            wait = backoff[min(attempt, len(backoff) - 1)]
+            print(f"[RETRY] {_step_name}: {type(e).__name__} — waiting {wait}s before "
+                  f"retry {attempt + 2}/{max_retries}")
+            time.sleep(wait)
+        except anthropic.APIStatusError as e:
+            if _is_overloaded(e) and attempt < max_retries - 1:
+                wait = _TRANSIENT_BACKOFF_SEC[min(attempt, len(_TRANSIENT_BACKOFF_SEC) - 1)]
+                print(f"[RETRY] {_step_name}: 529 Overloaded — waiting {wait}s before "
+                      f"retry {attempt + 2}/{max_retries}")
                 time.sleep(wait)
-            else:
-                raise e
+                continue
+            raise
+    if last_error:
+        raise last_error
 
 # ===================================================================
 # CLIENTS

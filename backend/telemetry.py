@@ -45,22 +45,59 @@ def _estimate_cost(model: str, prompt_tokens: int, completion_tokens: int,
     return base_cost + cache_cost
 
 
+# Transient error types that Anthropic issues during infrastructure hiccups.
+# All of these are safe to retry — request was rejected before/during model
+# execution, no partial work was done on their side.
+#   - RateLimitError (429): we hit org-level quota; needs minute-scale backoff
+#   - InternalServerError (500): their cluster glitched
+#   - OverloadedError (529): their cluster is at capacity
+#   - APIConnectionError / APITimeoutError: network layer
+_RETRYABLE_ANTHROPIC_ERRORS = tuple(filter(None, [
+    getattr(anthropic, "RateLimitError", None),
+    getattr(anthropic, "InternalServerError", None),
+    getattr(anthropic, "APIConnectionError", None),
+    getattr(anthropic, "APITimeoutError", None),
+    # OverloadedError lives in anthropic._exceptions on some SDK versions —
+    # fall through to APIStatusError detection below for 529 if missing.
+    getattr(anthropic, "OverloadedError", None),
+]))
+
+# Backoff schedule by attempt index (0-based). RateLimit gets minute-scale
+# waits because it usually means 60s+ of quota is gone. Overloaded/5xx clear
+# much faster — Anthropic's capacity hiccups are typically 5-30s windows.
+_RATE_LIMIT_BACKOFF_SEC = (60, 120, 180)
+_TRANSIENT_BACKOFF_SEC = (2, 8, 20, 45)
+
+
+def _is_overloaded(exc: Exception) -> bool:
+    """Detect HTTP 529 "overloaded" even when the SDK didn't import a
+    dedicated OverloadedError class (older anthropic-sdk versions)."""
+    status = getattr(exc, "status_code", None)
+    if status == 529:
+        return True
+    body = getattr(exc, "body", None) or {}
+    err = body.get("error") if isinstance(body, dict) else None
+    return isinstance(err, dict) and err.get("type") == "overloaded_error"
+
+
 def call_claude_logged(
     client: anthropic.Anthropic,
     sb,
     claim_id: Optional[str],
     step_name: str,
-    max_retries: int = 3,
+    max_retries: int = 4,
     metadata: Optional[dict] = None,
     **kwargs,
 ) -> anthropic.types.Message:
     """Call Claude API with retry + telemetry logging to processing_logs table.
 
-    Drop-in replacement for _call_claude_with_retry that also logs to Supabase.
+    Retries on ALL transient Anthropic errors — rate limits, 5xx, 529 overloaded,
+    network timeouts — with distinct backoff schedules. Non-transient errors
+    (4xx auth, bad requests, etc.) raise immediately.
     """
     model = kwargs.get("model", "claude-opus-4-6")
     start_ms = time.time() * 1000
-    last_error = None
+    last_error: Optional[str] = None
 
     for attempt in range(max_retries):
         attempt_start = time.time() * 1000
@@ -90,21 +127,43 @@ def call_claude_logged(
 
             return response
 
-        except anthropic.RateLimitError as e:
+        except _RETRYABLE_ANTHROPIC_ERRORS as e:
             last_error = str(e)
-            # Log the failed attempt so consumed tokens aren't lost
             attempt_duration = int(time.time() * 1000 - attempt_start)
+            err_kind = type(e).__name__
             _log_to_db(sb, claim_id, f"{step_name}_retry_{attempt}", model, 0, 0, 0,
-                       attempt_duration, False, f"rate_limit (attempt {attempt + 1})", metadata)
+                       attempt_duration, False, f"{err_kind} (attempt {attempt + 1})", metadata)
             if attempt < max_retries - 1:
-                wait = 60 * (attempt + 1)
-                print(f"[RATE LIMIT] Waiting {wait}s before retry {attempt + 2}/{max_retries}...")
+                is_rate_limit = isinstance(e, getattr(anthropic, "RateLimitError", ()))
+                backoff = _RATE_LIMIT_BACKOFF_SEC if is_rate_limit else _TRANSIENT_BACKOFF_SEC
+                wait = backoff[min(attempt, len(backoff) - 1)]
+                print(f"[RETRY] {step_name}: {err_kind} — waiting {wait}s before "
+                      f"retry {attempt + 2}/{max_retries}")
                 time.sleep(wait)
             else:
                 duration_ms = int(time.time() * 1000 - start_ms)
                 _log_to_db(sb, claim_id, step_name, model, 0, 0, 0,
                            duration_ms, False, last_error, metadata)
                 raise e
+
+        except anthropic.APIStatusError as e:
+            # Covers 529 overloaded on SDK versions lacking OverloadedError
+            if _is_overloaded(e):
+                last_error = str(e)
+                attempt_duration = int(time.time() * 1000 - attempt_start)
+                _log_to_db(sb, claim_id, f"{step_name}_retry_{attempt}", model, 0, 0, 0,
+                           attempt_duration, False, f"overloaded_529 (attempt {attempt + 1})", metadata)
+                if attempt < max_retries - 1:
+                    wait = _TRANSIENT_BACKOFF_SEC[min(attempt, len(_TRANSIENT_BACKOFF_SEC) - 1)]
+                    print(f"[RETRY] {step_name}: 529 Overloaded — waiting {wait}s before "
+                          f"retry {attempt + 2}/{max_retries}")
+                    time.sleep(wait)
+                    continue
+            # Non-retryable API status error — raise immediately
+            duration_ms = int(time.time() * 1000 - start_ms)
+            _log_to_db(sb, claim_id, step_name, model, 0, 0, 0,
+                       duration_ms, False, str(e), metadata)
+            raise e
 
         except Exception as e:
             duration_ms = int(time.time() * 1000 - start_ms)
