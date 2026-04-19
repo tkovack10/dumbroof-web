@@ -15,6 +15,7 @@ Run locally:  uvicorn main:app --reload --port 8000
 import os
 import json
 import asyncio
+import urllib.parse
 from contextlib import asynccontextmanager
 from typing import Optional
 
@@ -2371,6 +2372,161 @@ async def admin_brain_chat(body: AdminChatMessage):
             yield f"data: {json.dumps({'error': str(e)})}\n\n"
 
     return StreamingResponse(stream_response(), media_type="text/event-stream")
+
+
+# ===================================================================
+# MICROSOFT 365 OAUTH — connect / callback / disconnect
+# ===================================================================
+# Requires AZURE_CLIENT_ID, AZURE_CLIENT_SECRET, AZURE_REDIRECT_URI env vars.
+# Register the redirect URI in the Azure AD app's Authentication tab before
+# using this — Microsoft rejects unknown redirects.
+
+@app.get("/api/microsoft-auth/connect")
+async def microsoft_auth_connect(user_id: str):
+    """Redirect the user to the Microsoft consent screen.
+
+    Passes user_id as `state` so the callback knows whose account to link.
+    """
+    from fastapi.responses import RedirectResponse
+    from email_providers import get_microsoft_auth_url
+    try:
+        auth_url = get_microsoft_auth_url(state=user_id)
+    except RuntimeError as e:
+        raise HTTPException(status_code=501, detail=str(e))
+    return RedirectResponse(auth_url, status_code=302)
+
+
+@app.get("/api/microsoft-auth/callback")
+async def microsoft_auth_callback(code: str | None = None, state: str | None = None, error: str | None = None, error_description: str | None = None):
+    """Microsoft redirects here after consent. Exchange code → tokens → store."""
+    from fastapi.responses import RedirectResponse
+    from email_providers import exchange_microsoft_code
+
+    site = os.environ.get("NEXT_PUBLIC_SITE_URL", "https://dumbroof.ai").rstrip("/")
+
+    if error:
+        return RedirectResponse(f"{site}/dashboard/settings?microsoft=error&reason={urllib.parse.quote(error_description or error)}", status_code=302)
+    if not code or not state:
+        return RedirectResponse(f"{site}/dashboard/settings?microsoft=error&reason=missing+code+or+state", status_code=302)
+
+    user_id = state
+
+    try:
+        tokens = exchange_microsoft_code(code)
+    except Exception as e:
+        return RedirectResponse(f"{site}/dashboard/settings?microsoft=error&reason={urllib.parse.quote(str(e)[:200])}", status_code=302)
+
+    refresh_token = tokens.get("refresh_token")
+    if not refresh_token:
+        return RedirectResponse(f"{site}/dashboard/settings?microsoft=error&reason=no+refresh+token", status_code=302)
+
+    sb = get_supabase_client()
+    from datetime import datetime
+    payload = {
+        "microsoft_refresh_token": refresh_token,
+        "microsoft_email": tokens.get("email") or "",
+        "microsoft_connected_at": datetime.utcnow().isoformat() + "Z",
+    }
+    existing = sb.table("company_profiles").select("id").eq("user_id", user_id).limit(1).execute()
+    if existing.data:
+        sb.table("company_profiles").update(payload).eq("user_id", user_id).execute()
+    else:
+        payload["user_id"] = user_id
+        sb.table("company_profiles").insert(payload).execute()
+
+    return RedirectResponse(f"{site}/dashboard/settings?microsoft=connected", status_code=302)
+
+
+class DisconnectRequest(BaseModel):
+    user_id: str
+
+
+@app.post("/api/microsoft-auth/disconnect")
+async def microsoft_auth_disconnect(body: DisconnectRequest):
+    sb = get_supabase_client()
+    sb.table("company_profiles").update({
+        "microsoft_refresh_token": None,
+        "microsoft_email": None,
+        "microsoft_connected_at": None,
+    }).eq("user_id", body.user_id).execute()
+    return {"status": "disconnected"}
+
+
+# ===================================================================
+# GENERIC SMTP — save / test / disconnect
+# ===================================================================
+
+class SmtpSaveRequest(BaseModel):
+    user_id: str
+    host: str
+    port: int
+    username: str
+    password: str  # plaintext — we encrypt before store
+    from_email: str
+
+
+class SmtpTestRequest(BaseModel):
+    host: str
+    port: int
+    username: str
+    password: str
+
+
+@app.post("/api/smtp/test")
+async def smtp_test(body: SmtpTestRequest):
+    """Verify SMTP credentials work without saving anything."""
+    from email_providers import test_smtp_connection
+    result = test_smtp_connection(body.host, body.port, body.username, body.password)
+    if result.get("ok"):
+        return {"ok": True, "message": "SMTP credentials verified."}
+    return {"ok": False, "error": result.get("error", "unknown error")}
+
+
+@app.post("/api/smtp/save")
+async def smtp_save(body: SmtpSaveRequest):
+    """Test-connect, then encrypt + store SMTP credentials."""
+    from email_providers import test_smtp_connection, encrypt_password
+    check = test_smtp_connection(body.host, body.port, body.username, body.password)
+    if not check.get("ok"):
+        raise HTTPException(status_code=400, detail=f"SMTP connection failed: {check.get('error')}")
+
+    try:
+        encrypted = encrypt_password(body.password)
+    except RuntimeError as e:
+        raise HTTPException(status_code=501, detail=str(e))
+
+    sb = get_supabase_client()
+    from datetime import datetime
+    payload = {
+        "smtp_host": body.host,
+        "smtp_port": int(body.port),
+        "smtp_username": body.username,
+        "smtp_password_encrypted": encrypted,
+        "smtp_from_email": body.from_email,
+        "smtp_connected_at": datetime.utcnow().isoformat() + "Z",
+    }
+    existing = sb.table("company_profiles").select("id").eq("user_id", body.user_id).limit(1).execute()
+    if existing.data:
+        sb.table("company_profiles").update(payload).eq("user_id", body.user_id).execute()
+    else:
+        payload["user_id"] = body.user_id
+        sb.table("company_profiles").insert(payload).execute()
+
+    return {"status": "connected", "from_email": body.from_email}
+
+
+@app.post("/api/smtp/disconnect")
+async def smtp_disconnect(body: DisconnectRequest):
+    sb = get_supabase_client()
+    sb.table("company_profiles").update({
+        "smtp_host": None,
+        "smtp_port": None,
+        "smtp_username": None,
+        "smtp_password_encrypted": None,
+        "smtp_from_email": None,
+        "smtp_connected_at": None,
+    }).eq("user_id", body.user_id).execute()
+    return {"status": "disconnected"}
 
 
 @app.post("/api/admin-brain/reset")

@@ -382,6 +382,14 @@ def send_claim_email(
 
     company_name = profile.get("company_name", "Roofing Company")
     gmail_refresh_token = profile.get("gmail_refresh_token")
+    ms_refresh_token = profile.get("microsoft_refresh_token")
+    ms_email = profile.get("microsoft_email")
+    smtp_host = profile.get("smtp_host")
+    smtp_port = profile.get("smtp_port")
+    smtp_username = profile.get("smtp_username")
+    smtp_password_encrypted = profile.get("smtp_password_encrypted")
+    smtp_from_email = profile.get("smtp_from_email")
+
     sending_email = profile.get("sending_email") or profile.get("email", "")
     reply_to = sending_email or profile.get("email")
     admin_email = profile.get("email", "")
@@ -397,9 +405,51 @@ def send_claim_email(
         extra_bcc = admin_email
 
     result = {}
+    send_method = ""
 
-    if gmail_refresh_token:
-        # Send via user's Gmail — fall through to Resend on failure
+    # ─── Provider priority: Microsoft → Gmail → SMTP → Resend ───
+    # Each provider is tried in order. Failure falls through to the next one
+    # and logs a warning. Resend is the guaranteed-to-work fallback.
+
+    if ms_refresh_token:
+        try:
+            from email_providers import send_via_microsoft
+            result = send_via_microsoft(
+                refresh_token=ms_refresh_token,
+                from_email=f"{company_name} <{ms_email or sending_email}>",
+                to_email=to_email,
+                subject=subject,
+                body_html=body_html,
+                cc=cc,
+                bcc=extra_bcc,
+                attachments=attachments,
+            )
+            send_method = "microsoft"
+        except Exception as e:
+            print(f"[WARN] Microsoft send failed, trying next provider: {e}", flush=True)
+
+    if not send_method and smtp_host and smtp_password_encrypted:
+        try:
+            from email_providers import send_via_smtp, decrypt_password
+            smtp_plain = decrypt_password(smtp_password_encrypted)
+            result = send_via_smtp(
+                host=smtp_host,
+                port=int(smtp_port or 587),
+                username=smtp_username or smtp_from_email,
+                password=smtp_plain,
+                from_email=smtp_from_email or sending_email,
+                to_email=to_email,
+                subject=subject,
+                body_html=body_html,
+                cc=cc,
+                bcc=extra_bcc,
+                attachments=attachments,
+            )
+            send_method = "smtp"
+        except Exception as e:
+            print(f"[WARN] SMTP send failed, trying next provider: {e}", flush=True)
+
+    if not send_method and gmail_refresh_token:
         try:
             result = send_via_gmail(
                 refresh_token=gmail_refresh_token,
@@ -413,20 +463,11 @@ def send_claim_email(
             )
             send_method = "gmail"
         except Exception as e:
-            print(f"[WARN] Gmail send failed, falling back to Resend: {e}", flush=True)
-            result = send_via_resend(
-                company_name=company_name,
-                to_email=to_email,
-                subject=subject,
-                body_html=body_html,
-                reply_to=reply_to,
-                cc=cc,
-                bcc=extra_bcc,
-                attachments=attachments,
-            )
-            send_method = "resend (gmail fallback)"
-    else:
-        # Fallback: Resend with company branding
+            print(f"[WARN] Gmail send failed, trying Resend fallback: {e}", flush=True)
+
+    # Final fallback — Resend with company branding. Always hits if every
+    # provider-specific path failed.
+    if not send_method:
         result = send_via_resend(
             company_name=company_name,
             to_email=to_email,

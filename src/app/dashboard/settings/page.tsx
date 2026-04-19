@@ -54,6 +54,23 @@ function SettingsPageContent() {
   const [gmailEmail, setGmailEmail] = useState("");
   const [gmailConnecting, setGmailConnecting] = useState(false);
   const [gmailDisconnecting, setGmailDisconnecting] = useState(false);
+  // Microsoft 365 integration state
+  const [microsoftConnected, setMicrosoftConnected] = useState(false);
+  const [microsoftEmail, setMicrosoftEmail] = useState("");
+  const [microsoftDisconnecting, setMicrosoftDisconnecting] = useState(false);
+  const microsoftJustConnected = searchParams.get("microsoft") === "connected";
+  const microsoftError = searchParams.get("microsoft") === "error" ? (searchParams.get("reason") || "unknown") : "";
+  // Generic SMTP state
+  const [smtpConnected, setSmtpConnected] = useState(false);
+  const [smtpFromEmail, setSmtpFromEmail] = useState("");
+  const [smtpHost, setSmtpHost] = useState("");
+  const [smtpPort, setSmtpPort] = useState("587");
+  const [smtpUsername, setSmtpUsername] = useState("");
+  const [smtpPassword, setSmtpPassword] = useState("");
+  const [smtpTesting, setSmtpTesting] = useState(false);
+  const [smtpSaving, setSmtpSaving] = useState(false);
+  const [smtpDisconnecting, setSmtpDisconnecting] = useState(false);
+  const [smtpStatus, setSmtpStatus] = useState<{ type: "success" | "error" | ""; msg: string }>({ type: "", msg: "" });
   // CRM integration state
   const [acculynxKey, setAcculynxKey] = useState("");
   const [acculynxConnected, setAcculynxConnected] = useState(false);
@@ -149,6 +166,19 @@ function SettingsPageContent() {
         }
         // Richard dry-run flag (short-circuits destructive approvals)
         setRichardDryRun(Boolean(data.richard_dry_run));
+        // Microsoft 365 connection
+        if (data.microsoft_refresh_token) {
+          setMicrosoftConnected(true);
+          setMicrosoftEmail(data.microsoft_email || "");
+        }
+        // Generic SMTP connection
+        if (data.smtp_host && data.smtp_password_encrypted) {
+          setSmtpConnected(true);
+          setSmtpFromEmail(data.smtp_from_email || "");
+          setSmtpHost(data.smtp_host || "");
+          setSmtpPort(String(data.smtp_port || "587"));
+          setSmtpUsername(data.smtp_username || "");
+        }
         // Check CRM connections
         if (data.acculynx_api_key) {
           setAcculynxConnected(true);
@@ -717,6 +747,225 @@ function SettingsPageContent() {
                 >
                   {gmailConnecting ? "Connecting..." : "Connect Gmail"}
                 </button>
+              </div>
+            )}
+          </div>
+
+          {/* Microsoft 365 / Outlook */}
+          <div className="mt-4 bg-[var(--bg-glass)] border border-[var(--border-glass)] rounded-xl p-6">
+            {microsoftJustConnected && microsoftConnected && (
+              <div className="bg-green-500/10 border border-green-500/30 text-green-400 text-sm rounded-lg px-3 py-2 mb-3">
+                Microsoft 365 connected successfully.
+              </div>
+            )}
+            {microsoftError && (
+              <div className="bg-red-500/10 border border-red-500/30 text-red-400 text-sm rounded-lg px-3 py-2 mb-3">
+                Microsoft connection failed: {microsoftError}
+              </div>
+            )}
+            {microsoftConnected ? (
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-green-500/10 rounded-lg flex items-center justify-center">
+                    <svg className="w-5 h-5 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                    </svg>
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-[var(--white)]">Microsoft 365 / Outlook Connected</p>
+                    <p className="text-xs text-[var(--gray-muted)]">
+                      Sending from <strong>{microsoftEmail || "your Microsoft account"}</strong>
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={async () => {
+                    setMicrosoftDisconnecting(true);
+                    try {
+                      await fetch(`${BACKEND_URL}/api/microsoft-auth/disconnect`, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ user_id: currentUserId }),
+                      });
+                      setMicrosoftConnected(false);
+                      setMicrosoftEmail("");
+                    } catch { /* ignore */ }
+                    setMicrosoftDisconnecting(false);
+                  }}
+                  disabled={microsoftDisconnecting}
+                  className="text-red-400 hover:text-red-300 text-sm font-medium transition-colors disabled:opacity-50"
+                >
+                  {microsoftDisconnecting ? "Disconnecting..." : "Disconnect"}
+                </button>
+              </div>
+            ) : (
+              <div>
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="w-10 h-10 bg-blue-500/10 rounded-lg flex items-center justify-center text-lg">📧</div>
+                  <div>
+                    <p className="text-sm font-semibold text-[var(--white)]">Microsoft 365 / Outlook</p>
+                    <p className="text-xs text-[var(--gray-muted)]">
+                      Send as your @yourcompany.com Microsoft address. Richard searches your inbox for carrier replies.
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => {
+                    if (!currentUserId) return;
+                    window.location.href = `${BACKEND_URL}/api/microsoft-auth/connect?user_id=${currentUserId}`;
+                  }}
+                  disabled={!currentUserId}
+                  className="bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white px-5 py-2.5 rounded-lg text-sm font-medium transition-colors"
+                >
+                  Connect Microsoft 365
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Generic SMTP */}
+          <div className="mt-4 bg-[var(--bg-glass)] border border-[var(--border-glass)] rounded-xl p-6">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="w-10 h-10 bg-amber-500/10 rounded-lg flex items-center justify-center text-lg">⚙️</div>
+              <div className="flex-1">
+                <p className="text-sm font-semibold text-[var(--white)]">
+                  Generic SMTP {smtpConnected && <span className="ml-2 text-[10px] text-green-400 font-bold">CONNECTED</span>}
+                </p>
+                <p className="text-xs text-[var(--gray-muted)]">
+                  GoDaddy, Zoho, Yahoo, Namecheap, custom domain. Use an app password — not your regular login.
+                </p>
+              </div>
+            </div>
+            {smtpConnected ? (
+              <div className="text-xs text-[var(--gray-muted)]">
+                Sending from <strong className="text-white">{smtpFromEmail}</strong> via {smtpHost}:{smtpPort}
+                <button
+                  onClick={async () => {
+                    setSmtpDisconnecting(true);
+                    try {
+                      await fetch(`${BACKEND_URL}/api/smtp/disconnect`, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ user_id: currentUserId }),
+                      });
+                      setSmtpConnected(false);
+                      setSmtpFromEmail("");
+                      setSmtpHost("");
+                      setSmtpUsername("");
+                      setSmtpPassword("");
+                    } catch { /* ignore */ }
+                    setSmtpDisconnecting(false);
+                  }}
+                  disabled={smtpDisconnecting}
+                  className="ml-3 text-red-400 hover:text-red-300 text-xs font-medium disabled:opacity-50"
+                >
+                  {smtpDisconnecting ? "Disconnecting..." : "Disconnect"}
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <div className="grid grid-cols-2 gap-2">
+                  <input
+                    placeholder="smtp.office365.com"
+                    value={smtpHost}
+                    onChange={(e) => setSmtpHost(e.target.value)}
+                    className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-[var(--white)] placeholder-white/30"
+                  />
+                  <input
+                    placeholder="Port (587 or 465)"
+                    value={smtpPort}
+                    onChange={(e) => setSmtpPort(e.target.value)}
+                    className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-[var(--white)] placeholder-white/30"
+                  />
+                </div>
+                <input
+                  placeholder="Username (usually your email)"
+                  value={smtpUsername}
+                  onChange={(e) => setSmtpUsername(e.target.value)}
+                  className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-[var(--white)] placeholder-white/30"
+                />
+                <input
+                  type="password"
+                  placeholder="App password (NOT your regular password)"
+                  value={smtpPassword}
+                  onChange={(e) => setSmtpPassword(e.target.value)}
+                  className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-[var(--white)] placeholder-white/30"
+                />
+                <input
+                  placeholder="From email (e.g. you@yourcompany.com)"
+                  value={smtpFromEmail}
+                  onChange={(e) => setSmtpFromEmail(e.target.value)}
+                  className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-[var(--white)] placeholder-white/30"
+                />
+                {smtpStatus.msg && (
+                  <div className={`text-xs rounded-lg px-3 py-2 ${smtpStatus.type === "success" ? "bg-green-500/10 border border-green-500/30 text-green-400" : "bg-red-500/10 border border-red-500/30 text-red-400"}`}>
+                    {smtpStatus.msg}
+                  </div>
+                )}
+                <div className="flex gap-2">
+                  <button
+                    onClick={async () => {
+                      setSmtpTesting(true);
+                      setSmtpStatus({ type: "", msg: "" });
+                      try {
+                        const res = await fetch(`${BACKEND_URL}/api/smtp/test`, {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({
+                            host: smtpHost,
+                            port: parseInt(smtpPort || "587", 10),
+                            username: smtpUsername,
+                            password: smtpPassword,
+                          }),
+                        });
+                        const data = await res.json();
+                        setSmtpStatus(data.ok ? { type: "success", msg: data.message || "Credentials verified." } : { type: "error", msg: data.error || "Unknown error" });
+                      } catch (e) {
+                        setSmtpStatus({ type: "error", msg: e instanceof Error ? e.message : "Request failed" });
+                      }
+                      setSmtpTesting(false);
+                    }}
+                    disabled={smtpTesting || !smtpHost || !smtpPassword}
+                    className="bg-white/5 hover:bg-white/10 disabled:opacity-40 text-white/80 px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+                  >
+                    {smtpTesting ? "Testing..." : "Test connection"}
+                  </button>
+                  <button
+                    onClick={async () => {
+                      setSmtpSaving(true);
+                      setSmtpStatus({ type: "", msg: "" });
+                      try {
+                        const res = await fetch(`${BACKEND_URL}/api/smtp/save`, {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({
+                            user_id: currentUserId,
+                            host: smtpHost,
+                            port: parseInt(smtpPort || "587", 10),
+                            username: smtpUsername,
+                            password: smtpPassword,
+                            from_email: smtpFromEmail,
+                          }),
+                        });
+                        const data = await res.json();
+                        if (res.ok) {
+                          setSmtpConnected(true);
+                          setSmtpPassword("");
+                          setSmtpStatus({ type: "success", msg: "SMTP connected — emails will now send from this account." });
+                        } else {
+                          setSmtpStatus({ type: "error", msg: data.detail || "Save failed" });
+                        }
+                      } catch (e) {
+                        setSmtpStatus({ type: "error", msg: e instanceof Error ? e.message : "Request failed" });
+                      }
+                      setSmtpSaving(false);
+                    }}
+                    disabled={smtpSaving || !smtpHost || !smtpPassword || !smtpFromEmail || !currentUserId}
+                    className="bg-amber-600 hover:bg-amber-500 disabled:opacity-40 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+                  >
+                    {smtpSaving ? "Saving..." : "Save & connect"}
+                  </button>
+                </div>
               </div>
             )}
           </div>

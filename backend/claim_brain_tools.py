@@ -2293,6 +2293,14 @@ _KEY_SERVICE_FIELDS = {
         "tenant_id": "servicetitan_tenant_id",
         "connected_at": "servicetitan_connected_at",
     },
+    # generic_smtp has multi-field payload — save_integration_key doesn't
+    # cleanly fit. Users should go through the dedicated /api/smtp/save
+    # endpoint (which encrypts the password + test-sends before storing).
+    # We keep the entry for completeness but the approve dispatcher will
+    # route SMTP to the dedicated path.
+    "generic_smtp": {
+        "_uses_dedicated_endpoint": "POST /api/smtp/save",
+    },
 }
 
 
