@@ -317,7 +317,7 @@ CLAIM_BRAIN_TOOLS = [
                 "storage_path": {"type": "string", "description": "Supabase storage path of the uploaded file."},
                 "doc_type": {
                     "type": "string",
-                    "enum": ["AOB", "COC", "CARRIER_SCOPE", "EAGLEVIEW", "CONTRACT", "OTHER"],
+                    "enum": ["AOB", "COC", "CARRIER_SCOPE", "EAGLEVIEW", "CONTRACT", "PHOTO", "SUPPLEMENT_RESPONSE", "OTHER"],
                     "description": "Classification from classify_uploaded_file.",
                 },
                 "filename": {"type": "string", "description": "Original filename."},
@@ -1407,6 +1407,8 @@ _DOC_TYPE_TO_COLUMN = {
     "CARRIER_SCOPE": "scope_files",
     "EAGLEVIEW": "measurement_files",
     "CONTRACT": "other_files",
+    "PHOTO": "photo_files",
+    "SUPPLEMENT_RESPONSE": "other_files",
     "OTHER": "other_files",
 }
 

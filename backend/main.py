@@ -1395,14 +1395,26 @@ async def approve_brain_action(claim_id: str, body: ToolApproval, background_tas
     # Dry-run mode — per-user flag on company_profiles. When true, every
     # destructive path short-circuits here. Preview was already shown, so the
     # user sees "DRY RUN" as the approval result.
+    # Fail-closed: if we can't confirm dry_run=False (e.g. Supabase outage),
+    # treat as dry_run=True so we never accidentally ship emails during an
+    # infrastructure hiccup.
     dry_run = False
+    profile_read_ok = False
     try:
         if user_id:
             prof_res = sb.table("company_profiles").select("richard_dry_run").eq("user_id", user_id).limit(1).execute()
             prof_rows = prof_res.data or []
             dry_run = bool(prof_rows and prof_rows[0].get("richard_dry_run"))
+            profile_read_ok = True
     except Exception as e:
-        print(f"[dry-run] profile lookup failed (non-fatal): {e}")
+        print(f"[dry-run] profile lookup failed — defaulting to dry_run=True (fail-closed): {e}")
+        dry_run = True
+    # If there's no user_id at all we can't check the flag — treat as NOT dry-run
+    # because that's the pre-dry-run behavior and the only path without a user_id
+    # is internal/test calls.
+    if not user_id:
+        dry_run = False
+        profile_read_ok = True
 
     if dry_run:
         summary = f"DRY RUN — would have executed {tool_name}"
@@ -1463,6 +1475,8 @@ async def approve_brain_action(claim_id: str, body: ToolApproval, background_tas
                 "CARRIER_SCOPE": "scope",
                 "EAGLEVIEW": "measurements",
                 "CONTRACT": "other",
+                "PHOTO": "photos",
+                "SUPPLEMENT_RESPONSE": "other",
                 "OTHER": "other",
             }
             subfolder = _DOC_TYPE_TO_SUBFOLDER.get(doc_type, "other")
@@ -1669,8 +1683,15 @@ def _build_cadence_body_html(
     )
 
     if previous_body_html:
+        import html as _html
+        # Escape the subject — it's a plain string that ends up inside <strong>;
+        # a stray `<` or `</strong>` in the subject would break layout.
+        safe_subject = _html.escape(previous_subject) if previous_subject else ""
         sent_line = f" on {previous_sent_at[:10]}" if previous_sent_at else ""
-        subj_line = f" — Subject: <strong>{previous_subject}</strong>" if previous_subject else ""
+        subj_line = f" — Subject: <strong>{safe_subject}</strong>" if safe_subject else ""
+        # previous_body_html is trusted (comes from our own claim_emails table) but
+        # we still wrap it in a sandbox-ish blockquote so malformed HTML from odd
+        # carrier clients can't escape and break the outer layout.
         top += (
             f"<hr style='border:none;border-top:1px solid #ddd;margin:24px 0 12px' />"
             f"<p style='color:#666;font-size:12px;margin-bottom:8px'>"

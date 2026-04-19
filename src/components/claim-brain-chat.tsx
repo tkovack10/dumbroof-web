@@ -799,6 +799,28 @@ export function ClaimBrainChat({
     };
   }, [isOpen]);
 
+  // Stop any active SpeechRecognition when the chat panel closes or unmounts.
+  // Without this the browser's mic indicator stays on after the user closes the
+  // chat mid-dictation.
+  useEffect(() => {
+    if (!isOpen && recognitionRef.current) {
+      try {
+        (recognitionRef.current as { stop: () => void }).stop();
+      } catch { /* ignore */ }
+      setListening(false);
+    }
+  }, [isOpen]);
+
+  useEffect(() => {
+    return () => {
+      if (recognitionRef.current) {
+        try {
+          (recognitionRef.current as { stop: () => void }).stop();
+        } catch { /* ignore */ }
+      }
+    };
+  }, []);
+
   useEffect(() => {
     let cancelled = false;
     const loadHistory = async () => {
@@ -1192,6 +1214,10 @@ export function ClaimBrainChat({
                             disabled={bulkApproving}
                             onClick={async () => {
                               setBulkApproving(true);
+                              // Mutate msg.toolActions IN PLACE so each card's
+                              // individual buttons disable as we walk the plan.
+                              // Accepts "dry_run" as a continue condition so
+                              // dry-run mode doesn't halt the plan after step 1.
                               try {
                                 for (const action of previews) {
                                   if (!action.approval_id) continue;
@@ -1207,15 +1233,26 @@ export function ClaimBrainChat({
                                     },
                                   );
                                   const data = await res.json().catch(() => ({}));
-                                  if (data.status !== "sent" && data.status !== "complete") {
+                                  const ok =
+                                    data.status === "sent" ||
+                                    data.status === "complete" ||
+                                    data.status === "dry_run";
+                                  if (ok) {
+                                    // Mark the card consumed so its approve/discard buttons disappear.
+                                    action.action = "complete";
+                                    handleToolStatusUpdate(
+                                      action.approval_id,
+                                      data.status === "dry_run" ? "dry_run" : "sent",
+                                    );
+                                  } else {
                                     console.warn(`[bulk-approve] step failed:`, action.tool_name, data);
                                     break;
                                   }
                                 }
+                                // Force a re-render so the in-place mutations show up
+                                setMessages((prev) => [...prev]);
                               } finally {
                                 setBulkApproving(false);
-                                // Force a refresh by re-opening (nudge state)
-                                // The per-card approve buttons will have updated via their own handlers if clicked manually.
                               }
                             }}
                             className="text-[11px] font-semibold px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 text-white transition-colors"
