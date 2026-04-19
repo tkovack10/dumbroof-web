@@ -4,7 +4,7 @@ import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { trackBoth, FunnelEvent } from "@/lib/track";
 
-export function HeroSignupForm() {
+export function HeroSignupForm({ source = "desktop_hero" }: { source?: string } = {}) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [step, setStep] = useState<"email" | "password" | "done">("email");
@@ -71,7 +71,7 @@ export function HeroSignupForm() {
       navigator.sendBeacon(
         "/api/notify-signup",
         new Blob(
-          [JSON.stringify({ email, source: "desktop_hero" })],
+          [JSON.stringify({ email, source })],
           { type: "application/json" }
         )
       );
@@ -79,7 +79,7 @@ export function HeroSignupForm() {
       fetch("/api/notify-signup", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, source: "desktop_hero" }),
+        body: JSON.stringify({ email, source }),
         keepalive: true,
       }).catch(() => {});
     }
