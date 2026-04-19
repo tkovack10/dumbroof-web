@@ -300,6 +300,67 @@ CLAIM_BRAIN_TOOLS = [
         },
     },
     {
+        "name": "find_photo",
+        "description": (
+            "Find a specific photo on this claim by annotation key (e.g. 'p11_02'), "
+            "description text, position (e.g. 'the 23rd photo'), or damage type. "
+            "Use before edit_photo_annotation or exclude_photo_from_claim so you "
+            "know the exact photo_id to target. Returns up to 5 matches ordered by "
+            "relevance with UUID + current annotation + tags."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "query": {
+                    "type": "string",
+                    "description": "Search query. Can be an annotation_key like 'p11_02', free-text like 'chimney flashing', a position like '23' or '2nd on page 11', or a damage descriptor.",
+                },
+            },
+            "required": ["query"],
+        },
+    },
+    {
+        "name": "edit_photo_annotation",
+        "description": (
+            "Edit a photo's annotation (description) and/or tags (damage_type, "
+            "material, severity). The edit writes to annotation_feedback so it "
+            "SURVIVES reprocess — the processor re-injects user-corrected "
+            "annotations as few-shot examples on subsequent runs. Also updates "
+            "the photos table directly for immediate display. REQUIRES USER APPROVAL."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "photo_id": {"type": "string", "description": "UUID from find_photo."},
+                "annotation_text": {"type": "string", "description": "New description for the photo."},
+                "damage_type": {"type": "string", "description": "New damage type tag (hail, wind, mechanical, etc.)."},
+                "material": {"type": "string", "description": "New material tag (shingle, siding, flashing, etc.)."},
+                "severity": {"type": "string", "description": "New severity tag (minor, moderate, severe)."},
+                "reason": {"type": "string", "description": "Why this correction is needed."},
+            },
+            "required": ["photo_id", "reason"],
+        },
+    },
+    {
+        "name": "exclude_photo_from_claim",
+        "description": (
+            "Mark a photo as excluded so it does NOT appear in the forensic report "
+            "or evidence exhibits. Use when a photo is a duplicate, shows something "
+            "unrelated, is blurry, or otherwise shouldn't be in the claim. Writes "
+            "to claims.excluded_photos (JSONB array, survives reprocess). "
+            "REQUIRES USER APPROVAL."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "photo_id": {"type": "string", "description": "UUID from find_photo."},
+                "annotation_key": {"type": "string", "description": "Alternative to photo_id — the annotation_key like 'p11_02'."},
+                "reason": {"type": "string", "description": "Why this photo should be excluded."},
+            },
+            "required": ["reason"],
+        },
+    },
+    {
         "name": "coach_photo_documentation",
         "description": (
             "Analyze the current photo set for this claim and return specific, "
@@ -680,6 +741,12 @@ async def execute_tool(
             result = _handle_get_damage_scores(claim_data)
         elif tool_name == "coach_photo_documentation":
             result = _handle_coach_photo_documentation(sb, claim_id, claim_data, tool_input)
+        elif tool_name == "find_photo":
+            result = _handle_find_photo(sb, claim_id, tool_input)
+        elif tool_name == "edit_photo_annotation":
+            result = _handle_preview_edit_photo(sb, claim_id, tool_input)
+        elif tool_name == "exclude_photo_from_claim":
+            result = _handle_preview_exclude_photo(sb, claim_id, tool_input)
         # ─── R2 classify ──────────────────────────────
         elif tool_name == "classify_uploaded_file":
             result = await _handle_classify_uploaded_file(sb, claim_id, tool_input)
@@ -1746,6 +1813,196 @@ def _handle_preview_cancel_cadence(sb: Client, claim_id: str, tool_input: dict) 
             "pending_count": pending_count,
         },
         "message": f"Ready to cancel {pending_count} pending follow-up{'s' if pending_count != 1 else ''}. Reason: {reason}.",
+    }
+
+
+# ═══════════════════════════════════════════
+# PHOTO EDIT / EXCLUDE
+#
+# Lets users fix bad AI annotations in natural language ("page 11 2nd photo
+# says wrong thing, fix it to X"). Edits write to annotation_feedback so
+# they survive reprocess — the processor re-injects user-corrected
+# annotations as few-shot training signal on subsequent runs.
+# ═══════════════════════════════════════════
+
+
+def _handle_find_photo(sb: Client, claim_id: str, tool_input: dict) -> dict:
+    """Locate photos by annotation_key, position, or text match."""
+    import re as _re
+
+    query = (tool_input.get("query") or "").strip()
+    if not query:
+        return {"action": "error", "message": "query is required"}
+
+    try:
+        res = sb.table("photos").select(
+            "id, annotation_key, annotation_text, damage_type, material, trade, severity, structure"
+        ).eq("claim_id", claim_id).order("annotation_key", desc=False).execute()
+        all_photos = res.data or []
+    except Exception as e:
+        return {"action": "error", "message": f"Photo lookup failed: {e}"}
+
+    if not all_photos:
+        return {
+            "action": "complete",
+            "type": "photo_find",
+            "data": {"matches": [], "query": query, "total_on_claim": 0},
+            "message": "No photos on this claim yet.",
+        }
+
+    q_lower = query.lower().strip()
+    matches: list[dict] = []
+
+    # 1. Exact annotation_key match (e.g. "p11_02")
+    key_match = _re.match(r"^p?(\d+)[_\-\s]+(\d+)$", q_lower)
+    if key_match:
+        page, idx = key_match.group(1), key_match.group(2)
+        target_key = f"p{int(page):02d}_{int(idx):02d}"
+        for p in all_photos:
+            ak = (p.get("annotation_key") or "").lower()
+            if ak == target_key or ak.startswith(f"p{page}_") and idx in ak:
+                matches.append({**p, "match_reason": f"annotation_key {ak}"})
+
+    # 2. "Nth photo" or "photo 23" or just a number
+    if not matches:
+        pos_match = _re.search(r"\b(\d+)(?:st|nd|rd|th)?\b", q_lower)
+        if pos_match and len(q_lower.split()) <= 4:
+            idx = int(pos_match.group(1)) - 1
+            if 0 <= idx < len(all_photos):
+                p = all_photos[idx]
+                matches.append({**p, "match_reason": f"position #{idx + 1} of {len(all_photos)}"})
+
+    # 3. "page N, Mth photo" — find N-th photo on page (by annotation_key prefix)
+    if not matches:
+        page_photo = _re.search(r"page\s*(\d+).*?(\d+)(?:st|nd|rd|th)?", q_lower)
+        if page_photo:
+            page = int(page_photo.group(1))
+            idx = int(page_photo.group(2))
+            page_photos = [p for p in all_photos if (p.get("annotation_key") or "").startswith(f"p{page:02d}_")]
+            if 1 <= idx <= len(page_photos):
+                matches.append({**page_photos[idx - 1], "match_reason": f"page {page}, photo #{idx}"})
+
+    # 4. Free-text fuzzy match against annotation_text + tags
+    if not matches:
+        q_tokens = set(q_lower.split()) - {"the", "a", "an", "photo", "image", "pic"}
+        scored = []
+        for p in all_photos:
+            haystack = " ".join([
+                str(p.get("annotation_text") or ""),
+                str(p.get("damage_type") or ""),
+                str(p.get("material") or ""),
+                str(p.get("trade") or ""),
+                str(p.get("severity") or ""),
+                str(p.get("annotation_key") or ""),
+            ]).lower()
+            hay_tokens = set(haystack.split())
+            overlap = len(q_tokens & hay_tokens)
+            if overlap > 0 or q_lower in haystack:
+                score = overlap + (5 if q_lower in haystack else 0)
+                scored.append((score, p))
+        scored.sort(key=lambda x: x[0], reverse=True)
+        matches = [{**p, "match_reason": f"text match (score {s})"} for s, p in scored[:5]]
+
+    return {
+        "action": "complete",
+        "type": "photo_find",
+        "data": {
+            "matches": matches[:5],
+            "query": query,
+            "total_on_claim": len(all_photos),
+        },
+        "message": (
+            f"{len(matches)} photo{'s' if len(matches) != 1 else ''} matched '{query}'"
+            if matches
+            else f"No photos matched '{query}' on this claim ({len(all_photos)} total)."
+        ),
+    }
+
+
+def _handle_preview_edit_photo(sb: Client, claim_id: str, tool_input: dict) -> dict:
+    photo_id = (tool_input.get("photo_id") or "").strip()
+    reason = (tool_input.get("reason") or "").strip()
+    if not photo_id or not reason:
+        return {"action": "error", "message": "photo_id and reason are required"}
+
+    # At least one field must actually change
+    new_annotation = tool_input.get("annotation_text")
+    new_damage = tool_input.get("damage_type")
+    new_material = tool_input.get("material")
+    new_severity = tool_input.get("severity")
+    if new_annotation is None and new_damage is None and new_material is None and new_severity is None:
+        return {"action": "error", "message": "Provide at least one of annotation_text, damage_type, material, severity."}
+
+    try:
+        res = sb.table("photos").select(
+            "id, annotation_key, annotation_text, damage_type, material, severity"
+        ).eq("id", photo_id).eq("claim_id", claim_id).limit(1).execute()
+        rows = res.data or []
+    except Exception as e:
+        return {"action": "error", "message": f"Photo lookup failed: {e}"}
+
+    if not rows:
+        return {"action": "error", "message": f"Photo {photo_id} not found on this claim."}
+
+    original = rows[0]
+    return {
+        "action": "preview",
+        "type": "edit_photo_annotation",
+        "tool_name": "edit_photo_annotation",
+        "preview": {
+            "action_label": "Edit Photo Annotation",
+            "photo_id": photo_id,
+            "annotation_key": original.get("annotation_key"),
+            "original_annotation": original.get("annotation_text"),
+            "new_annotation": new_annotation,
+            "original_damage_type": original.get("damage_type"),
+            "new_damage_type": new_damage,
+            "original_material": original.get("material"),
+            "new_material": new_material,
+            "original_severity": original.get("severity"),
+            "new_severity": new_severity,
+            "reason": reason,
+        },
+        "message": f"Ready to edit annotation for {original.get('annotation_key')}. Will survive reprocess via annotation_feedback.",
+    }
+
+
+def _handle_preview_exclude_photo(sb: Client, claim_id: str, tool_input: dict) -> dict:
+    photo_id = (tool_input.get("photo_id") or "").strip()
+    annotation_key = (tool_input.get("annotation_key") or "").strip()
+    reason = (tool_input.get("reason") or "").strip()
+    if not reason:
+        return {"action": "error", "message": "reason is required"}
+    if not photo_id and not annotation_key:
+        return {"action": "error", "message": "Provide either photo_id or annotation_key"}
+
+    # Resolve to the photo row — we need annotation_key for the excluded_photos
+    # array (that column stores keys, not UUIDs; see CLAUDE.md notes).
+    try:
+        if photo_id:
+            res = sb.table("photos").select("id, annotation_key, annotation_text").eq("id", photo_id).eq("claim_id", claim_id).limit(1).execute()
+        else:
+            res = sb.table("photos").select("id, annotation_key, annotation_text").eq("annotation_key", annotation_key).eq("claim_id", claim_id).limit(1).execute()
+        rows = res.data or []
+    except Exception as e:
+        return {"action": "error", "message": f"Photo lookup failed: {e}"}
+
+    if not rows:
+        return {"action": "error", "message": "Photo not found on this claim."}
+
+    row = rows[0]
+    return {
+        "action": "preview",
+        "type": "exclude_photo_from_claim",
+        "tool_name": "exclude_photo_from_claim",
+        "preview": {
+            "action_label": "Exclude Photo from Claim",
+            "photo_id": row.get("id"),
+            "annotation_key": row.get("annotation_key"),
+            "current_annotation": row.get("annotation_text"),
+            "reason": reason,
+        },
+        "message": f"Ready to exclude {row.get('annotation_key')} from the forensic report. Reason: {reason}",
     }
 
 

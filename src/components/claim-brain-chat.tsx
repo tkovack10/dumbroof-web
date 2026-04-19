@@ -125,6 +125,9 @@ const TOOL_ICONS: Record<string, string> = {
   search_photos: "📸",
   get_damage_scores: "🎯",
   coach_photo_documentation: "📷",
+  find_photo: "🔍",
+  edit_photo_annotation: "✏️",
+  exclude_photo_from_claim: "🚫",
   classify_uploaded_file: "🗂️",
   attach_to_claim: "📥",
   trigger_reprocess: "🔄",
@@ -154,6 +157,9 @@ const TOOL_LABELS: Record<string, string> = {
   search_photos: "Photo Search",
   get_damage_scores: "Damage Scores",
   coach_photo_documentation: "Photo Coaching",
+  find_photo: "Find Photo",
+  edit_photo_annotation: "Edit Photo Annotation",
+  exclude_photo_from_claim: "Exclude Photo",
   classify_uploaded_file: "File Classification",
   attach_to_claim: "Attach to Claim",
   trigger_reprocess: "Reprocess Claim",
@@ -495,6 +501,37 @@ function ToolActionCard({
             </div>
           </div>
         </div>
+      </div>
+    );
+  }
+
+  // Photo find — results list
+  if (action.action === "complete" && action.type === "photo_find" && action.data) {
+    const d = action.data as { matches?: Array<Record<string, unknown>>; query?: string; total_on_claim?: number };
+    const matches = d.matches || [];
+    return (
+      <div className="bg-teal-500/5 border border-teal-500/20 rounded-lg p-3 my-2">
+        <div className="text-xs text-teal-300 font-medium mb-1">
+          {icon} Photo search: &quot;{String(d.query || "")}&quot; — {matches.length} match{matches.length !== 1 ? "es" : ""}
+        </div>
+        {matches.length === 0 ? (
+          <div className="text-[11px] text-white/40">{action.message}</div>
+        ) : (
+          <div className="space-y-1">
+            {matches.map((m, i) => (
+              <div key={i} className="text-[11px] text-white/70 border-l-2 border-teal-500/30 pl-2">
+                <div className="font-mono text-teal-200">{String(m.annotation_key || "?")}</div>
+                <div className="text-white/60 truncate" title={String(m.annotation_text || "")}>
+                  {String(m.annotation_text || "(no description)")}
+                </div>
+                <div className="text-[10px] text-white/40">
+                  {String(m.damage_type || "—")} / {String(m.material || "—")} / {String(m.severity || "—")}
+                  {m.match_reason ? <span className="text-white/30"> · {String(m.match_reason)}</span> : null}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     );
   }
@@ -869,6 +906,40 @@ function ToolActionCard({
                 </span>
               </div>
               <div className="text-white/60 italic">"{String(p.reason || "")}"</div>
+            </>
+          )}
+          {action.tool_name === "edit_photo_annotation" && (
+            <>
+              <div><span className="text-white/40">Photo:</span> <span className="font-mono text-white">{String(p.annotation_key || "?")}</span></div>
+              {p.new_annotation && p.new_annotation !== p.original_annotation && (
+                <div className="mt-1 p-2 rounded bg-white/5 text-[10px]">
+                  <div className="text-white/40 line-through mb-1">{String(p.original_annotation || "(none)")}</div>
+                  <div className="text-emerald-300">{String(p.new_annotation)}</div>
+                </div>
+              )}
+              <div className="flex flex-wrap gap-2 text-[10px]">
+                {Boolean(p.new_damage_type && p.new_damage_type !== p.original_damage_type) && (
+                  <span><span className="text-white/40">damage:</span> <span className="line-through text-white/40">{String(p.original_damage_type || "—")}</span> → <span className="text-emerald-300">{String(p.new_damage_type)}</span></span>
+                )}
+                {Boolean(p.new_material && p.new_material !== p.original_material) && (
+                  <span><span className="text-white/40">material:</span> <span className="line-through text-white/40">{String(p.original_material || "—")}</span> → <span className="text-emerald-300">{String(p.new_material)}</span></span>
+                )}
+                {Boolean(p.new_severity && p.new_severity !== p.original_severity) && (
+                  <span><span className="text-white/40">severity:</span> <span className="line-through text-white/40">{String(p.original_severity || "—")}</span> → <span className="text-emerald-300">{String(p.new_severity)}</span></span>
+                )}
+              </div>
+              <div className="text-white/60 italic">&quot;{String(p.reason || "")}&quot;</div>
+              <div className="text-[10px] text-white/40">✓ Survives reprocess (annotation_feedback)</div>
+            </>
+          )}
+          {action.tool_name === "exclude_photo_from_claim" && (
+            <>
+              <div><span className="text-white/40">Photo:</span> <span className="font-mono text-white">{String(p.annotation_key || "?")}</span></div>
+              <div className="text-white/70 truncate" title={String(p.current_annotation || "")}>
+                <span className="text-white/40">Current caption:</span> {String(p.current_annotation || "(none)")}
+              </div>
+              <div className="text-white/60 italic">&quot;{String(p.reason || "")}&quot;</div>
+              <div className="text-[10px] text-amber-300/80">⚠ Removes from forensic report on next reprocess</div>
             </>
           )}
           {action.tool_name === "recompute_estimate" && (

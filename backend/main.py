@@ -1026,6 +1026,9 @@ actionable (send emails, generate documents, check status), USE the appropriate 
 - **search_photos** — Filter photos by damage_type / material / trade / severity. Use when assembling evidence or answering "do we have X?"
 - **get_damage_scores** — Returns the Damage Score (DS) and Technical Approval Score (TAS) with grades.
 - **coach_photo_documentation** — Analyzes the current photo set and returns SPECIFIC coaching steps with exact techniques (test squares, chalk contrast, scale references, labeled overviews). Call this when the user asks "what photos am I missing?", "how do I document this better?", "how can I strengthen this claim?", OR proactively any time you see DS < 70 or the user is about to send something to the carrier with incomplete evidence. Returns concrete instructions — not "take more photos" but "mark a 10x10 test square with chalk, circle every hail hit, shoot from above with a quarter for scale."
+- **find_photo** — Locate a specific photo by annotation_key ('p11_02'), position ('the 23rd photo', 'page 11 2nd photo'), or text content ('chimney flashing'). Call FIRST before edit_photo_annotation or exclude_photo_from_claim so you know the exact photo_id.
+- **edit_photo_annotation** — Fix a bad AI annotation. User says "page 11, 2nd photo is wrong — it's not hail, it's wind damage" → find_photo('page 11 2nd photo') → edit_photo_annotation(photo_id, damage_type='wind', annotation_text='...', reason='...'). Edits survive reprocess via annotation_feedback training signal. REQUIRES APPROVAL.
+- **exclude_photo_from_claim** — Drop a photo from the forensic report (duplicate, blurry, unrelated, wrong claim). Writes to claims.excluded_photos which survives reprocess. REQUIRES APPROVAL.
 
 ### FORENSIC PHOTO INTERPRETATION (when users SHOW you a photo)
 
@@ -1780,6 +1783,77 @@ async def approve_brain_action(claim_id: str, body: ToolApproval, background_tas
                 "message": f"Scheduled {len(rows_to_insert)} follow-up{'s' if len(rows_to_insert) != 1 else ''}.",
                 "scheduled_count": len(rows_to_insert),
             }
+
+        # ─── Photo annotation edit ───
+        # Writes to annotation_feedback (survives reprocess as training signal)
+        # AND updates photos table directly so the user sees the change immediately.
+        if tool_name == "edit_photo_annotation":
+            preview = tool_result.get("preview") or {}
+            photo_id = preview.get("photo_id")
+            if not photo_id:
+                raise ValueError("photo_id missing from preview")
+
+            update_payload: dict = {}
+            if preview.get("new_annotation") is not None:
+                update_payload["annotation_text"] = preview["new_annotation"]
+            if preview.get("new_damage_type") is not None:
+                update_payload["damage_type"] = preview["new_damage_type"]
+            if preview.get("new_material") is not None:
+                update_payload["material"] = preview["new_material"]
+            if preview.get("new_severity") is not None:
+                update_payload["severity"] = preview["new_severity"]
+
+            if update_payload:
+                sb.table("photos").update(update_payload).eq("id", photo_id).eq("claim_id", claim_id).execute()
+
+            # Write to annotation_feedback so the correction survives reprocess.
+            original_tags = {
+                "damage_type": preview.get("original_damage_type"),
+                "material": preview.get("original_material"),
+                "severity": preview.get("original_severity"),
+            }
+            corrected_tags = {
+                "damage_type": preview.get("new_damage_type") or preview.get("original_damage_type"),
+                "material": preview.get("new_material") or preview.get("original_material"),
+                "severity": preview.get("new_severity") or preview.get("original_severity"),
+            }
+            try:
+                sb.table("annotation_feedback").upsert({
+                    "photo_id": photo_id,
+                    "claim_id": claim_id,
+                    "status": "corrected",
+                    "original_annotation": preview.get("original_annotation"),
+                    "corrected_annotation": preview.get("new_annotation") or preview.get("original_annotation"),
+                    "original_tags": original_tags,
+                    "corrected_tags": corrected_tags,
+                    "notes": preview.get("reason"),
+                }, on_conflict="photo_id").execute()
+            except Exception as e:
+                # Non-fatal — direct update already took effect
+                print(f"[photo edit] annotation_feedback upsert failed: {e}")
+
+            _audit_log(sb, claim_id, user_id, tool_name, preview, {"action": "sent", "message": f"edited {preview.get('annotation_key')}"}, 0)
+            return {"status": "sent", "message": f"Updated {preview.get('annotation_key')}. Correction will persist through reprocess."}
+
+        # ─── Photo exclude ───
+        # Adds annotation_key to claims.excluded_photos (JSONB). processor.py
+        # already respects this on every reprocess.
+        if tool_name == "exclude_photo_from_claim":
+            preview = tool_result.get("preview") or {}
+            excl_key = preview.get("annotation_key")
+            if not excl_key:
+                raise ValueError("annotation_key missing from preview")
+
+            existing_res = sb.table("claims").select("excluded_photos").eq("id", claim_id).single().execute()
+            existing = (existing_res.data or {}).get("excluded_photos") or []
+            if not isinstance(existing, list):
+                existing = []
+            if excl_key not in existing:
+                existing.append(excl_key)
+            sb.table("claims").update({"excluded_photos": existing}).eq("id", claim_id).execute()
+
+            _audit_log(sb, claim_id, user_id, tool_name, preview, {"action": "sent", "message": f"excluded {excl_key}"}, 0)
+            return {"status": "sent", "message": f"Excluded {excl_key} from the forensic report. Reprocess to regenerate PDFs without it."}
 
         # ─── Line item surgery ───
         if tool_name == "add_line_item":
