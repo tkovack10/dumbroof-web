@@ -1864,6 +1864,33 @@ def _analyze_photo_coverage(photos: list[dict], focus: str, claim_data: dict) ->
         photos, ["sheathing", "decking", "plywood", "osb", "attic underside"]
     )
 
+    # Soft-metal collateral — chalk tests on gutters/downspouts/fascia/
+    # aluminum siding/window wraps/mailbox. Hail's fingerprint is all over
+    # soft metals; chalk makes dents readable. Different from flashing chalk.
+    soft_metal_chalk_photos = sum(
+        1 for p in photos
+        if _photo_matches_any(p, [
+            "gutter", "downspout", "mailbox", "window wrap", "fascia",
+            "aluminum siding", "soft metal", "condenser", "ac unit",
+        ]) and _photo_matches_any(p, ["chalk", "chalked"])
+    )
+    # Track whether any soft-metal close-ups exist at all (chalked or not)
+    soft_metal_photos = _count_by_keywords(
+        photos, ["mailbox", "window wrap", "fascia", "aluminum siding", "condenser", "ac unit"]
+    )
+
+    # Screen damage — holes/tears in window/door/porch screens is
+    # direct hail-impact evidence that can't be dismissed as age.
+    screen_photos = _count_by_keywords(
+        photos, ["screen", "window screen", "door screen", "porch screen", "torn screen", "screen hole"]
+    )
+
+    # Hail splatter — impact-direction marks on painted surfaces,
+    # wood, asphalt driveway, concrete, decks. Shows storm direction + size.
+    splatter_photos = _count_by_keywords(
+        photos, ["splatter", "splash mark", "splat", "impact mark", "pock mark", "driveway hit"]
+    )
+
     # ── Infer damage type from scope_comparison + photos ──
     scope_rows = claim_data.get("scope_comparison") or []
     scope_text = " ".join(
@@ -1898,6 +1925,10 @@ def _analyze_photo_coverage(photos: list[dict], focus: str, claim_data: dict) ->
         "mat_exposure_photos": mat_exposure_photos,
         "granule_test_photos": granule_test_photos,
         "sheathing_photos": sheathing_photos,
+        "soft_metal_chalk_photos": soft_metal_chalk_photos,
+        "soft_metal_photos": soft_metal_photos,
+        "screen_photos": screen_photos,
+        "splatter_photos": splatter_photos,
         # damage type inference
         "is_wind_claim": is_wind_claim,
         "is_hail_claim": is_hail_claim,
@@ -2162,6 +2193,91 @@ def _generate_coaching_steps(coverage: dict, claim_data: dict, focus: str) -> li
                 "Close-up, no glare, readable. Label which slope it came from."
             ),
             "damage_score_impact": "+4 points",
+        })
+
+    # SOFT-METAL CHALK TEST (hail claims) — gutters / downspouts / fascia /
+    # aluminum siding / window wraps / mailbox / A/C condenser. Hail signs
+    # its work on every soft metal in the yard; chalk makes the dents
+    # readable. This is one of the strongest corroborating-evidence plays
+    # because it proves the storm actually hit the property (not a neighbor
+    # 2 blocks over).
+    if (show_all or focus in ("roof", "gutters", "siding")) and coverage["is_hail_claim"] and coverage["soft_metal_chalk_photos"] == 0:
+        steps.append({
+            "title": "Chalk-contrast every soft metal — hail's corroborating evidence",
+            "importance": "critical",
+            "area": "roof",
+            "instruction": (
+                "Hail dents every soft metal it hits — gutters, downspouts, window "
+                "wraps, fascia, aluminum siding, mailbox, A/C condenser fins. These "
+                "dents are subtle without chalk. Rub chalk horizontally across each "
+                "metal surface, then shoot a close-up — every dent fills with chalk "
+                "and becomes countable.\n\n"
+                "Hit list (work around the property):\n"
+                "  • **Gutters** — chalk the front face, shoot from below. Hail hits the "
+                "top lip too; get a ladder shot.\n"
+                "  • **Downspouts** — all 4 elevations. Dents concentrated on the "
+                "storm-facing side tell you the wind direction.\n"
+                "  • **Window wraps & capping** — aluminum wraps around windows dent "
+                "easily. Chalk them.\n"
+                "  • **Fascia / rake boards** — if aluminum-wrapped, chalk and shoot.\n"
+                "  • **Aluminum siding / rear garage walls** — common overlooked target.\n"
+                "  • **Mailbox** — if metal, it's a free hail-size reference shot.\n"
+                "  • **A/C condenser unit** — fin damage is 100% hail. Shoot the "
+                "coil fins close-up.\n\n"
+                "**Why this matters:** Adjusters love to call roof damage 'cosmetic' "
+                "or 'pre-existing.' Soft-metal dents across the yard prove a storm "
+                "actually hit THIS property with hail large enough to deform metal — "
+                "which is the same force that damaged the shingles."
+            ),
+            "damage_score_impact": "+12 points",
+        })
+
+    # SCREEN DAMAGE (hail claims) — direct impact evidence
+    if (show_all or focus == "siding") and coverage["is_hail_claim"] and coverage["screen_photos"] == 0:
+        steps.append({
+            "title": "Check window & door screens for hail holes",
+            "importance": "high",
+            "area": "siding",
+            "instruction": (
+                "Walk the house and inspect every window screen, door screen, and "
+                "porch screen. Hail punches clean holes or tears the mesh — adjusters "
+                "can't argue age-related wear against a screen that's been in place for "
+                "10 years without holes and now has 6.\n\n"
+                "For each damaged screen:\n"
+                "  1. Wide shot of the window/door showing location\n"
+                "  2. Close-up of the hole/tear with a quarter for scale\n"
+                "  3. Count holes per screen — adjusters have per-screen replacement "
+                "unit pricing. More holes = more replacement.\n\n"
+                "If screens are clean, that's worth noting too — if the rest of the "
+                "house shows hail evidence but screens are intact, adjuster may argue "
+                "hail size was sub-screen. Rare, but worth checking."
+            ),
+            "damage_score_impact": "+6 points",
+        })
+
+    # HAIL SPLATTER (hail claims) — directional impact marks
+    if (show_all or focus == "roof") and coverage["is_hail_claim"] and coverage["splatter_photos"] == 0:
+        steps.append({
+            "title": "Document hail splatter marks on hard surfaces",
+            "importance": "high",
+            "area": "roof",
+            "instruction": (
+                "Hail leaves wet/dirt splatter marks on surfaces it strikes — painted "
+                "wood, asphalt driveways, concrete walks, deck boards, painted fences. "
+                "These marks are: (a) directional (show storm angle), (b) sized (the "
+                "impact diameter = rough hail size), and (c) undeniable storm evidence.\n\n"
+                "Walk the property and shoot:\n"
+                "  • **Driveway / concrete walks** — pock marks where hail hit wet "
+                "surface. Close-up with quarter for scale.\n"
+                "  • **Painted deck boards / fences** — splatter marks or dirt "
+                "residue. Shoot overhead.\n"
+                "  • **Wooden fences / posts** — impact dings, lighter marks where "
+                "paint was chipped.\n"
+                "  • **Garage door panels** — metal dimples or paint chips.\n\n"
+                "If you can include a ruler ACROSS the splatter mark, that's a "
+                "measurable hail-size argument that backs up the NOAA storm data."
+            ),
+            "damage_score_impact": "+7 points",
         })
 
     # MAT EXPOSURE — thermal splitting indicator
