@@ -81,7 +81,7 @@ def _format_date(date_str: str) -> str:
     except ValueError:
         return date_str  # Already formatted or unparseable
 
-def _call_claude_with_retry(client, max_retries=4, _step_name="unknown", _metadata=None, **kwargs):
+def _call_claude_with_retry(client, max_retries=6, _step_name="unknown", _metadata=None, **kwargs):
     """Call Claude API with retry on all transient errors + optional telemetry logging.
 
     Catches rate limits (429), internal errors (500), overloaded (529), and

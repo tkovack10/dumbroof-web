@@ -64,9 +64,13 @@ _RETRYABLE_ANTHROPIC_ERRORS = tuple(filter(None, [
 
 # Backoff schedule by attempt index (0-based). RateLimit gets minute-scale
 # waits because it usually means 60s+ of quota is gone. Overloaded/5xx clear
-# much faster — Anthropic's capacity hiccups are typically 5-30s windows.
-_RATE_LIMIT_BACKOFF_SEC = (60, 120, 180)
-_TRANSIENT_BACKOFF_SEC = (2, 8, 20, 45)
+# on the order of minutes — we've observed outages lasting 30+ minutes,
+# so the budget is tuned for sustained capacity events, not just 30s blips.
+_RATE_LIMIT_BACKOFF_SEC = (60, 120, 180, 300)
+_TRANSIENT_BACKOFF_SEC = (5, 20, 60, 120, 180)
+# Total transient retry budget: 5+20+60+120+180 = ~6.4 min across 6 attempts.
+# Handles the vast majority of Anthropic capacity events without false
+# failures on claims while still bounding worst-case claim latency.
 
 
 def _is_overloaded(exc: Exception) -> bool:
@@ -85,7 +89,7 @@ def call_claude_logged(
     sb,
     claim_id: Optional[str],
     step_name: str,
-    max_retries: int = 4,
+    max_retries: int = 6,
     metadata: Optional[dict] = None,
     **kwargs,
 ) -> anthropic.types.Message:
@@ -94,6 +98,10 @@ def call_claude_logged(
     Retries on ALL transient Anthropic errors — rate limits, 5xx, 529 overloaded,
     network timeouts — with distinct backoff schedules. Non-transient errors
     (4xx auth, bad requests, etc.) raise immediately.
+
+    Total transient retry budget: ~6.4 min across 6 attempts. Observed
+    Anthropic capacity events can last 10-30+ min, so individual claims
+    may still fail, but the vast majority of transient blips are absorbed.
     """
     model = kwargs.get("model", "claude-opus-4-6")
     start_ms = time.time() * 1000
