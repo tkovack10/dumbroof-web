@@ -130,6 +130,11 @@ const TOOL_ICONS: Record<string, string> = {
   send_to_carrier: "🚀",
   schedule_follow_up_cadence: "⏱️",
   cancel_cadence: "🛑",
+  list_line_items: "📋",
+  add_line_item: "➕",
+  remove_line_item: "➖",
+  modify_line_item: "✏️",
+  recompute_estimate: "🧮",
 };
 
 const TOOL_LABELS: Record<string, string> = {
@@ -153,6 +158,11 @@ const TOOL_LABELS: Record<string, string> = {
   send_to_carrier: "Send to Carrier",
   schedule_follow_up_cadence: "Schedule Follow-Ups",
   cancel_cadence: "Cancel Follow-Ups",
+  list_line_items: "Line Items",
+  add_line_item: "Add Line Item",
+  remove_line_item: "Remove Line Item",
+  modify_line_item: "Modify Line Item",
+  recompute_estimate: "Recompute Estimate",
 };
 
 const QUICK_ACTIONS = [
@@ -487,6 +497,38 @@ function ToolActionCard({
     );
   }
 
+  // Line item list (read-only)
+  if (action.action === "complete" && action.type === "line_items" && action.data) {
+    const d = action.data as { items?: Array<Record<string, unknown>>; count?: number; source?: string; total_value?: number };
+    const items = d.items || [];
+    return (
+      <div className="bg-teal-500/5 border border-teal-500/20 rounded-lg p-3 my-2">
+        <div className="flex items-center justify-between mb-1">
+          <div className="text-xs text-teal-300 font-medium">{icon} {label} ({d.source})</div>
+          {typeof d.total_value === "number" && (
+            <div className="text-[11px] text-teal-200 font-semibold">${d.total_value.toLocaleString()}</div>
+          )}
+        </div>
+        {items.length === 0 ? (
+          <div className="text-[11px] text-white/40">{action.message}</div>
+        ) : (
+          <div className="space-y-0.5">
+            {items.slice(0, 8).map((li, i) => (
+              <div key={i} className="text-[10px] text-white/70 flex items-center justify-between gap-2">
+                <span className="truncate flex-1" title={String(li.description || "")}>
+                  {String(li.description || "?")}
+                </span>
+                <span className="text-white/50 shrink-0">{String(li.qty || 0)} {String(li.unit || "")}</span>
+                <span className="text-white/70 shrink-0">${Number(li.total || 0).toLocaleString()}</span>
+              </div>
+            ))}
+            {items.length > 8 && <div className="text-[10px] text-white/30">+ {items.length - 8} more</div>}
+          </div>
+        )}
+      </div>
+    );
+  }
+
   // R2 — File classification
   if (action.action === "complete" && action.type === "file_classification" && action.data) {
     const d = action.data as {
@@ -698,6 +740,54 @@ function ToolActionCard({
               ) : (
                 <div><span className="text-white/40">Reason:</span> {String(p.reason || "")}</div>
               )}
+            </>
+          )}
+          {action.tool_name === "add_line_item" && (
+            <>
+              <div><span className="text-white/40">Description:</span> <span className="text-white">{String(p.description || "")}</span></div>
+              <div className="flex items-center gap-3">
+                <span><span className="text-white/40">Qty:</span> {String(p.qty || 0)} {String(p.unit || "")}</span>
+                <span><span className="text-white/40">Price:</span> ${Number(p.unit_price || 0).toFixed(2)}</span>
+                <span className="text-emerald-300 font-semibold">= ${Number(p.total || 0).toLocaleString()}</span>
+              </div>
+              {p.xactimate_code ? <div><span className="text-white/40">Code:</span> {String(p.xactimate_code)}</div> : null}
+              <div className="text-white/60 italic">"{String(p.reason || "")}"</div>
+            </>
+          )}
+          {action.tool_name === "remove_line_item" && (
+            <>
+              <div><span className="text-white/40">Item:</span> <span className="text-white">{String(p.description || "")}</span></div>
+              <div><span className="text-white/40">Total removed:</span> <span className="text-red-300 font-semibold">-${Number(p.total || 0).toLocaleString()}</span></div>
+              <div><span className="text-white/40">Source:</span> {String(p.source || "")}</div>
+              <div className="text-white/60 italic">"{String(p.reason || "")}"</div>
+            </>
+          )}
+          {action.tool_name === "modify_line_item" && (
+            <>
+              <div><span className="text-white/40">Item:</span> <span className="text-white">{String(p.description || "")}</span></div>
+              <div className="flex items-center gap-2 text-white/70">
+                <span>{String(p.old_qty || 0)}{String(p.unit || "")} × ${Number(p.old_unit_price || 0).toFixed(2)} = ${Number(p.old_total || 0).toLocaleString()}</span>
+                <span className="text-white/40">→</span>
+                <span className="font-semibold">{String(p.new_qty || 0)}{String(p.unit || "")} × ${Number(p.new_unit_price || 0).toFixed(2)} = ${Number(p.new_total || 0).toLocaleString()}</span>
+              </div>
+              <div>
+                <span className="text-white/40">Delta:</span>{" "}
+                <span className={Number(p.delta || 0) > 0 ? "text-emerald-300 font-semibold" : "text-red-300 font-semibold"}>
+                  {Number(p.delta || 0) > 0 ? "+" : ""}${Number(p.delta || 0).toLocaleString()}
+                </span>
+              </div>
+              <div className="text-white/60 italic">"{String(p.reason || "")}"</div>
+            </>
+          )}
+          {action.tool_name === "recompute_estimate" && (
+            <>
+              <div><span className="text-white/40">Line items:</span> {String(p.line_item_count || 0)}</div>
+              <div className="flex items-center gap-2">
+                <span><span className="text-white/40">Old RCV:</span> ${Number(p.old_contractor_rcv || 0).toLocaleString()}</span>
+                <span className="text-white/40">→</span>
+                <span className="font-semibold text-emerald-300">${Number(p.projected_contractor_rcv || 0).toLocaleString()}</span>
+              </div>
+              <div><span className="text-white/40">New variance:</span> ${Number(p.projected_variance || 0).toLocaleString()}</div>
             </>
           )}
         </div>

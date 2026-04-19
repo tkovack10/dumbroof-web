@@ -1046,6 +1046,20 @@ actionable (send emails, generate documents, check status), USE the appropriate 
 - **schedule_follow_up_cadence** — Write follow-up emails to claim_brain_cadence_sends. Typical AOB cadence: days=[3,7,14,21]. Supplement: days=[3,7,15]. A cron job sends each follow-up when the scheduled_at arrives.
 - **cancel_cadence** — Kill all pending follow-ups on this claim. Use when the carrier has responded or the claim closed.
 
+### LINE ITEM SURGERY (approval-gated)
+- **list_line_items** — READ-ONLY. Call this FIRST before add/remove/modify so you know real line IDs and current qty/price. Filter by source='usarm' | 'carrier' | 'user_added'.
+- **add_line_item** — Insert a user-added line into this claim's estimate. Use when something is missing from both the carrier's and the contractor's scope (typically after get_scope_comparison reveals a gap). ALWAYS pair with a clear `reason` that cites code, evidence, or measurement.
+- **remove_line_item** — Exclude an existing line item by UUID. Use when the carrier scoped a duplicate, wrong material, or scope item that doesn't belong.
+- **modify_line_item** — Change qty and/or unit_price on an existing line. Use for quantity disputes (e.g. carrier's 24 SQ → actual 28 SQ) or pricing corrections (ITEL pricing → NYBI26).
+- **recompute_estimate** — After any add/remove/modify, call this so the contractor_rcv and variance reflect the new totals. Faster than trigger_reprocess (no PDF regen). Respects O&P + tax + excluded_line_items. If you need new PDFs reflecting the change, ALSO call trigger_reprocess.
+
+**Typical line-item flow:**
+  1. get_scope_comparison(gaps_only=true) → see gaps
+  2. lookup_xactimate_price("step flashing", state) → get code + price
+  3. list_line_items(source="usarm") → confirm what's already there
+  4. add_line_item(description="R&R Step flashing", qty=30, unit="LF", unit_price=15.10, reason="R903.2.1 requires continuous flashing at roof-to-wall junctions; evidence photo p14_03 shows missing flashing")
+  5. recompute_estimate() → new contractor_rcv and variance
+
 **Agentic chain — "drop AOB → send to carrier with cadence" (Tom's flagship flow):**
   1. User drops AOB into chat → classify_uploaded_file → returns AOB, 0.98 confidence
   2. attach_to_claim(doc_type=AOB, confidence=0.98) → preview → user approves
@@ -1664,6 +1678,93 @@ async def approve_brain_action(claim_id: str, body: ToolApproval, background_tas
                 "scheduled_count": len(rows_to_insert),
             }
 
+        # ─── Line item surgery ───
+        if tool_name == "add_line_item":
+            preview = tool_result.get("preview") or {}
+            qty = float(preview.get("qty") or 0)
+            unit_price = float(preview.get("unit_price") or 0)
+            new_row = {
+                "claim_id": claim_id,
+                "category": preview.get("category") or "GENERAL",
+                "description": preview.get("description"),
+                "qty": qty,
+                "unit": preview.get("unit"),
+                "unit_price": unit_price,
+                "total": qty * unit_price,
+                "xactimate_code": preview.get("xactimate_code"),
+                "trade": preview.get("trade"),
+                "source": "user_added",
+                "variance_note": preview.get("reason"),
+            }
+            insert = sb.table("line_items").insert(new_row).execute()
+            inserted = (insert.data or [{}])[0]
+            _recompute_and_write_contractor_rcv(sb, claim_id)
+            _audit_log(sb, claim_id, user_id, tool_name, preview, {"action": "sent", "message": f"added: {preview.get('description')}"}, 0)
+            return {"status": "sent", "message": f"Added {preview.get('description')}.", "line_item_id": inserted.get("id")}
+
+        if tool_name == "remove_line_item":
+            preview = tool_result.get("preview") or {}
+            line_item_id = preview.get("line_item_id")
+            # Push into claims.excluded_line_items (JSONB array) — survives reprocess.
+            existing_res = sb.table("claims").select("excluded_line_items").eq("id", claim_id).single().execute()
+            existing = (existing_res.data or {}).get("excluded_line_items") or []
+            if not isinstance(existing, list):
+                existing = []
+            if line_item_id not in existing:
+                existing.append(line_item_id)
+            sb.table("claims").update({"excluded_line_items": existing}).eq("id", claim_id).execute()
+            # Also record the exclusion reason in line_item_feedback for training
+            try:
+                sb.table("line_item_feedback").insert({
+                    "claim_id": claim_id,
+                    "user_id": user_id or None,
+                    "line_item_id": line_item_id,
+                    "original_description": preview.get("description"),
+                    "status": "excluded",
+                    "reason": preview.get("reason"),
+                }).execute()
+            except Exception as e:
+                print(f"[LINE ITEM REMOVE] feedback insert failed (non-fatal): {e}")
+            _recompute_and_write_contractor_rcv(sb, claim_id, excluded_ids=set(existing))
+            _audit_log(sb, claim_id, user_id, tool_name, preview, {"action": "sent", "message": f"excluded: {preview.get('description')}"}, 0)
+            return {"status": "sent", "message": f"Excluded {preview.get('description')}."}
+
+        if tool_name == "modify_line_item":
+            preview = tool_result.get("preview") or {}
+            line_item_id = preview.get("line_item_id")
+            # Update the line_items row directly AND record in line_item_feedback
+            # so the correction survives reprocess.
+            new_qty = float(preview.get("new_qty") or 0)
+            new_price = float(preview.get("new_unit_price") or 0)
+            sb.table("line_items").update({
+                "qty": new_qty,
+                "unit_price": new_price,
+                "total": new_qty * new_price,
+                "variance_note": preview.get("reason"),
+            }).eq("id", line_item_id).eq("claim_id", claim_id).execute()
+            try:
+                sb.table("line_item_feedback").insert({
+                    "claim_id": claim_id,
+                    "user_id": user_id or None,
+                    "line_item_id": line_item_id,
+                    "original_description": preview.get("description"),
+                    "corrected_qty": new_qty,
+                    "corrected_unit_price": new_price,
+                    "status": "modified",
+                    "reason": preview.get("reason"),
+                }).execute()
+            except Exception as e:
+                print(f"[LINE ITEM MODIFY] feedback insert failed (non-fatal): {e}")
+            _recompute_and_write_contractor_rcv(sb, claim_id)
+            _audit_log(sb, claim_id, user_id, tool_name, preview, {"action": "sent", "message": f"modified: {preview.get('description')}"}, 0)
+            return {"status": "sent", "message": f"Updated {preview.get('description')}."}
+
+        if tool_name == "recompute_estimate":
+            preview = tool_result.get("preview") or {}
+            new_rcv = _recompute_and_write_contractor_rcv(sb, claim_id)
+            _audit_log(sb, claim_id, user_id, tool_name, preview, {"action": "sent", "message": f"recomputed: ${new_rcv:,.2f}"}, 0)
+            return {"status": "sent", "message": f"Recomputed contractor_rcv: ${new_rcv:,.2f}."}
+
         # ─── R4: cancel_cadence ───
         # supabase-py's .update().execute() return shape for .data is unreliable
         # across SDK versions. Count pending rows FIRST, then update — the count
@@ -1687,6 +1788,48 @@ async def approve_brain_action(claim_id: str, body: ToolApproval, background_tas
     except Exception as e:
         _audit_log(sb, claim_id, user_id, tool_name, tool_result.get("preview") or {}, {"action": "error", "message": str(e)}, 0, error=str(e))
         return {"status": "error", "message": f"Failed: {str(e)}"}
+
+
+def _recompute_and_write_contractor_rcv(sb, claim_id: str, excluded_ids: Optional[set] = None) -> float:
+    """Fast recompute of claims.contractor_rcv from line_items.
+
+    Avoids the full reprocess (PDFs + photos + scope compare) when the user
+    is just tweaking line items. Honors claims.o_and_p_enabled + tax_rate +
+    excluded_line_items.
+    """
+    try:
+        claim_res = sb.table("claims").select(
+            "contractor_rcv, o_and_p_enabled, tax_rate, excluded_line_items"
+        ).eq("id", claim_id).single().execute()
+        claim = claim_res.data or {}
+
+        if excluded_ids is None:
+            excluded_raw = claim.get("excluded_line_items") or []
+            excluded_ids = set(excluded_raw) if isinstance(excluded_raw, list) else set()
+
+        items_res = sb.table("line_items").select("id, qty, unit_price, total").eq("claim_id", claim_id).execute()
+        items = items_res.data or []
+
+        line_total = 0.0
+        for item in items:
+            if item.get("id") in excluded_ids:
+                continue
+            t = item.get("total")
+            if t is None:
+                t = float(item.get("qty") or 0) * float(item.get("unit_price") or 0)
+            line_total += float(t or 0)
+
+        tax_rate = float(claim.get("tax_rate") or 0)
+        op_enabled = bool(claim.get("o_and_p_enabled"))
+        tax = line_total * tax_rate
+        op = line_total * 0.21 if op_enabled else 0.0
+        new_rcv = round(line_total + tax + op, 2)
+
+        sb.table("claims").update({"contractor_rcv": new_rcv}).eq("id", claim_id).execute()
+        return new_rcv
+    except Exception as e:
+        print(f"[RECOMPUTE] failed (non-fatal): {e}")
+        return 0.0
 
 
 def _build_cadence_body_html(

@@ -426,6 +426,101 @@ CLAIM_BRAIN_TOOLS = [
         },
     },
     # ─────────────────────────────────────────────
+    # Line item surgery (approval-gated for mutations)
+    # ─────────────────────────────────────────────
+    {
+        "name": "list_line_items",
+        "description": (
+            "Return the current line items on this claim's estimate. Use before proposing "
+            "add_line_item / remove_line_item / modify_line_item so you know exact line IDs "
+            "and current quantities. Filter by source ('usarm' = contractor, 'carrier', "
+            "'user_added' = previously added by a user through Richard)."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "source": {
+                    "type": "string",
+                    "enum": ["usarm", "carrier", "user_added", "all"],
+                    "description": "Filter by source. 'all' returns everything.",
+                    "default": "usarm",
+                },
+                "trade": {"type": "string", "description": "Optional trade filter (roofing, siding, gutters, etc)."},
+                "limit": {"type": "integer", "description": "Max rows. Default 50.", "default": 50},
+            },
+            "required": [],
+        },
+    },
+    {
+        "name": "add_line_item",
+        "description": (
+            "Add a new line item to the claim's estimate. Survives reprocess (stored with "
+            "source='user_added'). Use when the carrier's scope or contractor's estimate is "
+            "missing an item that should be there. REQUIRES USER APPROVAL."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "description": {"type": "string", "description": "Full line item description, e.g. 'R&R Step flashing - 5 inch'."},
+                "qty": {"type": "number", "description": "Quantity."},
+                "unit": {"type": "string", "description": "Unit (LF, SF, SQ, EA, etc.)."},
+                "unit_price": {"type": "number", "description": "Price per unit."},
+                "category": {
+                    "type": "string",
+                    "enum": ["ROOFING", "SIDING", "GUTTERS", "FLASHING", "EXTERIOR", "INTERIOR", "CODE", "MANUFACTURER_INSTALL", "LABOR", "GENERAL"],
+                    "description": "Category. Default GENERAL.",
+                },
+                "xactimate_code": {"type": "string", "description": "Xactimate code if known, e.g. 'RFG STEP'."},
+                "trade": {"type": "string", "description": "Trade: roofing, siding, gutters, etc."},
+                "reason": {"type": "string", "description": "Why this item should be added — code citation, evidence, or missing-item rationale."},
+            },
+            "required": ["description", "qty", "unit", "unit_price", "reason"],
+        },
+    },
+    {
+        "name": "remove_line_item",
+        "description": (
+            "Exclude a line item from the claim's estimate. Adds to claims.excluded_line_items "
+            "which survives reprocess. Use when the carrier included something that shouldn't "
+            "be there (wrong material, duplicate line, etc.). REQUIRES USER APPROVAL."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "line_item_id": {"type": "string", "description": "UUID from list_line_items."},
+                "reason": {"type": "string", "description": "Why this item is being excluded."},
+            },
+            "required": ["line_item_id", "reason"],
+        },
+    },
+    {
+        "name": "modify_line_item",
+        "description": (
+            "Change quantity and/or unit_price on a line item. Writes line_item_feedback which "
+            "survives reprocess and also trains the platform. Use for quantity disputes or "
+            "pricing corrections. REQUIRES USER APPROVAL."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "line_item_id": {"type": "string", "description": "UUID from list_line_items."},
+                "qty": {"type": "number", "description": "Corrected quantity."},
+                "unit_price": {"type": "number", "description": "Corrected unit price."},
+                "reason": {"type": "string", "description": "Why this change is needed."},
+            },
+            "required": ["line_item_id", "reason"],
+        },
+    },
+    {
+        "name": "recompute_estimate",
+        "description": (
+            "Recalculate the claim's contractor_rcv + variance from the current line_items "
+            "table. Faster than trigger_reprocess (no photo/PDF regen) — useful right after "
+            "add/remove/modify operations. REQUIRES USER APPROVAL."
+        ),
+        "input_schema": {"type": "object", "properties": {}, "required": []},
+    },
+    # ─────────────────────────────────────────────
     # R2 — Classify uploaded files. No side effects.
     # ─────────────────────────────────────────────
     {
@@ -573,6 +668,17 @@ async def execute_tool(
             result = _handle_preview_schedule_cadence(claim_data, tool_input)
         elif tool_name == "cancel_cadence":
             result = _handle_preview_cancel_cadence(sb, claim_id, tool_input)
+        # ─── Line item surgery ──────────────────────
+        elif tool_name == "list_line_items":
+            result = _handle_list_line_items(sb, claim_id, tool_input)
+        elif tool_name == "add_line_item":
+            result = _handle_preview_add_line_item(tool_input)
+        elif tool_name == "remove_line_item":
+            result = _handle_preview_remove_line_item(sb, claim_id, tool_input)
+        elif tool_name == "modify_line_item":
+            result = _handle_preview_modify_line_item(sb, claim_id, tool_input)
+        elif tool_name == "recompute_estimate":
+            result = _handle_preview_recompute_estimate(sb, claim_id)
         else:
             result = {"action": "error", "message": f"Unknown tool: {tool_name}"}
     except Exception as e:
@@ -1613,6 +1719,235 @@ def _handle_preview_cancel_cadence(sb: Client, claim_id: str, tool_input: dict) 
             "pending_count": pending_count,
         },
         "message": f"Ready to cancel {pending_count} pending follow-up{'s' if pending_count != 1 else ''}. Reason: {reason}.",
+    }
+
+
+# ═══════════════════════════════════════════
+# LINE ITEM SURGERY
+# ═══════════════════════════════════════════
+
+def _handle_list_line_items(sb: Client, claim_id: str, tool_input: dict) -> dict:
+    """Read-only — return current line items on this claim."""
+    source = (tool_input.get("source") or "usarm").strip().lower()
+    trade = tool_input.get("trade")
+    limit = int(tool_input.get("limit") or 50)
+
+    query = sb.table("line_items").select(
+        "id, category, description, qty, unit, unit_price, total, xactimate_code, trade, source, structure"
+    ).eq("claim_id", claim_id)
+
+    if source != "all":
+        query = query.eq("source", source)
+    if trade:
+        query = query.eq("trade", trade)
+
+    result = query.order("created_at", desc=False).limit(limit).execute()
+    items = result.data or []
+
+    total_value = sum(float(i.get("total") or (float(i.get("qty") or 0) * float(i.get("unit_price") or 0))) for i in items)
+
+    return {
+        "action": "complete",
+        "type": "line_items",
+        "data": {
+            "items": items,
+            "count": len(items),
+            "source": source,
+            "total_value": round(total_value, 2),
+        },
+        "message": f"{len(items)} line item{'s' if len(items) != 1 else ''} (source={source}) totaling ${total_value:,.2f}.",
+    }
+
+
+def _handle_preview_add_line_item(tool_input: dict) -> dict:
+    description = (tool_input.get("description") or "").strip()
+    qty_raw = tool_input.get("qty")
+    unit = (tool_input.get("unit") or "").strip()
+    price_raw = tool_input.get("unit_price")
+    reason = (tool_input.get("reason") or "").strip()
+
+    if not description or qty_raw is None or not unit or price_raw is None or not reason:
+        return {"action": "error", "message": "description, qty, unit, unit_price, and reason are required"}
+
+    try:
+        qty = float(qty_raw)
+        unit_price = float(price_raw)
+    except (TypeError, ValueError):
+        return {"action": "error", "message": "qty and unit_price must be numeric"}
+
+    if qty <= 0:
+        return {"action": "error", "message": "qty must be > 0"}
+    if unit_price < 0:
+        return {"action": "error", "message": "unit_price cannot be negative"}
+
+    total = qty * unit_price
+    return {
+        "action": "preview",
+        "type": "add_line_item",
+        "tool_name": "add_line_item",
+        "preview": {
+            "action_label": "Add Line Item",
+            "description": description,
+            "qty": qty,
+            "unit": unit,
+            "unit_price": unit_price,
+            "total": total,
+            "category": (tool_input.get("category") or "GENERAL").upper(),
+            "xactimate_code": tool_input.get("xactimate_code"),
+            "trade": tool_input.get("trade"),
+            "reason": reason,
+        },
+        "message": f"Ready to add: {description} — {qty} {unit} @ ${unit_price:.2f} = ${total:,.2f}",
+    }
+
+
+def _handle_preview_remove_line_item(sb: Client, claim_id: str, tool_input: dict) -> dict:
+    line_item_id = (tool_input.get("line_item_id") or "").strip()
+    reason = (tool_input.get("reason") or "").strip()
+    if not line_item_id or not reason:
+        return {"action": "error", "message": "line_item_id and reason required"}
+
+    # Confirm the line item exists on this claim — prevents cross-claim tampering.
+    try:
+        res = sb.table("line_items").select(
+            "id, description, qty, unit, unit_price, total, source"
+        ).eq("id", line_item_id).eq("claim_id", claim_id).limit(1).execute()
+        rows = res.data or []
+    except Exception as e:
+        return {"action": "error", "message": f"Line item lookup failed: {e}"}
+
+    if not rows:
+        return {"action": "error", "message": f"Line item {line_item_id} not found on this claim."}
+
+    item = rows[0]
+    return {
+        "action": "preview",
+        "type": "remove_line_item",
+        "tool_name": "remove_line_item",
+        "preview": {
+            "action_label": "Remove Line Item",
+            "line_item_id": line_item_id,
+            "description": item.get("description"),
+            "qty": item.get("qty"),
+            "unit": item.get("unit"),
+            "unit_price": item.get("unit_price"),
+            "total": item.get("total"),
+            "source": item.get("source"),
+            "reason": reason,
+        },
+        "message": f"Ready to exclude: {item.get('description')} (${float(item.get('total') or 0):,.2f}). Reason: {reason}",
+    }
+
+
+def _handle_preview_modify_line_item(sb: Client, claim_id: str, tool_input: dict) -> dict:
+    line_item_id = (tool_input.get("line_item_id") or "").strip()
+    reason = (tool_input.get("reason") or "").strip()
+    if not line_item_id or not reason:
+        return {"action": "error", "message": "line_item_id and reason required"}
+
+    new_qty = tool_input.get("qty")
+    new_price = tool_input.get("unit_price")
+    if new_qty is None and new_price is None:
+        return {"action": "error", "message": "Provide at least one of qty or unit_price."}
+
+    try:
+        res = sb.table("line_items").select(
+            "id, description, qty, unit, unit_price, total, source"
+        ).eq("id", line_item_id).eq("claim_id", claim_id).limit(1).execute()
+        rows = res.data or []
+    except Exception as e:
+        return {"action": "error", "message": f"Line item lookup failed: {e}"}
+
+    if not rows:
+        return {"action": "error", "message": f"Line item {line_item_id} not found on this claim."}
+
+    item = rows[0]
+    old_qty = float(item.get("qty") or 0)
+    old_price = float(item.get("unit_price") or 0)
+    next_qty = float(new_qty) if new_qty is not None else old_qty
+    next_price = float(new_price) if new_price is not None else old_price
+
+    if next_qty <= 0:
+        return {"action": "error", "message": "qty must be > 0"}
+    if next_price < 0:
+        return {"action": "error", "message": "unit_price cannot be negative"}
+
+    old_total = old_qty * old_price
+    new_total = next_qty * next_price
+
+    return {
+        "action": "preview",
+        "type": "modify_line_item",
+        "tool_name": "modify_line_item",
+        "preview": {
+            "action_label": "Modify Line Item",
+            "line_item_id": line_item_id,
+            "description": item.get("description"),
+            "unit": item.get("unit"),
+            "old_qty": old_qty,
+            "new_qty": next_qty,
+            "old_unit_price": old_price,
+            "new_unit_price": next_price,
+            "old_total": old_total,
+            "new_total": new_total,
+            "delta": new_total - old_total,
+            "source": item.get("source"),
+            "reason": reason,
+        },
+        "message": (
+            f"Ready to modify: {item.get('description')}. "
+            f"{old_qty}{item.get('unit','')} × ${old_price:.2f} = ${old_total:,.2f} → "
+            f"{next_qty}{item.get('unit','')} × ${next_price:.2f} = ${new_total:,.2f} "
+            f"(Δ ${new_total - old_total:+,.2f})."
+        ),
+    }
+
+
+def _handle_preview_recompute_estimate(sb: Client, claim_id: str) -> dict:
+    """Preview a fast recompute — sums current line_items, projects new contractor_rcv."""
+    try:
+        res = sb.table("line_items").select("qty, unit_price, total").eq("claim_id", claim_id).execute()
+        items = res.data or []
+    except Exception as e:
+        return {"action": "error", "message": f"Line item lookup failed: {e}"}
+
+    line_total = sum(float(i.get("total") or (float(i.get("qty") or 0) * float(i.get("unit_price") or 0))) for i in items)
+
+    try:
+        claim_res = sb.table("claims").select("contractor_rcv, current_carrier_rcv, original_carrier_rcv, o_and_p_enabled, tax_rate").eq("id", claim_id).single().execute()
+        claim = claim_res.data or {}
+    except Exception:
+        claim = {}
+
+    tax_rate = float(claim.get("tax_rate") or 0)
+    op_enabled = bool(claim.get("o_and_p_enabled"))
+    tax = line_total * tax_rate
+    op = line_total * 0.21 if op_enabled else 0.0
+    projected_rcv = line_total + tax + op
+
+    old_rcv = float(claim.get("contractor_rcv") or 0)
+    carrier_rcv = float(claim.get("current_carrier_rcv") or claim.get("original_carrier_rcv") or 0)
+    projected_variance = projected_rcv - carrier_rcv
+
+    return {
+        "action": "preview",
+        "type": "recompute_estimate",
+        "tool_name": "recompute_estimate",
+        "preview": {
+            "action_label": "Recompute Estimate",
+            "line_item_count": len(items),
+            "line_total": round(line_total, 2),
+            "tax_rate": tax_rate,
+            "tax": round(tax, 2),
+            "o_and_p_enabled": op_enabled,
+            "op": round(op, 2),
+            "old_contractor_rcv": old_rcv,
+            "projected_contractor_rcv": round(projected_rcv, 2),
+            "delta": round(projected_rcv - old_rcv, 2),
+            "carrier_rcv": carrier_rcv,
+            "projected_variance": round(projected_variance, 2),
+        },
+        "message": f"Will update contractor_rcv: ${old_rcv:,.2f} → ${projected_rcv:,.2f} ({projected_rcv - old_rcv:+,.2f}).",
     }
 
 
