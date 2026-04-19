@@ -1,4 +1,5 @@
 import type { RoofSectionsData } from "./roof-sections";
+import type { RoofFacetsPayload, SlopeDamageRow } from "./roof-facets";
 
 export interface Claim {
   id: string;
@@ -54,6 +55,22 @@ export interface Claim {
   longitude?: number | null;
   // Roof sections (slope editor)
   roof_sections?: RoofSectionsData | null;
+  // Per-slope photo mapping (populated when an EagleView PDF has been processed)
+  roof_facets?: RoofFacetsPayload | null;
+  slope_damage?: SlopeDamageRow[] | null;
+  full_reroof_trigger?: boolean | null;
+  // DS/TAS component subscores (for calibration + detailed breakdowns)
+  ds_roof_surface?: number | null;
+  ds_evidence_cascade?: number | null;
+  ds_soft_metal?: number | null;
+  ds_documentation?: number | null;
+  ds_per_slope?: number | null;
+  tas_damage?: number | null;
+  tas_product?: number | null;
+  tas_code?: number | null;
+  tas_carrier?: number | null;
+  tas_scope?: number | null;
+  score_version?: string | null;
   // Processing timestamp (for pending changes tracking)
   last_processed_at?: string | null;
   // Photo corrections

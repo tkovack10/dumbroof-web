@@ -7,6 +7,8 @@ import { FileUploadZone } from "@/components/file-upload-zone";
 import { PendingChangesBanner } from "@/components/pending-changes-banner";
 import { ScopeComparison } from "@/components/scope-comparison";
 import { EstimateView } from "@/components/estimate-view";
+import { RoofPhotoMap } from "@/components/roof-photo-map";
+import type { RoofPhotoMapPhoto } from "@/types/roof-facets";
 import { SupplementComposer } from "@/components/supplement-composer";
 import { SignatureManager } from "@/components/signature-manager";
 import { InstallSupplementBuilder } from "@/components/install-supplement-builder";
@@ -161,6 +163,7 @@ export default function ClaimDetailPage() {
   const [applyingEdit, setApplyingEdit] = useState<string | null>(null);
   const [currentUserId, setCurrentUserId] = useState<string>("");
   const [userProfile, setUserProfile] = useState<{ name: string; company: string; phone: string }>({ name: "", company: "", phone: "" });
+  const [roofMapPhotos, setRoofMapPhotos] = useState<RoofPhotoMapPhoto[]>([]);
   const formRef = useRef<HTMLDivElement>(null);
 
   const fetchClaim = useCallback(async () => {
@@ -238,6 +241,26 @@ export default function ClaimDetailPage() {
     const interval = setInterval(fetchClaim, 5000);
     return () => clearInterval(interval);
   }, [claim?.status, fetchClaim]);
+
+  // Load photo rows for the overhead roof map — only when facet data exists.
+  useEffect(() => {
+    const hasFacets = !!claim?.roof_facets?.roof_facets?.length;
+    if (!claim?.id || !hasFacets) {
+      setRoofMapPhotos([]);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      const { data, error } = await supabase
+        .from("photos")
+        .select("annotation_key, filename, slope_id, damage_type, severity, annotation_text, heading")
+        .eq("claim_id", claim.id);
+      if (!cancelled && !error && data) {
+        setRoofMapPhotos(data as RoofPhotoMapPhoto[]);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [claim?.id, claim?.roof_facets, claim?.last_processed_at]);
 
   const handleDownload = async (filename: string) => {
     if (!claim) return;
@@ -1119,6 +1142,23 @@ export default function ClaimDetailPage() {
         )}
         {isReady && isForensicOnly && !(claim.measurement_files?.length) && (
           <LockedCard title="Line-by-Line Carrier Comparison" description="Compare your scope against the carrier's to find every underpayment and missing item." />
+        )}
+
+        {/* Overhead Roof Map — per-slope damage from EagleView facets + EXIF heading */}
+        {isReady && claim.roof_facets?.roof_facets?.length && (
+          <RoofPhotoMap
+            roofFacets={claim.roof_facets}
+            slopeDamage={claim.slope_damage ?? []}
+            fullReroofTrigger={!!claim.full_reroof_trigger}
+            photos={roofMapPhotos}
+            photoUrl={(_key, filename) => {
+              if (!filename) return null;
+              const { data } = supabase.storage
+                .from("claim-documents")
+                .getPublicUrl(`${claim.file_path}/photos/${filename}`);
+              return data?.publicUrl ?? null;
+            }}
+          />
         )}
 
         {/* Estimate & Damage Assessment */}
