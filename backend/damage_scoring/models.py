@@ -90,17 +90,53 @@ class DocumentationQuality:
 
 
 @dataclass
+class PerSlopeSeverity:
+    """Component E: Per-Slope Severity (0-15 pts).
+
+    Rewards claims where damage is concentrated on specific slopes with
+    enough photo evidence to support the ≥25% carrier-standard full-reroof
+    argument. Additive to the existing 4 components — capped at 100 overall.
+    """
+    max_slope_damage_pct: float = 0.0   # E1: largest single-slope weighted damage (0-1)
+    damaged_slope_area_pct: float = 0.0 # E2: share of roof area on slopes with >= 3 damage photos
+    full_reroof_trigger: bool = False   # E3: flag for the ≥25% roof trigger
+
+    @property
+    def total(self) -> int:
+        """0-15 points.
+
+        Break-down:
+        - up to 8 pts for max_slope_damage_pct scaled linearly (1.0 = 8)
+        - up to 5 pts for damaged_slope_area_pct scaled linearly (1.0 = 5)
+        - +2 pts flat if full_reroof_trigger fires
+        """
+        pts = 0
+        pts += int(round(self.max_slope_damage_pct * 8))
+        pts += int(round(self.damaged_slope_area_pct * 5))
+        if self.full_reroof_trigger:
+            pts += 2
+        return min(15, max(0, pts))
+
+    def to_dict(self) -> dict:
+        d = asdict(self)
+        d["total"] = self.total
+        return d
+
+
+@dataclass
 class DamageScoreResult:
     """Complete Damage Score result (0-100)."""
     roof_surface: RoofSurfaceDamage = field(default_factory=RoofSurfaceDamage)
     evidence_cascade: EvidenceCascadeCompleteness = field(default_factory=EvidenceCascadeCompleteness)
     soft_metal: SoftMetalCorroboration = field(default_factory=SoftMetalCorroboration)
     documentation: DocumentationQuality = field(default_factory=DocumentationQuality)
+    per_slope: PerSlopeSeverity = field(default_factory=PerSlopeSeverity)
 
     @property
     def score(self) -> int:
         return min(100, self.roof_surface.total + self.evidence_cascade.total +
-                   self.soft_metal.total + self.documentation.total)
+                   self.soft_metal.total + self.documentation.total +
+                   self.per_slope.total)
 
     @property
     def grade(self) -> str:
@@ -122,6 +158,7 @@ class DamageScoreResult:
             "evidence_cascade": self.evidence_cascade.to_dict(),
             "soft_metal": self.soft_metal.to_dict(),
             "documentation": self.documentation.to_dict(),
+            "per_slope": self.per_slope.to_dict(),
         }
 
     def print_summary(self):
@@ -130,6 +167,7 @@ class DamageScoreResult:
         print(f"    B. Evidence Cascade:        {self.evidence_cascade.total}/25")
         print(f"    C. Soft Metal Corroboration:{self.soft_metal.total}/20")
         print(f"    D. Documentation Quality:   {self.documentation.total}/15")
+        print(f"    E. Per-Slope Severity:      {self.per_slope.total}/15")
 
 
 # --- Technical Approval Score Components ---

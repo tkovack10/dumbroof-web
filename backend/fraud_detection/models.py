@@ -16,6 +16,9 @@ class PhotoMetadata:
     timestamp: Optional[str] = None         # ISO format from EXIF DateTimeOriginal
     gps_lat: Optional[float] = None
     gps_lon: Optional[float] = None
+    heading: Optional[float] = None         # GPSImgDirection (compass bearing 0-360)
+    altitude: Optional[float] = None        # GPSAltitude in meters (negative below sea level)
+    focal_length_mm: Optional[float] = None # 35mm equivalent focal length (fallback: raw FocalLength)
     software: Optional[str] = None          # EXIF Software tag
     camera_make: Optional[str] = None
     camera_model: Optional[str] = None

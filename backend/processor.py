@@ -594,6 +594,118 @@ If this report includes wall/siding measurements (EagleView Walls report or simi
     return result
 
 
+def _extract_first_pages_pdf(pdf_path: str, n_pages: int = 3) -> Optional[bytes]:
+    """Return bytes of a new PDF containing only the first n pages of pdf_path.
+    Returns None if PyMuPDF is unavailable or extraction fails (caller falls
+    back to sending the whole PDF)."""
+    try:
+        import fitz  # PyMuPDF
+    except ImportError:
+        return None
+    try:
+        src = fitz.open(pdf_path)
+        if len(src) <= n_pages:
+            src.close()
+            return None  # whole PDF already small enough
+        out = fitz.open()
+        out.insert_pdf(src, from_page=0, to_page=n_pages - 1)
+        data = out.tobytes()
+        src.close()
+        out.close()
+        return data
+    except Exception:
+        return None
+
+
+def extract_roof_facets(client: anthropic.Anthropic, pdf_path: str) -> dict:
+    """Second Vision pass on an EagleView-style measurement PDF to extract per-facet
+    polygon geometry + north arrow + scale bar. Feeds the photo→slope mapping pipeline.
+
+    Returns:
+        {
+            "roof_facets": [
+                {"facet_id": "F1", "pitch": "6/12", "cardinal": "N",
+                 "area_pct": 18.5, "polygon_pixels": [[x,y], ...]}
+            ],
+            "north_arrow_angle": 0,   # degrees clockwise from image-up
+            "scale_bar": {"pixels": 100, "feet": 20},
+        }
+
+    Safe to fail: returns {"roof_facets": []} on any error. Non-fatal — the rest
+    of the pipeline works without polygon data (photo→slope falls back to EXIF
+    heading).
+    """
+    # Send only the first 3 pages — EagleView overhead diagrams are always
+    # near the front. Saves input tokens + stops Vision from extracting
+    # garbage facets off property-photo pages.
+    import base64 as _b64
+    slim_bytes = _extract_first_pages_pdf(pdf_path, n_pages=3)
+    if slim_bytes:
+        pdf_b64 = _b64.b64encode(slim_bytes).decode("ascii")
+        print(f"[FACETS] Slimmed {os.path.basename(pdf_path)} to first 3 pages "
+              f"({len(slim_bytes)//1024}KB)")
+    else:
+        try:
+            pdf_b64 = file_to_base64(pdf_path)
+        except Exception as e:
+            print(f"[FACETS] Could not read PDF {pdf_path}: {e}")
+            return {"roof_facets": []}
+
+    prompt = """Look at the overhead roof diagram pages of this roof measurement report (typically the first 2-3 pages show the roof outline from directly above, with labeled facets/sections). Extract the per-facet geometry.
+
+For each labeled roof facet/slope (sections with pitch labels like "6/12" or facet IDs like "F1", "Facet 1", "N-1"), extract:
+
+- facet_id: the PDF's own label if present (e.g., "F1", "Facet 1"), otherwise auto-number as F1, F2, F3...
+- pitch: the pitch value shown (e.g., "6/12", "8/12")
+- cardinal: primary facing direction relative to the north arrow, one of: N, NE, E, SE, S, SW, W, NW
+- area_pct: approximate percentage of total roof area this facet represents (0-100)
+- polygon_pixels: array of [x, y] corner coordinates tracing the facet outline. Normalize coordinates to a 0-1000 scale on BOTH axes (origin = top-left of the overhead diagram image). List corners in clockwise order.
+
+Also extract:
+- north_arrow_angle: degrees clockwise from image-up that the north arrow points (0 = up, 90 = right, 180 = down, 270 = left)
+- scale_bar: {"pixels": N, "feet": M} for the printed scale bar (if visible)
+
+Return ONLY valid JSON, no other text:
+{
+  "roof_facets": [
+    {"facet_id": "F1", "pitch": "6/12", "cardinal": "N", "area_pct": 20, "polygon_pixels": [[100,200],[300,200],[300,400],[100,400]]}
+  ],
+  "north_arrow_angle": 0,
+  "scale_bar": {"pixels": 100, "feet": 20}
+}
+
+If the report is a Property Owner Report (images only, no overhead diagram), return {"roof_facets": [], "_property_owner_report": true}."""
+
+    try:
+        response = _call_claude_with_retry(client,
+            _step_name="extract_roof_facets",
+            model="claude-opus-4-6",
+            max_tokens=4096,
+            messages=[{
+                "role": "user",
+                "content": [
+                    {"type": "document",
+                     "source": {"type": "base64", "media_type": "application/pdf", "data": pdf_b64}},
+                    {"type": "text", "text": prompt},
+                ]
+            }]
+        )
+        result = _parse_json_response(response.content[0].text)
+    except Exception as e:
+        print(f"[FACETS] Vision call failed (non-fatal): {e}")
+        return {"roof_facets": []}
+
+    # Defensive: ensure roof_facets key exists and is a list
+    facets = result.get("roof_facets")
+    if not isinstance(facets, list):
+        result["roof_facets"] = []
+
+    facet_count = len(result.get("roof_facets", []))
+    if facet_count:
+        print(f"[FACETS] Extracted {facet_count} roof facets from {os.path.basename(pdf_path)}")
+    return result
+
+
 def analyze_photos(client: anthropic.Anthropic, photo_paths: list[str], user_notes: Optional[str] = None, corrections: list = None, estimate_request: dict = None, date_of_loss: Optional[str] = None) -> dict:
     """Send inspection photos to Claude for forensic analysis, in batches."""
     BATCH_SIZE = 5  # 5 resized photos per batch to stay well under API limits
@@ -4379,6 +4491,10 @@ async def process_claim(claim_id: str):
         _default_photo = {"trades_identified": ["roofing"], "photo_annotations": {}, "photo_count": 0}
         _default_integrity = {"total": 0, "flagged": 0, "score": "N/A", "summary": "", "findings": []}
 
+        # Shared across _get_measurements + _get_roof_facets so facet extraction
+        # can run on the primary measurement PDF without a second download.
+        _measurement_pdf_for_facets: list = []
+
         async def _get_measurements():
             # Forensic-only mode: skip measurements entirely
             if report_mode == "forensic_only":
@@ -4402,6 +4518,8 @@ async def process_claim(claim_id: str):
                 print(f"[PROCESS] Skipping non-PDF measurement files (no parser): {skipped}")
             if not pdf_paths:
                 return {}
+            # Remember the primary measurement PDF so facet extraction can reuse it.
+            _measurement_pdf_for_facets.append(pdf_paths[0])
             if len(pdf_paths) == 1:
                 print("[PROCESS] Extracting measurements...")
                 return await asyncio.to_thread(extract_measurements, claude, pdf_paths[0])
@@ -4413,6 +4531,23 @@ async def process_claim(claim_id: str):
             ]))
 
             return _merge_measurement_extractions(extractions)
+
+        async def _get_roof_facets():
+            """Second Vision pass on the primary EagleView PDF to extract per-facet
+            polygons for photo→slope mapping. Non-fatal; returns empty on failure."""
+            if report_mode == "forensic_only":
+                return {"roof_facets": []}
+            # Wait for _get_measurements to identify the primary PDF (runs concurrently).
+            # Poll up to ~3 seconds; if no PDF has been identified, bail quietly.
+            for _ in range(30):
+                if _measurement_pdf_for_facets:
+                    break
+                await asyncio.sleep(0.1)
+            if not _measurement_pdf_for_facets:
+                return {"roof_facets": []}
+            pdf_path = _measurement_pdf_for_facets[0]
+            print(f"[PROCESS] Extracting roof facet polygons from {os.path.basename(pdf_path)}...")
+            return await asyncio.to_thread(extract_roof_facets, claude, pdf_path)
 
         async def _get_photo_analysis():
             if not photo_paths:
@@ -4523,12 +4658,13 @@ async def process_claim(claim_id: str):
             return await asyncio.to_thread(extract_weather_data, claude, resolved)
 
         print("[PROCESS] Running extraction steps in parallel...")
-        measurements, photo_analysis, photo_integrity, carrier_data, weather_data = await asyncio.gather(
+        measurements, photo_analysis, photo_integrity, carrier_data, weather_data, roof_facets_data = await asyncio.gather(
             _get_measurements(),
             _get_photo_analysis(),
             _get_photo_integrity(),
             _get_carrier_data(),
             _get_weather_data(),
+            _get_roof_facets(),
         )
 
         # 8c. Search for corroborating weather reports (NOAA, news, social media)
@@ -4569,6 +4705,11 @@ async def process_claim(claim_id: str):
             user_notes=claim.get("user_notes"),
             photo_integrity=photo_integrity,
         )
+
+        # Attach roof facet polygons (per-slope photo mapping) if extracted.
+        # Facet extraction can fail silently — check payload shape before use.
+        if isinstance(roof_facets_data, dict) and roof_facets_data.get("roof_facets"):
+            config["roof_facets"] = roof_facets_data
 
         # Forensic-only: fix missing data and clear non-forensic sections
         if report_mode == "forensic_only":
@@ -5192,6 +5333,85 @@ async def process_claim(claim_id: str):
             config["appeal_letter"]["demand_items"] = _actions
             config["appeal_letter"]["requested_actions"] = _actions
 
+        # 9e. Photo→slope assignment + per-slope damage aggregation (runs BEFORE
+        # scoring so the new PerSlopeSeverity DS component has data to score).
+        # Uses in-memory photo_analysis tags + exif_metadata — no DB round trip.
+        # Per-photo slope assignments are written to the DB later in
+        # _write_to_warehouse after photo rows are inserted.
+        try:
+            _facets_payload = (config.get("roof_facets") or {})
+            _facets_list = _facets_payload.get("roof_facets") or []
+            if _facets_list:
+                _photo_tags_for_slope = (photo_analysis or {}).get("photo_tags") or {}
+                # Build synthetic photo rows merging tags + exif
+                _synthetic_photos = []
+                for _pk, _pt in _photo_tags_for_slope.items():
+                    _row = {
+                        "annotation_key": _pk,
+                        "damage_type": _pt.get("damage_type"),
+                        "severity": _pt.get("severity"),
+                        "elevation": _pt.get("elevation"),
+                    }
+                    _exif = (exif_metadata or {}).get(_pk) or {}
+                    if "heading" in _exif:
+                        _row["heading"] = _exif["heading"]
+                    _synthetic_photos.append(_row)
+                from slope_mapping import assign_photos_to_slopes, aggregate_slope_damage
+                _assignments = assign_photos_to_slopes(_synthetic_photos, _facets_list)
+                for _p in _synthetic_photos:
+                    _sid = _assignments.get(_p.get("annotation_key"))
+                    if _sid:
+                        _p["slope_id"] = _sid
+                _slope_damage, _reroof_trigger = aggregate_slope_damage(_synthetic_photos, _facets_list)
+                config["slope_damage"] = _slope_damage
+                config["full_reroof_trigger"] = _reroof_trigger
+                # Stash assignments for _write_to_warehouse to avoid re-computing
+                config["_slope_assignments"] = _assignments
+
+                # When the reroof trigger fires, attach a structured justification
+                # block so the forensic report / supplement composer can cite the
+                # carrier-standard ≥25% threshold. Strictly data — no advocacy
+                # language so UPPA-sensitive contractor mode renders it safely.
+                if _reroof_trigger:
+                    _triggered = [
+                        sd for sd in _slope_damage
+                        if sd.get("facet_id") != "_unassigned"
+                        and sd.get("damage_photos", 0) >= 3
+                        and sd.get("weighted_damage_pct", 0) > 0
+                    ]
+                    _worst = max(_triggered, key=lambda s: s.get("weighted_damage_pct", 0), default={})
+                    _damaged_area = sum(
+                        sd.get("area_pct") or 0 for sd in _triggered
+                    )
+                    config["reroof_justification"] = {
+                        "triggered": True,
+                        "threshold_pct": 25,
+                        "damaged_area_pct_of_roof": round(_damaged_area, 1),
+                        "slopes_above_threshold": len(_triggered),
+                        "total_slopes": len([s for s in _slope_damage if s.get("facet_id") != "_unassigned"]),
+                        "worst_slope": {
+                            "facet_id": _worst.get("facet_id"),
+                            "cardinal": _worst.get("cardinal"),
+                            "weighted_damage_pct": _worst.get("weighted_damage_pct"),
+                            "damage_photos": _worst.get("damage_photos"),
+                            "dominant_damage_type": _worst.get("dominant_damage_type"),
+                        },
+                        "finding": (
+                            f"Per-slope analysis shows damage concentrated across "
+                            f"{len(_triggered)} roof facet(s) totaling "
+                            f"{round(_damaged_area, 1)}% of the total roof area. "
+                            f"This exceeds the 25% threshold commonly applied to "
+                            f"evaluate full-slope or full-roof replacement versus "
+                            f"spot repair."
+                        ),
+                    }
+
+                print(f"[PROCESS] Pre-score slope aggregation: {len(_assignments)}/"
+                      f"{len(_synthetic_photos)} photos assigned, "
+                      f"reroof_trigger={_reroof_trigger}")
+        except Exception as e:
+            print(f"[PROCESS] Pre-score slope aggregation failed (non-fatal): {e}")
+
         # 10. Compute Damage Score + Technical Approval Score (BEFORE PDF generation — quality gate)
         ds = None
         tas = None
@@ -5215,6 +5435,18 @@ async def process_claim(claim_id: str):
                 "damage_grade": ds.grade,
                 "approval_score": tas.score,
                 "approval_grade": tas.grade,
+                "ds_roof_surface": ds.roof_surface.total,
+                "ds_evidence_cascade": ds.evidence_cascade.total,
+                "ds_soft_metal": ds.soft_metal.total,
+                "ds_documentation": ds.documentation.total,
+                "ds_per_slope": ds.per_slope.total,
+                "tas_damage": tas.damage_factor_pts,
+                "tas_product": tas.product.total,
+                "tas_code": tas.code_triggers.total,
+                "tas_carrier": tas.carrier.total,
+                "tas_scope": tas.scope.total,
+                "score_version": "v1",
+                "claim_config": {k: v for k, v in config.items() if not k.startswith("_")},
                 "improvement_guidance": guidance,
             }
             if photo_integrity and photo_integrity.get("total", 0) > 0:
@@ -5373,12 +5605,46 @@ async def process_claim(claim_id: str):
         if _adjuster_email:
             update_data["adjuster_email"] = _adjuster_email
 
-        # Save scores (already computed above)
+        # Save scores (already computed above) + component subscores for calibration
         if ds and tas:
             update_data["damage_score"] = ds.score
             update_data["damage_grade"] = ds.grade
             update_data["approval_score"] = tas.score
             update_data["approval_grade"] = tas.grade
+            update_data["ds_roof_surface"] = ds.roof_surface.total
+            update_data["ds_evidence_cascade"] = ds.evidence_cascade.total
+            update_data["ds_soft_metal"] = ds.soft_metal.total
+            update_data["ds_documentation"] = ds.documentation.total
+            update_data["ds_per_slope"] = ds.per_slope.total
+            update_data["tas_damage"] = tas.damage_factor_pts
+            update_data["tas_product"] = tas.product.total
+            update_data["tas_code"] = tas.code_triggers.total
+            update_data["tas_carrier"] = tas.carrier.total
+            update_data["tas_scope"] = tas.scope.total
+            update_data["score_version"] = "v1"
+
+        # Slope damage + reroof trigger (computed in step 9e, attached to config)
+        if "slope_damage" in config:
+            update_data["slope_damage"] = config["slope_damage"]
+            update_data["full_reroof_trigger"] = bool(config.get("full_reroof_trigger"))
+
+        # Persist full claim_config for offline re-scoring / calibration
+        # (previously only written to ephemeral work_dir, lost after each Railway run)
+        # Strip Railway-ephemeral filesystem paths before persist — they're
+        # useless on read-back and leak infra topology.
+        try:
+            _STRIPPED_CONFIG_KEYS = {"_paths", "_work_dir", "_tmp_dir"}
+            update_data["claim_config"] = {
+                k: v for k, v in config.items()
+                if k not in _STRIPPED_CONFIG_KEYS and not k.startswith("_")
+            }
+        except Exception as _e:
+            print(f"[PROCESS] Could not stage claim_config for persist: {_e}")
+
+        # Persist roof facet polygons for photo→slope mapping + roof map UI
+        _rf_payload = config.get("roof_facets")
+        if isinstance(_rf_payload, dict) and _rf_payload.get("roof_facets"):
+            update_data["roof_facets"] = _rf_payload
 
         # Geocode claim address for map display (non-fatal, cached)
         try:
@@ -5519,10 +5785,26 @@ async def process_claim(claim_id: str):
         except Exception as e:
             print(f"[CAPI] Meta CAPI event failed (non-fatal): {e}")
 
-        # 12b. Write to data warehouse tables (non-blocking — failures don't affect claim)
+        # 12b. Extract EXIF metadata (GPS/heading/altitude/focal_length) for photo→slope mapping
+        exif_metadata = {}
+        try:
+            from fraud_detection.exif_analyzer import extract_exif_batch
+            # Keys must match write_photos indexing: photo_01, photo_02, ...
+            annotation_keys = [f"photo_{i+1:02d}" for i in range(len(photo_paths))]
+            exif_metadata = extract_exif_batch(photo_paths, annotation_keys)
+            if exif_metadata:
+                with_gps = sum(1 for v in exif_metadata.values() if "gps_lat" in v)
+                with_heading = sum(1 for v in exif_metadata.values() if "heading" in v)
+                print(f"[EXIF] Extracted {len(exif_metadata)} photos with metadata "
+                      f"({with_gps} with GPS, {with_heading} with heading)")
+        except Exception as e:
+            print(f"[EXIF] Batch extract failed (non-fatal): {e}")
+
+        # 12c. Write to data warehouse tables (non-blocking — failures don't affect claim)
         try:
             _write_to_warehouse(sb, claim_id, config, photo_analysis, photo_integrity,
-                                carrier_data, revision_data, photo_filenames=photo_filenames)
+                                carrier_data, revision_data, photo_filenames=photo_filenames,
+                                exif_metadata=exif_metadata)
         except Exception as e:
             print(f"[WAREHOUSE] Data warehouse write failed (non-fatal): {e}")
 
@@ -5893,7 +6175,7 @@ def _build_improvement_guidance(ds, tas) -> dict:
 
 def _write_to_warehouse(sb, claim_id: str, config: dict, photo_analysis: dict,
                         photo_integrity: dict, carrier_data: dict, revision_data: dict,
-                        photo_filenames: list = None):
+                        photo_filenames: list = None, exif_metadata: dict = None):
     """Write processed claim data to all warehouse tables. Non-fatal on any failure."""
     financials = compute_financials(config)
     carrier = config.get("carrier", {}).get("name", "")
@@ -5912,9 +6194,25 @@ def _write_to_warehouse(sb, claim_id: str, config: dict, photo_analysis: dict,
     except Exception as e:
         print(f"[WAREHOUSE] Cleanup failed (non-fatal, may have duplicates): {e}")
 
-    # 1. Photos — write photo annotations + structured tags
-    photo_count = write_photos(sb, claim_id, photo_analysis, photo_integrity, photo_filenames=photo_filenames)
+    # 1. Photos — write photo annotations + structured tags + EXIF GPS/heading
+    photo_count = write_photos(sb, claim_id, photo_analysis, photo_integrity,
+                                photo_filenames=photo_filenames, exif_metadata=exif_metadata)
     print(f"[WAREHOUSE] Wrote {photo_count} photos")
+
+    # 1b. Write per-photo slope_id assignments. Aggregation + claims.slope_damage
+    # + claims.full_reroof_trigger already ran in step 9e of main processing
+    # (so scoring could pick it up). Here we just persist the assignments to
+    # the photos rows that now exist in the DB.
+    try:
+        assignments = config.get("_slope_assignments") or {}
+        if assignments:
+            for ann_key, facet_id in assignments.items():
+                sb.table("photos").update({"slope_id": facet_id}).eq(
+                    "claim_id", claim_id
+                ).eq("annotation_key", ann_key).execute()
+            print(f"[WAREHOUSE] Persisted {len(assignments)} photo→slope assignments")
+    except Exception as e:
+        print(f"[WAREHOUSE] Slope assignment persist failed (non-fatal): {e}")
 
     # 2. USARM line items (filter zero-qty items — they produce $0 rows that corrupt estimates)
     usarm_items_filtered = [li for li in config.get("line_items", []) if li.get("qty", 0) > 0]

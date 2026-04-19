@@ -157,13 +157,19 @@ def _json_serial(obj):
 
 
 def write_photos(sb, claim_id: str, photo_analysis: dict, photo_integrity: dict = None,
-                  photo_filenames: list = None):
-    """Write photo records to the photos table from analyze_photos() output."""
+                  photo_filenames: list = None, exif_metadata: dict = None):
+    """Write photo records to the photos table from analyze_photos() output.
+
+    exif_metadata (optional): dict keyed by annotation_key OR filename; values are
+    dicts with any of: gps_lat, gps_lon, heading, altitude, focal_length_mm.
+    Feeds the photo→slope mapping pipeline.
+    """
     if not sb or not claim_id:
         return 0
 
     annotations = photo_analysis.get("photo_annotations", {})
     photo_tags = photo_analysis.get("photo_tags", {})  # New structured tags
+    exif_metadata = exif_metadata or {}
     integrity_findings = {}
     if photo_integrity:
         for finding in photo_integrity.get("findings", []):
@@ -193,6 +199,13 @@ def write_photos(sb, claim_id: str, photo_analysis: dict, photo_integrity: dict 
             "severity": tags.get("severity"),
             "filename": fname,
         }
+
+        # EXIF metadata — lookup by annotation_key, fall back to filename
+        exif = exif_metadata.get(key) or (exif_metadata.get(fname) if fname else None) or {}
+        for exif_col in ("gps_lat", "gps_lon", "heading", "altitude", "focal_length_mm"):
+            val = exif.get(exif_col)
+            if val is not None:
+                row[exif_col] = val
 
         # Add integrity data if available
         integrity = integrity_findings.get(key, {})

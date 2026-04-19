@@ -15,6 +15,7 @@ from damage_scoring.models import (
     EvidenceCascadeCompleteness,
     SoftMetalCorroboration,
     DocumentationQuality,
+    PerSlopeSeverity,
 )
 
 
@@ -39,7 +40,44 @@ def compute_damage_score(
     result.evidence_cascade = _score_evidence_cascade(config, analysis, hail_analysis)
     result.soft_metal = _score_soft_metal(config, hail_analysis)
     result.documentation = _score_documentation(config, analysis)
+    result.per_slope = _score_per_slope(config)
     return result
+
+
+def _score_per_slope(config: dict) -> PerSlopeSeverity:
+    """Component E: Per-Slope Severity (0-15 pts).
+
+    Reads `slope_damage` aggregation attached during processing. If the per-slope
+    pipeline didn't run (older claims, no EagleView facets extracted), returns a
+    zero-score component so legacy claims are unaffected.
+    """
+    r = PerSlopeSeverity()
+    slope_damage = config.get("slope_damage") or []
+    if not slope_damage:
+        return r
+
+    max_damage = 0.0
+    total_area = 0.0
+    damaged_area = 0.0
+    for sd in slope_damage:
+        if not isinstance(sd, dict) or sd.get("facet_id") == "_unassigned":
+            continue
+        try:
+            weighted = float(sd.get("weighted_damage_pct") or 0.0)
+            area = float(sd.get("area_pct") or 0.0)
+            dpics = int(sd.get("damage_photos") or 0)
+        except (TypeError, ValueError):
+            continue
+        max_damage = max(max_damage, weighted)
+        total_area += area
+        if dpics >= 3:
+            damaged_area += area
+
+    r.max_slope_damage_pct = round(max_damage, 4)
+    if total_area > 0:
+        r.damaged_slope_area_pct = round(damaged_area / total_area, 4)
+    r.full_reroof_trigger = bool(config.get("full_reroof_trigger"))
+    return r
 
 
 def _get_all_text(config: dict) -> str:

@@ -38,12 +38,18 @@ EXIF_TAG_SOFTWARE = 305
 EXIF_TAG_MAKE = 271
 EXIF_TAG_MODEL = 272
 EXIF_TAG_GPS_INFO = 34853
+EXIF_TAG_FOCAL_LENGTH = 37386          # FocalLength (rational, mm at sensor)
+EXIF_TAG_FOCAL_LENGTH_35MM = 41989     # FocalLengthIn35mmFilm (short, mm equivalent)
 
 # GPS sub-tag IDs
-GPS_TAG_LATITUDE = 2
 GPS_TAG_LATITUDE_REF = 1
-GPS_TAG_LONGITUDE = 4
+GPS_TAG_LATITUDE = 2
 GPS_TAG_LONGITUDE_REF = 3
+GPS_TAG_LONGITUDE = 4
+GPS_TAG_ALTITUDE_REF = 5               # 0 = above sea level, 1 = below
+GPS_TAG_ALTITUDE = 6                   # rational, meters
+GPS_TAG_IMG_DIRECTION_REF = 16         # 'T' (true north) or 'M' (magnetic)
+GPS_TAG_IMG_DIRECTION = 17             # rational, 0-360 degrees (compass bearing)
 
 
 def _dms_to_decimal(dms_tuple, ref: str) -> Optional[float]:
@@ -57,6 +63,23 @@ def _dms_to_decimal(dms_tuple, ref: str) -> Optional[float]:
             decimal = -decimal
         return decimal
     except (TypeError, ValueError, IndexError, ZeroDivisionError):
+        return None
+
+
+def _rational_to_float(val) -> Optional[float]:
+    """EXIF rational (numerator/denominator tuple or Pillow IFDRational) -> float."""
+    if val is None:
+        return None
+    try:
+        return float(val)
+    except (TypeError, ValueError):
+        pass
+    try:
+        num, den = val
+        if den == 0:
+            return None
+        return float(num) / float(den)
+    except (TypeError, ValueError):
         return None
 
 
@@ -116,7 +139,7 @@ def extract_metadata(file_path: str, photo_key: str) -> PhotoMetadata:
     if model:
         meta.camera_model = str(model).strip()
 
-    # GPS coordinates
+    # GPS coordinates, heading, altitude
     gps_info = exif_data.get(EXIF_TAG_GPS_INFO)
     if gps_info and isinstance(gps_info, dict):
         lat_dms = gps_info.get(GPS_TAG_LATITUDE)
@@ -129,7 +152,68 @@ def extract_metadata(file_path: str, photo_key: str) -> PhotoMetadata:
         if lon_dms:
             meta.gps_lon = _dms_to_decimal(lon_dms, str(lon_ref))
 
+        # Compass heading (camera pointing direction, 0-360 degrees)
+        heading = _rational_to_float(gps_info.get(GPS_TAG_IMG_DIRECTION))
+        if heading is not None and 0 <= heading <= 360:
+            meta.heading = heading
+
+        # Altitude in meters (negative if below sea level)
+        altitude = _rational_to_float(gps_info.get(GPS_TAG_ALTITUDE))
+        if altitude is not None:
+            alt_ref = gps_info.get(GPS_TAG_ALTITUDE_REF, 0)
+            try:
+                if int(alt_ref) == 1:
+                    altitude = -altitude
+            except (TypeError, ValueError):
+                pass
+            meta.altitude = altitude
+
+    # Focal length — prefer 35mm equivalent (directly comparable across sensors)
+    focal_35 = exif_data.get(EXIF_TAG_FOCAL_LENGTH_35MM)
+    if focal_35:
+        try:
+            meta.focal_length_mm = float(focal_35)
+        except (TypeError, ValueError):
+            pass
+    if meta.focal_length_mm is None:
+        focal_raw = _rational_to_float(exif_data.get(EXIF_TAG_FOCAL_LENGTH))
+        if focal_raw is not None:
+            meta.focal_length_mm = focal_raw
+
     return meta
+
+
+def extract_exif_batch(photo_paths: list, photo_keys: Optional[list] = None) -> dict:
+    """Extract EXIF metadata for a batch of photos.
+
+    Returns a dict keyed by photo_key (or file basename if photo_keys is None).
+    Only non-null fields are included per photo to keep the payload small.
+    Safe to call even if Pillow is missing or photos lack EXIF — returns {} then.
+    """
+    if not HAS_PIL:
+        return {}
+
+    result = {}
+    for i, path in enumerate(photo_paths):
+        key = (photo_keys[i] if photo_keys and i < len(photo_keys) else os.path.basename(path))
+        try:
+            meta = extract_metadata(path, key)
+        except Exception:
+            continue
+        entry = {}
+        if meta.gps_lat is not None:
+            entry["gps_lat"] = meta.gps_lat
+        if meta.gps_lon is not None:
+            entry["gps_lon"] = meta.gps_lon
+        if meta.heading is not None:
+            entry["heading"] = meta.heading
+        if meta.altitude is not None:
+            entry["altitude"] = meta.altitude
+        if meta.focal_length_mm is not None:
+            entry["focal_length_mm"] = meta.focal_length_mm
+        if entry:
+            result[key] = entry
+    return result
 
 
 def check_timestamp(
