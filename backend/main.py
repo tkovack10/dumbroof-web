@@ -1027,6 +1027,17 @@ actionable (send emails, generate documents, check status), USE the appropriate 
 - **get_damage_scores** — Returns the Damage Score (DS) and Technical Approval Score (TAS) with grades.
 - **coach_photo_documentation** — Analyzes the current photo set and returns SPECIFIC coaching steps with exact techniques (test squares, chalk contrast, scale references, labeled overviews). Call this when the user asks "what photos am I missing?", "how do I document this better?", "how can I strengthen this claim?", OR proactively any time you see DS < 70 or the user is about to send something to the carrier with incomplete evidence. Returns concrete instructions — not "take more photos" but "mark a 10x10 test square with chalk, circle every hail hit, shoot from above with a quarter for scale."
 - **find_photo** — Locate a specific photo by annotation_key ('p11_02'), position ('the 23rd photo', 'page 11 2nd photo'), or text content ('chimney flashing'). Call FIRST before edit_photo_annotation or exclude_photo_from_claim so you know the exact photo_id.
+
+### ADMIN / ONBOARDING HELPERS (company-scoped, not claim-scoped)
+
+Users ask setup questions too. Richard helps them connect their tools.
+
+- **list_integrations** — Show which integrations are connected (Gmail, CompanyCam, AccuLynx, Roofr, Hover, GAF QuickMeasure, JobNimbus, ServiceTitan) and profile completeness. Call when user asks "what's set up?", "what's my status?", "do I have Hover connected?"
+- **get_integration_setup_guide(service)** — Step-by-step instructions for connecting a specific service: where to sign in, exact menu path to the API key, gotchas, and what capabilities it unlocks. Call for ANY "how do I connect X" question.
+- **save_integration_key(service, api_key, …)** — Save the user's key to their company profile. Walk them to get the key first via get_integration_setup_guide, then offer to save it. Approval-gated (keys are credentials).
+- **invite_team_member(email, role)** — Invite another person to the company account. Approval-gated.
+
+**Gmail verification warning:** When users ask about Gmail, proactively mention the "Google hasn't verified this app" screen is expected — we're in OAuth review, and instruct them to click Advanced → Proceed. Don't let them bail on the connection because they're scared of the warning.
 - **edit_photo_annotation** — Fix a bad AI annotation. User says "page 11, 2nd photo is wrong — it's not hail, it's wind damage" → find_photo('page 11 2nd photo') → edit_photo_annotation(photo_id, damage_type='wind', annotation_text='...', reason='...'). Edits survive reprocess via annotation_feedback training signal. REQUIRES APPROVAL.
 - **exclude_photo_from_claim** — Drop a photo from the forensic report (duplicate, blurry, unrelated, wrong claim). Writes to claims.excluded_photos which survives reprocess. REQUIRES APPROVAL.
 
@@ -1783,6 +1794,71 @@ async def approve_brain_action(claim_id: str, body: ToolApproval, background_tas
                 "message": f"Scheduled {len(rows_to_insert)} follow-up{'s' if len(rows_to_insert) != 1 else ''}.",
                 "scheduled_count": len(rows_to_insert),
             }
+
+        # ─── Admin: Save integration API key ───
+        if tool_name == "save_integration_key":
+            preview = tool_result.get("preview") or {}
+            service = preview.get("service")
+            from claim_brain_tools import _KEY_SERVICE_FIELDS
+            field_map = _KEY_SERVICE_FIELDS.get(service) or {}
+            if not field_map:
+                raise ValueError(f"Can't save keys for service={service}")
+
+            update_payload: dict = {}
+            now_iso = datetime.utcnow().isoformat() + "Z"
+            if service == "servicetitan":
+                update_payload[field_map["client_secret"]] = preview["api_key"]
+                update_payload[field_map["client_id"]] = preview.get("client_id")
+                update_payload[field_map["tenant_id"]] = preview.get("tenant_id")
+                update_payload[field_map["connected_at"]] = now_iso
+            else:
+                update_payload[field_map["api_key"]] = preview["api_key"]
+                update_payload[field_map["connected_at"]] = now_iso
+
+            # Upsert — insert the row if it doesn't exist yet
+            existing = sb.table("company_profiles").select("id").eq("user_id", user_id).limit(1).execute()
+            if existing.data:
+                sb.table("company_profiles").update(update_payload).eq("user_id", user_id).execute()
+            else:
+                update_payload["user_id"] = user_id
+                sb.table("company_profiles").insert(update_payload).execute()
+
+            # Scrub api_key from the audit log payload — never persist raw credentials
+            safe_preview = {k: v for k, v in preview.items() if k != "api_key"}
+            _audit_log(sb, claim_id, user_id, tool_name, safe_preview, {"action": "sent", "message": f"saved {service} credentials"}, 0)
+            return {"status": "sent", "message": f"{preview.get('display_name') or service} connected."}
+
+        # ─── Admin: Invite team member ───
+        if tool_name == "invite_team_member":
+            preview = tool_result.get("preview") or {}
+            target_email = preview.get("email")
+            # Supabase's auth admin invite — sends the magic-link-style signup email
+            try:
+                # Using the service role key auth endpoint. supabase-py exposes this
+                # via sb.auth.admin.invite_user_by_email if available.
+                if hasattr(sb.auth, "admin") and hasattr(sb.auth.admin, "invite_user_by_email"):
+                    sb.auth.admin.invite_user_by_email(target_email, {
+                        "data": {"invited_by": user_id, "role": preview.get("role", "user"), "name": preview.get("name")},
+                    })
+                else:
+                    # Fallback — drop a row in a pending-invites table if SDK method absent.
+                    # Table may not exist on all projects; non-fatal.
+                    try:
+                        sb.table("pending_invites").insert({
+                            "email": target_email,
+                            "invited_by": user_id,
+                            "role": preview.get("role"),
+                            "name": preview.get("name"),
+                            "company": preview.get("company"),
+                        }).execute()
+                    except Exception:
+                        pass
+            except Exception as e:
+                err = f"Invite failed: {e}"
+                _audit_log(sb, claim_id, user_id, tool_name, preview, {"action": "error", "message": err}, 0, error=err)
+                return {"status": "error", "message": err}
+            _audit_log(sb, claim_id, user_id, tool_name, preview, {"action": "sent", "message": f"invited {target_email}"}, 0)
+            return {"status": "sent", "message": f"Invited {target_email} as {preview.get('role')}."}
 
         # ─── Photo annotation edit ───
         # Writes to annotation_feedback (survives reprocess as training signal)

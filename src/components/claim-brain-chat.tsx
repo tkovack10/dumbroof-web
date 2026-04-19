@@ -128,6 +128,10 @@ const TOOL_ICONS: Record<string, string> = {
   find_photo: "🔍",
   edit_photo_annotation: "✏️",
   exclude_photo_from_claim: "🚫",
+  list_integrations: "🔌",
+  get_integration_setup_guide: "📘",
+  save_integration_key: "🔑",
+  invite_team_member: "👥",
   classify_uploaded_file: "🗂️",
   attach_to_claim: "📥",
   trigger_reprocess: "🔄",
@@ -160,6 +164,10 @@ const TOOL_LABELS: Record<string, string> = {
   find_photo: "Find Photo",
   edit_photo_annotation: "Edit Photo Annotation",
   exclude_photo_from_claim: "Exclude Photo",
+  list_integrations: "Integration Status",
+  get_integration_setup_guide: "Setup Guide",
+  save_integration_key: "Save API Key",
+  invite_team_member: "Invite Team Member",
   classify_uploaded_file: "File Classification",
   attach_to_claim: "Attach to Claim",
   trigger_reprocess: "Reprocess Claim",
@@ -501,6 +509,90 @@ function ToolActionCard({
             </div>
           </div>
         </div>
+      </div>
+    );
+  }
+
+  // Integrations status — connection grid
+  if (action.action === "complete" && action.type === "integrations_status" && action.data) {
+    const d = action.data as {
+      integrations?: Record<string, { connected: boolean; sending_email?: string; connected_at?: string }>;
+      connected_count?: number;
+      total_count?: number;
+      profile_completeness?: Record<string, boolean>;
+      profile_complete?: boolean;
+    };
+    const integrations = d.integrations || {};
+    return (
+      <div className="bg-indigo-500/5 border border-indigo-500/20 rounded-lg p-3 my-2">
+        <div className="flex items-center justify-between mb-2">
+          <div className="text-xs text-indigo-300 font-medium">
+            {icon} {label} — {d.connected_count}/{d.total_count} connected
+          </div>
+          {d.profile_complete ? (
+            <div className="text-[10px] text-emerald-300">Profile ✓</div>
+          ) : (
+            <div className="text-[10px] text-amber-300">Profile incomplete</div>
+          )}
+        </div>
+        <div className="grid grid-cols-2 gap-1 text-[11px]">
+          {Object.entries(integrations).map(([name, info]) => (
+            <div key={name} className="flex items-center gap-1">
+              <span className={info.connected ? "text-emerald-400" : "text-white/30"}>
+                {info.connected ? "●" : "○"}
+              </span>
+              <span className="text-white/70 capitalize">{name.replace(/_/g, " ")}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  // Integration setup guide — step-by-step instructions
+  if (action.action === "complete" && action.type === "integration_setup_guide" && action.data) {
+    const d = action.data as {
+      display_name?: string;
+      category?: string;
+      auth_type?: string;
+      unlocks?: string[];
+      steps?: string[];
+      gotchas?: string[];
+    };
+    return (
+      <div className="bg-indigo-500/5 border border-indigo-500/20 rounded-lg p-3 my-2">
+        <div className="text-xs text-indigo-300 font-medium mb-1">
+          {icon} {d.display_name} Setup
+          <span className="text-white/40 ml-2">· {d.category} · {d.auth_type}</span>
+        </div>
+        {d.unlocks && d.unlocks.length > 0 && (
+          <div className="mt-2 p-2 rounded bg-emerald-500/10 border border-emerald-500/20">
+            <div className="text-[10px] text-emerald-300 font-semibold uppercase tracking-wide mb-1">Unlocks</div>
+            {d.unlocks.map((u, i) => (
+              <div key={i} className="text-[11px] text-white/70">✓ {u}</div>
+            ))}
+          </div>
+        )}
+        {d.steps && d.steps.length > 0 && (
+          <div className="mt-2">
+            <div className="text-[10px] text-white/40 font-semibold uppercase tracking-wide mb-1">Steps</div>
+            <ol className="space-y-1">
+              {d.steps.map((s, i) => (
+                <li key={i} className="text-[11px] text-white/70 leading-snug">
+                  <span className="text-indigo-300 font-semibold">{i + 1}.</span> {s}
+                </li>
+              ))}
+            </ol>
+          </div>
+        )}
+        {d.gotchas && d.gotchas.length > 0 && (
+          <div className="mt-2 p-2 rounded bg-amber-500/10 border border-amber-500/20">
+            <div className="text-[10px] text-amber-300 font-semibold uppercase tracking-wide mb-1">Gotchas</div>
+            {d.gotchas.map((g, i) => (
+              <div key={i} className="text-[11px] text-white/70">⚠ {g}</div>
+            ))}
+          </div>
+        )}
       </div>
     );
   }
@@ -906,6 +998,31 @@ function ToolActionCard({
                 </span>
               </div>
               <div className="text-white/60 italic">"{String(p.reason || "")}"</div>
+            </>
+          )}
+          {action.tool_name === "save_integration_key" && (
+            <>
+              <div><span className="text-white/40">Service:</span> <span className="text-white">{String(p.display_name || p.service || "")}</span></div>
+              <div><span className="text-white/40">API key:</span> <code className="text-white/80">{String(p.api_key_masked || "")}</code></div>
+              {p.tenant_id ? <div><span className="text-white/40">Tenant:</span> {String(p.tenant_id)}</div> : null}
+              {p.client_id ? <div><span className="text-white/40">Client ID:</span> {String(p.client_id)}</div> : null}
+              {Array.isArray(p.unlocks) && (p.unlocks as unknown[]).length > 0 && (
+                <div className="mt-2 p-2 rounded bg-emerald-500/10 border border-emerald-500/20">
+                  <div className="text-[10px] text-emerald-300 font-semibold uppercase tracking-wide mb-1">Unlocks</div>
+                  {(p.unlocks as string[]).map((u, i) => (
+                    <div key={i} className="text-[11px] text-white/70">✓ {u}</div>
+                  ))}
+                </div>
+              )}
+            </>
+          )}
+          {action.tool_name === "invite_team_member" && (
+            <>
+              <div><span className="text-white/40">Email:</span> <span className="text-white">{String(p.email || "")}</span></div>
+              <div><span className="text-white/40">Role:</span> <span className="text-white">{String(p.role || "user")}</span></div>
+              {p.name ? <div><span className="text-white/40">Name:</span> {String(p.name)}</div> : null}
+              {p.company ? <div><span className="text-white/40">Company:</span> {String(p.company)}</div> : null}
+              <div className="text-[10px] text-white/50">Sends a signup invite email.</div>
             </>
           )}
           {action.tool_name === "edit_photo_annotation" && (

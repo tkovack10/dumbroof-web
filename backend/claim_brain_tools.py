@@ -299,6 +299,89 @@ CLAIM_BRAIN_TOOLS = [
             "required": [],
         },
     },
+    # ─────────────────────────────────────────────
+    # Admin / onboarding — integrations + team + templates
+    # These tools are company-scoped (not claim-scoped). They still run
+    # inside the claim-brain endpoint because users chat there, but the
+    # claim context is ignored for these.
+    # ─────────────────────────────────────────────
+    {
+        "name": "list_integrations",
+        "description": (
+            "Show the connection status of every integration on this account — "
+            "Gmail, CompanyCam, AccuLynx, Roofr, Hover, GAF QuickMeasure, "
+            "JobNimbus, ServiceTitan. Use when the user asks 'what's connected', "
+            "'what API keys do I have set up', or as part of an onboarding "
+            "checklist. Also returns company profile completeness (logo, "
+            "company name, address, etc.)."
+        ),
+        "input_schema": {"type": "object", "properties": {}, "required": []},
+    },
+    {
+        "name": "get_integration_setup_guide",
+        "description": (
+            "Return step-by-step instructions for setting up a specific third-"
+            "party integration: where to get the API key, exact menu path, "
+            "gotchas, and what Richard unlocks once it's connected. Use when "
+            "the user asks 'how do I connect X', 'help me set up Hover', etc."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "service": {
+                    "type": "string",
+                    "enum": ["gmail", "companycam", "acculynx", "roofr", "hover", "gaf_quickmeasure", "jobnimbus", "servicetitan"],
+                    "description": "Which integration to explain.",
+                },
+            },
+            "required": ["service"],
+        },
+    },
+    {
+        "name": "save_integration_key",
+        "description": (
+            "Save an API key for a third-party integration on the user's company "
+            "profile. Use AFTER the user has followed get_integration_setup_guide "
+            "and pasted their key. REQUIRES USER APPROVAL (keys are credentials)."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "service": {
+                    "type": "string",
+                    "enum": ["companycam", "acculynx", "roofr", "hover", "gaf_quickmeasure", "jobnimbus", "servicetitan"],
+                    "description": "Which service this key is for. Gmail uses OAuth, not a key.",
+                },
+                "api_key": {"type": "string", "description": "The API key / token the user pasted."},
+                "tenant_id": {"type": "string", "description": "ServiceTitan only — tenant ID."},
+                "client_id": {"type": "string", "description": "ServiceTitan only — client ID."},
+                "client_secret": {"type": "string", "description": "ServiceTitan only — client secret."},
+            },
+            "required": ["service", "api_key"],
+        },
+    },
+    {
+        "name": "invite_team_member",
+        "description": (
+            "Invite a new team member to this company's DumbRoof account. "
+            "Sends a signup link with the company domain pre-linked. REQUIRES "
+            "USER APPROVAL."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "email": {"type": "string", "description": "Team member's email."},
+                "role": {
+                    "type": "string",
+                    "enum": ["admin", "user"],
+                    "description": "Role. Admins can manage integrations + team; users can only submit claims.",
+                    "default": "user",
+                },
+                "name": {"type": "string", "description": "Optional display name."},
+            },
+            "required": ["email"],
+        },
+    },
     {
         "name": "find_photo",
         "description": (
@@ -741,6 +824,14 @@ async def execute_tool(
             result = _handle_get_damage_scores(claim_data)
         elif tool_name == "coach_photo_documentation":
             result = _handle_coach_photo_documentation(sb, claim_id, claim_data, tool_input)
+        elif tool_name == "list_integrations":
+            result = _handle_list_integrations(sb, user_id)
+        elif tool_name == "get_integration_setup_guide":
+            result = _handle_get_integration_setup_guide(tool_input)
+        elif tool_name == "save_integration_key":
+            result = _handle_preview_save_integration_key(sb, user_id, tool_input)
+        elif tool_name == "invite_team_member":
+            result = _handle_preview_invite_team_member(sb, user_id, tool_input)
         elif tool_name == "find_photo":
             result = _handle_find_photo(sb, claim_id, tool_input)
         elif tool_name == "edit_photo_annotation":
@@ -1813,6 +1904,400 @@ def _handle_preview_cancel_cadence(sb: Client, claim_id: str, tool_input: dict) 
             "pending_count": pending_count,
         },
         "message": f"Ready to cancel {pending_count} pending follow-up{'s' if pending_count != 1 else ''}. Reason: {reason}.",
+    }
+
+
+# ═══════════════════════════════════════════
+# ADMIN / ONBOARDING INTEGRATIONS
+#
+# Step-by-step setup playbooks Richard walks users through. Each service
+# has: where to sign in, exact menu path to get the API key, gotchas,
+# and the DumbRoof capabilities unlocked once connected.
+# ═══════════════════════════════════════════
+
+_INTEGRATION_PLAYBOOK = {
+    "gmail": {
+        "display_name": "Gmail",
+        "category": "Email",
+        "auth_type": "OAuth 2.0 (Google sign-in)",
+        "db_fields": ["gmail_refresh_token", "sending_email"],
+        "unlocks": [
+            "Send supplement, AOB, COC emails from YOUR @yourcompany.com address (not claims@dumbroof.ai)",
+            "Richard can search your inbox for carrier replies matching claim numbers",
+            "Carrier email polling — new adjuster responses auto-classified + routed",
+        ],
+        "steps": [
+            "Go to Settings → Email Integration in the DumbRoof dashboard.",
+            "Click 'Connect Gmail'. You'll be redirected to Google sign-in.",
+            "IMPORTANT: you will see a 'Google hasn't verified this app' warning — "
+            "this is normal, we're still in OAuth review. Click 'Advanced' → "
+            "'Go to DumbRoof (unsafe)' to continue. Once Google approves our app, "
+            "this warning will go away.",
+            "Grant the 3 requested scopes: send, readonly, modify. (Read-only is "
+            "used ONLY to find emails with your claim numbers in the subject — "
+            "we never access personal email.)",
+            "You'll be redirected back to DumbRoof with Gmail connected.",
+        ],
+        "gotchas": [
+            "Google Workspace admins: may need to whitelist dumbroof.ai as an "
+            "allowed third-party app. Admin Console → Security → API controls.",
+            "If you disconnect and reconnect, your refresh token updates — no action needed.",
+        ],
+    },
+    "companycam": {
+        "display_name": "CompanyCam",
+        "category": "Photo management",
+        "auth_type": "API Key",
+        "db_fields": ["companycam_api_key", "companycam_connected_at"],
+        "unlocks": [
+            "Import photos from any CompanyCam project directly into a claim",
+            "Richard can pull CompanyCam photos when you drop a file in chat",
+            "Photo annotations sync with CompanyCam comments",
+        ],
+        "steps": [
+            "Sign in to app.companycam.com.",
+            "Click your profile avatar (top right) → **API Keys**.",
+            "Click **Create New Key**. Name it 'DumbRoof'. Copy the key immediately — "
+            "you can't view it again.",
+            "Paste the key in DumbRoof Settings → Integrations → CompanyCam, OR "
+            "paste it here and I'll save it for you.",
+        ],
+        "gotchas": [
+            "CompanyCam keys are account-wide, not project-scoped. Anyone with the "
+            "key can read ALL your projects.",
+            "If your CompanyCam account has multiple admins, decide who owns the key.",
+        ],
+    },
+    "acculynx": {
+        "display_name": "AccuLynx",
+        "category": "CRM / Job management",
+        "auth_type": "API Key",
+        "db_fields": ["acculynx_api_key", "acculynx_connected_at"],
+        "unlocks": [
+            "Create AccuLynx jobs automatically from DumbRoof claims",
+            "Sync claim status back to AccuLynx (won / lost / active)",
+            "Richard can look up job details by homeowner address",
+        ],
+        "steps": [
+            "Sign in to app.acculynx.com.",
+            "Go to **Settings → Integrations → API Access**. (You may need admin "
+            "permission — ask your AccuLynx admin if you don't see it.)",
+            "Click **Generate New Key**. Name it 'DumbRoof' so you can revoke it "
+            "cleanly if needed.",
+            "Copy the key and paste it in DumbRoof Settings → Integrations → "
+            "AccuLynx. Or tell me the key and I'll save it.",
+        ],
+        "gotchas": [
+            "AccuLynx API rate limits: 100 req/min per key. We stay well under.",
+            "If you're on AccuLynx Basic, API access may not be included — "
+            "check your subscription tier.",
+        ],
+    },
+    "roofr": {
+        "display_name": "Roofr",
+        "category": "Estimating / measurements",
+        "auth_type": "API Key",
+        "db_fields": ["roofr_api_key", "roofr_connected_at"],
+        "unlocks": [
+            "Pull Roofr measurement reports directly into a claim (replaces uploading PDF)",
+            "Sync Roofr estimates with DumbRoof line items",
+            "Richard can check if a Roofr measurement exists for the address",
+        ],
+        "steps": [
+            "Sign in to app.roofr.com.",
+            "Click your profile (top right) → **Account Settings → Integrations**.",
+            "Look for 'DumbRoof' or 'API Access'. If not listed, contact "
+            "support@roofr.com — Roofr is actively expanding their partner API.",
+            "Copy the key and paste it here, or in Settings → Integrations → Roofr.",
+        ],
+        "gotchas": [
+            "Roofr's partner API is still rolling out as of 2026 — you may need "
+            "to specifically request API access from their team.",
+        ],
+    },
+    "hover": {
+        "display_name": "Hover",
+        "category": "Measurements",
+        "auth_type": "API Key",
+        "db_fields": ["hover_api_key", "hover_connected_at"],
+        "unlocks": [
+            "Import Hover 3D measurement reports (pitch-level areas + facet counts)",
+            "Richard uses Hover data as the canonical EagleView replacement when no EagleView is uploaded",
+            "Hover's siding sq footage feeds directly into the estimate",
+        ],
+        "steps": [
+            "Sign in to app.hover.to.",
+            "Go to **Settings → API & Integrations** (or Developer Settings on some accounts).",
+            "Click **Generate API Key**. Name: 'DumbRoof'.",
+            "Copy the key. Paste it here or in Settings → Integrations → Hover.",
+        ],
+        "gotchas": [
+            "Hover key is per-user, not per-company. If multiple people on your team use "
+            "Hover, each can connect their own key.",
+            "Hover has 'Commercial' vs 'Residential' API endpoints — we query both automatically.",
+        ],
+    },
+    "gaf_quickmeasure": {
+        "display_name": "GAF QuickMeasure",
+        "category": "Measurements (GAF)",
+        "auth_type": "API Key",
+        "db_fields": ["gaf_quickmeasure_api_key", "gaf_quickmeasure_connected_at"],
+        "unlocks": [
+            "Order QuickMeasure reports directly from DumbRoof",
+            "Pull delivered QuickMeasure PDFs into a claim automatically",
+            "Richard can check QuickMeasure availability for an address",
+        ],
+        "steps": [
+            "Sign in to contractors.gaf.com (GAF Pro Portal).",
+            "Navigate to **Tools → QuickMeasure → API Settings**. (Only visible "
+            "to GAF Certified Contractors.)",
+            "Click **Generate Key**. Copy it.",
+            "Paste the key in DumbRoof Settings → Integrations → GAF QuickMeasure, or here.",
+        ],
+        "gotchas": [
+            "GAF QuickMeasure API is gated to GAF Certified Contractors only. "
+            "If you're not certified, contact GAF at 1-800-ROOF-411 about the "
+            "contractor program.",
+            "QuickMeasure reports are billed per-order. Your GAF account handles billing, not us.",
+        ],
+    },
+    "jobnimbus": {
+        "display_name": "JobNimbus",
+        "category": "CRM",
+        "auth_type": "API Key",
+        "db_fields": ["jobnimbus_api_key", "jobnimbus_connected_at"],
+        "unlocks": [
+            "Create JobNimbus jobs from DumbRoof claims",
+            "Sync status back — won claims appear as Won jobs in JobNimbus",
+            "Richard can pull contact info by homeowner name",
+        ],
+        "steps": [
+            "Sign in to app.jobnimbus.com.",
+            "Click your avatar → **Settings → API**.",
+            "Click **Generate API Key**. Copy it. Set expiration to 'Never' (or your "
+            "company's preferred rotation interval).",
+            "Paste the key here or in Settings → Integrations → JobNimbus.",
+        ],
+        "gotchas": [
+            "JobNimbus uses per-user keys. If your team wants shared access, create a "
+            "dedicated 'DumbRoof Integration' user and generate the key from that account.",
+        ],
+    },
+    "servicetitan": {
+        "display_name": "ServiceTitan",
+        "category": "CRM / Operations",
+        "auth_type": "OAuth client credentials (tenant + client_id + client_secret)",
+        "db_fields": ["servicetitan_tenant_id", "servicetitan_client_id", "servicetitan_client_secret", "servicetitan_connected_at"],
+        "unlocks": [
+            "Create ServiceTitan jobs from DumbRoof claims",
+            "Sync estimate data into the ServiceTitan job record",
+            "Pull customer records for auto-filling homeowner info",
+        ],
+        "steps": [
+            "Sign in to **go.servicetitan.com** as an admin.",
+            "Go to **Settings → Integrations → API Application Access**. (Admin-only.)",
+            "Click **Connect New App** → search for 'DumbRoof' in the marketplace. "
+            "If not listed, create a custom integration: **Settings → Developer → "
+            "Create new application**.",
+            "Approve the required scopes: JPM (Job Management), Customers, Invoices, Forms.",
+            "Copy the three values: **Tenant ID**, **Client ID**, **Client Secret**.",
+            "Paste all three in Settings → Integrations → ServiceTitan, or give them "
+            "to me here.",
+        ],
+        "gotchas": [
+            "ServiceTitan's API is only available on their Advanced or Enterprise tiers — "
+            "if you're on Starter, contact your ServiceTitan rep.",
+            "Client secrets are shown ONCE. If you don't copy it, you have to regenerate.",
+            "ServiceTitan rate limit: 1200 req/hour per app. We batch requests to stay under.",
+        ],
+    },
+}
+
+
+def _handle_list_integrations(sb: Client, user_id: str) -> dict:
+    if not user_id:
+        return {"action": "error", "message": "No user_id in request context."}
+    try:
+        res = sb.table("company_profiles").select("*").eq("user_id", user_id).limit(1).execute()
+        profile = (res.data or [{}])[0] if res.data else {}
+    except Exception as e:
+        return {"action": "error", "message": f"Profile lookup failed: {e}"}
+
+    def _status(key: str) -> str:
+        v = profile.get(key)
+        return "connected" if v else "not_connected"
+
+    integrations = {
+        "gmail": {
+            "connected": bool(profile.get("gmail_refresh_token")),
+            "sending_email": profile.get("sending_email") or profile.get("email"),
+        },
+        "companycam": {
+            "connected": bool(profile.get("companycam_api_key")),
+            "connected_at": profile.get("companycam_connected_at"),
+        },
+        "acculynx": {
+            "connected": bool(profile.get("acculynx_api_key")),
+            "connected_at": profile.get("acculynx_connected_at"),
+        },
+        "roofr": {
+            "connected": bool(profile.get("roofr_api_key")),
+            "connected_at": profile.get("roofr_connected_at"),
+        },
+        "hover": {
+            "connected": bool(profile.get("hover_api_key")),
+            "connected_at": profile.get("hover_connected_at"),
+        },
+        "gaf_quickmeasure": {
+            "connected": bool(profile.get("gaf_quickmeasure_api_key")),
+            "connected_at": profile.get("gaf_quickmeasure_connected_at"),
+        },
+        "jobnimbus": {
+            "connected": bool(profile.get("jobnimbus_api_key")),
+            "connected_at": profile.get("jobnimbus_connected_at"),
+        },
+        "servicetitan": {
+            "connected": bool(profile.get("servicetitan_client_secret")),
+            "connected_at": profile.get("servicetitan_connected_at"),
+        },
+    }
+
+    # Profile completeness
+    profile_fields = ["company_name", "address", "city_state_zip", "email", "phone", "logo_path", "contact_name"]
+    profile_completeness = {
+        f: bool(profile.get(f)) for f in profile_fields
+    }
+    profile_complete = all(profile_completeness.values())
+
+    connected_count = sum(1 for v in integrations.values() if v["connected"])
+
+    return {
+        "action": "complete",
+        "type": "integrations_status",
+        "data": {
+            "integrations": integrations,
+            "connected_count": connected_count,
+            "total_count": len(integrations),
+            "profile_completeness": profile_completeness,
+            "profile_complete": profile_complete,
+        },
+        "message": (
+            f"{connected_count}/{len(integrations)} integrations connected. "
+            + ("Company profile complete." if profile_complete
+               else "Profile missing: " + ", ".join([k for k, v in profile_completeness.items() if not v]) + ".")
+        ),
+    }
+
+
+def _handle_get_integration_setup_guide(tool_input: dict) -> dict:
+    service = (tool_input.get("service") or "").strip().lower()
+    guide = _INTEGRATION_PLAYBOOK.get(service)
+    if not guide:
+        return {"action": "error", "message": f"Unknown service '{service}'. Known: {list(_INTEGRATION_PLAYBOOK.keys())}"}
+
+    return {
+        "action": "complete",
+        "type": "integration_setup_guide",
+        "data": {
+            "service": service,
+            **guide,
+        },
+        "message": f"Setup guide for {guide['display_name']} ({len(guide['steps'])} steps, unlocks {len(guide['unlocks'])} capabilities).",
+    }
+
+
+_KEY_SERVICE_FIELDS = {
+    "companycam": {"api_key": "companycam_api_key", "connected_at": "companycam_connected_at"},
+    "acculynx": {"api_key": "acculynx_api_key", "connected_at": "acculynx_connected_at"},
+    "roofr": {"api_key": "roofr_api_key", "connected_at": "roofr_connected_at"},
+    "hover": {"api_key": "hover_api_key", "connected_at": "hover_connected_at"},
+    "gaf_quickmeasure": {"api_key": "gaf_quickmeasure_api_key", "connected_at": "gaf_quickmeasure_connected_at"},
+    "jobnimbus": {"api_key": "jobnimbus_api_key", "connected_at": "jobnimbus_connected_at"},
+    "servicetitan": {
+        "client_secret": "servicetitan_client_secret",
+        "client_id": "servicetitan_client_id",
+        "tenant_id": "servicetitan_tenant_id",
+        "connected_at": "servicetitan_connected_at",
+    },
+}
+
+
+def _handle_preview_save_integration_key(sb: Client, user_id: str, tool_input: dict) -> dict:
+    service = (tool_input.get("service") or "").strip().lower()
+    api_key = (tool_input.get("api_key") or "").strip()
+
+    if not user_id:
+        return {"action": "error", "message": "No user_id in request context."}
+    if not service or not api_key:
+        return {"action": "error", "message": "service and api_key are required"}
+    if service not in _KEY_SERVICE_FIELDS:
+        return {"action": "error", "message": f"Can't save keys for '{service}'. Use OAuth for Gmail."}
+
+    # Basic length sanity
+    if len(api_key) < 10:
+        return {"action": "error", "message": "API key looks too short — double-check you copied the full key."}
+
+    playbook = _INTEGRATION_PLAYBOOK.get(service, {})
+    # Mask for preview display — show first 4 + last 4, never full value
+    masked = api_key[:4] + "…" + api_key[-4:] if len(api_key) > 10 else "…"
+
+    preview_extra: dict = {}
+    if service == "servicetitan":
+        for field in ("tenant_id", "client_id"):
+            val = (tool_input.get(field) or "").strip()
+            if not val:
+                return {"action": "error", "message": f"ServiceTitan requires tenant_id, client_id, AND client_secret. Missing: {field}"}
+            preview_extra[field] = val
+
+    return {
+        "action": "preview",
+        "type": "save_integration_key",
+        "tool_name": "save_integration_key",
+        "preview": {
+            "action_label": f"Save {playbook.get('display_name', service)} API key",
+            "service": service,
+            "display_name": playbook.get("display_name", service),
+            "api_key_masked": masked,
+            "api_key": api_key,  # not displayed; used by execute path
+            "unlocks": playbook.get("unlocks", []),
+            **preview_extra,
+        },
+        "message": f"Ready to save {playbook.get('display_name', service)} key ({masked}). Unlocks {len(playbook.get('unlocks', []))} capabilities.",
+    }
+
+
+def _handle_preview_invite_team_member(sb: Client, user_id: str, tool_input: dict) -> dict:
+    email = (tool_input.get("email") or "").strip().lower()
+    role = (tool_input.get("role") or "user").strip().lower()
+    name = tool_input.get("name") or ""
+
+    if not email or "@" not in email:
+        return {"action": "error", "message": "Valid email is required."}
+    if role not in ("admin", "user"):
+        return {"action": "error", "message": "role must be 'admin' or 'user'"}
+
+    # Look up inviting user's company domain for context
+    inviter_company = ""
+    try:
+        if user_id:
+            res = sb.table("company_profiles").select("company_name, email").eq("user_id", user_id).limit(1).execute()
+            prof = (res.data or [{}])[0] if res.data else {}
+            inviter_company = prof.get("company_name") or ""
+    except Exception:
+        pass
+
+    return {
+        "action": "preview",
+        "type": "invite_team_member",
+        "tool_name": "invite_team_member",
+        "preview": {
+            "action_label": "Invite Team Member",
+            "email": email,
+            "role": role,
+            "name": name or None,
+            "company": inviter_company,
+        },
+        "message": f"Ready to invite {email} as {role}" + (f" to {inviter_company}" if inviter_company else "") + ".",
     }
 
 
