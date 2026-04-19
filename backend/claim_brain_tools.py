@@ -1821,7 +1821,59 @@ def _analyze_photo_coverage(photos: list[dict], focus: str, claim_data: dict) ->
 
     # Hail / wind close-ups
     hail_close = _count_by_keywords(photos, ["hail", "bruise", "granule loss"])
-    wind_close = _count_by_keywords(photos, ["wind", "creased", "lifted"])
+    wind_close = _count_by_keywords(photos, ["wind", "creased", "lifted", "missing shingle"])
+
+    # ── Forensic-level plays (the stuff carriers can't argue with) ──
+
+    # Nail head photos — wind-claim killer. Unrusted nails = recent wind event.
+    # Rusted nails under a "missing shingle" = shingle was gone before the storm.
+    nail_head_photos = _count_by_keywords(
+        photos, ["nail head", "nail heads", "shiny nail", "unrusted nail", "exposed nail", "nail bright"]
+    )
+
+    # Brittle test — the repairability death-sentence argument. If shingle
+    # cracks when bent, spot-repair is impossible, full replacement required.
+    brittle_test_photos = _count_by_keywords(
+        photos, ["brittle", "brittle test", "cracked when bent", "shingle cracked", "snap test"]
+    )
+
+    # Shingle exposure measurement — a 5" exposure = discontinued product =
+    # full roof replacement argument (matching statute / NAIC MDL-902).
+    # Tom's rule (MEMORY): 5" exposure is unrepairable.
+    exposure_measurement_photos = _count_by_keywords(
+        photos, ["exposure", "tape measure on shingle", "5 inch exposure", '5" exposure', "reveal measurement"]
+    )
+
+    # Manufacturer stamp / batch code — proves age and ties to discontinuation
+    manufacturer_stamp_photos = _count_by_keywords(
+        photos, ["manufacturer stamp", "batch code", "shingle stamp", "back of shingle", "backside shingle"]
+    )
+
+    # Mat exposure — thermal splitting, proves shingle is compromised beyond hail marks
+    mat_exposure_photos = _count_by_keywords(
+        photos, ["mat exposure", "mat exposed", "thermal split", "shingle mat"]
+    )
+
+    # Granule embedment brush-off — handheld brush to show how much granule loss
+    granule_test_photos = _count_by_keywords(
+        photos, ["granule test", "brush off", "granule loss close", "granule embedment"]
+    )
+
+    # Sheathing / attic shots — interior proof of exterior penetration
+    sheathing_photos = _count_by_keywords(
+        photos, ["sheathing", "decking", "plywood", "osb", "attic underside"]
+    )
+
+    # ── Infer damage type from scope_comparison + photos ──
+    scope_rows = claim_data.get("scope_comparison") or []
+    scope_text = " ".join(
+        str(r.get("checklist_desc", "") or "") + " " + str(r.get("usarm_desc", "") or "") + " " + str(r.get("carrier_desc", "") or "")
+        for r in scope_rows if isinstance(r, dict)
+    ).lower()
+    photo_damage_types = " ".join(str(p.get("damage_type", "") or "") for p in photos).lower()
+    combined = scope_text + " " + photo_damage_types
+    is_wind_claim = any(kw in combined for kw in ["wind", "creased", "lifted", "missing shingle"])
+    is_hail_claim = any(kw in combined for kw in ["hail", "bruise", "granule"])
 
     return {
         "total_photos": total,
@@ -1838,6 +1890,17 @@ def _analyze_photo_coverage(photos: list[dict], focus: str, claim_data: dict) ->
         "interior_photos": interior_photos,
         "hail_close": hail_close,
         "wind_close": wind_close,
+        # forensic plays
+        "nail_head_photos": nail_head_photos,
+        "brittle_test_photos": brittle_test_photos,
+        "exposure_measurement_photos": exposure_measurement_photos,
+        "manufacturer_stamp_photos": manufacturer_stamp_photos,
+        "mat_exposure_photos": mat_exposure_photos,
+        "granule_test_photos": granule_test_photos,
+        "sheathing_photos": sheathing_photos,
+        # damage type inference
+        "is_wind_claim": is_wind_claim,
+        "is_hail_claim": is_hail_claim,
     }
 
 
@@ -1997,7 +2060,7 @@ def _generate_coaching_steps(coverage: dict, claim_data: dict, focus: str) -> li
         })
 
     # Hail close-ups — count-based
-    if coverage["hail_close"] < 5 and _count_by_keywords(claim_data.get("scope_comparison") or [], ["hail"]) > 0:
+    if (show_all or focus == "roof") and coverage["is_hail_claim"] and coverage["hail_close"] < 5:
         steps.append({
             "title": "More hail-hit close-ups",
             "importance": "high",
@@ -2009,6 +2072,128 @@ def _generate_coaching_steps(coverage: dict, claim_data: dict, focus: str) -> li
                 "above, 12 inches away. Vary hit sizes and locations across slopes."
             ),
             "damage_score_impact": "+10 points",
+        })
+
+    # ── Forensic-level plays ── (the moves adjusters can't counter)
+
+    # SHINGLE EXPOSURE MEASUREMENT — the matching-argument nuclear option.
+    # 5" exposure = discontinued manufacturer product = full roof replacement
+    # per NAIC MDL-902 + policy like-kind-quality. One tape-measure photo
+    # changes a spot-repair denial into a full-replacement approval.
+    if (show_all or focus == "roof") and coverage["exposure_measurement_photos"] == 0 and coverage["slope_photos"] > 0:
+        steps.append({
+            "title": "Measure shingle exposure with tape — CRITICAL for matching argument",
+            "importance": "critical",
+            "area": "roof",
+            "instruction": (
+                "Put a tape measure vertically across 3 shingle courses to show the "
+                "exposure (reveal). Shoot from directly above, close enough to read "
+                "the tape clearly.\n\n"
+                "**Why this matters:** 5-inch exposure shingles are DISCONTINUED by most "
+                "manufacturers (modern laminates are 5⅝\"). If the measurement shows 5\", "
+                "the product is unavailable and the carrier's spot-repair argument dies — "
+                "matching under NAIC MDL-902 + policy like-kind-quality language requires "
+                "full slope or full roof replacement. Tom's rule: **5\" = unrepairable.**\n\n"
+                "Shoot one measurement per slope minimum. Include the tape + the shingle "
+                "row + enough context to identify the slope."
+            ),
+            "damage_score_impact": "+20 points",
+        })
+
+    # BRITTLE TEST — repairability killer. Shingles that crack on bend
+    # cannot be lifted to replace adjacent pieces. Forces full replacement.
+    if (show_all or focus == "roof") and coverage["brittle_test_photos"] == 0 and coverage["slope_photos"] > 0:
+        steps.append({
+            "title": "Brittle test — prove repair is impossible",
+            "importance": "high",
+            "area": "roof",
+            "instruction": (
+                "Pick a sample shingle from the damaged slope and bend the tab 90 degrees. "
+                "If it cracks, snaps, or can't lift without breaking, the shingle is brittle — "
+                "which means adjacent shingles CAN'T be lifted during spot repair without "
+                "also breaking. Repair is physically impossible.\n\n"
+                "Photo sequence:\n"
+                "  1. Shingle being bent (mid-bend, tab raised 45°+)\n"
+                "  2. Close-up of the crack/snap line after release\n"
+                "  3. Wide shot of the slope with the tested shingle's location labeled\n\n"
+                "This is the argument that turns \"repair the damaged hip cap\" into "
+                "\"replace the slope.\" Adjusters can't counter a physical-impossibility "
+                "demonstration."
+            ),
+            "damage_score_impact": "+12 points",
+        })
+
+    # NAIL HEADS — wind-claim causation proof. Unrusted/shiny nails under
+    # missing or severely creased shingles = recent wind event, not age.
+    if (show_all or focus == "roof") and coverage["is_wind_claim"] and coverage["nail_head_photos"] == 0:
+        steps.append({
+            "title": "Photograph exposed nail heads — proves recent wind damage",
+            "importance": "critical",
+            "area": "roof",
+            "instruction": (
+                "Every missing shingle and severely creased shingle has exposed nail heads. "
+                "Shoot close-ups of each exposed nail so the metal condition is readable.\n\n"
+                "**Why this matters:** Unrusted / shiny / bright nail heads = the shingle "
+                "came off recently (the nail has only just been exposed to weather). "
+                "Rusted nails = the shingle was missing for months/years. This kills the "
+                "adjuster's classic \"wear and tear\" / \"pre-existing\" denial.\n\n"
+                "Sequence per missing-shingle location:\n"
+                "  1. Wide shot of the void showing all exposed nails in the row\n"
+                "  2. Close-up of 1-2 nail heads with a quarter for scale\n"
+                "  3. Same sequence for severely creased shingles (lift the tab to "
+                "expose the nail head underneath)\n\n"
+                "Label: \"Rear slope, exposed nails shiny/unrusted → recent separation.\""
+            ),
+            "damage_score_impact": "+15 points",
+        })
+
+    # MANUFACTURER STAMP — age / discontinuation proof
+    if (show_all or focus == "roof") and coverage["manufacturer_stamp_photos"] == 0 and coverage["slope_photos"] > 0:
+        steps.append({
+            "title": "Photograph manufacturer stamp on a removed shingle",
+            "importance": "medium",
+            "area": "roof",
+            "instruction": (
+                "Pull one damaged shingle and photograph the back side — the "
+                "manufacturer stamp + batch code are printed there. This proves:\n"
+                "  1. The product's manufacturer (ties to discontinuation databases)\n"
+                "  2. Approximate age (batch codes encode year)\n"
+                "  3. Product line for matching disputes\n\n"
+                "Close-up, no glare, readable. Label which slope it came from."
+            ),
+            "damage_score_impact": "+4 points",
+        })
+
+    # MAT EXPOSURE — thermal splitting indicator
+    if (show_all or focus == "roof") and coverage["is_hail_claim"] and coverage["mat_exposure_photos"] == 0:
+        steps.append({
+            "title": "Document any mat-exposure or thermal splitting",
+            "importance": "medium",
+            "area": "roof",
+            "instruction": (
+                "If any shingle shows the fiberglass mat exposed (white/fibrous material "
+                "visible under the granules), photograph it close-up with scale. Mat "
+                "exposure is not just cosmetic — it means water ingress is imminent and "
+                "the shingle is functionally failed. Adjusters can't argue 'cosmetic only' "
+                "against exposed mat."
+            ),
+            "damage_score_impact": "+4 points",
+        })
+
+    # SHEATHING — penetration proof
+    if (show_all or focus == "roof" or focus == "interior") and coverage["sheathing_photos"] == 0:
+        steps.append({
+            "title": "Attic/sheathing shots for penetration evidence",
+            "importance": "low",
+            "area": "interior",
+            "instruction": (
+                "From inside the attic, shoot the underside of the roof sheathing where "
+                "damage is suspected. Look for: water staining, daylight, nail-pop, or "
+                "delamination. If any present, shoot the stain + the corresponding "
+                "exterior location so carrier can tie cause to effect. This defeats the "
+                "\"no visible damage\" denial even when exterior evidence is limited."
+            ),
+            "damage_score_impact": "+3 points if damage present",
         })
 
     return steps
