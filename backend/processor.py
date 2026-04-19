@@ -701,8 +701,8 @@ If the report is a Property Owner Report (images only, no overhead diagram), ret
         result["roof_facets"] = []
 
     facet_count = len(result.get("roof_facets", []))
-    if facet_count:
-        print(f"[FACETS] Extracted {facet_count} roof facets from {os.path.basename(pdf_path)}")
+    print(f"[FACETS] Extracted {facet_count} roof facets from {os.path.basename(pdf_path)}"
+          + (f" (north_angle={result.get('north_arrow_angle')})" if facet_count else ""))
     return result
 
 
@@ -5376,11 +5376,23 @@ async def process_claim(claim_id: str):
                         "elevation": _pt.get("elevation"),
                     }
                     _exif = (exif_metadata or {}).get(_pk) or {}
-                    if "heading" in _exif:
-                        _row["heading"] = _exif["heading"]
+                    # Pass every available EXIF signal through so the
+                    # assignment helper can use heading OR GPS triangulation.
+                    for _exif_col in ("heading", "gps_lat", "gps_lon"):
+                        if _exif_col in _exif:
+                            _row[_exif_col] = _exif[_exif_col]
                     _synthetic_photos.append(_row)
                 from slope_mapping import assign_photos_to_slopes, aggregate_slope_damage
-                _assignments = assign_photos_to_slopes(_synthetic_photos, _facets_list)
+                # Pipe property centroid so slope_mapping can fall back to
+                # GPS triangulation when EXIF heading is missing (AccuLynx +
+                # other vendors strip GPSImgDirection on re-save).
+                _prop_lat = claim.get("latitude")
+                _prop_lon = claim.get("longitude")
+                _assignments = assign_photos_to_slopes(
+                    _synthetic_photos, _facets_list,
+                    property_lat=_prop_lat,
+                    property_lon=_prop_lon,
+                )
                 for _p in _synthetic_photos:
                     _sid = _assignments.get(_p.get("annotation_key"))
                     if _sid:

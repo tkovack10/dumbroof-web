@@ -1,16 +1,28 @@
 """
 Photo -> roof-slope (facet) assignment.
 
-V1 heuristic: use EXIF heading + cardinal direction match against the facets
-extracted from the EagleView diagram. For photos missing EXIF heading, fall
-back to the photo analyzer's existing `elevation` tag (N/S/E/W) which Claude
-Vision already produces during damage analysis.
+V1 heuristic uses two signals, in order of preference:
 
-No polygon ray-cast yet — V2 will add that once we validate V1 accuracy.
+  1. EXIF compass heading (GPSImgDirection) — direction the camera was
+     pointing. Camera heading of 0 (north) views the south slope, etc.
+     Accurate but only present on phone-native uploads. Vendors like
+     AccuLynx strip this tag when re-saving photos (keep GPS lat/lng,
+     drop the direction).
+
+  2. GPS triangulation from property centroid — if the photographer's
+     GPS position is known AND the property centroid is known, the
+     bearing from centroid-to-photographer tells us which side of the
+     house they stood on, which is the slope they photographed.
+     (Photographers stand at the slope they're capturing.) No inversion
+     needed — this is the natural interpretation.
+
+No polygon ray-cast yet — V2 will add that once we validate V1 accuracy
+on real claims.
 """
 
 from __future__ import annotations
 
+import math
 from typing import Optional
 
 CARDINAL_BEARINGS = {
@@ -44,6 +56,12 @@ _NON_GEOGRAPHIC_ELEVATIONS = {
 }
 
 
+def _bucket_bearing(bearing_deg: float) -> str:
+    """Round a 0-360° bearing to the nearest 8-compass cardinal."""
+    idx = int((bearing_deg % 360 + 22.5) // 45) % 8
+    return ["N", "NE", "E", "SE", "S", "SW", "W", "NW"][idx]
+
+
 def _camera_view_cardinal(heading_deg: float) -> str:
     """Convert a compass heading (direction camera was pointing) to an 8-way
     cardinal label for the *slope being photographed*.
@@ -54,12 +72,53 @@ def _camera_view_cardinal(heading_deg: float) -> str:
     slope's cardinal = (heading + 180) mod 360, bucketed to the nearest
     8-compass direction.
     """
-    # Camera heading is the direction the lens points. The visible slope
-    # faces the opposite direction (toward the camera).
-    slope_bearing = (float(heading_deg) + 180.0) % 360.0
-    # Bucket to nearest 45° cardinal
-    idx = int((slope_bearing + 22.5) // 45) % 8
-    return ["N", "NE", "E", "SE", "S", "SW", "W", "NW"][idx]
+    return _bucket_bearing(float(heading_deg) + 180.0)
+
+
+def _bearing_from_centroid(
+    centroid_lat: float, centroid_lon: float,
+    photo_lat: float, photo_lon: float,
+) -> float:
+    """Initial-compass-bearing from property centroid to photographer GPS.
+
+    Returns degrees 0-360 clockwise from true north. Great-circle formula
+    adapted from https://www.movable-type.co.uk/scripts/latlong.html.
+
+    The returned bearing IS the cardinal of the visible slope: if the
+    photographer stood north of the house (bearing = 0°), they were
+    standing AT the north slope looking back at the house, photographing
+    the north-facing slope of the roof.
+    """
+    lat1 = math.radians(centroid_lat)
+    lat2 = math.radians(photo_lat)
+    dlon = math.radians(photo_lon - centroid_lon)
+    y = math.sin(dlon) * math.cos(lat2)
+    x = math.cos(lat1) * math.sin(lat2) - math.sin(lat1) * math.cos(lat2) * math.cos(dlon)
+    bearing = math.degrees(math.atan2(y, x))
+    return (bearing + 360.0) % 360.0
+
+
+def _haversine_meters(
+    lat1: float, lon1: float, lat2: float, lon2: float,
+) -> float:
+    """Great-circle distance in meters. Used to reject photos too far from
+    the property centroid (e.g. inspector's car 500m away)."""
+    R = 6_371_000.0
+    p1 = math.radians(lat1)
+    p2 = math.radians(lat2)
+    dp = math.radians(lat2 - lat1)
+    dl = math.radians(lon2 - lon1)
+    a = math.sin(dp / 2) ** 2 + math.cos(p1) * math.cos(p2) * math.sin(dl / 2) ** 2
+    return 2 * R * math.asin(math.sqrt(a))
+
+
+# Photos more than this far from the property centroid are ignored for GPS
+# triangulation — they're almost certainly taken from a road, staging area,
+# or neighboring property, where bearing-from-centroid is meaningless.
+GPS_TRIANGULATION_MAX_METERS = 100.0
+# And too close: photos inside a tight radius could be taken from anywhere
+# on the property and the centroid bearing is noise-dominated.
+GPS_TRIANGULATION_MIN_METERS = 5.0
 
 
 def _cardinal_distance(a: str, b: str) -> int:
@@ -97,14 +156,24 @@ def _normalize_cardinal(val: Optional[str]) -> Optional[str]:
 def assign_photos_to_slopes(
     photos: list,
     roof_facets: list,
+    property_lat: Optional[float] = None,
+    property_lon: Optional[float] = None,
 ) -> dict:
     """Assign each photo to a roof facet (slope).
 
+    Signal priority:
+      1. EXIF compass heading (most accurate; phone-native photos only)
+      2. GPS triangulation — bearing from property centroid to photo GPS
+         (works when heading was stripped by upload vendors like AccuLynx)
+      3. Claude Vision's existing elevation tag (only if geographic)
+
     Args:
-        photos: list of photo dicts with at minimum {annotation_key, heading?, elevation?, damage_type?}.
-                Typically read from the `photos` Supabase rows after processing.
-        roof_facets: list of facet dicts from claims.roof_facets payload with
-                {facet_id, cardinal, ...}
+        photos: list of photo dicts {annotation_key, heading?, gps_lat?,
+                gps_lon?, elevation?, damage_type?}.
+        roof_facets: list of facet dicts from claims.roof_facets payload
+                with {facet_id, cardinal, ...}
+        property_lat/lon: geocoded property centroid (from claims.latitude/
+                longitude). Enables signal #2. Without this, GPS is ignored.
 
     Returns:
         dict mapping annotation_key -> facet_id. Photos that cannot be
@@ -125,6 +194,10 @@ def assign_photos_to_slopes(
     if not by_cardinal:
         return {}
 
+    have_centroid = (
+        property_lat is not None and property_lon is not None
+    )
+
     assignments: dict = {}
     for photo in photos:
         key = photo.get("annotation_key")
@@ -140,7 +213,24 @@ def assign_photos_to_slopes(
             except (TypeError, ValueError):
                 target_cardinal = None
 
-        # 2. Fallback: Claude Vision's elevation tag on the photo itself.
+        # 2. GPS triangulation from property centroid.
+        if not target_cardinal and have_centroid:
+            try:
+                p_lat = photo.get("gps_lat")
+                p_lon = photo.get("gps_lon")
+                if p_lat is not None and p_lon is not None:
+                    p_lat_f = float(p_lat)
+                    p_lon_f = float(p_lon)
+                    dist = _haversine_meters(property_lat, property_lon, p_lat_f, p_lon_f)  # type: ignore[arg-type]
+                    if GPS_TRIANGULATION_MIN_METERS <= dist <= GPS_TRIANGULATION_MAX_METERS:
+                        bearing = _bearing_from_centroid(
+                            property_lat, property_lon, p_lat_f, p_lon_f,  # type: ignore[arg-type]
+                        )
+                        target_cardinal = _bucket_bearing(bearing)
+            except (TypeError, ValueError):
+                pass
+
+        # 3. Fallback: Claude Vision's elevation tag on the photo itself.
         if not target_cardinal:
             target_cardinal = _normalize_cardinal(photo.get("elevation"))
 
