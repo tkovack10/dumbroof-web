@@ -1012,6 +1012,10 @@ export default function ClaimDetailPage() {
         {/* Pending Changes Banner */}
         {!isReprocessingState && <PendingChangesBanner claimId={claimId} />}
 
+        {/* Communication Log — pinned to the top so carrier emails / drafts
+            are the first thing visible after claim status. */}
+        {isReady && <CommunicationLog claimId={claim.id} />}
+
         {/* Needs Improvement — Coaching Card */}
         {claim.status === "needs_improvement" && claim.improvement_guidance && (
           <div className="bg-orange-500/10 border border-orange-500/30 rounded-2xl p-6">
@@ -1920,9 +1924,6 @@ export default function ClaimDetailPage() {
           );
         })}
       </div>
-
-      {/* Communication Log */}
-      {isReady && <CommunicationLog claimId={claim.id} />}
 
       {/* Claim Brain — AI Chat */}
       {claim && (
