@@ -1392,6 +1392,23 @@ async def approve_brain_action(claim_id: str, body: ToolApproval, background_tas
         _audit_log(sb, claim_id, user_id, tool_name, {"approval_id": body.tool_call_id}, {"action": "discarded", "message": "user discarded"}, 0)
         return {"status": "discarded", "message": "Action was discarded by user."}
 
+    # Dry-run mode — per-user flag on company_profiles. When true, every
+    # destructive path short-circuits here. Preview was already shown, so the
+    # user sees "DRY RUN" as the approval result.
+    dry_run = False
+    try:
+        if user_id:
+            prof_res = sb.table("company_profiles").select("richard_dry_run").eq("user_id", user_id).limit(1).execute()
+            prof_rows = prof_res.data or []
+            dry_run = bool(prof_rows and prof_rows[0].get("richard_dry_run"))
+    except Exception as e:
+        print(f"[dry-run] profile lookup failed (non-fatal): {e}")
+
+    if dry_run:
+        summary = f"DRY RUN — would have executed {tool_name}"
+        _audit_log(sb, claim_id, user_id, tool_name, {"approval_id": body.tool_call_id, "dry_run": True}, {"action": "dry_run", "message": summary}, 0)
+        return {"status": "dry_run", "message": summary, "dry_run": True}
+
     try:
         # ─── Email-type draft (supplement / AOB / custom / invoice / coc-with-send) ───
         draft = tool_result.get("draft")

@@ -82,6 +82,8 @@ function SettingsPageContent() {
     phone: "",
     website: "",
   });
+  const [richardDryRun, setRichardDryRun] = useState(false);
+  const [richardDryRunSaving, setRichardDryRunSaving] = useState(false);
 
   useEffect(() => {
     if (isPasswordReset && !loading && passwordRef.current) {
@@ -142,6 +144,8 @@ function SettingsPageContent() {
           setGmailConnected(true);
           setGmailEmail(data.sending_email || data.email || "");
         }
+        // Richard dry-run flag (short-circuits destructive approvals)
+        setRichardDryRun(Boolean(data.richard_dry_run));
         // Check CRM connections
         if (data.acculynx_api_key) {
           setAcculynxConnected(true);
@@ -556,6 +560,59 @@ function SettingsPageContent() {
             >
               {addingForwarder ? "Adding..." : "Add Forwarder"}
             </button>
+          </div>
+        </div>
+
+        {/* Claim Brain (Richard) safety — dry-run toggle */}
+        <div className="mt-12 pt-8 border-t border-[var(--border-glass)]">
+          <h2 className="text-xl font-bold text-[var(--white)] mb-1">Claim Brain Safety</h2>
+          <p className="text-[var(--gray-muted)] text-sm mb-6">
+            Dry-run mode lets you test Richard&apos;s agentic actions (send-to-carrier,
+            schedule follow-ups, attach documents) without any of them actually executing.
+            Previews still appear; approvals log to the audit trail but nothing ships.
+          </p>
+
+          <div className="bg-[var(--bg-glass)] border border-[var(--border-glass)] rounded-xl p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-semibold text-[var(--white)]">
+                  Dry-run mode {richardDryRun && <span className="ml-2 text-amber-400 text-xs font-bold">ON</span>}
+                </p>
+                <p className="text-xs text-[var(--gray-muted)] mt-1">
+                  When ON, every approve click returns &quot;DRY RUN&quot; instead of sending or writing.
+                </p>
+              </div>
+              <button
+                onClick={async () => {
+                  setRichardDryRunSaving(true);
+                  const next = !richardDryRun;
+                  try {
+                    const { data: { user } } = await supabase.auth.getUser();
+                    if (user) {
+                      await supabase
+                        .from("company_profiles")
+                        .update({ richard_dry_run: next, updated_at: new Date().toISOString() })
+                        .eq("user_id", user.id);
+                      setRichardDryRun(next);
+                    }
+                  } catch (e) {
+                    console.warn("[dry-run] save failed:", e);
+                  }
+                  setRichardDryRunSaving(false);
+                }}
+                disabled={richardDryRunSaving}
+                className={`relative inline-flex items-center h-7 w-12 rounded-full transition-colors disabled:opacity-40 ${
+                  richardDryRun ? "bg-amber-500" : "bg-white/10"
+                }`}
+                aria-label="Toggle dry-run mode"
+              >
+                <span
+                  className={`inline-block h-5 w-5 rounded-full bg-white transition-transform ${
+                    richardDryRun ? "translate-x-6" : "translate-x-1"
+                  }`}
+                />
+              </button>
+            </div>
           </div>
         </div>
 

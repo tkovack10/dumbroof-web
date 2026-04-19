@@ -658,6 +658,8 @@ export function ClaimBrainChat({
   const [dragActive, setDragActive] = useState(false);
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [bulkApproving, setBulkApproving] = useState(false);
+  const [listening, setListening] = useState(false);
+  const recognitionRef = useRef<unknown>(null);
   const chatAreaRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -707,6 +709,71 @@ export function ClaimBrainChat({
   const removeAttachment = (id: string) => {
     setPending((prev) => prev.filter((p) => p.id !== id));
   };
+
+  // Voice input — Web Speech API. Mobile foreman use case: tap the mic,
+  // speak "what did the carrier miss?", tap again to stop and send-to-input.
+  // Safari + Chrome support both SpeechRecognition and webkitSpeechRecognition.
+  const toggleVoice = useCallback(() => {
+    if (typeof window === "undefined") return;
+    const w = window as unknown as {
+      SpeechRecognition?: new () => unknown;
+      webkitSpeechRecognition?: new () => unknown;
+    };
+    const Ctor = w.SpeechRecognition || w.webkitSpeechRecognition;
+    if (!Ctor) {
+      alert("Voice input isn't supported in this browser. Use Chrome or Safari.");
+      return;
+    }
+    if (listening && recognitionRef.current) {
+      try {
+        (recognitionRef.current as { stop: () => void }).stop();
+      } catch { /* ignore */ }
+      setListening(false);
+      return;
+    }
+    const recognition = new Ctor() as {
+      continuous: boolean;
+      interimResults: boolean;
+      lang: string;
+      onresult: (e: { results: ArrayLike<{ [k: number]: { transcript: string }; isFinal: boolean }> }) => void;
+      onerror: (e: { error: string }) => void;
+      onend: () => void;
+      start: () => void;
+      stop: () => void;
+    };
+    recognition.continuous = true;
+    recognition.interimResults = true;
+    recognition.lang = locale === "es" ? "es-US" : "en-US";
+
+    let finalTranscript = "";
+    recognition.onresult = (event) => {
+      let interim = "";
+      for (let i = 0; i < event.results.length; i++) {
+        const res = event.results[i];
+        if (res.isFinal) {
+          finalTranscript += res[0].transcript;
+        } else {
+          interim += res[0].transcript;
+        }
+      }
+      setInput((finalTranscript + interim).trim());
+    };
+    recognition.onerror = (e) => {
+      console.warn("[voice] error:", e.error);
+      setListening(false);
+    };
+    recognition.onend = () => {
+      setListening(false);
+    };
+    recognitionRef.current = recognition;
+    setListening(true);
+    try {
+      recognition.start();
+    } catch (e) {
+      console.warn("[voice] start failed:", e);
+      setListening(false);
+    }
+  }, [listening, locale]);
 
   const scrollToBottom = useCallback(() => {
     if (chatAreaRef.current) {
@@ -1243,6 +1310,18 @@ export function ClaimBrainChat({
             className="bg-white/5 hover:bg-white/10 disabled:opacity-30 text-white/60 w-9 h-9 rounded-xl flex items-center justify-center transition-colors text-lg flex-shrink-0"
           >
             📎
+          </button>
+          <button
+            onClick={toggleVoice}
+            disabled={isStreaming}
+            title={listening ? "Stop listening" : "Dictate your question"}
+            className={`disabled:opacity-30 w-9 h-9 rounded-xl flex items-center justify-center transition-colors text-lg flex-shrink-0 ${
+              listening
+                ? "bg-red-500/20 text-red-300 animate-pulse"
+                : "bg-white/5 hover:bg-white/10 text-white/60"
+            }`}
+          >
+            🎙️
           </button>
           <textarea
             ref={inputRef}
