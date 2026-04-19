@@ -20,11 +20,14 @@ import type {
 
 // Damage color scale — matches the tone used elsewhere in the app.
 // Green under 10%, yellow 10-24%, orange 25-49%, red ≥50%.
+// NaN / Infinity / negative values clamp to 0 (green) rather than leaking into
+// the else-branch via the fall-through that NaN comparisons naturally take.
 function damageColor(pct: number): { fill: string; stroke: string } {
-  if (pct >= 0.5)  return { fill: "rgba(239,68,68,0.35)",  stroke: "rgb(239,68,68)" };
-  if (pct >= 0.25) return { fill: "rgba(251,146,60,0.30)", stroke: "rgb(251,146,60)" };
-  if (pct >= 0.10) return { fill: "rgba(250,204,21,0.25)", stroke: "rgb(250,204,21)" };
-  return              { fill: "rgba(34,197,94,0.20)",  stroke: "rgb(34,197,94)" };
+  const n = Number.isFinite(pct) && pct > 0 ? pct : 0;
+  if (n >= 0.5)  return { fill: "rgba(239,68,68,0.35)",  stroke: "rgb(239,68,68)" };
+  if (n >= 0.25) return { fill: "rgba(251,146,60,0.30)", stroke: "rgb(251,146,60)" };
+  if (n >= 0.10) return { fill: "rgba(250,204,21,0.25)", stroke: "rgb(250,204,21)" };
+  return             { fill: "rgba(34,197,94,0.20)",  stroke: "rgb(34,197,94)" };
 }
 
 // Severity chip shown on each photo thumbnail.
@@ -37,6 +40,7 @@ const SEVERITY_CHIP: Record<string, string> = {
 };
 
 function polygonCentroid(points: Array<[number, number]>): [number, number] {
+  // Callers must guard on `isRenderablePolygon` first — this is a fallback.
   if (!points.length) return [500, 500];
   const sum = points.reduce(
     (acc, [x, y]) => [acc[0] + x, acc[1] + y],
@@ -46,8 +50,14 @@ function polygonCentroid(points: Array<[number, number]>): [number, number] {
 }
 
 function pointsToPath(points: Array<[number, number]> | undefined): string {
-  if (!points || !points.length) return "";
+  // Degenerate polygons (0-2 points) render an invisible path but still catch
+  // clicks on a zero-area hit box, silently breaking selection. Return empty.
+  if (!points || points.length < 3) return "";
   return points.map(([x, y], i) => (i === 0 ? `M${x},${y}` : `L${x},${y}`)).join(" ") + " Z";
+}
+
+function isRenderablePolygon(pts: Array<[number, number]> | undefined): boolean {
+  return !!pts && pts.length >= 3;
 }
 
 interface RoofPhotoMapProps {
@@ -55,9 +65,10 @@ interface RoofPhotoMapProps {
   slopeDamage: SlopeDamageRow[] | null;
   fullReroofTrigger: boolean;
   photos: RoofPhotoMapPhoto[];
-  // Signed URL resolver for photo thumbnails. Optional — if absent we show
-  // just the annotation key.
-  photoUrl?: (annotationKey: string, filename?: string | null) => string | null;
+  // Pre-resolved signed-URL map keyed by annotation_key. The `claim-documents`
+  // bucket is private, so URLs must come from `createSignedUrl` (or an API
+  // route that signs). Pass an empty object to render without thumbnails.
+  photoUrls?: Record<string, string>;
   className?: string;
 }
 
@@ -66,7 +77,7 @@ export function RoofPhotoMap({
   slopeDamage,
   fullReroofTrigger,
   photos,
-  photoUrl,
+  photoUrls,
   className,
 }: RoofPhotoMapProps) {
   const [selectedFacetId, setSelectedFacetId] = useState<string | null>(null);
@@ -148,8 +159,12 @@ export function RoofPhotoMap({
             </defs>
             <rect width="1000" height="1000" fill="url(#roofmap-grid)" />
 
-            {/* Facet polygons */}
-            {facets.map((facet) => {
+            {/* Facet polygons — skip malformed ones so their labels don't
+                stack at the canvas center and their zero-area hit boxes don't
+                swallow clicks intended for adjacent facets. Those facets are
+                still listed in the SlopeSummary on the right (keyboard-
+                accessible), so the slope isn't unreachable. */}
+            {facets.filter((f) => isRenderablePolygon(f.polygon_pixels)).map((facet) => {
               const dmg = damageByFacet[facet.facet_id]?.weighted_damage_pct ?? 0;
               const color = damageColor(dmg);
               const isSelected = selectedFacetId === facet.facet_id;
@@ -157,7 +172,16 @@ export function RoofPhotoMap({
               return (
                 <g
                   key={facet.facet_id}
+                  role="button"
+                  tabIndex={0}
+                  aria-label={`Slope ${facet.facet_id}, ${facet.cardinal ?? "unknown cardinal"}, ${Math.round(dmg * 100)}% damage`}
                   onClick={() => setSelectedFacetId(facet.facet_id)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      setSelectedFacetId(facet.facet_id);
+                    }
+                  }}
                   style={{ cursor: "pointer" }}
                 >
                   <path
@@ -230,7 +254,7 @@ export function RoofPhotoMap({
             facet={facets.find((f) => f.facet_id === selectedFacetId) ?? null}
             damage={selectedDamage}
             photos={selectedPhotos}
-            photoUrl={photoUrl}
+            photoUrls={photoUrls}
             onClear={() => setSelectedFacetId(null)}
           />
 
@@ -262,13 +286,13 @@ function SlopePanel({
   facet,
   damage,
   photos,
-  photoUrl,
+  photoUrls,
   onClear,
 }: {
   facet: RoofFacet | null;
   damage: SlopeDamageRow | null;
   photos: RoofPhotoMapPhoto[];
-  photoUrl?: (annotationKey: string, filename?: string | null) => string | null;
+  photoUrls?: Record<string, string>;
   onClear: () => void;
 }) {
   if (!facet) {
@@ -325,7 +349,7 @@ function SlopePanel({
       ) : (
         <div className="p-3 grid grid-cols-3 gap-2 max-h-80 overflow-y-auto">
           {photos.map((p) => (
-            <PhotoChip key={p.annotation_key} photo={p} photoUrl={photoUrl} />
+            <PhotoChip key={p.annotation_key} photo={p} photoUrls={photoUrls} />
           ))}
         </div>
       )}
@@ -358,12 +382,12 @@ function Metric({
 
 function PhotoChip({
   photo,
-  photoUrl,
+  photoUrls,
 }: {
   photo: RoofPhotoMapPhoto;
-  photoUrl?: (annotationKey: string, filename?: string | null) => string | null;
+  photoUrls?: Record<string, string>;
 }) {
-  const url = photoUrl?.(photo.annotation_key, photo.filename);
+  const url = photoUrls?.[photo.annotation_key];
   const sev = (photo.severity ?? "none").toLowerCase();
   const sevClass = SEVERITY_CHIP[sev] ?? SEVERITY_CHIP.none;
   return (

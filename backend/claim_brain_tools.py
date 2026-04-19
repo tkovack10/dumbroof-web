@@ -1590,19 +1590,33 @@ def _handle_get_slope_damage(claim_data: dict, tool_input: dict) -> dict:
             ),
         }
 
-    try:
-        min_pct = float(tool_input.get("min_damage_pct") or 0)
-    except (TypeError, ValueError):
-        min_pct = 0
+    def _num(val, default=0.0):
+        """Coerce possibly-string/null DB values to float, falling back to default."""
+        if val is None:
+            return default
+        try:
+            return float(val)
+        except (TypeError, ValueError):
+            return default
+
+    min_pct = _num(tool_input.get("min_damage_pct"), 0.0)
 
     # Filter + enrich each slope row with a human-readable summary line.
+    # Also capture the unassigned bucket separately so the LLM knows how many
+    # photos couldn't be placed (signal that the area-weighted trigger may be
+    # less trustworthy).
     slopes = []
+    unassigned = None
     for row in slope_damage:
         if not isinstance(row, dict):
             continue
         if row.get("facet_id") == "_unassigned":
+            unassigned = {
+                "total_photos": int(_num(row.get("total_photos"), 0)),
+                "damage_photos": int(_num(row.get("damage_photos"), 0)),
+            }
             continue
-        weighted = float(row.get("weighted_damage_pct") or 0)
+        weighted = _num(row.get("weighted_damage_pct"), 0.0)
         if weighted < min_pct:
             continue
         slopes.append({
@@ -1610,14 +1624,15 @@ def _handle_get_slope_damage(claim_data: dict, tool_input: dict) -> dict:
             "cardinal": row.get("cardinal"),
             "pitch": row.get("pitch"),
             "area_pct_of_roof": row.get("area_pct"),
-            "total_photos": row.get("total_photos") or 0,
-            "damage_photos": row.get("damage_photos") or 0,
+            "total_photos": int(_num(row.get("total_photos"), 0)),
+            "damage_photos": int(_num(row.get("damage_photos"), 0)),
             "weighted_damage_pct": weighted,
             "dominant_damage_type": row.get("dominant_damage_type"),
         })
 
     # Rank worst-first so the LLM sees the actionable slopes immediately.
-    slopes.sort(key=lambda s: s.get("weighted_damage_pct", 0), reverse=True)
+    # Use _num on the sort key too in case any row snuck through with a None.
+    slopes.sort(key=lambda s: _num(s.get("weighted_damage_pct"), 0.0), reverse=True)
 
     worst = slopes[0] if slopes else None
     # Count of slopes that individually would qualify (≥3 damage photos and
@@ -1654,6 +1669,7 @@ def _handle_get_slope_damage(claim_data: dict, tool_input: dict) -> dict:
             "total_slopes": len(slopes),
             "slopes_individually_above_threshold": above_threshold,
             "full_reroof_trigger": trigger,
+            "unassigned": unassigned,  # None when all photos placed; else {total_photos, damage_photos}
             "north_arrow_angle": roof_facets_payload.get("north_arrow_angle") if isinstance(roof_facets_payload, dict) else None,
             "reroof_justification": rj,
         },

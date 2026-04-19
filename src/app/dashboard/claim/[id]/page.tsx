@@ -164,6 +164,7 @@ export default function ClaimDetailPage() {
   const [currentUserId, setCurrentUserId] = useState<string>("");
   const [userProfile, setUserProfile] = useState<{ name: string; company: string; phone: string }>({ name: "", company: "", phone: "" });
   const [roofMapPhotos, setRoofMapPhotos] = useState<RoofPhotoMapPhoto[]>([]);
+  const [roofMapPhotoUrls, setRoofMapPhotoUrls] = useState<Record<string, string>>({});
   const formRef = useRef<HTMLDivElement>(null);
 
   const fetchClaim = useCallback(async () => {
@@ -242,11 +243,17 @@ export default function ClaimDetailPage() {
     return () => clearInterval(interval);
   }, [claim?.status, fetchClaim]);
 
-  // Load photo rows for the overhead roof map — only when facet data exists.
+  // Load photo rows + sign URLs for the overhead roof map — only when facet
+  // data exists. Deps are SCALARS (not the roof_facets object) to avoid
+  // re-firing on every 5s status poll: `setClaim` produces a new object
+  // identity even when contents are unchanged, which would flood the photos
+  // table with reads + flicker the thumbnail grid.
+  const facetCount = claim?.roof_facets?.roof_facets?.length ?? 0;
+  const claimFilePath = claim?.file_path ?? "";
   useEffect(() => {
-    const hasFacets = !!claim?.roof_facets?.roof_facets?.length;
-    if (!claim?.id || !hasFacets) {
+    if (!claim?.id || facetCount === 0) {
       setRoofMapPhotos([]);
+      setRoofMapPhotoUrls({});
       return;
     }
     let cancelled = false;
@@ -254,13 +261,32 @@ export default function ClaimDetailPage() {
       const { data, error } = await supabase
         .from("photos")
         .select("annotation_key, filename, slope_id, damage_type, severity, annotation_text, heading")
-        .eq("claim_id", claim.id);
-      if (!cancelled && !error && data) {
-        setRoofMapPhotos(data as RoofPhotoMapPhoto[]);
+        .eq("claim_id", claim.id)
+        .limit(500);
+      if (cancelled || error || !data) return;
+      const rows = data as RoofPhotoMapPhoto[];
+      setRoofMapPhotos(rows);
+
+      // Pre-sign URLs in one pass. Bucket is private; getPublicUrl would 401.
+      // 2-hour expiry is plenty — user re-enters page = new signs.
+      const signed = await Promise.all(
+        rows.map(async (p) => {
+          if (!p.filename || !claimFilePath) return null;
+          const { data: s } = await supabase.storage
+            .from("claim-documents")
+            .createSignedUrl(`${claimFilePath}/photos/${p.filename}`, 7200);
+          return s?.signedUrl ? [p.annotation_key, s.signedUrl] as const : null;
+        })
+      );
+      if (cancelled) return;
+      const urlMap: Record<string, string> = {};
+      for (const entry of signed) {
+        if (entry) urlMap[entry[0]] = entry[1];
       }
+      setRoofMapPhotoUrls(urlMap);
     })();
     return () => { cancelled = true; };
-  }, [claim?.id, claim?.roof_facets, claim?.last_processed_at]);
+  }, [claim?.id, facetCount, claimFilePath, claim?.last_processed_at, supabase]);
 
   const handleDownload = async (filename: string) => {
     if (!claim) return;
@@ -1145,21 +1171,15 @@ export default function ClaimDetailPage() {
         )}
 
         {/* Overhead Roof Map — per-slope damage from EagleView facets + EXIF heading */}
-        {isReady && claim.roof_facets?.roof_facets?.length && (
+        {isReady && claim.roof_facets?.roof_facets?.length ? (
           <RoofPhotoMap
             roofFacets={claim.roof_facets}
             slopeDamage={claim.slope_damage ?? []}
             fullReroofTrigger={!!claim.full_reroof_trigger}
             photos={roofMapPhotos}
-            photoUrl={(_key, filename) => {
-              if (!filename) return null;
-              const { data } = supabase.storage
-                .from("claim-documents")
-                .getPublicUrl(`${claim.file_path}/photos/${filename}`);
-              return data?.publicUrl ?? null;
-            }}
+            photoUrls={roofMapPhotoUrls}
           />
-        )}
+        ) : null}
 
         {/* Estimate & Damage Assessment */}
         {isReady && !isForensicOnly && (
