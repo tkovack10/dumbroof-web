@@ -178,23 +178,90 @@ function ToolActionCard({
 }) {
   const [status, setStatus] = useState<"pending" | "approving" | "sent" | "discarded" | "error">("pending");
   const [expanded, setExpanded] = useState(false);
+  const [editing, setEditing] = useState(false);
+  // Seeded once when the user hits "Edit" — initialized from the current
+  // draft / preview so the form shows Richard's proposal, not empty fields.
+  const [edits, setEdits] = useState<Record<string, unknown>>({});
 
   const icon = TOOL_ICONS[action.tool_name] || "🔧";
   const label = TOOL_LABELS[action.tool_name] || action.tool_name;
 
+  const startEdit = () => {
+    if (action.draft) {
+      setEdits({
+        to: action.draft.to,
+        cc: action.draft.cc || "",
+        subject: action.draft.subject,
+        body_html: action.draft.body_html,
+      });
+    } else if (action.preview) {
+      const p = action.preview as Record<string, unknown>;
+      setEdits({
+        to_email: p.to_email || "",
+        cc: p.cc || "",
+        subject: p.subject || "",
+        body_html: p.body_html || "",
+        doc_type: p.doc_type || "",
+        reason: p.reason || "",
+        cadence_type: p.cadence_type || "",
+        days: Array.isArray(p.days) ? (p.days as number[]).join(", ") : "",
+      });
+    }
+    setEditing(true);
+  };
+
   const handleApprove = async () => {
     if (!action.approval_id) return;
     setStatus("approving");
+
+    // Build overrides payload from edited fields. Only send fields the user
+    // actually changed vs the original draft/preview.
+    const overrides: Record<string, unknown> = {};
+    if (editing) {
+      if (action.draft) {
+        if (edits.to !== action.draft.to) overrides.to = edits.to;
+        if (edits.cc !== (action.draft.cc || "")) overrides.cc = edits.cc || null;
+        if (edits.subject !== action.draft.subject) overrides.subject = edits.subject;
+        if (edits.body_html !== action.draft.body_html) overrides.body_html = edits.body_html;
+      }
+      if (action.preview) {
+        const p = action.preview as Record<string, unknown>;
+        for (const k of ["to_email", "cc", "subject", "body_html", "doc_type", "reason", "cadence_type"] as const) {
+          const orig = p[k] ?? "";
+          if (edits[k] !== undefined && edits[k] !== orig) {
+            overrides[k] = edits[k];
+          }
+        }
+        if (typeof edits.days === "string" && edits.days.trim()) {
+          const parsed = (edits.days as string)
+            .split(/[,\s]+/)
+            .map((s) => Number.parseInt(s.trim(), 10))
+            .filter((n) => Number.isFinite(n) && n > 0);
+          const origDays = Array.isArray(p.days) ? (p.days as number[]) : [];
+          if (parsed.length && JSON.stringify(parsed) !== JSON.stringify(origDays)) {
+            overrides.days = parsed;
+            // Rebuild the schedule on backend — don't send stale schedule rows.
+            // The dispatcher will use days[] to reconstruct schedule from today.
+            overrides.schedule = null;
+          }
+        }
+      }
+    }
+
     try {
       const res = await fetch(`${backendUrl}/api/claim-brain/${claimId}/approve-action`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ tool_call_id: action.approval_id, approved: true }),
+        body: JSON.stringify({
+          tool_call_id: action.approval_id,
+          approved: true,
+          overrides: Object.keys(overrides).length > 0 ? overrides : undefined,
+        }),
       });
       const data = await res.json();
-      if (data.status === "sent") {
+      if (data.status === "sent" || data.status === "dry_run") {
         setStatus("sent");
-        onStatusUpdate(action.approval_id, "sent");
+        onStatusUpdate(action.approval_id, data.status === "dry_run" ? "dry_run" : "sent");
       } else if (data.status === "error") {
         setStatus("error");
       } else {
@@ -474,12 +541,27 @@ function ToolActionCard({
           {status === "approving" && " — Working..."}
         </div>
 
-        {/* Preview details — render per tool type */}
-        <div className="mt-1.5 text-[11px] text-white/60 space-y-0.5">
+        {/* Preview details — render per tool type. Edit mode swaps text for inputs. */}
+        <div className="mt-1.5 text-[11px] text-white/60 space-y-1">
           {action.tool_name === "attach_to_claim" && (
             <>
               <div><span className="text-white/40">File:</span> {String(p.filename || "")}</div>
-              <div><span className="text-white/40">Doc type:</span> {String(p.doc_type || "")}</div>
+              {editing ? (
+                <label className="block">
+                  <span className="text-white/40 block mb-0.5">Doc type:</span>
+                  <select
+                    value={String(edits.doc_type || "")}
+                    onChange={(e) => setEdits({ ...edits, doc_type: e.target.value })}
+                    className="w-full bg-white/5 border border-white/10 rounded px-1.5 py-1 text-white/80"
+                  >
+                    {["AOB", "COC", "CARRIER_SCOPE", "EAGLEVIEW", "CONTRACT", "PHOTO", "SUPPLEMENT_RESPONSE", "OTHER"].map((t) => (
+                      <option key={t} value={t}>{t}</option>
+                    ))}
+                  </select>
+                </label>
+              ) : (
+                <div><span className="text-white/40">Doc type:</span> {String(p.doc_type || "")}</div>
+              )}
               <div><span className="text-white/40">Slot:</span> <code className="text-white/70">{String(p.column || "")}</code></div>
               {typeof p.classification_confidence === "number" && (
                 <div><span className="text-white/40">Confidence:</span> {Math.round((p.classification_confidence as number) * 100)}%</div>
@@ -488,50 +570,154 @@ function ToolActionCard({
           )}
           {action.tool_name === "trigger_reprocess" && (
             <>
-              <div><span className="text-white/40">Reason:</span> {String(p.reason || "not specified")}</div>
+              {editing ? (
+                <label className="block">
+                  <span className="text-white/40 block mb-0.5">Reason:</span>
+                  <input
+                    value={String(edits.reason || "")}
+                    onChange={(e) => setEdits({ ...edits, reason: e.target.value })}
+                    className="w-full bg-white/5 border border-white/10 rounded px-1.5 py-1 text-white/80"
+                  />
+                </label>
+              ) : (
+                <div><span className="text-white/40">Reason:</span> {String(p.reason || "not specified")}</div>
+              )}
               <div><span className="text-white/40">Duration:</span> ~{String(p.estimated_duration_seconds || 90)}s</div>
               <div className="text-white/40">Regenerates: {((p.regenerates as string[]) || []).join(", ")}</div>
             </>
           )}
           {action.tool_name === "send_to_carrier" && (
             <>
-              <div><span className="text-white/40">To:</span> {String(p.to_email || "")}</div>
-              {p.cc && <div><span className="text-white/40">CC:</span> {String(p.cc)}</div>}
-              <div><span className="text-white/40">Subject:</span> <span className="text-white">{String(p.subject || "")}</span></div>
-              {typeof p.attachment_count === "number" && p.attachment_count > 0 && (
-                <div><span className="text-white/40">Attachments:</span> {String(p.attachment_count)}</div>
-              )}
-              <button
-                onClick={() => setExpanded(!expanded)}
-                className="text-[10px] text-white/30 hover:text-white/60 mt-1"
-              >
-                {expanded ? "Hide body" : "Show body"}
-              </button>
-              {expanded && (
-                <div className="mt-1 p-2 bg-white/5 rounded text-[11px] text-white/60 max-h-40 overflow-y-auto"
-                  dangerouslySetInnerHTML={{ __html: String(p.body_html || "") }}
-                />
+              {editing ? (
+                <>
+                  <label className="block">
+                    <span className="text-white/40 block mb-0.5">To:</span>
+                    <input
+                      value={String(edits.to_email || "")}
+                      onChange={(e) => setEdits({ ...edits, to_email: e.target.value })}
+                      className="w-full bg-white/5 border border-white/10 rounded px-1.5 py-1 text-white/80"
+                    />
+                  </label>
+                  <label className="block">
+                    <span className="text-white/40 block mb-0.5">CC:</span>
+                    <input
+                      value={String(edits.cc || "")}
+                      onChange={(e) => setEdits({ ...edits, cc: e.target.value })}
+                      className="w-full bg-white/5 border border-white/10 rounded px-1.5 py-1 text-white/80"
+                    />
+                  </label>
+                  <div><span className="text-white/40">Subject:</span> <span className="text-white">{String(p.subject || "")}</span> <span className="text-white/30">(locked = claim number)</span></div>
+                  <label className="block">
+                    <span className="text-white/40 block mb-0.5">Body (HTML):</span>
+                    <textarea
+                      value={String(edits.body_html || "")}
+                      onChange={(e) => setEdits({ ...edits, body_html: e.target.value })}
+                      rows={6}
+                      className="w-full bg-white/5 border border-white/10 rounded px-1.5 py-1 text-white/80 font-mono text-[10px]"
+                    />
+                  </label>
+                </>
+              ) : (
+                <>
+                  <div><span className="text-white/40">To:</span> {String(p.to_email || "")}</div>
+                  {p.cc && <div><span className="text-white/40">CC:</span> {String(p.cc)}</div>}
+                  <div><span className="text-white/40">Subject:</span> <span className="text-white">{String(p.subject || "")}</span></div>
+                  {typeof p.attachment_count === "number" && p.attachment_count > 0 && (
+                    <div><span className="text-white/40">Attachments:</span> {String(p.attachment_count)}</div>
+                  )}
+                  <button
+                    onClick={() => setExpanded(!expanded)}
+                    className="text-[10px] text-white/30 hover:text-white/60 mt-1"
+                  >
+                    {expanded ? "Hide body" : "Show body"}
+                  </button>
+                  {expanded && (
+                    <div className="mt-1 p-2 bg-white/5 rounded text-[11px] text-white/60 max-h-40 overflow-y-auto"
+                      dangerouslySetInnerHTML={{ __html: String(p.body_html || "") }}
+                    />
+                  )}
+                </>
               )}
             </>
           )}
           {action.tool_name === "schedule_follow_up_cadence" && (
             <>
               <div><span className="text-white/40">Cadence:</span> {String(p.cadence_type || "")}</div>
-              <div><span className="text-white/40">To:</span> {String(p.to_email || "")}</div>
-              <div><span className="text-white/40">Subject:</span> <span className="text-white">{String(p.subject || "")}</span></div>
-              <div><span className="text-white/40">Days:</span> [{((p.days as number[]) || []).join(", ")}]</div>
-              {((p.attachment_paths as string[]) || []).length > 0 && (
-                <div><span className="text-white/40">Attachments on each send:</span> {((p.attachment_paths as string[]) || []).length}</div>
+              {editing ? (
+                <>
+                  <label className="block">
+                    <span className="text-white/40 block mb-0.5">To:</span>
+                    <input
+                      value={String(edits.to_email || "")}
+                      onChange={(e) => setEdits({ ...edits, to_email: e.target.value })}
+                      className="w-full bg-white/5 border border-white/10 rounded px-1.5 py-1 text-white/80"
+                    />
+                  </label>
+                  <label className="block">
+                    <span className="text-white/40 block mb-0.5">CC:</span>
+                    <input
+                      value={String(edits.cc || "")}
+                      onChange={(e) => setEdits({ ...edits, cc: e.target.value })}
+                      className="w-full bg-white/5 border border-white/10 rounded px-1.5 py-1 text-white/80"
+                    />
+                  </label>
+                  <label className="block">
+                    <span className="text-white/40 block mb-0.5">Days (comma-separated):</span>
+                    <input
+                      value={String(edits.days || "")}
+                      onChange={(e) => setEdits({ ...edits, days: e.target.value })}
+                      placeholder="3, 7, 14, 21"
+                      className="w-full bg-white/5 border border-white/10 rounded px-1.5 py-1 text-white/80"
+                    />
+                  </label>
+                </>
+              ) : (
+                <>
+                  <div><span className="text-white/40">To:</span> {String(p.to_email || "")}</div>
+                  <div><span className="text-white/40">Subject:</span> <span className="text-white">{String(p.subject || "")}</span></div>
+                  <div><span className="text-white/40">Days:</span> [{((p.days as number[]) || []).join(", ")}]</div>
+                  {((p.attachment_paths as string[]) || []).length > 0 && (
+                    <div><span className="text-white/40">Attachments on each send:</span> {((p.attachment_paths as string[]) || []).length}</div>
+                  )}
+                </>
               )}
             </>
           )}
           {action.tool_name === "cancel_cadence" && (
             <>
               <div><span className="text-white/40">Pending follow-ups:</span> {String(p.pending_count || 0)}</div>
-              <div><span className="text-white/40">Reason:</span> {String(p.reason || "")}</div>
+              {editing ? (
+                <label className="block">
+                  <span className="text-white/40 block mb-0.5">Reason:</span>
+                  <input
+                    value={String(edits.reason || "")}
+                    onChange={(e) => setEdits({ ...edits, reason: e.target.value })}
+                    className="w-full bg-white/5 border border-white/10 rounded px-1.5 py-1 text-white/80"
+                  />
+                </label>
+              ) : (
+                <div><span className="text-white/40">Reason:</span> {String(p.reason || "")}</div>
+              )}
             </>
           )}
         </div>
+
+        {status === "pending" && !editing && (
+          <button
+            onClick={startEdit}
+            className="text-[10px] text-blue-400 hover:text-blue-300 mt-2"
+          >
+            ✎ Edit before approving
+          </button>
+        )}
+        {editing && status === "pending" && (
+          <button
+            onClick={() => { setEditing(false); setEdits({}); }}
+            className="text-[10px] text-white/40 hover:text-white/60 mt-2"
+          >
+            Cancel edits
+          </button>
+        )}
 
         {status === "pending" && (
           <div className="flex gap-2 mt-2.5">
@@ -585,8 +771,8 @@ function ToolActionCard({
         )}
       </div>
 
-      {/* Summary */}
-      {action.draft && (
+      {/* Summary (view mode) */}
+      {action.draft && !editing && (
         <div className="mt-1.5 text-[11px] text-white/50">
           <span className="text-white/30">To:</span> {action.draft.to}
           {action.draft.cc && <> · <span className="text-white/30">CC:</span> {action.draft.cc}</>}
@@ -601,11 +787,50 @@ function ToolActionCard({
         </div>
       )}
 
-      {/* Expanded preview */}
-      {expanded && action.draft && (
+      {/* Expanded preview (view mode) */}
+      {expanded && action.draft && !editing && (
         <div className="mt-2 p-2 bg-white/5 rounded text-[11px] text-white/60 max-h-40 overflow-y-auto"
           dangerouslySetInnerHTML={{ __html: action.draft.body_html }}
         />
+      )}
+
+      {/* Edit mode — to / cc / subject / body */}
+      {action.draft && editing && (
+        <div className="mt-2 space-y-1 text-[11px] text-white/60">
+          <label className="block">
+            <span className="text-white/40 block mb-0.5">To:</span>
+            <input
+              value={String(edits.to || "")}
+              onChange={(e) => setEdits({ ...edits, to: e.target.value })}
+              className="w-full bg-white/5 border border-white/10 rounded px-1.5 py-1 text-white/80"
+            />
+          </label>
+          <label className="block">
+            <span className="text-white/40 block mb-0.5">CC:</span>
+            <input
+              value={String(edits.cc || "")}
+              onChange={(e) => setEdits({ ...edits, cc: e.target.value })}
+              className="w-full bg-white/5 border border-white/10 rounded px-1.5 py-1 text-white/80"
+            />
+          </label>
+          <label className="block">
+            <span className="text-white/40 block mb-0.5">Subject:</span>
+            <input
+              value={String(edits.subject || "")}
+              onChange={(e) => setEdits({ ...edits, subject: e.target.value })}
+              className="w-full bg-white/5 border border-white/10 rounded px-1.5 py-1 text-white/80"
+            />
+          </label>
+          <label className="block">
+            <span className="text-white/40 block mb-0.5">Body (HTML):</span>
+            <textarea
+              value={String(edits.body_html || "")}
+              onChange={(e) => setEdits({ ...edits, body_html: e.target.value })}
+              rows={6}
+              className="w-full bg-white/5 border border-white/10 rounded px-1.5 py-1 text-white/80 font-mono text-[10px]"
+            />
+          </label>
+        </div>
       )}
 
       {/* Sign link */}
@@ -614,6 +839,16 @@ function ToolActionCard({
           <span className="text-white/30">Sign link:</span>{" "}
           <span className="text-blue-400">{action.sign_link}</span>
         </div>
+      )}
+
+      {/* Edit toggle for email drafts */}
+      {action.draft && status === "pending" && action.action === "preview" && (
+        <button
+          onClick={editing ? () => { setEditing(false); setEdits({}); } : startEdit}
+          className="text-[10px] text-blue-400 hover:text-blue-300 mt-2 mr-3"
+        >
+          {editing ? "Cancel edits" : "✎ Edit before approving"}
+        </button>
       )}
 
       {/* Action buttons */}

@@ -1100,6 +1100,10 @@ class ChatMessage(BaseModel):
 class ToolApproval(BaseModel):
     tool_call_id: str
     approved: bool
+    # Optional user edits to the preview/draft before shipping. Merged shallow
+    # into either `draft` (for email-type approvals) or `preview` (for
+    # attach/reprocess/send/cadence). Unknown keys ignored.
+    overrides: dict | None = None
 
 
 # Pending tool actions awaiting user approval: {claim_id: {tool_call_id: tool_result}}
@@ -1369,7 +1373,7 @@ async def approve_brain_action(claim_id: str, body: ToolApproval, background_tas
       - schedule_follow_up_cadence: insert rows into claim_brain_cadence_sends.
       - cancel_cadence: mark pending rows cancelled.
     """
-    from datetime import datetime
+    from datetime import datetime, timedelta
     from claim_brain_email import send_claim_email
     from claim_brain_tools import _audit_log
 
@@ -1391,6 +1395,46 @@ async def approve_brain_action(claim_id: str, body: ToolApproval, background_tas
     if not body.approved:
         _audit_log(sb, claim_id, user_id, tool_name, {"approval_id": body.tool_call_id}, {"action": "discarded", "message": "user discarded"}, 0)
         return {"status": "discarded", "message": "Action was discarded by user."}
+
+    # Apply user overrides BEFORE executing. Shallow merge into the draft
+    # (email tools) or preview (attach/reprocess/send/cadence). Allows the
+    # inline edit UI to tweak to/cc/subject/body/days without rebuilding the
+    # whole preview. Only known keys per shape are accepted; extras ignored.
+    if body.overrides:
+        overrides = body.overrides
+        draft = tool_result.get("draft")
+        preview = tool_result.get("preview")
+        if isinstance(draft, dict):
+            for key in ("to", "cc", "subject", "body_html"):
+                if key in overrides and overrides[key] is not None:
+                    draft[key] = overrides[key]
+            tool_result["draft"] = draft
+        if isinstance(preview, dict):
+            for key in (
+                "to_email", "cc", "subject", "body_html",
+                "doc_type", "reason", "cadence_type", "days",
+                "schedule", "attachment_paths",
+            ):
+                if key in overrides and overrides[key] is not None:
+                    preview[key] = overrides[key]
+            # If the user edited days[], rebuild the schedule from today +
+            # offsets. Otherwise the cadence dispatcher would insert with the
+            # original (now stale) schedule rows. Null signal came from FE.
+            if "days" in overrides and (overrides.get("schedule") is None or not preview.get("schedule")):
+                from datetime import timezone as _tz
+                _now = datetime.now(_tz.utc)
+                raw_days = overrides["days"]
+                if isinstance(raw_days, list):
+                    preview["schedule"] = [
+                        {
+                            "followup_number": i + 1,
+                            "offset_days": int(d),
+                            "scheduled_at": (_now + timedelta(days=int(d))).isoformat(),
+                        }
+                        for i, d in enumerate(raw_days)
+                    ]
+            tool_result["preview"] = preview
+        _audit_log(sb, claim_id, user_id, tool_name, {"approval_id": body.tool_call_id, "overrides_applied": list(overrides.keys())}, {"action": "overrides", "message": f"user edited {len(overrides)} field(s) before approving"}, 0)
 
     # Dry-run mode — per-user flag on company_profiles. When true, every
     # destructive path short-circuits here. Preview was already shown, so the
