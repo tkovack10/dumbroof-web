@@ -299,6 +299,29 @@ CLAIM_BRAIN_TOOLS = [
             "required": [],
         },
     },
+    {
+        "name": "get_slope_damage",
+        "description": (
+            "Return the per-roof-slope damage breakdown for this claim — each facet "
+            "with its cardinal direction, pitch, damage %, number of photos showing "
+            "damage, and dominant damage type. Also returns the full-reroof trigger "
+            "status (area-weighted ≥25% across the roof). Use when asked 'which slope "
+            "is worst?', 'does this qualify for full reroof?', 'what's the damage "
+            "distribution?', or when building a full-roof-replacement supplement "
+            "argument. Empty if no EagleView facets have been extracted yet."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "min_damage_pct": {
+                    "type": "number",
+                    "description": "Only return slopes with weighted damage >= this (0-1 scale). Default 0 (all slopes).",
+                    "default": 0,
+                },
+            },
+            "required": [],
+        },
+    },
     # ─────────────────────────────────────────────
     # Admin / onboarding — integrations + team + templates
     # These tools are company-scoped (not claim-scoped). They still run
@@ -822,6 +845,8 @@ async def execute_tool(
             result = _handle_search_photos(sb, claim_id, tool_input)
         elif tool_name == "get_damage_scores":
             result = _handle_get_damage_scores(claim_data)
+        elif tool_name == "get_slope_damage":
+            result = _handle_get_slope_damage(claim_data, tool_input)
         elif tool_name == "coach_photo_documentation":
             result = _handle_coach_photo_documentation(sb, claim_id, claim_data, tool_input)
         elif tool_name == "list_integrations":
@@ -1535,6 +1560,104 @@ def _handle_get_damage_scores(claim_data: dict) -> dict:
             "photo_integrity": claim_data.get("photo_integrity") or {},
         },
         "message": f"DS: {ds} ({ds_grade}) | TAS: {tas} ({tas_grade})",
+    }
+
+
+def _handle_get_slope_damage(claim_data: dict, tool_input: dict) -> dict:
+    """Return per-slope damage breakdown + full-reroof trigger status.
+
+    Reads `claims.slope_damage` (aggregated by backend/slope_mapping.aggregate_slope_damage)
+    and `claims.roof_facets` (extracted by extract_roof_facets). Both are written
+    together on every processor run when an EagleView PDF is present.
+    """
+    slope_damage = claim_data.get("slope_damage") or []
+    roof_facets_payload = claim_data.get("roof_facets") or {}
+    facets = roof_facets_payload.get("roof_facets") if isinstance(roof_facets_payload, dict) else []
+    trigger = bool(claim_data.get("full_reroof_trigger"))
+
+    if not slope_damage and not facets:
+        return {
+            "action": "complete",
+            "type": "slope_damage",
+            "data": {
+                "slopes": [],
+                "total_slopes": 0,
+                "full_reroof_trigger": False,
+            },
+            "message": (
+                "No per-slope roof data available yet. This claim needs an EagleView "
+                "(or equivalent) measurement PDF processed to extract facet polygons."
+            ),
+        }
+
+    try:
+        min_pct = float(tool_input.get("min_damage_pct") or 0)
+    except (TypeError, ValueError):
+        min_pct = 0
+
+    # Filter + enrich each slope row with a human-readable summary line.
+    slopes = []
+    for row in slope_damage:
+        if not isinstance(row, dict):
+            continue
+        if row.get("facet_id") == "_unassigned":
+            continue
+        weighted = float(row.get("weighted_damage_pct") or 0)
+        if weighted < min_pct:
+            continue
+        slopes.append({
+            "facet_id": row.get("facet_id"),
+            "cardinal": row.get("cardinal"),
+            "pitch": row.get("pitch"),
+            "area_pct_of_roof": row.get("area_pct"),
+            "total_photos": row.get("total_photos") or 0,
+            "damage_photos": row.get("damage_photos") or 0,
+            "weighted_damage_pct": weighted,
+            "dominant_damage_type": row.get("dominant_damage_type"),
+        })
+
+    # Rank worst-first so the LLM sees the actionable slopes immediately.
+    slopes.sort(key=lambda s: s.get("weighted_damage_pct", 0), reverse=True)
+
+    worst = slopes[0] if slopes else None
+    # Count of slopes that individually would qualify (≥3 damage photos and
+    # weighted >= 0.25). Useful context even when the area-weighted roof-level
+    # trigger doesn't fire.
+    above_threshold = sum(
+        1 for s in slopes
+        if (s.get("damage_photos") or 0) >= 3 and s.get("weighted_damage_pct", 0) >= 0.25
+    )
+
+    msg_parts = [f"{len(slopes)} slope(s)"]
+    if worst:
+        wp = int((worst.get("weighted_damage_pct") or 0) * 100)
+        msg_parts.append(
+            f"worst: {worst.get('facet_id')} ({worst.get('cardinal') or '—'}) at {wp}% damage"
+        )
+    if trigger:
+        msg_parts.append("FULL REROOF TRIGGER FIRED (area-weighted ≥25% across roof)")
+    elif above_threshold:
+        msg_parts.append(
+            f"{above_threshold} slope(s) individually qualify (≥3 damage photos @ ≥25%), "
+            "but roof-level area-weighted threshold not yet met"
+        )
+
+    # reroof_justification is nested inside the persisted claim_config blob
+    _cfg = claim_data.get("claim_config") if isinstance(claim_data, dict) else None
+    rj = _cfg.get("reroof_justification") if isinstance(_cfg, dict) else None
+
+    return {
+        "action": "complete",
+        "type": "slope_damage",
+        "data": {
+            "slopes": slopes,
+            "total_slopes": len(slopes),
+            "slopes_individually_above_threshold": above_threshold,
+            "full_reroof_trigger": trigger,
+            "north_arrow_angle": roof_facets_payload.get("north_arrow_angle") if isinstance(roof_facets_payload, dict) else None,
+            "reroof_justification": rj,
+        },
+        "message": " | ".join(msg_parts),
     }
 
 
