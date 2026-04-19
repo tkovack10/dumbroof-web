@@ -4468,6 +4468,23 @@ async def process_claim(claim_id: str):
 
         photo_filenames = [os.path.basename(p) for p in photo_paths]
 
+        # Extract EXIF metadata (GPS / heading / altitude / focal length) NOW,
+        # before the step-9d resize pass overwrites the originals with EXIF-
+        # stripped JPEGs. This is the only window in the pipeline where the
+        # raw uploaded files still have their phone-camera metadata intact.
+        exif_metadata = {}
+        try:
+            from fraud_detection.exif_analyzer import extract_exif_batch
+            annotation_keys_early = [f"photo_{i+1:02d}" for i in range(len(photo_paths))]
+            exif_metadata = extract_exif_batch(photo_paths, annotation_keys_early)
+            if exif_metadata:
+                with_gps = sum(1 for v in exif_metadata.values() if "gps_lat" in v)
+                with_heading = sum(1 for v in exif_metadata.values() if "heading" in v)
+                print(f"[EXIF] Extracted {len(exif_metadata)} photos with metadata "
+                      f"({with_gps} GPS, {with_heading} heading) before resize")
+        except Exception as e:
+            print(f"[EXIF] Early batch extract failed (non-fatal): {e}")
+
         if not photo_paths:
             print(f"[PHOTOS] WARNING: No usable photos found from {len(downloaded_paths)} uploaded files")
 
@@ -5284,8 +5301,14 @@ async def process_claim(claim_id: str):
                 try:
                     from PIL import Image
                     with Image.open(fpath) as img:
+                        # Preserve EXIF (GPS, heading, timestamp, camera info)
+                        # across the resize — Pillow's .save strips it by default.
+                        exif_bytes = img.info.get("exif", b"")
                         img.thumbnail((1024, 1024), Image.LANCZOS)
-                        img.save(fpath, "JPEG", quality=50)
+                        save_kwargs = {"quality": 50}
+                        if exif_bytes:
+                            save_kwargs["exif"] = exif_bytes
+                        img.save(fpath, "JPEG", **save_kwargs)
                     resized = True
                 except ImportError:
                     # Pillow not available — try macOS sips
@@ -5785,22 +5808,9 @@ async def process_claim(claim_id: str):
         except Exception as e:
             print(f"[CAPI] Meta CAPI event failed (non-fatal): {e}")
 
-        # 12b. Extract EXIF metadata (GPS/heading/altitude/focal_length) for photo→slope mapping
-        exif_metadata = {}
-        try:
-            from fraud_detection.exif_analyzer import extract_exif_batch
-            # Keys must match write_photos indexing: photo_01, photo_02, ...
-            annotation_keys = [f"photo_{i+1:02d}" for i in range(len(photo_paths))]
-            exif_metadata = extract_exif_batch(photo_paths, annotation_keys)
-            if exif_metadata:
-                with_gps = sum(1 for v in exif_metadata.values() if "gps_lat" in v)
-                with_heading = sum(1 for v in exif_metadata.values() if "heading" in v)
-                print(f"[EXIF] Extracted {len(exif_metadata)} photos with metadata "
-                      f"({with_gps} with GPS, {with_heading} with heading)")
-        except Exception as e:
-            print(f"[EXIF] Batch extract failed (non-fatal): {e}")
-
         # 12c. Write to data warehouse tables (non-blocking — failures don't affect claim)
+        # EXIF metadata (exif_metadata dict) was captured earlier, before the
+        # step-9d resize stripped it from the originals. It's still in scope here.
         try:
             _write_to_warehouse(sb, claim_id, config, photo_analysis, photo_integrity,
                                 carrier_data, revision_data, photo_filenames=photo_filenames,
