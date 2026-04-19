@@ -672,7 +672,7 @@ async def execute_tool(
         elif tool_name == "list_line_items":
             result = _handle_list_line_items(sb, claim_id, tool_input)
         elif tool_name == "add_line_item":
-            result = _handle_preview_add_line_item(tool_input)
+            result = _handle_preview_add_line_item(tool_input, sb=sb, claim_id=claim_id)
         elif tool_name == "remove_line_item":
             result = _handle_preview_remove_line_item(sb, claim_id, tool_input)
         elif tool_name == "modify_line_item":
@@ -1759,7 +1759,7 @@ def _handle_list_line_items(sb: Client, claim_id: str, tool_input: dict) -> dict
     }
 
 
-def _handle_preview_add_line_item(tool_input: dict) -> dict:
+def _handle_preview_add_line_item(tool_input: dict, sb: Optional[Client] = None, claim_id: Optional[str] = None) -> dict:
     description = (tool_input.get("description") or "").strip()
     qty_raw = tool_input.get("qty")
     unit = (tool_input.get("unit") or "").strip()
@@ -1780,6 +1780,42 @@ def _handle_preview_add_line_item(tool_input: dict) -> dict:
     if unit_price < 0:
         return {"action": "error", "message": "unit_price cannot be negative"}
 
+    # Guard: zero-price with positive qty almost always means Xactimate lookup
+    # whiffed and Richard is about to add a free line. Force ask-the-user.
+    if unit_price == 0 and qty > 0:
+        return {
+            "action": "error",
+            "message": (
+                f"Refusing to add '{description}' at $0/{unit}. Either call lookup_xactimate_price "
+                f"with a more specific description, or ask the user for the correct unit price."
+            ),
+        }
+
+    # Duplicate detection — fuzzy-match description against existing line items
+    # on THIS claim. Not a hard block (e.g. "R&R 2 skylights" is legit even if
+    # a "skylight" line exists) but surfaces the risk in the preview.
+    potential_dupes: list[dict] = []
+    if sb and claim_id:
+        try:
+            existing_res = sb.table("line_items").select(
+                "id, description, qty, unit, unit_price, source"
+            ).eq("claim_id", claim_id).execute()
+            existing = existing_res.data or []
+            desc_norm = _normalize_desc_for_match(description)
+            for e in existing:
+                e_desc_norm = _normalize_desc_for_match(e.get("description") or "")
+                if _desc_similarity(desc_norm, e_desc_norm) >= 0.7:
+                    potential_dupes.append({
+                        "id": e.get("id"),
+                        "description": e.get("description"),
+                        "qty": e.get("qty"),
+                        "unit": e.get("unit"),
+                        "unit_price": e.get("unit_price"),
+                        "source": e.get("source"),
+                    })
+        except Exception as e:
+            print(f"[add_line_item] dupe check failed (non-fatal): {e}")
+
     total = qty * unit_price
     return {
         "action": "preview",
@@ -1796,9 +1832,36 @@ def _handle_preview_add_line_item(tool_input: dict) -> dict:
             "xactimate_code": tool_input.get("xactimate_code"),
             "trade": tool_input.get("trade"),
             "reason": reason,
+            "potential_dupes": potential_dupes[:3],  # cap at 3 most similar
         },
-        "message": f"Ready to add: {description} — {qty} {unit} @ ${unit_price:.2f} = ${total:,.2f}",
+        "message": (
+            f"Ready to add: {description} — {qty} {unit} @ ${unit_price:.2f} = ${total:,.2f}"
+            + (f" ⚠ {len(potential_dupes)} similar line item{'s' if len(potential_dupes) != 1 else ''} already on claim" if potential_dupes else "")
+        ),
     }
+
+
+def _normalize_desc_for_match(s: str) -> str:
+    """Lowercase, strip punctuation, keep alphanumerics + spaces for fuzzy match."""
+    import re
+    return re.sub(r"[^a-z0-9 ]+", " ", (s or "").lower()).strip()
+
+
+def _desc_similarity(a: str, b: str) -> float:
+    """Token-overlap Jaccard similarity. Cheap, handles reordered words well."""
+    if not a or not b:
+        return 0.0
+    ta = set(a.split())
+    tb = set(b.split())
+    if not ta or not tb:
+        return 0.0
+    # Remove tiny words that don't carry meaning
+    stop = {"a", "an", "the", "of", "and", "for", "to", "in", "on", "or", "with", "per"}
+    ta -= stop
+    tb -= stop
+    if not ta or not tb:
+        return 0.0
+    return len(ta & tb) / len(ta | tb)
 
 
 def _handle_preview_remove_line_item(sb: Client, claim_id: str, tool_input: dict) -> dict:

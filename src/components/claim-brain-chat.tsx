@@ -752,6 +752,22 @@ function ToolActionCard({
               </div>
               {p.xactimate_code ? <div><span className="text-white/40">Code:</span> {String(p.xactimate_code)}</div> : null}
               <div className="text-white/60 italic">"{String(p.reason || "")}"</div>
+              {Array.isArray(p.potential_dupes) && (p.potential_dupes as unknown[]).length > 0 && (
+                <div className="mt-2 p-2 rounded bg-amber-500/10 border border-amber-500/30">
+                  <div className="text-[10px] text-amber-300 font-semibold mb-1">
+                    ⚠ {(p.potential_dupes as unknown[]).length} similar line item
+                    {(p.potential_dupes as unknown[]).length !== 1 ? "s" : ""} already on this claim:
+                  </div>
+                  {(p.potential_dupes as Array<Record<string, unknown>>).map((d, i) => (
+                    <div key={i} className="text-[10px] text-white/70 truncate">
+                      • {String(d.description || "")} — {String(d.qty || 0)} {String(d.unit || "")} @ ${Number(d.unit_price || 0).toFixed(2)} ({String(d.source || "")})
+                    </div>
+                  ))}
+                  <div className="text-[10px] text-amber-200/70 mt-1">
+                    Verify this isn&apos;t a duplicate before approving.
+                  </div>
+                </div>
+              )}
             </>
           )}
           {action.tool_name === "remove_line_item" && (
