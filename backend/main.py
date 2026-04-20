@@ -3471,8 +3471,12 @@ async def companycam_import(
     sb = get_supabase_client()
     uploaded = []
 
+    import json as _json
     for i, photo in enumerate(photos):
-        url = CompanyCamClient.get_photo_url(photo)
+        # Always fetch the "original" size — "web"/"medium" are resized for
+        # display and strip EXIF (GPS, heading, timestamp) during CompanyCam's
+        # server-side pipeline. We need the raw file for photo→slope mapping.
+        url = CompanyCamClient.get_photo_url(photo, size="original")
         if not url:
             continue
         try:
@@ -3494,6 +3498,30 @@ async def companycam_import(
                 storage_path, data,
                 file_options={"content-type": f"image/{ext.strip('.')}", "upsert": "true"}
             )
+
+            # Write a metadata sidecar so photo→slope mapping has GPS coords
+            # even when CompanyCam's download path stripped the EXIF. Their
+            # photo object carries coordinates + captured_at from the upload
+            # time, extracted client-side on their iPhone/Android app — so
+            # this data is intact regardless of what the file bytes contain.
+            sidecar = {
+                "source": "companycam",
+                "companycam_id": photo.get("id"),
+                "coordinates": photo.get("coordinates"),  # {lat, lng}
+                "captured_at": photo.get("captured_at"),
+                "photographer": photo.get("photographer", {}).get("id") if isinstance(photo.get("photographer"), dict) else None,
+                "description": photo.get("description"),
+            }
+            try:
+                sidecar_path = storage_path.rsplit(".", 1)[0] + ".companycam.json"
+                sb.storage.from_("claim-documents").upload(
+                    sidecar_path, _json.dumps(sidecar).encode("utf-8"),
+                    file_options={"content-type": "application/json", "upsert": "true"}
+                )
+            except Exception as _e:
+                # Sidecar failure is non-fatal — photo still uploaded
+                print(f"[CRM-IMPORT] Sidecar write failed for {fname} (non-fatal): {_e}")
+
             uploaded.append({"name": fname, "path": storage_path})
         except Exception as e:
             print(f"[CRM-IMPORT] Failed to import photo {i}: {e}")

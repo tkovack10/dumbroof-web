@@ -353,9 +353,16 @@ def get_pricing_for_state(state: str, zip_code: str = "", city: str = "") -> dic
 # FILE HELPERS
 # ===================================================================
 
-def download_file(sb: Client, bucket: str, path: str, local_path: str):
-    """Download a file from Supabase Storage with retry on failure."""
-    max_retries = 3
+def download_file(sb: Client, bucket: str, path: str, local_path: str,
+                  optional: bool = False):
+    """Download a file from Supabase Storage with retry on failure.
+
+    When optional=True: fails fast (no retries, no exception) if the file
+    doesn't exist. Use for speculative fetches like CompanyCam metadata
+    sidecars where most files won't have a match and we don't want to
+    eat 35s of retry backoff per miss.
+    """
+    max_retries = 1 if optional else 3
     for attempt in range(max_retries):
         try:
             data = sb.storage.from_(bucket).download(path)
@@ -364,6 +371,10 @@ def download_file(sb: Client, bucket: str, path: str, local_path: str):
                 f.write(data)
             return local_path
         except Exception as e:
+            if optional:
+                # Silent on missing files; don't retry. Return None so caller
+                # can branch on presence.
+                return None
             if attempt < max_retries - 1:
                 wait = 5 * (2 ** attempt)  # 5s, 10s, 20s
                 print(f"[DOWNLOAD] Retry {attempt + 1}/{max_retries} for {os.path.basename(path)} in {wait}s: {e}")
@@ -4540,6 +4551,23 @@ async def process_claim(claim_id: str):
             download_file(sb, "claim-documents", f"{file_path}/photos/{fname}", local)
             downloaded_paths.append(local)
 
+            # Opportunistically grab the CompanyCam sidecar sibling, if any.
+            # Imported photos named companycam_XXX.jpg get a matching
+            # companycam_XXX.companycam.json with {coordinates, captured_at}
+            # from the CompanyCam photo object — used as a fallback when the
+            # file's own EXIF was stripped by CompanyCam's server-side resize.
+            # Only CompanyCam-sourced photos have sidecars, so most fetches
+            # miss — optional=True avoids retry backoff on misses.
+            base_no_ext = fname.rsplit(".", 1)[0]
+            sidecar_fname = f"{base_no_ext}.companycam.json"
+            sidecar_local = os.path.join(photos_dir, sidecar_fname)
+            download_file(
+                sb, "claim-documents",
+                f"{file_path}/photos/{sidecar_fname}",
+                sidecar_local,
+                optional=True,
+            )
+
         # Ingest all downloaded files — extracts ZIPs, PDFs, converts HEIC/TIFF/etc.
         photo_paths = ingest_photos(downloaded_paths, photos_dir)
 
@@ -4588,6 +4616,40 @@ async def process_claim(claim_id: str):
             from fraud_detection.exif_analyzer import extract_exif_batch
             annotation_keys_early = [f"photo_{i+1:02d}" for i in range(len(photo_paths))]
             exif_metadata = extract_exif_batch(photo_paths, annotation_keys_early)
+
+            # Fallback: for photos where EXIF extraction produced no GPS
+            # (common on CompanyCam/AccuLynx-sourced photos where the upload
+            # vendor strips EXIF server-side), check for a sibling
+            # .companycam.json sidecar with {coordinates.lat, coordinates.lng}
+            # captured from the CompanyCam photo object. The sidecar is
+            # uploaded alongside the photo during /api/integrations/
+            # companycam/projects/{id}/import.
+            import json as _json
+            sidecar_hits = 0
+            for i, photo_path in enumerate(photo_paths):
+                key = annotation_keys_early[i] if i < len(annotation_keys_early) else os.path.basename(photo_path)
+                entry = exif_metadata.setdefault(key, {})
+                if "gps_lat" in entry and "gps_lon" in entry:
+                    continue  # real EXIF already populated
+                base_no_ext = photo_path.rsplit(".", 1)[0]
+                sidecar_local = f"{base_no_ext}.companycam.json"
+                if not os.path.exists(sidecar_local):
+                    continue
+                try:
+                    with open(sidecar_local) as _f:
+                        meta = _json.load(_f)
+                    coords = meta.get("coordinates") or {}
+                    lat = coords.get("lat")
+                    lng = coords.get("lng")
+                    if lat is not None and lng is not None:
+                        entry["gps_lat"] = float(lat)
+                        entry["gps_lon"] = float(lng)
+                        sidecar_hits += 1
+                except Exception:
+                    continue
+            if sidecar_hits:
+                print(f"[EXIF] Sidecar fallback populated GPS on {sidecar_hits} photos")
+
             if exif_metadata:
                 with_gps = sum(1 for v in exif_metadata.values() if "gps_lat" in v)
                 with_heading = sum(1 for v in exif_metadata.values() if "heading" in v)
