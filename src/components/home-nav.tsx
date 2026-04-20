@@ -62,7 +62,7 @@ export function HomeNav() {
             Sign In
           </a>
           <a
-            href="/login?mode=signup"
+            href="/signup"
             className="bg-gradient-to-r from-[var(--pink)] via-[var(--purple)] to-[var(--blue)] hover:shadow-[var(--shadow-glow-pink)] text-white px-5 py-2 rounded-lg text-sm font-semibold transition-colors hidden sm:block"
           >
             Try 3 Free Claims
@@ -106,7 +106,7 @@ export function HomeNav() {
                     Sign In
                   </a>
                   <a
-                    href="/login?mode=signup"
+                    href="/signup"
                     onClick={() => setMenuOpen(false)}
                     className="block mx-3 mt-1 mb-1 text-center bg-gradient-to-r from-[var(--pink)] via-[var(--purple)] to-[var(--blue)] text-white px-4 py-2.5 rounded-xl text-sm font-semibold"
                   >

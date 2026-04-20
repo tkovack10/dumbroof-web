@@ -356,7 +356,7 @@ export default function EPDMHailDamagePage() {
               compelling cases for full membrane replacement — not inadequate patches.
             </p>
             <a
-              href="/login?mode=signup"
+              href="/signup"
               className="inline-flex items-center gap-2 bg-[var(--red)] hover:bg-[#a00d2d] text-white font-semibold py-3 px-8 rounded-lg transition-colors"
             >
               Try 3 Free Claims &rarr;

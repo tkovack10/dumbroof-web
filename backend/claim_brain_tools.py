@@ -743,6 +743,33 @@ CLAIM_BRAIN_TOOLS = [
             "required": ["storage_path"],
         },
     },
+    {
+        "name": "get_claim_timeline",
+        "description": (
+            "Return the chronological event timeline for this claim — milestones, "
+            "communications, documents, actions, and system events. Use to answer "
+            "questions like 'when did the adjuster meeting happen?', 'what's the "
+            "most recent activity?', or 'show me every email sent on this claim'. "
+            "Events are stored as they happen (claim opened, AOB signed, scope "
+            "received, supplement sent, carrier replies, homeowner communications, "
+            "wins detected, etc.)."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "limit": {
+                    "type": "integer",
+                    "description": "Max number of events to return (most recent first). Default 50.",
+                    "default": 50,
+                },
+                "category_filter": {
+                    "type": "string",
+                    "enum": ["milestone", "communication", "document", "action", "system"],
+                    "description": "Optional: only return events in this category.",
+                },
+            },
+        },
+    },
 ]
 
 
@@ -845,6 +872,8 @@ async def execute_tool(
             result = _handle_search_photos(sb, claim_id, tool_input)
         elif tool_name == "get_damage_scores":
             result = _handle_get_damage_scores(claim_data)
+        elif tool_name == "get_claim_timeline":
+            result = _handle_get_claim_timeline(sb, claim_id, tool_input)
         elif tool_name == "get_slope_damage":
             result = _handle_get_slope_damage(claim_data, tool_input)
         elif tool_name == "coach_photo_documentation":
@@ -1560,6 +1589,49 @@ def _handle_get_damage_scores(claim_data: dict) -> dict:
             "photo_integrity": claim_data.get("photo_integrity") or {},
         },
         "message": f"DS: {ds} ({ds_grade}) | TAS: {tas} ({tas_grade})",
+    }
+
+
+def _handle_get_claim_timeline(sb: Client, claim_id: str, tool_input: dict) -> dict:
+    """Return the claim_events timeline for this claim.
+
+    Reads from the `claim_events` table (event-sourced — every milestone,
+    communication, document, and action logged as it happens). The main.py
+    system prompt already inlines the most recent 20 events; this tool lets
+    Richard drill into the full history or filter by category.
+    """
+    from claim_events import get_claim_timeline  # local helper
+
+    limit = int(tool_input.get("limit") or 50)
+    limit = max(1, min(limit, 200))
+    category_filter = tool_input.get("category_filter") or None
+
+    events = get_claim_timeline(sb, claim_id, limit=limit, category_filter=category_filter)
+
+    if not events:
+        scope = f" in category '{category_filter}'" if category_filter else ""
+        return {
+            "action": "complete",
+            "type": "claim_timeline",
+            "data": {"events": [], "count": 0},
+            "message": f"No events found{scope}. The timeline is populated as activity happens.",
+        }
+
+    # Compose a short human-readable summary (first 10 events) for Richard's reply
+    summary_lines = []
+    for ev in events[:10]:
+        occurred = (ev.get("occurred_at") or "")[:10]
+        cat = ev.get("event_category") or ""
+        title = ev.get("title") or ev.get("event_type") or ""
+        summary_lines.append(f"• {occurred} — {title} [{cat}]")
+    more = f"\n…and {len(events) - 10} more" if len(events) > 10 else ""
+    summary = "\n".join(summary_lines) + more
+
+    return {
+        "action": "complete",
+        "type": "claim_timeline",
+        "data": {"events": events, "count": len(events)},
+        "message": f"Timeline ({len(events)} events):\n{summary}",
     }
 
 

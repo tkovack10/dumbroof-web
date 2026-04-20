@@ -38,23 +38,39 @@ export async function isAdmin(userId: string): Promise<boolean> {
 }
 
 /**
- * Verify user owns the claim OR is an admin. Returns true if authorized.
+ * Verify user owns the claim, is assigned as the rep, shares the same
+ * company_id (team access), shares the email domain (legacy pre-invite teams),
+ * or is a platform admin. Returns true if authorized.
  */
 export async function canAccessClaim(userId: string, claimId: string): Promise<boolean> {
-  // Check ownership first (cheapest)
+  // Check the claim's scope fields (owner, assigned rep, company)
   const { data: claimRows } = await supabaseAdmin
     .from("claims")
-    .select("user_id")
+    .select("user_id, assigned_user_id, company_id")
     .eq("id", claimId)
     .limit(1);
 
   const claim = claimRows?.[0] || null;
-  if (claim?.user_id === userId) return true;
+  if (!claim) return false;
 
-  // Check domain sharing (same email domain = same company)
+  if (claim.user_id === userId) return true;
+  if (claim.assigned_user_id === userId) return true;
+
+  // Team access — explicit company_id link (populated by invite flow + migration backfill)
+  if (claim.company_id) {
+    const { data: profileRows } = await supabaseAdmin
+      .from("company_profiles")
+      .select("company_id")
+      .eq("user_id", userId)
+      .limit(1);
+    const myCompanyId = profileRows?.[0]?.company_id;
+    if (myCompanyId && myCompanyId === claim.company_id) return true;
+  }
+
+  // Legacy: same email domain as claim owner (pre-invite teams still rely on this)
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  if (user?.email && claim?.user_id) {
+  if (user?.email && claim.user_id) {
     const { data: owner } = await supabaseAdmin.auth.admin.getUserById(claim.user_id);
     if (owner?.user?.email) {
       const userDomain = user.email.split("@")[1];
@@ -63,7 +79,7 @@ export async function canAccessClaim(userId: string, claimId: string): Promise<b
     }
   }
 
-  // Fall back to admin check
+  // Fall back to platform admin
   return isAdmin(userId);
 }
 

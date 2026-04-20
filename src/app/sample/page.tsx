@@ -21,7 +21,7 @@ export default async function SamplePage() {
   const device = await getDeviceContext();
   // Mobile in-app browser users get a "save my spot" CTA at the bottom
   // (matches the homepage strategy from Phase 1.3)
-  const ctaHref = device.isInAppBrowser ? "/?from=sample" : "/login?mode=signup&redirect=/dashboard/new-claim";
+  const ctaHref = device.isInAppBrowser ? "/?from=sample" : "/signup?next=/dashboard/new-claim";
 
   return (
     <main className="min-h-screen bg-gradient-to-b from-[var(--navy)] via-[var(--navy-light)] to-[var(--navy)]">

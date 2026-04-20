@@ -336,7 +336,7 @@ export default function SlateHailDamagePage() {
             Upload your slate hail damage photos and measurements. Get 5 forensic-grade documents in 15 minutes—ready to send to your insurance carrier.
           </p>
           <a
-            href="/login?mode=signup"
+            href="/signup"
             className="inline-block bg-gradient-to-r from-[var(--pink)] via-[var(--purple)] to-[var(--blue)] hover:shadow-[var(--shadow-glow-pink)] text-white px-8 py-4 rounded-xl text-lg font-semibold transition-colors"
           >
             Try 3 Free Claims

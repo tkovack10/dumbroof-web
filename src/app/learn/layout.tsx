@@ -35,7 +35,7 @@ export default function LearnLayout({
               Pricing
             </a>
             <a
-              href="/login?mode=signup"
+              href="/signup"
               className="bg-gradient-to-r from-[var(--pink)] via-[var(--purple)] to-[var(--blue)] hover:shadow-[var(--shadow-glow-pink)] text-white px-5 py-2 rounded-lg text-sm font-semibold transition-colors"
             >
               Try Free

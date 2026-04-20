@@ -11,10 +11,28 @@ import { ClaimsMap } from "@/components/claims-map";
 import { RepairTabContent } from "./repair-tab-content";
 import { Confetti } from "@/components/confetti";
 import { useCountUp } from "@/hooks/use-count-up";
+import { InviteTeammateModal } from "@/components/invite-teammate-modal";
+import { ReferCompanyModal } from "@/components/refer-company-modal";
 
 type StatusFilter = "all" | "processing" | "ready" | "attention";
 type ViewMode = "table" | "map";
 type DashboardTab = "claims" | "repairs";
+
+type ScopeFilter =
+  | "any"
+  | "forensic_only"
+  | "pending_supplements"
+  | "with_forensic_win"
+  | "with_supplement_win"
+  | "no_wins_yet";
+
+type SortKey =
+  | "last_touched"
+  | "created"
+  | "homeowner_comms"
+  | "insurance_comms"
+  | "carrier"
+  | "rep";
 
 function fmtMoney(val: number): string {
   if (val >= 1_000_000) return `$${(val / 1_000_000).toFixed(2)}M`;
@@ -38,6 +56,16 @@ export function DashboardContent({ user }: { user: User }) {
   const [searchQuery, setSearchQuery] = useState("");
   const [showDetailStats, setShowDetailStats] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [inviteOpen, setInviteOpen] = useState(false);
+  const [referOpen, setReferOpen] = useState(false);
+  const [referralCode, setReferralCode] = useState<string | null>(null);
+  const [canInvite, setCanInvite] = useState(false);
+  const [scopeFilter, setScopeFilter] = useState<ScopeFilter>("any");
+  const [sortBy, setSortBy] = useState<SortKey>("last_touched");
+  const [repFilter, setRepFilter] = useState<string>("all");
+  const [carrierFilter, setCarrierFilter] = useState<string>("all");
+  const [claimWins, setClaimWins] = useState<Record<string, { forensic: number; supplement: number }>>({});
+  const [teamMembers, setTeamMembers] = useState<Record<string, string>>({});
   const prevWinCountRef = useRef(0);
   const menuRef = useRef<HTMLDivElement>(null);
   const billing = useBillingQuota();
@@ -74,11 +102,51 @@ export function DashboardContent({ user }: { user: User }) {
     // Poll every 30s instead of 5s — aggressive polling was causing mobile INP spikes (584ms)
     // 5s polling = constant network + state updates competing with user taps on mobile
     const interval = setInterval(fetchAll, 30000);
-    // Check admin status
+    // Check admin status + fetch referral code + invite permission + team members
     (async () => {
       try {
-        const { data } = await supabase.from("company_profiles").select("is_admin").eq("user_id", user.id).limit(1);
-        if (data?.[0]?.is_admin) setIsAdmin(true);
+        const { data } = await supabase
+          .from("company_profiles")
+          .select("is_admin, referral_code, role, company_id")
+          .eq("user_id", user.id)
+          .limit(1);
+        const prof = data?.[0];
+        if (prof?.is_admin) setIsAdmin(true);
+        if (prof?.referral_code) setReferralCode(prof.referral_code);
+        const role = prof?.role || (prof?.is_admin ? "owner" : "member");
+        setCanInvite(role === "owner" || role === "admin");
+        // Fetch team members for Rep filter
+        if (prof?.company_id) {
+          const { data: team } = await supabase
+            .from("company_profiles")
+            .select("user_id, name, email")
+            .eq("company_id", prof.company_id);
+          if (team) {
+            const map: Record<string, string> = {};
+            for (const m of team) {
+              if (m.user_id) map[m.user_id] = m.name || m.email || m.user_id.slice(0, 8);
+            }
+            setTeamMembers(map);
+          }
+        }
+      } catch { /* ignore */ }
+    })();
+    // Fetch claim_wins aggregated per claim for the "forensic win" / "supplement win" filters
+    (async () => {
+      try {
+        const { data } = await supabase
+          .from("claim_wins")
+          .select("claim_id, win_type");
+        if (data) {
+          const agg: Record<string, { forensic: number; supplement: number }> = {};
+          for (const w of data) {
+            const cid = w.claim_id as string;
+            if (!agg[cid]) agg[cid] = { forensic: 0, supplement: 0 };
+            if (w.win_type === "forensic_approval") agg[cid].forensic += 1;
+            else if (w.win_type === "supplement") agg[cid].supplement += 1;
+          }
+          setClaimWins(agg);
+        }
       } catch { /* ignore */ }
     })();
     return () => clearInterval(interval);
@@ -203,23 +271,70 @@ export function DashboardContent({ user }: { user: User }) {
     prevWinCountRef.current = wonClaims.length;
   }, [wonClaims.length, initialLoadDone]);
 
-  // Filter logic
-  const filteredClaims = claims.filter(c => {
-    // Search filter
-    if (searchQuery) {
-      const q = searchQuery.toLowerCase();
-      const matchesSearch = (c.address || "").toLowerCase().includes(q)
-        || (c.carrier || "").toLowerCase().includes(q)
-        || (c.homeowner_name || "").toLowerCase().includes(q);
-      if (!matchesSearch) return false;
-    }
-    // Status filter
-    if (statusFilter === "all") return true;
-    if (statusFilter === "processing") return c.status === "processing" || c.status === "uploaded";
-    if (statusFilter === "ready") return c.status === "ready";
-    if (statusFilter === "attention") return c.status === "error" || c.status === "needs_improvement" || (c.pending_edits ?? 0) > 0;
-    return true;
-  });
+  // Filter + sort logic
+  const filteredClaims = useMemo(() => {
+    const filtered = claims.filter(c => {
+      // Search filter
+      if (searchQuery) {
+        const q = searchQuery.toLowerCase();
+        const matchesSearch = (c.address || "").toLowerCase().includes(q)
+          || (c.carrier || "").toLowerCase().includes(q)
+          || (c.homeowner_name || "").toLowerCase().includes(q);
+        if (!matchesSearch) return false;
+      }
+      // Status filter
+      if (statusFilter === "processing" && !(c.status === "processing" || c.status === "uploaded")) return false;
+      if (statusFilter === "ready" && c.status !== "ready") return false;
+      if (statusFilter === "attention" && !(c.status === "error" || c.status === "needs_improvement" || (c.pending_edits ?? 0) > 0)) return false;
+
+      // Scope filter
+      if (scopeFilter !== "any") {
+        const wins = claimWins[c.id] || { forensic: 0, supplement: 0 };
+        if (scopeFilter === "forensic_only" && c.report_mode !== "forensic_only") return false;
+        if (scopeFilter === "pending_supplements" && (c.pending_drafts ?? 0) === 0) return false;
+        if (scopeFilter === "with_forensic_win" && wins.forensic === 0) return false;
+        if (scopeFilter === "with_supplement_win" && wins.supplement === 0) return false;
+        if (scopeFilter === "no_wins_yet" && (wins.forensic + wins.supplement) > 0) return false;
+      }
+
+      // Rep filter
+      if (repFilter !== "all" && c.assigned_user_id !== repFilter) return false;
+
+      // Carrier filter
+      if (carrierFilter !== "all" && (c.carrier || "") !== carrierFilter) return false;
+
+      return true;
+    });
+
+    // Sort
+    const sorted = [...filtered];
+    sorted.sort((a, b) => {
+      switch (sortBy) {
+        case "last_touched":
+          return new Date(b.last_touched_at || b.created_at).getTime() - new Date(a.last_touched_at || a.created_at).getTime();
+        case "created":
+          return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+        case "homeowner_comms":
+          return (b.homeowner_comms_count ?? 0) - (a.homeowner_comms_count ?? 0);
+        case "insurance_comms":
+          return (b.correspondence_count ?? 0) - (a.correspondence_count ?? 0);
+        case "carrier":
+          return (a.carrier || "").localeCompare(b.carrier || "");
+        case "rep":
+          return (teamMembers[a.assigned_user_id || ""] || "").localeCompare(teamMembers[b.assigned_user_id || ""] || "");
+        default:
+          return 0;
+      }
+    });
+    return sorted;
+  }, [claims, searchQuery, statusFilter, scopeFilter, repFilter, carrierFilter, sortBy, claimWins, teamMembers]);
+
+  // Distinct carriers for the Carrier filter dropdown
+  const distinctCarriers = useMemo(() => {
+    const set = new Set<string>();
+    for (const c of claims) if (c.carrier) set.add(c.carrier);
+    return Array.from(set).sort();
+  }, [claims]);
 
   const filterTabs: { key: StatusFilter; label: string; count?: number }[] = [
     { key: "all", label: "All", count: claims.length },
@@ -239,6 +354,8 @@ export function DashboardContent({ user }: { user: User }) {
   return (
     <main className="min-h-screen">
       <Confetti active={showConfetti} duration={5000} />
+      <InviteTeammateModal open={inviteOpen} onClose={() => setInviteOpen(false)} />
+      <ReferCompanyModal open={referOpen} onClose={() => setReferOpen(false)} referralCode={referralCode} />
 
       {/* Desktop Sidebar */}
       <aside className="hidden md:flex fixed top-0 left-0 bottom-0 w-56 bg-[rgba(6,9,24,0.95)] backdrop-blur-[20px] border-r border-[var(--border-glass)] z-50 flex-col">
@@ -421,6 +538,22 @@ export function DashboardContent({ user }: { user: User }) {
             </div>
           </div>
           <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
+            {canInvite && (
+              <button
+                onClick={() => setInviteOpen(true)}
+                className="bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/30 text-purple-300 px-4 py-3 rounded-xl font-semibold transition-colors text-sm"
+                title="Invite a teammate from your company"
+              >
+                + Invite Teammate
+              </button>
+            )}
+            <button
+              onClick={() => setReferOpen(true)}
+              className="bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 px-4 py-3 rounded-xl font-semibold transition-colors text-sm"
+              title="Refer another company — get a month free"
+            >
+              Refer &amp; Earn
+            </button>
             <a
               href="/dashboard/send-document"
               className="bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/30 text-blue-400 px-4 py-3 rounded-xl font-semibold transition-colors text-sm"
@@ -642,26 +775,90 @@ export function DashboardContent({ user }: { user: User }) {
               </div>
             )}
             {!loading && claims.length > 0 && (
-              <div className="flex flex-wrap gap-2 mb-6">
-                {filterTabs.map(tab => (
-                  <button
-                    key={tab.key}
-                    onClick={() => setStatusFilter(tab.key)}
-                    className={`px-4 py-2.5 min-h-[44px] rounded-full text-xs font-semibold transition-colors ${
-                      statusFilter === tab.key
-                        ? "bg-gradient-to-r from-[var(--pink)] to-[var(--blue)] text-white"
-                        : "bg-transparent text-[var(--gray)] border border-[var(--border-glass)] hover:bg-white/[0.04]"
-                    }`}
-                  >
-                    {tab.label}
-                    {tab.count != null && tab.count > 0 && (
-                      <span className={`ml-1.5 ${statusFilter === tab.key ? "text-white/70" : "text-[var(--gray-dim)]"}`}>
-                        {tab.count}
-                      </span>
+              <>
+                <div className="flex flex-wrap gap-2 mb-3">
+                  {filterTabs.map(tab => (
+                    <button
+                      key={tab.key}
+                      onClick={() => setStatusFilter(tab.key)}
+                      className={`px-4 py-2.5 min-h-[44px] rounded-full text-xs font-semibold transition-colors ${
+                        statusFilter === tab.key
+                          ? "bg-gradient-to-r from-[var(--pink)] to-[var(--blue)] text-white"
+                          : "bg-transparent text-[var(--gray)] border border-[var(--border-glass)] hover:bg-white/[0.04]"
+                      }`}
+                    >
+                      {tab.label}
+                      {tab.count != null && tab.count > 0 && (
+                        <span className={`ml-1.5 ${statusFilter === tab.key ? "text-white/70" : "text-[var(--gray-dim)]"}`}>
+                          {tab.count}
+                        </span>
+                      )}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Secondary filters — scope, rep, carrier, sort */}
+                <div className="flex flex-wrap items-center gap-2 mb-6">
+                  {([
+                    { key: "any",                 label: "Any" },
+                    { key: "forensic_only",       label: "Forensic only" },
+                    { key: "pending_supplements", label: "Pending supplements" },
+                    { key: "with_forensic_win",   label: "Forensic win" },
+                    { key: "with_supplement_win", label: "Supplement win" },
+                    { key: "no_wins_yet",         label: "No wins yet" },
+                  ] as { key: ScopeFilter; label: string }[]).map(chip => (
+                    <button
+                      key={chip.key}
+                      onClick={() => setScopeFilter(chip.key)}
+                      className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
+                        scopeFilter === chip.key
+                          ? "bg-cyan-500/15 border border-cyan-500/40 text-cyan-300"
+                          : "bg-white/[0.04] border border-[var(--border-glass)] text-[var(--gray-muted)] hover:text-[var(--white)]"
+                      }`}
+                    >
+                      {chip.label}
+                    </button>
+                  ))}
+
+                  <div className="ml-auto flex flex-wrap items-center gap-2">
+                    {Object.keys(teamMembers).length > 1 && (
+                      <select
+                        value={repFilter}
+                        onChange={(e) => setRepFilter(e.target.value)}
+                        className="px-3 py-1.5 rounded-lg text-xs bg-white/[0.04] border border-[var(--border-glass)] text-[var(--gray)] focus:outline-none focus:border-[var(--cyan)]"
+                      >
+                        <option value="all">All reps</option>
+                        {Object.entries(teamMembers).map(([id, name]) => (
+                          <option key={id} value={id}>{name}</option>
+                        ))}
+                      </select>
                     )}
-                  </button>
-                ))}
-              </div>
+                    {distinctCarriers.length > 1 && (
+                      <select
+                        value={carrierFilter}
+                        onChange={(e) => setCarrierFilter(e.target.value)}
+                        className="px-3 py-1.5 rounded-lg text-xs bg-white/[0.04] border border-[var(--border-glass)] text-[var(--gray)] focus:outline-none focus:border-[var(--cyan)]"
+                      >
+                        <option value="all">All carriers</option>
+                        {distinctCarriers.map(c => <option key={c} value={c}>{c}</option>)}
+                      </select>
+                    )}
+                    <select
+                      value={sortBy}
+                      onChange={(e) => setSortBy(e.target.value as SortKey)}
+                      className="px-3 py-1.5 rounded-lg text-xs bg-white/[0.04] border border-[var(--border-glass)] text-[var(--gray)] focus:outline-none focus:border-[var(--cyan)]"
+                      title="Sort by"
+                    >
+                      <option value="last_touched">Sort: Last touched</option>
+                      <option value="created">Sort: Date created</option>
+                      <option value="homeowner_comms">Sort: Homeowner comms</option>
+                      <option value="insurance_comms">Sort: Insurance comms</option>
+                      <option value="carrier">Sort: Carrier</option>
+                      <option value="rep">Sort: Rep</option>
+                    </select>
+                  </div>
+                </div>
+              </>
             )}
 
             {/* Map View */}

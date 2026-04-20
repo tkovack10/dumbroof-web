@@ -27,6 +27,10 @@ import { Confetti } from "@/components/confetti";
 import { ClaimBrainChat } from "@/components/claim-brain-chat";
 import { CommunicationLog } from "@/components/communication-log";
 import { ClaimLifecycleBar } from "@/components/claim-lifecycle-bar";
+import { ContactRegistryCard } from "@/components/contact-registry-card";
+import { HomeownerEngagementCard } from "@/components/homeowner-engagement-card";
+import { ReadyToBuildCard } from "@/components/ready-to-build-card";
+import { ClaimTimelineRail } from "@/components/claim-timeline-rail";
 
 function EditableField({ value, placeholder, field, claimId, prefix, className, onSave }: {
   value: string;
@@ -165,6 +169,7 @@ export default function ClaimDetailPage() {
   const [userProfile, setUserProfile] = useState<{ name: string; company: string; phone: string }>({ name: "", company: "", phone: "" });
   const [roofMapPhotos, setRoofMapPhotos] = useState<RoofPhotoMapPhoto[]>([]);
   const [roofMapPhotoUrls, setRoofMapPhotoUrls] = useState<Record<string, string>>({});
+  const [hasForensicWin, setHasForensicWin] = useState(false);
   const formRef = useRef<HTMLDivElement>(null);
 
   const fetchClaim = useCallback(async () => {
@@ -189,6 +194,20 @@ export default function ClaimDetailPage() {
 
     setClaim(data);
     setLoading(false);
+
+    // Check if this claim has a forensic-approval win — unlocks Ready to Build
+    // even before a traditional supplement win. Best-effort.
+    try {
+      const { data: wins } = await supabase
+        .from("claim_wins")
+        .select("win_type")
+        .eq("claim_id", claimId)
+        .eq("win_type", "forensic_approval")
+        .limit(1);
+      setHasForensicWin(!!(wins && wins.length > 0));
+    } catch {
+      /* ignore */
+    }
   }, [claimId, router, supabase]);
 
   const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000";
@@ -970,6 +989,26 @@ export default function ClaimDetailPage() {
           )}
         </div>
 
+        {/* Contact Registry — inline-editable homeowner/adjuster/policy fields, source-tracked */}
+        <ContactRegistryCard
+          claimId={claim.id}
+          initial={{
+            homeowner_name: claim.homeowner_name,
+            homeowner_email: claim.homeowner_email,
+            homeowner_phone: claim.homeowner_phone,
+            adjuster_name: claim.adjuster_name,
+            adjuster_email: claim.adjuster_email,
+            adjuster_phone: claim.adjuster_phone,
+            claim_number: claim.claim_number,
+            policy_number: claim.policy_number,
+            contact_source: claim.contact_source as Record<string, string | undefined> | null,
+          }}
+          onChange={(patch) => setClaim({ ...claim, ...patch })}
+        />
+
+        {/* Timeline rail — event-sourced history (milestones, comms, docs, actions) */}
+        <ClaimTimelineRail claimId={claim.id} />
+
         {/* Processing indicator */}
         {isReprocessingState && (
           <div className="bg-amber-500/10 border border-amber-100 rounded-2xl p-5">
@@ -1433,6 +1472,23 @@ export default function ClaimDetailPage() {
             filePath={claim.file_path}
             claimNumber={claim.claim_number || ""}
             adjusterEmail={claim.adjuster_email || ""}
+          />
+        )}
+
+        {/* Homeowner Engagement — keep the homeowner engaged between inspection and approval */}
+        {isReady && (
+          <HomeownerEngagementCard
+            claimId={claim.id}
+            homeownerEmail={claim.homeowner_email}
+          />
+        )}
+
+        {/* Ready to Build — production handoff with scope validation (gated on win) */}
+        {isReady && (
+          <ReadyToBuildCard
+            claimId={claim.id}
+            claimOutcome={claim.claim_outcome || null}
+            hasForensicWin={hasForensicWin}
           />
         )}
 

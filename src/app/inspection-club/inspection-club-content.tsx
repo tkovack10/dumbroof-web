@@ -183,7 +183,7 @@ export function InspectionClubContent({ activeStates, isLoggedIn }: Props) {
               <h3 className="text-lg font-bold text-[var(--white)] mb-3">Create an account to apply</h3>
               <p className="text-[var(--gray-muted)] text-sm mb-6">Sign up for a free DumbRoof account, then come back to submit your inspector application.</p>
               <a
-                href="/login?mode=signup&redirect=/inspection-club"
+                href="/signup?next=/inspection-club"
                 className="inline-block bg-gradient-to-r from-[var(--pink)] via-[var(--purple)] to-[var(--blue)] hover:shadow-[var(--shadow-glow-pink)] text-white px-8 py-3 rounded-xl font-semibold transition-colors"
               >
                 Create Account

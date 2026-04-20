@@ -361,7 +361,7 @@ export function PAClubContent({ activeStates, isLoggedIn }: Props) {
             in the homeowner&apos;s state. They handle the insurance advocacy while you handle
             the physical work. DumbRoof processes the claim through the AI pipeline — everyone wins.
           </p>
-          <a href="/login?mode=signup" className="inline-block bg-gradient-to-r from-[var(--pink)] via-[var(--purple)] to-[var(--blue)] hover:shadow-[var(--shadow-glow-pink)] text-white px-8 py-3 rounded-xl font-semibold transition-colors">
+          <a href="/signup" className="inline-block bg-gradient-to-r from-[var(--pink)] via-[var(--purple)] to-[var(--blue)] hover:shadow-[var(--shadow-glow-pink)] text-white px-8 py-3 rounded-xl font-semibold transition-colors">
             Get Started
           </a>
         </div>
@@ -378,7 +378,7 @@ export function PAClubContent({ activeStates, isLoggedIn }: Props) {
               <h3 className="text-lg font-bold text-[var(--white)] mb-3">Create an account to apply</h3>
               <p className="text-[var(--gray-muted)] text-sm mb-6">Sign up for a free DumbRoof account, then come back to submit your PA application.</p>
               <a
-                href="/login?mode=signup&redirect=/pa-club"
+                href="/signup?next=/pa-club"
                 className="inline-block bg-purple-600 hover:bg-purple-700 text-white px-8 py-3 rounded-xl font-semibold transition-colors"
               >
                 Create Account

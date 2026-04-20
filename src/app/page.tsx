@@ -355,7 +355,7 @@ export default async function Home() {
       <section className="py-10 px-6">
         <div className="max-w-xl mx-auto text-center">
           <a
-            href="/login?mode=signup"
+            href="/signup"
             className="group inline-flex items-center gap-3 bg-gradient-to-r from-[var(--pink)] via-[var(--purple)] to-[var(--blue)] hover:shadow-[var(--shadow-glow-pink)] text-white px-8 py-4 rounded-xl text-lg font-semibold transition-all shadow-lg shadow-red-900/30"
           >
             Try 3 Free Claims
@@ -451,7 +451,7 @@ export default async function Home() {
             <span className="text-xs text-green-400 font-medium">{stats.claimsProcessed} in claims processed this month</span>
           </div>
           <a
-            href="/login?mode=signup"
+            href="/signup"
             className="group inline-flex items-center gap-3 bg-gradient-to-r from-[var(--pink)] via-[var(--purple)] to-[var(--blue)] hover:shadow-[var(--shadow-glow-pink)] text-white px-8 py-4 rounded-xl text-lg font-semibold transition-all shadow-lg shadow-red-900/30"
           >
             Get Your First Report Free
@@ -584,7 +584,7 @@ export default async function Home() {
             After DumbRoof: $943,233
           </p>
           <a
-            href="/login?mode=signup"
+            href="/signup"
             className="group inline-flex items-center gap-3 bg-gradient-to-r from-[var(--pink)] via-[var(--purple)] to-[var(--blue)] hover:shadow-[var(--shadow-glow-pink)] text-white px-8 py-4 rounded-xl text-lg font-semibold transition-all shadow-lg shadow-red-900/30"
           >
             See What You&apos;re Leaving on the Roof
@@ -1552,7 +1552,7 @@ export default async function Home() {
             and get back a forensic-grade package in 15 minutes.
           </p>
           <a
-            href="/login?mode=signup"
+            href="/signup"
             className="inline-block bg-gradient-to-r from-[var(--pink)] via-[var(--purple)] to-[var(--blue)] hover:shadow-[var(--shadow-glow-pink)] text-white px-8 py-4 rounded-xl text-lg font-semibold transition-colors shadow-lg shadow-red-900/30"
           >
             Try 3 Free Claims

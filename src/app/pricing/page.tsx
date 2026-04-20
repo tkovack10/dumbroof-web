@@ -52,7 +52,7 @@ function PricingContent() {
         window.location.href = data.url;
         return;
       } else if (res.status === 401) {
-        window.location.href = "/login?mode=signup&redirect=/pricing";
+        window.location.href = "/signup?next=/pricing";
         return;
       } else {
         setCheckoutError(data.error || "Failed to create checkout session");
@@ -92,7 +92,7 @@ function PricingContent() {
                   Sign In
                 </a>
                 <a
-                  href="/login?mode=signup"
+                  href="/signup"
                   className="bg-gradient-to-r from-[var(--pink)] via-[var(--purple)] to-[var(--blue)] hover:shadow-[var(--shadow-glow-pink)] text-white px-5 py-2 rounded-lg text-sm font-semibold transition-colors"
                 >
                   Create Account
@@ -184,7 +184,7 @@ function PricingContent() {
                 </ul>
                 {id === "starter" ? (
                   <a
-                    href="/login?mode=signup"
+                    href="/signup"
                     className="block text-center bg-gradient-to-r from-[var(--pink)] via-[var(--purple)] to-[var(--blue)] hover:shadow-[var(--shadow-glow-pink)] text-white py-3 rounded-xl font-semibold transition-colors text-sm"
                   >
                     Try 3 Free Claims

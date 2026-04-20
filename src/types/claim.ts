@@ -33,6 +33,19 @@ export interface Claim {
   claim_number?: string | null;
   adjuster_name?: string | null;
   adjuster_email?: string | null;
+  adjuster_phone?: string | null;
+  // Homeowner contact (promoted from claim_config to top-level for fast composer pre-fill)
+  homeowner_email?: string | null;
+  homeowner_phone?: string | null;
+  policy_number?: string | null;
+  // Per-field source tracking ("manual" | "scope_2026-04-15" | "email_extract")
+  contact_source?: Record<string, string | undefined> | null;
+  // Team / company scoping (from 20260419_platform_expansion migration)
+  company_id?: string | null;
+  assigned_user_id?: string | null;
+  last_touched_at?: string | null;
+  homeowner_comms_count?: number | null;
+  marketing_eligible?: boolean | null;
   // Communication
   correspondence_count?: number;
   pending_drafts?: number;

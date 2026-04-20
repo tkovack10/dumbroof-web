@@ -884,8 +884,9 @@ from fastapi.responses import StreamingResponse
 _brain_conversations: dict = {}
 
 
-def _build_claim_brain_prompt(claim_data: dict, photos: list, scope_comparison: list, carrier_playbook: str = "") -> str:
+def _build_claim_brain_prompt(claim_data: dict, photos: list, scope_comparison: list, carrier_playbook: str = "", timeline_events: list = None) -> str:
     """Build the Claim Brain system prompt from Supabase claim data."""
+    timeline_events = timeline_events or []
     address = claim_data.get("address", "Unknown")
     carrier = claim_data.get("carrier", "Unknown")
     phase = claim_data.get("phase", "unknown")
@@ -947,6 +948,23 @@ def _build_claim_brain_prompt(claim_data: dict, photos: list, scope_comparison: 
     if carrier_playbook:
         playbook_section = f"\n## CARRIER INTELLIGENCE — {carrier}\n{carrier_playbook}\n"
 
+    # Recent timeline — event-sourced history. Inlined so Richard sees the last
+    # 20 events every turn without having to call get_claim_timeline first.
+    timeline_section = ""
+    if timeline_events:
+        timeline_section = "\n## RECENT TIMELINE (most recent first)\n"
+        for ev in timeline_events[:20]:
+            occurred = (ev.get("occurred_at") or "")[:10]
+            cat = ev.get("event_category") or ""
+            title = ev.get("title") or ev.get("event_type") or ""
+            desc = ev.get("description") or ""
+            line = f"- {occurred} · **{title}** ({cat})"
+            if desc:
+                line += f" — {desc[:100]}"
+            timeline_section += line + "\n"
+        if len(timeline_events) > 20:
+            timeline_section += f"- …and {len(timeline_events) - 20} more earlier events (use get_claim_timeline to drill in)\n"
+
     from datetime import datetime
     return f"""You are the Claim Brain for {address} — an AI claims operations manager
 built by DumbRoof.ai. You are an expert on EVERY piece of data related to this ONE
@@ -992,6 +1010,8 @@ Current date/time: {datetime.now().strftime('%Y-%m-%d %H:%M')}
 
 {playbook_section}
 
+{timeline_section}
+
 ## PROCESSING WARNINGS
 {chr(10).join(f'- {w}' for w in processing_warnings) if processing_warnings else 'None'}
 
@@ -1026,6 +1046,7 @@ actionable (send emails, generate documents, check status), USE the appropriate 
 - **get_noaa_weather** — Verified NOAA storm events near the property on/around the date of loss. Use when building causation arguments.
 - **search_photos** — Filter photos by damage_type / material / trade / severity. Use when assembling evidence or answering "do we have X?"
 - **get_damage_scores** — Returns the Damage Score (DS) and Technical Approval Score (TAS) with grades.
+- **get_claim_timeline** — Returns the full chronological event timeline for this claim (milestones, communications, documents, actions). The most recent 20 events are already inlined under "RECENT TIMELINE" above. Use this tool to drill past those 20, or to filter by category (milestone/communication/document/action/system). Use when asked "when did X happen?", "what was the last thing that happened?", "show me every email on this claim", or any history question.
 - **coach_photo_documentation** — Analyzes the current photo set and returns SPECIFIC coaching steps with exact techniques (test squares, chalk contrast, scale references, labeled overviews). Call this when the user asks "what photos am I missing?", "how do I document this better?", "how can I strengthen this claim?", OR proactively any time you see DS < 70 or the user is about to send something to the carrier with incomplete evidence. Returns concrete instructions — not "take more photos" but "mark a 10x10 test square with chalk, circle every hail hit, shoot from above with a quarter for scale."
 - **find_photo** — Locate a specific photo by annotation_key ('p11_02'), position ('the 23rd photo', 'page 11 2nd photo'), or text content ('chimney flashing'). Call FIRST before edit_photo_annotation or exclude_photo_from_claim so you know the exact photo_id.
 
@@ -1268,8 +1289,16 @@ async def claim_brain_chat(claim_id: str, body: ChatMessage):
     # Load carrier playbook
     playbook = _load_carrier_playbook(claim_data.get("carrier", ""))
 
+    # Load recent timeline events (last 20 inlined into prompt for context)
+    try:
+        from claim_events import get_claim_timeline as _get_timeline
+        timeline_events = _get_timeline(sb, claim_id, limit=20)
+    except Exception as _te:
+        print(f"[CLAIM BRAIN] timeline fetch failed (non-fatal): {_te}")
+        timeline_events = []
+
     # Build system prompt
-    system_prompt = _build_claim_brain_prompt(claim_data, photos, scope_comparison, playbook)
+    system_prompt = _build_claim_brain_prompt(claim_data, photos, scope_comparison, playbook, timeline_events)
 
     # Spanish language mode
     if body.locale == "es":

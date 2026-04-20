@@ -36,3 +36,5 @@ yarn-error.log*
 next-env.d.ts
 cloudflare/email-worker/node_modules/
 supabase/.temp/
+# Marketing PDFs (uploaded to Supabase Storage bucket marketing-assets, not repo)
+public/sample-books/

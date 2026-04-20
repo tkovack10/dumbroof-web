@@ -791,7 +791,7 @@ export default function AsphaltShingleHailDamagePage() {
               photos, Xactimate estimate, causation report, and more.
             </p>
             <a
-              href="/login?mode=signup"
+              href="/signup"
               className="inline-flex items-center gap-2 bg-gradient-to-r from-[var(--pink)] via-[var(--purple)] to-[var(--blue)] hover:shadow-[var(--shadow-glow-pink)] text-white font-semibold py-3 px-8 rounded-xl transition-colors"
             >
               Try 3 Free Claims &rarr;
