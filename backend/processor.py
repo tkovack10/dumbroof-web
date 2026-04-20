@@ -1327,15 +1327,29 @@ def extract_carrier_scope(client: anthropic.Anthropic, pdf_path, extra_paths=Non
     all_paths = [pdf_path] + (extra_paths or [])
     file_blocks = []
     for i, fpath in enumerate(all_paths):
+        # Caller orders paths newest-first — DOCUMENT 1 is the current carrier
+        # position, DOCUMENT 2+ are historical baselines.
+        if len(all_paths) > 1:
+            if i == 0:
+                _recency = "NEWEST / current carrier position"
+            else:
+                _recency = "older revision / historical baseline"
+            _label = (
+                f"[DOCUMENT {i+1} of {len(all_paths)} — {_recency} — "
+                f"filename: {os.path.basename(fpath)}]"
+            )
+        else:
+            _label = f"[CARRIER DOCUMENT — filename: {os.path.basename(fpath)}]"
         ext = fpath.lower().rsplit(".", 1)[-1] if "." in fpath else ""
         if ext == "txt":
             with open(fpath, "r", encoding="utf-8") as f:
                 text_content = f.read()
             file_blocks.append({
                 "type": "text",
-                "text": f"[CARRIER DOCUMENT {i+1} of {len(all_paths)} — extracted from email]\n\n{text_content}",
+                "text": f"{_label}\n\n{text_content}",
             })
         else:
+            file_blocks.append({"type": "text", "text": _label})
             pdf_b64 = file_to_base64(fpath)
             file_blocks.append({
                 "type": "document",
@@ -1343,6 +1357,22 @@ def extract_carrier_scope(client: anthropic.Anthropic, pdf_path, extra_paths=Non
             })
 
     extraction_prompt = """Read this insurance carrier scope/estimate and extract ALL data into this exact JSON format. Return ONLY valid JSON.
+
+CRITICAL — WHICH DOCUMENT IS THE CURRENT CARRIER POSITION:
+If multiple scope documents are attached, DOCUMENT 1 is the MOST RECENT carrier-side scope
+(sorted newest-first by the caller) and represents the CURRENT carrier position. Extract
+`carrier_rcv`, `carrier_line_items`, `carrier_deductible`, `carrier_depreciation`, and
+`carrier_acv` from DOCUMENT 1 ONLY. Treat later documents (DOCUMENT 2+) as historical
+baseline / prior versions — do NOT merge their totals into carrier_rcv.
+
+Independent Adjuster (IA) reports — from firms like "John M Dorner Adjustment Company",
+"J.S. Held", "Alacrity", "EFI Global", "Accurence", "FieldAssist", "Hancock Claims",
+etc. — that reference the SAME claim number and use the CARRIER'S price list
+(e.g., NYBI*, PAPI*, NJBI*) ARE the carrier's position when they supersede an earlier
+scope. Extract them as the carrier scope. Set `carrier.name` to the underlying insurance
+company (infer from claim_number prefix, price list, or prior-document context) rather
+than the IA firm. Capture the IA firm in `inspector_company` and the IA author in
+`inspector_name`.
 
 CRITICAL: For each line item, capture any notes/descriptions that explain WHAT the item is for.
 Carriers sometimes use generic descriptions (e.g., "3-tab shingle") but include notes that reveal
@@ -4661,9 +4691,38 @@ async def process_claim(claim_id: str):
         if not photo_paths:
             print(f"[PHOTOS] WARNING: No usable photos found from {len(downloaded_paths)} uploaded files")
 
-        # 5. Download carrier scope (if any)
+        # 5. Download carrier scope (if any).
+        # Dedup + sort newest-first so the latest revision (e.g. IA supplement
+        # retained by the carrier) becomes the primary document for extraction
+        # and older versions act as historical context.
         scope_paths = []
-        for fname in claim.get("scope_files", []):
+        _scope_fnames_seen: set = set()
+        _scope_fnames_ordered: list = []
+        for fname in claim.get("scope_files", []) or []:
+            if fname and fname not in _scope_fnames_seen:
+                _scope_fnames_seen.add(fname)
+                _scope_fnames_ordered.append(fname)
+        if _scope_fnames_ordered:
+            # Ask storage for upload timestamps so we can sort newest-first.
+            _scope_ts: dict = {}
+            try:
+                storage_list = sb.storage.from_("claim-documents").list(f"{file_path}/scope")
+                for entry in storage_list or []:
+                    _name = entry.get("name")
+                    if not _name:
+                        continue
+                    _scope_ts[_name] = (
+                        entry.get("updated_at") or entry.get("created_at") or ""
+                    )
+            except Exception as e:
+                print(f"[PROCESS] Could not list scope folder for sort (non-fatal): {e}")
+            _scope_fnames_ordered.sort(key=lambda n: _scope_ts.get(n, ""), reverse=True)
+            if len(_scope_fnames_ordered) > 1:
+                print(
+                    f"[PROCESS] Scope files sorted newest-first: {_scope_fnames_ordered}",
+                    flush=True,
+                )
+        for fname in _scope_fnames_ordered:
             local = os.path.join(source_dir, fname)
             download_file(sb, "claim-documents", f"{file_path}/scope/{fname}", local)
             scope_paths.append(local)

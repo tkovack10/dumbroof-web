@@ -352,7 +352,7 @@ export default function ClaimDetailPage() {
 
       const fieldKey = catConfig.dbField as keyof Claim;
       const existingFiles: string[] = (claim[fieldKey] as string[] | null) ?? [];
-      const updatedFiles = [...existingFiles, ...uploadedNames];
+      const updatedFiles = Array.from(new Set([...existingFiles, ...uploadedNames]));
 
       const updates: Record<string, unknown> = { [catConfig.dbField]: updatedFiles };
       if (selectedCategory === "scope" && claim.phase === "pre-scope") {
