@@ -1,5 +1,4 @@
 import { Suspense } from "react";
-import { cookies } from "next/headers";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { SignupClient } from "./signup-client";
 
@@ -96,22 +95,9 @@ export default async function SignupPage({ searchParams }: SignupPageProps) {
     }
   }
 
-  // Persist invite/ref in cookies so /auth/callback can pick them up after
-  // email confirmation / Google OAuth round-trip (query params don't survive).
-  // 24h is long enough for email-confirm / OAuth flows but short enough to
-  // limit cross-user contamination on shared browsers.
-  const cookieStore = await cookies();
-  const oneDay = 60 * 60 * 24;
-  if (inviteContext) {
-    cookieStore.set("dr_invite", inviteContext.token, {
-      httpOnly: true, sameSite: "lax", secure: true, maxAge: oneDay, path: "/",
-    });
-  }
-  if (referralContext) {
-    cookieStore.set("dr_ref", referralContext.code, {
-      httpOnly: true, sameSite: "lax", secure: true, maxAge: oneDay, path: "/",
-    });
-  }
+  // Note: dr_invite / dr_ref cookies are set by middleware.ts when the query
+  // params are present — setting cookies directly from this Server Component
+  // page is unreliable in Next.js 15 (throws on render).
 
   return (
     <Suspense>
