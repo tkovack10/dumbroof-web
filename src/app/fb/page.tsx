@@ -62,14 +62,24 @@ export default async function FbLanding() {
             </span>
           </div>
 
-          <h1 className="text-4xl sm:text-5xl font-bold text-white leading-[1.1] mb-5">
-            Complex workflow, <br />
-            <span className="gradient-text">made easy.</span>
+          <h1 className="text-2xl sm:text-3xl font-semibold text-[var(--gray-dim)] leading-tight mb-6">
+            Complex workflow, <span className="gradient-text font-bold">made easy.</span>
           </h1>
 
-          <p className="text-lg text-[var(--gray-dim)] mb-8 leading-relaxed">
-            Every input unlocks more of the claim for you. <br className="hidden sm:inline" />
-            Photos &rarr; forensic report. Measurements &rarr; build scope. Carrier scope &rarr; auto supplement.
+          <div className="mb-8 space-y-3 text-left sm:text-center">
+            <div className="text-xl sm:text-2xl font-bold text-white leading-tight">
+              Photos <span className="text-[var(--gray-muted)] font-normal mx-1">=</span> <span className="gradient-text">Forensic Report.</span>
+            </div>
+            <div className="text-xl sm:text-2xl font-bold text-white leading-tight">
+              <span className="text-[var(--gray-muted)] font-normal">+</span> Measurements <span className="text-[var(--gray-muted)] font-normal mx-1">=</span> <span className="gradient-text">Build Scope.</span>
+            </div>
+            <div className="text-xl sm:text-2xl font-bold text-white leading-tight">
+              <span className="text-[var(--gray-muted)] font-normal">+</span> Carrier Scope <span className="text-[var(--gray-muted)] font-normal mx-1">=</span> <span className="gradient-text">Supplement.</span>
+            </div>
+          </div>
+
+          <p className="text-sm text-[var(--gray-muted)] mb-8 italic">
+            Start with what you have. Add more. Go further.
           </p>
 
           <div className="mb-6">
