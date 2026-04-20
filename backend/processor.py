@@ -5800,6 +5800,15 @@ async def process_claim(claim_id: str):
             return
 
         # 10b. Generate PDFs (quality gate passed)
+        # Pre-PDF scrub: the LLM can leak RCNYS / 11 NYCRR into carrier_line_items
+        # per-row narratives from carrier-playbook training exposure. Scrub before
+        # PDFs render — the scope comparison report (Doc 03) reads these rows directly.
+        _claim_state = (config.get("property", {}).get("state", "") or state or "").upper()
+        if _claim_state and _claim_state != "NY":
+            _rows = config.get("carrier", {}).get("carrier_line_items") or []
+            if _rows:
+                config["carrier"]["carrier_line_items"] = _scrub_codes_in_scope_rows(_rows, _claim_state)
+
         print(f"[PROCESS] Generating PDFs...")
         pdfs = generate_pdfs(config, work_dir)
 
