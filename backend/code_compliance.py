@@ -14,14 +14,41 @@ with legal reinforcement.
 """
 
 # ── Jurisdiction Mapping ──────────────────────────────────────────────
-JURISDICTION_CODES = {
-    "NY": {"prefix": "RCNYS", "name": "Residential Code of New York State", "tax": 0.08},
-    "PA": {"prefix": "IRC", "name": "International Residential Code", "tax": 0.00},
-    "NJ": {"prefix": "NJ UCC / IRC", "name": "NJ Uniform Construction Code", "tax": 0.06625},
-    "CT": {"prefix": "CT SBC / IRC", "name": "CT State Building Code", "tax": 0.0635},
-    "MD": {"prefix": "IRC", "name": "International Residential Code", "tax": 0.06},
-    "DE": {"prefix": "IRC", "name": "International Residential Code", "tax": 0.00},
-}
+# State-specific jurisdiction data is now resolved via building_codes/state_codes.json.
+# This helper preserves the legacy `{"prefix", "name", "tax"}` shape that
+# enrich_line_items_with_citations() consumes. Add states to the JSON,
+# not this file.
+from building_codes import lookup as _bc_lookup
+
+
+def _get_jurisdiction_dict(state: str) -> dict:
+    """Return {"prefix", "name", "tax"} for a state. Unknown → IRC default."""
+    row = _bc_lookup.get_state_codes(state)
+    return {
+        "prefix": row.get("prefix", "IRC"),
+        "name":   row.get("full_name", "International Residential Code"),
+        "tax":    float(row.get("sales_tax", 0.0) or 0.0),
+    }
+
+
+class _JurisdictionCodesProxy:
+    """Legacy .get(state, default) dict contract over state_codes.json."""
+    def get(self, state, default=None):
+        if not state:
+            return default
+        st = state.upper()
+        if st in _bc_lookup.all_states() or st == "IRC":
+            return _get_jurisdiction_dict(state)
+        return default
+
+    def __getitem__(self, state):
+        return _get_jurisdiction_dict(state)
+
+    def __contains__(self, state):
+        return (state or "").strip().upper() in set(_bc_lookup.all_states())
+
+
+JURISDICTION_CODES = _JurisdictionCodesProxy()
 
 # ── Manufacturer Specs Database ──────────────────────────────────────
 MANUFACTURER_SPECS = {

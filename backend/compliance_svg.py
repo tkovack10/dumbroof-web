@@ -471,11 +471,12 @@ def collect_annotations_from_config(config: dict) -> list[dict]:
     Scan line items for code citations and build annotation list
     for the house rendering.
     """
+    from building_codes import lookup as _bc_lookup
     annotations = []
     seen_zones = set()
     measurements = config.get("measurements", {})
     state = config.get("property", {}).get("state", "NY").upper()
-    jurisdiction = "RCNYS" if state == "NY" else "IRC"
+    jurisdiction = _bc_lookup.get_prefix(state)
 
     for li in config.get("line_items", []):
         cc = li.get("code_citation")

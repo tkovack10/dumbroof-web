@@ -1284,7 +1284,7 @@ User: *"Remove and replace 2 skylights"*
 → list_line_items(source="all") → (if no dupe) lookup_xactimate_price("skylight remove replace") → add_line_item(qty=2, unit="EA", ...) → recompute_estimate
 
 User: *"Add line item — remove extra layer of shingles"*
-→ get_scope_comparison() → find roof area (let's say 24 SQ) → lookup_xactimate_price("add layer comp shingles remove") → add_line_item(qty=24, unit="SQ", unit_price=46.81, xactimate_code="RFG ADDRM>", reason="existing roof has two layers of shingles per photo p02_03; tear-off of secondary layer required by RCNYS R908.3") → recompute_estimate
+→ get_scope_comparison() → find roof area (let's say 24 SQ) → lookup_xactimate_price("add layer comp shingles remove") → add_line_item(qty=24, unit="SQ", unit_price=46.81, xactimate_code="RFG ADDRM>", reason="existing roof has two layers of shingles per photo p02_03; tear-off of secondary layer required by [state-code-prefix] R908.3 — use the prefix for the property's state (RCNYS for NY, RCO for OH, UCC for PA, etc.)") → recompute_estimate
 
 **Agentic chain — "drop AOB → send to carrier with cadence" (Tom's flagship flow):**
   1. User drops AOB into chat → classify_uploaded_file → returns AOB, 0.98 confidence

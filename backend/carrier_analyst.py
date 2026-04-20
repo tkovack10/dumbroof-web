@@ -136,7 +136,7 @@ Identify EVERY underpayment tactic present. Common patterns:
 11. Missing steep/high charges for pitch >7/12
 12. Desk review denial (no field inspection)
 
-For each tactic found, recommend the strongest counter-argument with building code citations if applicable (RCNYS for NY, IRC for others).
+For each tactic found, recommend the strongest counter-argument with building code citations if applicable. Use the state-appropriate code prefix (RCNYS for NY, RCO for OH, UCC for PA, NJUCC for NJ, CRC for CA, FBC-R for FL, etc. — generic IRC for states without a state-adopted residential code).
 
 Return ONLY this JSON:
 ```json

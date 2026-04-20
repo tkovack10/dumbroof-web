@@ -21,6 +21,25 @@ from typing import Any, Optional
 _JSON_PATH = os.path.join(os.path.dirname(__file__), "state_codes.json")
 _DEFAULT_KEY = "IRC"
 
+# Full state name → 2-letter code. Upstream address parsers are inconsistent
+# about whether they return "TX" or "Texas" — normalize both.
+_STATE_NAME_TO_CODE = {
+    "alabama": "AL", "alaska": "AK", "arizona": "AZ", "arkansas": "AR",
+    "california": "CA", "colorado": "CO", "connecticut": "CT", "delaware": "DE",
+    "district of columbia": "DC", "washington d.c.": "DC", "washington dc": "DC",
+    "florida": "FL", "georgia": "GA", "hawaii": "HI", "idaho": "ID",
+    "illinois": "IL", "indiana": "IN", "iowa": "IA", "kansas": "KS",
+    "kentucky": "KY", "louisiana": "LA", "maine": "ME", "maryland": "MD",
+    "massachusetts": "MA", "michigan": "MI", "minnesota": "MN", "mississippi": "MS",
+    "missouri": "MO", "montana": "MT", "nebraska": "NE", "nevada": "NV",
+    "new hampshire": "NH", "new jersey": "NJ", "new mexico": "NM", "new york": "NY",
+    "north carolina": "NC", "north dakota": "ND", "ohio": "OH", "oklahoma": "OK",
+    "oregon": "OR", "pennsylvania": "PA", "rhode island": "RI", "south carolina": "SC",
+    "south dakota": "SD", "tennessee": "TN", "texas": "TX", "utah": "UT",
+    "vermont": "VT", "virginia": "VA", "washington": "WA", "west virginia": "WV",
+    "wisconsin": "WI", "wyoming": "WY",
+}
+
 
 @lru_cache(maxsize=1)
 def _load() -> dict:
@@ -32,7 +51,15 @@ def _load() -> dict:
 
 
 def _normalize(state: str) -> str:
-    return (state or "").strip().upper()
+    """Accept either a 2-letter code or a full state name in any case.
+    Returns the 2-letter uppercase code, or '' for empty input."""
+    if not state:
+        return ""
+    s = state.strip()
+    if len(s) == 2:
+        return s.upper()
+    lower = s.lower()
+    return _STATE_NAME_TO_CODE.get(lower, s.upper())
 
 
 def _row_for(state: str) -> dict:

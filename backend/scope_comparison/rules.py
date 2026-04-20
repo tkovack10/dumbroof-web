@@ -112,19 +112,30 @@ class _IWRequirementsProxy:
 
 
 class _StateTaxProxy:
+    """Preserves the prior STATE_TAX behavior: only return tax for states we've
+    explicitly modeled + verified. Every other state returns the caller's default
+    (usually 0.0) — even though state_codes.json has sales_tax values for all 50
+    states, we don't want those values propagated into claim financial math
+    until each state's sales-tax treatment has been reviewed by ops
+    (labor taxable? materials-only? county add-ons?)."""
+    _MODELED_STATES = {"NY", "OH", "PA", "NJ"}
+
     def get(self, state, default=0.0):
         if not state:
             return default
         st = state.upper()
-        if st in _bc_lookup.all_states():
+        if st in self._MODELED_STATES:
             return _bc_lookup.get_sales_tax(state)
         return default
 
     def __getitem__(self, state):
-        return _bc_lookup.get_sales_tax(state)
+        st = (state or "").upper()
+        if st in self._MODELED_STATES:
+            return _bc_lookup.get_sales_tax(state)
+        raise KeyError(state)
 
     def __contains__(self, state):
-        return (state or "").strip().upper() in set(_bc_lookup.all_states())
+        return (state or "").strip().upper() in self._MODELED_STATES
 
 
 IW_REQUIREMENTS = _IWRequirementsProxy()
