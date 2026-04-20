@@ -645,6 +645,74 @@ def _extract_first_pages_pdf(pdf_path: str, n_pages: int = 3) -> Optional[bytes]
         return None
 
 
+# Diagram-page keyword markers used by most measurement vendors. EagleView
+# Premium uses "LENGTH DIAGRAM", "PITCH DIAGRAM", "AREA DIAGRAM", "NOTES
+# DIAGRAM". HOVER uses "ROOF PLAN" / "ROOF DIAGRAM". GAF QuickMeasure uses
+# "Roof Plan View". We scan for any of these (case-insensitive) to locate
+# the actual overhead-diagram pages, which are often buried 5-10 pages deep
+# behind cover + aerial-photo front matter (E159).
+_DIAGRAM_PAGE_KEYWORDS = (
+    "length diagram", "pitch diagram", "area diagram", "notes diagram",
+    "roof diagram", "roof plan", "plan view", "facet diagram",
+    "roof plan view", "length + pitch",
+)
+
+
+def _extract_diagram_pages_pdf(pdf_path: str, max_pages: int = 10) -> Optional[bytes]:
+    """Extract ONLY the pages that contain overhead-diagram markers. Most
+    measurement vendors bury the diagrams 5-10 pages deep behind cover +
+    aerial-photo front matter (E159). Sending the first 3 pages (prior
+    behavior) missed the actual diagrams on real EagleView Premium reports.
+
+    Strategy:
+      1. Scan text of the first 20 pages for diagram keywords
+      2. If matches found: keep ONLY those pages (saves tokens + improves
+         Vision accuracy by stripping irrelevant photo pages)
+      3. If no matches: fall back to first max_pages
+
+    Returns None on any error so caller falls through to other fallbacks.
+    """
+    try:
+        import fitz  # PyMuPDF
+    except ImportError:
+        return None
+    try:
+        src = fitz.open(pdf_path)
+        matched: list = []
+        scan_upto = min(len(src), 20)
+        for i in range(scan_upto):
+            try:
+                text = src[i].get_text().lower()
+            except Exception:
+                continue
+            if any(kw in text for kw in _DIAGRAM_PAGE_KEYWORDS):
+                matched.append(i)
+
+        if matched:
+            selected = matched[:max_pages]
+            strategy = f"matched {len(selected)} diagram page(s)"
+        else:
+            # Fall back to first max_pages
+            if len(src) <= max_pages:
+                src.close()
+                return None  # whole PDF already small enough
+            selected = list(range(max_pages))
+            strategy = f"no diagram keywords — using first {max_pages} pages"
+
+        out = fitz.open()
+        for p in selected:
+            out.insert_pdf(src, from_page=p, to_page=p)
+        data = out.tobytes()
+        src.close()
+        out.close()
+        # Pages are 0-indexed internally, 1-indexed in log for human readability
+        print(f"[FACETS] PDF slim: {strategy} — kept page(s) {[p+1 for p in selected]}")
+        return data
+    except Exception as e:
+        print(f"[FACETS] Page-selection error (non-fatal): {e}")
+        return None
+
+
 def extract_roof_facets(client: anthropic.Anthropic, pdf_path: str) -> dict:
     """Second Vision pass on a roof measurement PDF (EagleView, HOVER, GAF
     QuickMeasure, AccuLynx, Roofr, or any similar vendor) to extract per-facet
@@ -666,15 +734,17 @@ def extract_roof_facets(client: anthropic.Anthropic, pdf_path: str) -> dict:
     of the pipeline still runs (photo→slope mapping falls back to GPS
     triangulation against a cardinal-bucket skeleton when facets are empty).
     """
-    # Send only the first 3 pages — overhead diagrams are always near the
-    # front across every vendor. Saves input tokens + stops Vision from
-    # extracting garbage facets off property-photo pages.
+    # Slim the PDF to only the diagram pages. EagleView Premium reports bury
+    # diagrams on pages 6-9 behind cover + aerial-photo front matter — our
+    # old "first 3 pages" window missed them entirely (E159). Content-aware
+    # keyword scan finds LENGTH/PITCH/AREA/NOTES DIAGRAM pages across
+    # vendors; falls back to first 10 pages if no markers found.
     import base64 as _b64
-    slim_bytes = _extract_first_pages_pdf(pdf_path, n_pages=3)
+    slim_bytes = _extract_diagram_pages_pdf(pdf_path, max_pages=10)
     if slim_bytes:
         pdf_b64 = _b64.b64encode(slim_bytes).decode("ascii")
-        print(f"[FACETS] Slimmed {os.path.basename(pdf_path)} to first 3 pages "
-              f"({len(slim_bytes)//1024}KB)")
+        print(f"[FACETS] Slimmed {os.path.basename(pdf_path)} → "
+              f"{len(slim_bytes)//1024}KB")
     else:
         try:
             pdf_b64 = file_to_base64(pdf_path)

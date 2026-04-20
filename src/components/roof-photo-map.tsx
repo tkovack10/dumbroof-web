@@ -105,6 +105,11 @@ export function RoofPhotoMap({
 
   const unassignedCount = photosByFacet["_unassigned"]?.length ?? 0;
   const northAngle = roofFacets?.north_arrow_angle ?? 0;
+  // When ALL photos fail to land on a slope, it's almost always because the
+  // EXIF data (GPSImgDirection + GPS lat/lon) was stripped somewhere in the
+  // upload chain (AccuLynx re-save, some email ingestion flows, desktop
+  // browsers). Surface actionable coaching so the user knows what to change.
+  const allPhotosUnassigned = photos.length > 0 && unassignedCount === photos.length;
 
   // Empty state: no facet data for this claim yet.
   if (!facets.length) {
@@ -145,6 +150,37 @@ export function RoofPhotoMap({
           </span>
         )}
       </div>
+
+      {allPhotosUnassigned && (
+        <div className="mb-4 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
+          <div className="flex items-start gap-3">
+            <svg
+              className="h-4 w-4 mt-0.5 shrink-0 text-amber-300"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth={2}
+              aria-hidden="true"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
+            </svg>
+            <div className="space-y-1 min-w-0">
+              <div className="font-semibold text-white">
+                Photos couldn&apos;t be placed on a slope ({unassignedCount}/{photos.length})
+              </div>
+              <div className="text-xs text-amber-100/80 leading-relaxed">
+                These photos don&apos;t contain GPS location data — likely because
+                they were routed through an integration (AccuLynx, CompanyCam,
+                some browser uploads) that strips EXIF on re-save. To enable
+                per-slope damage placement on future claims, upload photos
+                <span className="font-semibold"> directly from your iPhone or
+                Android</span> (via the dumbroof.ai upload button), not
+                attached to email or routed through a third-party app.
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className={`grid grid-cols-1 gap-4 ${roofFacets?._synthesized ? "" : "md:grid-cols-5"}`}>
         {/* Roof SVG canvas — skipped entirely in synthesized mode since all
@@ -267,7 +303,7 @@ export function RoofPhotoMap({
             onClear={() => setSelectedFacetId(null)}
           />
 
-          {unassignedCount > 0 && !selectedFacetId && (
+          {unassignedCount > 0 && !allPhotosUnassigned && !selectedFacetId && (
             <div className="text-xs text-[var(--gray-muted)] border border-white/10 rounded-lg px-3 py-2">
               {unassignedCount} photo{unassignedCount === 1 ? "" : "s"} could not
               be placed on a slope (missing EXIF compass heading).
