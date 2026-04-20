@@ -6264,9 +6264,13 @@ def _send_qa_alert_email(claim: dict, audit: dict):
 """
 
     try:
+        # Platform admin alert → tom@dumbroof.ai (platform address), not
+        # tkovack@usaroofmasters.com. USARM mailbox should only receive
+        # mail related to actual USARM claims; every other claim is
+        # platform activity and belongs on the platform address.
         send_via_resend(
             company_name="DumbRoof QA Auditor",
-            to_email="tkovack@usaroofmasters.com",
+            to_email="tom@dumbroof.ai",
             subject=subject,
             body_html=body_html,
         )
@@ -6295,12 +6299,18 @@ def _send_completion_notification(claim_id: str):
 
 
 _TEAM_NOTIFY_EMAILS = [
-    "tkovack@usaroofmasters.com",
     "hello@dumbroof.ai",
-    "arivera@usaroofmasters.com",
     "tom@dumbroof.ai",
     "kristen@dumbroof.ai",
     "matt@dumbroof.ai",
+]
+
+# Additional recipients only for USARM's own claim submissions. External
+# companies' new-claim notifications don't go here — Tom/Ariel see them via
+# the dumbroof.ai platform addresses instead.
+_USARM_TEAM_NOTIFY_EMAILS = [
+    "tkovack@usaroofmasters.com",
+    "arivera@usaroofmasters.com",
 ]
 
 
@@ -6324,6 +6334,14 @@ def _send_team_claim_submitted_notification(claim: dict, user_email: str):
     subject_prefix = "Claim Reprocess" if is_revision else "New Claim Submitted"
     subject = f"{subject_prefix}: {address}"
 
+    # Notify recipients: always the dumbroof.ai platform team. Additionally
+    # CC the USARM mailboxes only when this claim was submitted from a
+    # USARM user (otherwise Tom's USARM inbox fills up with non-USARM
+    # claim activity — platform noise he shouldn't see at that address).
+    notify_to = list(_TEAM_NOTIFY_EMAILS)
+    if user_email and "@usaroofmasters.com" in (user_email or "").lower():
+        notify_to.extend(_USARM_TEAM_NOTIFY_EMAILS)
+
     body_html = f"""
 <div style='font-family:-apple-system,system-ui,sans-serif;max-width:640px;margin:0 auto;padding:20px;background:#fff;color:#111'>
   <div style='background:linear-gradient(135deg,#0d2137,#1a3a5c);color:#fff;padding:20px;border-radius:8px;margin-bottom:20px'>
@@ -6346,7 +6364,7 @@ def _send_team_claim_submitted_notification(claim: dict, user_email: str):
 
     payload = {
         "from": "DumbRoof <noreply@dumbroof.ai>",
-        "to": _TEAM_NOTIFY_EMAILS,
+        "to": notify_to,
         "subject": subject,
         "html": body_html,
     }

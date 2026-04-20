@@ -43,17 +43,59 @@ GMAIL_SCOPES = [
 # DumbRoof team BCC — oversight on every claim email
 # ───────────────────────────────────────────
 # External recipients never see these addresses (BCC is invisible).
-# CENTRAL LIST — updating here updates both Gmail and Resend send paths.
-# External roofing companies using dumbroof should NOT see USA Roof Masters
-# addresses on their outbound claim emails; everyone from the team sits on BCC.
+# CENTRAL LIST — updating here updates all 4 send paths.
+#
+# Two-tier BCC:
+#   DUMBROOF_TEAM_BCC    — always BCC'd on every claim email (platform oversight)
+#   USARM_TEAM_BCC       — ONLY added when the sending company IS USA Roof Masters
+#
+# Why the split: external roofing companies using dumbroof should never have
+# an unrelated USARM inbox copied on their carrier-facing claim emails. It
+# confuses the recipient (a non-USARM claim landing in a USARM mailbox) and
+# it leaks claim data into an unrelated company's mail archive. Tom's USARM
+# inbox only gets copied on actual USARM claims.
 DUMBROOF_TEAM_BCC = [
     "claims@dumbroof.ai",
-    "tkovack@usaroofmasters.com",
     "tom@dumbroof.ai",
     "matt@dumbroof.ai",
     "kristen@dumbroof.ai",
     "alfonso@dumbroof.ai",
 ]
+
+USARM_TEAM_BCC = [
+    "tkovack@usaroofmasters.com",
+]
+
+
+def _is_usarm_company(company_name: Optional[str], sending_email: Optional[str]) -> bool:
+    """True when the sending company is USA Roof Masters.
+
+    Checked by company_name match (case + whitespace insensitive) OR by the
+    sender's email domain being @usaroofmasters.com. Either signal is enough
+    — company_name may be stale / non-canonical, and email domain catches
+    newly-joined USARM employees before their profile is populated.
+    """
+    name = (company_name or "").strip().upper()
+    if name in {"USA ROOF MASTERS", "USA ROOFMASTERS", "USAROOFMASTERS"}:
+        return True
+    email = (sending_email or "").strip().lower()
+    if "@usaroofmasters.com" in email:
+        return True
+    return False
+
+
+def team_bcc_for(company_name: Optional[str] = None,
+                 sending_email: Optional[str] = None) -> list[str]:
+    """Return the DumbRoof oversight BCC list appropriate for this sender.
+
+    Always includes the platform team (tom@dumbroof.ai, matt@, kristen@,
+    alfonso@, claims@). Adds tkovack@usaroofmasters.com only when the
+    sending company is USA Roof Masters.
+    """
+    bcc = list(DUMBROOF_TEAM_BCC)
+    if _is_usarm_company(company_name, sending_email):
+        bcc.extend(USARM_TEAM_BCC)
+    return bcc
 
 
 def get_gmail_auth_url(redirect_uri: str, state: str = "") -> str:
@@ -136,19 +178,20 @@ def send_via_gmail(
     if cc:
         msg["Cc"] = cc
 
-    # Oversight BCC — combine default DumbRoof team list with any caller-provided extras.
-    # Dedup is case-insensitive: historical profiles store mixed-case emails
-    # (e.g. "TKovack@USARoofMasters.com"), and Resend does NOT dedup addresses
-    # that differ only in case, so Tom was getting BCC'd twice on his own claim
-    # emails under the Resend fallback.
-    bcc_list = list(DUMBROOF_TEAM_BCC)
+    # BCC: caller passes a fully-composed comma-separated string. Dedup
+    # case-insensitively (Resend does not). The DumbRoof team oversight BCC
+    # is built in send_claim_email via team_bcc_for() so every provider
+    # path (Gmail/Resend/Microsoft/SMTP) gets the same list.
     if bcc:
-        seen_lower = {a.lower() for a in bcc_list}
+        seen_lower: set[str] = set()
+        deduped: list[str] = []
         for addr in [a.strip() for a in bcc.split(",") if a.strip()]:
-            if addr.lower() not in seen_lower:
-                bcc_list.append(addr)
-                seen_lower.add(addr.lower())
-    msg["Bcc"] = ", ".join(bcc_list)
+            key = addr.lower()
+            if key not in seen_lower:
+                deduped.append(addr)
+                seen_lower.add(key)
+        if deduped:
+            msg["Bcc"] = ", ".join(deduped)
 
     msg.attach(MIMEText(body_html, "html"))
 
@@ -324,17 +367,20 @@ def send_via_resend(
     if cc:
         payload["cc"] = [cc]
 
-    # Oversight BCC — combine DumbRoof team list with any caller-provided extras.
-    # Case-insensitive dedup: see send_via_gmail comment for the Resend-
-    # specific reason this matters.
-    bcc_list = list(DUMBROOF_TEAM_BCC)
+    # BCC: caller passes a comma-separated string. Dedup case-insensitively
+    # (Resend does not). DumbRoof team oversight BCC is composed in
+    # send_claim_email via team_bcc_for() so every provider path receives
+    # the same already-composed list.
     if bcc:
-        seen_lower = {a.lower() for a in bcc_list}
+        seen_lower: set[str] = set()
+        deduped: list[str] = []
         for addr in [a.strip() for a in bcc.split(",") if a.strip()]:
-            if addr.lower() not in seen_lower:
-                bcc_list.append(addr)
-                seen_lower.add(addr.lower())
-    payload["bcc"] = bcc_list
+            key = addr.lower()
+            if key not in seen_lower:
+                deduped.append(addr)
+                seen_lower.add(key)
+        if deduped:
+            payload["bcc"] = deduped
     if attachments:
         payload["attachments"] = [
             {
@@ -394,15 +440,32 @@ def send_claim_email(
     reply_to = sending_email or profile.get("email")
     admin_email = profile.get("email", "")
 
-    # BCC the company's own admin so they see outgoing team mail, but NEVER CC.
-    # External recipients (carriers, adjusters, homeowners) must not see an
-    # internal company address on the Cc line — especially not a USA Roof
-    # Masters address on an email sent from another roofing company's account.
-    # Case-insensitive + whitespace-trimmed comparison so "Foo@bar.com " vs
-    # "foo@bar.com" doesn't slip through as a false mismatch.
-    extra_bcc = None
+    # Build the final BCC list ONCE here so every provider path (Gmail,
+    # Resend, Microsoft, SMTP) receives the same list. Prior behavior was
+    # that only Gmail + Resend auto-appended the DumbRoof team; Microsoft +
+    # SMTP silently dropped it. Also filters tkovack@usaroofmasters.com to
+    # USARM-only claims — external companies should not see that address
+    # on their outbound mail archives.
+    bcc_members: list[str] = team_bcc_for(
+        company_name=company_name,
+        sending_email=sending_email,
+    )
+    # Company's own admin so they can see outgoing team mail — never on CC
+    # (would leak internal address to carrier). Skip if admin equals the
+    # to_email (would be a duplicate).
     if admin_email and admin_email.strip().lower() != (to_email or "").strip().lower():
-        extra_bcc = admin_email
+        bcc_members.append(admin_email)
+    # Dedup case-insensitively before handing off to the provider.
+    seen_lower: set[str] = set()
+    deduped_bcc: list[str] = []
+    for addr in bcc_members:
+        if not addr:
+            continue
+        key = addr.strip().lower()
+        if key and key not in seen_lower:
+            deduped_bcc.append(addr.strip())
+            seen_lower.add(key)
+    extra_bcc = ", ".join(deduped_bcc) if deduped_bcc else None
 
     result = {}
     send_method = ""
