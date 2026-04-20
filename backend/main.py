@@ -171,6 +171,93 @@ async def reprocess_claim(claim_id: str, background_tasks: BackgroundTasks):
     return {"status": "reprocessing", "claim_id": claim_id}
 
 
+@app.post("/api/regen/{claim_id}")
+async def regen_claim(claim_id: str, background_tasks: BackgroundTasks, payload: dict = None):
+    """Surgical re-generation after an inline field edit.
+
+    Patches fields into `claims.claim_config` (JSONB) and/or top-level
+    columns, then re-runs processing WITHOUT clearing the photo analysis
+    cache. Forensic synthesis is regenerated fresh (~30-90 sec) so prose
+    reflects the corrected data, but image analysis (the expensive step)
+    is skipped via the existing `cached_photo_analysis`.
+
+    Used by:
+      - /admin/qa-review "Fix inline" actions
+      - /dashboard/claim "Edit report fields" card
+
+    Body shape:
+      {
+        "config_patch":  { "dates": { "inspection_date": "2025-07-15" }, ... },
+        "top_level":     { "homeowner_email": "foo@bar.com", ... },
+        "clear_photo_cache": false,   // default: keep cache for speed
+      }
+    """
+    payload = payload or {}
+    config_patch: dict = payload.get("config_patch") or {}
+    top_level_patch: dict = payload.get("top_level") or {}
+    clear_photo_cache: bool = bool(payload.get("clear_photo_cache", False))
+
+    if not config_patch and not top_level_patch:
+        raise HTTPException(status_code=400, detail="Provide config_patch and/or top_level fields")
+
+    sb = get_supabase_client()
+    row = sb.table("claims").select("id, claim_config").eq("id", claim_id).single().execute()
+    if not row.data:
+        raise HTTPException(status_code=404, detail="Claim not found")
+
+    # Deep-merge the config patch. Only 1 level of nesting for safety —
+    # e.g. {"dates": {"inspection_date": "..."}} merges into existing dates dict
+    # without nuking other dates like date_of_loss.
+    current_config = row.data.get("claim_config") or {}
+    if isinstance(current_config, str):
+        import json as _json
+        try:
+            current_config = _json.loads(current_config)
+        except Exception:
+            current_config = {}
+
+    def deep_merge(base: dict, patch: dict) -> dict:
+        out = dict(base)
+        for k, v in patch.items():
+            if isinstance(v, dict) and isinstance(out.get(k), dict):
+                out[k] = deep_merge(out[k], v)
+            else:
+                out[k] = v
+        return out
+
+    merged_config = deep_merge(current_config, config_patch) if config_patch else current_config
+
+    # Assemble the UPDATE
+    update_payload: dict = {
+        "status": "processing",
+    }
+    if config_patch:
+        update_payload["claim_config"] = merged_config
+    if clear_photo_cache:
+        update_payload["cached_photo_analysis"] = None
+    for k, v in top_level_patch.items():
+        # Whitelist to prevent caller from clobbering system fields
+        if k in {
+            "homeowner_name", "homeowner_email", "homeowner_phone",
+            "adjuster_name", "adjuster_email", "adjuster_phone",
+            "claim_number", "policy_number", "carrier",
+            "date_of_loss", "inspection_date", "address",
+            "homeowner_comms_count", "assigned_user_id",
+        }:
+            update_payload[k] = v
+
+    sb.table("claims").update(update_payload).eq("id", claim_id).execute()
+    background_tasks.add_task(run_processing, claim_id)
+
+    return {
+        "status": "regenerating",
+        "claim_id": claim_id,
+        "config_keys_patched": list(config_patch.keys()),
+        "top_level_fields_patched": [k for k in top_level_patch.keys() if k in update_payload],
+        "photo_cache_preserved": not clear_photo_cache,
+    }
+
+
 @app.post("/api/process/{claim_id}")
 async def trigger_processing(claim_id: str, background_tasks: BackgroundTasks):
     """Manually trigger processing for a specific claim."""

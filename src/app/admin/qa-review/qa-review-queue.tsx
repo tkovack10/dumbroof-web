@@ -4,6 +4,8 @@ import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import type { QAAuditResult, QAAuditIssue } from "@/types/claim";
 
+const BACKEND = "https://dumbroof-backend-production.up.railway.app";
+
 interface QueueClaim {
   id: string;
   slug?: string | null;
@@ -15,6 +17,64 @@ interface QueueClaim {
   user_id: string;
   contractor_rcv: number | null;
   user_email?: string | null;
+}
+
+/** Infer a fix form from the issue type/message. */
+type FixKind =
+  | "inspection_date"
+  | "date_of_loss"
+  | "homeowner_name"
+  | "address"
+  | "claim_number"
+  | "photo_count_accept"
+  | "generic_text"
+  | "none";
+
+function inferFixKind(issue: QAAuditIssue): FixKind {
+  const t = (issue.issue || "").toUpperCase();
+  if (t.includes("INSPECTION_DATE") || t.includes("DATE_OF_LOSS_MISMATCH")) return "inspection_date";
+  if (t.includes("DATE_OF_LOSS")) return "date_of_loss";
+  if (t.includes("HOMEOWNER_NAME") || t.includes("HOMEOWNER")) return "homeowner_name";
+  if (t.includes("ADDRESS")) return "address";
+  if (t.includes("CLAIM_NUMBER")) return "claim_number";
+  if (t.includes("PHOTO_COUNT")) return "photo_count_accept";
+  return "generic_text";
+}
+
+/** Build the POST body for /api/regen based on the fix kind + new value. */
+function buildRegenBody(kind: FixKind, value: string): {
+  config_patch?: Record<string, unknown>;
+  top_level?: Record<string, unknown>;
+} {
+  switch (kind) {
+    case "inspection_date":
+      return {
+        config_patch: { dates: { inspection_date: value } },
+        top_level: { inspection_date: value },
+      };
+    case "date_of_loss":
+      return {
+        config_patch: { dates: { date_of_loss: value } },
+        top_level: { date_of_loss: value },
+      };
+    case "homeowner_name":
+      return {
+        config_patch: { claim: { homeowner_name: value } },
+        top_level: { homeowner_name: value },
+      };
+    case "address":
+      return {
+        config_patch: { claim: { address: value } },
+        top_level: { address: value },
+      };
+    case "claim_number":
+      return {
+        config_patch: { carrier: { claim_number: value } },
+        top_level: { claim_number: value },
+      };
+    default:
+      return {};
+  }
 }
 
 export function QAReviewQueue({ initialClaims }: { initialClaims: QueueClaim[] }) {
@@ -151,10 +211,28 @@ export function QAReviewQueue({ initialClaims }: { initialClaims: QueueClaim[] }
                   {isExpanded && (
                     <div className="border-t border-white/[0.06] p-5 bg-white/[0.02]">
                       {crit.length > 0 && (
-                        <IssueList label="🛑 Critical Issues" color="text-red-400" issues={crit} />
+                        <IssueList
+                          label="🛑 Critical Issues"
+                          color="text-red-400"
+                          issues={crit}
+                          claimId={claim.id}
+                          onRegenStarted={() => {
+                            setClaims((prev) => prev.filter((c) => c.id !== claim.id));
+                            setTimeout(() => router.refresh(), 60_000);
+                          }}
+                        />
                       )}
                       {med.length > 0 && (
-                        <IssueList label="⚠️ Medium Warnings" color="text-amber-400" issues={med} />
+                        <IssueList
+                          label="⚠️ Medium Warnings"
+                          color="text-amber-400"
+                          issues={med}
+                          claimId={claim.id}
+                          onRegenStarted={() => {
+                            setClaims((prev) => prev.filter((c) => c.id !== claim.id));
+                            setTimeout(() => router.refresh(), 60_000);
+                          }}
+                        />
                       )}
 
                       {flags?.ground_truth != null && (
@@ -209,30 +287,148 @@ function StatTile({ label, value, color }: { label: string; value: number; color
   );
 }
 
-function IssueList({ label, color, issues }: { label: string; color: string; issues: QAAuditIssue[] }) {
+function IssueList({
+  label,
+  color,
+  issues,
+  claimId,
+  onRegenStarted,
+}: {
+  label: string;
+  color: string;
+  issues: QAAuditIssue[];
+  claimId: string;
+  onRegenStarted?: () => void;
+}) {
   return (
     <div className="mb-4">
       <h3 className={`text-sm font-bold ${color} mb-2`}>{label}</h3>
       <ul className="space-y-3">
         {issues.map((it, i) => (
-          <li key={i} className="bg-black/30 rounded-lg p-3 border border-white/[0.06]">
-            <div className="flex items-center gap-2 mb-1">
-              <span className="text-xs font-mono font-bold text-white">{it.issue}</span>
-              {it.location && <span className="text-xs text-[var(--gray-dim)]">@ {it.location}</span>}
-            </div>
-            {it.found && it.expected && (
-              <div className="text-xs mb-2 font-mono">
-                <div className="text-red-400">found:    {it.found}</div>
-                <div className="text-green-400">expected: {it.expected}</div>
-              </div>
-            )}
-            {it.quote && (
-              <div className="text-xs italic text-[var(--gray)] bg-black/40 p-2 rounded">&ldquo;{it.quote}&rdquo;</div>
-            )}
-          </li>
+          <IssueRow key={i} issue={it} claimId={claimId} onRegenStarted={onRegenStarted} />
         ))}
       </ul>
     </div>
+  );
+}
+
+function IssueRow({
+  issue,
+  claimId,
+  onRegenStarted,
+}: {
+  issue: QAAuditIssue;
+  claimId: string;
+  onRegenStarted?: () => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [value, setValue] = useState(() => issue.expected || "");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const kind = inferFixKind(issue);
+
+  const isDate = kind === "inspection_date" || kind === "date_of_loss";
+
+  const save = async () => {
+    setError(null);
+    if (!value.trim()) {
+      setError("Value required");
+      return;
+    }
+    setSaving(true);
+    const body = buildRegenBody(kind, value.trim());
+    try {
+      const res = await fetch(`${BACKEND}/api/regen/${claimId}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) {
+        setError(`HTTP ${res.status}`);
+        setSaving(false);
+        return;
+      }
+      setEditing(false);
+      onRegenStarted?.();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Network error");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <li className="bg-black/30 rounded-lg p-3 border border-white/[0.06]">
+      <div className="flex items-start justify-between gap-2 mb-1">
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="text-xs font-mono font-bold text-white">{issue.issue}</span>
+          {issue.location && <span className="text-xs text-[var(--gray-dim)]">@ {issue.location}</span>}
+        </div>
+        {kind !== "none" && kind !== "generic_text" && kind !== "photo_count_accept" && !editing && (
+          <button
+            type="button"
+            onClick={() => setEditing(true)}
+            className="text-xs px-2.5 py-1 rounded-md bg-cyan-500/15 hover:bg-cyan-500/25 border border-cyan-500/40 text-cyan-300 transition-colors whitespace-nowrap"
+          >
+            Fix inline
+          </button>
+        )}
+      </div>
+      {issue.found && issue.expected && (
+        <div className="text-xs mb-2 font-mono">
+          <div className="text-red-400">found:    {issue.found}</div>
+          <div className="text-green-400">expected: {issue.expected}</div>
+        </div>
+      )}
+      {issue.quote && (
+        <div className="text-xs italic text-[var(--gray)] bg-black/40 p-2 rounded">&ldquo;{issue.quote}&rdquo;</div>
+      )}
+
+      {editing && (
+        <div className="mt-3 p-3 rounded-md bg-cyan-500/5 border border-cyan-500/30">
+          <label className="block text-xs font-semibold text-cyan-300 mb-1.5">
+            {kind === "inspection_date" && "Correct inspection date"}
+            {kind === "date_of_loss" && "Correct date of loss"}
+            {kind === "homeowner_name" && "Correct homeowner name"}
+            {kind === "address" && "Correct property address"}
+            {kind === "claim_number" && "Correct claim number"}
+          </label>
+          <div className="flex items-center gap-2">
+            <input
+              type={isDate ? "date" : "text"}
+              value={value}
+              onChange={(e) => setValue(e.target.value)}
+              disabled={saving}
+              autoFocus
+              className="flex-1 px-2.5 py-1.5 rounded bg-black/40 border border-cyan-500/40 text-sm text-white focus:outline-none focus:border-cyan-400"
+            />
+            <button
+              type="button"
+              onClick={save}
+              disabled={saving}
+              className="px-3 py-1.5 rounded text-xs font-semibold bg-cyan-500 hover:bg-cyan-400 text-black transition-colors disabled:opacity-50"
+            >
+              {saving ? "Regenerating…" : "Save & regen"}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setEditing(false);
+                setError(null);
+              }}
+              disabled={saving}
+              className="px-3 py-1.5 rounded text-xs text-[var(--gray)] hover:text-white"
+            >
+              Cancel
+            </button>
+          </div>
+          {error && <p className="text-xs text-red-400 mt-1.5">{error}</p>}
+          <p className="text-xs text-[var(--gray-dim)] mt-1.5">
+            Patches the claim config + triggers forensic re-generation (~30-90 sec). Photo analysis is cached so re-run is fast. QA auditor re-runs automatically.
+          </p>
+        </div>
+      )}
+    </li>
   );
 }
 

@@ -15,6 +15,7 @@ export interface Claim {
   created_at: string;
   homeowner_name?: string | null;
   date_of_loss?: string | null;
+  inspection_date?: string | null;
   user_notes?: string | null;
   // File arrays
   measurement_files?: string[] | null;

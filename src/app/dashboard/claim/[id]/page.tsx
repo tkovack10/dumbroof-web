@@ -31,6 +31,7 @@ import { ContactRegistryCard } from "@/components/contact-registry-card";
 import { HomeownerEngagementCard } from "@/components/homeowner-engagement-card";
 import { ReadyToBuildCard } from "@/components/ready-to-build-card";
 import { ClaimTimelineRail } from "@/components/claim-timeline-rail";
+import { EditReportFieldsCard } from "@/components/edit-report-fields-card";
 
 function EditableField({ value, placeholder, field, claimId, prefix, className, onSave }: {
   value: string;
@@ -1004,6 +1005,17 @@ export default function ClaimDetailPage() {
             contact_source: claim.contact_source as Record<string, string | undefined> | null,
           }}
           onChange={(patch) => setClaim({ ...claim, ...patch })}
+        />
+
+        {/* Edit report fields — surgical re-gen for inspection date, DOL, name, address */}
+        <EditReportFieldsCard
+          claimId={claim.id}
+          initial={{
+            date_of_loss: claim.date_of_loss,
+            inspection_date: claim.inspection_date,
+            homeowner_name: claim.homeowner_name,
+            address: claim.address,
+          }}
         />
 
         {/* Timeline rail — event-sourced history (milestones, comms, docs, actions) */}
