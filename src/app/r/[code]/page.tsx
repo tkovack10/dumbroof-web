@@ -1,5 +1,4 @@
 import { redirect } from "next/navigation";
-import { cookies } from "next/headers";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 
 export const dynamic = "force-dynamic";
@@ -10,10 +9,19 @@ interface ReferralLandingProps {
 
 /**
  * Referral landing — `/r/{code}`.
- * - Validates the code exists on some company_profile.
- * - Drops a cookie (`dr_ref`) so the signup flow can attach the referrer.
- * - Redirects to /signup.
- * - Invalid codes just redirect to / (don't reveal whether a code is valid).
+ *
+ * Validates the code and forwards to `/signup?ref={code}`. The signup page
+ * itself handles cookie-setting + banner rendering — this page is just a
+ * short vanity URL redirect.
+ *
+ * Invalid codes silently redirect to `/` (don't reveal whether a code is
+ * valid — prevents enumeration).
+ *
+ * Note: cookie-setting happens in `/signup/page.tsx` (Server Component
+ * rendering path), not here. Setting cookies in a Server Component page
+ * that then calls `redirect()` is unreliable in Next.js 15 because the
+ * NEXT_REDIRECT throw short-circuits the response before the Set-Cookie
+ * header is attached.
  */
 export default async function ReferralLandingPage({ params }: ReferralLandingProps) {
   const { code } = await params;
@@ -23,28 +31,15 @@ export default async function ReferralLandingPage({ params }: ReferralLandingPro
 
   const { data: profileRows } = await supabaseAdmin
     .from("company_profiles")
-    .select("user_id, referral_code, company_name")
+    .select("user_id")
     .eq("referral_code", normalized)
     .limit(1);
 
   const profile = profileRows?.[0];
 
   if (!profile) {
-    // Unknown code — just send them to the homepage
     redirect("/");
   }
-
-  // Stash referral in a cookie so auth/callback can credit the referrer.
-  // 24h is long enough for email-confirm + OAuth flows but short enough to
-  // limit cross-user contamination on shared browsers (the main risk vector).
-  const cookieStore = await cookies();
-  cookieStore.set("dr_ref", normalized, {
-    httpOnly: true,
-    sameSite: "lax",
-    secure: true,
-    maxAge: 60 * 60 * 24,
-    path: "/",
-  });
 
   redirect(`/signup?ref=${encodeURIComponent(normalized)}`);
 }
