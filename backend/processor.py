@@ -689,7 +689,12 @@ def _extract_diagram_pages_pdf(pdf_path: str, max_pages: int = 10) -> Optional[b
                 matched.append(i)
 
         if matched:
-            selected = matched[:max_pages]
+            # Keep ALL matched pages — they're signal by definition. max_pages
+            # is a token-budget cap for the no-match fallback only. EagleView
+            # Commercial / multi-building reports can have 12+ diagram pages
+            # (Length, Pitch, Area, Notes per building) — truncating would
+            # drop the NOTES diagram where slope labels live.
+            selected = matched
             strategy = f"matched {len(selected)} diagram page(s)"
         else:
             # Fall back to first max_pages
