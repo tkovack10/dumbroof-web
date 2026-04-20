@@ -1,62 +1,56 @@
 """
 Code upgrade & scope expansion trigger database.
-State-keyed architecture: NY first, expandable to PA/NJ/FL/TX/CO.
+
+State-specific code citations resolve dynamically from
+`backend/building_codes/state_codes.json` — add a state to the JSON and
+every trigger automatically cites the correct prefix. The `concept` field
+on each trigger names which code_ref to pull (e.g. "ice_barrier").
 """
 
 from typing import Dict, List, Optional, Any
 
 
+# Triggers applicable to every state with a residential code (all 50 in our JSON).
+# `concept` maps to a key in state_codes.json rows (ice_barrier, drip_edge,
+# ventilation, house_wrap_corners, two_layer_tearoff). For ALL-state triggers
+# that aren't code-specific (matching doctrine, manufacturer specs),
+# `concept` is None and `static_codes` carries the fallback strings.
 CODE_TRIGGERS = {
     "house_wrap_corner_rule": {
-        "states": ["NY", "OH"],
-        "codes": {
-            "NY": ["RCNYS R703.1", "RCNYS R703.2"],
-            "OH": ["RCO R703.1", "RCO R703.2"],
-        },
+        "states": ["ALL"],
+        "concept": "house_wrap_corners",
         "trigger": "Siding damage on ANY wall -> house wrap inspection -> often all 4 walls",
         "scope_multiplier": "1x->4x siding (biggest dollar driver)",
         "detection": "siding damage in scope + house wrap absent/damaged",
         "max_points": 6,
     },
     "two_layer_tearoff": {
-        "states": ["NY", "OH"],
-        "codes": {
-            "NY": ["RCNYS R908.3.1.1(3)"],
-            "OH": ["RCO R908.3.1.1(3)"],
-        },
+        "states": ["ALL"],
+        "concept": "two_layer_tearoff",
         "trigger": "2+ existing roof layers -> full tear-off mandatory on replacement",
         "scope_multiplier": "adds $2-5K for tear-off labor + disposal",
         "detection": "visible second layer OR edge cross-section photo",
         "max_points": 4,
     },
     "ice_water_shield": {
-        "states": ["NY", "OH"],
-        "codes": {
-            "NY": ["RCNYS R905.1.2"],
-            "OH": ["RCO R905.1.2"],
-        },
+        "states": ["ALL"],
+        "concept": "ice_barrier",
         "trigger": "I&W required at eaves on replacement even if not originally present",
         "scope_multiplier": "adds full eave perimeter I&W",
         "detection": "eave inspection - absent I&W = code upgrade",
         "max_points": 3,
     },
     "drip_edge": {
-        "states": ["NY", "OH"],
-        "codes": {
-            "NY": ["RCNYS R905.2.8.5"],
-            "OH": ["RCO R905.2.8.5"],
-        },
+        "states": ["ALL"],
+        "concept": "drip_edge",
         "trigger": "Drip edge required on replacement",
         "scope_multiplier": "adds full perimeter drip edge",
         "detection": "eave/rake inspection - absent drip edge",
         "max_points": 2,
     },
     "ventilation": {
-        "states": ["NY", "OH"],
-        "codes": {
-            "NY": ["RCNYS R806.2"],
-            "OH": ["RCO R806.2"],
-        },
+        "states": ["ALL"],
+        "concept": "ventilation",
         "trigger": "1:150 ratio NFA required on replacement",
         "scope_multiplier": "adds ridge vent, soffit vents, or both",
         "detection": "insufficient ventilation calculation",
@@ -64,7 +58,8 @@ CODE_TRIGGERS = {
     },
     "discontinued_product": {
         "states": ["ALL"],
-        "codes": {"ALL": ["matching doctrine", "NAIC MDL-902"]},
+        "concept": None,
+        "static_codes": ["matching doctrine", "NAIC MDL-902"],
         "trigger": "Product discontinued -> spot repair impossible -> full replacement",
         "scope_multiplier": "repair->full replacement (10x+ scope)",
         "detection": "product_db.py identification",
@@ -72,7 +67,8 @@ CODE_TRIGGERS = {
     },
     "exposure_mismatch": {
         "states": ["ALL"],
-        "codes": {"ALL": ["manufacturer specs", "aesthetic matching"]},
+        "concept": None,
+        "static_codes": ["manufacturer specs", "aesthetic matching"],
         "trigger": '5" vs 5-5/8" exposure -> course lines misalign -> visible patch -> full replacement',
         "scope_multiplier": "repair->full replacement",
         "detection": "SHINGLE_IDENTIFICATION_PROMPT exposure_inches field",
@@ -82,9 +78,12 @@ CODE_TRIGGERS = {
 
 
 def get_triggers_for_state(state: str) -> Dict[str, dict]:
-    """Return all triggers applicable to a given state."""
+    """Return all triggers applicable to a given state. Every trigger in the
+    dict runs for every state now (state-scoping happens at code-resolution
+    time via get_codes_for_trigger), but the ALL-gate is kept for future
+    regional triggers (e.g. a tornado-specific rule for TX/OK/KS only)."""
     result = {}
-    state_upper = state.upper()
+    state_upper = (state or "").upper()
     for name, trigger in CODE_TRIGGERS.items():
         if "ALL" in trigger["states"] or state_upper in trigger["states"]:
             result[name] = trigger
@@ -92,15 +91,29 @@ def get_triggers_for_state(state: str) -> Dict[str, dict]:
 
 
 def get_codes_for_trigger(trigger_name: str, state: str) -> List[str]:
-    """Return specific code references for a trigger in a given state."""
+    """Return specific code references for a trigger in a given state.
+
+    Resolution:
+    1. If trigger has a `concept` key, resolve from state_codes.json for that state
+       (e.g. "ice_barrier" → "RCO R905.1.2" for OH, "RCNYS R905.1.2" for NY).
+    2. Otherwise return the trigger's `static_codes` list (matching doctrine,
+       manufacturer specs, etc. — not jurisdictional).
+    """
     trigger = CODE_TRIGGERS.get(trigger_name)
     if not trigger:
         return []
-    state_upper = state.upper()
-    codes = trigger["codes"].get(state_upper, [])
-    if not codes:
-        codes = trigger["codes"].get("ALL", [])
-    return codes
+    # State-specific concept resolution
+    concept = trigger.get("concept")
+    if concept:
+        # Late import to avoid circular refs at module load
+        from building_codes import lookup as _bc_lookup
+        ref = _bc_lookup.get_code_citation(state, concept)
+        return [ref] if ref else []
+    # Static / non-jurisdictional codes
+    static = trigger.get("static_codes")
+    if static:
+        return list(static)
+    return []
 
 
 def evaluate_code_triggers(config: dict, state: str) -> Dict[str, Any]:

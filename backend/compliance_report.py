@@ -69,20 +69,10 @@ h3 { font-size: 16px; font-weight: 600; color: #2c3e50; margin: 20px 0 8px 0; }
 
 
 def _get_jurisdiction(state: str) -> dict:
-    """Get jurisdiction info for a state."""
-    state = state.upper()
-    if state == "NY":
-        return {"code": "RCNYS", "name": "Residential Code of New York State (2020)", "abbrev": "RCNYS"}
-    elif state == "OH":
-        return {"code": "RCO", "name": "Residential Code of Ohio (2024, based on 2021 IRC)", "abbrev": "RCO"}
-    elif state == "NJ":
-        return {"code": "NJ UCC / IRC", "name": "NJ Uniform Construction Code (IRC 2018)", "abbrev": "NJ UCC"}
-    elif state == "PA":
-        return {"code": "PA UCC / IRC", "name": "PA Uniform Construction Code (IRC 2018)", "abbrev": "PA UCC"}
-    elif state == "CT":
-        return {"code": "CT SBC / IRC", "name": "CT State Building Code (IRC 2018)", "abbrev": "CT SBC"}
-    else:
-        return {"code": "IRC", "name": "International Residential Code (2018)", "abbrev": "IRC"}
+    """Get jurisdiction info for a state. Data-driven via building_codes/state_codes.json —
+    add states by editing the JSON, not this function."""
+    from building_codes import lookup as _bc_lookup
+    return _bc_lookup.get_jurisdiction(state)
 
 
 def _build_cover_page(config: dict, jurisdiction: dict, annotation_count: int) -> str:

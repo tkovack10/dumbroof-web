@@ -2144,15 +2144,27 @@ def _estimate_roof_age(config: dict, photo_analysis: dict) -> tuple:
     return estimated_age, reasoning
 
 
-_STATE_CODE_PREFIX = {
-    "NY": "RCNYS",   # Residential Code of New York State (IRC-based with NY amendments)
-    "OH": "RCO",     # Residential Code of Ohio 2024 (based on 2021 IRC)
-    "PA": "UCC",     # PA Uniform Construction Code (IRC-based)
-    "NJ": "NJUCC",   # NJ Uniform Construction Code (IRC-based)
-    "CT": "CTBC",    # CT State Building Code
-    "MD": "MBC",     # Maryland Building Performance Standards
-    "DE": "DEBC",    # Delaware State Residential Code
-}
+# State→code prefix is data-driven via building_codes/state_codes.json.
+# This shim preserves the legacy `_STATE_CODE_PREFIX.get(state, "IRC")` call
+# pattern so existing code compiles; all resolution goes through the single
+# lookup module. Add new states by editing state_codes.json, not this file.
+from building_codes import lookup as _bc_lookup
+
+
+class _StateCodePrefixProxy:
+    def get(self, state, default="IRC"):
+        if not state:
+            return default
+        return _bc_lookup.get_prefix(state)
+
+    def __getitem__(self, state):
+        return _bc_lookup.get_prefix(state)
+
+    def __contains__(self, state):
+        return (state or "").strip().upper() in set(_bc_lookup.all_states())
+
+
+_STATE_CODE_PREFIX = _StateCodePrefixProxy()
 
 
 def _build_code_violations(state: str, line_items: list, trades: list) -> list:

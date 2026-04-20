@@ -1,0 +1,504 @@
+{
+  "_meta": {
+    "description": "Single source of truth for state-specific residential building codes. Resolved per-claim by the property address's state. Loaded by building_codes/lookup.py. Adding a new state = add one row here, no code changes elsewhere.",
+    "schema_version": 1,
+    "default_fallback_key": "IRC",
+    "note": "States without a state-adopted code that diverges meaningfully from IRC get the IRC default row. Enrich any state's row as needed — the lookup module merges over the default."
+  },
+  "IRC": {
+    "prefix": "IRC",
+    "short_name": "IRC",
+    "full_name": "International Residential Code",
+    "base_code": "IRC 2021",
+    "adopted_year": 2021,
+    "ice_barrier": {
+      "code_ref": "IRC R905.1.2",
+      "description": "Ice barrier consisting of at least two layers of underlayment cemented together or of self-adhering polymer-modified bitumen sheet shall extend from the eave edge to a point at least 24 inches inside the exterior wall line of the building. Required in Climate Zones 5 and above.",
+      "eave_courses": 2,
+      "valley_width_ft": 3,
+      "valley_sides": 2
+    },
+    "drip_edge":          { "code_ref": "IRC R905.2.8.5", "required": true },
+    "ventilation":        { "code_ref": "IRC R806.2",     "nfa_ratio": "1:150" },
+    "house_wrap_corners": { "code_ref": "IRC R703.1 / R703.2" },
+    "two_layer_tearoff":  { "code_ref": "IRC R908.3.1.1(3)" },
+    "underlayment":       { "code_ref": "IRC R905.1.1" },
+    "starter_strip":      { "code_ref": "Manufacturer specification" },
+    "sales_tax": 0.0,
+    "sales_tax_notes": "No state tax in JSON data — calculated per-claim if needed.",
+    "advocacy_reg": null
+  },
+  "NY": {
+    "prefix": "RCNYS",
+    "short_name": "RCNYS",
+    "full_name": "Residential Code of New York State",
+    "base_code": "IRC 2018",
+    "adopted_year": 2020,
+    "ice_barrier": {
+      "code_ref": "RCNYS R905.1.2",
+      "description": "Ice barrier required from eave edge extending \u226524 inches inside exterior wall line. Valleys require full I&W coverage.",
+      "eave_courses": 2,
+      "valley_width_ft": 3,
+      "valley_sides": 2
+    },
+    "drip_edge":          { "code_ref": "RCNYS R905.2.8.5", "required": true },
+    "ventilation":        { "code_ref": "RCNYS R806.2",     "nfa_ratio": "1:150" },
+    "house_wrap_corners": { "code_ref": "RCNYS R703.1 / R703.2" },
+    "two_layer_tearoff":  { "code_ref": "RCNYS R908.3.1.1(3)" },
+    "underlayment":       { "code_ref": "RCNYS R905.1.1" },
+    "starter_strip":      { "code_ref": "Manufacturer specification" },
+    "sales_tax": 0.08,
+    "sales_tax_notes": "Statewide average; county/local rates vary 4%-8.875%.",
+    "advocacy_reg": { "ref": "11 NYCRR \u00a7 216", "note": "UPPA / Regulation 64 claim-handling standards; only usable in PA/attorney compliance mode" }
+  },
+  "OH": {
+    "prefix": "RCO",
+    "short_name": "RCO",
+    "full_name": "Residential Code of Ohio",
+    "base_code": "IRC 2021",
+    "adopted_year": 2024,
+    "ice_barrier": {
+      "code_ref": "RCO R905.1.2",
+      "description": "Ice barrier consisting of at least two layers of underlayment cemented together or of self-adhering polymer-modified bitumen sheet shall extend from the eave edge to a point at least 24 inches inside the exterior wall line of the building. Valleys require full I&W coverage.",
+      "eave_courses": 2,
+      "valley_width_ft": 3,
+      "valley_sides": 2
+    },
+    "drip_edge":          { "code_ref": "RCO R905.2.8.5", "required": true },
+    "ventilation":        { "code_ref": "RCO R806.2",     "nfa_ratio": "1:150" },
+    "house_wrap_corners": { "code_ref": "RCO R703.1 / R703.2" },
+    "two_layer_tearoff":  { "code_ref": "RCO R908.3.1.1(3)" },
+    "underlayment":       { "code_ref": "RCO R905.1.1" },
+    "starter_strip":      { "code_ref": "Manufacturer specification" },
+    "sales_tax": 0.0575,
+    "sales_tax_notes": "State base only. Counties add 0.25-2.25%; not modeled.",
+    "advocacy_reg": null
+  },
+  "PA": {
+    "prefix": "UCC",
+    "short_name": "PA UCC",
+    "full_name": "Pennsylvania Uniform Construction Code",
+    "base_code": "IRC 2018",
+    "adopted_year": 2022,
+    "ice_barrier": {
+      "code_ref": "UCC R905.1.2",
+      "description": "Ice barrier from eave edge extending \u226524 inches past interior wall line.",
+      "eave_courses": 2,
+      "valley_width_ft": 3,
+      "valley_sides": 2
+    },
+    "drip_edge":          { "code_ref": "UCC R905.2.8.5", "required": true },
+    "ventilation":        { "code_ref": "UCC R806.2",     "nfa_ratio": "1:150" },
+    "house_wrap_corners": { "code_ref": "UCC R703.1 / R703.2" },
+    "two_layer_tearoff":  { "code_ref": "UCC R908.3.1.1(3)" },
+    "underlayment":       { "code_ref": "UCC R905.1.1" },
+    "starter_strip":      { "code_ref": "Manufacturer specification" },
+    "sales_tax": 0.0,
+    "sales_tax_notes": "PA has no sales tax on residential roofing labor+material resales to end users in many cases; verify per claim.",
+    "advocacy_reg": null
+  },
+  "NJ": {
+    "prefix": "NJUCC",
+    "short_name": "NJ UCC",
+    "full_name": "New Jersey Uniform Construction Code",
+    "base_code": "IRC 2018",
+    "adopted_year": 2022,
+    "ice_barrier": {
+      "code_ref": "NJUCC R905.1.2",
+      "description": "Ice barrier required in areas where average January temperature \u226425\u00b0F.",
+      "eave_courses": 2,
+      "valley_width_ft": 3,
+      "valley_sides": 2
+    },
+    "drip_edge":          { "code_ref": "NJUCC R905.2.8.5", "required": true },
+    "ventilation":        { "code_ref": "NJUCC R806.2",     "nfa_ratio": "1:150" },
+    "house_wrap_corners": { "code_ref": "NJUCC R703.1 / R703.2" },
+    "two_layer_tearoff":  { "code_ref": "NJUCC R908.3.1.1(3)" },
+    "underlayment":       { "code_ref": "NJUCC R905.1.1" },
+    "starter_strip":      { "code_ref": "Manufacturer specification" },
+    "sales_tax": 0.06625,
+    "sales_tax_notes": "NJ flat state sales tax; Urban Enterprise Zones may reduce.",
+    "advocacy_reg": null
+  },
+  "CT": {
+    "prefix": "CTBC",
+    "short_name": "CT SBC",
+    "full_name": "Connecticut State Building Code (IRC 2021 with amendments)",
+    "base_code": "IRC 2021",
+    "adopted_year": 2022,
+    "sales_tax": 0.0635,
+    "sales_tax_notes": "CT state base rate."
+  },
+  "MD": {
+    "prefix": "MBC",
+    "short_name": "MD BPS",
+    "full_name": "Maryland Building Performance Standards (IRC 2021)",
+    "base_code": "IRC 2021",
+    "adopted_year": 2023,
+    "sales_tax": 0.06
+  },
+  "DE": {
+    "prefix": "DEBC",
+    "short_name": "DE RC",
+    "full_name": "Delaware State Residential Code (IRC 2018)",
+    "base_code": "IRC 2018",
+    "adopted_year": 2020,
+    "sales_tax": 0.0
+  },
+  "MA": {
+    "prefix": "MRC",
+    "short_name": "MA 9th Ed",
+    "full_name": "Massachusetts State Building Code \u2014 780 CMR Residential (IRC 2021 base, 9th Ed.)",
+    "base_code": "IRC 2021",
+    "adopted_year": 2023,
+    "sales_tax": 0.0625
+  },
+  "ME": {
+    "prefix": "MUBEC",
+    "short_name": "MUBEC",
+    "full_name": "Maine Uniform Building and Energy Code (IRC 2021)",
+    "base_code": "IRC 2021",
+    "adopted_year": 2023,
+    "sales_tax": 0.055
+  },
+  "NH": {
+    "prefix": "NHBC",
+    "short_name": "NH SBC",
+    "full_name": "New Hampshire State Building Code (IRC 2018)",
+    "base_code": "IRC 2018",
+    "adopted_year": 2019,
+    "sales_tax": 0.0
+  },
+  "VT": {
+    "prefix": "VBC",
+    "short_name": "VT RBES",
+    "full_name": "Vermont Residential Building Energy Standards (IRC 2021 base)",
+    "base_code": "IRC 2021",
+    "adopted_year": 2024,
+    "sales_tax": 0.06
+  },
+  "RI": {
+    "prefix": "RISBC",
+    "short_name": "RI SBC-2",
+    "full_name": "Rhode Island State Building Code 2 \u2014 Residential (IRC 2018)",
+    "base_code": "IRC 2018",
+    "adopted_year": 2021,
+    "sales_tax": 0.07
+  },
+  "VA": {
+    "prefix": "VRC",
+    "short_name": "VRC",
+    "full_name": "Virginia Residential Code (IRC 2021 with state amendments)",
+    "base_code": "IRC 2021",
+    "adopted_year": 2024,
+    "sales_tax": 0.053
+  },
+  "WV": {
+    "prefix": "WVBC",
+    "short_name": "WV SBC",
+    "full_name": "West Virginia State Building Code (IRC 2018)",
+    "base_code": "IRC 2018",
+    "adopted_year": 2020,
+    "sales_tax": 0.06
+  },
+  "NC": {
+    "prefix": "NCRC",
+    "short_name": "NCRC",
+    "full_name": "North Carolina Residential Code (IRC 2018)",
+    "base_code": "IRC 2018",
+    "adopted_year": 2019,
+    "sales_tax": 0.0475
+  },
+  "SC": {
+    "prefix": "SCRC",
+    "short_name": "SCRC",
+    "full_name": "South Carolina Residential Code (IRC 2021)",
+    "base_code": "IRC 2021",
+    "adopted_year": 2023,
+    "sales_tax": 0.06
+  },
+  "GA": {
+    "prefix": "GRC",
+    "short_name": "GRC",
+    "full_name": "Georgia State Minimum Standard One- and Two-Family Dwelling Code (IRC 2018)",
+    "base_code": "IRC 2018",
+    "adopted_year": 2020,
+    "sales_tax": 0.04
+  },
+  "FL": {
+    "prefix": "FBC-R",
+    "short_name": "FBC-R",
+    "full_name": "Florida Building Code, Residential (8th Edition, 2023)",
+    "base_code": "IRC 2021",
+    "adopted_year": 2023,
+    "sales_tax": 0.06,
+    "advocacy_reg": { "ref": "F.S. \u00a7 627.70131", "note": "FL claim-handling statute; high-bar adjustor timing rules" }
+  },
+  "AL": {
+    "prefix": "AL-IRC",
+    "short_name": "AL IRC",
+    "full_name": "Alabama IRC (2015 adoption; no state residential code)",
+    "base_code": "IRC 2015",
+    "adopted_year": 2016,
+    "sales_tax": 0.04
+  },
+  "TN": {
+    "prefix": "TN-IRC",
+    "short_name": "TN IRC",
+    "full_name": "Tennessee IRC 2018 (state adoption)",
+    "base_code": "IRC 2018",
+    "adopted_year": 2019,
+    "sales_tax": 0.07
+  },
+  "KY": {
+    "prefix": "KRC",
+    "short_name": "KRC",
+    "full_name": "Kentucky Residential Code (IRC 2018)",
+    "base_code": "IRC 2018",
+    "adopted_year": 2020,
+    "sales_tax": 0.06
+  },
+  "IN": {
+    "prefix": "IRC-IN",
+    "short_name": "IRC-IN",
+    "full_name": "Indiana Residential Code (IRC 2018 with state amendments)",
+    "base_code": "IRC 2018",
+    "adopted_year": 2020,
+    "sales_tax": 0.07
+  },
+  "IL": {
+    "prefix": "IL-IRC",
+    "short_name": "IL IRC",
+    "full_name": "Illinois Residential Code (IRC 2021; jurisdictional adoption varies)",
+    "base_code": "IRC 2021",
+    "adopted_year": 2023,
+    "sales_tax": 0.0625,
+    "sales_tax_notes": "Home-rule municipalities add 0.25-4.75%; not modeled."
+  },
+  "MI": {
+    "prefix": "MRC",
+    "short_name": "MI MRC",
+    "full_name": "Michigan Residential Code (IRC 2015 with state amendments)",
+    "base_code": "IRC 2015",
+    "adopted_year": 2015,
+    "sales_tax": 0.06
+  },
+  "WI": {
+    "prefix": "SPS-UDC",
+    "short_name": "WI UDC",
+    "full_name": "Wisconsin Uniform Dwelling Code \u2014 SPS 320-325 (IRC 2018 base)",
+    "base_code": "IRC 2018",
+    "adopted_year": 2022,
+    "sales_tax": 0.05
+  },
+  "MN": {
+    "prefix": "MSBC",
+    "short_name": "MRC",
+    "full_name": "Minnesota Residential Code (IRC 2018 with state amendments)",
+    "base_code": "IRC 2018",
+    "adopted_year": 2020,
+    "sales_tax": 0.06875
+  },
+  "IA": {
+    "prefix": "IA-IRC",
+    "short_name": "IA IRC",
+    "full_name": "Iowa IRC 2015 (state adoption; home-rule cities may amend)",
+    "base_code": "IRC 2015",
+    "adopted_year": 2016,
+    "sales_tax": 0.06
+  },
+  "MO": {
+    "prefix": "MO-IRC",
+    "short_name": "MO IRC",
+    "full_name": "Missouri \u2014 no statewide residential code; most jurisdictions adopt IRC 2018 or 2021",
+    "base_code": "IRC 2018",
+    "adopted_year": 2020,
+    "sales_tax": 0.04225
+  },
+  "AR": {
+    "prefix": "AR-IRC",
+    "short_name": "AR IRC",
+    "full_name": "Arkansas Fire Prevention Code \u2014 Residential (IRC 2021 base)",
+    "base_code": "IRC 2021",
+    "adopted_year": 2023,
+    "sales_tax": 0.065
+  },
+  "LA": {
+    "prefix": "LSUCC",
+    "short_name": "LA UCC",
+    "full_name": "Louisiana State Uniform Construction Code (IRC 2021)",
+    "base_code": "IRC 2021",
+    "adopted_year": 2023,
+    "sales_tax": 0.0445
+  },
+  "MS": {
+    "prefix": "MS-IRC",
+    "short_name": "MS IRC",
+    "full_name": "Mississippi Building Code (IRC 2018)",
+    "base_code": "IRC 2018",
+    "adopted_year": 2021,
+    "sales_tax": 0.07
+  },
+  "TX": {
+    "prefix": "TX-IRC",
+    "short_name": "TX IRC",
+    "full_name": "Texas IRC (no statewide code; most municipalities adopt IRC 2021)",
+    "base_code": "IRC 2021",
+    "adopted_year": 2023,
+    "sales_tax": 0.0625
+  },
+  "OK": {
+    "prefix": "OUBC",
+    "short_name": "OUBC",
+    "full_name": "Oklahoma Uniform Building Code \u2014 Residential (IRC 2018)",
+    "base_code": "IRC 2018",
+    "adopted_year": 2022,
+    "sales_tax": 0.045
+  },
+  "KS": {
+    "prefix": "KS-IRC",
+    "short_name": "KS IRC",
+    "full_name": "Kansas \u2014 no statewide code; most municipalities adopt IRC",
+    "base_code": "IRC 2018",
+    "adopted_year": 2020,
+    "sales_tax": 0.065
+  },
+  "NE": {
+    "prefix": "NE-IRC",
+    "short_name": "NE IRC",
+    "full_name": "Nebraska Energy Code \u2014 IRC 2018 base for residential",
+    "base_code": "IRC 2018",
+    "adopted_year": 2020,
+    "sales_tax": 0.055
+  },
+  "SD": {
+    "prefix": "SD-IRC",
+    "short_name": "SD IRC",
+    "full_name": "South Dakota \u2014 no statewide code; jurisdictional IRC adoption",
+    "base_code": "IRC 2018",
+    "adopted_year": 2020,
+    "sales_tax": 0.042
+  },
+  "ND": {
+    "prefix": "ND-IRC",
+    "short_name": "ND IRC",
+    "full_name": "North Dakota State Building Code (IRC 2018)",
+    "base_code": "IRC 2018",
+    "adopted_year": 2020,
+    "sales_tax": 0.05
+  },
+  "CO": {
+    "prefix": "CO-IRC",
+    "short_name": "CO IRC",
+    "full_name": "Colorado \u2014 no statewide code; most jurisdictions adopt IRC 2021",
+    "base_code": "IRC 2021",
+    "adopted_year": 2023,
+    "sales_tax": 0.029
+  },
+  "WY": {
+    "prefix": "WY-IRC",
+    "short_name": "WY IRC",
+    "full_name": "Wyoming \u2014 no statewide residential code; jurisdictional IRC adoption",
+    "base_code": "IRC 2018",
+    "adopted_year": 2020,
+    "sales_tax": 0.04
+  },
+  "MT": {
+    "prefix": "MT-IRC",
+    "short_name": "MT IRC",
+    "full_name": "Montana State Building Codes \u2014 IRC 2021 residential",
+    "base_code": "IRC 2021",
+    "adopted_year": 2023,
+    "sales_tax": 0.0
+  },
+  "ID": {
+    "prefix": "IRC-ID",
+    "short_name": "ID IRC",
+    "full_name": "Idaho Residential Code (IRC 2018)",
+    "base_code": "IRC 2018",
+    "adopted_year": 2021,
+    "sales_tax": 0.06
+  },
+  "UT": {
+    "prefix": "IRC-UT",
+    "short_name": "UT IRC",
+    "full_name": "Utah Residential Code (IRC 2021)",
+    "base_code": "IRC 2021",
+    "adopted_year": 2023,
+    "sales_tax": 0.061
+  },
+  "AZ": {
+    "prefix": "AZ-IRC",
+    "short_name": "AZ IRC",
+    "full_name": "Arizona \u2014 no statewide code; municipal IRC adoption",
+    "base_code": "IRC 2018",
+    "adopted_year": 2020,
+    "sales_tax": 0.056
+  },
+  "NM": {
+    "prefix": "NMRC",
+    "short_name": "NMRC",
+    "full_name": "New Mexico Residential Building Code (IRC 2018)",
+    "base_code": "IRC 2018",
+    "adopted_year": 2021,
+    "sales_tax": 0.05125
+  },
+  "NV": {
+    "prefix": "NV-IRC",
+    "short_name": "NV IRC",
+    "full_name": "Nevada \u2014 jurisdictional adoption; IRC 2021 most common",
+    "base_code": "IRC 2021",
+    "adopted_year": 2023,
+    "sales_tax": 0.0685
+  },
+  "CA": {
+    "prefix": "CRC",
+    "short_name": "CRC",
+    "full_name": "California Residential Code \u2014 Title 24 Part 2.5 (IRC 2021 base)",
+    "base_code": "IRC 2021",
+    "adopted_year": 2023,
+    "sales_tax": 0.0725,
+    "advocacy_reg": { "ref": "CCR Title 10 \u00a7 2695.7", "note": "Fair Claims Settlement Practices Regulations" }
+  },
+  "OR": {
+    "prefix": "ORSC",
+    "short_name": "ORSC",
+    "full_name": "Oregon Residential Specialty Code (IRC 2021 base)",
+    "base_code": "IRC 2021",
+    "adopted_year": 2023,
+    "sales_tax": 0.0
+  },
+  "WA": {
+    "prefix": "WA-IRC",
+    "short_name": "WA IRC",
+    "full_name": "Washington State Residential Code (IRC 2021 with state amendments)",
+    "base_code": "IRC 2021",
+    "adopted_year": 2023,
+    "sales_tax": 0.065
+  },
+  "AK": {
+    "prefix": "AK-IRC",
+    "short_name": "AK IRC",
+    "full_name": "Alaska \u2014 no statewide residential code; jurisdictional adoption",
+    "base_code": "IRC 2018",
+    "adopted_year": 2019,
+    "sales_tax": 0.0
+  },
+  "HI": {
+    "prefix": "HSBC",
+    "short_name": "HSBC",
+    "full_name": "Hawaii State Building Code (IRC 2018 base)",
+    "base_code": "IRC 2018",
+    "adopted_year": 2020,
+    "sales_tax": 0.04,
+    "sales_tax_notes": "Hawaii GE tax; not a traditional sales tax."
+  },
+  "DC": {
+    "prefix": "DCRC",
+    "short_name": "DCRC",
+    "full_name": "DC Residential Code (IRC 2015 with DC amendments)",
+    "base_code": "IRC 2015",
+    "adopted_year": 2017,
+    "sales_tax": 0.06
+  }
+}

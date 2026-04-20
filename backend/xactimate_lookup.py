@@ -377,12 +377,25 @@ class XactRegistry:
         """
         state_upper = _normalize_state(state)
         if not state_upper:
-            logger.warning("No state provided for market resolution, defaulting to NY")
+            logger.error(
+                "[PRICING] No state provided for market resolution — falling back to "
+                "NY pricing. This is a data-capture bug: state must be set on every claim."
+            )
             return DEFAULT_MARKETS["NY"]
 
         default = DEFAULT_MARKETS.get(state_upper)
         if not default:
-            logger.warning("State %s not in DEFAULT_MARKETS, defaulting to NY pricing", state_upper)
+            # No Xactimate pricing loaded for this state. Warn loudly so this
+            # surfaces in claim processing_warnings and Tom sees it. Tom's
+            # directive (2026-04-20): never silently substitute wrong pricing
+            # for a state that we haven't onboarded.
+            logger.error(
+                "[PRICING] No Xactimate price list loaded for state %s. "
+                "Falling back to NY pricing — claim will be materially wrong. "
+                "Add a market for %s to tools/xactimate/price-lists/all-markets.json + "
+                "DEFAULT_MARKETS in xactimate_lookup.py before releasing claims from %s.",
+                state_upper, state_upper, state_upper,
+            )
             return DEFAULT_MARKETS["NY"]
 
         if not city and not zip_code:

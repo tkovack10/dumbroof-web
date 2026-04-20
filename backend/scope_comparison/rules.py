@@ -87,56 +87,48 @@ class RulesResult:
 # ======================================================================
 # STATE CODE REQUIREMENTS
 # ======================================================================
+# I&W requirements + sales-tax rates are now data-driven via
+# building_codes/state_codes.json. The shims below preserve the legacy
+# `IW_REQUIREMENTS[state]` / `STATE_TAX.get(state, 0.0)` call patterns so
+# existing callers don't have to change, while routing resolution through
+# the single lookup module. Add new states by editing the JSON, not this file.
+from building_codes import lookup as _bc_lookup
 
-# Ice & Water barrier requirements by state
-# Key insight: This is where carriers cheat the most
-IW_REQUIREMENTS = {
-    "NY": {
-        "description": "RCNYS R905.1.2 — Ice barrier required from eave edge "
-                       "extending ≥24 inches inside exterior wall line. "
-                       "Valleys require full I&W coverage.",
-        "eave_courses": 2,      # 2 courses up from eave (each ~3ft = 6ft total)
-        "valley_width_ft": 3,   # 3ft wide each side of valley
-        "valley_sides": 2,      # Both sides
-        "code_ref": "RCNYS R905.1.2",
-    },
-    "OH": {
-        "description": "RCO R905.1.2 — Ice barrier consisting of at least two "
-                       "layers of underlayment cemented together or of "
-                       "self-adhering polymer-modified bitumen sheet shall "
-                       "extend from the eave edge to a point at least 24 inches "
-                       "inside the exterior wall line of the building. "
-                       "Valleys require full I&W coverage.",
-        "eave_courses": 2,
-        "valley_width_ft": 3,
-        "valley_sides": 2,
-        "code_ref": "RCO R905.1.2",
-    },
-    "PA": {
-        "description": "IRC R905.1.2 — Ice barrier from eave edge extending "
-                       "≥24 inches past interior wall line.",
-        "eave_courses": 2,
-        "valley_width_ft": 3,
-        "valley_sides": 2,
-        "code_ref": "IRC R905.1.2",
-    },
-    "NJ": {
-        "description": "IRC R905.1.2 — Ice barrier required in areas where "
-                       "average January temperature ≤25°F.",
-        "eave_courses": 2,
-        "valley_width_ft": 3,
-        "valley_sides": 2,
-        "code_ref": "IRC R905.1.2",
-    },
-}
 
-# Tax rates by state
-STATE_TAX = {
-    "NY": 0.08,
-    "OH": 0.0575,   # Ohio state sales tax (5.75%); counties add 0.25-2.25% — not modeled
-    "PA": 0.00,
-    "NJ": 0.06625,
-}
+class _IWRequirementsProxy:
+    def get(self, state, default=None):
+        if not state:
+            return default
+        st = state.upper()
+        if st in _bc_lookup.all_states():
+            return _bc_lookup.get_ice_barrier(state)
+        return default
+
+    def __getitem__(self, state):
+        return _bc_lookup.get_ice_barrier(state)
+
+    def __contains__(self, state):
+        return (state or "").strip().upper() in set(_bc_lookup.all_states())
+
+
+class _StateTaxProxy:
+    def get(self, state, default=0.0):
+        if not state:
+            return default
+        st = state.upper()
+        if st in _bc_lookup.all_states():
+            return _bc_lookup.get_sales_tax(state)
+        return default
+
+    def __getitem__(self, state):
+        return _bc_lookup.get_sales_tax(state)
+
+    def __contains__(self, state):
+        return (state or "").strip().upper() in set(_bc_lookup.all_states())
+
+
+IW_REQUIREMENTS = _IWRequirementsProxy()
+STATE_TAX = _StateTaxProxy()
 
 # Mandatory roofing items — every roof replacement MUST have these
 MANDATORY_ROOFING_ITEMS = [
