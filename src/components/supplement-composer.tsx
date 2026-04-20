@@ -296,8 +296,8 @@ export function SupplementComposer({ claimId, claimAddress, carrierName, compari
       {/* Email Preview Modal */}
       {showComposer && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-[rgb(15,18,35)] border border-[var(--border-glass)] rounded-2xl max-w-2xl w-full max-h-[80vh] overflow-hidden flex flex-col shadow-2xl">
-            <div className="px-6 py-4 border-b border-[var(--border-glass)] flex items-center justify-between">
+          <div className="bg-[rgb(15,18,35)] border border-[var(--border-glass)] rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col shadow-2xl">
+            <div className="flex-shrink-0 px-6 py-4 border-b border-[var(--border-glass)] flex items-center justify-between">
               <h3 className="text-base font-bold text-[var(--white)]">Supplement Email</h3>
               <button onClick={() => setShowComposer(false)} className="text-[var(--gray-dim)] hover:text-[var(--gray)]">
                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -306,7 +306,7 @@ export function SupplementComposer({ claimId, claimAddress, carrierName, compari
               </button>
             </div>
             {/* Send to + claim number fields */}
-            <div className="px-6 py-3 border-b border-white/[0.04] bg-white/[0.04] grid grid-cols-2 gap-3">
+            <div className="flex-shrink-0 px-6 py-3 border-b border-white/[0.04] bg-white/[0.04] grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className="text-[10px] uppercase font-semibold text-[var(--gray-dim)] tracking-wide">Send To (adjuster email)</label>
                 <input
@@ -328,15 +328,15 @@ export function SupplementComposer({ claimId, claimAddress, carrierName, compari
                 />
               </div>
             </div>
-            <div className="flex-1 overflow-y-auto p-6">
+            <div className="flex-1 min-h-0 overflow-y-auto p-6">
               <pre className="text-xs text-[var(--gray)] whitespace-pre-wrap font-sans leading-relaxed">{generateEmail()}</pre>
             </div>
             {sendResult && (
-              <div className={`px-6 py-2 text-sm ${sendResult.ok ? "bg-green-500/10 text-green-400" : "bg-red-500/10 text-red-400"}`}>
+              <div className={`flex-shrink-0 px-6 py-2 text-sm ${sendResult.ok ? "bg-green-500/10 text-green-400" : "bg-red-500/10 text-red-400"}`}>
                 {sendResult.message}
               </div>
             )}
-            <div className="px-6 py-4 border-t border-[var(--border-glass)] flex items-center justify-between">
+            <div className="flex-shrink-0 px-6 py-4 border-t border-[var(--border-glass)] flex items-center justify-between">
               <button
                 onClick={() => { setShowComposer(false); setSendResult(null); }}
                 className="px-4 py-2 rounded-lg text-sm font-medium text-[var(--gray)] hover:bg-white/[0.06] transition-colors"
