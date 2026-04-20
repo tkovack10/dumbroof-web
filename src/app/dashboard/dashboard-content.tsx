@@ -119,12 +119,12 @@ export function DashboardContent({ user }: { user: User }) {
         if (prof?.company_id) {
           const { data: team } = await supabase
             .from("company_profiles")
-            .select("user_id, name, email")
+            .select("user_id, contact_name, email")
             .eq("company_id", prof.company_id);
           if (team) {
             const map: Record<string, string> = {};
             for (const m of team) {
-              if (m.user_id) map[m.user_id] = m.name || m.email || m.user_id.slice(0, 8);
+              if (m.user_id) map[m.user_id] = m.contact_name || m.email || m.user_id.slice(0, 8);
             }
             setTeamMembers(map);
           }

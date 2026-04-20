@@ -27,12 +27,12 @@ export default async function InvitePage({ params }: InvitePageProps) {
   if (invite?.invited_by) {
     const { data: inviterRows } = await supabaseAdmin
       .from("company_profiles")
-      .select("name, email, company_name")
+      .select("contact_name, email, company_name")
       .eq("user_id", invite.invited_by)
       .limit(1);
     const inviter = inviterRows?.[0];
     if (inviter) {
-      inviterName = inviter.name || inviter.email || inviterName;
+      inviterName = inviter.contact_name || inviter.email || inviterName;
       companyName = inviter.company_name || companyName;
     }
   }

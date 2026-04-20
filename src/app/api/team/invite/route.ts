@@ -46,7 +46,7 @@ export async function POST(request: Request) {
   // mint a new UUID and assign it to them so teammates share a company.
   const { data: profileRows } = await supabaseAdmin
     .from("company_profiles")
-    .select("id, company_id, role, is_admin, email, company_name, name")
+    .select("id, company_id, role, is_admin, email, company_name, contact_name")
     .eq("user_id", user.id)
     .limit(1);
 
@@ -144,7 +144,7 @@ export async function POST(request: Request) {
   }
 
   // Compose email
-  const inviterName = profile.name || profile.email || user.email || "Your teammate";
+  const inviterName = profile.contact_name || profile.email || user.email || "Your teammate";
   const companyName = profile.company_name || "your company";
   const acceptUrl = `https://dumbroof.ai/invite/${token}`;
 

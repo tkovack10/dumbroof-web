@@ -34,7 +34,7 @@ export async function POST(request: Request) {
   // Pull inviter's referral_code + profile info
   const { data: profileRows } = await supabaseAdmin
     .from("company_profiles")
-    .select("referral_code, name, email, company_name")
+    .select("referral_code, contact_name, email, company_name")
     .eq("user_id", user.id)
     .limit(1);
 
@@ -46,7 +46,7 @@ export async function POST(request: Request) {
     );
   }
 
-  const referrerName = profile.name || profile.email || user.email || "A friend";
+  const referrerName = profile.contact_name || profile.email || user.email || "A friend";
   const referrerCompany = profile.company_name || "their roofing company";
   const link = `https://dumbroof.ai/r/${profile.referral_code}`;
 

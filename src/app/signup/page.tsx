@@ -59,12 +59,12 @@ export default async function SignupPage({ searchParams }: SignupPageProps) {
       if (row.invited_by) {
         const { data: inviterRows } = await supabaseAdmin
           .from("company_profiles")
-          .select("name, email, company_name")
+          .select("contact_name, email, company_name")
           .eq("user_id", row.invited_by)
           .limit(1);
         const inviter = inviterRows?.[0];
         if (inviter) {
-          inviterName = inviter.name || inviter.email || inviterName;
+          inviterName = inviter.contact_name || inviter.email || inviterName;
           companyName = inviter.company_name || companyName;
         }
       }
@@ -83,14 +83,14 @@ export default async function SignupPage({ searchParams }: SignupPageProps) {
     const normalized = ref.trim().toUpperCase();
     const { data: profileRows } = await supabaseAdmin
       .from("company_profiles")
-      .select("user_id, referral_code, name, email, company_name")
+      .select("user_id, referral_code, contact_name, email, company_name")
       .eq("referral_code", normalized)
       .limit(1);
     const prof = profileRows?.[0];
     if (prof) {
       referralContext = {
         code: normalized,
-        referrerName: prof.name || prof.email || "A friend",
+        referrerName: prof.contact_name || prof.email || "A friend",
         companyName: prof.company_name || "their roofing company",
       };
     }
