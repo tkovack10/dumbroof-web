@@ -6085,16 +6085,41 @@ async def process_claim(claim_id: str):
             print(f"[SYNC] GitHub sync failed (non-fatal): {e}")
 
         # 14. Send completion email notification (non-fatal)
-        # If QA auditor blocked the claim, skip the customer email and alert Tom instead.
+        # Suppression chain, in priority order:
+        #   1. qa_blocked       → Tom alerted, customer NOT notified
+        #   2. hold_delivery    → admin explicitly paused delivery (e.g. fixing
+        #                         a reported error). Tom alerted, customer NOT
+        #                         notified. Flip hold_delivery=false to release.
+        #   3. completion_email_sent_at already set → this is a re-run; don't
+        #                         resend to the customer unless they're new-to-this-claim.
+        delivery_hold = bool(claim.get("hold_delivery"))
+        already_sent = claim.get("completion_email_sent_at") is not None
         if qa_blocked:
             try:
                 _send_qa_alert_email(claim, qa_audit_result or {})
                 print("[QA] Alert email sent to admin")
             except Exception as e:
                 print(f"[QA] Alert email failed (non-fatal): {e}")
+        elif delivery_hold:
+            print(f"[NOTIFY] Customer completion email SUPPRESSED — hold_delivery=true on claim {claim_id}")
+            try:
+                _send_qa_alert_email(claim, {
+                    "summary": f"Reprocess complete but delivery is HELD. Reason: {claim.get('hold_reason') or 'no reason given'}. Review in /admin and flip hold_delivery=false to release.",
+                    "critical": [], "medium": [], "low": [],
+                    "passed": False, "recommendation": "hold",
+                })
+                print("[NOTIFY] Admin alerted about held delivery")
+            except Exception as e:
+                print(f"[NOTIFY] Admin alert failed (non-fatal): {e}")
+        elif already_sent:
+            print(f"[NOTIFY] Customer completion email ALREADY SENT for {claim_id} — skipping resend")
         else:
             try:
                 _send_completion_notification(claim_id)
+                try:
+                    sb.table("claims").update({"completion_email_sent_at": datetime.now().isoformat()}).eq("id", claim_id).execute()
+                except Exception as e2:
+                    print(f"[NOTIFY] completion_email_sent_at write failed (non-fatal): {e2}")
             except Exception as e:
                 print(f"[NOTIFY] Email notification failed (non-fatal): {e}")
 
