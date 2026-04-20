@@ -1802,6 +1802,58 @@ def _scrub_wrong_state_codes(paragraphs: list, state: str) -> list:
     return out
 
 
+def _scrub_codes_in_scope_rows(rows: list, state: str) -> list:
+    """Run the RCNYS/11 NYCRR scrubber over scope_comparison row dicts for
+    non-NY claims. The LLM sometimes stamps NY code prefixes into per-row
+    narrative fields (note, carrier_desc, usarm_desc, fix_recommendation)
+    because carrier playbooks + forensic-synthesis-guide.md are NY-authored.
+
+    Walks each row, applies the same regex swaps to every string leaf.
+    Non-destructive: returns a new list; original rows untouched.
+    """
+    if not rows or not isinstance(rows, list):
+        return rows
+    st = (state or "").upper()
+    if st == "NY":
+        return rows
+    target_prefix = _STATE_CODE_PREFIX.get(st, "IRC")
+    rcnys_pat = re.compile(r"\bRCNYS\b")
+    nycrr_pat = re.compile(r"\s*(?:under|per)?\s*11\s*NYCRR(?:\s*§?\s*[\d.]+)?", re.IGNORECASE)
+    ny2601_pat = re.compile(r"\s*(?:under|per)?\s*§\s*2601(?:\.\d+)?", re.IGNORECASE)
+    # The "IRC R905.1.2 / RCNYS R905.1.2" dual-citation pattern from legacy
+    # rules should collapse to the state-specific code.
+    dual_citation_pat = re.compile(r"\bIRC\s+(R[\d.]+)\s*/\s*RCNYS\s+R[\d.]+", re.IGNORECASE)
+    swaps = 0
+
+    def scrub_str(s: str) -> str:
+        nonlocal swaps
+        new_s = dual_citation_pat.sub(rf"{target_prefix} \1", s)
+        if new_s != s:
+            swaps += 1
+        s = new_s
+        new_s, n1 = rcnys_pat.subn(target_prefix, s)
+        swaps += n1
+        new_s, n2 = nycrr_pat.subn("", new_s)
+        swaps += n2
+        new_s, n3 = ny2601_pat.subn("", new_s)
+        swaps += n3
+        return new_s
+
+    def walk(node):
+        if isinstance(node, str):
+            return scrub_str(node)
+        if isinstance(node, dict):
+            return {k: walk(v) for k, v in node.items()}
+        if isinstance(node, list):
+            return [walk(item) for item in node]
+        return node
+
+    result = [walk(r) for r in rows]
+    if swaps:
+        print(f"[STATE-CODE-SCRUB] Replaced/removed {swaps} NY-only citations in scope_comparison rows (state={st}, target={target_prefix})", flush=True)
+    return result
+
+
 def _strip_weasel_advocacy(paragraphs: list) -> list:
     """Drop any sentence containing banned advocacy-statistic language.
 
@@ -5865,6 +5917,13 @@ async def process_claim(claim_id: str):
         if _scope_comp and isinstance(_scope_comp, list) and len(_scope_comp) > 0:
             # Only store if comparison rows have matched_by field (not raw carrier items)
             if _scope_comp[0].get("matched_by") or _scope_comp[0].get("status"):
+                # Scrub NY-only code citations that the LLM may have leaked into
+                # per-row narratives (e.g. "Per RCNYS R905.1.1: Underlayment")
+                # on an out-of-state claim. Replaces with state-appropriate prefix.
+                _scope_comp = _scrub_codes_in_scope_rows(
+                    _scope_comp,
+                    config.get("property", {}).get("state", "") or state or "",
+                )
                 update_data["scope_comparison"] = _scope_comp
 
         # Save homeowner name + adjuster info from carrier extraction

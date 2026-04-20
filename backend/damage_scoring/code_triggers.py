@@ -8,40 +8,55 @@ from typing import Dict, List, Optional, Any
 
 CODE_TRIGGERS = {
     "house_wrap_corner_rule": {
-        "states": ["NY"],
-        "codes": {"NY": ["RCNYS R703.1", "RCNYS R703.2"]},
+        "states": ["NY", "OH"],
+        "codes": {
+            "NY": ["RCNYS R703.1", "RCNYS R703.2"],
+            "OH": ["RCO R703.1", "RCO R703.2"],
+        },
         "trigger": "Siding damage on ANY wall -> house wrap inspection -> often all 4 walls",
         "scope_multiplier": "1x->4x siding (biggest dollar driver)",
         "detection": "siding damage in scope + house wrap absent/damaged",
         "max_points": 6,
     },
     "two_layer_tearoff": {
-        "states": ["NY"],
-        "codes": {"NY": ["RCNYS R908.3.1.1(3)"]},
+        "states": ["NY", "OH"],
+        "codes": {
+            "NY": ["RCNYS R908.3.1.1(3)"],
+            "OH": ["RCO R908.3.1.1(3)"],
+        },
         "trigger": "2+ existing roof layers -> full tear-off mandatory on replacement",
         "scope_multiplier": "adds $2-5K for tear-off labor + disposal",
         "detection": "visible second layer OR edge cross-section photo",
         "max_points": 4,
     },
     "ice_water_shield": {
-        "states": ["NY"],
-        "codes": {"NY": ["RCNYS R905.1.2"]},
+        "states": ["NY", "OH"],
+        "codes": {
+            "NY": ["RCNYS R905.1.2"],
+            "OH": ["RCO R905.1.2"],
+        },
         "trigger": "I&W required at eaves on replacement even if not originally present",
         "scope_multiplier": "adds full eave perimeter I&W",
         "detection": "eave inspection - absent I&W = code upgrade",
         "max_points": 3,
     },
     "drip_edge": {
-        "states": ["NY"],
-        "codes": {"NY": ["RCNYS R905.2.8.5"]},
+        "states": ["NY", "OH"],
+        "codes": {
+            "NY": ["RCNYS R905.2.8.5"],
+            "OH": ["RCO R905.2.8.5"],
+        },
         "trigger": "Drip edge required on replacement",
         "scope_multiplier": "adds full perimeter drip edge",
         "detection": "eave/rake inspection - absent drip edge",
         "max_points": 2,
     },
     "ventilation": {
-        "states": ["NY"],
-        "codes": {"NY": ["RCNYS R806.2"]},
+        "states": ["NY", "OH"],
+        "codes": {
+            "NY": ["RCNYS R806.2"],
+            "OH": ["RCO R806.2"],
+        },
         "trigger": "1:150 ratio NFA required on replacement",
         "scope_multiplier": "adds ridge vent, soffit vents, or both",
         "detection": "insufficient ventilation calculation",

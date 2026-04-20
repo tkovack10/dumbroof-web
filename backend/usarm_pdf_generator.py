@@ -378,10 +378,23 @@ def _photo_intro_text(config):
 
 
 def _get_code_reference(config):
-    """Return the appropriate building code reference based on property state."""
+    """Return the appropriate building code reference based on property state.
+
+    States where we've mapped to the adopted residential code get the
+    state-specific name + short abbreviation; everything else falls back
+    to generic IRC.
+    """
     state = config.get("property", {}).get("state", "").upper()
     if state == "NY":
         return "Residential Code of New York State (RCNYS)"
+    elif state == "OH":
+        return "Residential Code of Ohio (RCO)"
+    elif state == "NJ":
+        return "New Jersey Uniform Construction Code — IRC (NJ UCC)"
+    elif state == "PA":
+        return "Pennsylvania Uniform Construction Code — IRC (PA UCC)"
+    elif state == "CT":
+        return "Connecticut State Building Code — IRC (CT SBC)"
     else:
         return "International Residential Code (IRC)"
 

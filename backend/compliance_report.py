@@ -73,6 +73,8 @@ def _get_jurisdiction(state: str) -> dict:
     state = state.upper()
     if state == "NY":
         return {"code": "RCNYS", "name": "Residential Code of New York State (2020)", "abbrev": "RCNYS"}
+    elif state == "OH":
+        return {"code": "RCO", "name": "Residential Code of Ohio (2024, based on 2021 IRC)", "abbrev": "RCO"}
     elif state == "NJ":
         return {"code": "NJ UCC / IRC", "name": "NJ Uniform Construction Code (IRC 2018)", "abbrev": "NJ UCC"}
     elif state == "PA":

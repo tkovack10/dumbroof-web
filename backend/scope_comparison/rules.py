@@ -100,6 +100,18 @@ IW_REQUIREMENTS = {
         "valley_sides": 2,      # Both sides
         "code_ref": "RCNYS R905.1.2",
     },
+    "OH": {
+        "description": "RCO R905.1.2 — Ice barrier consisting of at least two "
+                       "layers of underlayment cemented together or of "
+                       "self-adhering polymer-modified bitumen sheet shall "
+                       "extend from the eave edge to a point at least 24 inches "
+                       "inside the exterior wall line of the building. "
+                       "Valleys require full I&W coverage.",
+        "eave_courses": 2,
+        "valley_width_ft": 3,
+        "valley_sides": 2,
+        "code_ref": "RCO R905.1.2",
+    },
     "PA": {
         "description": "IRC R905.1.2 — Ice barrier from eave edge extending "
                        "≥24 inches past interior wall line.",
@@ -121,6 +133,7 @@ IW_REQUIREMENTS = {
 # Tax rates by state
 STATE_TAX = {
     "NY": 0.08,
+    "OH": 0.0575,   # Ohio state sales tax (5.75%); counties add 0.25-2.25% — not modeled
     "PA": 0.00,
     "NJ": 0.06625,
 }
@@ -143,7 +156,7 @@ MANDATORY_ROOFING_ITEMS = [
         "canonical": "ice_water_barrier",
         "match_terms": ["ice", "water barrier", "ice & water", "i&w", "ice and water"],
         "unit": "SF",
-        "code_ref": "IRC R905.1.2 / RCNYS R905.1.2",
+        "code_ref": "IRC R905.1.2",  # State-specific prefix swapped at render time via _STATE_CODE_PREFIX
     },
     {
         "canonical": "underlayment",
