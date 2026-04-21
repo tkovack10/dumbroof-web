@@ -1219,7 +1219,17 @@ When the user says "what am I looking at?" or "is this good evidence?", interpre
 - **schedule_follow_up_cadence** — Write follow-up emails to claim_brain_cadence_sends. Typical AOB cadence: days=[3,7,14,21]. Supplement: days=[3,7,15]. A cron job sends each follow-up when the scheduled_at arrives.
 - **cancel_cadence** — Kill all pending follow-ups on this claim. Use when the carrier has responded or the claim closed.
 
-### LINE ITEM SURGERY (approval-gated)
+### LINE ITEM SURGERY / EDIT ESTIMATE (approval-gated)
+
+**Natural-language triggers** — when the user says any of these, USE the tools below:
+"edit estimate", "edit the estimate", "fix the estimate", "update the estimate",
+"change the estimate", "edit line item", "edit a line item", "change line item",
+"fix line item", "add line item", "remove line item", "delete line item",
+"modify quantity", "fix price", "fix quantity", "wrong price", "wrong qty",
+"bump price to X", "increase qty", "decrease qty".
+
+Do NOT reply "I can't do that" — you CAN. The tools below are the path.
+
 - **list_line_items** — READ-ONLY. Call this FIRST before add/remove/modify so you know real line IDs and current qty/price. Filter by source='usarm' | 'carrier' | 'user_added'.
 - **add_line_item** — Insert a user-added line into this claim's estimate. Use when something is missing from both the carrier's and the contractor's scope (typically after get_scope_comparison reveals a gap). ALWAYS pair with a clear `reason` that cites code, evidence, or measurement.
 - **remove_line_item** — Exclude an existing line item by UUID. Use when the carrier scoped a duplicate, wrong material, or scope item that doesn't belong.
@@ -2053,6 +2063,9 @@ async def approve_brain_action(claim_id: str, body: ToolApproval, background_tas
             preview = tool_result.get("preview") or {}
             qty = float(preview.get("qty") or 0)
             unit_price = float(preview.get("unit_price") or 0)
+            # NOTE: `total` is a Postgres GENERATED column (qty * unit_price).
+            # Do NOT write it — Postgres rejects with 428C9 "column 'total' is
+            # a generated column". Let the DB compute it.
             new_row = {
                 "claim_id": claim_id,
                 "category": preview.get("category") or "GENERAL",
@@ -2060,7 +2073,6 @@ async def approve_brain_action(claim_id: str, body: ToolApproval, background_tas
                 "qty": qty,
                 "unit": preview.get("unit"),
                 "unit_price": unit_price,
-                "total": qty * unit_price,
                 "xactimate_code": preview.get("xactimate_code"),
                 "trade": preview.get("trade"),
                 "source": "user_added",
@@ -2106,10 +2118,11 @@ async def approve_brain_action(claim_id: str, body: ToolApproval, background_tas
             # so the correction survives reprocess.
             new_qty = float(preview.get("new_qty") or 0)
             new_price = float(preview.get("new_unit_price") or 0)
+            # `total` is a GENERATED column (qty * unit_price) — DO NOT write it
+            # or Postgres 428C9 rejects the whole UPDATE. Let the DB compute.
             sb.table("line_items").update({
                 "qty": new_qty,
                 "unit_price": new_price,
-                "total": new_qty * new_price,
                 "variance_note": preview.get("reason"),
             }).eq("id", line_item_id).eq("claim_id", claim_id).execute()
             try:
