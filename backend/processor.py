@@ -1348,13 +1348,51 @@ def extract_carrier_scope(client: anthropic.Anthropic, pdf_path, extra_paths=Non
                 "type": "text",
                 "text": f"{_label}\n\n{text_content}",
             })
-        else:
+        elif ext == "pdf":
             file_blocks.append({"type": "text", "text": _label})
             pdf_b64 = file_to_base64(fpath)
             file_blocks.append({
                 "type": "document",
                 "source": {"type": "base64", "media_type": "application/pdf", "data": pdf_b64},
             })
+        elif ext in ("jpg", "jpeg", "png", "gif", "webp",
+                     "heic", "heif", "tiff", "tif", "bmp"):
+            # User uploaded a photo/screenshot of the scope instead of a PDF.
+            # Anthropic accepts images natively — convert exotic formats to JPEG first.
+            img_path = fpath
+            if ext not in ("jpg", "jpeg", "png", "gif", "webp"):
+                from photo_utils import convert_to_jpeg as _to_jpeg
+                converted = _to_jpeg(fpath)
+                if not converted:
+                    raise ValueError(
+                        f"Carrier scope file '{os.path.basename(fpath)}' is a "
+                        f"{ext.upper()} that could not be converted to JPEG."
+                    )
+                img_path = converted
+            img_ext = img_path.lower().rsplit(".", 1)[-1]
+            img_media = {
+                "jpg": "image/jpeg", "jpeg": "image/jpeg",
+                "png": "image/png", "gif": "image/gif", "webp": "image/webp",
+            }.get(img_ext, "image/jpeg")
+            file_blocks.append({
+                "type": "text",
+                "text": (
+                    f"{_label}  NOTE: This scope was uploaded as an IMAGE "
+                    "(photo/screenshot), not a PDF. Read the scope content "
+                    "directly from the image."
+                ),
+            })
+            file_blocks.append({
+                "type": "image",
+                "source": {"type": "base64", "media_type": img_media,
+                           "data": file_to_base64(img_path)},
+            })
+        else:
+            raise ValueError(
+                f"Carrier scope file '{os.path.basename(fpath)}' has unsupported "
+                f"extension '.{ext}'. Supported: PDF, TXT, JPG/JPEG/PNG/GIF/WEBP/"
+                f"HEIC/HEIF/TIFF/BMP."
+            )
 
     extraction_prompt = """Read this insurance carrier scope/estimate and extract ALL data into this exact JSON format. Return ONLY valid JSON.
 
@@ -4961,7 +4999,15 @@ async def process_claim(claim_id: str):
             print(f"[PROCESS] Extracting carrier scope ({len(resolved_paths)} file(s))...", flush=True)
             primary = resolved_paths[0]
             extras = resolved_paths[1:] if len(resolved_paths) > 1 else None
-            return await asyncio.to_thread(extract_carrier_scope, claude, primary, extras)
+            try:
+                return await asyncio.to_thread(extract_carrier_scope, claude, primary, extras)
+            except Exception as e:
+                # Bad scope file (wrong format, corrupt, unreadable) must NOT crash
+                # the whole run. Fall back to pre-scope so forensic + estimate still
+                # generate. Downstream code at phase="post-scope" check handles None.
+                print(f"[PROCESS] Carrier scope extraction failed — degrading to "
+                      f"pre-scope: {type(e).__name__}: {e}", flush=True)
+                return None
 
         async def _get_weather_data():
             if not weather_paths:
