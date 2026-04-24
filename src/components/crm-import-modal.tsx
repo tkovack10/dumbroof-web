@@ -116,9 +116,23 @@ export function CrmImportModal({
         `${backendUrl}/api/integrations/companycam/projects?user_id=${userId}&query=${encodeURIComponent(search)}`
       );
       const data = await res.json();
-      setProjects(data.projects || []);
-      if ((data.projects || []).length === 0) {
-        setError("No projects found. Try a different address.");
+      if (!res.ok || data.error) {
+        setProjects([]);
+        if (data.error === "companycam_auth_failed") {
+          setError(
+            (data.message || "Your CompanyCam API key is invalid or expired.") +
+            " Go to Settings → Integrations to reconnect with a fresh API key."
+          );
+        } else if (data.error === "companycam_unavailable") {
+          setError(data.message || "CompanyCam is temporarily unavailable. Try again in a minute.");
+        } else {
+          setError(data.message || data.detail || "Failed to search CompanyCam projects.");
+        }
+      } else {
+        setProjects(data.projects || []);
+        if ((data.projects || []).length === 0) {
+          setError("No projects found. Try a different address.");
+        }
       }
     } catch {
       setError("Failed to search CompanyCam projects");
@@ -145,12 +159,20 @@ export function CrmImportModal({
         `${backendUrl}/api/integrations/companycam/projects/${project.id}/photos?user_id=${userId}`
       );
       const data = await res.json();
-      const photoList = data.photos || [];
-      setPhotos(photoList);
-      // Pre-select first 100 photos
-      const initial = new Set<number>();
-      for (let i = 0; i < Math.min(photoList.length, 100); i++) initial.add(i);
-      setSelectedPhotoIndices(initial);
+      if (!res.ok || data.error) {
+        setPhotos([]);
+        setError(
+          data.error === "companycam_auth_failed"
+            ? (data.message || "Your CompanyCam API key is invalid.") + " Reconnect in Settings → Integrations."
+            : (data.message || data.detail || "Failed to load photos from CompanyCam.")
+        );
+      } else {
+        const photoList = data.photos || [];
+        setPhotos(photoList);
+        const initial = new Set<number>();
+        for (let i = 0; i < Math.min(photoList.length, 100); i++) initial.add(i);
+        setSelectedPhotoIndices(initial);
+      }
     } catch {
       setPhotos([]);
     }
