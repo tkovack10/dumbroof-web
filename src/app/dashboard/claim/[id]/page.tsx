@@ -980,6 +980,25 @@ export default function ClaimDetailPage() {
             </div>
           )}
 
+          {/* Carrier Scope Warning Banner — scope uploaded but extractor couldn't parse it */}
+          {claim.processing_warnings?.includes("SCOPE_EXTRACTION_FAILED") && (
+            <div className="mt-4 bg-amber-500/10 border border-amber-300 rounded-lg px-4 py-3">
+              <div className="flex items-start gap-3">
+                <svg className="w-5 h-5 text-amber-600 mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                </svg>
+                <div>
+                  <p className="text-sm font-semibold text-amber-800">
+                    Carrier Scope Couldn&apos;t Be Read
+                  </p>
+                  <p className="text-xs text-amber-700 mt-1">
+                    We generated a pre-scope package (forensic + estimate) because your carrier scope file couldn&apos;t be parsed. For a full supplement with scope comparison, upload the scope as a PDF (or a clear photo/screenshot) and reprocess.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
           {claim.user_notes && (
             <div className="mt-4 bg-white/[0.04] rounded-lg px-4 py-3">
               <p className="text-xs font-semibold text-[var(--gray-dim)] uppercase mb-1">

@@ -2643,6 +2643,15 @@ def build_claim_config(
     if any(w in _contact_name.lower() for w in _bad_name_words):
         _contact_name = ""
 
+    # Collect warnings to surface as claim-page banners. config["warnings"] is
+    # persisted to claims.processing_warnings at save time.
+    _early_warnings: list[str] = []
+    if claim.get("_scope_extraction_failed"):
+        # User uploaded a scope but the extractor couldn't parse it (bad format,
+        # corrupt file, Anthropic transient error after retry exhaustion). Surface
+        # so they know to re-upload rather than assuming pre-scope was intentional.
+        _early_warnings.append("SCOPE_EXTRACTION_FAILED")
+
     config = {
         "phase": phase,
         "company": {
@@ -2757,6 +2766,9 @@ def build_claim_config(
             ],
         },
     }
+
+    if _early_warnings:
+        config.setdefault("warnings", []).extend(_early_warnings)
 
     if carrier_data:
         config["appeal_letter"]["enclosed_documents"].extend([
@@ -5001,12 +5013,18 @@ async def process_claim(claim_id: str):
             extras = resolved_paths[1:] if len(resolved_paths) > 1 else None
             try:
                 return await asyncio.to_thread(extract_carrier_scope, claude, primary, extras)
-            except Exception as e:
-                # Bad scope file (wrong format, corrupt, unreadable) must NOT crash
-                # the whole run. Fall back to pre-scope so forensic + estimate still
-                # generate. Downstream code at phase="post-scope" check handles None.
+            except (ValueError, FileNotFoundError, anthropic.APIError) as e:
+                # anthropic.APIError is the base class for all SDK errors
+                # (BadRequestError, RateLimitError, InternalServerError,
+                # OverloadedError, APIConnectionError, APITimeoutError, etc.).
+                # Bad scope file (wrong format, corrupt, unreadable) or Anthropic
+                # transient after retry exhaustion must NOT crash the whole run.
+                # Signal the failure on the shared claim dict so build_claim_config
+                # can surface a user-facing warning; phase falls back to pre-scope
+                # automatically because carrier_line_items is absent.
                 print(f"[PROCESS] Carrier scope extraction failed — degrading to "
                       f"pre-scope: {type(e).__name__}: {e}", flush=True)
+                claim["_scope_extraction_failed"] = f"{type(e).__name__}: {e}"
                 return None
 
         async def _get_weather_data():
