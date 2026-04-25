@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
-import { getResend, EMAIL_FROM, EMAIL_REPLY_TO } from "@/lib/resend";
+import { getResend, EMAIL_FROM, EMAIL_REPLY_TO, teamBccFor } from "@/lib/resend";
 
 const MAX_ATTACHMENT_BYTES = 20 * 1024 * 1024; // 20MB
 
@@ -161,13 +161,12 @@ export async function POST(request: Request) {
 </body>
 </html>`.trim();
 
-    // 6. Send email via Resend
+    // 6. Send email via Resend — BCC scoped to USARM-only via teamBccFor()
     const resend = getResend();
     const { error: sendError } = await resend.emails.send({
       from: EMAIL_FROM,
       to: [userEmail],
-      cc: ["TKovack@USARoofMasters.com"],
-      bcc: ["tom@dumbroof.ai", "matt@dumbroof.ai"],
+      bcc: teamBccFor({ recipientEmail: userEmail, companyName }),
       replyTo: EMAIL_REPLY_TO,
       subject: `Your claim documents are ready — ${address}`,
       html,

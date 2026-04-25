@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
-import { getResend, EMAIL_FROM, EMAIL_REPLY_TO } from "@/lib/resend";
+import { getResend, EMAIL_FROM, EMAIL_REPLY_TO, teamBccFor } from "@/lib/resend";
 
 const MAX_ATTACHMENT_BYTES = 20 * 1024 * 1024; // 20MB
 
@@ -152,7 +152,7 @@ export async function POST(request: Request) {
     const { error: userSendError } = await resend.emails.send({
       from: EMAIL_FROM,
       to: [userEmail],
-      cc: ["TKovack@USARoofMasters.com"],
+      bcc: teamBccFor({ recipientEmail: userEmail, companyName }),
       replyTo: EMAIL_REPLY_TO,
       subject: `Repair Diagnosis Ready \u2014 ${address}`,
       html: userHtml,
