@@ -2936,6 +2936,33 @@ def _handle_preview_disconnect_integration(sb: Client, user_id: str, tool_input:
 # ═══════════════════════════════════════════
 
 
+def _ensure_company_role(sb: Client, user_id: str) -> Optional[dict]:
+    """Defense-in-depth role gate for the company-scope tools.
+
+    The chat handler in main.py role-gates at the system-prompt level
+    (scope='company' requires owner/admin), but the tool handlers can
+    still be reached if the model decides to call them in scope='user'
+    or if a malicious caller bypasses the system-prompt gate. This
+    function returns None for owner/admin (proceed) or an error dict
+    (return immediately) for member/unknown.
+    """
+    try:
+        res = sb.table("company_profiles").select("role").eq("user_id", user_id).limit(1).execute()
+        rows = res.data or []
+        role = (rows[0].get("role") if rows else None) or ""
+    except Exception:
+        role = ""
+    if role.lower() not in ("owner", "admin"):
+        return {
+            "action": "error",
+            "message": (
+                "This tool is restricted to company owners and admins. "
+                "Use the user-scope assistant for personal queries."
+            ),
+        }
+    return None
+
+
 def _company_user_ids(sb: Client, user_id: str) -> tuple[Optional[str], list[str]]:
     """Resolve company_id for the caller and return (company_id, list of user_ids in company).
     Returns (None, [user_id]) if no company link found — caller falls back to single-user view."""
@@ -2956,6 +2983,9 @@ def _company_user_ids(sb: Client, user_id: str) -> tuple[Optional[str], list[str
 
 def _handle_list_company_claims(sb: Client, user_id: str, tool_input: dict) -> dict:
     """List claims across the caller's company. Filterable by status/carrier/variance."""
+    err = _ensure_company_role(sb, user_id)
+    if err:
+        return err
     status_filter = (tool_input.get("status") or "any").lower()
     carrier_filter = (tool_input.get("carrier") or "").strip().lower()
     min_variance = float(tool_input.get("min_variance_usd") or 0)
@@ -3025,6 +3055,9 @@ def _handle_list_company_claims(sb: Client, user_id: str, tool_input: dict) -> d
 
 def _handle_get_company_portfolio_summary(sb: Client, user_id: str, company_id: Optional[str] = None) -> dict:
     """Topline portfolio stats for the caller's company."""
+    err = _ensure_company_role(sb, user_id)
+    if err:
+        return err
     _company_id, user_ids = _company_user_ids(sb, user_id)
     company_id = company_id or _company_id
 
@@ -3101,6 +3134,9 @@ def _handle_get_company_portfolio_summary(sb: Client, user_id: str, company_id: 
 
 def _handle_compare_team_performance(sb: Client, user_id: str, tool_input: dict) -> dict:
     """Per-rep performance: claims processed, supplements won, average variance, response time proxy."""
+    err = _ensure_company_role(sb, user_id)
+    if err:
+        return err
     window_days = int(tool_input.get("window_days") or 90)
     window_days = max(7, min(window_days, 365))
 
@@ -3190,6 +3226,9 @@ def _handle_compare_team_performance(sb: Client, user_id: str, tool_input: dict)
 
 def _handle_get_team_member_workload(sb: Client, user_id: str) -> dict:
     """Current per-rep load: open claims, pending supplements, overdue follow-ups."""
+    err = _ensure_company_role(sb, user_id)
+    if err:
+        return err
     company_id, user_ids = _company_user_ids(sb, user_id)
 
     try:

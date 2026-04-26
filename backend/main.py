@@ -2473,6 +2473,11 @@ async def admin_brain_chat(body: AdminChatMessage):
     history = load_conversation(sb, scope, user_id, limit=50)
     append_message(sb, scope, user_id, user_id, "user", str(body.message)[:10000])
 
+    # Pending-tool-actions cache key (separate from chat history). The
+    # approval handler tries this format AND the legacy "admin:{user_id}"
+    # form to find the preview.
+    conv_key = f"admin:{scope}:{user_id}"
+
     client = anthropic.Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
 
     async def stream_response():
@@ -2825,9 +2830,22 @@ async def approve_admin_action(body: AdminToolApproval, background_tasks: Backgr
     if not user_id:
         raise HTTPException(status_code=400, detail="user_id required")
 
-    conv_key = f"admin:{user_id}"
-    pending = _pending_tool_actions.get(conv_key, {})
-    tool_result = pending.pop(body.tool_call_id, None)
+    # Chat handler writes pending actions under f"admin:{scope}:{user_id}"
+    # (scope ∈ {"user","company"}). Frontend approval body doesn't carry
+    # scope, so try both scoped keys plus the legacy "admin:{user_id}"
+    # form for any straggling rows. Whichever bucket has the tool_call_id
+    # wins; once found, pop it (single-use).
+    candidate_keys = [
+        f"admin:user:{user_id}",
+        f"admin:company:{user_id}",
+        f"admin:{user_id}",
+    ]
+    tool_result = None
+    for ck in candidate_keys:
+        bucket = _pending_tool_actions.get(ck, {})
+        tool_result = bucket.pop(body.tool_call_id, None)
+        if tool_result:
+            break
 
     if not tool_result:
         raise HTTPException(status_code=404, detail="No pending admin action with that ID")
