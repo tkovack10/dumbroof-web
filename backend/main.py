@@ -2642,6 +2642,59 @@ class DisconnectRequest(BaseModel):
     user_id: str
 
 
+# ─── Generic CRM OAuth callback ──────────────────────────────────────────
+# Pairs with claim_brain_tools._handle_connect_crm. Supported services:
+# hover, roofr, jobnimbus, servicetitan, salesforce, hubspot, acculynx_oauth.
+# See backend/oauth_callbacks.py for per-service token-endpoint config.
+@app.get("/api/oauth/{service}/callback")
+async def oauth_service_callback(
+    service: str,
+    code: str | None = None,
+    state: str | None = None,
+    error: str | None = None,
+    error_description: str | None = None,
+):
+    from fastapi.responses import RedirectResponse
+    from oauth_callbacks import (
+        OAUTH_TOKEN_CONFIG,
+        decode_state,
+        is_state_fresh,
+        exchange_code_for_token,
+        store_tokens,
+        success_redirect_url,
+        failure_redirect_url,
+    )
+
+    if service not in OAUTH_TOKEN_CONFIG:
+        return RedirectResponse(failure_redirect_url(service, "unknown_service"), status_code=302)
+
+    if error:
+        reason = urllib.parse.quote(error_description or error)[:200]
+        return RedirectResponse(failure_redirect_url(service, reason), status_code=302)
+
+    if not code or not state:
+        return RedirectResponse(failure_redirect_url(service, "missing_code_or_state"), status_code=302)
+
+    decoded = decode_state(state)
+    if not decoded:
+        return RedirectResponse(failure_redirect_url(service, "invalid_state"), status_code=302)
+    user_id, ts = decoded
+    if not is_state_fresh(ts):
+        return RedirectResponse(failure_redirect_url(service, "state_expired"), status_code=302)
+
+    ok, payload = await exchange_code_for_token(service, code)
+    if not ok:
+        reason = urllib.parse.quote(str(payload.get("error", "exchange_failed")))[:120]
+        return RedirectResponse(failure_redirect_url(service, reason), status_code=302)
+
+    sb = get_supabase_client()
+    stored, store_err = store_tokens(sb, service, user_id, payload)
+    if not stored:
+        return RedirectResponse(failure_redirect_url(service, urllib.parse.quote(str(store_err))[:120]), status_code=302)
+
+    return RedirectResponse(success_redirect_url(service), status_code=302)
+
+
 @app.post("/api/microsoft-auth/disconnect")
 async def microsoft_auth_disconnect(body: DisconnectRequest):
     sb = get_supabase_client()
