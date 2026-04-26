@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import { RichardIcon } from "@/components/richard-icon";
+import { MarkdownContent } from "@/components/markdown-content";
 
 interface Message {
   role: "user" | "assistant";
@@ -45,26 +46,6 @@ const QUICK_COMPANY_ACTIONS = [
   { label: "Top variance", prompt: "Top 5 claims by variance — where is the biggest unrecovered money?" },
   { label: "Onboarding status", prompt: "How is the team's onboarding looking — who hasn't connected their tools?" },
 ];
-
-function renderMarkdown(text: string): string {
-  if (!text) return "";
-  let html = text
-    .replace(/^### (.+)$/gm, '<!--h3-->$1<!--/h3-->')
-    .replace(/^## (.+)$/gm, '<!--h2-->$1<!--/h2-->')
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/&lt;!--h3--&gt;(.+?)&lt;!--\/h3--&gt;/g, '<h3 class="text-sm font-bold text-indigo-400 mt-3 mb-1">$1</h3>')
-    .replace(/&lt;!--h2--&gt;(.+?)&lt;!--\/h2--&gt;/g, '<h2 class="text-sm font-bold text-indigo-300 mt-3 mb-1">$1</h2>')
-    .replace(/\*\*(.+?)\*\*/g, '<strong class="text-white">$1</strong>')
-    .replace(/\*(.+?)\*/g, "<em>$1</em>")
-    .replace(/`(.+?)`/g, '<code class="bg-white/10 px-1 rounded text-xs">$1</code>')
-    .replace(/^- (.+)$/gm, '<li class="ml-4 text-sm">$1</li>');
-  html = html.replace(/((?:<li[^>]*>.*<\/li>\n?)+)/g, '<ul class="list-disc space-y-0.5 my-1">$1</ul>');
-  html = html.replace(/\n\n/g, "</p><p class=\"text-sm my-1\">");
-  html = html.replace(/\n/g, "<br>");
-  return '<p class="text-sm my-1">' + html + "</p>";
-}
 
 function IntegrationsStatusCard({ data }: { data: Record<string, unknown> }) {
   const integrations = (data.integrations || {}) as Record<string, { connected: boolean; status?: string }>;
@@ -402,7 +383,7 @@ export function AdminBrainChat({ userId, scope = "user" }: AdminBrainChatProps) 
               }`}>
                 {msg.role === "assistant" ? (
                   <>
-                    <div dangerouslySetInnerHTML={{ __html: renderMarkdown(msg.content) }} />
+                    <MarkdownContent content={msg.content} />
                     {msg.toolActions?.map((a, j) => {
                       if (a.type === "integrations_status" && a.data) return <IntegrationsStatusCard key={j} data={a.data} />;
                       if (a.type === "integration_setup_guide" && a.data) return <SetupGuideCard key={j} data={a.data} />;
