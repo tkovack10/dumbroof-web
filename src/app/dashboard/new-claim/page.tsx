@@ -8,6 +8,7 @@ import { useBillingQuota } from "@/hooks/use-billing-quota";
 import { uploadFilesBatched } from "@/lib/upload-utils";
 import { CrmImportModal } from "@/components/crm-import-modal";
 import { CompanyProfileGate } from "@/components/company-profile-gate";
+import { NewClaimFeatureChecklist } from "@/components/new-claim-feature-checklist";
 import { trackBoth, FunnelEvent } from "@/lib/track";
 import { compressImages } from "@/lib/image-compress";
 
@@ -750,6 +751,16 @@ export default function NewClaimPage() {
             </span>
           </div>
         )}
+
+        {/* What dumbroof can do for THIS claim — bullets light up live as
+            user adds photos / measurements / scope below. Surfaces advanced
+            features (AOB digital signature, COC, day-of-job supplements)
+            and automatic customer touchpoints. Phase C of the Apr 26 plan. */}
+        <NewClaimFeatureChecklist
+          hasPhotos={photoFiles.length > 0 || crmPhotoCount > 0}
+          hasMeasurements={measurementFiles.length > 0}
+          hasCarrierScope={scopeFiles.length > 0}
+        />
 
         <form onSubmit={handleSubmit} className="space-y-8">
           {/* Property Info */}
