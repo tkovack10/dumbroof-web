@@ -99,14 +99,23 @@ def team_bcc_for(company_name: Optional[str] = None,
 
 
 def company_owner_emails(sb: Client, sender_user_id: str) -> list[str]:
-    """Find email addresses for OWNERS of the sender's company, excluding the
-    sender themselves. Used to BCC the team owner on every outbound claim
-    email so they have full visibility into what their team sends out.
+    """Find the FOUNDING owner of the sender's company — the single oldest
+    company_profiles row with role='owner'. BCC'd on every claim email a
+    team member sends so the founder has full visibility into outbound
+    team comms.
+
+    Why "oldest only": today company_profiles defaults role='owner' on solo
+    signup, so a 12-person team can show 12 owners. BCCing 12 people on
+    every claim email = spam. The founding signup (oldest created_at) is
+    the actual owner; everyone else is a teammate who happens to have the
+    default role flag. When the team-invite/accept flow is used (proper
+    onboarding), the invitee gets role='member' and this works correctly
+    too.
 
     Returns [] when:
-      - Sender has no company_id (solo account — no owner to copy)
-      - Sender IS the owner (already on the From line)
-      - No other owner exists in the company
+      - Sender has no company_id (solo account)
+      - Sender IS the founding owner (already the From: address)
+      - No other 'owner' record exists in the company
     Defensive — never raises; logs and returns [].
     """
     try:
@@ -114,21 +123,26 @@ def company_owner_emails(sb: Client, sender_user_id: str) -> list[str]:
         company_id = (prof.data[0].get("company_id") if prof.data else None)
         if not company_id:
             return []
+        # Founding owner = the OLDEST 'owner' record in the company. This is
+        # a fixed property of the company, not "next available" — if the
+        # sender IS the founding owner, return [] (don't fall back to the
+        # next-oldest, which would BCC the second person every time the
+        # founder sends).
         owners = sb.table("company_profiles") \
-            .select("email,user_id,role,is_admin") \
+            .select("user_id,email,created_at") \
             .eq("company_id", company_id) \
-            .neq("user_id", sender_user_id) \
+            .eq("role", "owner") \
+            .order("created_at", desc=False) \
+            .limit(1) \
             .execute()
-        out: list[str] = []
-        for row in owners.data or []:
-            role = (row.get("role") or "").lower()
-            is_admin = bool(row.get("is_admin"))
-            email = (row.get("email") or "").strip()
-            # "Owner" = role == 'owner' OR (no role set AND is_admin) — backward
-            # compat with rows created before role was populated.
-            if email and (role == "owner" or (not role and is_admin)):
-                out.append(email)
-        return out
+        rows = owners.data or []
+        if not rows:
+            return []
+        founding = rows[0]
+        if founding.get("user_id") == sender_user_id:
+            return []  # Sender is the founder — they're already on From:
+        email = (founding.get("email") or "").strip()
+        return [email] if email else []
     except Exception as e:
         print(f"[claim_brain_email] company_owner_emails lookup failed for user {sender_user_id}: {e}", flush=True)
         return []

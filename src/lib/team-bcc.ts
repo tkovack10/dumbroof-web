@@ -1,14 +1,22 @@
 import { supabaseAdmin } from "@/lib/supabase/admin";
 
 /**
- * Find email addresses for OWNERS of the sender's company, excluding the
- * sender themselves. Used to BCC the team owner on every outbound claim
- * email so they have full visibility into what their team sends out.
+ * Find the FOUNDING owner of the sender's company — the single oldest
+ * company_profiles row with role='owner'. BCC'd on every claim email a
+ * team member sends so the founder has full visibility into outbound
+ * team comms.
+ *
+ * Why "oldest only": today company_profiles defaults role='owner' on solo
+ * signup, so a 12-person team can show 12 owners. BCCing 12 people on
+ * every claim email = spam. The founding signup (oldest created_at) is
+ * the actual owner; everyone else is a teammate who happens to have the
+ * default role flag. When the team-invite/accept flow is used (proper
+ * onboarding), the invitee gets role='member' and this works correctly too.
  *
  * Returns [] when:
- *   - Sender has no company_id (solo account — no owner to copy)
- *   - Sender IS the owner (already on the From line)
- *   - No other owner exists in the company
+ *   - Sender has no company_id (solo account)
+ *   - Sender IS the founding owner (already the From: address)
+ *   - No other 'owner' record exists in the company
  *
  * Defensive — never throws; returns [] on any lookup failure.
  *
@@ -24,24 +32,24 @@ export async function companyOwnerEmails(senderUserId: string): Promise<string[]
     const companyId = profileRows?.[0]?.company_id;
     if (!companyId) return [];
 
+    // Founding owner = the OLDEST 'owner' record in the company. This is
+    // a fixed property of the company, not "next available" — if the
+    // sender IS the founding owner, return [] (don't fall back to the
+    // next-oldest, which would BCC the second person every time the
+    // founder sends).
     const { data: ownerRows } = await supabaseAdmin
       .from("company_profiles")
-      .select("email,user_id,role,is_admin")
+      .select("user_id,email,created_at")
       .eq("company_id", companyId)
-      .neq("user_id", senderUserId);
+      .eq("role", "owner")
+      .order("created_at", { ascending: true })
+      .limit(1);
 
-    const owners: string[] = [];
-    for (const row of ownerRows || []) {
-      const role = (row.role || "").toLowerCase();
-      const isAdmin = !!row.is_admin;
-      const email = (row.email || "").trim();
-      // "Owner" = explicit role OR is_admin without a role set (backward compat
-      // with profiles created before the role column was populated).
-      if (email && (role === "owner" || (!role && isAdmin))) {
-        owners.push(email);
-      }
-    }
-    return owners;
+    const founding = ownerRows?.[0];
+    if (!founding) return [];
+    if (founding.user_id === senderUserId) return []; // sender IS the founder
+    const email = (founding.email || "").trim();
+    return email ? [email] : [];
   } catch (e) {
     console.error("[team-bcc] companyOwnerEmails lookup failed", { senderUserId, error: e });
     return [];
