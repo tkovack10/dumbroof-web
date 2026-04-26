@@ -34,10 +34,13 @@ async function listAllAuthUsers(): Promise<
     raw_app_meta_data?: Record<string, unknown>;
   }> = [];
   let page = 1;
-  const perPage = 1000;
-  // Hard safety cap — refuse to paginate past 10 pages (10k users). At that
-  // point we should have switched to a filtered query path.
-  for (let i = 0; i < 10; i++) {
+  // perPage > 50 returns "Database error finding users" (500) on this
+  // account — Supabase auth admin API quirk. Stay at 50 and paginate.
+  const perPage = 50;
+  // Safety cap: 60 pages × 50 = 3000 users. Past that we should switch to
+  // a filtered query path (e.g. the gotrue admin API doesn't support
+  // created_at filtering yet, so the alternative is exposing auth schema).
+  for (let i = 0; i < 60; i++) {
     const { data, error } = await supabaseAdmin.auth.admin.listUsers({ page, perPage });
     if (error) {
       console.error(`[funnel-monitor] auth.admin.listUsers error (page ${page}):`, error.message);
@@ -56,9 +59,9 @@ async function listAllAuthUsers(): Promise<
     if (users.length < perPage) break;
     page += 1;
   }
-  if (all.length >= 800) {
+  if (all.length >= 2500) {
     console.warn(
-      `[funnel-monitor] listAllAuthUsers returned ${all.length} users — approaching pagination ceiling, switch to a filtered query`
+      `[funnel-monitor] listAllAuthUsers returned ${all.length} users — approaching pagination ceiling (3000), switch to a filtered query`
     );
   }
   return all;
