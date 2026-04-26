@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
 import type { Claim } from "@/types/claim";
+import { RichardLauncher } from "@/components/richard-launcher";
 
 interface InspectorApplication {
   id: number;
@@ -61,7 +62,7 @@ import { ClaimsMap } from "@/components/claims-map";
 
 type Tab = "claims" | "repairs" | "inspectors" | "beta" | "map";
 
-export function AdminDashboard() {
+export function AdminDashboard({ userId }: { userId: string }) {
   const supabase = createClient();
   const [activeTab, setActiveTab] = useState<Tab>("claims");
   const [claims, setClaims] = useState<Claim[]>([]);
@@ -1053,6 +1054,7 @@ export function AdminDashboard() {
           </div>
         )}
       </div>
+      <RichardLauncher userId={userId} scope="company" />
     </main>
   );
 }

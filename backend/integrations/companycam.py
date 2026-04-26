@@ -15,6 +15,16 @@ BASE_URL = "https://api.companycam.com/v2"
 REQUEST_TIMEOUT = 30
 
 
+class CompanyCamAuthError(Exception):
+    """Raised when CompanyCam returns 401/403 — API key invalid or account suspended."""
+    pass
+
+
+class CompanyCamUnavailableError(Exception):
+    """Raised when CompanyCam is unreachable or returns 5xx."""
+    pass
+
+
 class CompanyCamClient:
     """Multi-tenant CompanyCam API v2 client."""
 
@@ -26,32 +36,58 @@ class CompanyCamClient:
         }
 
     async def _request(
-        self, method: str, path: str, params: dict | None = None
+        self, method: str, path: str, params: dict | None = None,
+        raise_on_auth_error: bool = True,
     ) -> tuple[int, Any]:
-        """Execute a CompanyCam API request. Returns (status_code, body)."""
+        """Execute a CompanyCam API request. Returns (status_code, body).
+
+        If raise_on_auth_error is True (default), raises CompanyCamAuthError
+        on 401/403 so callers don't silently get empty results.
+        """
         url = f"{BASE_URL}{path}"
-        async with httpx.AsyncClient(timeout=REQUEST_TIMEOUT) as client:
-            resp = await client.request(
-                method, url, headers=self.headers, params=params
+        try:
+            async with httpx.AsyncClient(timeout=REQUEST_TIMEOUT) as client:
+                resp = await client.request(
+                    method, url, headers=self.headers, params=params
+                )
+        except (httpx.ConnectError, httpx.TimeoutException) as e:
+            raise CompanyCamUnavailableError(
+                f"Cannot reach CompanyCam API: {e}"
             )
-            if resp.status_code == 200:
-                try:
-                    return resp.status_code, resp.json()
-                except Exception:
-                    return resp.status_code, resp.text
-            return resp.status_code, resp.text
+
+        if resp.status_code == 200:
+            try:
+                return resp.status_code, resp.json()
+            except Exception:
+                return resp.status_code, resp.text
+
+        # Surface auth errors clearly instead of swallowing them
+        if raise_on_auth_error and resp.status_code in (401, 403):
+            raise CompanyCamAuthError(
+                f"CompanyCam API key is invalid or account is suspended "
+                f"(HTTP {resp.status_code}). Please reconnect in Settings."
+            )
+
+        return resp.status_code, resp.text
 
     async def test_connection(self) -> tuple[bool, str]:
         """Test the API key by fetching the first project."""
         try:
             code, body = await self._request(
-                "GET", "/projects", params={"per_page": "1"}
+                "GET", "/projects", params={"per_page": "1"},
+                raise_on_auth_error=False,
             )
             if code == 200:
                 return True, "Connected to CompanyCam"
             if code == 401:
-                return False, "Invalid API key"
+                return False, "Invalid or expired API key. Your CompanyCam account may have been suspended — generate a new API key in CompanyCam Settings → Integrations → API."
+            if code == 403:
+                return False, "API access denied. Check that your CompanyCam account is active and API access is enabled."
+            if code == 402:
+                return False, "CompanyCam account has a billing issue. Please resolve payment in CompanyCam first."
             return False, f"CompanyCam returned HTTP {code}"
+        except CompanyCamUnavailableError as e:
+            return False, f"Cannot reach CompanyCam — the service may be temporarily down. {e}"
         except Exception as e:
             return False, f"Connection failed: {str(e)}"
 

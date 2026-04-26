@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
+import { RichardIcon } from "@/components/richard-icon";
 
 interface Message {
   role: "user" | "assistant";
@@ -18,8 +19,11 @@ interface ToolAction {
   data?: Record<string, unknown>;
 }
 
+type AdminBrainScope = "user" | "company";
+
 interface AdminBrainChatProps {
   userId: string;
+  scope?: AdminBrainScope;
 }
 
 const QUICK_SETUP_ACTIONS = [
@@ -31,6 +35,15 @@ const QUICK_SETUP_ACTIONS = [
   { label: "Connect AccuLynx", prompt: "Help me connect AccuLynx" },
   { label: "Invite teammate", prompt: "I want to invite a new team member" },
   { label: "What's left?", prompt: "What's left on my onboarding checklist?" },
+];
+
+const QUICK_COMPANY_ACTIONS = [
+  { label: "Portfolio summary", prompt: "Give me a portfolio summary across all our claims." },
+  { label: "Open claims by carrier", prompt: "Break down open claims by carrier." },
+  { label: "Team performance", prompt: "Compare team performance — who is winning supplements and who is stalling?" },
+  { label: "Overdue follow-ups", prompt: "Which claims need a follow-up this week?" },
+  { label: "Top variance", prompt: "Top 5 claims by variance — where is the biggest unrecovered money?" },
+  { label: "Onboarding status", prompt: "How is the team's onboarding looking — who hasn't connected their tools?" },
 ];
 
 function renderMarkdown(text: string): string {
@@ -114,6 +127,34 @@ function SetupGuideCard({ data }: { data: Record<string, unknown> }) {
         <div className="mt-2 p-2 rounded bg-amber-500/10 border border-amber-500/20">
           <div className="text-[10px] text-amber-300 font-semibold uppercase tracking-wide mb-1">Gotchas</div>
           {gotchas.map((g, i) => <div key={i} className="text-[11px] text-white/70">⚠ {g}</div>)}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function OAuthRedirectCard({ data }: { data: Record<string, unknown> }) {
+  const service = String(data.service || "");
+  const url = data.authorize_url ? String(data.authorize_url) : null;
+  const configured = Boolean(data.configured);
+  const missingEnv = data.missing_env_var ? String(data.missing_env_var) : null;
+  const label = service.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+
+  return (
+    <div className="bg-indigo-500/5 border border-indigo-500/20 rounded-lg p-3 my-2">
+      <div className="text-xs text-indigo-300 font-medium mb-1.5">🔗 Connect {label}</div>
+      {configured && url ? (
+        <a
+          href={url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-block bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-medium px-3 py-1.5 rounded-lg transition-colors"
+        >
+          Authorize {label} →
+        </a>
+      ) : (
+        <div className="text-[11px] text-amber-300">
+          OAuth not configured yet. Backend env var <code className="bg-white/10 px-1 rounded">{missingEnv ?? "?"}</code> must be set first.
         </div>
       )}
     </div>
@@ -209,7 +250,7 @@ function ApprovalCard({
   );
 }
 
-export function AdminBrainChat({ userId }: AdminBrainChatProps) {
+export function AdminBrainChat({ userId, scope = "user" }: AdminBrainChatProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [isStreaming, setIsStreaming] = useState(false);
@@ -237,7 +278,7 @@ export function AdminBrainChat({ userId }: AdminBrainChatProps) {
       const res = await fetch(`${BACKEND_URL}/api/admin-brain/chat`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: msg, user_id: userId }),
+        body: JSON.stringify({ message: msg, user_id: userId, scope }),
       });
       const reader = res.body?.getReader();
       if (!reader) throw new Error("No reader");
@@ -300,7 +341,7 @@ export function AdminBrainChat({ userId }: AdminBrainChatProps) {
       await fetch(`${BACKEND_URL}/api/admin-brain/reset`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ user_id: userId }),
+        body: JSON.stringify({ user_id: userId, scope }),
       });
     } catch { /* ignore */ }
     setMessages([]);
@@ -312,11 +353,15 @@ export function AdminBrainChat({ userId }: AdminBrainChatProps) {
     <div className="rounded-2xl border border-[var(--border-glass)] bg-[var(--bg-glass)] overflow-hidden">
       <div className="px-4 py-3 border-b border-white/10 flex items-center justify-between bg-[rgb(15,18,35)]">
         <div className="flex items-center gap-2">
-          <span className="text-lg">🧠</span>
+          <RichardIcon size={24} />
           <div>
-            <div className="text-white text-sm font-semibold">Richard — Setup Assistant</div>
+            <div className="text-white text-sm font-semibold">
+              {scope === "company" ? "Richard — Company View" : "Richard — Setup Assistant"}
+            </div>
             <div className="text-white/40 text-[10px]">
-              Walk through integrations, team invites, and account setup
+              {scope === "company"
+                ? "Portfolio insights, team performance, integrations across the company"
+                : "Walk through integrations, team invites, and account setup"}
             </div>
           </div>
         </div>
@@ -327,7 +372,7 @@ export function AdminBrainChat({ userId }: AdminBrainChatProps) {
         {messages.length === 0 ? (
           <div className="py-6">
             <div className="text-center mb-4">
-              <div className="text-3xl mb-3">🧠</div>
+              <RichardIcon size={48} className="mb-3" />
               <div className="text-white text-sm font-medium mb-1">Richard — Setup Assistant</div>
               <div className="text-white/50 text-xs max-w-[360px] mx-auto">
                 Ask me to connect your tools, invite team members, or walk you through anything
@@ -335,7 +380,7 @@ export function AdminBrainChat({ userId }: AdminBrainChatProps) {
               </div>
             </div>
             <div className="flex flex-wrap gap-1.5 justify-center">
-              {QUICK_SETUP_ACTIONS.map((a) => (
+              {(scope === "company" ? QUICK_COMPANY_ACTIONS : QUICK_SETUP_ACTIONS).map((a) => (
                 <button
                   key={a.label}
                   onClick={() => sendMessage(a.prompt)}
@@ -351,7 +396,7 @@ export function AdminBrainChat({ userId }: AdminBrainChatProps) {
             <div key={i} className={`flex gap-2 ${msg.role === "user" ? "flex-row-reverse" : ""}`}>
               <div className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs flex-shrink-0 ${
                 msg.role === "assistant" ? "bg-indigo-500/10 border border-indigo-500/20" : "bg-emerald-500/10 border border-emerald-500/20"
-              }`}>{msg.role === "assistant" ? "🧠" : "T"}</div>
+              }`}>{msg.role === "assistant" ? <RichardIcon size={20} /> : "T"}</div>
               <div className={`max-w-[85%] rounded-xl px-3 py-2 ${
                 msg.role === "user" ? "bg-indigo-600 text-white text-sm" : "bg-white/5 border border-white/10 text-white/80"
               }`}>
@@ -361,6 +406,7 @@ export function AdminBrainChat({ userId }: AdminBrainChatProps) {
                     {msg.toolActions?.map((a, j) => {
                       if (a.type === "integrations_status" && a.data) return <IntegrationsStatusCard key={j} data={a.data} />;
                       if (a.type === "integration_setup_guide" && a.data) return <SetupGuideCard key={j} data={a.data} />;
+                      if (a.type === "oauth_redirect" && a.data) return <OAuthRedirectCard key={j} data={a.data} />;
                       if (a.action === "preview") return <ApprovalCard key={j} action={a} userId={userId} backendUrl={BACKEND_URL} onStatusUpdate={handleToolStatusUpdate} />;
                       return null;
                     })}

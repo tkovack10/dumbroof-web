@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { SAMPLE_RICHARD_SUGGESTIONS } from "@/lib/sample-claim-data";
+import { RichardIcon } from "@/components/richard-icon";
 
 /**
  * Simplified streaming chat component for the /sample/dashboard demo.
@@ -157,9 +158,7 @@ export function SampleClaimBrainChat() {
       >
         {messages.length === 0 && (
           <div className="text-center py-4">
-            <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-gradient-to-br from-[var(--pink)] via-[var(--purple)] to-[var(--blue)] mb-3">
-              <span className="text-xl">🧠</span>
-            </div>
+            <RichardIcon size={48} className="mb-3" />
             <p className="text-sm font-semibold text-white mb-1">Ask Richard about this claim</p>
             <p className="text-xs text-[var(--gray-muted)] mb-4">
               Streaming Claude Sonnet 4.6 · 5 questions per hour

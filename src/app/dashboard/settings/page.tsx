@@ -81,6 +81,8 @@ function SettingsPageContent() {
   const [companycamConnectedAt, setCompanycamConnectedAt] = useState<string | null>(null);
   const [companycamConnecting, setCompanycamConnecting] = useState(false);
   const [crmError, setCrmError] = useState("");
+  const [verifyingProvider, setVerifyingProvider] = useState<string | null>(null);
+  const [verifyResult, setVerifyResult] = useState<{ provider: string; ok: boolean; message: string } | null>(null);
   // Repair pricing state
   const [repairPricing, setRepairPricing] = useState({
     diagnostic_fee: "250.00",
@@ -1099,26 +1101,60 @@ function SettingsPageContent() {
                       </p>
                     </div>
                   </div>
-                  <button
-                    onClick={async () => {
-                      const { data: { user } } = await supabase.auth.getUser();
-                      if (!user) return;
-                      setCrmError("");
-                      try {
-                        await fetch(`${BACKEND_URL}/api/integrations/disconnect`, {
-                          method: "POST",
-                          headers: { "Content-Type": "application/json" },
-                          body: JSON.stringify({ provider: "companycam", user_id: user.id }),
-                        });
-                        setCompanycamConnected(false);
-                        setCompanycamConnectedAt(null);
-                        setCompanycamKey("");
-                      } catch { /* ignore */ }
-                    }}
-                    className="text-red-400 hover:text-red-300 text-sm font-medium transition-colors"
-                  >
-                    Disconnect
-                  </button>
+                  <div className="flex items-center gap-4">
+                    <button
+                      onClick={async () => {
+                        const { data: { user } } = await supabase.auth.getUser();
+                        if (!user) return;
+                        setVerifyingProvider("companycam");
+                        setVerifyResult(null);
+                        setCrmError("");
+                        try {
+                          const res = await fetch(`${BACKEND_URL}/api/integrations/test`, {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ provider: "companycam", user_id: user.id }),
+                          });
+                          const data = await res.json();
+                          setVerifyResult({ provider: "companycam", ok: data.ok, message: data.message });
+                          if (!data.ok) setCrmError(`CompanyCam: ${data.message}`);
+                        } catch {
+                          setVerifyResult({ provider: "companycam", ok: false, message: "Server unreachable" });
+                        }
+                        setVerifyingProvider(null);
+                      }}
+                      disabled={verifyingProvider === "companycam"}
+                      className="text-[var(--cyan)] hover:text-[var(--cyan)]/80 text-sm font-medium transition-colors disabled:opacity-50"
+                    >
+                      {verifyingProvider === "companycam" ? "Verifying..." : "Verify"}
+                    </button>
+                    <button
+                      onClick={async () => {
+                        const { data: { user } } = await supabase.auth.getUser();
+                        if (!user) return;
+                        setCrmError("");
+                        try {
+                          await fetch(`${BACKEND_URL}/api/integrations/disconnect`, {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ provider: "companycam", user_id: user.id }),
+                          });
+                          setCompanycamConnected(false);
+                          setCompanycamConnectedAt(null);
+                          setCompanycamKey("");
+                          setVerifyResult(null);
+                        } catch { /* ignore */ }
+                      }}
+                      className="text-red-400 hover:text-red-300 text-sm font-medium transition-colors"
+                    >
+                      Disconnect
+                    </button>
+                    {verifyResult?.provider === "companycam" && (
+                      <span className={`text-xs ${verifyResult.ok ? "text-green-400" : "text-red-400"}`}>
+                        {verifyResult.ok ? "Key valid" : "Key invalid — reconnect with a new key"}
+                      </span>
+                    )}
+                  </div>
                 </div>
               ) : (
                 <div>

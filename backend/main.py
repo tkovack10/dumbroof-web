@@ -2303,6 +2303,64 @@ class AdminChatMessage(BaseModel):
     message: str
     user_id: str
     locale: str | None = "en"
+    scope: str | None = "user"  # "user" (settings/onboarding) or "company" (full portfolio, owner/admin only)
+
+
+def _user_company_role(sb, user_id: str) -> tuple[str | None, str | None]:
+    """Return (company_id, role) tuple for the user. role in {"owner","admin","member",None}."""
+    try:
+        res = sb.table("company_profiles").select("company_id, role").eq("user_id", user_id).limit(1).execute()
+        row = (res.data or [{}])[0] if res.data else {}
+        return row.get("company_id"), row.get("role")
+    except Exception:
+        return None, None
+
+
+def _build_admin_brain_company_prompt(company_profile: dict, integrations: dict, summary: dict) -> str:
+    """System prompt for scope=company (admin/owner cross-claim portfolio mode)."""
+    from datetime import datetime
+    company_name = company_profile.get("company_name") or "your company"
+    return f"""You are Richard, the DumbRoof platform brain in COMPANY MODE for {company_name}.
+
+You serve the company owner / admin / team-leader. You can read across ALL claims under their company, summarize portfolio performance, compare team members, surface overdue follow-ups, and handle company-level setup (logo, branding, integrations, team invites). You are the COO-in-the-glass for this roofer.
+
+Current date/time: {datetime.now().strftime('%Y-%m-%d %H:%M')}
+
+## COMPANY SNAPSHOT
+- **Company:** {company_name}
+- **Team size:** {summary.get('team_size', 'unknown')}
+- **Open claims:** {summary.get('open_claims', 'unknown')}
+- **Pending supplements:** {summary.get('pending_supplements', 'unknown')}
+- **YTD wins:** {summary.get('ytd_wins', 'unknown')}
+- **YTD supplements awarded:** ${summary.get('ytd_supplements_usd', 0):,.2f}
+- **Integrations connected:** {sum(1 for v in integrations.values() if v.get('connected'))}/{len(integrations)}
+
+## TOOLS YOU CAN CALL (company scope)
+
+Read-only:
+- **list_company_claims(filter)** — Pull all claims under the company, filterable by status/carrier/variance.
+- **get_company_portfolio_summary()** — Topline numbers: open, pending, won, average variance, top carriers.
+- **compare_team_performance()** — Per-rep metrics: claims processed, supplements won, average variance, response time.
+- **get_team_member_workload()** — Current load per rep (open claims, overdue follow-ups).
+
+Setup (existing tools, still available):
+- **list_integrations**, **get_integration_setup_guide**, **save_integration_key**, **invite_team_member**
+- **connect_crm**, **disconnect_integration**, **upload_company_logo**, **update_company_profile**
+
+## BEHAVIOR RULES
+
+1. **Lead with portfolio context.** When the user opens with a vague question, call `get_company_portfolio_summary` first so you can answer with real numbers, not generic SaaS-speak.
+
+2. **Be the COO, not the chatbot.** Answer with specific claims, specific reps, specific dollar figures. "Mike has 3 stalled claims at State Farm averaging $14K variance" beats "your team is doing well."
+
+3. **Surface action.** Every portfolio answer should end with one concrete next step ("Want me to draft follow-ups for the 3 overdue State Farm claims?").
+
+4. **Respect privacy.** You can see all company claims, but do NOT export PII or share individual homeowner details unless directly relevant to the question.
+
+5. **Setup is still your job.** If the user asks about integrations or invites, defer to the same setup tools.
+
+6. **Be concise.** The owner is busy. Numbers + next step. No paragraphs.
+"""
 
 
 def _build_admin_brain_prompt(company_profile: dict, integrations: dict) -> str:
@@ -2332,7 +2390,11 @@ Current date/time: {datetime.now().strftime('%Y-%m-%d %H:%M')}
 - **list_integrations** — Always call this FIRST on a new conversation so you have fresh status
 - **get_integration_setup_guide(service)** — Step-by-step setup for: gmail, microsoft_365, generic_smtp, companycam, acculynx, roofr, hover, gaf_quickmeasure, jobnimbus, servicetitan
 - **save_integration_key(service, api_key, …)** — Save an API key the user pastes. Approval-gated.
+- **connect_crm(service)** — Start an OAuth flow for hover/roofr/jobnimbus/servicetitan/salesforce/hubspot. Returns a click-through URL.
+- **disconnect_integration(service)** — Remove a saved key/token. Approval-gated.
 - **invite_team_member(email, role, name)** — Send a signup invite. Approval-gated.
+- **upload_company_logo(storage_path, filename)** — Set the company logo from an uploaded image. Approval-gated.
+- **update_company_profile(...)** — Update company name, address, contact, phone, license, brand color, website. Pass only fields being changed. Approval-gated (shows a diff first).
 
 ## BEHAVIOR RULES
 
@@ -2348,7 +2410,7 @@ Current date/time: {datetime.now().strftime('%Y-%m-%d %H:%M')}
 
 6. **Team invites:** Default role is 'user' unless they explicitly say admin. Don't make them repeat the email — if you heard it clearly, just call invite_team_member.
 
-7. **Company profile fields (logo, address, templates):** These are edited in Settings UI directly. Tell the user where to click — we don't have a tool for these yet.
+7. **Company profile fields (logo, address, license, brand color):** Use `upload_company_logo` for the logo (after the user attaches an image to chat) and `update_company_profile` for everything else. Always pass only the fields the user is actually changing — the preview shows a diff and the user approves.
 
 8. **Be concise.** The user is a roofing contractor, not an IT admin. No jargon walls. Short answers + the next concrete step.
 
@@ -2367,13 +2429,27 @@ When asked "what's left?", walk the checklist with current status and prioritize
 
 @app.post("/api/admin-brain/chat")
 async def admin_brain_chat(body: AdminChatMessage):
-    """Settings-page assistant. User-scoped (no claim context)."""
-    from claim_brain_tools import CLAIM_BRAIN_TOOLS, execute_tool, _handle_list_integrations
+    """Admin/onboarding assistant. scope='user' = settings/onboarding (default).
+    scope='company' = portfolio mode for owner/admin role only."""
+    from claim_brain_tools import CLAIM_BRAIN_TOOLS, execute_tool, _handle_list_integrations, _handle_get_company_portfolio_summary
 
     sb = get_supabase_client()
     user_id = (body.user_id or "").strip()
     if not user_id:
         raise HTTPException(status_code=400, detail="user_id required")
+
+    scope = (body.scope or "user").lower()
+    if scope not in ("user", "company"):
+        scope = "user"
+
+    # Role gate: scope=company requires owner or admin role
+    if scope == "company":
+        company_id, role = _user_company_role(sb, user_id)
+        if role not in ("owner", "admin"):
+            raise HTTPException(
+                status_code=403,
+                detail="Company-scope Richard requires owner or admin role. Use the user-scope assistant on /dashboard/settings instead.",
+            )
 
     # Load company profile + integration status up-front so the system prompt
     # is always informed about current state.
@@ -2386,12 +2462,16 @@ async def admin_brain_chat(body: AdminChatMessage):
     integrations_status = _handle_list_integrations(sb, user_id)
     integrations = (integrations_status.get("data") or {}).get("integrations") or {}
 
-    system_prompt = _build_admin_brain_prompt(company_profile, integrations)
+    if scope == "company":
+        summary = _handle_get_company_portfolio_summary(sb, user_id, company_profile.get("company_id"))
+        system_prompt = _build_admin_brain_company_prompt(company_profile, integrations, summary.get("data") or {})
+    else:
+        system_prompt = _build_admin_brain_prompt(company_profile, integrations)
 
     if body.locale == "es":
         system_prompt += "\n\n## LANGUAGE: SPANISH\nRespond in Spanish. Technical terms (API, OAuth, Microsoft 365) stay in English.\n"
 
-    conv_key = f"admin:{user_id}"
+    conv_key = f"admin:{scope}:{user_id}"
     if conv_key not in _admin_brain_conversations:
         _admin_brain_conversations[conv_key] = []
     _admin_brain_conversations[conv_key].append({"role": "user", "content": body.message})
@@ -2660,12 +2740,17 @@ async def smtp_disconnect(body: DisconnectRequest):
 
 @app.post("/api/admin-brain/reset")
 async def reset_admin_brain(body: dict):
-    """Reset the admin brain conversation for a user."""
+    """Reset the admin brain conversation for a user. Honors scope when provided."""
     user_id = (body.get("user_id") or "").strip()
     if not user_id:
         raise HTTPException(status_code=400, detail="user_id required")
+    scope = (body.get("scope") or "user").lower()
+    if scope not in ("user", "company"):
+        scope = "user"
+    # Clean both legacy key (admin:{uid}) and scoped key (admin:{scope}:{uid})
     _admin_brain_conversations.pop(f"admin:{user_id}", None)
-    return {"status": "reset", "user_id": user_id}
+    _admin_brain_conversations.pop(f"admin:{scope}:{user_id}", None)
+    return {"status": "reset", "user_id": user_id, "scope": scope}
 
 
 class AdminToolApproval(BaseModel):
@@ -2770,6 +2855,69 @@ async def approve_admin_action(body: AdminToolApproval, background_tasks: Backgr
 
             _audit_log(sb, None, user_id, tool_name, preview, {"action": "sent", "message": f"invited {target_email}"}, 0)
             return {"status": "sent", "message": f"Invited {target_email} as {preview.get('role')}."}
+
+        if tool_name == "upload_company_logo":
+            preview = tool_result.get("preview") or {}
+            storage_path = preview.get("storage_path")
+            if not storage_path:
+                return {"status": "error", "message": "Missing storage_path in preview."}
+            try:
+                public = sb.storage.from_("company-assets").get_public_url(storage_path)
+                public_url = public if isinstance(public, str) else (public.get("publicUrl") or public.get("public_url"))
+            except Exception:
+                public_url = None
+
+            update_payload = {
+                "logo_path": storage_path,
+                "logo_url": public_url,
+                "logo_uploaded_at": datetime.utcnow().isoformat() + "Z",
+            }
+            existing = sb.table("company_profiles").select("id").eq("user_id", user_id).limit(1).execute()
+            if existing.data:
+                sb.table("company_profiles").update(update_payload).eq("user_id", user_id).execute()
+            else:
+                update_payload["user_id"] = user_id
+                sb.table("company_profiles").insert(update_payload).execute()
+
+            _audit_log(sb, None, user_id, tool_name, {"storage_path": storage_path}, {"action": "sent", "message": "logo updated"}, 0)
+            return {"status": "sent", "message": "Company logo updated.", "data": {"logo_url": public_url}}
+
+        if tool_name == "update_company_profile":
+            preview = tool_result.get("preview") or {}
+            diff = preview.get("diff") or []
+            update_payload = {item["field"]: item["to"] for item in diff if item.get("field")}
+            if body.overrides:
+                for k, v in body.overrides.items():
+                    if v is not None and isinstance(v, str) and v.strip():
+                        update_payload[k] = v.strip()
+            if not update_payload:
+                return {"status": "discarded", "message": "Nothing to apply."}
+
+            existing = sb.table("company_profiles").select("id").eq("user_id", user_id).limit(1).execute()
+            if existing.data:
+                sb.table("company_profiles").update(update_payload).eq("user_id", user_id).execute()
+            else:
+                update_payload["user_id"] = user_id
+                sb.table("company_profiles").insert(update_payload).execute()
+
+            _audit_log(sb, None, user_id, tool_name, {"fields": list(update_payload.keys())}, {"action": "sent", "message": f"updated {len(update_payload)} field(s)"}, 0)
+            return {"status": "sent", "message": f"Updated {len(update_payload)} profile field(s).", "data": {"changed": list(update_payload.keys())}}
+
+        if tool_name == "disconnect_integration":
+            from claim_brain_tools import SERVICE_COLUMNS
+            preview = tool_result.get("preview") or {}
+            service = preview.get("service")
+            cols = SERVICE_COLUMNS.get(service) if service else None
+            if not cols:
+                return {"status": "error", "message": f"Unknown service: {service}"}
+
+            update_payload = {c: None for c in cols}
+            existing = sb.table("company_profiles").select("id").eq("user_id", user_id).limit(1).execute()
+            if existing.data:
+                sb.table("company_profiles").update(update_payload).eq("user_id", user_id).execute()
+
+            _audit_log(sb, None, user_id, tool_name, {"service": service}, {"action": "sent", "message": f"disconnected {service}"}, 0)
+            return {"status": "sent", "message": f"{service} disconnected.", "data": {"service": service}}
 
         return {"status": "error", "message": f"Unknown admin tool: {tool_name}"}
 
@@ -3333,6 +3481,46 @@ async def integration_disconnect(req: IntegrationDisconnectRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@app.post("/api/integrations/test")
+async def integration_test(req: IntegrationDisconnectRequest):
+    """Re-test a stored API key to verify it's still valid.
+
+    Use after a provider outage or payment lapse to confirm the
+    stored key hasn't been revoked. Returns {ok, message, valid}.
+    """
+    from integrations.acculynx import AccuLynxClient
+    from integrations.companycam import CompanyCamClient
+
+    sb = get_supabase_client()
+    col = f"{req.provider}_api_key"
+
+    # Fetch the stored key (with admin fallback)
+    result = sb.table("company_profiles").select(f"{col}, company_id").eq("user_id", req.user_id).limit(1).execute()
+    profile = result.data[0] if result.data else None
+    api_key = profile.get(col) if profile else None
+
+    # Fallback to company admin's key
+    if not api_key and profile and profile.get("company_id"):
+        admin_result = sb.table("company_profiles").select(col).eq("company_id", profile["company_id"]).eq("is_admin", True).execute()
+        for candidate in (admin_result.data or []):
+            if candidate.get(col):
+                api_key = candidate[col]
+                break
+
+    if not api_key:
+        return {"ok": False, "valid": False, "message": f"{req.provider} is not connected. Add your API key in Settings."}
+
+    if req.provider == "acculynx":
+        client = AccuLynxClient(api_key)
+    elif req.provider == "companycam":
+        client = CompanyCamClient(api_key)
+    else:
+        raise HTTPException(status_code=400, detail=f"Unknown provider: {req.provider}")
+
+    ok, msg = await client.test_connection()
+    return {"ok": ok, "valid": ok, "message": msg}
+
+
 @app.get("/api/integrations/status")
 async def integration_status(user_id: str):
     """Check which CRM integrations are connected for a user.
@@ -3514,31 +3702,56 @@ async def acculynx_job_detail(job_id: str, user_id: str):
 @app.get("/api/integrations/companycam/projects")
 async def companycam_projects(user_id: str, query: str = "", page: int = 1):
     """Search CompanyCam projects by address."""
-    client = await _get_user_integration_client(user_id, "companycam")
-    projects = await client.search_projects(query=query, page=page)
-    return {"projects": projects}
+    from integrations.companycam import CompanyCamAuthError, CompanyCamUnavailableError
+    try:
+        client = await _get_user_integration_client(user_id, "companycam")
+        projects = await client.search_projects(query=query, page=page)
+        return {"projects": projects}
+    except CompanyCamAuthError as e:
+        return JSONResponse(status_code=401, content={
+            "error": "companycam_auth_failed",
+            "message": str(e),
+            "action": "reconnect",
+        })
+    except CompanyCamUnavailableError as e:
+        return JSONResponse(status_code=503, content={
+            "error": "companycam_unavailable",
+            "message": str(e),
+        })
 
 
 @app.get("/api/integrations/companycam/projects/{project_id}/photos")
 async def companycam_photos(project_id: str, user_id: str):
     """Get all photos for a CompanyCam project."""
-    from integrations.companycam import CompanyCamClient
-    client = await _get_user_integration_client(user_id, "companycam")
-    photos = await client.get_all_project_photos(project_id)
+    from integrations.companycam import CompanyCamClient, CompanyCamAuthError, CompanyCamUnavailableError
+    try:
+        client = await _get_user_integration_client(user_id, "companycam")
+        photos = await client.get_all_project_photos(project_id)
 
-    # Enrich with download URL + thumbnail URL for each photo
-    enriched = []
-    for photo in photos:
-        url = CompanyCamClient.get_photo_url(photo, size="web")
-        thumb = CompanyCamClient.get_photo_url(photo, size="thumb") or CompanyCamClient.get_photo_url(photo, size="small") or url
-        enriched.append({
-            "id": photo.get("id"),
-            "url": url,
-            "created_at": photo.get("created_at"),
-            "coordinates": photo.get("coordinates"),
-            "photo_url": thumb,
+        # Enrich with download URL + thumbnail URL for each photo
+        enriched = []
+        for photo in photos:
+            url = CompanyCamClient.get_photo_url(photo, size="web")
+            thumb = CompanyCamClient.get_photo_url(photo, size="thumb") or CompanyCamClient.get_photo_url(photo, size="small") or url
+            enriched.append({
+                "id": photo.get("id"),
+                "url": url,
+                "created_at": photo.get("created_at"),
+                "coordinates": photo.get("coordinates"),
+                "photo_url": thumb,
+            })
+        return {"photos": enriched}
+    except CompanyCamAuthError as e:
+        return JSONResponse(status_code=401, content={
+            "error": "companycam_auth_failed",
+            "message": str(e),
+            "action": "reconnect",
         })
-    return {"photos": enriched}
+    except CompanyCamUnavailableError as e:
+        return JSONResponse(status_code=503, content={
+            "error": "companycam_unavailable",
+            "message": str(e),
+        })
 
 
 @app.post("/api/integrations/companycam/projects/{project_id}/import")
@@ -3557,10 +3770,22 @@ async def companycam_import(
     target_path: override full storage base path (e.g., "user_id/claim-slug/")
     target_folder: subfolder within target_path (e.g., "install-photos", "completion-photos")
     """
-    from integrations.companycam import CompanyCamClient
+    from integrations.companycam import CompanyCamClient, CompanyCamAuthError, CompanyCamUnavailableError
 
-    client = await _get_user_integration_client(user_id, "companycam")
-    photos = await client.get_all_project_photos(project_id)
+    try:
+        client = await _get_user_integration_client(user_id, "companycam")
+        photos = await client.get_all_project_photos(project_id)
+    except CompanyCamAuthError as e:
+        return JSONResponse(status_code=401, content={
+            "error": "companycam_auth_failed",
+            "message": str(e),
+            "action": "reconnect",
+        })
+    except CompanyCamUnavailableError as e:
+        return JSONResponse(status_code=503, content={
+            "error": "companycam_unavailable",
+            "message": str(e),
+        })
 
     # Filter to selected photos if indices provided
     if selected_indices is not None:

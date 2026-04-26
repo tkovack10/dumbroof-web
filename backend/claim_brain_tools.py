@@ -405,6 +405,135 @@ CLAIM_BRAIN_TOOLS = [
             "required": ["email"],
         },
     },
+    # ─── Branding / profile (approval-gated writes) ───
+    {
+        "name": "upload_company_logo",
+        "description": (
+            "Set the company logo. The user uploads via the chat input — Richard receives a Supabase "
+            "storage path. This tool sets that path as the active company logo. REQUIRES USER APPROVAL."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "storage_path": {"type": "string", "description": "Supabase storage path of the uploaded logo image."},
+                "filename": {"type": "string", "description": "Display filename for the preview card."},
+            },
+            "required": ["storage_path"],
+        },
+    },
+    {
+        "name": "update_company_profile",
+        "description": (
+            "Update one or more fields on the company profile: company name, address, license number, "
+            "brand color, primary email, phone. Pass only the fields the user is changing. "
+            "REQUIRES USER APPROVAL — preview shows a diff before commit."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "company_name": {"type": "string"},
+                "address": {"type": "string"},
+                "city_state_zip": {"type": "string"},
+                "contact_name": {"type": "string"},
+                "email": {"type": "string"},
+                "phone": {"type": "string"},
+                "license_number": {"type": "string"},
+                "brand_color": {"type": "string", "description": "Hex code, e.g. #6366F1"},
+                "website": {"type": "string"},
+            },
+            "required": [],
+        },
+    },
+    {
+        "name": "connect_crm",
+        "description": (
+            "Start the OAuth flow to connect a CRM or measurement provider. Returns an authorization "
+            "URL the user clicks to grant access. Use when the user says 'connect Hover' or 'connect "
+            "JobNimbus' and the service supports OAuth (Hover, Roofr, JobNimbus, ServiceTitan, "
+            "Salesforce, HubSpot). For API-key services use save_integration_key instead."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "service": {
+                    "type": "string",
+                    "enum": ["hover", "roofr", "jobnimbus", "servicetitan", "salesforce", "hubspot", "acculynx_oauth"],
+                },
+            },
+            "required": ["service"],
+        },
+    },
+    {
+        "name": "disconnect_integration",
+        "description": (
+            "Remove a previously-saved integration credential or OAuth token. Use when the user says "
+            "'disconnect X' or 'remove my Y key'. REQUIRES USER APPROVAL."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "service": {
+                    "type": "string",
+                    "enum": ["companycam", "acculynx", "roofr", "hover", "gaf_quickmeasure", "jobnimbus", "servicetitan", "gmail", "microsoft_365", "generic_smtp", "salesforce", "hubspot"],
+                },
+            },
+            "required": ["service"],
+        },
+    },
+    # ─── Company-scope (admin/owner only) ─────────
+    {
+        "name": "list_company_claims",
+        "description": (
+            "List claims across ALL users in the company. Owner/admin only. "
+            "Use when the user asks for a portfolio view or company-wide claim list. "
+            "Filterable by status, carrier, and minimum variance."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "status": {
+                    "type": "string",
+                    "enum": ["any", "open", "ready", "processing", "won", "needs_attention"],
+                    "default": "any",
+                },
+                "carrier": {"type": "string", "description": "Filter by carrier name (case-insensitive substring match)."},
+                "min_variance_usd": {"type": "number", "description": "Only return claims with variance ≥ this dollar amount."},
+                "limit": {"type": "integer", "default": 25, "minimum": 1, "maximum": 100},
+            },
+            "required": [],
+        },
+    },
+    {
+        "name": "get_company_portfolio_summary",
+        "description": (
+            "Owner/admin only. Return a portfolio-level snapshot: open claims, pending supplements, "
+            "YTD wins, average variance, top carriers, integration completeness. Always call this "
+            "first when the user opens with a vague company-wide question."
+        ),
+        "input_schema": {"type": "object", "properties": {}, "required": []},
+    },
+    {
+        "name": "compare_team_performance",
+        "description": (
+            "Owner/admin only. Compare reps within the company on claims processed, supplements won, "
+            "average variance, and average response time. Returns ranked list with concrete numbers."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "window_days": {"type": "integer", "default": 90, "minimum": 7, "maximum": 365},
+            },
+            "required": [],
+        },
+    },
+    {
+        "name": "get_team_member_workload",
+        "description": (
+            "Owner/admin only. Return current workload per rep: open claims, overdue follow-ups, "
+            "pending supplements. Use when the user asks 'who is overloaded' or 'who needs help'."
+        ),
+        "input_schema": {"type": "object", "properties": {}, "required": []},
+    },
     {
         "name": "find_photo",
         "description": (
@@ -832,9 +961,13 @@ async def execute_tool(
     result: dict = {"action": "error", "message": "Unknown error"}
     err: Optional[str] = None
     try:
-        # Load claim + profile (needed by every handler)
-        claim_result = sb.table("claims").select("*").eq("id", claim_id).single().execute()
-        claim_data = claim_result.data or {}
+        # Load claim + profile (needed by claim-scoped handlers; admin/company-scope
+        # tools pass a sentinel claim_id like "admin" — load is best-effort).
+        try:
+            claim_result = sb.table("claims").select("*").eq("id", claim_id).limit(1).execute()
+            claim_data = (claim_result.data or [{}])[0] if claim_result.data else {}
+        except Exception:
+            claim_data = {}
 
         try:
             profile_result = sb.table("company_profiles").select("*").eq("user_id", user_id).limit(1).execute()
@@ -886,6 +1019,24 @@ async def execute_tool(
             result = _handle_preview_save_integration_key(sb, user_id, tool_input)
         elif tool_name == "invite_team_member":
             result = _handle_preview_invite_team_member(sb, user_id, tool_input)
+        # ─── Branding / profile ─────────────────
+        elif tool_name == "upload_company_logo":
+            result = _handle_preview_upload_company_logo(sb, user_id, tool_input)
+        elif tool_name == "update_company_profile":
+            result = _handle_preview_update_company_profile(sb, user_id, tool_input)
+        elif tool_name == "connect_crm":
+            result = _handle_connect_crm(sb, user_id, tool_input)
+        elif tool_name == "disconnect_integration":
+            result = _handle_preview_disconnect_integration(sb, user_id, tool_input)
+        # ─── Company-scope (owner/admin only) ─────
+        elif tool_name == "list_company_claims":
+            result = _handle_list_company_claims(sb, user_id, tool_input)
+        elif tool_name == "get_company_portfolio_summary":
+            result = _handle_get_company_portfolio_summary(sb, user_id, company_profile.get("company_id"))
+        elif tool_name == "compare_team_performance":
+            result = _handle_compare_team_performance(sb, user_id, tool_input)
+        elif tool_name == "get_team_member_workload":
+            result = _handle_get_team_member_workload(sb, user_id)
         elif tool_name == "find_photo":
             result = _handle_find_photo(sb, claim_id, tool_input)
         elif tool_name == "edit_photo_annotation":
@@ -2591,6 +2742,520 @@ def _handle_preview_invite_team_member(sb: Client, user_id: str, tool_input: dic
             "company": inviter_company,
         },
         "message": f"Ready to invite {email} as {role}" + (f" to {inviter_company}" if inviter_company else "") + ".",
+    }
+
+
+# ═══════════════════════════════════════════
+# BRANDING / PROFILE / OAUTH
+#
+# Tools for setting company logo, updating profile fields, and starting OAuth
+# flows for CRM/measurement providers. Mutating tools return preview cards
+# that the user approves before commit.
+# ═══════════════════════════════════════════
+
+
+# Public OAuth-redirect base URLs. Backend webhook URL pattern:
+#   GET /api/oauth/{service}/callback?state=<user_id>&code=<...>
+# (callback handlers are out of scope here — see backend/oauth_callbacks.py
+# in a follow-up; for now the connect_crm tool returns the URL and the user
+# completes the flow in their browser.)
+OAUTH_AUTHORIZE_URLS: dict[str, str] = {
+    "hover": "https://app.hover.to/oauth/authorize",
+    "roofr": "https://app.roofr.com/oauth/authorize",
+    "jobnimbus": "https://app.jobnimbus.com/oauth/authorize",
+    "servicetitan": "https://auth.servicetitan.io/connect/authorize",
+    "salesforce": "https://login.salesforce.com/services/oauth2/authorize",
+    "hubspot": "https://app.hubspot.com/oauth/authorize",
+    "acculynx_oauth": "https://app.acculynx.com/oauth/authorize",
+}
+
+# Column names per service for stored credentials. Used by disconnect_integration.
+SERVICE_COLUMNS: dict[str, list[str]] = {
+    "companycam": ["companycam_api_key", "companycam_connected_at"],
+    "acculynx": ["acculynx_api_key", "acculynx_connected_at"],
+    "acculynx_oauth": ["acculynx_oauth_token", "acculynx_oauth_refresh_token", "acculynx_connected_at"],
+    "roofr": ["roofr_api_key", "roofr_oauth_token", "roofr_oauth_refresh_token", "roofr_connected_at"],
+    "hover": ["hover_api_key", "hover_oauth_token", "hover_oauth_refresh_token", "hover_connected_at"],
+    "gaf_quickmeasure": ["gaf_api_key", "gaf_connected_at"],
+    "jobnimbus": ["jobnimbus_api_key", "jobnimbus_oauth_token", "jobnimbus_oauth_refresh_token", "jobnimbus_connected_at"],
+    "servicetitan": ["servicetitan_api_key", "servicetitan_tenant_id", "servicetitan_client_id", "servicetitan_client_secret", "servicetitan_oauth_token", "servicetitan_connected_at"],
+    "gmail": ["gmail_oauth_token", "gmail_oauth_refresh_token", "gmail_connected_at"],
+    "microsoft_365": ["microsoft_oauth_token", "microsoft_oauth_refresh_token", "microsoft_connected_at"],
+    "generic_smtp": ["smtp_host", "smtp_port", "smtp_username", "smtp_password_encrypted", "smtp_from_email", "smtp_connected_at"],
+    "salesforce": ["salesforce_oauth_token", "salesforce_oauth_refresh_token", "salesforce_connected_at"],
+    "hubspot": ["hubspot_oauth_token", "hubspot_oauth_refresh_token", "hubspot_connected_at"],
+}
+
+
+def _handle_preview_upload_company_logo(sb: Client, user_id: str, tool_input: dict) -> dict:
+    storage_path = (tool_input.get("storage_path") or "").strip()
+    filename = (tool_input.get("filename") or "").strip()
+    if not storage_path:
+        return {"action": "error", "message": "storage_path is required (the uploaded image's Supabase path)."}
+
+    # Try to build a preview signed URL for the approval card
+    preview_url: Optional[str] = None
+    try:
+        signed = sb.storage.from_("company-assets").create_signed_url(storage_path, 600)
+        preview_url = signed.get("signedURL") or signed.get("signed_url")
+    except Exception:
+        pass
+
+    return {
+        "action": "preview",
+        "type": "upload_company_logo",
+        "tool_name": "upload_company_logo",
+        "preview": {
+            "action_label": "Set Company Logo",
+            "filename": filename or storage_path.split("/")[-1],
+            "storage_path": storage_path,
+            "preview_url": preview_url,
+        },
+        "message": f"Ready to set this image as your company logo: {filename or storage_path}.",
+    }
+
+
+def _handle_preview_update_company_profile(sb: Client, user_id: str, tool_input: dict) -> dict:
+    """Build a diff preview between current profile and proposed changes."""
+    fields = ["company_name", "address", "city_state_zip", "contact_name", "email", "phone", "license_number", "brand_color", "website"]
+    proposed = {k: tool_input[k].strip() for k in fields if isinstance(tool_input.get(k), str) and tool_input[k].strip()}
+
+    if not proposed:
+        return {"action": "error", "message": "No profile fields supplied."}
+
+    if "brand_color" in proposed:
+        bc = proposed["brand_color"]
+        if not (bc.startswith("#") and len(bc) in (4, 7)):
+            return {"action": "error", "message": "brand_color must be a hex code, e.g. #6366F1."}
+
+    try:
+        res = sb.table("company_profiles").select(",".join(fields)).eq("user_id", user_id).limit(1).execute()
+        current = (res.data or [{}])[0] if res.data else {}
+    except Exception:
+        current = {}
+
+    diff = []
+    for k, new_val in proposed.items():
+        old_val = current.get(k) or ""
+        if (old_val or "") == new_val:
+            continue
+        diff.append({"field": k, "from": old_val, "to": new_val})
+
+    if not diff:
+        return {"action": "complete", "message": "No changes — submitted values match the current profile.", "data": {"changed": []}}
+
+    return {
+        "action": "preview",
+        "type": "update_company_profile",
+        "tool_name": "update_company_profile",
+        "preview": {
+            "action_label": "Update Company Profile",
+            "diff": diff,
+        },
+        "message": f"Ready to update {len(diff)} profile field{'s' if len(diff) != 1 else ''}.",
+    }
+
+
+def _handle_connect_crm(sb: Client, user_id: str, tool_input: dict) -> dict:
+    """Return an OAuth authorize URL for the chosen service. Non-mutating: no approval gate."""
+    service = (tool_input.get("service") or "").lower().strip()
+    base = OAUTH_AUTHORIZE_URLS.get(service)
+    if not base:
+        return {"action": "error", "message": f"Unknown OAuth service: {service}. Use save_integration_key for API-key services instead."}
+
+    public_origin = os.environ.get("PUBLIC_BACKEND_ORIGIN") or os.environ.get("BACKEND_URL") or "https://api.dumbroof.ai"
+    redirect_uri = f"{public_origin}/api/oauth/{service}/callback"
+    state = base64.urlsafe_b64encode(f"{user_id}:{int(time.time())}".encode()).decode().rstrip("=")
+    client_id_env = f"{service.upper()}_OAUTH_CLIENT_ID"
+    client_id = os.environ.get(client_id_env) or "<not_configured>"
+
+    from urllib.parse import urlencode
+    params = {
+        "client_id": client_id,
+        "redirect_uri": redirect_uri,
+        "response_type": "code",
+        "state": state,
+    }
+    authorize_url = f"{base}?{urlencode(params)}"
+
+    configured = client_id != "<not_configured>"
+
+    return {
+        "action": "complete",
+        "type": "oauth_redirect",
+        "tool_name": "connect_crm",
+        "data": {
+            "service": service,
+            "authorize_url": authorize_url if configured else None,
+            "redirect_uri": redirect_uri,
+            "configured": configured,
+            "missing_env_var": None if configured else client_id_env,
+        },
+        "message": (
+            f"Click to authorize {service.replace('_', ' ').title()}." if configured
+            else f"OAuth not yet configured for {service}. Set {client_id_env} on the backend, then retry."
+        ),
+    }
+
+
+def _handle_preview_disconnect_integration(sb: Client, user_id: str, tool_input: dict) -> dict:
+    service = (tool_input.get("service") or "").lower().strip()
+    cols = SERVICE_COLUMNS.get(service)
+    if not cols:
+        return {"action": "error", "message": f"Unknown service: {service}."}
+
+    try:
+        res = sb.table("company_profiles").select(",".join(cols)).eq("user_id", user_id).limit(1).execute()
+        current = (res.data or [{}])[0] if res.data else {}
+    except Exception:
+        current = {}
+
+    has_anything = any(current.get(c) for c in cols)
+    if not has_anything:
+        return {"action": "complete", "message": f"{service} is already disconnected.", "data": {"service": service}}
+
+    return {
+        "action": "preview",
+        "type": "disconnect_integration",
+        "tool_name": "disconnect_integration",
+        "preview": {
+            "action_label": "Disconnect Integration",
+            "service": service,
+            "columns_to_clear": cols,
+        },
+        "message": f"Ready to disconnect {service}. This clears stored credentials but does not affect the third-party account.",
+    }
+
+
+# ═══════════════════════════════════════════
+# COMPANY-SCOPE TOOLS (owner/admin only)
+#
+# Surface portfolio insights across all claims under the caller's company.
+# Role gate is enforced upstream in main.py admin_brain_chat handler before
+# dispatch; these handlers trust that the caller is owner/admin.
+# ═══════════════════════════════════════════
+
+
+def _company_user_ids(sb: Client, user_id: str) -> tuple[Optional[str], list[str]]:
+    """Resolve company_id for the caller and return (company_id, list of user_ids in company).
+    Returns (None, [user_id]) if no company link found — caller falls back to single-user view."""
+    try:
+        me = sb.table("company_profiles").select("company_id").eq("user_id", user_id).limit(1).execute()
+        rows = me.data or []
+        if not rows or not rows[0].get("company_id"):
+            return None, [user_id]
+        company_id = rows[0]["company_id"]
+        team = sb.table("company_profiles").select("user_id").eq("company_id", company_id).execute()
+        ids = [r["user_id"] for r in (team.data or []) if r.get("user_id")]
+        if user_id not in ids:
+            ids.append(user_id)
+        return company_id, ids
+    except Exception:
+        return None, [user_id]
+
+
+def _handle_list_company_claims(sb: Client, user_id: str, tool_input: dict) -> dict:
+    """List claims across the caller's company. Filterable by status/carrier/variance."""
+    status_filter = (tool_input.get("status") or "any").lower()
+    carrier_filter = (tool_input.get("carrier") or "").strip().lower()
+    min_variance = float(tool_input.get("min_variance_usd") or 0)
+    limit = int(tool_input.get("limit") or 25)
+    limit = max(1, min(limit, 100))
+
+    company_id, user_ids = _company_user_ids(sb, user_id)
+
+    try:
+        q = sb.table("claims").select(
+            "id, address, carrier, status, original_carrier_rcv, contractor_rcv, created_at, updated_at, user_id"
+        ).in_("user_id", user_ids).order("updated_at", desc=True).limit(limit * 3)
+        res = q.execute()
+        claims = res.data or []
+    except Exception as e:
+        return {"action": "error", "message": f"Failed to load company claims: {e}"}
+
+    def _matches(c: dict) -> bool:
+        if status_filter != "any" and (c.get("status") or "").lower() != status_filter:
+            return False
+        if carrier_filter and carrier_filter not in (c.get("carrier") or "").lower():
+            return False
+        carrier_rcv = float(c.get("original_carrier_rcv") or 0)
+        contractor_rcv = float(c.get("contractor_rcv") or 0)
+        variance = contractor_rcv - carrier_rcv
+        if variance < min_variance:
+            return False
+        return True
+
+    filtered = [c for c in claims if _matches(c)][:limit]
+
+    rows = []
+    for c in filtered:
+        carrier_rcv = float(c.get("original_carrier_rcv") or 0)
+        contractor_rcv = float(c.get("contractor_rcv") or 0)
+        variance = contractor_rcv - carrier_rcv
+        rows.append({
+            "claim_id": c.get("id"),
+            "address": c.get("address"),
+            "carrier": c.get("carrier"),
+            "status": c.get("status"),
+            "carrier_rcv": round(carrier_rcv, 2),
+            "contractor_rcv": round(contractor_rcv, 2),
+            "variance": round(variance, 2),
+            "rep_user_id": c.get("user_id"),
+            "updated_at": c.get("updated_at"),
+        })
+
+    return {
+        "action": "complete",
+        "type": "company_claims_list",
+        "tool_name": "list_company_claims",
+        "data": {
+            "company_id": company_id,
+            "team_size": len(user_ids),
+            "total_returned": len(rows),
+            "filters": {
+                "status": status_filter,
+                "carrier": carrier_filter or None,
+                "min_variance_usd": min_variance,
+            },
+            "claims": rows,
+        },
+        "message": f"Found {len(rows)} claim{'s' if len(rows) != 1 else ''} matching the filter across {len(user_ids)} team member{'s' if len(user_ids) != 1 else ''}.",
+    }
+
+
+def _handle_get_company_portfolio_summary(sb: Client, user_id: str, company_id: Optional[str] = None) -> dict:
+    """Topline portfolio stats for the caller's company."""
+    _company_id, user_ids = _company_user_ids(sb, user_id)
+    company_id = company_id or _company_id
+
+    try:
+        res = sb.table("claims").select(
+            "id, status, carrier, original_carrier_rcv, contractor_rcv, created_at, claim_outcome, settlement_amount"
+        ).in_("user_id", user_ids).execute()
+        claims = res.data or []
+    except Exception as e:
+        return {"action": "error", "message": f"Failed to load portfolio: {e}"}
+
+    from datetime import datetime, timezone
+    now = datetime.now(timezone.utc)
+    ytd_start = datetime(now.year, 1, 1, tzinfo=timezone.utc)
+
+    open_claims = 0
+    pending_supplements = 0
+    ytd_wins = 0
+    ytd_supplements_usd = 0.0
+    total_variance = 0.0
+    variance_count = 0
+    carrier_counts: dict[str, int] = {}
+
+    for c in claims:
+        status = (c.get("status") or "").lower()
+        carrier = c.get("carrier") or "Unknown"
+        carrier_counts[carrier] = carrier_counts.get(carrier, 0) + 1
+
+        if status not in ("won", "closed", "denied"):
+            open_claims += 1
+
+        carrier_rcv = float(c.get("original_carrier_rcv") or 0)
+        contractor_rcv = float(c.get("contractor_rcv") or 0)
+        variance = contractor_rcv - carrier_rcv
+
+        if variance > 0 and status not in ("won", "closed", "denied"):
+            pending_supplements += 1
+
+        if variance != 0:
+            total_variance += variance
+            variance_count += 1
+
+        if c.get("claim_outcome") == "won":
+            try:
+                created = c.get("created_at") or ""
+                created_dt = datetime.fromisoformat(created.replace("Z", "+00:00")) if created else None
+                if created_dt and created_dt >= ytd_start:
+                    ytd_wins += 1
+                    ytd_supplements_usd += float(c.get("settlement_amount") or 0)
+            except Exception:
+                pass
+
+    avg_variance = round(total_variance / variance_count, 2) if variance_count else 0.0
+    top_carriers = sorted(carrier_counts.items(), key=lambda kv: kv[1], reverse=True)[:5]
+
+    return {
+        "action": "complete",
+        "type": "company_portfolio_summary",
+        "tool_name": "get_company_portfolio_summary",
+        "data": {
+            "company_id": company_id,
+            "team_size": len(user_ids),
+            "total_claims": len(claims),
+            "open_claims": open_claims,
+            "pending_supplements": pending_supplements,
+            "ytd_wins": ytd_wins,
+            "ytd_supplements_usd": round(ytd_supplements_usd, 2),
+            "average_variance_usd": avg_variance,
+            "top_carriers": [{"carrier": c, "claim_count": n} for c, n in top_carriers],
+        },
+        "message": f"Portfolio: {open_claims} open, {pending_supplements} pending supplements, {ytd_wins} wins YTD totaling ${ytd_supplements_usd:,.2f}.",
+    }
+
+
+def _handle_compare_team_performance(sb: Client, user_id: str, tool_input: dict) -> dict:
+    """Per-rep performance: claims processed, supplements won, average variance, response time proxy."""
+    window_days = int(tool_input.get("window_days") or 90)
+    window_days = max(7, min(window_days, 365))
+
+    company_id, user_ids = _company_user_ids(sb, user_id)
+
+    from datetime import datetime, timedelta, timezone
+    cutoff = datetime.now(timezone.utc) - timedelta(days=window_days)
+    cutoff_iso = cutoff.isoformat()
+
+    try:
+        team_res = sb.table("company_profiles").select("user_id, contact_name, email, role").in_("user_id", user_ids).execute()
+        team = {r["user_id"]: r for r in (team_res.data or []) if r.get("user_id")}
+
+        claims_res = sb.table("claims").select(
+            "id, user_id, status, original_carrier_rcv, contractor_rcv, claim_outcome, created_at, updated_at"
+        ).in_("user_id", user_ids).gte("created_at", cutoff_iso).execute()
+        claims = claims_res.data or []
+    except Exception as e:
+        return {"action": "error", "message": f"Failed to compare team: {e}"}
+
+    rep_stats: dict[str, dict] = {}
+    for c in claims:
+        uid = c.get("user_id")
+        if not uid:
+            continue
+        s = rep_stats.setdefault(uid, {
+            "claims_processed": 0,
+            "wins": 0,
+            "total_variance_usd": 0.0,
+            "variance_count": 0,
+            "total_cycle_hours": 0.0,
+            "cycle_count": 0,
+        })
+        s["claims_processed"] += 1
+        if c.get("claim_outcome") == "won":
+            s["wins"] += 1
+        carrier_rcv = float(c.get("original_carrier_rcv") or 0)
+        contractor_rcv = float(c.get("contractor_rcv") or 0)
+        variance = contractor_rcv - carrier_rcv
+        if variance != 0:
+            s["total_variance_usd"] += variance
+            s["variance_count"] += 1
+        try:
+            created = c.get("created_at") or ""
+            updated = c.get("updated_at") or ""
+            if created and updated:
+                cd = datetime.fromisoformat(created.replace("Z", "+00:00"))
+                ud = datetime.fromisoformat(updated.replace("Z", "+00:00"))
+                hours = (ud - cd).total_seconds() / 3600
+                if hours > 0:
+                    s["total_cycle_hours"] += hours
+                    s["cycle_count"] += 1
+        except Exception:
+            pass
+
+    rows = []
+    for uid, s in rep_stats.items():
+        member = team.get(uid, {})
+        rows.append({
+            "user_id": uid,
+            "name": member.get("contact_name") or member.get("email") or uid[:8],
+            "email": member.get("email"),
+            "role": member.get("role"),
+            "claims_processed": s["claims_processed"],
+            "wins": s["wins"],
+            "win_rate_pct": round((s["wins"] / s["claims_processed"]) * 100, 1) if s["claims_processed"] else 0.0,
+            "average_variance_usd": round(s["total_variance_usd"] / s["variance_count"], 2) if s["variance_count"] else 0.0,
+            "average_cycle_hours": round(s["total_cycle_hours"] / s["cycle_count"], 1) if s["cycle_count"] else 0.0,
+        })
+
+    rows.sort(key=lambda r: (r["wins"], r["average_variance_usd"]), reverse=True)
+
+    return {
+        "action": "complete",
+        "type": "team_performance",
+        "tool_name": "compare_team_performance",
+        "data": {
+            "company_id": company_id,
+            "window_days": window_days,
+            "team_size": len(user_ids),
+            "members_with_activity": len(rows),
+            "ranking": rows,
+        },
+        "message": f"Compared {len(rows)} rep{'s' if len(rows) != 1 else ''} over the last {window_days} days.",
+    }
+
+
+def _handle_get_team_member_workload(sb: Client, user_id: str) -> dict:
+    """Current per-rep load: open claims, pending supplements, overdue follow-ups."""
+    company_id, user_ids = _company_user_ids(sb, user_id)
+
+    try:
+        team_res = sb.table("company_profiles").select("user_id, contact_name, email, role").in_("user_id", user_ids).execute()
+        team = {r["user_id"]: r for r in (team_res.data or []) if r.get("user_id")}
+
+        claims_res = sb.table("claims").select(
+            "id, user_id, status, original_carrier_rcv, contractor_rcv, updated_at"
+        ).in_("user_id", user_ids).execute()
+        claims = claims_res.data or []
+    except Exception as e:
+        return {"action": "error", "message": f"Failed to load workload: {e}"}
+
+    from datetime import datetime, timedelta, timezone
+    now = datetime.now(timezone.utc)
+    overdue_cutoff = now - timedelta(days=7)
+
+    workload: dict[str, dict] = {}
+    for c in claims:
+        uid = c.get("user_id")
+        if not uid:
+            continue
+        s = workload.setdefault(uid, {
+            "open_claims": 0,
+            "pending_supplements": 0,
+            "overdue_follow_ups": 0,
+        })
+        status = (c.get("status") or "").lower()
+        if status not in ("won", "closed", "denied"):
+            s["open_claims"] += 1
+            carrier_rcv = float(c.get("original_carrier_rcv") or 0)
+            contractor_rcv = float(c.get("contractor_rcv") or 0)
+            if (contractor_rcv - carrier_rcv) > 0:
+                s["pending_supplements"] += 1
+            try:
+                updated = c.get("updated_at") or ""
+                ud = datetime.fromisoformat(updated.replace("Z", "+00:00")) if updated else None
+                if ud and ud < overdue_cutoff:
+                    s["overdue_follow_ups"] += 1
+            except Exception:
+                pass
+
+    rows = []
+    for uid in user_ids:
+        s = workload.get(uid, {"open_claims": 0, "pending_supplements": 0, "overdue_follow_ups": 0})
+        member = team.get(uid, {})
+        rows.append({
+            "user_id": uid,
+            "name": member.get("contact_name") or member.get("email") or uid[:8],
+            "email": member.get("email"),
+            "role": member.get("role"),
+            **s,
+        })
+
+    rows.sort(key=lambda r: (r["overdue_follow_ups"], r["open_claims"]), reverse=True)
+
+    return {
+        "action": "complete",
+        "type": "team_workload",
+        "tool_name": "get_team_member_workload",
+        "data": {
+            "company_id": company_id,
+            "team_size": len(user_ids),
+            "members": rows,
+        },
+        "message": f"Workload snapshot for {len(user_ids)} team member{'s' if len(user_ids) != 1 else ''}.",
     }
 
 

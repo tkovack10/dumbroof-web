@@ -13,6 +13,7 @@ import { Confetti } from "@/components/confetti";
 import { useCountUp } from "@/hooks/use-count-up";
 import { InviteTeammateModal } from "@/components/invite-teammate-modal";
 import { ReferCompanyModal } from "@/components/refer-company-modal";
+import { RichardLauncher } from "@/components/richard-launcher";
 
 type StatusFilter = "all" | "processing" | "ready" | "attention";
 type ViewMode = "table" | "map";
@@ -1171,6 +1172,7 @@ export function DashboardContent({ user }: { user: User }) {
           </>
         )}
       </div>
+      <RichardLauncher userId={user.id} scope="user" />
     </main>
   );
 }

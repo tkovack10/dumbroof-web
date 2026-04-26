@@ -16,7 +16,7 @@ import { CommunicationLog } from "@/components/communication-log";
 
 interface Props {
   claim: Claim;
-  userInfo?: { company_name: string | null; contact_email: string | null };
+  userInfo?: { company_name: string | null; email: string | null };
 }
 
 export function AdminClaimDetail({ claim: initialClaim, userInfo }: Props) {
@@ -233,9 +233,9 @@ export function AdminClaimDetail({ claim: initialClaim, userInfo }: Props) {
               </p>
               {userInfo && (
                 <p className="text-xs text-[var(--gray-dim)] mt-1">
-                  User: {userInfo.company_name || userInfo.contact_email || claim.user_id.slice(0, 8)}
-                  {userInfo.contact_email && userInfo.company_name && (
-                    <span> ({userInfo.contact_email})</span>
+                  User: {userInfo.company_name || userInfo.email || claim.user_id.slice(0, 8)}
+                  {userInfo.email && userInfo.company_name && (
+                    <span> ({userInfo.email})</span>
                   )}
                 </p>
               )}

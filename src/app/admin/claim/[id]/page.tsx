@@ -36,7 +36,7 @@ export default async function AdminClaimPage({
   // Fetch user info for display
   const { data: profile } = await supabase
     .from("company_profiles")
-    .select("company_name, contact_email")
+    .select("company_name, email")
     .eq("user_id", claim.user_id)
     .single();
 

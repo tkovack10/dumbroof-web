@@ -157,6 +157,8 @@ export default function AdminSettingsPage() {
   const [gmailDisconnecting, setGmailDisconnecting] = useState(false);
 
   const [crmError, setCrmError] = useState("");
+  const [verifyingProvider, setVerifyingProvider] = useState<string | null>(null);
+  const [verifyResult, setVerifyResult] = useState<{ provider: string; ok: boolean; message: string } | null>(null);
 
   /* ---------- rep visibility ---------- */
   const [repVisibility, setRepVisibility] = useState<RepVisibility>("own_only");
@@ -506,6 +508,28 @@ export default function AdminSettingsPage() {
     }
   };
 
+  const verifyCRM = async (provider: "acculynx" | "companycam") => {
+    setVerifyingProvider(provider);
+    setVerifyResult(null);
+    setCrmError("");
+    try {
+      const res = await fetch(`${BACKEND_URL}/api/integrations/test`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ provider, user_id: userId }),
+      });
+      const data = await res.json();
+      setVerifyResult({ provider, ok: data.ok, message: data.message });
+      if (!data.ok) {
+        setCrmError(`${provider === "companycam" ? "CompanyCam" : "AccuLynx"}: ${data.message}`);
+      }
+    } catch {
+      setVerifyResult({ provider, ok: false, message: "Failed to reach server" });
+      setCrmError("Could not verify connection — server unreachable");
+    }
+    setVerifyingProvider(null);
+  };
+
   const connectGmail = async () => {
     setGmailConnecting(true);
     try {
@@ -747,12 +771,26 @@ export default function AdminSettingsPage() {
                   <StatusBadge connected={companycamConnected} />
                 </div>
                 {companycamConnected ? (
-                  <button
-                    onClick={() => disconnectCRM("companycam")}
-                    className="text-red-400 hover:text-red-300 text-sm font-medium transition-colors"
-                  >
-                    Disconnect
-                  </button>
+                  <div className="flex items-center gap-4">
+                    <button
+                      onClick={() => verifyCRM("companycam")}
+                      disabled={verifyingProvider === "companycam"}
+                      className="text-[var(--cyan)] hover:text-[var(--cyan)]/80 text-sm font-medium transition-colors disabled:opacity-50"
+                    >
+                      {verifyingProvider === "companycam" ? "Verifying..." : "Verify Connection"}
+                    </button>
+                    <button
+                      onClick={() => disconnectCRM("companycam")}
+                      className="text-red-400 hover:text-red-300 text-sm font-medium transition-colors"
+                    >
+                      Disconnect
+                    </button>
+                    {verifyResult?.provider === "companycam" && (
+                      <span className={`text-xs ${verifyResult.ok ? "text-green-400" : "text-red-400"}`}>
+                        {verifyResult.ok ? "Key valid" : "Key invalid — reconnect with a new key"}
+                      </span>
+                    )}
+                  </div>
                 ) : (
                   <div>
                     <div className="flex gap-3">

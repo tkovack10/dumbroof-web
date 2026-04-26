@@ -17,5 +17,5 @@ export default async function AdminPage() {
 
   if (!admin) redirect("/dashboard");
 
-  return <AdminDashboard />;
+  return <AdminDashboard userId={user.id} />;
 }

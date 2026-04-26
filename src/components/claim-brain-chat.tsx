@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useI18n } from "@/lib/i18n";
 import { directUpload } from "@/lib/upload-utils";
+import { RichardIcon } from "@/components/richard-icon";
 
 interface Message {
   role: "user" | "assistant";
@@ -1638,7 +1639,7 @@ export function ClaimBrainChat({
           className="relative bg-[#0f1729] hover:bg-[#1a2540] text-white w-14 h-14 rounded-full shadow-lg flex items-center justify-center transition-all hover:scale-105 border border-white/10"
           title={suggestions.length > 0 ? `${suggestions.length} suggestion${suggestions.length !== 1 ? "s" : ""}` : "Open Claim Brain"}
         >
-          <span className="text-2xl">🧠</span>
+          <RichardIcon size={32} />
           {suggestions.length > 0 && (
             <span className="absolute -top-1 -right-1 bg-emerald-500 text-white text-[10px] font-bold rounded-full w-5 h-5 flex items-center justify-center border-2 border-[#0f1729]">
               {suggestions.length}
@@ -1684,7 +1685,7 @@ export function ClaimBrainChat({
       {/* Header */}
       <div className="px-4 py-3 border-b border-white/10 flex items-center justify-between bg-[#0a0f1e]">
         <div className="flex items-center gap-2">
-          <span className="text-lg">🧠</span>
+          <RichardIcon size={22} />
           <div>
             <div className="text-white text-sm font-semibold">Claim Brain</div>
             <div className="text-white/40 text-[10px]">
@@ -1719,7 +1720,7 @@ export function ClaimBrainChat({
         {messages.length === 0 ? (
           <div className="py-6">
             <div className="text-center mb-4">
-              <div className="text-3xl mb-3">🧠</div>
+              <RichardIcon size={48} className="mb-3" />
               <div className="text-white text-sm font-medium mb-1">
                 Claim Brain — Ready
               </div>
@@ -1777,7 +1778,7 @@ export function ClaimBrainChat({
                     : "bg-emerald-500/10 border border-emerald-500/20"
                 }`}
               >
-                {msg.role === "assistant" ? "🧠" : "T"}
+                {msg.role === "assistant" ? <RichardIcon size={20} /> : "T"}
               </div>
               <div
                 className={`max-w-[85%] rounded-xl px-3 py-2 ${
