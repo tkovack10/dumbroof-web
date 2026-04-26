@@ -98,6 +98,42 @@ def team_bcc_for(company_name: Optional[str] = None,
     return bcc
 
 
+def company_owner_emails(sb: Client, sender_user_id: str) -> list[str]:
+    """Find email addresses for OWNERS of the sender's company, excluding the
+    sender themselves. Used to BCC the team owner on every outbound claim
+    email so they have full visibility into what their team sends out.
+
+    Returns [] when:
+      - Sender has no company_id (solo account — no owner to copy)
+      - Sender IS the owner (already on the From line)
+      - No other owner exists in the company
+    Defensive — never raises; logs and returns [].
+    """
+    try:
+        prof = sb.table("company_profiles").select("company_id").eq("user_id", sender_user_id).limit(1).execute()
+        company_id = (prof.data[0].get("company_id") if prof.data else None)
+        if not company_id:
+            return []
+        owners = sb.table("company_profiles") \
+            .select("email,user_id,role,is_admin") \
+            .eq("company_id", company_id) \
+            .neq("user_id", sender_user_id) \
+            .execute()
+        out: list[str] = []
+        for row in owners.data or []:
+            role = (row.get("role") or "").lower()
+            is_admin = bool(row.get("is_admin"))
+            email = (row.get("email") or "").strip()
+            # "Owner" = role == 'owner' OR (no role set AND is_admin) — backward
+            # compat with rows created before role was populated.
+            if email and (role == "owner" or (not role and is_admin)):
+                out.append(email)
+        return out
+    except Exception as e:
+        print(f"[claim_brain_email] company_owner_emails lookup failed for user {sender_user_id}: {e}", flush=True)
+        return []
+
+
 def get_gmail_auth_url(redirect_uri: str, state: str = "") -> str:
     """Generate the Google OAuth consent URL."""
     from urllib.parse import urlencode
@@ -455,6 +491,12 @@ def send_claim_email(
     # to_email (would be a duplicate).
     if admin_email and admin_email.strip().lower() != (to_email or "").strip().lower():
         bcc_members.append(admin_email)
+    # Team OWNER(S) — when a member sends a claim email, the company owner
+    # gets a BCC so they have full visibility into what their team is sending
+    # to carriers/homeowners. Skipped silently for solo accounts and when the
+    # sender IS the owner. Always BCC, never CC (don't leak internal
+    # hierarchy to the recipient).
+    bcc_members.extend(company_owner_emails(sb, user_id))
     # Dedup case-insensitively before handing off to the provider.
     seen_lower: set[str] = set()
     deduped_bcc: list[str] = []

@@ -1,11 +1,8 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { supabaseAdmin } from "@/lib/supabase/admin";
+import { requireAuth, isAuthError } from "@/lib/api-auth";
 import { getResend, EMAIL_FROM_CLAIMS, EMAIL_REPLY_TO } from "@/lib/resend";
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_KEY!
-);
+import { companyOwnerEmails, mergeBcc } from "@/lib/team-bcc";
 
 interface SendEmailRequest {
   draft_id: string;
@@ -17,6 +14,13 @@ interface SendEmailRequest {
 }
 
 export async function POST(request: Request) {
+  // Auth gate — this route was previously open. Anyone could POST and send
+  // mail through dumbroof.ai's verified Resend domain. Now requires a signed-in
+  // user so we know who's sending and can BCC their team owner.
+  const auth = await requireAuth();
+  if (isAuthError(auth)) return auth.response;
+  const { user } = auth;
+
   try {
     const body: SendEmailRequest = await request.json();
 
@@ -30,7 +34,7 @@ export async function POST(request: Request) {
     if (body.photo_paths && body.photo_paths.length > 0) {
       for (const path of body.photo_paths) {
         try {
-          const { data, error } = await supabase.storage
+          const { data, error } = await supabaseAdmin.storage
             .from("claim-documents")
             .download(path);
 
@@ -49,11 +53,18 @@ export async function POST(request: Request) {
       }
     }
 
+    // Team-owner BCC — every claim email a team member sends gets the
+    // company owner copied (BCC, never CC — don't leak internal hierarchy
+    // to the recipient).
+    const ownerBcc = await companyOwnerEmails(user.id);
+    const bcc = mergeBcc(undefined, ownerBcc, body.to);
+
     const resend = getResend();
     const { data, error } = await resend.emails.send({
       from: EMAIL_FROM_CLAIMS,
       to: [body.to],
       cc: body.cc ? [body.cc] : undefined,
+      bcc: bcc.length > 0 ? bcc : undefined,
       replyTo: EMAIL_REPLY_TO,
       subject: body.subject,
       html: body.body_html,

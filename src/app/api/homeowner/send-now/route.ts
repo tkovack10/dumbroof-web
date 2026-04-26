@@ -3,6 +3,7 @@ import { supabaseAdmin } from "@/lib/supabase/admin";
 import { requireAuth, isAuthError, canAccessClaim } from "@/lib/api-auth";
 import { getResend, EMAIL_FROM, EMAIL_REPLY_TO } from "@/lib/resend";
 import { logClaimEvent } from "@/lib/claim-events";
+import { companyOwnerEmails, mergeBcc } from "@/lib/team-bcc";
 
 /**
  * POST /api/homeowner/send-now
@@ -122,6 +123,11 @@ export async function POST(request: Request) {
         escape(template.body_text || "")
       ).replace(/\n/g, "<br/>")}</div>`;
 
+  // Team-owner BCC — when a member sends a homeowner email, copy the
+  // company owner so they have visibility into all outbound team comms.
+  const ownerBcc = await companyOwnerEmails(user.id);
+  const bcc = mergeBcc(undefined, ownerBcc, claim.homeowner_email);
+
   // Send
   let resendId: string | null = null;
   try {
@@ -129,6 +135,7 @@ export async function POST(request: Request) {
     const { data } = await resend.emails.send({
       from: EMAIL_FROM,
       to: [claim.homeowner_email],
+      bcc: bcc.length > 0 ? bcc : undefined,
       replyTo: EMAIL_REPLY_TO,
       subject,
       html,

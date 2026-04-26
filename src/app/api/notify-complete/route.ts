@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { getResend, EMAIL_FROM, EMAIL_REPLY_TO, teamBccFor } from "@/lib/resend";
+import { companyOwnerEmails, mergeBcc } from "@/lib/team-bcc";
 
 const MAX_ATTACHMENT_BYTES = 20 * 1024 * 1024; // 20MB
 
@@ -161,12 +162,18 @@ export async function POST(request: Request) {
 </body>
 </html>`.trim();
 
-    // 6. Send email via Resend — BCC scoped to USARM-only via teamBccFor()
+    // 6. Send email via Resend
+    //    BCC = platform team (teamBccFor) + company owner (so owner sees every
+    //    teammate's completed claim notification).
+    const platformBcc = teamBccFor({ recipientEmail: userEmail, companyName });
+    const ownerBcc = await companyOwnerEmails(claim.user_id);
+    const bcc = mergeBcc(platformBcc, ownerBcc, userEmail);
+
     const resend = getResend();
     const { error: sendError } = await resend.emails.send({
       from: EMAIL_FROM,
       to: [userEmail],
-      bcc: teamBccFor({ recipientEmail: userEmail, companyName }),
+      bcc: bcc.length > 0 ? bcc : undefined,
       replyTo: EMAIL_REPLY_TO,
       subject: `Your claim documents are ready — ${address}`,
       html,

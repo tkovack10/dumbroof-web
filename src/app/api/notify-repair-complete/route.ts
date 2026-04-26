@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { getResend, EMAIL_FROM, EMAIL_REPLY_TO, teamBccFor } from "@/lib/resend";
+import { companyOwnerEmails, mergeBcc } from "@/lib/team-bcc";
 
 const MAX_ATTACHMENT_BYTES = 20 * 1024 * 1024; // 20MB
 
@@ -149,10 +150,15 @@ export async function POST(request: Request) {
 </body>
 </html>`.trim();
 
+    // BCC = platform team + company owner (owner sees every teammate's repair notification)
+    const platformBccUser = teamBccFor({ recipientEmail: userEmail, companyName });
+    const ownerBccUser = await companyOwnerEmails(repair.user_id);
+    const userBcc = mergeBcc(platformBccUser, ownerBccUser, userEmail);
+
     const { error: userSendError } = await resend.emails.send({
       from: EMAIL_FROM,
       to: [userEmail],
-      bcc: teamBccFor({ recipientEmail: userEmail, companyName }),
+      bcc: userBcc.length > 0 ? userBcc : undefined,
       replyTo: EMAIL_REPLY_TO,
       subject: `Repair Diagnosis Ready \u2014 ${address}`,
       html: userHtml,
@@ -215,9 +221,14 @@ export async function POST(request: Request) {
 </body>
 </html>`.trim();
 
+      // Owner BCC on the homeowner-facing email too \u2014 owner sees every
+      // homeowner-bound document the team sends out.
+      const homeownerBcc = mergeBcc(undefined, ownerBccUser, repair.homeowner_email);
+
       const { error: hoSendError } = await resend.emails.send({
         from: `${companyName} <hello@dumbroof.ai>`,
         to: [repair.homeowner_email],
+        bcc: homeownerBcc.length > 0 ? homeownerBcc : undefined,
         replyTo: EMAIL_REPLY_TO,
         subject: `Roof Repair Diagnosis \u2014 ${address}`,
         html: homeownerHtml,
