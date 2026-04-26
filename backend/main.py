@@ -45,6 +45,7 @@ from correspondence_analyzer import (
     regenerate_draft,
 )
 from gmail_poller import poll_gmail_inbox
+from chat_storage import load_conversation, append_message, clear_conversation
 
 load_dotenv()
 
@@ -967,9 +968,6 @@ async def apply_edit_request(request_id: str, background_tasks: BackgroundTasks)
 import anthropic
 from fastapi.responses import StreamingResponse
 
-# In-memory conversation store (per claim_id)
-_brain_conversations: dict = {}
-
 
 def _build_claim_brain_prompt(claim_data: dict, photos: list, scope_comparison: list, carrier_playbook: str = "", timeline_events: list = None) -> str:
     """Build the Claim Brain system prompt from Supabase claim data."""
@@ -1401,9 +1399,9 @@ async def claim_brain_chat(claim_id: str, body: ChatMessage):
     if body.locale == "es":
         system_prompt += "\n\n## LANGUAGE: SPANISH\nThe user has selected Spanish. Respond ENTIRELY in Spanish. All explanations, recommendations, and coaching should be in Spanish. Technical terms (Xactimate codes, IRC sections, dollar amounts) stay in English. Email drafts should still be in English (carriers expect English).\n"
 
-    # Get or create conversation
-    if claim_id not in _brain_conversations:
-        _brain_conversations[claim_id] = []
+    # Load conversation history from Supabase (replaces in-process dict;
+    # survives Railway restarts). Limit 50 to stay within context window.
+    history = load_conversation(sb, "claim", claim_id, limit=50)
 
     # Build the user message content — text + any attachments the user dropped in chat.
     # Attachments arrive as Supabase storage paths and are surfaced to Claude as a
@@ -1421,12 +1419,6 @@ async def claim_brain_chat(claim_id: str, body: ChatMessage):
         )
         user_content = (body.message or "") + attach_block
 
-    _brain_conversations[claim_id].append({"role": "user", "content": user_content})
-
-    # Keep last 50 messages to manage context window
-    if len(_brain_conversations[claim_id]) > 50:
-        _brain_conversations[claim_id] = _brain_conversations[claim_id][-50:]
-
     client = anthropic.Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
     user_id = body.user_id or claim_data.get("user_id", "")
 
@@ -1441,9 +1433,13 @@ async def claim_brain_chat(claim_id: str, body: ChatMessage):
     except Exception as e:
         print(f"[BRAIN] Failed to persist user message (non-fatal): {e}")
 
+    # Persist user message to chat_messages (live conversation context)
+    append_message(sb, "claim", claim_id, user_id or "anonymous", "user", str(user_content)[:10000])
+
     async def stream_response():
         try:
-            messages = list(_brain_conversations[claim_id])
+            messages = list(history)
+            messages.append({"role": "user", "content": user_content})
             full_text_parts = []
             tool_results_for_frontend = []
 
@@ -1570,9 +1566,9 @@ async def claim_brain_chat(claim_id: str, body: ChatMessage):
                 if response.stop_reason != "tool_use":
                     break
 
-            # Store the final text in conversation history
+            # Store the final text in conversation history (Supabase, persistent)
             full_response = "".join(full_text_parts)
-            _brain_conversations[claim_id].append({"role": "assistant", "content": full_response})
+            append_message(sb, "claim", claim_id, user_id or "anonymous", "assistant", full_response[:50000])
 
             # Log to telemetry
             prompt_tokens = None
@@ -1581,7 +1577,7 @@ async def claim_brain_chat(claim_id: str, body: ChatMessage):
                 from telemetry import log_processing_step
                 prompt_tokens = len(system_prompt.split()) + sum(
                     len(m["content"].split()) if isinstance(m["content"], str) else 100
-                    for m in _brain_conversations[claim_id]
+                    for m in messages
                 )
                 completion_tokens = len(full_response.split())
                 log_processing_step(
@@ -2278,9 +2274,9 @@ def _build_cadence_body_html(
 @app.post("/api/claim-brain/{claim_id}/reset")
 async def reset_claim_brain(claim_id: str):
     """Reset the Claim Brain conversation for a claim."""
-    _brain_conversations.pop(claim_id, None)
     try:
         sb = get_supabase_client()
+        clear_conversation(sb, "claim", claim_id)
         sb.table("claim_brain_messages").delete().eq("claim_id", claim_id).execute()
     except Exception as e:
         print(f"[BRAIN] Failed to delete persisted messages (non-fatal): {e}")
@@ -2295,8 +2291,6 @@ async def reset_claim_brain(claim_id: str):
 # specific claim. Keyed on user_id because admin actions are user-scoped
 # (integrations, team, templates, logo).
 # -------------------------------------------------------------------
-
-_admin_brain_conversations: dict = {}
 
 
 class AdminChatMessage(BaseModel):
@@ -2471,18 +2465,16 @@ async def admin_brain_chat(body: AdminChatMessage):
     if body.locale == "es":
         system_prompt += "\n\n## LANGUAGE: SPANISH\nRespond in Spanish. Technical terms (API, OAuth, Microsoft 365) stay in English.\n"
 
-    conv_key = f"admin:{scope}:{user_id}"
-    if conv_key not in _admin_brain_conversations:
-        _admin_brain_conversations[conv_key] = []
-    _admin_brain_conversations[conv_key].append({"role": "user", "content": body.message})
-    if len(_admin_brain_conversations[conv_key]) > 50:
-        _admin_brain_conversations[conv_key] = _admin_brain_conversations[conv_key][-50:]
+    # Persistent chat history (Supabase). Scope is 'user' or 'company'.
+    history = load_conversation(sb, scope, user_id, limit=50)
+    append_message(sb, scope, user_id, user_id, "user", str(body.message)[:10000])
 
     client = anthropic.Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
 
     async def stream_response():
         try:
-            messages = list(_admin_brain_conversations[conv_key])
+            messages = list(history)
+            messages.append({"role": "user", "content": body.message})
             full_text_parts: list[str] = []
             max_tool_rounds = 10
             total_tool_calls = 0
@@ -2574,7 +2566,7 @@ async def admin_brain_chat(body: AdminChatMessage):
                     break
 
             full_response = "".join(full_text_parts)
-            _admin_brain_conversations[conv_key].append({"role": "assistant", "content": full_response})
+            append_message(sb, scope, user_id, user_id, "assistant", full_response[:50000])
 
             yield f"data: {json.dumps({'done': True})}\n\n"
         except Exception as e:
@@ -2747,9 +2739,12 @@ async def reset_admin_brain(body: dict):
     scope = (body.get("scope") or "user").lower()
     if scope not in ("user", "company"):
         scope = "user"
-    # Clean both legacy key (admin:{uid}) and scoped key (admin:{scope}:{uid})
-    _admin_brain_conversations.pop(f"admin:{user_id}", None)
-    _admin_brain_conversations.pop(f"admin:{scope}:{user_id}", None)
+    # Clear persistent chat history (user/company scope) from Supabase
+    try:
+        sb = get_supabase_client()
+        clear_conversation(sb, scope, user_id)
+    except Exception as e:
+        print(f"[admin-brain reset] failed to clear chat_messages: {e}")
     return {"status": "reset", "user_id": user_id, "scope": scope}
 
 
