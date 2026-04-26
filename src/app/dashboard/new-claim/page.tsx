@@ -769,46 +769,6 @@ export default function NewClaimPage() {
                 className="w-full px-4 py-3 rounded-lg border border-[var(--border-glass)] focus:border-[var(--cyan)] focus:ring-1 focus:ring-[var(--cyan)] outline-none transition-colors text-sm"
               />
             </div>
-            {/* Date of Loss — on mobile, show here (above photos) as a required-looking field */}
-            {isMobile && (
-              <div>
-                <label className="block text-sm font-semibold text-[var(--white)] mb-1">
-                  Storm Date (hail or wind)
-                </label>
-                <div className="flex gap-2">
-                  <input
-                    type="date"
-                    value={dateOfLoss}
-                    onChange={(e) => setDateOfLoss(e.target.value)}
-                    className="flex-1 px-4 py-3 rounded-lg border border-[var(--border-glass)] focus:border-[var(--cyan)] focus:ring-1 focus:ring-[var(--cyan)] outline-none transition-colors text-sm"
-                  />
-                  <button
-                    type="button"
-                    onClick={scanForStorms}
-                    disabled={!propertyAddress.trim() || scanningStorms}
-                    className="px-3 py-3 text-xs bg-blue-500/10 text-blue-400 border border-blue-500/30 rounded-lg hover:bg-blue-500/20 disabled:opacity-50 disabled:cursor-not-allowed transition-colors whitespace-nowrap"
-                  >
-                    {scanningStorms ? "Scanning..." : "Find storms"}
-                  </button>
-                </div>
-                <p className="text-xs text-[var(--gray-dim)] mt-1">Required for NOAA weather data in the forensic report</p>
-                {stormResults && stormResults.length > 0 && (
-                  <div className="mt-2 space-y-1">
-                    {stormResults.map((storm, i) => (
-                      <button
-                        key={i}
-                        type="button"
-                        onClick={() => { setDateOfLoss(storm.date); setStormResults(null); }}
-                        className="block w-full text-left text-xs px-3 py-2 bg-amber-500/10 border border-amber-500/30 rounded-lg"
-                      >
-                        <span className="font-semibold text-amber-400">{storm.date}</span>
-                        <span className="text-amber-400 ml-2">{storm.type}{storm.details ? ` — ${storm.details}` : ""}</span>
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
             {!isMobile && (
             <>
             <div>
@@ -850,102 +810,167 @@ export default function NewClaimPage() {
             )}
           </div>
 
-          {/* Date of Loss — desktop only (mobile has it in the Claim Info section above) */}
-          {!isMobile && (<div>
-            <div className="flex items-baseline gap-2 mb-1">
-              <label className="block text-sm font-semibold text-[var(--white)]">
-                Date of Loss
+          {/* Storm Info — what caused the damage + when it happened.
+              Lifted to the top because these two answers drive every downstream
+              AI step: NOAA scan, photo annotations, forensic narrative, and the
+              carrier playbook the supplement engine reaches for. Was previously
+              split across mobile/desktop with conflicting "Optional" labeling. */}
+          <div className="space-y-4">
+            <h3 className="text-sm font-semibold text-[var(--gray-dim)] uppercase tracking-wider">
+              Storm Info
+            </h3>
+
+            {/* Damage Type — checkbox-styled, mutually exclusive. Drives AI focus. */}
+            <div>
+              <label className="block text-sm font-semibold text-[var(--white)] mb-2">
+                What caused the damage?
               </label>
-              <span className="text-xs text-[var(--gray-dim)] font-medium">Optional</span>
-            </div>
-            <div className="flex gap-2">
-              <input
-                type="date"
-                value={dateOfLoss}
-                onChange={(e) => setDateOfLoss(e.target.value)}
-                className="flex-1 px-4 py-3 rounded-lg border border-[var(--border-glass)] focus:border-[var(--cyan)] focus:ring-1 focus:ring-[var(--cyan)] outline-none transition-colors text-sm"
-              />
-              <button
-                type="button"
-                onClick={scanForStorms}
-                disabled={!propertyAddress.trim() || scanningStorms}
-                className="px-4 py-3 text-sm bg-blue-500/10 text-blue-400 border border-blue-500/30 rounded-lg hover:bg-blue-500/20 disabled:opacity-50 disabled:cursor-not-allowed transition-colors whitespace-nowrap"
-              >
-                {scanningStorms ? (
-                  <span className="flex items-center gap-2">
-                    <svg
-                      className="animate-spin w-4 h-4"
-                      fill="none"
-                      viewBox="0 0 24 24"
+              <div className="grid grid-cols-3 gap-2">
+                {([
+                  { value: "hail" as const, label: "Hail", icon: "🧊" },
+                  { value: "wind" as const, label: "Wind", icon: "💨" },
+                  { value: "combined" as const, label: "Hail & Wind", icon: "⛈" },
+                ] as const).map((opt) => {
+                  const checked = damageType === opt.value;
+                  return (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      role="checkbox"
+                      aria-checked={checked}
+                      onClick={() => setDamageType(checked ? "" : opt.value)}
+                      className={`flex items-center gap-2 py-3 px-3 rounded-lg border-2 text-sm font-semibold transition-colors ${
+                        checked
+                          ? "border-[var(--cyan)] bg-[var(--cyan)]/10 text-[var(--cyan)]"
+                          : "border-[var(--border-glass)] text-[var(--gray-muted)] hover:border-white/30 hover:text-white"
+                      }`}
                     >
-                      <circle
-                        className="opacity-25"
-                        cx="12"
-                        cy="12"
-                        r="10"
-                        stroke="currentColor"
-                        strokeWidth="4"
-                      />
-                      <path
-                        className="opacity-75"
-                        fill="currentColor"
-                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                      />
-                    </svg>
-                    Scanning...
-                  </span>
-                ) : (
-                  "Scan for storms"
-                )}
-              </button>
+                      <span
+                        className={`shrink-0 w-4 h-4 rounded border-2 flex items-center justify-center text-xs ${
+                          checked
+                            ? "border-[var(--cyan)] bg-[var(--cyan)] text-[var(--navy)]"
+                            : "border-current"
+                        }`}
+                      >
+                        {checked ? "✓" : ""}
+                      </span>
+                      <span className="text-base">{opt.icon}</span>
+                      <span>{opt.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+              <p className="text-xs text-[var(--gray-dim)] mt-2">
+                {damageType === "hail"
+                  ? "AI prioritizes hail indicators: dents, granule loss, chalk-test gaps."
+                  : damageType === "wind"
+                  ? "AI prioritizes wind indicators: creased tabs, missing shingles, directional patterns."
+                  : damageType === "combined"
+                  ? "AI analyzes both hail and wind damage patterns."
+                  : "Tells the AI what to focus on. Drives the NOAA event types we scan for and which forensic narrative template the report uses."}
+              </p>
             </div>
-            <p className="text-xs text-[var(--gray-dim)] mt-1">
-              Enter the storm date, or click &quot;Scan for storms&quot; to find recent events near this address.
-            </p>
-            {stormResults !== null && stormResults.length === 0 && !scanningStorms && (
-              <div className="text-xs mt-2 bg-white/[0.04] rounded-lg px-3 py-2">
-                {stormReason === "geocode_failed" && (
-                  <p className="text-amber-400">Could not locate this address. Try adding city, state, and ZIP.</p>
-                )}
-                {stormReason === "county_failed" && (
-                  <p className="text-amber-400">Could not determine county for this address.</p>
-                )}
-                {stormReason === "noaa_unavailable" && (
-                  <div className="flex items-center gap-2">
-                    <p className="text-amber-400">NOAA weather database temporarily unavailable.</p>
-                    <button type="button" onClick={scanForStorms} className="text-[var(--cyan)] hover:underline font-medium">Try again</button>
-                  </div>
-                )}
-                {(stormReason === "no_events" || !stormReason) && (
-                  <p className="text-[var(--gray-muted)]">No recent storm events found in NOAA records for this area.</p>
-                )}
-              </div>
-            )}
-            {stormResults && stormResults.length > 0 && (
-              <div className="mt-2 space-y-1">
-                <p className="text-xs text-[var(--gray-muted)]">
-                  Recent storm events near this address (click to select):
-                </p>
-                {stormResults.map((storm, i) => (
-                  <button
-                    key={i}
-                    type="button"
-                    onClick={() => {
-                      setDateOfLoss(storm.date);
-                      setStormResults(null);
-                    }}
-                    className="block w-full text-left text-xs px-3 py-2 bg-amber-500/10 border border-amber-500/30 rounded-lg hover:bg-amber-500/20 transition-colors"
-                  >
-                    <span className="font-semibold text-amber-400">{storm.date}</span>
-                    <span className="text-amber-400 ml-2">
-                      {storm.type}
-                      {storm.details ? ` — ${storm.details}` : ""}
+
+            {/* Storm Date — when the hail/wind hit. Drives NOAA scan + report content. */}
+            <div>
+              <label className="text-sm font-semibold text-[var(--white)] mb-1 flex items-center gap-2">
+                <svg
+                  className="w-4 h-4"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth={2}
+                  aria-hidden="true"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+                  />
+                </svg>
+                Storm Date
+              </label>
+              <p className="text-xs text-[var(--gray-dim)] mb-2">When did the hail/wind hit?</p>
+              <div className="flex gap-2">
+                <input
+                  type="date"
+                  value={dateOfLoss}
+                  onChange={(e) => setDateOfLoss(e.target.value)}
+                  className="flex-1 px-4 py-3 rounded-lg border border-[var(--border-glass)] focus:border-[var(--cyan)] focus:ring-1 focus:ring-[var(--cyan)] outline-none transition-colors text-sm"
+                />
+                <button
+                  type="button"
+                  onClick={scanForStorms}
+                  disabled={!propertyAddress.trim() || scanningStorms}
+                  className="px-4 py-3 text-sm bg-blue-500/10 text-blue-400 border border-blue-500/30 rounded-lg hover:bg-blue-500/20 disabled:opacity-50 disabled:cursor-not-allowed transition-colors whitespace-nowrap"
+                >
+                  {scanningStorms ? (
+                    <span className="flex items-center gap-2">
+                      <svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24" aria-hidden="true">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                        <path
+                          className="opacity-75"
+                          fill="currentColor"
+                          d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                        />
+                      </svg>
+                      Scanning...
                     </span>
-                  </button>
-                ))}
+                  ) : (
+                    "Find storms"
+                  )}
+                </button>
               </div>
-            )}
-          </div>)}
+              <p className="text-xs text-[var(--gray-dim)] mt-1">
+                Required for NOAA weather data in the forensic report.
+              </p>
+              {stormResults !== null && stormResults.length === 0 && !scanningStorms && (
+                <div className="text-xs mt-2 bg-white/[0.04] rounded-lg px-3 py-2">
+                  {stormReason === "geocode_failed" && (
+                    <p className="text-amber-400">Could not locate this address. Try adding city, state, and ZIP.</p>
+                  )}
+                  {stormReason === "county_failed" && (
+                    <p className="text-amber-400">Could not determine county for this address.</p>
+                  )}
+                  {stormReason === "noaa_unavailable" && (
+                    <div className="flex items-center gap-2">
+                      <p className="text-amber-400">NOAA weather database temporarily unavailable.</p>
+                      <button type="button" onClick={scanForStorms} className="text-[var(--cyan)] hover:underline font-medium">
+                        Try again
+                      </button>
+                    </div>
+                  )}
+                  {(stormReason === "no_events" || !stormReason) && (
+                    <p className="text-[var(--gray-muted)]">No recent storm events found in NOAA records for this area.</p>
+                  )}
+                </div>
+              )}
+              {stormResults && stormResults.length > 0 && (
+                <div className="mt-2 space-y-1">
+                  <p className="text-xs text-[var(--gray-muted)]">
+                    Recent storm events near this address (click to select):
+                  </p>
+                  {stormResults.map((storm, i) => (
+                    <button
+                      key={i}
+                      type="button"
+                      onClick={() => {
+                        setDateOfLoss(storm.date);
+                        setStormResults(null);
+                      }}
+                      className="block w-full text-left text-xs px-3 py-2 bg-amber-500/10 border border-amber-500/30 rounded-lg hover:bg-amber-500/20 transition-colors"
+                    >
+                      <span className="font-semibold text-amber-400">{storm.date}</span>
+                      <span className="text-amber-400 ml-2">
+                        {storm.type}
+                        {storm.details ? ` — ${storm.details}` : ""}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
 
           {/* Documents — mobile gets simplified camera-first UI */}
           {isMobile ? (
@@ -1150,43 +1175,6 @@ export default function NewClaimPage() {
                 <option value="Tile">Tile</option>
                 <option value="Cedar">Cedar</option>
               </select>
-            </div>
-
-            {/* Damage Type — tells the AI + NOAA + PDF generator what to focus on */}
-            <div>
-              <label className="block text-sm font-semibold text-[var(--white)] mb-1">
-                Damage Type
-              </label>
-              <div className="grid grid-cols-3 gap-2">
-                {([
-                  { value: "hail" as const, label: "Hail", icon: "🧊" },
-                  { value: "wind" as const, label: "Wind", icon: "💨" },
-                  { value: "combined" as const, label: "Hail & Wind", icon: "⛈" },
-                ] as const).map((opt) => (
-                  <button
-                    key={opt.value}
-                    type="button"
-                    onClick={() => setDamageType(damageType === opt.value ? "" : opt.value)}
-                    className={`flex flex-col items-center gap-1 py-3 px-2 rounded-lg border-2 text-xs font-semibold transition-colors ${
-                      damageType === opt.value
-                        ? "border-[var(--cyan)] bg-[var(--cyan)]/10 text-[var(--cyan)]"
-                        : "border-[var(--border-glass)] text-[var(--gray-muted)] hover:border-white/30 hover:text-white"
-                    }`}
-                  >
-                    <span className="text-lg">{opt.icon}</span>
-                    <span>{opt.label}</span>
-                  </button>
-                ))}
-              </div>
-              <p className="text-xs text-[var(--gray-dim)] mt-1">
-                {damageType === "hail"
-                  ? "AI will prioritize hail indicators: dents, granule loss, chalk test gaps"
-                  : damageType === "wind"
-                  ? "AI will prioritize wind indicators: creased tabs, missing shingles, directional patterns"
-                  : damageType === "combined"
-                  ? "AI will analyze for both hail and wind damage patterns"
-                  : "Optional — helps the AI focus its analysis"}
-              </p>
             </div>
 
             {/* Gutters Toggle */}
