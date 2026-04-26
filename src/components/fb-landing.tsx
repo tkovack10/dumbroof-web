@@ -24,43 +24,46 @@ export function FbLanding({ variant, stats, source }: FbLandingProps) {
         </span>
       </header>
 
-      {/* Hero */}
-      <section className="relative pt-24 pb-12 px-5 bg-gradient-to-b from-[var(--navy)] via-[var(--navy-light)] to-[var(--navy)]">
+      {/* Hero — mobile-first: keep signup form above the fold on a 390x844 (iPhone) viewport.
+          Mobile budget: pt-20 (~80) + badge (~36) + h1 2xl (~96) + subhead sm 3-line (~70)
+          + video 16:9 (~219) + form (~120) ≈ 620px → form starts ~620, fits in 675 inner. */}
+      <section className="relative pt-20 sm:pt-24 pb-10 sm:pb-12 px-5 bg-gradient-to-b from-[var(--navy)] via-[var(--navy-light)] to-[var(--navy)]">
         <div className="max-w-xl mx-auto text-center">
-          <div className="inline-block mb-5 px-4 py-1.5 rounded-full bg-green-500/10 border border-green-500/20">
-            <span className="text-green-400 text-sm font-semibold">{cfg.badge}</span>
+          <div className="inline-block mb-4 px-4 py-1.5 rounded-full bg-green-500/10 border border-green-500/20">
+            <span className="text-green-400 text-xs sm:text-sm font-semibold">{cfg.badge}</span>
           </div>
 
-          <h1 className="text-3xl sm:text-4xl font-bold text-white leading-tight mb-5">
+          <h1 className="text-2xl sm:text-4xl font-bold text-white leading-tight mb-4">
             {cfg.headlineLead}{" "}
             <span className="gradient-text">{cfg.headlineEmphasis}</span>
           </h1>
 
-          <p className="text-base sm:text-lg text-[var(--gray-dim)] leading-relaxed mb-7 max-w-lg mx-auto">
+          <p className="text-sm sm:text-lg text-[var(--gray-dim)] leading-snug sm:leading-relaxed mb-5 max-w-lg mx-auto">
             {cfg.subhead}
           </p>
 
           {/* Hero video — autoplay muted loop. Browser policy requires muted for autoplay.
-              File: 791KB (small enough not to delay LCP). Source matches Whoops ad creative. */}
-          <div className="mb-7 rounded-2xl overflow-hidden border border-white/10 bg-black/40">
+              File: 791KB. Source matches Whoops ad creative. 16:9 crop on mobile to keep
+              form above the fold; full square on sm+ where vertical room is available. */}
+          <div className="mb-5 rounded-xl overflow-hidden border border-white/10 bg-black/40 max-w-sm mx-auto">
             <video
               autoPlay
               muted
               playsInline
               loop
               preload="metadata"
-              className="w-full h-auto block"
+              className="w-full block aspect-video sm:aspect-square object-cover"
               aria-hidden="true"
             >
               <source src="/videos/whoops-intro.mp4" type="video/mp4" />
             </video>
           </div>
 
-          <div className="mb-4">
+          <div>
             <HeroSignupForm source={source} />
           </div>
 
-          <p className="text-xs text-[var(--gray-muted)] mt-4">
+          <p className="text-xs text-[var(--gray-muted)] mt-3">
             Takes 30 seconds. No credit card required.
           </p>
         </div>
