@@ -5,6 +5,8 @@ export interface BillingQuota {
   remaining: number;
   periodUsed: number;
   lifetimeUsed: number;
-  limit: number;
+  limit: number | null;
   status: string;
+  reason?: string | null;
+  companyShared?: boolean;
 }

@@ -25,6 +25,10 @@
       "schedule": "0 15 * * *"
     },
     {
+      "path": "/api/cron/upgrade-emails",
+      "schedule": "0 16 * * *"
+    },
+    {
       "path": "/api/cron/claim-brain-cadences",
       "schedule": "0 * * * *"
     }

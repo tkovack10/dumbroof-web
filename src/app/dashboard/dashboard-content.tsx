@@ -410,9 +410,33 @@ export function DashboardContent({ user }: { user: User }) {
             <div className="min-w-0 flex-1">
               <p className="text-xs text-[var(--gray)] truncate">{user.email}</p>
               {billing?.planName && (
-                <span className="inline-block mt-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-white/10 text-[var(--gray-dim)]">
-                  {billing.planName}
-                </span>
+                <div className="flex items-center gap-1 mt-0.5 flex-wrap">
+                  <span className="inline-block px-1.5 py-0.5 rounded text-[10px] font-bold bg-white/10 text-[var(--gray-dim)]">
+                    {billing.planName}
+                  </span>
+                  {typeof billing.remaining === "number" && billing.limit !== null && (
+                    <span
+                      className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-semibold ${
+                        billing.remaining === 0
+                          ? "bg-red-500/20 text-red-300"
+                          : billing.planId === "starter" && billing.remaining === 1
+                            ? "bg-amber-500/20 text-amber-300"
+                            : "bg-white/10 text-[var(--gray-dim)]"
+                      }`}
+                      title={`${billing.remaining} of ${billing.limit} ${billing.planId === "starter" ? "lifetime" : "monthly"} claims remaining`}
+                    >
+                      {billing.remaining}/{billing.limit}
+                    </span>
+                  )}
+                  {!billing.allowed && (
+                    <a
+                      href="/pricing"
+                      className="text-[10px] font-semibold text-amber-300 hover:text-amber-200 underline"
+                    >
+                      Upgrade
+                    </a>
+                  )}
+                </div>
               )}
             </div>
           </div>

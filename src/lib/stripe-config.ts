@@ -12,6 +12,14 @@ export interface PlanDefinition {
   features: string[];
 }
 
+/**
+ * Single price ID for team seat overage. Charged at $99/seat/month above
+ * each plan's includedUsers count. Set STRIPE_EXTRA_SEAT_PRICE_ID in env.
+ * The price is shared across Pro/Growth/Max so seat sync can use one ID
+ * regardless of which paid plan a company is on.
+ */
+export const EXTRA_SEAT_PRICE_ID = (process.env.STRIPE_EXTRA_SEAT_PRICE_ID || "").trim();
+
 /** One-time purchasable add-ons (not subscriptions) */
 export interface AddOnDefinition {
   id: string;

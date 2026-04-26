@@ -4434,6 +4434,72 @@ async def process_claim(claim_id: str):
     if not claim:
         raise ValueError(f"Claim {claim_id} not found")
 
+    # 1b. Quota gate + atomic increment (single source of truth).
+    # The Next.js preflight at /api/claims/preflight catches UI uploads before
+    # bytes leave the browser. This server-side check catches non-UI paths
+    # (AccuLynx imports, CompanyCam syncs, email ingest, future API integrations).
+    # Reject BEFORE any Claude calls so blocked uploads cost ~$0 instead of ~$1.15.
+    #
+    # Increment is atomic with the gate (gate first, then increment) — this is
+    # the ONE place the counter ticks. Frontend no longer increments client-side.
+    # Skip if the claim is being reprocessed (output_files already exists) so
+    # revision runs don't double-count.
+    claim_user_id = claim.get("user_id")
+    is_reprocess = bool(claim.get("output_files"))
+    if claim_user_id and not is_reprocess:
+        try:
+            quota_resp = sb.rpc("assert_quota_allowed", {"p_user_id": claim_user_id}).execute()
+            quota = quota_resp.data if quota_resp.data else {}
+            if not quota.get("allowed", True):
+                reason = quota.get("reason") or "quota_exceeded"
+                print(f"[PROCESS] Quota blocked claim {claim_id} for user {claim_user_id}: {reason}", flush=True)
+                try:
+                    sb.table("claims").update({
+                        "status": "quota_blocked",
+                        "processing_error": f"Quota: {reason}. plan={quota.get('plan_id')} remaining={quota.get('remaining')}",
+                    }).eq("id", claim_id).execute()
+                except Exception as upd_err:
+                    print(f"[PROCESS] Failed to mark claim quota_blocked: {upd_err}", flush=True)
+                try:
+                    sb.table("quota_block_events").insert({
+                        "user_id": claim_user_id,
+                        "plan_id": quota.get("plan_id"),
+                        "reason": reason,
+                        "source": "processor",
+                        "metadata": {
+                            "claim_id": claim_id,
+                            "address": claim.get("address"),
+                            "period_used": quota.get("period_used"),
+                            "lifetime_used": quota.get("lifetime_used"),
+                        },
+                    }).execute()
+                except Exception as log_err:
+                    print(f"[PROCESS] Failed to log quota_block_event: {log_err}", flush=True)
+                return  # Stop processing — no Claude calls, no spend
+
+            # Gate passed — atomically increment the counter for the resolved
+            # subscription (could be the team owner's row when company-pooled).
+            try:
+                inc_resp = sb.rpc("increment_claim_usage", {"p_user_id": claim_user_id}).execute()
+                inc = inc_resp.data if inc_resp.data else {}
+                # If this was a metered sales_rep plan, report a Stripe meter event.
+                # TODO(billing): no sales_rep customers exist today (verified
+                # 2026-04-25 — only 1 enterprise + 1 starter row in subscriptions).
+                # Before the first sales_rep signup, either add stripe-py to
+                # backend/requirements.txt and fire stripe.billing.MeterEvent.create
+                # here, or POST to a Vercel /api/billing/meter-event route. Until
+                # then, sales_rep claims process but do not bill.
+                if inc.get("plan_id") == "sales_rep" and inc.get("subscription_user_id"):
+                    print(f"[PROCESS] WARN: sales_rep meter event not fired (TODO billing). sub_user={inc.get('subscription_user_id')}", flush=True)
+            except Exception as inc_err:
+                # Counter increment failure is bad (we'll under-bill) but should
+                # NOT block the user's claim from processing. Log loudly.
+                print(f"[PROCESS] CRITICAL: increment_claim_usage failed (claim still processing): {inc_err}", flush=True)
+        except Exception as q_err:
+            # Don't block processing if the RPC itself fails (better to over-serve
+            # than to block paying customers behind an infra outage)
+            print(f"[PROCESS] Quota check errored (non-fatal, allowing): {q_err}", flush=True)
+
     # Check report mode — forensic_only skips measurements, line items, estimate
     # BUT: if measurements were uploaded to a forensic_only claim, auto-upgrade to full
     report_mode = claim.get("report_mode", "full")

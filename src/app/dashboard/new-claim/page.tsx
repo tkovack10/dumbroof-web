@@ -191,6 +191,26 @@ export default function NewClaimPage() {
     setErrorMsg("");
 
     try {
+      // Preflight: reject at-cap users BEFORE uploading 30-100MB of photos.
+      // Returns 402 with {reason, planName, upgradeUrl} when blocked.
+      const preflight = await fetch("/api/claims/preflight", { method: "POST" });
+      if (preflight.status === 402) {
+        const body = await preflight.json();
+        setStatus("error");
+        setErrorMsg(
+          body.reason === "lifetime_cap_reached"
+            ? `You've used your ${body.limit} free claims. Upgrade to keep submitting.`
+            : body.reason === "monthly_cap_reached"
+              ? `You've hit your ${body.planName} monthly cap. Upgrade or wait for renewal.`
+              : "Subscription is inactive. Please update billing to continue."
+        );
+        // Hard redirect to pricing keeps the upgrade CTA front and center
+        if (typeof window !== "undefined") {
+          setTimeout(() => { window.location.href = body.upgradeUrl || "/pricing"; }, 1500);
+        }
+        return;
+      }
+
       const supabase = createClient();
       const {
         data: { user },
@@ -274,8 +294,11 @@ export default function NewClaimPage() {
 
       if (dbError) throw new Error(dbError.message);
 
-      // Increment claim usage counter
-      await fetch("/api/billing/check-quota", { method: "POST" });
+      // Quota counter is incremented by the backend processor atomically with
+      // the gate check, so we don't increment here. (The old client-side POST
+      // raced with the poller — counter ticked before processor.py ran, then
+      // the processor's gate read the post-increment count and blocked the
+      // very claim that drove it. See processor.py step 1b.)
 
       // Generate a single event_id used by BOTH the browser pixel and the
       // server-side CAPI mirror. Meta dedupes events with matching IDs so
@@ -671,11 +694,13 @@ export default function NewClaimPage() {
         )}
 
         {!showChecklist && (<>
-        {/* Quota Gate — Upgrade */}
+        {/* Quota Gate — Upgrade (hard block, 0 remaining) */}
         {quota && !quota.allowed && (
           <div className="mb-8 bg-gradient-to-br from-[var(--navy)] to-[var(--navy-light)] rounded-2xl p-8 text-center text-white">
             <h3 className="text-xl font-bold mb-2">
-              You&apos;ve used your {quota.limit} free claims
+              {quota.planId === "starter"
+                ? `You've used your ${quota.limit} free claims`
+                : `You've hit your ${quota.planName} monthly cap`}
             </h3>
             <p className="text-[var(--gray-dim)] text-sm mb-6">
               Upgrade to keep submitting claims and generating revenue.
@@ -685,23 +710,40 @@ export default function NewClaimPage() {
                 href="/pricing"
                 className="bg-gradient-to-r from-[var(--pink)] via-[var(--purple)] to-[var(--blue)] hover:shadow-[var(--shadow-glow-pink)] text-white px-6 py-3 rounded-xl font-bold text-sm transition-colors"
               >
-                Pro — $499/mo (10 claims)
+                Company — $499/mo (8 claims)
               </a>
               <a
                 href="/pricing"
                 className="bg-white/10 hover:bg-white/20 text-white px-6 py-3 rounded-xl font-bold text-sm transition-colors border border-white/20"
               >
-                Growth — $999/mo (30 claims)
+                Growth — $999/mo (20 claims)
               </a>
             </div>
             <p className="text-[var(--gray-dim)] text-xs mt-4">Cancel anytime. No long-term contracts.</p>
           </div>
         )}
 
-        {quota && quota.allowed && (
+        {/* Near-cap warning — amber, soft nudge while still allowed */}
+        {quota && quota.allowed && quota.planId === "starter" && quota.remaining === 1 && (
+          <div className="mb-6 flex items-center justify-between bg-amber-500/10 border border-amber-500/30 rounded-lg px-4 py-3">
+            <span className="text-xs text-amber-200">
+              <span className="font-semibold">Last free claim.</span> Upgrade now to keep your workflow uninterrupted.
+            </span>
+            <a
+              href="/pricing"
+              className="text-xs font-semibold text-amber-200 hover:text-amber-100 underline whitespace-nowrap ml-3"
+            >
+              See plans →
+            </a>
+          </div>
+        )}
+
+        {/* Standard quota chip — neutral state */}
+        {quota && quota.allowed && !(quota.planId === "starter" && quota.remaining === 1) && (
           <div className="mb-6 flex items-center justify-between bg-white/[0.04] rounded-lg px-4 py-2.5 border border-[var(--border-glass)]">
             <span className="text-xs text-[var(--gray-muted)]">
               <span className="font-semibold text-[var(--white)]">{quota.planName}</span> plan
+              {quota.companyShared && <span className="ml-1 text-[10px] text-[var(--gray-dim)]">(team)</span>}
             </span>
             <span className="text-xs text-[var(--gray-muted)]">
               <span className="font-semibold text-[var(--white)]">{quota.remaining}</span> claim{quota.remaining !== 1 ? "s" : ""} remaining

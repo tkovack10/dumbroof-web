@@ -3,6 +3,7 @@ import { getStripe } from "@/lib/stripe";
 import { getPlanByPriceId } from "@/lib/stripe-config";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { sendCapiEvent, CapiEventName } from "@/lib/meta-conversions-api";
+import { syncTeamSeats } from "@/lib/billing/sync-team-seats";
 import Stripe from "stripe";
 
 /**
@@ -93,9 +94,19 @@ export async function POST(req: NextRequest) {
         console.error("Checkout completed with unknown price IDs:", sub.items.data.map((si: { price: { id: string } }) => si.price.id));
       }
 
+      // Resolve the buyer's company_id so the subscription row is team-scoped
+      // from day one (the assert_quota_allowed RPC then shares this plan with
+      // every teammate that joins later, instead of leaving them on starter).
+      const { data: buyerProfile } = await supabaseAdmin
+        .from("company_profiles")
+        .select("company_id")
+        .eq("user_id", userId)
+        .limit(1);
+
       await supabaseAdmin.from("subscriptions").upsert(
         {
           user_id: userId,
+          company_id: buyerProfile?.[0]?.company_id || null,
           stripe_customer_id: customerId,
           stripe_subscription_id: subscriptionId,
           plan_id: plan?.id || "starter",
@@ -110,6 +121,17 @@ export async function POST(req: NextRequest) {
 
       // Fire CAPI Purchase — Meta can now optimize for paying customers
       fireCapiPurchase(userId, plan?.price || 0, plan?.name || "subscription");
+
+      // Sync extra-seat charges if the buyer already has team members above
+      // their plan's includedUsers count (e.g. invited the team first, paid second).
+      const buyerCompanyId = buyerProfile?.[0]?.company_id;
+      if (buyerCompanyId) {
+        try {
+          await syncTeamSeats(buyerCompanyId);
+        } catch (e) {
+          console.error("[webhook checkout.completed] syncTeamSeats failed", e);
+        }
+      }
       break;
     }
 

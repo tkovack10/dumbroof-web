@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { requireAuth, isAuthError } from "@/lib/api-auth";
+import { syncTeamSeats } from "@/lib/billing/sync-team-seats";
 
 /**
  * Accept a team invite. Links the authenticated user's company_profiles row
@@ -111,6 +112,24 @@ export async function POST(request: Request) {
       accepted_by: user.id,
     })
     .eq("id", invite.id);
+
+  // Update Stripe seat count for the team. Team-size grew by one — if the
+  // company is on a paid plan with includedUsers exceeded, this adds (or
+  // increments) the extra_seat line on the subscription, prorated.
+  // Fire-and-await so any Stripe failure surfaces in the response — but the
+  // helper itself is defensive and never throws.
+  try {
+    const seatResult = await syncTeamSeats(invite.company_id);
+    if (seatResult.synced) {
+      console.log("[accept] team seats synced", {
+        company_id: invite.company_id,
+        extra_seats: seatResult.extraSeats,
+      });
+    }
+  } catch (e) {
+    // Defensive — never block invite acceptance on a Stripe hiccup.
+    console.error("[accept] syncTeamSeats threw", e);
+  }
 
   return NextResponse.json({
     ok: true,

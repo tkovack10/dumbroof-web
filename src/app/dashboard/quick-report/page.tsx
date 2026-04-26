@@ -105,6 +105,24 @@ export default function QuickReportPage() {
     setErrorMsg("");
 
     try {
+      // Preflight: reject at-cap users before uploading photos.
+      const preflight = await fetch("/api/claims/preflight", { method: "POST" });
+      if (preflight.status === 402) {
+        const body = await preflight.json();
+        setStatus("error");
+        setErrorMsg(
+          body.reason === "lifetime_cap_reached"
+            ? `You've used your ${body.limit} free claims. Upgrade to keep submitting.`
+            : body.reason === "monthly_cap_reached"
+              ? `You've hit your ${body.planName} monthly cap. Upgrade or wait for renewal.`
+              : "Subscription is inactive. Please update billing to continue."
+        );
+        if (typeof window !== "undefined") {
+          setTimeout(() => { window.location.href = body.upgradeUrl || "/pricing"; }, 1500);
+        }
+        return;
+      }
+
       const supabase = createClient();
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Not authenticated");
@@ -152,7 +170,7 @@ export default function QuickReportPage() {
 
       if (dbError) throw new Error(dbError.message);
 
-      await fetch("/api/billing/check-quota", { method: "POST" });
+      // Counter is incremented by processor.py atomically with the quota gate.
       setStatus("success");
     } catch (err) {
       setStatus("error");
