@@ -40,13 +40,31 @@ async function listAllAuthUsers(): Promise<
   // Safety cap: 60 pages × 50 = 3000 users. Past that we should switch to
   // a filtered query path (e.g. the gotrue admin API doesn't support
   // created_at filtering yet, so the alternative is exposing auth schema).
+  // Track consecutive empty pages — only stop when we've actually run out of
+  // users (vs hitting a corrupt-row error). Some pages reliably 500 on this
+  // account ("Database error finding users") even when neighboring pages
+  // succeed — likely a corrupt user row. Skip past errors, don't bail.
+  let consecutiveEmptyOrErrored = 0;
   for (let i = 0; i < 60; i++) {
     const { data, error } = await supabaseAdmin.auth.admin.listUsers({ page, perPage });
     if (error) {
-      console.error(`[funnel-monitor] auth.admin.listUsers error (page ${page}):`, error.message);
-      break;
+      console.warn(
+        `[funnel-monitor] auth.admin.listUsers error (page ${page}, perPage ${perPage}): ${error.message} — skipping page`
+      );
+      consecutiveEmptyOrErrored += 1;
+      // 3 consecutive failures = we've genuinely walked off the end
+      if (consecutiveEmptyOrErrored >= 3) break;
+      page += 1;
+      continue;
     }
     const users = data?.users || [];
+    if (users.length === 0) {
+      consecutiveEmptyOrErrored += 1;
+      if (consecutiveEmptyOrErrored >= 3) break;
+      page += 1;
+      continue;
+    }
+    consecutiveEmptyOrErrored = 0;
     for (const u of users) {
       all.push({
         id: u.id,
@@ -152,6 +170,22 @@ export async function gatherSupabase(
     cohortRetention = returningSet.size / cohortUserIds.size;
   }
 
+  // Phase 4 attribution — bucket fb_landing_* signups by variant slug so the
+  // route handler can correlate spend (Meta) → signups (Supabase) per variant.
+  // Source naming convention: HeroSignupForm passes `fb_landing_${variant}` from
+  // the hero, `fb_landing_${variant}_bottom` from the final CTA. Merge both.
+  const fbSignupsByVariant: Record<string, number> = {};
+  for (const s of signups) {
+    if (s.signup_source?.startsWith("fb_landing_")) {
+      const variant = s.signup_source
+        .replace(/^fb_landing_/, "")
+        .replace(/_bottom$/, "");
+      // Empty string = bare "fb_landing" (default variant pre-rewrite). Bucket as "default".
+      const key = variant || "default";
+      fbSignupsByVariant[key] = (fbSignupsByVariant[key] || 0) + 1;
+    }
+  }
+
   const section: SupabaseSection = {
     signups_count: signups.length,
     uploads_count: claimRows.length,
@@ -162,6 +196,7 @@ export async function gatherSupabase(
     recent_signups: signups,
     recent_claims: claimRows,
     cohort_week1_retention: cohortRetention,
+    fb_signups_by_variant: fbSignupsByVariant,
   };
 
   // Anomalies

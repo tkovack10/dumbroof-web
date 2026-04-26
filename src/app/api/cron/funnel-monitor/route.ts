@@ -139,6 +139,51 @@ async function runFunnelMonitor(): Promise<{ ok: boolean; report?: FunnelReport;
     });
   }
 
+  // Phase 4 — per-variant FB landing pass/fail (Apr 26 fb-landing rewrite).
+  // Each Meta campaign now points at a tuned /fb/${variant} page. After resume,
+  // we judge each campaign independently: $50+ spent in window with 0 attributed
+  // signups = FAIL (pause again); 1+ signups = PASS (consider full budget).
+  // Threshold of $50 is the smallest spend where 0-conversion is statistically
+  // meaningful at typical CPMs (~$15) — gives ~3-4 clicks min before judgment.
+  const PHASE4_VARIANTS: Array<{
+    variant: string;
+    campaignNamePattern: RegExp;
+    minSpendCentsForJudgment: number;
+  }> = [
+    { variant: "leads", campaignNamePattern: /New Leads Campaign/i, minSpendCentsForJudgment: 5000 },
+    { variant: "hail", campaignNamePattern: /Hail Zones/i, minSpendCentsForJudgment: 5000 },
+    { variant: "whoops", campaignNamePattern: /Whoops Relaunch/i, minSpendCentsForJudgment: 5000 },
+  ];
+
+  if (report.meta_ads && report.supabase) {
+    for (const cfg of PHASE4_VARIANTS) {
+      const campaign = report.meta_ads.campaigns.find(
+        (c) => cfg.campaignNamePattern.test(c.name) && c.status === "ACTIVE"
+      );
+      if (!campaign) continue; // paused or not running — nothing to judge
+      if (campaign.spend_cents < cfg.minSpendCentsForJudgment) continue; // not enough spend yet
+
+      const signups = report.supabase.fb_signups_by_variant[cfg.variant] ?? 0;
+      const spendDollars = (campaign.spend_cents / 100).toFixed(2);
+
+      if (signups === 0) {
+        anomalies.push({
+          severity: "critical",
+          code: "phase4_fail_pause_again",
+          message: `Phase 4 FAIL: "${campaign.name}" spent $${spendDollars} with 0 attributed signups on /fb/${cfg.variant}. Pause and iterate copy/video.`,
+          source: "meta_ads",
+        });
+      } else {
+        anomalies.push({
+          severity: "info",
+          code: "phase4_pass_consider_full_budget",
+          message: `Phase 4 PASS: "${campaign.name}" spent $${spendDollars} with ${signups} signup(s) on /fb/${cfg.variant}. Consider raising to full budget.`,
+          source: "meta_ads",
+        });
+      }
+    }
+  }
+
   // AI insight (only if Anthropic key present)
   report.ai_insight = await generateAiInsight(report);
 

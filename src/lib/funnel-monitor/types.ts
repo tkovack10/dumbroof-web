@@ -38,6 +38,13 @@ export type SupabaseSection = {
   recent_signups: SignupRow[];
   recent_claims: ClaimRow[];
   cohort_week1_retention: number | null;
+  /**
+   * Phase 4 (Apr 26 fb-landing rewrite) — per-variant signup attribution.
+   * Keyed by variant slug ("hail", "whoops", "leads", "default"). Sources
+   * `fb_landing_${variant}` and `fb_landing_${variant}_bottom` are merged
+   * since both come from the same landing page.
+   */
+  fb_signups_by_variant: Record<string, number>;
 };
 
 export type ResendSection = {
