@@ -35,10 +35,42 @@ export function SignupClient({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
+  const [domainMatch, setDomainMatch] = useState<{
+    companyName: string | null;
+    memberCount: number;
+    ownerEmail: string | null;
+  } | null>(null);
 
   useEffect(() => {
     if (prefillEmail && !email) setEmail(prefillEmail);
   }, [prefillEmail, email]);
+
+  // Check if the typed email's domain matches an existing company. Debounced
+  // 600ms after last keystroke. Only runs when there's no invite context
+  // (invite flow already knows the company). Results power a non-blocking
+  // notice that suggests asking the team owner for an invite.
+  useEffect(() => {
+    if (inviteContext) return;
+    if (!email || !email.includes("@") || email.split("@")[1].length < 3) {
+      setDomainMatch(null);
+      return;
+    }
+    const handle = setTimeout(async () => {
+      try {
+        const res = await fetch("/api/signup/check-domain", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email }),
+        });
+        if (!res.ok) return;
+        const data = await res.json();
+        setDomainMatch(data.matched || null);
+      } catch {
+        // non-fatal — just don't show the notice
+      }
+    }, 600);
+    return () => clearTimeout(handle);
+  }, [email, inviteContext]);
 
   const trackSignupPixels = () => {
     try {
@@ -248,6 +280,32 @@ export function SignupClient({
                 <p className="text-xs text-[var(--gray-dim)] mt-1">
                   Invite sent to this email — can&apos;t change it here.
                 </p>
+              )}
+              {!inviteContext && domainMatch && (
+                <div className="mt-2 p-3 rounded-lg border border-amber-500/30 bg-amber-500/10 text-xs">
+                  <p className="text-amber-200 font-semibold mb-1">
+                    {domainMatch.memberCount} {domainMatch.memberCount === 1 ? "person" : "people"} from{" "}
+                    {domainMatch.companyName || "your company"} already use{domainMatch.memberCount === 1 ? "s" : ""} dumbroof.ai
+                  </p>
+                  <p className="text-amber-100/80">
+                    To share their plan and team workspace, ask{" "}
+                    {domainMatch.ownerEmail ? (
+                      <a
+                        href={`mailto:${domainMatch.ownerEmail}?subject=${encodeURIComponent(
+                          "Please invite me to our DumbRoof team"
+                        )}&body=${encodeURIComponent(
+                          `Hey — I'm setting up my DumbRoof account at ${email}. Could you send me a team invite from your dashboard so we share the same plan?`
+                        )}`}
+                        className="underline hover:text-amber-50"
+                      >
+                        {domainMatch.ownerEmail}
+                      </a>
+                    ) : (
+                      "your team admin"
+                    )}{" "}
+                    to send you an invite from their dashboard. Or continue below to create a separate account.
+                  </p>
+                </div>
               )}
             </div>
             <div>
