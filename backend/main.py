@@ -88,6 +88,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Public x402-callable agent API. See docs/RICHARD_API_SPEC.md.
+from public_richard import router as public_richard_router
+app.include_router(public_richard_router)
+
 
 @app.get("/health")
 def health():
