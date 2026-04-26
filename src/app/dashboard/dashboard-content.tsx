@@ -14,6 +14,7 @@ import { useCountUp } from "@/hooks/use-count-up";
 import { InviteTeammateModal } from "@/components/invite-teammate-modal";
 import { ReferCompanyModal } from "@/components/refer-company-modal";
 import { RichardLauncher } from "@/components/richard-launcher";
+import { OnboardingChecklist } from "@/components/onboarding-checklist";
 
 type StatusFilter = "all" | "processing" | "ready" | "attention";
 type ViewMode = "table" | "map";
@@ -605,6 +606,8 @@ export function DashboardContent({ user }: { user: User }) {
             </a>
           </div>
         </div>
+
+        <OnboardingChecklist />
 
         {/* Claims / Repairs Tab Bar */}
         <div className="flex gap-2 mb-6">
