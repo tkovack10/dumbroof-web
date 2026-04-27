@@ -659,7 +659,7 @@ function SettingsPageContent() {
         </div>
 
         {/* Email Integration (Claim Brain) */}
-        <div className="mt-12 pt-8 border-t border-[var(--border-glass)]">
+        <div id="email-integration" className="mt-12 pt-8 border-t border-[var(--border-glass)] scroll-mt-20">
           <h2 className="text-xl font-bold text-[var(--white)] mb-1">Email Integration</h2>
           <p className="text-[var(--gray-muted)] text-sm mb-6">
             Connect your Gmail to send emails from Claim Brain as yourself.
