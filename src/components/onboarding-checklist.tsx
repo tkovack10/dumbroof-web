@@ -123,14 +123,17 @@ export function OnboardingChecklist() {
       );
       const dismissed = !!profile.onboarding_dismissed_at;
 
-      // Step 2 — team grew OR an invite was sent
+      // Step 2 — team grew OR an invite was sent. Direct count(*) on
+      // company_profiles is blocked by RLS (auth users can only SELECT their
+      // own row), so we go through the get_company_team_size SECURITY DEFINER
+      // RPC which is auth.uid()-guarded and only returns counts for the
+      // caller's own company.
       let hasInvitedTeam = false;
       if (profile.company_id) {
-        const { count: teamCount } = await supabase
-          .from("company_profiles")
-          .select("user_id", { count: "exact", head: true })
-          .eq("company_id", profile.company_id);
-        if ((teamCount ?? 0) > 1) {
+        const { data: teamSize } = await supabase.rpc("get_company_team_size", {
+          p_company_id: profile.company_id,
+        });
+        if ((teamSize ?? 0) > 1) {
           hasInvitedTeam = true;
         } else {
           const { count: inviteCount } = await supabase

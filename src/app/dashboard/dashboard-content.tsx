@@ -943,9 +943,8 @@ export function DashboardContent({ user }: { user: User }) {
                         <th className="px-3 py-3 text-[10px] font-semibold text-[var(--gray-dim)] uppercase">Property</th>
                         <th className="px-3 py-3 text-[10px] font-semibold text-[var(--gray-dim)] uppercase">Carrier</th>
                         <th className="px-3 py-3 text-[10px] font-semibold text-[var(--gray-dim)] uppercase text-right">Our Estimate</th>
-                        <th className="px-3 py-3 text-[10px] font-semibold text-[var(--gray-dim)] uppercase text-right">Original Carrier</th>
-                        <th className="px-3 py-3 text-[10px] font-semibold text-[var(--gray-dim)] uppercase text-right">Updated Carrier</th>
-                        <th className="px-3 py-3 text-[10px] font-semibold text-[var(--gray-dim)] uppercase text-center">Status</th>
+                        <th className="px-3 py-3 text-[10px] font-semibold text-[var(--gray-dim)] uppercase text-right">Carrier RCV</th>
+                        <th className="px-3 py-3 text-[10px] font-semibold text-[var(--gray-dim)] uppercase text-center min-w-[110px]">Status</th>
                         <th className="px-2 py-3 w-8"></th>
                       </tr>
                     </thead>
@@ -968,29 +967,44 @@ export function DashboardContent({ user }: { user: User }) {
                           >
                             <td className="px-3 py-2.5">
                               <a href={`/dashboard/claim/${claim.id}`} className="hover:underline" onClick={e => e.stopPropagation()}>
-                                <p className="font-medium text-[var(--white)] truncate max-w-[220px]">{claim.address}</p>
+                                <p className="font-medium text-[var(--white)] truncate max-w-[180px]">{claim.address}</p>
                               </a>
                               <p className="text-[10px] text-[var(--gray-dim)] mt-0.5">{new Date(claim.created_at).toLocaleDateString()}</p>
                             </td>
-                            <td className="px-3 py-2.5 text-[var(--gray)] truncate max-w-[140px]">{claim.carrier || "\u2014"}</td>
+                            <td className="px-3 py-2.5 text-[var(--gray)] truncate max-w-[120px]">{claim.carrier || "\u2014"}</td>
                             <td className="px-3 py-2.5 text-right text-xs tabular-nums font-medium text-[var(--white)]">
                               {cRcv > 0 ? `$${cRcv.toLocaleString()}` : "\u2014"}
                             </td>
-                            <td className="px-3 py-2.5 text-right text-xs tabular-nums text-[var(--gray-muted)]">
-                              {iRcv > 0 ? `$${iRcv.toLocaleString()}` : "\u2014"}
-                            </td>
+                            {/* Carrier RCV \u2014 collapsed Original + Updated into one column. Free up
+                                ~120px so the Status column doesn't get pinched on standard 1280
+                                viewports. Original shown as small dim line below current when both
+                                exist and differ; bright green when there was movement (won). */}
                             <td className="px-3 py-2.5 text-right">
                               {isWon && movement > 0 ? (
                                 <div>
-                                  <span className="text-xs tabular-nums font-bold text-green-600">
+                                  <span className="text-xs tabular-nums font-bold text-green-500">
                                     ${currentCarrier.toLocaleString()}
                                   </span>
-                                  <div className="text-[10px] font-bold text-green-500 mt-0.5">
+                                  <div className="text-[10px] font-bold text-green-400 mt-0.5">
                                     +${movement.toLocaleString()} ({movementPct}%)
                                   </div>
+                                  {iRcv > 0 && iRcv !== currentCarrier && (
+                                    <div className="text-[10px] tabular-nums text-[var(--gray-dim)] line-through">
+                                      ${iRcv.toLocaleString()}
+                                    </div>
+                                  )}
                                 </div>
                               ) : currentCarrier > 0 && currentCarrier !== iRcv ? (
-                                <span className="text-xs tabular-nums text-[var(--gray)]">${currentCarrier.toLocaleString()}</span>
+                                <div>
+                                  <span className="text-xs tabular-nums text-[var(--white)]">${currentCarrier.toLocaleString()}</span>
+                                  {iRcv > 0 && (
+                                    <div className="text-[10px] tabular-nums text-[var(--gray-dim)] line-through">
+                                      ${iRcv.toLocaleString()}
+                                    </div>
+                                  )}
+                                </div>
+                              ) : iRcv > 0 ? (
+                                <span className="text-xs tabular-nums text-[var(--gray-muted)]">${iRcv.toLocaleString()}</span>
                               ) : (
                                 <span className="text-xs text-[var(--gray-dim)]">{"\u2014"}</span>
                               )}
