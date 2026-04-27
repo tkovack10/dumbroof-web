@@ -4641,26 +4641,25 @@ async def process_claim(claim_id: str):
             except Exception as e:
                 print(f"[PROCESS] Domain admin lookup failed: {e}", flush=True)
 
-    # Identity fields — only use USARM values when NO user profile exists.
-    # Never fill these from USARM for a user's profile; that leaked the
-    # office phone / address into users' PDFs (see Dominic 2026-04-16).
-    _usarm_identity = {
-        "company_name": "USA ROOF MASTERS",
-        "address": "3070 Bristol Pike, Building 1, Suite 122",
-        "city_state_zip": "Bensalem, PA 19020",
-        "contact_name": "Tom Kovack Jr.",
-        "contact_title": "CEO",
-        "email": "TKovack@USARoofMasters.com",
-        "phone": "267-679-1504",
-        "office_phone": "267-332-0197",
-        "website": "www.USARoofMasters.com",
-    }
-    _neutral_defaults = {
+    # Identity fields — neutral defaults only. NEVER fill USARM contact
+    # info into another user's PDFs (E182 brand leak). For a claim whose
+    # owner has no company_profiles row at all, render with placeholders
+    # so the PDF is ugly-but-anonymous, not impersonating USARM.
+    _neutral_defaults: dict = {
+        "company_name": "Your Roofing Company",
+        "address": "",
+        "city_state_zip": "",
+        "contact_name": "",
+        "contact_title": "",
+        "email": "",
+        "phone": "",
+        "office_phone": "",
+        "website": "",
         "user_role": "contractor",
     }
     if not company_profile:
-        company_profile = {**_usarm_identity, **_neutral_defaults}
-        print("[PROCESS] No company profile — using USARM defaults")
+        company_profile = dict(_neutral_defaults)
+        print("[PROCESS] No company profile — using neutral defaults (NOT USARM)")
     else:
         for key, default_val in _neutral_defaults.items():
             if not company_profile.get(key):
