@@ -2995,9 +2995,12 @@ def _handle_list_company_claims(sb: Client, user_id: str, tool_input: dict) -> d
     company_id, user_ids = _company_user_ids(sb, user_id)
 
     try:
+        # claims.last_touched_at is the recency column (claims.updated_at
+        # does not exist — see schema. Other touch columns: last_processed_at,
+        # created_at).
         q = sb.table("claims").select(
-            "id, address, carrier, status, original_carrier_rcv, contractor_rcv, created_at, updated_at, user_id"
-        ).in_("user_id", user_ids).order("updated_at", desc=True).limit(limit * 3)
+            "id, address, carrier, status, original_carrier_rcv, contractor_rcv, created_at, last_touched_at, user_id"
+        ).in_("user_id", user_ids).order("last_touched_at", desc=True).limit(limit * 3)
         res = q.execute()
         claims = res.data or []
     except Exception as e:
@@ -3031,7 +3034,7 @@ def _handle_list_company_claims(sb: Client, user_id: str, tool_input: dict) -> d
             "contractor_rcv": round(contractor_rcv, 2),
             "variance": round(variance, 2),
             "rep_user_id": c.get("user_id"),
-            "updated_at": c.get("updated_at"),
+            "last_touched_at": c.get("last_touched_at"),
         })
 
     return {
@@ -3151,7 +3154,7 @@ def _handle_compare_team_performance(sb: Client, user_id: str, tool_input: dict)
         team = {r["user_id"]: r for r in (team_res.data or []) if r.get("user_id")}
 
         claims_res = sb.table("claims").select(
-            "id, user_id, status, original_carrier_rcv, contractor_rcv, claim_outcome, created_at, updated_at"
+            "id, user_id, status, original_carrier_rcv, contractor_rcv, claim_outcome, created_at, last_touched_at"
         ).in_("user_id", user_ids).gte("created_at", cutoff_iso).execute()
         claims = claims_res.data or []
     except Exception as e:
@@ -3181,11 +3184,11 @@ def _handle_compare_team_performance(sb: Client, user_id: str, tool_input: dict)
             s["variance_count"] += 1
         try:
             created = c.get("created_at") or ""
-            updated = c.get("updated_at") or ""
-            if created and updated:
+            touched = c.get("last_touched_at") or ""
+            if created and touched:
                 cd = datetime.fromisoformat(created.replace("Z", "+00:00"))
-                ud = datetime.fromisoformat(updated.replace("Z", "+00:00"))
-                hours = (ud - cd).total_seconds() / 3600
+                td = datetime.fromisoformat(touched.replace("Z", "+00:00"))
+                hours = (td - cd).total_seconds() / 3600
                 if hours > 0:
                     s["total_cycle_hours"] += hours
                     s["cycle_count"] += 1
@@ -3236,7 +3239,7 @@ def _handle_get_team_member_workload(sb: Client, user_id: str) -> dict:
         team = {r["user_id"]: r for r in (team_res.data or []) if r.get("user_id")}
 
         claims_res = sb.table("claims").select(
-            "id, user_id, status, original_carrier_rcv, contractor_rcv, updated_at"
+            "id, user_id, status, original_carrier_rcv, contractor_rcv, last_touched_at"
         ).in_("user_id", user_ids).execute()
         claims = claims_res.data or []
     except Exception as e:
@@ -3264,9 +3267,9 @@ def _handle_get_team_member_workload(sb: Client, user_id: str) -> dict:
             if (contractor_rcv - carrier_rcv) > 0:
                 s["pending_supplements"] += 1
             try:
-                updated = c.get("updated_at") or ""
-                ud = datetime.fromisoformat(updated.replace("Z", "+00:00")) if updated else None
-                if ud and ud < overdue_cutoff:
+                touched = c.get("last_touched_at") or ""
+                td = datetime.fromisoformat(touched.replace("Z", "+00:00")) if touched else None
+                if td and td < overdue_cutoff:
                     s["overdue_follow_ups"] += 1
             except Exception:
                 pass
