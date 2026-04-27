@@ -89,12 +89,14 @@ export function OnboardingChecklist() {
 
       // One read of company_profiles covers steps 1, 4, 5, dismissed flag.
       // Falls back to all-false if no row exists yet.
-      // gmail_refresh_token is populated by the existing /api/gmail-auth/callback
-      // backend flow when the user completes Google OAuth — Step 4's signal of truth.
+      // - company_name (NOT "name" — column doesn't exist) is the brand shown
+      //   on claim documents.
+      // - gmail_refresh_token is populated by the existing /api/gmail-auth/callback
+      //   backend flow when the user completes Google OAuth — Step 4's signal.
       const { data: profile } = await supabase
         .from("company_profiles")
         .select(
-          "name, phone, company_id, companycam_api_key, acculynx_api_key, gmail_refresh_token, onboarding_dismissed_at"
+          "company_name, phone, company_id, companycam_api_key, acculynx_api_key, gmail_refresh_token, onboarding_dismissed_at"
         )
         .eq("user_id", user.id)
         .limit(1)
@@ -114,7 +116,7 @@ export function OnboardingChecklist() {
         return;
       }
 
-      const hasCompanyInfo = !!(profile.name && profile.phone);
+      const hasCompanyInfo = !!(profile.company_name && profile.phone);
       const hasConnectedEmail = !!profile.gmail_refresh_token;
       const hasConnectedCRM = !!(
         profile.companycam_api_key || profile.acculynx_api_key
