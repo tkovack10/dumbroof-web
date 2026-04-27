@@ -4678,6 +4678,7 @@ async def process_claim(claim_id: str):
         # Download user's logo from Supabase if they have one.
         # Preserve the original file extension so the PDF generator
         # can detect the correct MIME type (PNG vs JPEG vs etc).
+        user_logo_downloaded = False
         if company_profile and company_profile.get("logo_path"):
             try:
                 _logo_path = company_profile["logo_path"]
@@ -4686,25 +4687,46 @@ async def process_claim(claim_id: str):
                 logo_dest = os.path.join(photos_dir, f"usarm_logo{_logo_ext}")
                 with open(logo_dest, "wb") as f:
                     f.write(logo_data)
+                user_logo_downloaded = True
                 print(f"[PROCESS] Downloaded user logo ({_logo_ext}, {len(logo_data)} bytes)")
             except Exception as e:
-                print(f"[PROCESS] Could not download logo: {e}")
+                print(f"[PROCESS] Could not download user logo: {e}")
 
-        # Fallback: Copy logo if no user logo downloaded
-        logo_dest = os.path.join(photos_dir, "usarm_logo.jpg")
-        if not os.path.exists(logo_dest):
+        # Fallback to bundled USARM logo ONLY for actual USARM-branded claims.
+        # Previously this fell through for ANY user whose download failed or
+        # didn't have a logo_path at all — leaking USARM branding onto every
+        # external customer's PDFs. (E182 — brand-leak via processor logo
+        # fallback.) Two checks before applying the fallback:
+        #   1. Some flavor of usarm_logo.* must NOT already exist (the original
+        #      check only looked for .jpg, missing .jpeg/.png/.webp downloads).
+        #   2. The company must self-identify as USA Roof Masters.
+        import glob
+        existing_user_logos = glob.glob(os.path.join(photos_dir, "usarm_logo.*"))
+        company_name_lc = ((company_profile or {}).get("company_name") or "").strip().lower()
+        is_usarm_branded = (
+            "usa roof masters" in company_name_lc
+            or company_name_lc in ("usarm", "usa roof masters llc")
+        )
+
+        if not user_logo_downloaded and not existing_user_logos and is_usarm_branded:
             import shutil
-            # Try iCloud (macOS local dev)
             icloud_logo = os.path.expanduser(
                 "~/Library/Mobile Documents/com~apple~CloudDocs/logo-version-2-2 2.JPG"
             )
-            # Try bundled USARM default (cloud)
             bundled_logo = os.path.join(BACKEND_DIR, "assets", "usarm_logo.jpg")
+            logo_dest = os.path.join(photos_dir, "usarm_logo.jpg")
             for src in [icloud_logo, bundled_logo]:
                 if os.path.exists(src):
                     shutil.copy2(src, logo_dest)
-                    print(f"[PROCESS] Logo copied from {os.path.basename(os.path.dirname(src))}")
+                    print(f"[PROCESS] USARM-branded logo fallback applied (company={company_name_lc!r})")
                     break
+        elif not user_logo_downloaded and not existing_user_logos:
+            # Non-USARM company with no logo on file — render PDFs WITHOUT a
+            # logo. The PDF template renders an empty header in that case.
+            print(
+                f"[PROCESS] No company logo available for {company_name_lc!r} — "
+                f"PDFs will render header text only (no image)"
+            )
 
         file_path = claim["file_path"]  # e.g. "user-id/123-main-st"
 
