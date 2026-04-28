@@ -600,7 +600,7 @@ tr:nth-child(even) td { background: #f8f9fa; }
     min-height: 85vh;
     text-align: center;
 }
-.cover-page .cover-logo { height: 80pt; width: auto; margin-bottom: 16pt; }
+.cover-page .cover-logo { height: 160pt; width: auto; max-width: 360pt; margin-bottom: 20pt; object-fit: contain; }
 .cover-page .cover-company {
     font-size: 28pt;
     font-weight: 800;
