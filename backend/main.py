@@ -1022,15 +1022,20 @@ def _build_claim_brain_prompt(claim_data: dict, photos: list, scope_comparison: 
     # Scope comparison
     scope_text = ""
     if scope_comparison:
-        scope_text = "\n### Scope Comparison — Carrier vs. USARM\n"
+        # Prompt-label uses "Our Scope" (neutral) instead of "USARM" so Richard
+        # doesn't bleed USARM-specific naming into responses for non-USARM
+        # contractors. The scope_comparison row keys themselves still use the
+        # legacy `usarm_desc` / `usarm_amount` names from the comparison
+        # engine — those are internal field names not surfaced to the user.
+        scope_text = "\n### Scope Comparison — Carrier vs. Our Scope\n"
         for row in scope_comparison[:50]:
             if isinstance(row, dict):
                 item = row.get("checklist_desc", row.get("usarm_desc", row.get("carrier_desc", "Unknown")))
                 carrier_amt = row.get("carrier_amount", 0) or 0
-                usarm_amt = row.get("usarm_amount", 0) or 0
-                diff = usarm_amt - carrier_amt
+                our_amt = row.get("usarm_amount", 0) or 0
+                diff = our_amt - carrier_amt
                 note = row.get("note", row.get("notes", ""))
-                scope_text += f"- **{item}**: Carrier ${carrier_amt:,.2f} → USARM ${usarm_amt:,.2f} (Δ ${diff:,.2f}) {note}\n"
+                scope_text += f"- **{item}**: Carrier ${carrier_amt:,.2f} → Our Scope ${our_amt:,.2f} (Δ ${diff:,.2f}) {note}\n"
 
     # Carrier intelligence
     playbook_section = ""

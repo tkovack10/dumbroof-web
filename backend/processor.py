@@ -4691,39 +4691,28 @@ async def process_claim(claim_id: str):
             except Exception as e:
                 print(f"[PROCESS] Could not download user logo: {e}")
 
-        # Fallback to bundled USARM logo ONLY for actual USARM-branded claims.
-        # Previously this fell through for ANY user whose download failed or
-        # didn't have a logo_path at all — leaking USARM branding onto every
-        # external customer's PDFs. (E182 — brand-leak via processor logo
-        # fallback.) Two checks before applying the fallback:
-        #   1. Some flavor of usarm_logo.* must NOT already exist (the original
-        #      check only looked for .jpg, missing .jpeg/.png/.webp downloads).
-        #   2. The company must self-identify as USA Roof Masters.
-        import glob
-        existing_user_logos = glob.glob(os.path.join(photos_dir, "usarm_logo.*"))
-        company_name_lc = ((company_profile or {}).get("company_name") or "").strip().lower()
-        is_usarm_branded = (
-            "usa roof masters" in company_name_lc
-            or company_name_lc in ("usarm", "usa roof masters llc")
+        # Bundled-USARM logo fallback. Three-gate brand-isolation logic
+        # (E182 prevention) lives in brand_isolation.stage_usarm_fallback_logo
+        # so the gating can be unit-tested independent of process_claim.
+        from brand_isolation import stage_usarm_fallback_logo
+        is_usarm_flag = bool((company_profile or {}).get("is_usarm"))
+        log_company = ((company_profile or {}).get("company_name") or "<empty>")[:40]
+        applied = stage_usarm_fallback_logo(
+            photos_dir,
+            user_logo_downloaded=user_logo_downloaded,
+            is_usarm=is_usarm_flag,
+            bundled_logo_paths=[
+                os.path.expanduser("~/Library/Mobile Documents/com~apple~CloudDocs/logo-version-2-2 2.JPG"),
+                os.path.join(BACKEND_DIR, "assets", "usarm_logo.jpg"),
+            ],
         )
-
-        if not user_logo_downloaded and not existing_user_logos and is_usarm_branded:
-            import shutil
-            icloud_logo = os.path.expanduser(
-                "~/Library/Mobile Documents/com~apple~CloudDocs/logo-version-2-2 2.JPG"
-            )
-            bundled_logo = os.path.join(BACKEND_DIR, "assets", "usarm_logo.jpg")
-            logo_dest = os.path.join(photos_dir, "usarm_logo.jpg")
-            for src in [icloud_logo, bundled_logo]:
-                if os.path.exists(src):
-                    shutil.copy2(src, logo_dest)
-                    print(f"[PROCESS] USARM-branded logo fallback applied (company={company_name_lc!r})")
-                    break
-        elif not user_logo_downloaded and not existing_user_logos:
+        if applied:
+            print(f"[PROCESS] USARM-branded logo fallback applied (company={log_company!r}, is_usarm=true)")
+        elif not user_logo_downloaded and not is_usarm_flag:
             # Non-USARM company with no logo on file — render PDFs WITHOUT a
             # logo. The PDF template renders an empty header in that case.
             print(
-                f"[PROCESS] No company logo available for {company_name_lc!r} — "
+                f"[PROCESS] No company logo available for {log_company!r} — "
                 f"PDFs will render header text only (no image)"
             )
 
@@ -6045,6 +6034,7 @@ async def process_claim(claim_id: str):
             "status": "qa_review_pending" if qa_blocked else "ready",
             "output_files": uploaded_pdfs,
             "improvement_guidance": None,  # Clear any previous rejection guidance
+            "error_message": None,  # Clear stale error_message from prior failed runs
             "last_processed_at": datetime.now(timezone.utc).isoformat(),
         }
         if qa_audit_result is not None:
