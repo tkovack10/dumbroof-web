@@ -1471,8 +1471,69 @@ class ToolApproval(BaseModel):
     overrides: dict | None = None
 
 
-# Pending tool actions awaiting user approval: {claim_id: {tool_call_id: tool_result}}
+# Pending tool actions awaiting user approval — backed by Supabase
+# `pending_tool_actions` table so Tom's Approve click can hit ANY Uvicorn
+# worker and find the same approval_id. Pre-2026-04-28-evening this was a
+# process-local dict; multi-worker fan-out caused trigger_reprocess approves
+# to 404 when the click landed on a different worker than the chat preview.
+# Dict kept as in-process L1 cache + fallback if Supabase write fails.
 _pending_tool_actions: dict = {}
+
+
+def _save_pending_action(sb, scope: str, approval_id: str, tool_result: dict, user_id: Optional[str] = None) -> None:
+    """Persist a previewed tool action so any worker can pop it later."""
+    # L1 cache: same-worker reads stay fast (no extra round-trip).
+    _pending_tool_actions.setdefault(scope, {})[approval_id] = tool_result
+    # L2 source of truth: Supabase, survives multi-worker / replica fan-out.
+    try:
+        sb.table("pending_tool_actions").upsert({
+            "approval_id": approval_id,
+            "scope": scope,
+            "user_id": user_id or None,
+            "tool_result": tool_result,
+        }).execute()
+    except Exception as e:
+        # Fall back to in-memory only — single-worker case still works,
+        # multi-worker users will see 404 on approve and need to retry.
+        print(f"[PENDING] Failed to persist {scope}/{approval_id} to Supabase (in-memory only): {e}")
+
+
+def _pop_pending_action(sb, scope: str, approval_id: str) -> Optional[dict]:
+    """Atomically retrieve and delete a pending tool action.
+
+    Returns the previewed tool_result dict, or None if missing / expired.
+    Reads Supabase first (cross-worker), then falls back to the in-process
+    dict (handles the case where Supabase write earlier failed).
+    """
+    # Try Supabase first
+    try:
+        res = sb.table("pending_tool_actions").select(
+            "tool_result, expires_at"
+        ).eq("scope", scope).eq("approval_id", approval_id).limit(1).execute()
+        if res.data:
+            row = res.data[0]
+            # Delete row regardless of expiry — single-use semantics
+            try:
+                sb.table("pending_tool_actions").delete().eq("scope", scope).eq("approval_id", approval_id).execute()
+            except Exception:
+                pass
+            # Honor expiry — never replay an expired preview
+            from datetime import datetime, timezone
+            try:
+                expires = datetime.fromisoformat((row.get("expires_at") or "").replace("Z", "+00:00"))
+                if expires < datetime.now(timezone.utc):
+                    return None
+            except Exception:
+                pass
+            # Also evict from in-process cache to prevent double-pop
+            _pending_tool_actions.get(scope, {}).pop(approval_id, None)
+            return row.get("tool_result")
+    except Exception as e:
+        print(f"[PENDING] Supabase lookup failed for {scope}/{approval_id}: {e}")
+
+    # Fallback to in-process dict (legacy path, single-worker safe)
+    bucket = _pending_tool_actions.get(scope, {})
+    return bucket.pop(approval_id, None)
 
 
 @app.post("/api/claim-brain/{claim_id}/chat")
@@ -1676,9 +1737,9 @@ async def claim_brain_chat(claim_id: str, body: ChatMessage, authorization: Opti
                         if tool_result.get("action") == "preview":
                             import uuid
                             approval_id = str(uuid.uuid4())[:8]
-                            if claim_id not in _pending_tool_actions:
-                                _pending_tool_actions[claim_id] = {}
-                            _pending_tool_actions[claim_id][approval_id] = tool_result
+                            # Persist via _save_pending_action — survives multi-worker
+                            # so Tom's Approve click can land on any Uvicorn worker.
+                            _save_pending_action(sb, claim_id, approval_id, tool_result, user_id)
 
                             tool_result["approval_id"] = approval_id
                             tool_results_for_frontend.append(tool_result)
@@ -1805,8 +1866,9 @@ async def approve_brain_action(claim_id: str, body: ToolApproval, background_tas
 
     sb = get_supabase_client()
 
-    pending = _pending_tool_actions.get(claim_id, {})
-    tool_result = pending.pop(body.tool_call_id, None)
+    # Cross-worker safe pop — reads Supabase first (canonical store), falls
+    # back to in-process dict (legacy single-worker case).
+    tool_result = _pop_pending_action(sb, claim_id, body.tool_call_id)
 
     if not tool_result:
         raise HTTPException(status_code=404, detail="No pending action found with that ID")
@@ -2803,9 +2865,9 @@ async def admin_brain_chat(body: AdminChatMessage, authorization: Optional[str] 
                         if tool_result.get("action") == "preview":
                             import uuid
                             approval_id = str(uuid.uuid4())[:8]
-                            if conv_key not in _pending_tool_actions:
-                                _pending_tool_actions[conv_key] = {}
-                            _pending_tool_actions[conv_key][approval_id] = tool_result
+                            # Cross-worker safe persist — admin Richard preview
+                            # approves can land on any Uvicorn worker.
+                            _save_pending_action(sb, conv_key, approval_id, tool_result, user_id)
                             tool_result["approval_id"] = approval_id
                             yield f"data: {json.dumps({'tool_action': tool_result})}\n\n"
                             tool_use_results.append({
@@ -3111,8 +3173,8 @@ async def approve_admin_action(body: AdminToolApproval, background_tasks: Backgr
     ]
     tool_result = None
     for ck in candidate_keys:
-        bucket = _pending_tool_actions.get(ck, {})
-        tool_result = bucket.pop(body.tool_call_id, None)
+        # Cross-worker safe pop — Supabase first, in-process dict fallback.
+        tool_result = _pop_pending_action(sb, ck, body.tool_call_id)
         if tool_result:
             break
 
