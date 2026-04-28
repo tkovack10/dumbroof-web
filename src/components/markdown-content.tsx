@@ -38,7 +38,12 @@ export function MarkdownContent({ content, size = "sm" }: MarkdownContentProps) 
         strong: ({ children }) => <strong className="text-white">{children}</strong>,
         em: ({ children }) => <em>{children}</em>,
         code: ({ children }) => (
-          <code className="bg-white/10 px-1 rounded text-xs">{children}</code>
+          <code className="bg-white/10 px-1 rounded text-xs break-all">{children}</code>
+        ),
+        pre: ({ children }) => (
+          <pre className="bg-white/5 border border-white/10 rounded my-1 p-2 overflow-x-auto text-xs whitespace-pre">
+            {children}
+          </pre>
         ),
         ul: ({ children }) => (
           <ul className="list-disc space-y-0.5 my-1 ml-4">{children}</ul>

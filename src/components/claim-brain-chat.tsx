@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useI18n } from "@/lib/i18n";
 import { directUpload } from "@/lib/upload-utils";
+import { getRichardAuthHeaders } from "@/lib/richard-auth";
 import { RichardIcon } from "@/components/richard-icon";
 import { MarkdownContent } from "@/components/markdown-content";
 
@@ -223,9 +224,10 @@ function ToolActionCard({
     }
 
     try {
+      const authHeaders = await getRichardAuthHeaders();
       const res = await fetch(`${backendUrl}/api/claim-brain/${claimId}/approve-action`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...authHeaders },
         body: JSON.stringify({
           tool_call_id: action.approval_id,
           approved: true,
@@ -249,9 +251,10 @@ function ToolActionCard({
   const handleDiscard = async () => {
     if (!action.approval_id) return;
     try {
+      const authHeaders = await getRichardAuthHeaders();
       await fetch(`${backendUrl}/api/claim-brain/${claimId}/approve-action`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...authHeaders },
         body: JSON.stringify({ tool_call_id: action.approval_id, approved: false }),
       });
     } catch {
@@ -1382,7 +1385,10 @@ export function ClaimBrainChat({
     let cancelled = false;
     const loadHistory = async () => {
       try {
-        const res = await fetch(`${BACKEND_URL}/api/claim-brain/${claimId}/history`);
+        const authHeaders = await getRichardAuthHeaders();
+        const res = await fetch(`${BACKEND_URL}/api/claim-brain/${claimId}/history`, {
+          headers: authHeaders,
+        });
         if (!res.ok || cancelled) return;
         const data = (await res.json()) as { messages?: Array<{ role: string; content: string }> };
         if (cancelled || !data.messages?.length) return;
@@ -1403,13 +1409,17 @@ export function ClaimBrainChat({
   useEffect(() => {
     if (!isOpen) return;
     let cancelled = false;
-    fetch(`${BACKEND_URL}/api/claim-brain/${claimId}/suggestions`)
-      .then((r) => (r.ok ? r.json() : null))
-      .then((data) => {
+    (async () => {
+      try {
+        const authHeaders = await getRichardAuthHeaders();
+        const r = await fetch(`${BACKEND_URL}/api/claim-brain/${claimId}/suggestions`, { headers: authHeaders });
+        const data = r.ok ? await r.json() : null;
         if (cancelled || !data) return;
         setSuggestions((data.suggestions || []) as Suggestion[]);
-      })
-      .catch(() => { /* silent */ });
+      } catch {
+        /* silent — fresh chat is fine without suggestions */
+      }
+    })();
     return () => { cancelled = true; };
   }, [isOpen, claimId, BACKEND_URL]);
 
@@ -1450,11 +1460,12 @@ export function ClaimBrainChat({
     setMessages([...newMessages, { role: "assistant", content: "", toolActions: [] }]);
 
     try {
+      const authHeaders = await getRichardAuthHeaders();
       const res = await fetch(
         `${BACKEND_URL}/api/claim-brain/${claimId}/chat`,
         {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: { "Content-Type": "application/json", ...authHeaders },
           body: JSON.stringify({
             message: defaultMsg,
             user_id: userId || null,
@@ -1540,8 +1551,10 @@ export function ClaimBrainChat({
 
   const resetChat = async () => {
     try {
+      const authHeaders = await getRichardAuthHeaders();
       await fetch(`${BACKEND_URL}/api/claim-brain/${claimId}/reset`, {
         method: "POST",
+        headers: authHeaders,
       });
     } catch {
       // ignore
@@ -1566,20 +1579,24 @@ export function ClaimBrainChat({
   useEffect(() => {
     if (isOpen) return;
     let cancelled = false;
-    fetch(`${BACKEND_URL}/api/claim-brain/${claimId}/suggestions`)
-      .then((r) => (r.ok ? r.json() : null))
-      .then((data) => {
+    (async () => {
+      try {
+        const authHeaders = await getRichardAuthHeaders();
+        const r = await fetch(`${BACKEND_URL}/api/claim-brain/${claimId}/suggestions`, { headers: authHeaders });
+        const data = r.ok ? await r.json() : null;
         if (cancelled || !data) return;
         setSuggestions((data.suggestions || []) as Suggestion[]);
-      })
-      .catch(() => { /* silent */ });
+      } catch {
+        /* silent */
+      }
+    })();
     return () => { cancelled = true; };
   }, [isOpen, claimId, BACKEND_URL]);
 
   // Floating button when closed — with first-time tooltip + suggestion badge
   if (!isOpen) {
     return (
-      <div className="fixed bottom-6 right-6 z-50 group">
+      <div className="fixed right-4 sm:right-6 bottom-[calc(env(safe-area-inset-bottom,0px)+1rem)] sm:bottom-6 z-50 group">
         <div className="absolute bottom-full right-0 mb-2 w-52 bg-[rgb(15,18,35)] border border-[var(--border-glass)] rounded-xl px-3 py-2 text-xs text-[var(--gray)] opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none shadow-xl">
           {suggestions.length > 0
             ? `${suggestions.length} suggestion${suggestions.length !== 1 ? "s" : ""} ready — click to see.`
@@ -1603,7 +1620,7 @@ export function ClaimBrainChat({
 
   return (
     <div
-      className={`fixed bottom-6 right-6 z-50 w-[440px] h-[600px] bg-[#0f1729] rounded-2xl shadow-2xl flex flex-col overflow-hidden transition-colors ${
+      className={`fixed right-4 sm:right-6 bottom-[calc(env(safe-area-inset-bottom,0px)+1rem)] sm:bottom-6 z-50 w-[calc(100vw-2rem)] sm:w-[440px] h-[min(80vh,600px)] sm:h-[600px] bg-[#0f1729] rounded-2xl shadow-2xl flex flex-col overflow-hidden transition-colors ${
         dragActive ? "border-2 border-dashed border-blue-400" : "border border-white/10"
       }`}
       onDragOver={(e) => {
@@ -1732,7 +1749,7 @@ export function ClaimBrainChat({
                 {msg.role === "assistant" ? <RichardIcon size={20} /> : "T"}
               </div>
               <div
-                className={`max-w-[85%] rounded-xl px-3 py-2 ${
+                className={`max-w-[85%] min-w-0 rounded-xl px-3 py-2 break-words ${
                   msg.role === "user"
                     ? "bg-blue-600 text-white text-sm"
                     : "bg-white/5 border border-white/10 text-white/80"

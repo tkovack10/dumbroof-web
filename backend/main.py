@@ -16,11 +16,12 @@ import os
 import json
 import asyncio
 import urllib.parse
+import urllib.request
 from contextlib import asynccontextmanager
 from typing import Optional
 
 from dotenv import load_dotenv
-from fastapi import FastAPI, BackgroundTasks, HTTPException, Body, Request
+from fastapi import FastAPI, BackgroundTasks, HTTPException, Body, Request, Header
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
@@ -973,6 +974,113 @@ import anthropic
 from fastapi.responses import StreamingResponse
 
 
+# Anthropic transient errors safe to retry BEFORE any text has been streamed.
+# Mirrors telemetry._RETRYABLE_ANTHROPIC_ERRORS but kept here so streaming
+# endpoints don't take a circular import on telemetry.py.
+# Includes APIStatusError as a catch-all for HTTP 5xx (covers 529 OverloadedError
+# on older anthropic-sdk versions where it's not a dedicated class).
+_STREAM_RETRYABLE_ERRORS = tuple(filter(None, [
+    getattr(anthropic, "RateLimitError", None),
+    getattr(anthropic, "InternalServerError", None),
+    getattr(anthropic, "APIConnectionError", None),
+    getattr(anthropic, "APITimeoutError", None),
+    getattr(anthropic, "OverloadedError", None),
+    getattr(anthropic, "APIStatusError", None),
+])) or (Exception,)
+
+
+# ===================================================================
+# RICHARD AUTH — JWT verification + claim ownership check
+#
+# Soft-fail by default to preserve backwards compatibility while we
+# roll out frontend Authorization-header support. Flip the env var
+# RICHARD_ENFORCE_AUTH=true once every Richard caller passes a JWT.
+#
+# Policy (RICHARD_ENFORCE_AUTH unset/false):
+#   - If a valid Authorization: Bearer JWT is present, derive user_id from it
+#     (more trustworthy than body.user_id which is client-controlled).
+#   - Otherwise fall back to body.user_id and log a [BRAIN AUTH] warning so
+#     we can monitor what fraction of traffic still relies on the body field.
+#
+# Policy (RICHARD_ENFORCE_AUTH=true):
+#   - Missing / invalid JWT → 401
+#   - Valid JWT but user does not own the claim and is not in same company → 403
+# ===================================================================
+def _verify_supabase_jwt(token: str) -> Optional[str]:
+    """Verify a Supabase auth JWT by calling /auth/v1/user. Returns the
+    user UUID on success, or None on any failure (invalid signature,
+    expired, network error, etc.).
+
+    We use the auth-server endpoint instead of decoding locally so we
+    don't need the JWT secret in this process. Network round-trip is
+    ~50ms, fine for non-hot-path verifications.
+    """
+    if not token:
+        return None
+    try:
+        sb_url = os.environ.get("SUPABASE_URL", "")
+        anon_key = (
+            os.environ.get("SUPABASE_ANON_KEY", "")
+            or os.environ.get("SUPABASE_PUBLISHABLE_KEY", "")
+        )
+        if not sb_url or not anon_key:
+            return None
+        req = urllib.request.Request(
+            f"{sb_url}/auth/v1/user",
+            headers={"apikey": anon_key, "Authorization": f"Bearer {token}"},
+        )
+        with urllib.request.urlopen(req, timeout=5) as resp:
+            data = json.loads(resp.read())
+            uid = data.get("id")
+            return uid if isinstance(uid, str) and uid else None
+    except Exception as e:
+        # Don't log token (PII) — log only the error class
+        print(f"[BRAIN AUTH] JWT verify failed: {type(e).__name__}")
+        return None
+
+
+def _resolve_brain_user_id(authorization: Optional[str], body_user_id: Optional[str]) -> Optional[str]:
+    """Resolve the caller's user_id, preferring a verified JWT.
+
+    Returns the resolved user_id, or None if RICHARD_ENFORCE_AUTH=true
+    and we couldn't authenticate the request. Soft-fail mode falls back
+    to body_user_id with a warning log.
+    """
+    enforce = os.environ.get("RICHARD_ENFORCE_AUTH", "").strip().lower() in ("1", "true", "yes")
+    token = ""
+    if authorization and authorization.lower().startswith("bearer "):
+        token = authorization[7:].strip()
+    jwt_user_id = _verify_supabase_jwt(token) if token else None
+
+    if jwt_user_id:
+        return jwt_user_id
+    if enforce:
+        return None
+    # Soft-fail: fall back to body field, log for rollout monitoring
+    if body_user_id:
+        print(f"[BRAIN AUTH] no/invalid JWT, falling back to body.user_id (enforce=false)")
+        return (body_user_id or "").strip() or None
+    return None
+
+
+def _user_can_access_claim(sb, user_id: str, claim_data: dict) -> bool:
+    """True if user owns the claim or shares a company_id with the owner."""
+    if not user_id or not claim_data:
+        return False
+    owner_id = claim_data.get("user_id")
+    if owner_id and owner_id == user_id:
+        return True
+    claim_company_id = claim_data.get("company_id")
+    if not claim_company_id:
+        return False
+    try:
+        prof = sb.table("company_profiles").select("company_id").eq("user_id", user_id).limit(1).execute()
+        my_company = (prof.data[0].get("company_id") if prof.data else None)
+        return bool(my_company) and my_company == claim_company_id
+    except Exception:
+        return False
+
+
 def _build_claim_brain_prompt(claim_data: dict, photos: list, scope_comparison: list, carrier_playbook: str = "", timeline_events: list = None) -> str:
     """Build the Claim Brain system prompt from Supabase claim data."""
     timeline_events = timeline_events or []
@@ -1368,18 +1476,29 @@ _pending_tool_actions: dict = {}
 
 
 @app.post("/api/claim-brain/{claim_id}/chat")
-async def claim_brain_chat(claim_id: str, body: ChatMessage):
+async def claim_brain_chat(claim_id: str, body: ChatMessage, authorization: Optional[str] = Header(default=None)):
     """Claim Brain — streaming AI chat for a specific claim with tool use."""
     from claim_brain_tools import CLAIM_BRAIN_TOOLS, execute_tool
 
     sb = get_supabase_client()
 
-    # Verify claim exists
-    result = sb.table("claims").select("*").eq("id", claim_id).single().execute()
-    if not result.data:
+    # Verify claim exists. Use maybeSingle (NOT single) so 0 rows returns
+    # data=None instead of raising postgrest APIError before we can 404.
+    # See E099 — .single() throws on missing rows.
+    result = sb.table("claims").select("*").eq("id", claim_id).maybe_single().execute()
+    if not result or not result.data:
         raise HTTPException(status_code=404, detail="Claim not found")
 
     claim_data = result.data
+
+    # Auth: prefer Supabase JWT, fall back to body.user_id (soft-fail) until
+    # RICHARD_ENFORCE_AUTH=true. When enforced, also gate ownership.
+    resolved_user_id = _resolve_brain_user_id(authorization, body.user_id)
+    if os.environ.get("RICHARD_ENFORCE_AUTH", "").strip().lower() in ("1", "true", "yes"):
+        if not resolved_user_id:
+            raise HTTPException(status_code=401, detail="Authentication required")
+        if not _user_can_access_claim(sb, resolved_user_id, claim_data):
+            raise HTTPException(status_code=403, detail="You don't have access to this claim")
 
     # Load photos with annotations
     photos_result = sb.table("photos").select(
@@ -1429,7 +1548,10 @@ async def claim_brain_chat(claim_id: str, body: ChatMessage):
         user_content = (body.message or "") + attach_block
 
     client = anthropic.Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
-    user_id = body.user_id or claim_data.get("user_id", "")
+    # user_id comes from the verified JWT (preferred) or body.user_id (soft-fail).
+    # Never fall back to claim_data.user_id — that misattributes anonymous chats
+    # to the claim owner in our logs and `claim_brain_messages` table.
+    user_id = (resolved_user_id or "").strip()
 
     # Persist user message to Supabase for richard-trainer + history rehydration
     try:
@@ -1459,22 +1581,52 @@ async def claim_brain_chat(claim_id: str, body: ChatMessage):
             total_tool_calls = 0
             max_total_tool_calls = 20  # hard cap across the whole turn
             for _round in range(max_tool_rounds):
-                response = client.messages.create(
-                    model="claude-opus-4-6",
-                    max_tokens=4096,
-                    system=system_prompt,
-                    messages=messages,
-                    tools=CLAIM_BRAIN_TOOLS,
-                )
+                # Real token streaming via messages.stream — yields text deltas
+                # token-by-token as Claude generates. Retry-before-first-text:
+                # if the connection fails BEFORE any text reaches the user, we
+                # can transparently retry; once text has been yielded, retrying
+                # would duplicate output, so we surface the error instead.
+                final_message = None
+                stream_attempts = 0
+                while final_message is None:
+                    text_yielded_this_attempt = False
+                    try:
+                        with client.messages.stream(
+                            model="claude-opus-4-6",
+                            max_tokens=4096,
+                            system=system_prompt,
+                            messages=messages,
+                            tools=CLAIM_BRAIN_TOOLS,
+                        ) as stream:
+                            for event in stream:
+                                if event.type == "content_block_delta":
+                                    delta = getattr(event, "delta", None)
+                                    if delta is not None and getattr(delta, "type", None) == "text_delta":
+                                        chunk = delta.text or ""
+                                        if chunk:
+                                            full_text_parts.append(chunk)
+                                            text_yielded_this_attempt = True
+                                            yield f"data: {json.dumps({'text': chunk})}\n\n"
+                            final_message = stream.get_final_message()
+                    except _STREAM_RETRYABLE_ERRORS as e:
+                        # Only retry if no text has been yielded yet — otherwise
+                        # the user would see duplicated output.
+                        if text_yielded_this_attempt or stream_attempts >= 3:
+                            raise
+                        stream_attempts += 1
+                        wait_s = 5 * (2 ** (stream_attempts - 1))  # 5, 10, 20
+                        print(f"[BRAIN] Stream open failed (attempt {stream_attempts}): {e!r} — retrying in {wait_s}s")
+                        await asyncio.sleep(wait_s)
 
-                # Process content blocks
+                # Process content blocks (text already streamed; only tool_use needs handling)
                 has_tool_use = False
                 tool_use_results = []
 
-                for block in response.content:
+                for block in final_message.content:
                     if block.type == "text":
-                        full_text_parts.append(block.text)
-                        yield f"data: {json.dumps({'text': block.text})}\n\n"
+                        # Already streamed token-by-token above; do nothing here.
+                        # full_text_parts captured chunks during streaming.
+                        pass
 
                     elif block.type == "tool_use":
                         has_tool_use = True
@@ -1501,11 +1653,22 @@ async def claim_brain_chat(claim_id: str, body: ChatMessage):
                         full_text_parts.append(status_msg)
                         yield f"data: {json.dumps({'text': status_msg})}\n\n"
 
-                        # Execute the tool
-                        try:
-                            tool_result = await execute_tool(
+                        # Execute the tool with a heartbeat so long tool calls
+                        # don't trip Vercel/Cloudflare 60s idle timeouts.
+                        # Heartbeat fires every 15s while waiting on the tool.
+                        async def _run_tool():
+                            return await execute_tool(
                                 sb, claim_id, user_id, tool_name, tool_input
                             )
+
+                        tool_task = asyncio.create_task(_run_tool())
+                        try:
+                            while not tool_task.done():
+                                try:
+                                    await asyncio.wait_for(asyncio.shield(tool_task), timeout=15.0)
+                                except asyncio.TimeoutError:
+                                    yield f"data: {json.dumps({'heartbeat': True})}\n\n"
+                            tool_result = tool_task.result()
                         except Exception as te:
                             tool_result = {"action": "error", "message": str(te)}
 
@@ -1558,7 +1721,7 @@ async def claim_brain_chat(claim_id: str, body: ChatMessage):
                 # Otherwise, add assistant message + tool results to messages and loop
                 # Serialize content blocks to dicts for the next API call
                 serialized_content = []
-                for block in response.content:
+                for block in final_message.content:
                     if block.type == "text":
                         serialized_content.append({"type": "text", "text": block.text})
                     elif block.type == "tool_use":
@@ -1572,7 +1735,7 @@ async def claim_brain_chat(claim_id: str, body: ChatMessage):
                 messages.append({"role": "user", "content": tool_use_results})
 
                 # If stop_reason is end_turn (not tool_use), break
-                if response.stop_reason != "tool_use":
+                if final_message.stop_reason != "tool_use":
                     break
 
             # Store the final text in conversation history (Supabase, persistent)
@@ -1623,7 +1786,7 @@ async def claim_brain_chat(claim_id: str, body: ChatMessage):
 
 
 @app.post("/api/claim-brain/{claim_id}/approve-action")
-async def approve_brain_action(claim_id: str, body: ToolApproval, background_tasks: BackgroundTasks):
+async def approve_brain_action(claim_id: str, body: ToolApproval, background_tasks: BackgroundTasks, authorization: Optional[str] = Header(default=None)):
     """Approve or reject a pending Claim Brain tool action.
 
     Dispatches by tool_name. Each write tool has its own execute path:
@@ -1650,10 +1813,23 @@ async def approve_brain_action(claim_id: str, body: ToolApproval, background_tas
 
     tool_name = tool_result.get("tool_name", "")
 
-    # Load claim (always needed)
-    claim_result = sb.table("claims").select("*").eq("id", claim_id).single().execute()
-    claim_row = claim_result.data or {}
-    user_id = claim_row.get("user_id", "")
+    # Load claim (always needed). maybe_single instead of single — same E099
+    # reasoning as claim_brain_chat above.
+    claim_result = sb.table("claims").select("*").eq("id", claim_id).maybe_single().execute()
+    claim_row = (claim_result.data if claim_result else None) or {}
+
+    # Auth: prefer Supabase JWT; fall back to claim_row.user_id (soft-fail)
+    # until RICHARD_ENFORCE_AUTH=true. When enforced, also gate ownership.
+    resolved_user_id = _resolve_brain_user_id(authorization, None)
+    if os.environ.get("RICHARD_ENFORCE_AUTH", "").strip().lower() in ("1", "true", "yes"):
+        if not resolved_user_id:
+            raise HTTPException(status_code=401, detail="Authentication required")
+        if not _user_can_access_claim(sb, resolved_user_id, claim_row):
+            raise HTTPException(status_code=403, detail="You don't have access to this claim")
+
+    # Audit trail uses the verified user when available; falls back to the
+    # claim owner if soft-fail mode and no JWT — same behavior as before.
+    user_id = resolved_user_id or claim_row.get("user_id") or ""
 
     if not body.approved:
         _audit_log(sb, claim_id, user_id, tool_name, {"approval_id": body.tool_call_id}, {"action": "discarded", "message": "user discarded"}, 0)
@@ -2281,12 +2457,24 @@ def _build_cadence_body_html(
 
 
 @app.post("/api/claim-brain/{claim_id}/reset")
-async def reset_claim_brain(claim_id: str):
+async def reset_claim_brain(claim_id: str, authorization: Optional[str] = Header(default=None)):
     """Reset the Claim Brain conversation for a claim."""
     try:
         sb = get_supabase_client()
+        # Auth (env-flagged): when enforced, require ownership before nuking
+        # someone else's chat history.
+        if os.environ.get("RICHARD_ENFORCE_AUTH", "").strip().lower() in ("1", "true", "yes"):
+            resolved_user_id = _resolve_brain_user_id(authorization, None)
+            if not resolved_user_id:
+                raise HTTPException(status_code=401, detail="Authentication required")
+            claim_res = sb.table("claims").select("user_id, company_id").eq("id", claim_id).maybe_single().execute()
+            claim_row = (claim_res.data if claim_res else None) or {}
+            if not _user_can_access_claim(sb, resolved_user_id, claim_row):
+                raise HTTPException(status_code=403, detail="You don't have access to this claim")
         clear_conversation(sb, "claim", claim_id)
         sb.table("claim_brain_messages").delete().eq("claim_id", claim_id).execute()
+    except HTTPException:
+        raise
     except Exception as e:
         print(f"[BRAIN] Failed to delete persisted messages (non-fatal): {e}")
     return {"status": "reset", "claim_id": claim_id}
@@ -2352,6 +2540,8 @@ Setup (existing tools, still available):
 
 ## BEHAVIOR RULES
 
+0. **SCOPE — portfolio + setup, not per-claim drill-down.** You see all claims at a glance via `list_company_claims` + `get_company_portfolio_summary`, but you do NOT have a single claim's photos / scope / line items / emails loaded. If the user asks for a specific claim's narrow detail (e.g. "code compliance for that wrap on 25 Utica," "find me the chimney photos"), respond: "I see {claim_name} in your portfolio, but the per-claim photos, scope, and code data live inside that claim. Open it from your dashboard and ask the Richard inside it." Then offer the portfolio-level slice you CAN answer ("I can show you all open Broome County claims if useful").
+
 1. **Lead with portfolio context.** When the user opens with a vague question, call `get_company_portfolio_summary` first so you can answer with real numbers, not generic SaaS-speak.
 
 2. **Be the COO, not the chatbot.** Answer with specific claims, specific reps, specific dollar figures. "Mike has 3 stalled claims at State Farm averaging $14K variance" beats "your team is doing well."
@@ -2401,6 +2591,8 @@ Current date/time: {datetime.now().strftime('%Y-%m-%d %H:%M')}
 
 ## BEHAVIOR RULES
 
+0. **SCOPE — you do setup, not claim work.** You help with integrations, team, company profile, and onboarding. You do NOT have a specific claim loaded. If the user asks about a specific job or address (e.g. "code compliance for 25 Utica," "the wrap on this Broome County job," "find me photos of the chimney"), respond: "I'm the setup assistant — I don't have that claim loaded. Open the claim from your dashboard and ask the Richard inside it. He has all the photos, scope, code data, and emails for that job." Do NOT attempt to call claim-specific tools — they aren't in your tool list anyway, but explain rather than try.
+
 1. **Start every new conversation with list_integrations** so you know what's connected without asking.
 
 2. **When the user says "help me connect X"** → call get_integration_setup_guide(X) → show them the steps → offer to save the key when they paste it.
@@ -2430,14 +2622,46 @@ When asked "what's left?", walk the checklist with current status and prioritize
 """
 
 
+# Allow-list of tools the admin/setup Richard can call. Per-claim tools (find_photo,
+# get_scope_comparison, line-item editors, AOB/COC senders, etc.) are intentionally
+# excluded — admin Richard runs with claim_id="admin" sentinel which would silently
+# return 0 rows or error. See feedback_richard_setup_scope.md (Zach 2026-04-28 incident).
+ADMIN_SETUP_TOOL_NAMES = {
+    # Onboarding integrations
+    "list_integrations",
+    "get_integration_setup_guide",
+    "save_integration_key",
+    "connect_crm",
+    "disconnect_integration",
+    # Team + company profile
+    "invite_team_member",
+    "upload_company_logo",
+    "update_company_profile",
+    # Company-scope portfolio (role-gated separately to owner/admin)
+    "list_company_claims",
+    "get_company_portfolio_summary",
+    "compare_team_performance",
+    "get_team_member_workload",
+}
+
+
 @app.post("/api/admin-brain/chat")
-async def admin_brain_chat(body: AdminChatMessage):
+async def admin_brain_chat(body: AdminChatMessage, authorization: Optional[str] = Header(default=None)):
     """Admin/onboarding assistant. scope='user' = settings/onboarding (default).
     scope='company' = portfolio mode for owner/admin role only."""
     from claim_brain_tools import CLAIM_BRAIN_TOOLS, execute_tool, _handle_list_integrations, _handle_get_company_portfolio_summary
 
     sb = get_supabase_client()
-    user_id = (body.user_id or "").strip()
+    # Resolve caller — JWT preferred, body.user_id soft-fail. When the env
+    # flag is on, JWT becomes mandatory and we additionally require it match
+    # body.user_id (prevents user A from impersonating user B in the body).
+    enforce_auth = os.environ.get("RICHARD_ENFORCE_AUTH", "").strip().lower() in ("1", "true", "yes")
+    resolved_user_id = _resolve_brain_user_id(authorization, body.user_id)
+    if enforce_auth and not resolved_user_id:
+        raise HTTPException(status_code=401, detail="Authentication required")
+    if enforce_auth and body.user_id and body.user_id != resolved_user_id:
+        raise HTTPException(status_code=403, detail="user_id mismatch with verified token")
+    user_id = (resolved_user_id or "").strip()
     if not user_id:
         raise HTTPException(status_code=400, detail="user_id required")
 
@@ -2499,22 +2723,52 @@ async def admin_brain_chat(body: AdminChatMessage):
             # error — that's correct, the model shouldn't call claim tools here.
             sentinel_claim_id = "admin"
 
+            # Allow-list filter: admin/setup Richard only sees onboarding +
+            # portfolio tools. Per-claim tools (claim_id-bound) are intentionally
+            # hidden — they'd silently return 0 rows against the "admin" sentinel
+            # or error out, leading to the Zach 2026-04-28 confusion.
+            setup_tools = [t for t in CLAIM_BRAIN_TOOLS if t["name"] in ADMIN_SETUP_TOOL_NAMES]
+
             for _round in range(max_tool_rounds):
-                response = client.messages.create(
-                    model="claude-opus-4-6",
-                    max_tokens=4096,
-                    system=system_prompt,
-                    messages=messages,
-                    tools=CLAIM_BRAIN_TOOLS,
-                )
+                # Real token streaming + retry-before-first-text. See
+                # _STREAM_RETRYABLE_ERRORS at the top of this module.
+                final_message = None
+                stream_attempts = 0
+                while final_message is None:
+                    text_yielded_this_attempt = False
+                    try:
+                        with client.messages.stream(
+                            model="claude-opus-4-6",
+                            max_tokens=4096,
+                            system=system_prompt,
+                            messages=messages,
+                            tools=setup_tools,
+                        ) as stream:
+                            for event in stream:
+                                if event.type == "content_block_delta":
+                                    delta = getattr(event, "delta", None)
+                                    if delta is not None and getattr(delta, "type", None) == "text_delta":
+                                        chunk = delta.text or ""
+                                        if chunk:
+                                            full_text_parts.append(chunk)
+                                            text_yielded_this_attempt = True
+                                            yield f"data: {json.dumps({'text': chunk})}\n\n"
+                            final_message = stream.get_final_message()
+                    except _STREAM_RETRYABLE_ERRORS as e:
+                        if text_yielded_this_attempt or stream_attempts >= 3:
+                            raise
+                        stream_attempts += 1
+                        wait_s = 5 * (2 ** (stream_attempts - 1))
+                        print(f"[ADMIN BRAIN] Stream open failed (attempt {stream_attempts}): {e!r} — retrying in {wait_s}s")
+                        await asyncio.sleep(wait_s)
 
                 has_tool_use = False
                 tool_use_results: list[dict] = []
 
-                for block in response.content:
+                for block in final_message.content:
                     if block.type == "text":
-                        full_text_parts.append(block.text)
-                        yield f"data: {json.dumps({'text': block.text})}\n\n"
+                        # Already streamed token-by-token; nothing to do.
+                        pass
                     elif block.type == "tool_use":
                         has_tool_use = True
                         if total_tool_calls >= max_total_tool_calls:
@@ -2531,8 +2785,18 @@ async def admin_brain_chat(body: AdminChatMessage):
                         full_text_parts.append(status_msg)
                         yield f"data: {json.dumps({'text': status_msg})}\n\n"
 
+                        # Heartbeat during long tool calls (15s ping while waiting)
+                        async def _run_tool():
+                            return await execute_tool(sb, sentinel_claim_id, user_id, block.name, block.input)
+
+                        tool_task = asyncio.create_task(_run_tool())
                         try:
-                            tool_result = await execute_tool(sb, sentinel_claim_id, user_id, block.name, block.input)
+                            while not tool_task.done():
+                                try:
+                                    await asyncio.wait_for(asyncio.shield(tool_task), timeout=15.0)
+                                except asyncio.TimeoutError:
+                                    yield f"data: {json.dumps({'heartbeat': True})}\n\n"
+                            tool_result = tool_task.result()
                         except Exception as te:
                             tool_result = {"action": "error", "message": str(te)}
 
@@ -2568,7 +2832,7 @@ async def admin_brain_chat(body: AdminChatMessage):
                     break
 
                 serialized_content = []
-                for block in response.content:
+                for block in final_message.content:
                     if block.type == "text":
                         serialized_content.append({"type": "text", "text": block.text})
                     elif block.type == "tool_use":
@@ -2576,7 +2840,7 @@ async def admin_brain_chat(body: AdminChatMessage):
                 messages.append({"role": "assistant", "content": serialized_content})
                 messages.append({"role": "user", "content": tool_use_results})
 
-                if response.stop_reason != "tool_use":
+                if final_message.stop_reason != "tool_use":
                     break
 
             full_response = "".join(full_text_parts)
@@ -3017,7 +3281,7 @@ class DirectEmailRequest(BaseModel):
 
 
 @app.get("/api/claim-brain/{claim_id}/suggestions")
-async def claim_brain_suggestions(claim_id: str):
+async def claim_brain_suggestions(claim_id: str, authorization: Optional[str] = Header(default=None)):
     """Proactive nudges Richard can surface when the user opens a claim.
 
     Computed from scope_comparison (biggest gaps), pending cadences, recent
@@ -3025,10 +3289,18 @@ async def claim_brain_suggestions(claim_id: str):
     Each suggestion has a `prompt` the chat can auto-send.
     """
     sb = get_supabase_client()
+    # Use maybe_single — same E099 reasoning. Ownership-gated when auth enforced.
     result = sb.table("claims").select(
-        "address, carrier, claim_number, phase, status, scope_comparison, scope_files, aob_files"
-    ).eq("id", claim_id).single().execute()
-    claim = result.data or {}
+        "address, carrier, claim_number, phase, status, scope_comparison, scope_files, aob_files, user_id, company_id"
+    ).eq("id", claim_id).maybe_single().execute()
+    claim = (result.data if result else None) or {}
+
+    if os.environ.get("RICHARD_ENFORCE_AUTH", "").strip().lower() in ("1", "true", "yes"):
+        resolved_user_id = _resolve_brain_user_id(authorization, None)
+        if not resolved_user_id:
+            raise HTTPException(status_code=401, detail="Authentication required")
+        if not _user_can_access_claim(sb, resolved_user_id, claim):
+            raise HTTPException(status_code=403, detail="You don't have access to this claim")
 
     suggestions: list[dict] = []
 
@@ -3109,9 +3381,18 @@ async def claim_brain_suggestions(claim_id: str):
 
 
 @app.get("/api/claim-brain/{claim_id}/history")
-async def claim_brain_history(claim_id: str):
+async def claim_brain_history(claim_id: str, authorization: Optional[str] = Header(default=None)):
     """Fetch persisted Claim Brain messages for frontend rehydration."""
     sb = get_supabase_client()
+    if os.environ.get("RICHARD_ENFORCE_AUTH", "").strip().lower() in ("1", "true", "yes"):
+        resolved_user_id = _resolve_brain_user_id(authorization, None)
+        if not resolved_user_id:
+            raise HTTPException(status_code=401, detail="Authentication required")
+        # Quick ownership check — don't leak chat history across users.
+        c = sb.table("claims").select("user_id, company_id").eq("id", claim_id).maybe_single().execute()
+        crow = (c.data if c else None) or {}
+        if not _user_can_access_claim(sb, resolved_user_id, crow):
+            raise HTTPException(status_code=403, detail="You don't have access to this claim")
     result = sb.table("claim_brain_messages") \
         .select("role, content") \
         .eq("claim_id", claim_id) \

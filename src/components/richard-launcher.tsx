@@ -15,7 +15,7 @@ interface RichardLauncherProps {
 export function RichardLauncher({ userId, scope = "user", initiallyOpen = false }: RichardLauncherProps) {
   const [open, setOpen] = useState(initiallyOpen);
 
-  const label = scope === "company" ? "Richard — Company" : "Richard";
+  const label = scope === "company" ? "Richard — Portfolio" : "Richard — Setup";
 
   if (!open) {
     return (

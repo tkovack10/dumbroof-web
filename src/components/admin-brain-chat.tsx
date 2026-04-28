@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
+import { getRichardAuthHeaders } from "@/lib/richard-auth";
 import { RichardIcon } from "@/components/richard-icon";
 import { MarkdownContent } from "@/components/markdown-content";
 
@@ -160,9 +161,10 @@ function ApprovalCard({
     if (!action.approval_id) return;
     setStatus("approving");
     try {
+      const authHeaders = await getRichardAuthHeaders();
       const res = await fetch(`${backendUrl}/api/admin-brain/approve-action`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...authHeaders },
         body: JSON.stringify({ tool_call_id: action.approval_id, approved: true, user_id: userId }),
       });
       const data = await res.json();
@@ -180,9 +182,10 @@ function ApprovalCard({
   const handleDiscard = async () => {
     if (!action.approval_id) return;
     try {
+      const authHeaders = await getRichardAuthHeaders();
       await fetch(`${backendUrl}/api/admin-brain/approve-action`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...authHeaders },
         body: JSON.stringify({ tool_call_id: action.approval_id, approved: false, user_id: userId }),
       });
     } catch { /* ignore */ }
@@ -256,9 +259,10 @@ export function AdminBrainChat({ userId, scope = "user" }: AdminBrainChatProps) 
     setMessages([...newMessages, { role: "assistant", content: "", toolActions: [] }]);
 
     try {
+      const authHeaders = await getRichardAuthHeaders();
       const res = await fetch(`${BACKEND_URL}/api/admin-brain/chat`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...authHeaders },
         body: JSON.stringify({ message: msg, user_id: userId, scope }),
       });
       const reader = res.body?.getReader();
@@ -319,9 +323,10 @@ export function AdminBrainChat({ userId, scope = "user" }: AdminBrainChatProps) 
 
   const reset = async () => {
     try {
+      const authHeaders = await getRichardAuthHeaders();
       await fetch(`${BACKEND_URL}/api/admin-brain/reset`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...authHeaders },
         body: JSON.stringify({ user_id: userId, scope }),
       });
     } catch { /* ignore */ }
@@ -337,12 +342,12 @@ export function AdminBrainChat({ userId, scope = "user" }: AdminBrainChatProps) 
           <RichardIcon size={24} />
           <div>
             <div className="text-white text-sm font-semibold">
-              {scope === "company" ? "Richard — Company View" : "Richard — Setup Assistant"}
+              {scope === "company" ? "Richard — Portfolio" : "Richard — Setup"}
             </div>
             <div className="text-white/40 text-[10px]">
               {scope === "company"
-                ? "Portfolio insights, team performance, integrations across the company"
-                : "Walk through integrations, team invites, and account setup"}
+                ? "Cross-claim portfolio insights · for one claim, open it and use Richard inside"
+                : "Integrations, team, company info · for claim questions, open the claim's Richard"}
             </div>
           </div>
         </div>
@@ -354,10 +359,13 @@ export function AdminBrainChat({ userId, scope = "user" }: AdminBrainChatProps) 
           <div className="py-6">
             <div className="text-center mb-4">
               <RichardIcon size={48} className="mb-3" />
-              <div className="text-white text-sm font-medium mb-1">Richard — Setup Assistant</div>
+              <div className="text-white text-sm font-medium mb-1">
+                {scope === "company" ? "Richard — Portfolio" : "Richard — Setup"}
+              </div>
               <div className="text-white/50 text-xs max-w-[360px] mx-auto">
-                Ask me to connect your tools, invite team members, or walk you through anything
-                on your onboarding list.
+                {scope === "company"
+                  ? "Portfolio insights and team setup. For specific claims, open the claim and use the Richard inside it."
+                  : "I help with setup — integrations, team, company info. For questions about a specific claim, open the claim and use the Richard inside it."}
               </div>
             </div>
             <div className="flex flex-wrap gap-1.5 justify-center">
@@ -378,7 +386,7 @@ export function AdminBrainChat({ userId, scope = "user" }: AdminBrainChatProps) 
               <div className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs flex-shrink-0 ${
                 msg.role === "assistant" ? "bg-indigo-500/10 border border-indigo-500/20" : "bg-emerald-500/10 border border-emerald-500/20"
               }`}>{msg.role === "assistant" ? <RichardIcon size={20} /> : "T"}</div>
-              <div className={`max-w-[85%] rounded-xl px-3 py-2 ${
+              <div className={`max-w-[85%] min-w-0 rounded-xl px-3 py-2 break-words ${
                 msg.role === "user" ? "bg-indigo-600 text-white text-sm" : "bg-white/5 border border-white/10 text-white/80"
               }`}>
                 {msg.role === "assistant" ? (

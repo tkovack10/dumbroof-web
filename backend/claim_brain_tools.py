@@ -3320,8 +3320,10 @@ def _handle_find_photo(sb: Client, claim_id: str, tool_input: dict) -> dict:
         return {"action": "error", "message": "query is required"}
 
     try:
+        # NOTE: photos table has NO `structure` column (that lives on line_items).
+        # See E185 — selecting it returned 400 and broke find_photo end-to-end.
         res = sb.table("photos").select(
-            "id, annotation_key, annotation_text, damage_type, material, trade, severity, structure"
+            "id, annotation_key, annotation_text, damage_type, material, trade, severity"
         ).eq("claim_id", claim_id).order("annotation_key", desc=False).execute()
         all_photos = res.data or []
     except Exception as e:
@@ -4401,8 +4403,10 @@ def _handle_preview_recompute_estimate(sb: Client, claim_id: str) -> dict:
     line_total = sum(float(i.get("total") or (float(i.get("qty") or 0) * float(i.get("unit_price") or 0))) for i in items)
 
     try:
-        claim_res = sb.table("claims").select("contractor_rcv, current_carrier_rcv, original_carrier_rcv, o_and_p_enabled, tax_rate").eq("id", claim_id).single().execute()
-        claim = claim_res.data or {}
+        # maybe_single — claim row may be missing during recompute previews on
+        # ephemeral / mid-rebuild claims. Don't 500 the tool, just compute zeros.
+        claim_res = sb.table("claims").select("contractor_rcv, current_carrier_rcv, original_carrier_rcv, o_and_p_enabled, tax_rate").eq("id", claim_id).maybe_single().execute()
+        claim = (claim_res.data if claim_res else {}) or {}
     except Exception:
         claim = {}
 
