@@ -16,7 +16,7 @@ import { CommunicationLog } from "@/components/communication-log";
 
 interface Props {
   claim: Claim;
-  userInfo?: { company_name: string | null; email: string | null };
+  userInfo?: { company_name: string | null; email: string | null; phone?: string | null; contact_name?: string | null };
 }
 
 export function AdminClaimDetail({ claim: initialClaim, userInfo }: Props) {
@@ -233,9 +233,21 @@ export function AdminClaimDetail({ claim: initialClaim, userInfo }: Props) {
               </p>
               {userInfo && (
                 <p className="text-xs text-[var(--gray-dim)] mt-1">
-                  User: {userInfo.company_name || userInfo.email || claim.user_id.slice(0, 8)}
-                  {userInfo.email && userInfo.company_name && (
+                  User: {userInfo.company_name || userInfo.contact_name || userInfo.email || claim.user_id.slice(0, 8)}
+                  {userInfo.email && (userInfo.company_name || userInfo.contact_name) && (
                     <span> ({userInfo.email})</span>
+                  )}
+                  {userInfo.phone && (
+                    <>
+                      {" "}&middot;{" "}
+                      <a
+                        href={`tel:${userInfo.phone.replace(/[^0-9+]/g, "")}`}
+                        className="text-[var(--cyan)] hover:underline"
+                        title="Click to call"
+                      >
+                        📞 {userInfo.phone}
+                      </a>
+                    </>
                   )}
                 </p>
               )}

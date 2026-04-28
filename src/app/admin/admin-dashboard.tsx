@@ -81,20 +81,21 @@ export function AdminDashboard({ userId }: { userId: string }) {
     total: 0, uploaded: 0, processing: 0, ready: 0, error: 0, uniqueUsers: 0
   });
 
-  const [userMap, setUserMap] = useState<Record<string, { name: string; email: string }>>({});
+  const [userMap, setUserMap] = useState<Record<string, { name: string; email: string; phone: string }>>({});
 
   const fetchUserProfiles = useCallback(async () => {
-    const map: Record<string, { name: string; email: string }> = {};
+    const map: Record<string, { name: string; email: string; phone: string }> = {};
 
-    // 1. Company profiles (preferred — has company name)
+    // 1. Company profiles (preferred — has company name + phone for direct outreach)
     const { data } = await supabase
       .from("company_profiles")
-      .select("user_id, company_name, contact_name, email");
+      .select("user_id, company_name, contact_name, email, phone");
     if (data) {
       for (const p of data) {
         map[p.user_id] = {
           name: p.company_name || p.contact_name || "Unknown",
           email: p.email || "",
+          phone: p.phone || "",
         };
       }
     }
@@ -109,6 +110,7 @@ export function AdminDashboard({ userId }: { userId: string }) {
             map[u.id] = {
               name: u.email.split("@")[0].replace(/[._]/g, " ").replace(/\b\w/g, c => c.toUpperCase()),
               email: u.email,
+              phone: "",
             };
           }
         }
@@ -553,9 +555,19 @@ export function AdminDashboard({ userId }: { userId: string }) {
                           <p className="font-medium text-[var(--white)] truncate max-w-[200px]">{claim.address}</p>
                         </td>
                         <td className="px-3 py-2.5 text-[var(--gray)] truncate max-w-[150px]">{claim.carrier || "—"}</td>
-                        <td className="px-3 py-2.5 truncate max-w-[150px]">
+                        <td className="px-3 py-2.5 truncate max-w-[180px]">
                           <p className="text-[var(--gray)] text-xs font-medium">{userMap[claim.user_id]?.name || "—"}</p>
                           <p className="text-[var(--gray-dim)] text-[10px] truncate">{userMap[claim.user_id]?.email || ""}</p>
+                          {userMap[claim.user_id]?.phone && (
+                            <a
+                              href={`tel:${userMap[claim.user_id].phone.replace(/[^0-9+]/g, "")}`}
+                              onClick={(e) => e.stopPropagation()}
+                              className="text-[var(--cyan)] text-[10px] hover:underline"
+                              title="Click to call"
+                            >
+                              📞 {userMap[claim.user_id].phone}
+                            </a>
+                          )}
                         </td>
                         <td className="px-3 py-2.5 text-right text-xs text-[var(--gray)] tabular-nums">
                           {claim.contractor_rcv ? `$${claim.contractor_rcv.toLocaleString()}` : "—"}

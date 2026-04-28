@@ -33,10 +33,11 @@ export default async function AdminClaimPage({
 
   if (!claim) redirect("/admin");
 
-  // Fetch user info for display
+  // Fetch user info for display — phone included so admin can call directly
+  // (email open rate is low; phone outreach has higher response).
   const { data: profile } = await supabase
     .from("company_profiles")
-    .select("company_name, email")
+    .select("company_name, email, phone, contact_name")
     .eq("user_id", claim.user_id)
     .single();
 
