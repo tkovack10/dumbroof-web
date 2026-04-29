@@ -1,0 +1,28 @@
+{
+  "_comment": "Single source of truth for consumer email domains. Loaded by src/lib/personal-domains.ts (frontend) and backend/brand_isolation.py (backend). Edit only here.",
+  "domains": [
+    "gmail.com",
+    "yahoo.com",
+    "hotmail.com",
+    "outlook.com",
+    "icloud.com",
+    "aol.com",
+    "live.com",
+    "msn.com",
+    "me.com",
+    "protonmail.com",
+    "comcast.net",
+    "verizon.net",
+    "att.net",
+    "sbcglobal.net",
+    "cox.net",
+    "charter.net",
+    "earthlink.net",
+    "ymail.com",
+    "rocketmail.com",
+    "googlemail.com",
+    "duck.com",
+    "hey.com",
+    "fastmail.com"
+  ]
+}

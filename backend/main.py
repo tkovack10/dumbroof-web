@@ -28,6 +28,7 @@ from pydantic import BaseModel
 
 from processor import process_claim, get_supabase_client
 from repair_processor import process_repair, process_checkpoint, process_completion
+from brand_isolation import is_personal_domain
 from analytics import (
     get_claim_analytics,
     get_processing_costs,
@@ -4277,7 +4278,6 @@ async def integration_status(user_id: str):
                     pass
 
             if user_email and "@" in user_email:
-                from brand_isolation import is_personal_domain
                 domain = user_email.split("@")[-1].lower()
                 # Personal-domain users are isolated from cross-account
                 # admin matching (E182 revenge fix). Same on the admin side.
@@ -4336,7 +4336,6 @@ async def _get_user_integration_client(user_id: str, provider: str):
     # matching (E182 revenge fix). Personal-domain admins are also never served
     # as match targets, even to non-personal users.
     if not api_key:
-        from brand_isolation import is_personal_domain
         user_email = profile.get("email") if profile else None
         if not user_email:
             try:

@@ -39,7 +39,11 @@ export async function GET() {
     return NextResponse.json({ error: "Not authorized" }, { status: 403 });
   }
 
-  const [usersRes, profilesRes, claimsRes, subsRes] = await Promise.all([
+  // Promise.allSettled so a single 500 (e.g. Supabase momentarily struggling
+  // on one table) doesn't blank the whole admin view. Each query result is
+  // unpacked separately and any failure is reported back via `errors[]` so
+  // the UI can show "loaded N of M sources" instead of an empty page.
+  const [usersSettled, profilesSettled, claimsSettled, subsSettled] = await Promise.allSettled([
     supabaseAdmin.rpc("list_platform_users"),
     supabaseAdmin
       .from("company_profiles")
@@ -49,6 +53,32 @@ export async function GET() {
     supabaseAdmin.from("claims").select("user_id"),
     supabaseAdmin.from("subscriptions").select("user_id, company_id, plan_id, status"),
   ]);
+
+  const errors: { source: string; message: string }[] = [];
+
+  // Unwrap a settled Supabase response. `Promise.allSettled` treats only thrown
+  // exceptions as `rejected`; Supabase puts query errors in the resolved value's
+  // `error` field, so we have to check both shapes.
+  type SettledResult<T> = PromiseSettledResult<{ data: T | null; error: { message: string } | null }>;
+  function unwrap<T>(settled: SettledResult<T>, source: string): T | null {
+    if (settled.status === "rejected") {
+      const msg = settled.reason instanceof Error ? settled.reason.message : String(settled.reason);
+      console.error(`[admin/directory] ${source} threw:`, msg);
+      errors.push({ source, message: msg });
+      return null;
+    }
+    if (settled.value.error) {
+      console.error(`[admin/directory] ${source} returned error:`, settled.value.error.message);
+      errors.push({ source, message: settled.value.error.message });
+      return null;
+    }
+    return settled.value.data;
+  }
+
+  const usersRes = { data: unwrap(usersSettled, "list_platform_users") };
+  const profilesRes = { data: unwrap(profilesSettled, "company_profiles") };
+  const claimsRes = { data: unwrap(claimsSettled, "claims") };
+  const subsRes = { data: unwrap(subsSettled, "subscriptions") };
 
   type AuthUser = {
     id: string;
@@ -186,5 +216,5 @@ export async function GET() {
       a.company_name.localeCompare(b.company_name)
   );
 
-  return NextResponse.json({ users, companies });
+  return NextResponse.json({ users, companies, errors });
 }

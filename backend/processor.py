@@ -28,6 +28,7 @@ from analytics import predict_settlement, detect_price_deviations
 from xactimate_lookup import XactRegistry, _clean_desc
 from code_compliance import enrich_line_items_with_citations
 from qa_auditor import audit_forensic_prose
+from brand_isolation import is_personal_domain, stage_usarm_fallback_logo
 
 # Xactimate registry cache: market_code → XactRegistry instance
 _XACT_REGISTRIES = {}
@@ -4653,11 +4654,13 @@ async def process_claim(claim_id: str):
         # picks one at random).
         if not _resolved:
             try:
-                from brand_isolation import is_personal_domain
                 admin_profiles = sb.table("company_profiles").select("*").eq("is_admin", True).execute()
                 user_result = sb.auth.admin.get_user_by_id(_uid)
-                user_email = getattr(user_result, 'user', {}).email if hasattr(user_result, 'user') else ""
-                domain = (user_email or "").split("@")[-1].lower() if user_email and "@" in user_email else ""
+                # Guard truthiness as well as presence — `user_result.user` can be
+                # None on a missing-user response, and `None.email` raises.
+                user_obj = getattr(user_result, "user", None)
+                user_email = (user_obj.email or "") if user_obj else ""
+                domain = user_email.split("@")[-1].lower() if user_email and "@" in user_email else ""
                 if not domain:
                     pass  # no email → can't domain-match
                 elif is_personal_domain(domain):
@@ -4733,7 +4736,6 @@ async def process_claim(claim_id: str):
         # Bundled-USARM logo fallback. Three-gate brand-isolation logic
         # (E182 prevention) lives in brand_isolation.stage_usarm_fallback_logo
         # so the gating can be unit-tested independent of process_claim.
-        from brand_isolation import stage_usarm_fallback_logo
         is_usarm_flag = bool((company_profile or {}).get("is_usarm"))
         log_company = ((company_profile or {}).get("company_name") or "<empty>")[:40]
         applied = stage_usarm_fallback_logo(

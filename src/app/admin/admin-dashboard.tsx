@@ -84,6 +84,9 @@ export function AdminDashboard({ userId }: { userId: string }) {
   const [repairs, setRepairs] = useState<Repair[]>([]);
   const [companies, setCompanies] = useState<DirectoryCompany[]>([]);
   const [signupUsers, setSignupUsers] = useState<DirectoryUser[]>([]);
+  // Surfaced when /api/admin/directory fails or returns partial-failure
+  // errors (e.g. one of the four upstream queries 500s). Empty array = healthy.
+  const [directoryErrors, setDirectoryErrors] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [repairsLoading, setRepairsLoading] = useState(true);
   const [inspectorsLoading, setInspectorsLoading] = useState(true);
@@ -120,10 +123,21 @@ export function AdminDashboard({ userId }: { userId: string }) {
     try {
       const res = await fetch("/api/admin/directory");
       if (!res.ok) {
-        console.error("[admin] directory fetch failed", await res.text().catch(() => ""));
+        const detail = await res.text().catch(() => "");
+        console.error("[admin] directory fetch failed", res.status, detail);
+        setDirectoryErrors([`HTTP ${res.status}: ${detail || "directory endpoint unreachable"}`]);
         return;
       }
-      const data: { users: DirectoryUser[]; companies: DirectoryCompany[] } = await res.json();
+      const data: {
+        users: DirectoryUser[];
+        companies: DirectoryCompany[];
+        errors?: { source: string; message: string }[];
+      } = await res.json();
+
+      // Surface partial-failure errors so the dashboard doesn't silently show
+      // "No companies / No signups" when an upstream Supabase query died.
+      const partial = (data.errors || []).map((e) => `${e.source}: ${e.message}`);
+      setDirectoryErrors(partial);
 
       // userMap powers the Claims-table user cell. Built from the same
       // service-role data so EVERY user shows their company, not just
@@ -145,6 +159,10 @@ export function AdminDashboard({ userId }: { userId: string }) {
       setEmailToCompany(emailMap);
       setSignupUsers(data.users);
       setCompanies(data.companies);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error("[admin] directory fetch threw:", msg);
+      setDirectoryErrors([`Network error: ${msg}`]);
     } finally {
       setSignupsLoading(false);
       setCompaniesLoading(false);
@@ -427,6 +445,29 @@ export function AdminDashboard({ userId }: { userId: string }) {
             )}
           </div>
         </div>
+
+        {directoryErrors.length > 0 && (
+          <div className="mb-6 rounded-xl border border-red-500/40 bg-red-500/10 px-4 py-3 flex items-start gap-3">
+            <span className="text-red-400 text-lg leading-none">⚠</span>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-red-200">Directory data partially loaded</p>
+              <ul className="mt-1 text-xs text-red-200/80 list-disc list-inside space-y-0.5">
+                {directoryErrors.slice(0, 3).map((err, i) => (
+                  <li key={i} className="truncate">{err}</li>
+                ))}
+                {directoryErrors.length > 3 && (
+                  <li>...and {directoryErrors.length - 3} more</li>
+                )}
+              </ul>
+            </div>
+            <button
+              onClick={() => { setDirectoryErrors([]); fetchDirectory(); }}
+              className="text-xs font-semibold text-red-200 hover:text-white px-3 py-1 rounded-lg bg-red-500/20 hover:bg-red-500/30 shrink-0"
+            >
+              Retry
+            </button>
+          </div>
+        )}
 
         {/* Tabs */}
         <div className="flex gap-1 mb-8 bg-white/[0.06] rounded-xl p-1 w-fit">
