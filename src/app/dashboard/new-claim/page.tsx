@@ -9,6 +9,7 @@ import { uploadFilesBatched } from "@/lib/upload-utils";
 import { CrmImportModal } from "@/components/crm-import-modal";
 import { CompanyProfileGate } from "@/components/company-profile-gate";
 import { NewClaimFeatureChecklist } from "@/components/new-claim-feature-checklist";
+import { OverageConsentModal } from "@/app/dashboard/new-claim/overage-consent-modal";
 import { trackBoth, FunnelEvent } from "@/lib/track";
 import { compressImages } from "@/lib/image-compress";
 
@@ -56,6 +57,22 @@ export default function NewClaimPage() {
   const [showProfileGate, setShowProfileGate] = useState(false);
   const [currentUserId, setCurrentUserId] = useState("");
   const [currentUserEmail, setCurrentUserEmail] = useState("");
+
+  // Overage consent modal state — shown the first time a paid-tier user goes
+  // into overage in a billing cycle. After ack, subsequent overages flow
+  // silently until renewal resets overage_acknowledged_at.
+  const [showOverageModal, setShowOverageModal] = useState(false);
+  const [overageContext, setOverageContext] = useState<{
+    planName: string;
+    monthlyLimit: number | null;
+    overageUnitPriceCents: number;
+    overageThisPeriod: number;
+    nextTier: string | null;
+    nextTierName: string | null;
+    nextTierPriceCents: number | null;
+    nextTierMonthlyCap: number | null;
+    currentPeriodEnd: string | null;
+  } | null>(null);
 
   // Stable object URLs for photo thumbnails — revokes previous URLs on change
   const photoUrls = useMemo(() => {
@@ -134,11 +151,14 @@ export default function NewClaimPage() {
   // then add measurements for Xactimate + scope comparison, then add the
   // carrier scope for the full 5-doc supplement package.
   // Tom's directive 2026-04-06: "we dont NEED EAGLEVIEW"
+  // Allow submission in 'normal' AND 'overage' modes — only 'blocked' (starter
+  // at lifetime cap, or paid sub past_due/canceled) hard-blocks the form.
+  // The overage consent modal is shown lazily inside performSubmit when needed.
   const canSubmit =
     propertyAddress.trim() !== "" &&
     (photoFiles.length > 0 || crmPhotoCount > 0) &&
     roofMaterial !== "" &&
-    (quota === null || quota.allowed);
+    (quota === null || quota.mode !== "blocked");
 
   const scanForStorms = async () => {
     setScanningStorms(true);
@@ -179,7 +199,7 @@ export default function NewClaimPage() {
     await performSubmit();
   };
 
-  const performSubmit = async () => {
+  const performSubmit = async (overageAcknowledged: boolean = false) => {
     trackBoth(FunnelEvent.NEW_CLAIM_FORM_SUBMITTED, {
       phase,
       measurement_count: measurementFiles.length,
@@ -192,8 +212,10 @@ export default function NewClaimPage() {
     setErrorMsg("");
 
     try {
-      // Preflight: reject at-cap users BEFORE uploading 30-100MB of photos.
-      // Returns 402 with {reason, planName, upgradeUrl} when blocked.
+      // Preflight: 200 = normal or overage (allowed), 402 = blocked. We hold
+      // up the upload to render the overage consent modal the first time a
+      // paid user crosses cap in a billing cycle (ack_required). Once they
+      // accept (overageAcknowledged=true on retry), we sail through.
       const preflight = await fetch("/api/claims/preflight", { method: "POST" });
       if (preflight.status === 402) {
         const body = await preflight.json();
@@ -201,14 +223,39 @@ export default function NewClaimPage() {
         setErrorMsg(
           body.reason === "lifetime_cap_reached"
             ? `You've used your ${body.limit} free claims. Upgrade to keep submitting.`
-            : body.reason === "monthly_cap_reached"
-              ? `You've hit your ${body.planName} monthly cap. Upgrade or wait for renewal.`
-              : "Subscription is inactive. Please update billing to continue."
+            : body.reason === "subscription_inactive"
+              ? "Subscription is inactive. Please update billing to continue."
+              : "You can't submit right now. Check your plan settings."
         );
         // Hard redirect to pricing keeps the upgrade CTA front and center
         if (typeof window !== "undefined") {
           setTimeout(() => { window.location.href = body.upgradeUrl || "/pricing"; }, 1500);
         }
+        return;
+      }
+
+      const preflightBody = await preflight.json();
+
+      // Overage consent gate — first time a paid user submits past their
+      // monthly cap this cycle. Pop modal, stash submission, return.
+      if (
+        preflightBody.mode === "overage" &&
+        preflightBody.ackRequired &&
+        !overageAcknowledged
+      ) {
+        setOverageContext({
+          planName: preflightBody.planName,
+          monthlyLimit: preflightBody.limit,
+          overageUnitPriceCents: preflightBody.overageUnitPriceCents,
+          overageThisPeriod: preflightBody.overageThisPeriod,
+          nextTier: preflightBody.nextTier,
+          nextTierName: preflightBody.nextTierName,
+          nextTierPriceCents: preflightBody.nextTierPriceCents,
+          nextTierMonthlyCap: preflightBody.nextTierMonthlyCap,
+          currentPeriodEnd: preflightBody.currentPeriodEnd,
+        });
+        setShowOverageModal(true);
+        setStatus("idle");
         return;
       }
 
@@ -518,6 +565,41 @@ export default function NewClaimPage() {
           }}
         />
 
+        {overageContext && (
+          <OverageConsentModal
+            open={showOverageModal}
+            planName={overageContext.planName}
+            monthlyLimit={overageContext.monthlyLimit}
+            overageUnitPriceCents={overageContext.overageUnitPriceCents}
+            overageThisPeriod={overageContext.overageThisPeriod}
+            nextTierName={overageContext.nextTierName}
+            nextTierPriceCents={overageContext.nextTierPriceCents}
+            nextTierMonthlyCap={overageContext.nextTierMonthlyCap}
+            currentPeriodEnd={overageContext.currentPeriodEnd}
+            onContinue={async () => {
+              setShowOverageModal(false);
+              try {
+                await fetch("/api/billing/acknowledge-overage", { method: "POST" });
+              } catch (err) {
+                // Non-fatal: ack RPC is also retried on next preflight
+                console.error("[overage] ack failed (proceeding):", err);
+              }
+              performSubmit(true);
+            }}
+            onUpgrade={() => {
+              setShowOverageModal(false);
+              if (overageContext.nextTier) {
+                window.location.href = `/pricing?tier=${overageContext.nextTier}`;
+              } else {
+                window.location.href = "mailto:tom@dumbroof.ai?subject=Custom%20enterprise%20plan";
+              }
+            }}
+            onCancel={() => {
+              setShowOverageModal(false);
+            }}
+          />
+        )}
+
         {/* Guided Checklist — shows before the form */}
         {showChecklist && (
           <div className="mb-8 space-y-8">
@@ -695,16 +777,18 @@ export default function NewClaimPage() {
         )}
 
         {!showChecklist && (<>
-        {/* Quota Gate — Upgrade (hard block, 0 remaining) */}
-        {quota && !quota.allowed && (
+        {/* Quota Gate — HARD BLOCK (starter at lifetime cap, or paid sub past_due) */}
+        {quota && quota.mode === "blocked" && (
           <div className="mb-8 bg-gradient-to-br from-[var(--navy)] to-[var(--navy-light)] rounded-2xl p-8 text-center text-white">
             <h3 className="text-xl font-bold mb-2">
               {quota.planId === "starter"
                 ? `You've used your ${quota.limit} free claims`
-                : `You've hit your ${quota.planName} monthly cap`}
+                : "Subscription needs attention"}
             </h3>
             <p className="text-[var(--gray-dim)] text-sm mb-6">
-              Upgrade to keep submitting claims and generating revenue.
+              {quota.planId === "starter"
+                ? "Upgrade to keep submitting claims and generating revenue."
+                : "Your billing is past due. Update payment to keep submitting."}
             </p>
             <div className="flex items-center justify-center gap-4 flex-wrap">
               <a
@@ -724,8 +808,29 @@ export default function NewClaimPage() {
           </div>
         )}
 
-        {/* Near-cap warning — amber, soft nudge while still allowed */}
-        {quota && quota.allowed && quota.planId === "starter" && quota.remaining === 1 && (
+        {/* OVERAGE banner — paid user is past cap. Still allowed to submit;
+            the modal handles consent on first claim of the cycle. */}
+        {quota && quota.mode === "overage" && (
+          <div className="mb-6 flex items-center justify-between bg-amber-500/10 border border-amber-500/30 rounded-lg px-4 py-3">
+            <span className="text-xs text-amber-200">
+              <span className="font-semibold">Past your {quota.planName} cap.</span>{" "}
+              {quota.overageThisPeriod > 0
+                ? `${quota.overageThisPeriod} overage claim${quota.overageThisPeriod === 1 ? "" : "s"} this cycle · $${(quota.overageThisPeriod * (quota.overageUnitPriceCents / 100)).toFixed(0)} on next invoice`
+                : `Each new claim is $${(quota.overageUnitPriceCents / 100).toFixed(0)} until renewal`}
+            </span>
+            {quota.nextTier && quota.nextTierPriceCents != null ? (
+              <a
+                href={`/pricing?tier=${quota.nextTier}`}
+                className="text-xs font-semibold text-amber-200 hover:text-amber-100 underline whitespace-nowrap ml-3"
+              >
+                Upgrade to {quota.nextTierName} →
+              </a>
+            ) : null}
+          </div>
+        )}
+
+        {/* Near-cap warning — amber, soft nudge while still allowed (starter only) */}
+        {quota && quota.mode === "normal" && quota.planId === "starter" && quota.remaining === 1 && (
           <div className="mb-6 flex items-center justify-between bg-amber-500/10 border border-amber-500/30 rounded-lg px-4 py-3">
             <span className="text-xs text-amber-200">
               <span className="font-semibold">Last free claim.</span> Upgrade now to keep your workflow uninterrupted.
@@ -740,7 +845,7 @@ export default function NewClaimPage() {
         )}
 
         {/* Standard quota chip — neutral state */}
-        {quota && quota.allowed && !(quota.planId === "starter" && quota.remaining === 1) && (
+        {quota && quota.mode === "normal" && !(quota.planId === "starter" && quota.remaining === 1) && (
           <div className="mb-6 flex items-center justify-between bg-white/[0.04] rounded-lg px-4 py-2.5 border border-[var(--border-glass)]">
             <span className="text-xs text-[var(--gray-muted)]">
               <span className="font-semibold text-[var(--white)]">{quota.planName}</span> plan

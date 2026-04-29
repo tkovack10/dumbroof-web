@@ -29,6 +29,10 @@
       "schedule": "0 16 * * *"
     },
     {
+      "path": "/api/cron/reconcile-overage",
+      "schedule": "30 16 * * *"
+    },
+    {
       "path": "/api/cron/claim-brain-cadences",
       "schedule": "0 * * * *"
     },

@@ -458,20 +458,32 @@ function SettingsPageContent() {
                 <span
                   className={`px-2.5 py-1 rounded-full text-xs font-bold ${
                     billing.status === "active"
-                      ? "bg-green-500/10 text-green-400"
+                      ? billing.mode === "overage"
+                        ? "bg-amber-500/10 text-amber-400"
+                        : "bg-green-500/10 text-green-400"
                       : billing.status === "past_due"
                       ? "bg-amber-500/10 text-amber-400"
                       : "bg-white/[0.06] text-[var(--gray)]"
                   }`}
                 >
-                  {billing.status === "active" ? "Active" : billing.status === "past_due" ? "Past Due" : "Canceled"}
+                  {billing.status === "active"
+                    ? billing.mode === "overage"
+                      ? "Over Cap"
+                      : "Active"
+                    : billing.status === "past_due"
+                    ? "Past Due"
+                    : "Canceled"}
                 </span>
               </div>
 
               {/* Usage bar */}
               <div className="w-full bg-white/[0.06] rounded-full h-2">
                 <div
-                  className="bg-gradient-to-r from-[var(--pink)] to-[var(--blue)] h-2 rounded-full transition-all"
+                  className={`h-2 rounded-full transition-all ${
+                    billing.mode === "overage"
+                      ? "bg-gradient-to-r from-amber-400 to-orange-500"
+                      : "bg-gradient-to-r from-[var(--pink)] to-[var(--blue)]"
+                  }`}
                   style={{
                     width: `${Math.min(
                       100,
@@ -484,6 +496,34 @@ function SettingsPageContent() {
                   }}
                 />
               </div>
+
+              {/* Overage summary — only when paid plan is past cap */}
+              {billing.mode === "overage" && billing.overageThisPeriod > 0 && (
+                <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg px-4 py-3 text-xs text-amber-200 flex items-center justify-between">
+                  <span>
+                    <span className="font-semibold">{billing.overageThisPeriod}</span>{" "}
+                    overage claim{billing.overageThisPeriod === 1 ? "" : "s"} ·{" "}
+                    <span className="font-semibold">
+                      ${(billing.overageThisPeriod * (billing.overageUnitPriceCents / 100)).toLocaleString()}
+                    </span>{" "}
+                    billed on{" "}
+                    {billing.currentPeriodEnd
+                      ? new Date(billing.currentPeriodEnd).toLocaleDateString("en-US", {
+                          month: "short",
+                          day: "numeric",
+                        })
+                      : "next renewal"}
+                  </span>
+                  {billing.nextTier && billing.nextTierPriceCents != null ? (
+                    <a
+                      href={`/pricing?tier=${billing.nextTier}`}
+                      className="font-semibold hover:text-amber-100 underline whitespace-nowrap ml-3"
+                    >
+                      Upgrade to {billing.nextTierName} →
+                    </a>
+                  ) : null}
+                </div>
+              )}
 
               <div className="flex gap-3">
                 {billing.planId === "starter" ? (

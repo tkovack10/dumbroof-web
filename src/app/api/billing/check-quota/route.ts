@@ -1,10 +1,11 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
-import { PLANS, type PlanId } from "@/lib/stripe-config";
+import { PLANS, type PlanId, getNextTier } from "@/lib/stripe-config";
 
 interface QuotaResult {
   allowed: boolean;
+  mode: "normal" | "overage" | "blocked";
   plan_id: string;
   status: string;
   period_used: number;
@@ -14,6 +15,13 @@ interface QuotaResult {
   reason: string | null;
   subscription_user_id: string | null;
   company_shared: boolean;
+  overage_unit_price_cents: number;
+  overage_this_period: number;
+  ack_required: boolean;
+  next_tier: string | null;
+  next_tier_price_cents: number | null;
+  next_tier_monthly_cap: number | null;
+  current_period_end: string | null;
 }
 
 export async function GET() {
@@ -37,11 +45,13 @@ export async function GET() {
   const q = data as QuotaResult;
   const planId = (q.plan_id as PlanId) || "starter";
   const plan = PLANS[planId];
+  const nextTierPlan = getNextTier(planId);
 
   return NextResponse.json({
     planId,
     planName: plan.name,
     allowed: q.allowed,
+    mode: q.mode,
     remaining: q.remaining,
     periodUsed: q.period_used,
     lifetimeUsed: q.lifetime_used,
@@ -49,6 +59,14 @@ export async function GET() {
     status: q.status,
     reason: q.reason,
     companyShared: q.company_shared,
+    overageThisPeriod: q.overage_this_period,
+    overageUnitPriceCents: q.overage_unit_price_cents,
+    ackRequired: q.ack_required,
+    nextTier: q.next_tier,
+    nextTierName: nextTierPlan?.name ?? null,
+    nextTierPriceCents: q.next_tier_price_cents,
+    nextTierMonthlyCap: q.next_tier_monthly_cap,
+    currentPeriodEnd: q.current_period_end,
   });
 }
 

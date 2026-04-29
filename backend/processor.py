@@ -4482,13 +4482,33 @@ async def process_claim(claim_id: str):
             try:
                 inc_resp = sb.rpc("increment_claim_usage", {"p_user_id": claim_user_id}).execute()
                 inc = inc_resp.data if inc_resp.data else {}
-                # If this was a metered sales_rep plan, report a Stripe meter event.
-                # TODO(billing): no sales_rep customers exist today (verified
-                # 2026-04-25 — only 1 enterprise + 1 starter row in subscriptions).
-                # Before the first sales_rep signup, either add stripe-py to
-                # backend/requirements.txt and fire stripe.billing.MeterEvent.create
-                # here, or POST to a Vercel /api/billing/meter-event route. Until
-                # then, sales_rep claims process but do not bill.
+
+                # $75/claim overage: fire a Stripe usage record when this tick
+                # crossed a paid plan into overage. Idempotent (Stripe sums
+                # action='increment' usage records per period). Failure is
+                # logged + persisted to overage_events with status='failed' for
+                # the daily reconcile cron — never blocks claim processing.
+                if inc.get("overage_billed"):
+                    try:
+                        from billing_overage import fire_overage_meter
+                        meter_resp = fire_overage_meter(
+                            user_id=claim_user_id,
+                            subscription_user_id=inc.get("subscription_user_id") or claim_user_id,
+                            claim_id=claim_id,
+                            plan_id=inc.get("plan_id") or "unknown",
+                            overage_count_after=inc.get("overage_this_period", 0),
+                            stripe_subscription_id=inc.get("stripe_subscription_id"),
+                            stripe_overage_item_id=inc.get("stripe_overage_item_id"),
+                        )
+                        if not meter_resp.get("ok"):
+                            print(f"[PROCESS] Overage meter NOT fired (will reconcile): {meter_resp}", flush=True)
+                        else:
+                            print(f"[PROCESS] Overage metered: usage_record={meter_resp.get('stripe_usage_record_id')} overage_count={inc.get('overage_this_period')}", flush=True)
+                    except Exception as meter_err:
+                        print(f"[PROCESS] Overage meter exception (non-fatal): {meter_err}", flush=True)
+
+                # sales_rep metered billing — still TODO. Mirror the overage
+                # bridge once the first sales_rep customer signs up.
                 if inc.get("plan_id") == "sales_rep" and inc.get("subscription_user_id"):
                     print(f"[PROCESS] WARN: sales_rep meter event not fired (TODO billing). sub_user={inc.get('subscription_user_id')}", flush=True)
             except Exception as inc_err:

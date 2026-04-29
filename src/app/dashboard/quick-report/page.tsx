@@ -7,6 +7,7 @@ import { AddressAutocomplete } from "@/components/address-autocomplete";
 import { useBillingQuota } from "@/hooks/use-billing-quota";
 import { uploadFilesBatched } from "@/lib/upload-utils";
 import { CrmImportModal } from "@/components/crm-import-modal";
+import { OverageConsentModal } from "@/app/dashboard/new-claim/overage-consent-modal";
 
 type UploadStatus = "idle" | "uploading" | "success" | "error";
 
@@ -50,6 +51,18 @@ export default function QuickReportPage() {
   const [crmIntegrations, setCrmIntegrations] = useState<{ acculynx: boolean; companycam: boolean }>({ acculynx: false, companycam: false });
   const [crmUserId, setCrmUserId] = useState("");
   const [importedPhotoNote, setImportedPhotoNote] = useState("");
+  const [showOverageModal, setShowOverageModal] = useState(false);
+  const [overageContext, setOverageContext] = useState<{
+    planName: string;
+    monthlyLimit: number | null;
+    overageUnitPriceCents: number;
+    overageThisPeriod: number;
+    nextTier: string | null;
+    nextTierName: string | null;
+    nextTierPriceCents: number | null;
+    nextTierMonthlyCap: number | null;
+    currentPeriodEnd: string | null;
+  } | null>(null);
   const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000";
 
   useEffect(() => {
@@ -69,12 +82,13 @@ export default function QuickReportPage() {
     checkIntegrations();
   }, [BACKEND_URL]);
 
+  // Allow normal + overage; only hard-block 'blocked' mode.
   const canSubmit =
     propertyAddress.trim() !== "" &&
     (photoFiles.length > 0 || crmPhotoCount > 0) &&
     roofMaterial !== "" &&
     dateOfLoss !== "" &&
-    (quota === null || quota.allowed);
+    (quota === null || quota.mode !== "blocked");
 
   const scanForStorms = async () => {
     setScanningStorms(true);
@@ -100,12 +114,16 @@ export default function QuickReportPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!canSubmit) return;
+    await performSubmit(false);
+  };
 
+  const performSubmit = async (overageAcknowledged: boolean) => {
     setStatus("uploading");
     setErrorMsg("");
 
     try {
-      // Preflight: reject at-cap users before uploading photos.
+      // Preflight: 200 = normal/overage allowed, 402 = hard block. Pop the
+      // overage consent modal the first time a paid user crosses cap.
       const preflight = await fetch("/api/claims/preflight", { method: "POST" });
       if (preflight.status === 402) {
         const body = await preflight.json();
@@ -113,13 +131,35 @@ export default function QuickReportPage() {
         setErrorMsg(
           body.reason === "lifetime_cap_reached"
             ? `You've used your ${body.limit} free claims. Upgrade to keep submitting.`
-            : body.reason === "monthly_cap_reached"
-              ? `You've hit your ${body.planName} monthly cap. Upgrade or wait for renewal.`
-              : "Subscription is inactive. Please update billing to continue."
+            : body.reason === "subscription_inactive"
+              ? "Subscription is inactive. Please update billing to continue."
+              : "You can't submit right now. Check your plan settings."
         );
         if (typeof window !== "undefined") {
           setTimeout(() => { window.location.href = body.upgradeUrl || "/pricing"; }, 1500);
         }
+        return;
+      }
+
+      const preflightBody = await preflight.json();
+      if (
+        preflightBody.mode === "overage" &&
+        preflightBody.ackRequired &&
+        !overageAcknowledged
+      ) {
+        setOverageContext({
+          planName: preflightBody.planName,
+          monthlyLimit: preflightBody.limit,
+          overageUnitPriceCents: preflightBody.overageUnitPriceCents,
+          overageThisPeriod: preflightBody.overageThisPeriod,
+          nextTier: preflightBody.nextTier,
+          nextTierName: preflightBody.nextTierName,
+          nextTierPriceCents: preflightBody.nextTierPriceCents,
+          nextTierMonthlyCap: preflightBody.nextTierMonthlyCap,
+          currentPeriodEnd: preflightBody.currentPeriodEnd,
+        });
+        setShowOverageModal(true);
+        setStatus("idle");
         return;
       }
 
@@ -267,19 +307,77 @@ export default function QuickReportPage() {
           }}
         />
 
-        {/* Quota check */}
-        {quota && !quota.allowed && (
+        {/* Quota check — hard block (starter at lifetime cap or paid past_due) */}
+        {quota && quota.mode === "blocked" && (
           <div className="mb-8 glass-card p-8 text-center">
-            <h3 className="text-xl font-bold text-[var(--white)] mb-2">You&apos;ve used your {quota.limit} free claims</h3>
-            <p className="text-[var(--gray-dim)] text-sm mb-6">Upgrade to keep generating reports.</p>
+            <h3 className="text-xl font-bold text-[var(--white)] mb-2">
+              {quota.planId === "starter"
+                ? `You've used your ${quota.limit} free claims`
+                : "Subscription needs attention"}
+            </h3>
+            <p className="text-[var(--gray-dim)] text-sm mb-6">
+              {quota.planId === "starter" ? "Upgrade to keep generating reports." : "Update payment to keep submitting."}
+            </p>
             <a href="/pricing" className="bg-gradient-to-r from-[var(--pink)] via-[var(--purple)] to-[var(--blue)] text-white px-6 py-3 rounded-xl font-bold text-sm">
               View Plans
             </a>
           </div>
         )}
 
+        {/* Overage banner */}
+        {quota && quota.mode === "overage" && (
+          <div className="mb-6 flex items-center justify-between bg-amber-500/10 border border-amber-500/30 rounded-lg px-4 py-3">
+            <span className="text-xs text-amber-200">
+              <span className="font-semibold">Past your {quota.planName} cap.</span>{" "}
+              {quota.overageThisPeriod > 0
+                ? `${quota.overageThisPeriod} overage claim${quota.overageThisPeriod === 1 ? "" : "s"} this cycle · $${(quota.overageThisPeriod * (quota.overageUnitPriceCents / 100)).toFixed(0)} on next invoice`
+                : `Each new claim is $${(quota.overageUnitPriceCents / 100).toFixed(0)} until renewal`}
+            </span>
+            {quota.nextTier && quota.nextTierPriceCents != null ? (
+              <a
+                href={`/pricing?tier=${quota.nextTier}`}
+                className="text-xs font-semibold text-amber-200 hover:text-amber-100 underline whitespace-nowrap ml-3"
+              >
+                Upgrade to {quota.nextTierName} →
+              </a>
+            ) : null}
+          </div>
+        )}
+
+        {overageContext && (
+          <OverageConsentModal
+            open={showOverageModal}
+            planName={overageContext.planName}
+            monthlyLimit={overageContext.monthlyLimit}
+            overageUnitPriceCents={overageContext.overageUnitPriceCents}
+            overageThisPeriod={overageContext.overageThisPeriod}
+            nextTierName={overageContext.nextTierName}
+            nextTierPriceCents={overageContext.nextTierPriceCents}
+            nextTierMonthlyCap={overageContext.nextTierMonthlyCap}
+            currentPeriodEnd={overageContext.currentPeriodEnd}
+            onContinue={async () => {
+              setShowOverageModal(false);
+              try {
+                await fetch("/api/billing/acknowledge-overage", { method: "POST" });
+              } catch (err) {
+                console.error("[overage] ack failed (proceeding):", err);
+              }
+              performSubmit(true);
+            }}
+            onUpgrade={() => {
+              setShowOverageModal(false);
+              if (overageContext.nextTier) {
+                window.location.href = `/pricing?tier=${overageContext.nextTier}`;
+              } else {
+                window.location.href = "mailto:tom@dumbroof.ai?subject=Custom%20enterprise%20plan";
+              }
+            }}
+            onCancel={() => setShowOverageModal(false)}
+          />
+        )}
+
         {/* Form */}
-        {(!quota || quota.allowed) && (
+        {(!quota || quota.mode !== "blocked") && (
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* Address */}
             <div>

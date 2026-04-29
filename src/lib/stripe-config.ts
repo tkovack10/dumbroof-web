@@ -20,6 +20,35 @@ export interface PlanDefinition {
  */
 export const EXTRA_SEAT_PRICE_ID = (process.env.STRIPE_EXTRA_SEAT_PRICE_ID || "").trim();
 
+/**
+ * Metered price ID for $75/claim overage on Pro/Growth/Enterprise plans.
+ * Stripe API version 2025-03-31+ requires metered prices to be backed by a
+ * Billing Meter — the price is permanently bound to OVERAGE_METER_EVENT_NAME.
+ * Send overage usage via `billing.meterEvents.create({event_name, payload})`,
+ * NOT the legacy `subscriptionItems.createUsageRecord`.
+ *
+ * Lazy-attach the subscription item once per customer's first overage; Stripe
+ * then aggregates meter events for that customer against the active sub item.
+ *
+ * Mirror of `_plan_caps()` SQL function — keep OVERAGE_UNIT_PRICE_CENTS in
+ * sync with the assert_quota_allowed RPC's hardcoded 7500.
+ */
+export const OVERAGE_PRICE_ID = (process.env.STRIPE_OVERAGE_PRICE_ID || "").trim();
+export const OVERAGE_METER_EVENT_NAME = "dumbroof_claim_overage";
+export const OVERAGE_UNIT_PRICE_CENTS = 7500;
+
+/**
+ * Resolve the next tier we should upsell a paid customer toward when they hit
+ * cap. Returns null for enterprise (no auto-upsell — sales conversation
+ * instead). Used by the overage consent modal to render the "Upgrade to X"
+ * CTA alongside the "Continue at $75/claim" CTA.
+ */
+export function getNextTier(planId: PlanId): PlanDefinition | null {
+  if (planId === "pro") return PLANS.growth;
+  if (planId === "growth") return PLANS.enterprise;
+  return null;
+}
+
 /** One-time purchasable add-ons (not subscriptions) */
 export interface AddOnDefinition {
   id: string;
