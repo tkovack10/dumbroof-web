@@ -3,6 +3,7 @@
 import { Suspense, useState, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { firePixelSignup } from "@/lib/meta-pixel-signup";
 
 export default function LoginPage() {
   return (
@@ -77,30 +78,31 @@ function LoginPageContent() {
         // This happens when admin already invited this user
         setError("An account with this email already exists. Try signing in instead, or use the link from your invite email.");
       } else if (data.session) {
-        // Auto-confirmed (email confirmation disabled) — go straight to dashboard
-        window.fbq?.("track", "CompleteRegistration");
+        // Auto-confirmed (email confirmation disabled) — go straight to dashboard.
+        // firePixelSignup adds advanced matching (em) + a dedup eventID that
+        // /api/notify-signup forwards to CAPI so the browser pixel + server CAPI
+        // fire are merged by Meta into one canonical conversion.
+        const { eventId } = firePixelSignup({ email, source: "login_page" });
         window.fbq?.("track", "StartTrial");
         window.ttq?.track("CompleteRegistration", {
           contents: [{ content_id: "signup", content_type: "product", content_name: "dumbroof.ai Account" }],
         });
-        // Notify team + send welcome email — both handled server-side by notify-signup
         fetch("/api/notify-signup", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email, source: "login_page" }),
+          body: JSON.stringify({ email, eventId, source: "login_page" }),
         }).catch(() => {});
         window.location.href = "/dashboard/new-claim";
       } else {
-        window.fbq?.("track", "CompleteRegistration");
+        const { eventId } = firePixelSignup({ email, source: "login_page" });
         window.fbq?.("track", "StartTrial");
         window.ttq?.track("CompleteRegistration", {
           contents: [{ content_id: "signup", content_type: "product", content_name: "dumbroof.ai Account" }],
         });
-        // Notify team + send welcome email — both handled server-side by notify-signup
         fetch("/api/notify-signup", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email, source: "login_page" }),
+          body: JSON.stringify({ email, eventId, source: "login_page" }),
         }).catch(() => {});
         setMessage("Account created! Check your email for a confirmation link, then come back and sign in.");
       }

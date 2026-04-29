@@ -4,6 +4,7 @@ import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import type { InAppName } from "@/lib/device-detection";
 import { trackBoth, FunnelEvent } from "@/lib/track";
+import { firePixelSignup } from "@/lib/meta-pixel-signup";
 
 type Props = {
   inAppName: InAppName;
@@ -105,9 +106,12 @@ export function MobileMagicHero({ inAppName, stats }: Props) {
       return;
     }
 
-    // Fire conversion pixels
+    // CompleteRegistration via helper — advanced matching (em) + dedup
+    // eventID that we forward to /api/notify-signup so CAPI merges with
+    // the browser pixel fire on the iOS users where pixel is blocked.
+    const mobileSource = `mobile_${inAppName || "direct"}`;
+    const { eventId } = firePixelSignup({ email, source: mobileSource });
     if (typeof window !== "undefined") {
-      window.fbq?.("track", "CompleteRegistration");
       window.fbq?.("track", "Lead");
       window.ttq?.track("CompleteRegistration", {
         contents: [{ content_id: "mobile_signup", content_type: "product", content_name: "dumbroof.ai Account" }],
@@ -128,7 +132,7 @@ export function MobileMagicHero({ inAppName, stats }: Props) {
       navigator.sendBeacon(
         "/api/notify-signup",
         new Blob(
-          [JSON.stringify({ email, source: `mobile_${inAppName || "direct"}` })],
+          [JSON.stringify({ email, source: mobileSource, eventId })],
           { type: "application/json" }
         )
       );
@@ -137,7 +141,7 @@ export function MobileMagicHero({ inAppName, stats }: Props) {
       fetch("/api/notify-signup", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, source: `mobile_${inAppName || "direct"}` }),
+        body: JSON.stringify({ email, source: mobileSource, eventId }),
         keepalive: true, // keepalive also survives navigation in modern browsers
       }).catch(() => {});
     }

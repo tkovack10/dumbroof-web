@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { trackBoth, FunnelEvent } from "@/lib/track";
+import { firePixelSignup } from "@/lib/meta-pixel-signup";
 
 export function HeroSignupForm({ source = "desktop_hero" }: { source?: string } = {}) {
   const [email, setEmail] = useState("");
@@ -57,8 +58,10 @@ export function HeroSignupForm({ source = "desktop_hero" }: { source?: string } 
       return;
     }
 
-    // Fire conversion pixels
-    window.fbq?.("track", "CompleteRegistration");
+    // CompleteRegistration via the helper — adds advanced matching (em)
+    // and a dedup eventID we forward to /api/notify-signup so the
+    // server-side CAPI fire merges with the browser pixel fire.
+    const { eventId } = firePixelSignup({ email, source });
     window.fbq?.("track", "StartTrial");
     window.ttq?.track("CompleteRegistration", {
       contents: [{ content_id: "signup", content_type: "product", content_name: "dumbroof.ai Account" }],
@@ -71,7 +74,7 @@ export function HeroSignupForm({ source = "desktop_hero" }: { source?: string } 
       navigator.sendBeacon(
         "/api/notify-signup",
         new Blob(
-          [JSON.stringify({ email, source })],
+          [JSON.stringify({ email, source, eventId })],
           { type: "application/json" }
         )
       );
@@ -79,7 +82,7 @@ export function HeroSignupForm({ source = "desktop_hero" }: { source?: string } 
       fetch("/api/notify-signup", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, source }),
+        body: JSON.stringify({ email, source, eventId }),
         keepalive: true,
       }).catch(() => {});
     }

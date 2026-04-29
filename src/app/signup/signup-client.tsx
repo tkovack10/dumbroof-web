@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
+import { firePixelSignup } from "@/lib/meta-pixel-signup";
 
 interface InviteContext {
   token: string;
@@ -72,14 +73,19 @@ export function SignupClient({
     return () => clearTimeout(handle);
   }, [email, inviteContext]);
 
-  const trackSignupPixels = () => {
+  const trackSignupPixels = (signupEmail: string): { eventId: string } => {
+    // CompleteRegistration uses firePixelSignup so it carries advanced
+    // matching (em) AND a dedup eventID matched server-side via CAPI in
+    // /api/notify-signup. StartTrial / TikTok stay as plain pixel fires —
+    // we don't run CAPI for those, so no dedup needed.
+    const { eventId } = firePixelSignup({ email: signupEmail, source: "signup_page" });
     try {
-      window.fbq?.("track", "CompleteRegistration");
       window.fbq?.("track", "StartTrial");
       window.ttq?.track("CompleteRegistration", {
         contents: [{ content_id: "signup", content_type: "product", content_name: "dumbroof.ai Account" }],
       });
     } catch { /* ignore */ }
+    return { eventId };
   };
 
   const handleGoogleSignup = async () => {
@@ -118,16 +124,19 @@ export function SignupClient({
       return;
     }
 
-    trackSignupPixels();
+    const { eventId } = trackSignupPixels(email);
 
     // Best-effort: notify team + welcome email. /auth/callback also runs this
     // on OAuth/confirm, but for the email-confirm path the user might take a
     // while to click the link — fire once now so the team sees it immediately.
+    // `eventId` matches the browser pixel's CompleteRegistration so Meta
+    // dedupes the two fires into one canonical conversion.
     fetch("/api/notify-signup", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         email,
+        eventId,
         source: inviteContext ? "invite" : referralContext ? "referral" : "signup_page",
       }),
     }).catch(() => {});

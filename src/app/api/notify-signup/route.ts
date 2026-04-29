@@ -114,7 +114,7 @@ async function sendWelcome(email: string): Promise<void> {
 }
 
 export async function POST(req: NextRequest) {
-  const { email, source } = await req.json();
+  const { email, source, eventId } = await req.json();
   if (!email) {
     return NextResponse.json({ error: "No email" }, { status: 400 });
   }
@@ -145,10 +145,14 @@ export async function POST(req: NextRequest) {
         <p><a href="https://www.dumbroof.ai/dashboard/admin" style="background-color:#2563eb;color:white;padding:10px 24px;border-radius:8px;text-decoration:none;font-weight:600;display:inline-block;">View Admin Dashboard</a></p>`,
     }),
     sendWelcome(email),
-    // CAPI CompleteRegistration — iOS 14+ can't block server-side events
+    // CAPI CompleteRegistration — iOS 14+ can't block server-side events.
+    // `eventId` (when provided by the client-side pixel call) makes Meta
+    // dedupe the browser + server fires into one canonical event. Without
+    // it we double-count on desktop and rely on luck on iOS.
     sendCapiEvent({
       eventName: CapiEventName.CompleteRegistration,
       email,
+      eventId: typeof eventId === "string" && eventId.length > 0 ? eventId : undefined,
       eventSourceUrl: "https://www.dumbroof.ai/",
       clientIpAddress: req.headers.get("x-forwarded-for") || undefined,
       clientUserAgent: req.headers.get("user-agent") || undefined,
