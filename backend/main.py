@@ -1501,37 +1501,38 @@ def _save_pending_action(sb, scope: str, approval_id: str, tool_result: dict, us
 def _pop_pending_action(sb, scope: str, approval_id: str) -> Optional[dict]:
     """Atomically retrieve and delete a pending tool action.
 
-    Returns the previewed tool_result dict, or None if missing / expired.
-    Reads Supabase first (cross-worker), then falls back to the in-process
-    dict (handles the case where Supabase write earlier failed).
+    Uses the `pop_pending_tool_action(p_scope, p_approval_id)` Postgres
+    function — a single-statement DELETE ... RETURNING that:
+      - is atomic across concurrent approve POSTs (only one caller wins)
+      - returns NULL for missing AND expired rows in one go
+      - lets us distinguish "Supabase reachable but no row" from "Supabase
+        unreachable" so the L1 cache fallback only kicks in when Supabase
+        itself is broken — never to replay an already-consumed action.
     """
-    # Try Supabase first
+    supabase_reachable = False
     try:
-        res = sb.table("pending_tool_actions").select(
-            "tool_result, expires_at"
-        ).eq("scope", scope).eq("approval_id", approval_id).limit(1).execute()
+        res = sb.rpc("pop_pending_tool_action", {
+            "p_scope": scope,
+            "p_approval_id": approval_id,
+        }).execute()
+        # RPC returned without raising → Supabase is up. The row may or may
+        # not have been there. supabase-py returns the function's RETURNING
+        # value as res.data — for jsonb returns, it's the parsed dict
+        # (or None when no row matched).
+        supabase_reachable = True
         if res.data:
-            row = res.data[0]
-            # Delete row regardless of expiry — single-use semantics
-            try:
-                sb.table("pending_tool_actions").delete().eq("scope", scope).eq("approval_id", approval_id).execute()
-            except Exception:
-                pass
-            # Honor expiry — never replay an expired preview
-            from datetime import datetime, timezone
-            try:
-                expires = datetime.fromisoformat((row.get("expires_at") or "").replace("Z", "+00:00"))
-                if expires < datetime.now(timezone.utc):
-                    return None
-            except Exception:
-                pass
-            # Also evict from in-process cache to prevent double-pop
+            # Successful pop. Evict any stale L1 entry on this worker so a
+            # subsequent retry on the same worker can't replay it.
             _pending_tool_actions.get(scope, {}).pop(approval_id, None)
-            return row.get("tool_result")
+            return res.data
     except Exception as e:
-        print(f"[PENDING] Supabase lookup failed for {scope}/{approval_id}: {e}")
+        print(f"[PENDING] Supabase RPC failed for {scope}/{approval_id}: {e}")
 
-    # Fallback to in-process dict (legacy path, single-worker safe)
+    # Only fall back to L1 cache when Supabase was actually unreachable.
+    # If Supabase responded with "no row," another worker already popped it
+    # (or it expired / never existed) — replaying from L1 would double-execute.
+    if supabase_reachable:
+        return None
     bucket = _pending_tool_actions.get(scope, {})
     return bucket.pop(approval_id, None)
 
