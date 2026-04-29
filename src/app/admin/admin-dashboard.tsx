@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
 import type { Claim } from "@/types/claim";
 import { RichardLauncher } from "@/components/richard-launcher";
@@ -36,19 +36,6 @@ interface Repair {
   error_message: string | null;
 }
 
-interface BetaSignup {
-  id: number;
-  name: string;
-  email: string;
-  phone: string | null;
-  company_name: string | null;
-  role: string;
-  products: string[];
-  status: string;
-  notes: string | null;
-  created_at: string;
-}
-
 interface Stats {
   total: number;
   uploaded: number;
@@ -60,7 +47,7 @@ interface Stats {
 
 import { ClaimsMap } from "@/components/claims-map";
 
-type Tab = "claims" | "repairs" | "inspectors" | "beta" | "companies" | "map";
+type Tab = "claims" | "repairs" | "inspectors" | "signups" | "companies" | "map";
 
 // Shape returned by /api/admin/directory (service-role, RLS-bypassed)
 interface DirectoryUser {
@@ -95,13 +82,11 @@ export function AdminDashboard({ userId }: { userId: string }) {
   const [claims, setClaims] = useState<Claim[]>([]);
   const [inspectors, setInspectors] = useState<InspectorApplication[]>([]);
   const [repairs, setRepairs] = useState<Repair[]>([]);
-  const [betaSignups, setBetaSignups] = useState<BetaSignup[]>([]);
   const [companies, setCompanies] = useState<DirectoryCompany[]>([]);
   const [signupUsers, setSignupUsers] = useState<DirectoryUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [repairsLoading, setRepairsLoading] = useState(true);
   const [inspectorsLoading, setInspectorsLoading] = useState(true);
-  const [betaLoading, setBetaLoading] = useState(true);
   const [signupsLoading, setSignupsLoading] = useState(true);
   const [companiesLoading, setCompaniesLoading] = useState(true);
   const [signupSearch, setSignupSearch] = useState("");
@@ -214,17 +199,6 @@ export function AdminDashboard({ userId }: { userId: string }) {
   // /api/admin/directory returns companies + users in one shot via
   // service-role so RLS never hides other tenants from the admin view.
 
-  const fetchBetaSignups = useCallback(async () => {
-    setBetaLoading(true);
-    const { data } = await supabase
-      .from("beta_signups")
-      .select("*")
-      .order("created_at", { ascending: false });
-
-    setBetaSignups(data || []);
-    setBetaLoading(false);
-  }, [supabase]);
-
   useEffect(() => {
     fetchDirectory();
     fetchClaims();
@@ -284,42 +258,6 @@ export function AdminDashboard({ userId }: { userId: string }) {
     setInspectors(prev =>
       prev.map(app => app.id === id ? { ...app, status: newStatus } : app)
     );
-  };
-
-  const updateBetaStatus = async (id: number, newStatus: string) => {
-    await supabase
-      .from("beta_signups")
-      .update({ status: newStatus })
-      .eq("id", id);
-
-    setBetaSignups(prev =>
-      prev.map(s => s.id === id ? { ...s, status: newStatus } : s)
-    );
-  };
-
-  const [inviting, setInviting] = useState<number | null>(null);
-
-  const sendBetaInvite = async (id: number) => {
-    setInviting(id);
-    try {
-      const res = await fetch("/api/beta-invite", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        alert(data.error || "Failed to send invite");
-        return;
-      }
-      setBetaSignups(prev =>
-        prev.map(s => s.id === id ? { ...s, status: "invited" } : s)
-      );
-    } catch {
-      alert("Failed to send invite");
-    } finally {
-      setInviting(null);
-    }
   };
 
   const [invitingInspector, setInvitingInspector] = useState<number | null>(null);
@@ -403,23 +341,6 @@ export function AdminDashboard({ userId }: { userId: string }) {
     setDownloading(null);
   };
 
-  const betaStatusColors: Record<string, string> = {
-    pending: "bg-amber-100 text-amber-700",
-    approved: "bg-green-100 text-green-700",
-    invited: "bg-blue-100 text-blue-700",
-    active: "bg-emerald-100 text-emerald-700",
-    rejected: "bg-red-100 text-red-700",
-  };
-
-  const roleLabels: Record<string, string> = {
-    sales_rep: "Sales Rep",
-    public_adjuster: "Public Adjuster",
-    attorney: "Attorney",
-    appraiser: "Appraiser",
-    contractor: "Contractor",
-    owner: "Owner",
-  };
-
   const statusColors: Record<string, string> = {
     uploaded: "bg-blue-100 text-blue-700",
     processing: "bg-amber-100 text-amber-700",
@@ -452,7 +373,6 @@ export function AdminDashboard({ userId }: { userId: string }) {
 
   const repairErrorCount = repairs.filter(r => r.status === "error").length;
   const pendingCount = inspectors.filter(i => i.status === "pending").length;
-  const betaPendingCount = betaSignups.filter(s => s.status === "pending").length;
 
   const filteredClaims = searchQuery
     ? claims.filter(c => {
@@ -463,6 +383,18 @@ export function AdminDashboard({ userId }: { userId: string }) {
           || (userMap[c.user_id]?.email || "").toLowerCase().includes(q);
       })
     : claims;
+
+  // Memoized: Signups search filter — used in both the count display and
+  // the rendered list. Without useMemo the same filter ran twice per render.
+  const filteredSignups = useMemo(() => {
+    const q = signupSearch.trim().toLowerCase();
+    if (!q) return signupUsers;
+    return signupUsers.filter(s =>
+      s.email.toLowerCase().includes(q)
+      || s.name.toLowerCase().includes(q)
+      || (s.company_name || "").toLowerCase().includes(q)
+    );
+  }, [signupUsers, signupSearch]);
 
   return (
     <main className="min-h-screen">
@@ -539,19 +471,14 @@ export function AdminDashboard({ userId }: { userId: string }) {
             )}
           </button>
           <button
-            onClick={() => setActiveTab("beta")}
-            className={`px-5 py-2 rounded-lg text-sm font-semibold transition-colors flex items-center gap-2 ${
-              activeTab === "beta"
+            onClick={() => setActiveTab("signups")}
+            className={`px-5 py-2 rounded-lg text-sm font-semibold transition-colors ${
+              activeTab === "signups"
                 ? "bg-[var(--bg-glass)] text-[var(--white)] shadow-sm"
                 : "text-[var(--gray-muted)] hover:text-[var(--gray)]"
             }`}
           >
             Signups
-            {betaPendingCount > 0 && (
-              <span className="bg-amber-500/100 text-white text-xs font-bold w-5 h-5 rounded-full flex items-center justify-center">
-                {betaPendingCount}
-              </span>
-            )}
           </button>
           <button
             onClick={() => setActiveTab("companies")}
@@ -920,7 +847,7 @@ export function AdminDashboard({ userId }: { userId: string }) {
           </>
         )}
 
-        {activeTab === "beta" && (
+        {activeTab === "signups" && (
           <>
             {/* Signup Stats — sourced from /api/admin/directory (every auth.users row) */}
             {(() => {
@@ -962,15 +889,7 @@ export function AdminDashboard({ userId }: { userId: string }) {
                 <span className="text-xs text-[var(--gray-dim)] tabular-nums shrink-0">
                   {signupsLoading
                     ? "loading..."
-                    : `${signupUsers.filter((s) => {
-                        const q = signupSearch.trim().toLowerCase();
-                        if (!q) return true;
-                        return (
-                          s.email.toLowerCase().includes(q) ||
-                          s.name.toLowerCase().includes(q) ||
-                          (s.company_name || "").toLowerCase().includes(q)
-                        );
-                      }).length} of ${signupUsers.length}`}
+                    : `${filteredSignups.length} of ${signupUsers.length}`}
                 </span>
               </div>
               {signupsLoading ? (
@@ -991,17 +910,7 @@ export function AdminDashboard({ userId }: { userId: string }) {
                     <div className="col-span-2 text-right">Joined</div>
                   </div>
                   <div className="divide-y divide-white/[0.04]">
-                    {signupUsers
-                      .filter((s) => {
-                        const q = signupSearch.trim().toLowerCase();
-                        if (!q) return true;
-                        return (
-                          s.email.toLowerCase().includes(q) ||
-                          s.name.toLowerCase().includes(q) ||
-                          (s.company_name || "").toLowerCase().includes(q)
-                        );
-                      })
-                      .map((u) => (
+                    {filteredSignups.map((u) => (
                         <div key={u.id} className="px-6 py-3 grid grid-cols-12 gap-4 items-center hover:bg-white/[0.04] transition-colors text-sm">
                           <div className="col-span-3 min-w-0">
                             <p className="font-medium text-[var(--white)] truncate">{u.name}</p>
@@ -1045,129 +954,6 @@ export function AdminDashboard({ userId }: { userId: string }) {
           </>
         )}
 
-        {/* Legacy beta_signups block (no longer rendered — keeping fetcher
-            for any future reactivation). */}
-        {false && activeTab === "beta" && (
-          <>
-            <div className="glass-card overflow-hidden">
-              {betaLoading ? (
-                <div className="text-center py-16">
-                  <p className="text-[var(--gray-dim)] text-sm">Loading signups...</p>
-                </div>
-              ) : betaSignups.length === 0 ? (
-                <div className="text-center py-16">
-                  <p className="text-[var(--gray-dim)] text-sm">No beta signups yet.</p>
-                </div>
-              ) : (
-                <div>
-                  <div className="px-6 py-3 bg-white/[0.04] grid grid-cols-12 gap-4 text-xs font-semibold text-[var(--gray-dim)] uppercase tracking-wider border-b border-white/[0.04]">
-                    <div className="col-span-2">Name</div>
-                    <div className="col-span-2">Contact</div>
-                    <div className="col-span-2">Company</div>
-                    <div className="col-span-1">Role</div>
-                    <div className="col-span-2">Products</div>
-                    <div className="col-span-1">Status</div>
-                    <div className="col-span-2">Actions</div>
-                  </div>
-                  <div className="divide-y divide-white/[0.04]">
-                    {betaSignups.map((signup) => (
-                      <div key={signup.id} className="px-6 py-4 grid grid-cols-12 gap-4 items-center hover:bg-white/[0.04] transition-colors text-sm">
-                        <div className="col-span-2">
-                          <p className="font-medium text-[var(--white)]">{signup.name}</p>
-                          <p className="text-xs text-[var(--gray-dim)] mt-0.5">
-                            {new Date(signup.created_at).toLocaleDateString()}
-                          </p>
-                        </div>
-                        <div className="col-span-2">
-                          <p className="text-[var(--gray)] truncate">{signup.email}</p>
-                          {signup.phone && <p className="text-xs text-[var(--gray-dim)]">{signup.phone}</p>}
-                        </div>
-                        <div className="col-span-2">
-                          <p className="text-[var(--gray)] truncate">{signup.company_name || "-"}</p>
-                          {(() => {
-                            const platformCompany = emailToCompany[(signup.email || "").toLowerCase()];
-                            if (!platformCompany) return null;
-                            const matchesSelfReported = (signup.company_name || "").trim().toLowerCase() === platformCompany.trim().toLowerCase();
-                            return (
-                              <p className={`text-[10px] truncate mt-0.5 ${matchesSelfReported ? "text-[var(--gray-dim)]" : "text-emerald-400"}`} title={matchesSelfReported ? "Same as self-reported" : "Currently a member of this company on the platform"}>
-                                🏢 {platformCompany}
-                              </p>
-                            );
-                          })()}
-                        </div>
-                        <div className="col-span-1">
-                          <span className="text-xs text-[var(--gray)] font-medium">
-                            {roleLabels[signup.role] || signup.role}
-                          </span>
-                        </div>
-                        <div className="col-span-2">
-                          <div className="flex flex-wrap gap-1">
-                            {(signup.products || []).map((p) => (
-                              <span key={p} className="inline-block px-2 py-0.5 rounded-full text-xs font-medium bg-white/[0.06] text-[var(--white)]">
-                                {p === "claims_ai" ? "Claims" : p === "repair_ai" ? "Repair" : p}
-                              </span>
-                            ))}
-                            {(!signup.products || signup.products.length === 0) && (
-                              <span className="text-xs text-[var(--gray-dim)]">-</span>
-                            )}
-                          </div>
-                        </div>
-                        <div className="col-span-1">
-                          <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${betaStatusColors[signup.status] || "bg-white/[0.06] text-[var(--gray)]"}`}>
-                            {signup.status.charAt(0).toUpperCase() + signup.status.slice(1)}
-                          </span>
-                        </div>
-                        <div className="col-span-2 flex gap-2">
-                          {signup.status === "pending" && (
-                            <>
-                              <button
-                                onClick={() => updateBetaStatus(signup.id, "approved")}
-                                className="px-3 py-1 bg-green-500/10 hover:bg-green-500/20 text-green-700 text-xs font-semibold rounded-lg transition-colors"
-                              >
-                                Approve
-                              </button>
-                              <button
-                                onClick={() => updateBetaStatus(signup.id, "rejected")}
-                                className="px-3 py-1 bg-red-500/10 hover:bg-red-100 text-red-700 text-xs font-semibold rounded-lg transition-colors"
-                              >
-                                Reject
-                              </button>
-                            </>
-                          )}
-                          {signup.status === "approved" && (
-                            <button
-                              onClick={() => sendBetaInvite(signup.id)}
-                              disabled={inviting === signup.id}
-                              className="px-3 py-1 bg-blue-500/10 hover:bg-blue-500/20 disabled:opacity-50 text-blue-700 text-xs font-semibold rounded-lg transition-colors"
-                            >
-                              {inviting === signup.id ? "Sending..." : "Send Invite"}
-                            </button>
-                          )}
-                          {signup.status === "invited" && (
-                            <button
-                              onClick={() => updateBetaStatus(signup.id, "active")}
-                              className="px-3 py-1 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-700 text-xs font-semibold rounded-lg transition-colors"
-                            >
-                              Mark Active
-                            </button>
-                          )}
-                          {(signup.status === "approved" || signup.status === "invited" || signup.status === "active" || signup.status === "rejected") && (
-                            <button
-                              onClick={() => updateBetaStatus(signup.id, "pending")}
-                              className="px-3 py-1 bg-white/[0.04] hover:bg-white/[0.06] text-[var(--gray)] text-xs font-semibold rounded-lg transition-colors"
-                            >
-                              Undo
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          </>
-        )}
 
         {activeTab === "inspectors" && (
           <>
