@@ -4645,16 +4645,35 @@ async def process_claim(claim_id: str):
                     print(f"[PROCESS] Using company admin profile (company_id={_company_id})", flush=True)
             except Exception as e:
                 print(f"[PROCESS] Company admin lookup failed: {e}", flush=True)
-        # Fall back to domain matching
+        # Fall back to domain matching. Personal-domain emails (gmail, yahoo,
+        # msn, etc.) are EXCLUDED on both sides: a personal-domain user never
+        # inherits another admin's brand, and a personal-domain admin never
+        # serves as a brand source for anybody else (E182 revenge — without
+        # this, multiple gmail admins collide on @gmail.com and the resolver
+        # picks one at random).
         if not _resolved:
             try:
+                from brand_isolation import is_personal_domain
                 admin_profiles = sb.table("company_profiles").select("*").eq("is_admin", True).execute()
                 user_result = sb.auth.admin.get_user_by_id(_uid)
                 user_email = getattr(user_result, 'user', {}).email if hasattr(user_result, 'user') else ""
-                if user_email and admin_profiles.data:
-                    domain = user_email.split("@")[-1]
+                domain = (user_email or "").split("@")[-1].lower() if user_email and "@" in user_email else ""
+                if not domain:
+                    pass  # no email → can't domain-match
+                elif is_personal_domain(domain):
+                    print(f"[PROCESS] Skipping domain-fallback for personal-domain user: {domain}", flush=True)
+                elif admin_profiles.data:
                     for ap in admin_profiles.data:
-                        if ap.get("email", "").endswith(f"@{domain}"):
+                        ap_email = (ap.get("email") or "").lower()
+                        if "@" not in ap_email:
+                            continue
+                        ap_domain = ap_email.rsplit("@", 1)[-1]
+                        # Defense-in-depth: never serve a personal-domain admin
+                        # as a match target, even if a non-personal user's domain
+                        # somehow collided with one (subdomain, alias, etc.).
+                        if is_personal_domain(ap_domain):
+                            continue
+                        if ap_email.endswith(f"@{domain}"):
                             company_profile = {**ap, "user_id": _uid}
                             print(f"[PROCESS] Using domain-matched admin profile ({domain})", flush=True)
                             break

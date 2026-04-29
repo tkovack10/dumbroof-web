@@ -1,15 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
-
-// Personal email domains — never treat as "company match" since they don't
-// indicate shared employer.
-const PERSONAL_DOMAINS = new Set([
-  "gmail.com", "yahoo.com", "hotmail.com", "outlook.com", "icloud.com",
-  "aol.com", "live.com", "msn.com", "me.com", "protonmail.com",
-  "comcast.net", "verizon.net", "att.net", "sbcglobal.net", "cox.net",
-  "charter.net", "earthlink.net", "ymail.com", "rocketmail.com",
-  "googlemail.com", "duck.com", "hey.com", "fastmail.com",
-]);
+import { PERSONAL_DOMAINS } from "@/lib/personal-domains";
 
 interface MatchedCompany {
   companyId: string;

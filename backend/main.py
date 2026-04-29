@@ -4266,16 +4266,24 @@ async def integration_status(user_id: str):
                     pass
 
             if user_email and "@" in user_email:
+                from brand_isolation import is_personal_domain
                 domain = user_email.split("@")[-1].lower()
-                admin_profiles_result = sb.table("company_profiles").select(
-                    "acculynx_api_key, acculynx_connected_at, "
-                    "companycam_api_key, companycam_connected_at, email"
-                ).eq("is_admin", True).execute()
-                for ap in (admin_profiles_result.data or []):
-                    ap_email = (ap.get("email") or "").lower()
-                    if ap_email.endswith(f"@{domain}") and (ap.get("acculynx_api_key") or ap.get("companycam_api_key")):
-                        admin_profile = ap
-                        break
+                # Personal-domain users are isolated from cross-account
+                # admin matching (E182 revenge fix). Same on the admin side.
+                if not is_personal_domain(domain):
+                    admin_profiles_result = sb.table("company_profiles").select(
+                        "acculynx_api_key, acculynx_connected_at, "
+                        "companycam_api_key, companycam_connected_at, email"
+                    ).eq("is_admin", True).execute()
+                    for ap in (admin_profiles_result.data or []):
+                        ap_email = (ap.get("email") or "").lower()
+                        if "@" not in ap_email:
+                            continue
+                        if is_personal_domain(ap_email.rsplit("@", 1)[-1]):
+                            continue
+                        if ap_email.endswith(f"@{domain}") and (ap.get("acculynx_api_key") or ap.get("companycam_api_key")):
+                            admin_profile = ap
+                            break
 
         if admin_profile:
             return {
@@ -4312,8 +4320,12 @@ async def _get_user_integration_client(user_id: str, provider: str):
                 api_key = candidate[col]
                 break
 
-    # Fall back 2: domain matching → find admin with same email domain who has the key
+    # Fall back 2: domain matching → find admin with same email domain who has the key.
+    # Personal-domain users (gmail/yahoo/etc.) are isolated from cross-account
+    # matching (E182 revenge fix). Personal-domain admins are also never served
+    # as match targets, even to non-personal users.
     if not api_key:
+        from brand_isolation import is_personal_domain
         user_email = profile.get("email") if profile else None
         if not user_email:
             try:
@@ -4324,12 +4336,17 @@ async def _get_user_integration_client(user_id: str, provider: str):
                 pass
         if user_email and "@" in user_email:
             domain = user_email.split("@")[-1].lower()
-            admin_profiles = sb.table("company_profiles").select(f"{col}, email").eq("is_admin", True).execute()
-            for ap in (admin_profiles.data or []):
-                ap_email = (ap.get("email") or "").lower()
-                if ap_email.endswith(f"@{domain}") and ap.get(col):
-                    api_key = ap[col]
-                    break
+            if not is_personal_domain(domain):
+                admin_profiles = sb.table("company_profiles").select(f"{col}, email").eq("is_admin", True).execute()
+                for ap in (admin_profiles.data or []):
+                    ap_email = (ap.get("email") or "").lower()
+                    if "@" not in ap_email:
+                        continue
+                    if is_personal_domain(ap_email.rsplit("@", 1)[-1]):
+                        continue
+                    if ap_email.endswith(f"@{domain}") and ap.get(col):
+                        api_key = ap[col]
+                        break
 
     if not api_key:
         raise HTTPException(status_code=400, detail=f"{provider} not connected. Ask your company admin to connect it in Settings.")

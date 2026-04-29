@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { isPersonalDomain } from "@/lib/personal-domains";
 
 interface CompanyProfileGateProps {
   open: boolean;
@@ -128,6 +129,15 @@ export function CompanyProfileGate({
             Add your company branding so your reports go out with <strong>your</strong> name
             and logo — not ours.
           </p>
+          {isPersonalDomain(defaultEmail) && (
+            <div className="mt-3 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
+              <strong>Heads up:</strong> You signed up with a personal email
+              ({defaultEmail?.split("@")[1]}). Your account works fine, but your
+              team can&apos;t be auto-linked to you by email. To share branding
+              with teammates, invite them directly from Settings — or use a
+              company-domain email instead.
+            </div>
+          )}
         </div>
 
         <form onSubmit={handleSave} className="px-6 py-5 space-y-4">
