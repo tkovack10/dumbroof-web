@@ -164,6 +164,13 @@ async def reprocess_claim(claim_id: str, background_tasks: BackgroundTasks):
     Clears cached_photo_analysis so the photo narrative is regenerated
     fresh — otherwise stale DOL/address strings baked into the cache
     would survive DOL edits or address corrections.
+
+    Also clears completion_email_sent_at so the user receives the
+    updated PDFs by email when reprocessing completes (otherwise the
+    `already_sent` check in processor.py:6393 silently suppresses the
+    resend, leaving the user with stale/wrong-branded docs — which is
+    exactly how the brand-leak fix on claim c875b3d8 had to be re-mailed
+    by hand on 2026-04-29).
     """
     sb = get_supabase_client()
     result = sb.table("claims").select("id, status").eq("id", claim_id).single().execute()
@@ -172,6 +179,7 @@ async def reprocess_claim(claim_id: str, background_tasks: BackgroundTasks):
     sb.table("claims").update({
         "status": "processing",
         "cached_photo_analysis": None,
+        "completion_email_sent_at": None,
     }).eq("id", claim_id).execute()
     background_tasks.add_task(run_processing, claim_id)
     return {"status": "reprocessing", "claim_id": claim_id}
@@ -233,9 +241,12 @@ async def regen_claim(claim_id: str, background_tasks: BackgroundTasks, payload:
 
     merged_config = deep_merge(current_config, config_patch) if config_patch else current_config
 
-    # Assemble the UPDATE
+    # Assemble the UPDATE.
+    # Always clear completion_email_sent_at so the regenerated PDFs get
+    # delivered to the user — see processor.py:6393's already_sent gate.
     update_payload: dict = {
         "status": "processing",
+        "completion_email_sent_at": None,
     }
     if config_patch:
         update_payload["claim_config"] = merged_config
