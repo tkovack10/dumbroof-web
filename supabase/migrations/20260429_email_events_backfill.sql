@@ -22,7 +22,14 @@ SELECT
         WHEN e.email_type ILIKE '%homeowner%'         THEN 'homeowner_email_sent'
         ELSE 'carrier_email_sent'
     END AS event_type,
-    'communication' AS event_category,
+    -- Match the registry in backend/claim_events.py:CLAIM_EVENT_TYPES.
+    -- supplement_sent / coc_sent / aob_sent / aob_for_signature_sent are
+    -- business-process milestones; the generic *_email_sent are 'communication'.
+    CASE
+        WHEN e.email_type IN ('supplement', 'coc', 'aob') THEN 'milestone'
+        WHEN e.email_type ILIKE '%signature%'             THEN 'milestone'
+        ELSE 'communication'
+    END AS event_category,
     -- Human-readable title — registry will override on display, but we set
     -- something useful in case a later reader queries title directly.
     CASE

@@ -1918,6 +1918,13 @@ def _record_email_send_side_effects(
     Called after every successful send_claim_email() in approve_brain_action.
     Failures here are non-fatal — the email already shipped; we just lose
     timeline visibility / cadence on this one row.
+
+    Cadence rows are built to mirror what the existing schedule_follow_up_cadence
+    handler does (line ~2300): bare claim_number subject (passes the cron's
+    whitespace guard at api/cron/claim-brain-cadences/route.ts:18-23), pre-built
+    body_html via _build_cadence_body_html, and the original send carried
+    forward as previous_body_html/subject/sent_at so each follow-up quotes
+    the prior message Gmail-style.
     """
     from datetime import datetime, timedelta, timezone
     try:
@@ -1960,23 +1967,98 @@ def _record_email_send_side_effects(
     if not days or not to_email:
         return
 
+    # Load the claim's address + carrier + claim_number — needed by the cadence
+    # body builder AND for the cron-required bare-claim-number subject.
+    # previous_carrier_data is the JSONB fallback location for claim_number on
+    # claims where the top-level column wasn't populated (matches the resolver
+    # in claim_brain_tools._resolve_claim_number_or_error).
+    try:
+        claim_row_res = sb.table("claims").select(
+            "address, carrier, claim_number, previous_carrier_data"
+        ).eq("id", claim_id).maybe_single().execute()
+        claim_row = (claim_row_res.data if claim_row_res else None) or {}
+    except Exception as e:
+        print(f"[CADENCE] claim row lookup failed for {claim_id} — skipping auto-cadence: {type(e).__name__}: {e}", flush=True)
+        return
+
+    # The cron at api/cron/claim-brain-cadences/route.ts requires subject to
+    # be the claim number only (no whitespace, <= 40 chars). If we can't
+    # produce one that passes the guard, abort — better than shipping rows
+    # the cron will silently mark `failed`.
+    cadence_subject = (claim_row.get("claim_number") or "").strip()
+    if not cadence_subject:
+        # Same fallback chain as _resolve_claim_number_or_error: check
+        # previous_carrier_data.claim_number JSONB before giving up.
+        prev = claim_row.get("previous_carrier_data") or {}
+        if isinstance(prev, dict):
+            cadence_subject = (prev.get("claim_number") or "").strip()
+    if not cadence_subject:
+        # Last fallback: the original subject IF it already looks like a claim
+        # number (Richard's send tools usually format it that way).
+        cand = subject.strip()
+        if cand and len(cand) <= 40 and " " not in cand:
+            cadence_subject = cand
+    if not cadence_subject or " " in cadence_subject or len(cadence_subject) > 40:
+        print(f"[CADENCE] No valid claim_number subject for {claim_id} — skipping auto-cadence (would fail cron guard)", flush=True)
+        return
+
+    # Capture the just-sent message as the "previous" so each follow-up quotes
+    # it. We have the draft in hand — no need to round-trip Supabase.
+    previous_body_html = draft_or_preview.get("body_html") or ""
+    previous_subject = subject
+    previous_sent_at = datetime.now(timezone.utc).isoformat()
+
+    # Carry forward attachments. The two callers pass slightly different
+    # shapes: the email-draft path has draft["attachments"] as a list of
+    # {path, filename} dicts; send_to_carrier has preview["attachment_paths"]
+    # as a list of bare paths. Normalize to bare paths.
+    attachment_paths: list[str] = []
+    for att in (draft_or_preview.get("attachments") or []):
+        if isinstance(att, dict) and att.get("path"):
+            attachment_paths.append(att["path"])
+    for p in (draft_or_preview.get("attachment_paths") or []):
+        if isinstance(p, str) and p:
+            attachment_paths.append(p)
+
     base = datetime.now(timezone.utc)
-    # Use the same base string the cron uses for follow-up subjects.
-    rows = [
-        {
+    rows = []
+    for i, d in enumerate(days):
+        scheduled_at = (base + timedelta(days=d)).isoformat()
+        item = {"followup_number": i + 1, "offset_days": d, "scheduled_at": scheduled_at}
+        # _build_cadence_body_html reads cadence_type + subject + claim_number
+        # off the preview dict — give it what it expects.
+        cadence_preview = {
+            "cadence_type": cadence_type,
+            "subject": cadence_subject,
+        }
+        try:
+            body_html = _build_cadence_body_html(
+                claim_row, cadence_preview, item,
+                previous_body_html, previous_subject, previous_sent_at,
+            )
+        except Exception as e:
+            print(f"[CADENCE] body builder failed for {claim_id} step {i+1}: {type(e).__name__}: {e}", flush=True)
+            body_html = ""  # cron will mark it failed, but other rows still ship
+
+        rows.append({
             "claim_id": claim_id,
             "user_id": user_id or None,
             "cadence_type": cadence_type,
             "followup_number": i + 1,
-            "scheduled_at": (base + timedelta(days=d)).isoformat(),
+            "scheduled_at": scheduled_at,
             "to_email": to_email,
             "cc": draft_or_preview.get("cc"),
-            "subject": subject if subject.lower().startswith("re:") else (f"Re: {subject}" if subject else ""),
-            "body_html": "",  # cron rebuilds body from prior send via _build_followup_body at fire time
+            "subject": cadence_subject,            # bare claim number — passes cron guard
+            "body_html": body_html,                # pre-rendered with prior-send quote block
+            "attachment_paths": attachment_paths,
+            "previous_body_html": previous_body_html,
+            "previous_subject": previous_subject,
+            "previous_sent_at": previous_sent_at,
             "status": "pending",
-        }
-        for i, d in enumerate(days)
-    ]
+        })
+
+    if not rows:
+        return
     try:
         sb.table("claim_brain_cadence_sends").insert(rows).execute()
         # Log a separate cadence_scheduled event so Richard can answer
@@ -1994,12 +2076,14 @@ def _record_email_send_side_effects(
                     "to": to_email,
                     "trigger_tool": tool_name,
                     "trigger_email_id": email_id,
+                    "subject": cadence_subject,
+                    "attachment_count": len(attachment_paths),
                 },
                 created_by=user_id,
             )
         except Exception:
             pass
-        print(f"[CADENCE] Auto-scheduled {len(days)}-step {cadence_type} for {claim_id} (trigger={tool_name})", flush=True)
+        print(f"[CADENCE] Auto-scheduled {len(days)}-step {cadence_type} for {claim_id} (trigger={tool_name}, attachments={len(attachment_paths)})", flush=True)
     except Exception as e:
         print(f"[CADENCE] Auto-schedule failed for {claim_id}/{tool_name}: {type(e).__name__}: {e}", flush=True)
 
