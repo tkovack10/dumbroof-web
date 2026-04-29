@@ -82,6 +82,14 @@ export function AdminDashboard({ userId }: { userId: string }) {
   });
 
   const [userMap, setUserMap] = useState<Record<string, { name: string; email: string; phone: string }>>({});
+  // claim_wins per-claim aggregates: forensic_approval / supplement counts
+  const [claimWins, setClaimWins] = useState<Record<string, { forensic: number; supplement: number }>>({});
+  // CLI claims (from claim_outcomes source=cli) — included in platform-wide
+  // forensic + supplement totals so the admin numbers match the homepage hero
+  // and don't undercount Tom's local-CLI workflow.
+  const [cliWinsTotals, setCliWinsTotals] = useState<{ forensic: number; supplement: number; supplementDollars: number; settled: number; settledDollars: number }>({
+    forensic: 0, supplement: 0, supplementDollars: 0, settled: 0, settledDollars: 0,
+  });
 
   const fetchUserProfiles = useCallback(async () => {
     const map: Record<string, { name: string; email: string; phone: string }> = {};
@@ -180,6 +188,38 @@ export function AdminDashboard({ userId }: { userId: string }) {
   useEffect(() => {
     fetchUserProfiles();
     fetchClaims();
+    // Populate forensic/supplement win aggregates — both per-claim (for badges)
+    // and the CLI-side totals (for platform-wide stat tiles).
+    (async () => {
+      try {
+        const [{ data: wins }, { data: cliRows }] = await Promise.all([
+          supabase.from("claim_wins").select("claim_id, win_type, amount"),
+          supabase.from("claim_outcomes").select("original_carrier_rcv, current_carrier_rcv, settlement_amount, win, source").eq("source", "cli"),
+        ]);
+        if (wins) {
+          const agg: Record<string, { forensic: number; supplement: number }> = {};
+          for (const w of wins) {
+            const cid = w.claim_id as string;
+            if (!agg[cid]) agg[cid] = { forensic: 0, supplement: 0 };
+            if (w.win_type === "forensic_approval") agg[cid].forensic += 1;
+            else if (w.win_type === "supplement") agg[cid].supplement += 1;
+          }
+          setClaimWins(agg);
+        }
+        if (cliRows) {
+          let f = 0, s = 0, sd = 0, st = 0, std = 0;
+          for (const r of cliRows) {
+            const orig = (r.original_carrier_rcv as number | null) ?? 0;
+            const cur = (r.current_carrier_rcv as number | null) ?? 0;
+            const settle = (r.settlement_amount as number | null) ?? 0;
+            if (orig > 0) f += 1;
+            if (orig > 0 && cur > orig) { s += 1; sd += (cur - orig); }
+            if (r.win) { st += 1; std += settle; }
+          }
+          setCliWinsTotals({ forensic: f, supplement: s, supplementDollars: sd, settled: st, settledDollars: std });
+        }
+      } catch { /* non-fatal */ }
+    })();
     const interval = setInterval(fetchClaims, 30000);
     return () => clearInterval(interval);
   }, [fetchUserProfiles, fetchClaims]);
@@ -489,14 +529,21 @@ export function AdminDashboard({ userId }: { userId: string }) {
         {activeTab === "claims" && (
           <>
             {/* Stats Cards */}
-            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-4 mb-8">
+            <div className="grid grid-cols-2 md:grid-cols-5 lg:grid-cols-10 gap-3 mb-8">
               {(() => {
                 const wonClaims = claims.filter(c => c.claim_outcome === "won");
                 const totalContractorRcv = claims.reduce((s, c) => s + (c.contractor_rcv ?? 0), 0);
                 const totalCarrierRcv = claims.reduce((s, c) => s + (c.current_carrier_rcv ?? c.original_carrier_rcv ?? 0), 0);
                 const totalVariance = totalContractorRcv - totalCarrierRcv;
-                const totalWon = wonClaims.reduce((s, c) => s + (c.settlement_amount ?? 0), 0);
                 const fmt = (v: number) => v >= 1000000 ? `$${(v / 1000000).toFixed(2)}M` : v >= 1000 ? `$${(v / 1000).toFixed(0)}K` : `$${v.toFixed(0)}`;
+
+                // Forensic + supplement wins — blend web (claim_wins table) with CLI
+                // (from claim_outcomes source=cli, captured into cliWinsTotals).
+                const webForensic = claims.filter(c => (claimWins[c.id]?.forensic ?? 0) > 0).length;
+                const webSupplement = claims.filter(c => (claimWins[c.id]?.supplement ?? 0) > 0).length;
+                const totalForensic = webForensic + cliWinsTotals.forensic;
+                const totalSupplement = webSupplement + cliWinsTotals.supplement;
+
                 return [
                   { label: "Total Claims", value: String(stats.total), color: "text-[var(--white)]" },
                   { label: "Users", value: String(stats.uniqueUsers), color: "text-[var(--white)]" },
@@ -505,7 +552,9 @@ export function AdminDashboard({ userId }: { userId: string }) {
                   { label: "Contractor RCV", value: fmt(totalContractorRcv), color: "text-[var(--white)]" },
                   { label: "Carrier RCV", value: fmt(totalCarrierRcv), color: "text-[var(--white)]" },
                   { label: "Variance", value: fmt(totalVariance), color: totalVariance > 0 ? "text-green-600" : "text-red-600" },
-                  { label: "Wins", value: String(wonClaims.length), color: "text-green-600" },
+                  { label: "🧠 Forensic Wins", value: String(totalForensic), color: "text-blue-400" },
+                  { label: "📈 Supplement Wins", value: String(totalSupplement), color: "text-emerald-400" },
+                  { label: "💰 Settled Wins", value: String(wonClaims.length + cliWinsTotals.settled), color: "text-green-600" },
                 ];
               })().map(({ label, value, color }) => (
                 <div key={label} className="glass-card p-4 text-center">
@@ -553,6 +602,16 @@ export function AdminDashboard({ userId }: { userId: string }) {
                         <td className="px-3 py-2.5 text-[var(--gray-dim)] text-xs">{claims.length - i}</td>
                         <td className="px-3 py-2.5">
                           <p className="font-medium text-[var(--white)] truncate max-w-[200px]">{claim.address}</p>
+                          {((claimWins[claim.id]?.forensic ?? 0) > 0 || (claimWins[claim.id]?.supplement ?? 0) > 0) && (
+                            <div className="flex items-center gap-1 mt-1 flex-wrap">
+                              {(claimWins[claim.id]?.forensic ?? 0) > 0 && (
+                                <span className="text-[9px] px-1.5 py-0.5 rounded bg-blue-500/15 text-blue-300 border border-blue-500/30" title="Forensic Win — carrier issued an approved scope after our forensic">🧠 Forensic</span>
+                              )}
+                              {(claimWins[claim.id]?.supplement ?? 0) > 0 && (
+                                <span className="text-[9px] px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-300 border border-emerald-500/30" title="Supplement Win — carrier increased their number after our supplement">📈 Supplement</span>
+                              )}
+                            </div>
+                          )}
                         </td>
                         <td className="px-3 py-2.5 text-[var(--gray)] truncate max-w-[150px]">{claim.carrier || "—"}</td>
                         <td className="px-3 py-2.5 truncate max-w-[180px]">

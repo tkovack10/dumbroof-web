@@ -260,6 +260,12 @@ export function DashboardContent({ user }: { user: User }) {
   const totalCarrierRcv = claims.reduce((s, c) => s + (c.original_carrier_rcv ?? 0), 0);
   const attentionCount = claims.filter(c => c.status === "error" || c.status === "needs_improvement" || (c.pending_edits ?? 0) > 0).length;
 
+  // Forensic / supplement wins — sourced from `claim_wins` table (populated by
+  // processor.py when the carrier first issues a scope after our forensic, OR
+  // when a supplement is accepted and the carrier's number rises).
+  const forensicWinCount = claims.filter(c => (claimWins[c.id]?.forensic ?? 0) > 0).length;
+  const supplementWinCount = claims.filter(c => (claimWins[c.id]?.supplement ?? 0) > 0).length;
+
   // Animated count-up for win banner
   const animatedMovement = useCountUp(totalMovement, 2000, 300);
 
@@ -661,7 +667,7 @@ export function DashboardContent({ user }: { user: User }) {
             {/* KPI Stats Bar — 3 primary + expandable details (hidden during search) */}
             {!loading && claims.length > 0 && !searchQuery && (
               <div className="mb-6">
-                <div className="grid grid-cols-3 gap-4">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                   <div className="glass-card p-4 text-center">
                     <p className="text-2xl font-bold gradient-text">{claims.length}</p>
                     <p className="text-xs text-[var(--gray-muted)] mt-1">Total Claims</p>
@@ -669,6 +675,14 @@ export function DashboardContent({ user }: { user: User }) {
                   <div className="glass-card p-4 text-center">
                     <p className="text-2xl font-bold text-green-600">{readyCount}</p>
                     <p className="text-xs text-[var(--gray-muted)] mt-1">Ready</p>
+                  </div>
+                  <div
+                    className="glass-card p-4 text-center cursor-pointer hover:border-blue-500/40 transition-colors"
+                    onClick={() => setScopeFilter(scopeFilter === "with_forensic_win" ? "any" : "with_forensic_win")}
+                    title="Click to filter to forensic wins only"
+                  >
+                    <p className="text-2xl font-bold text-blue-400">{forensicWinCount}</p>
+                    <p className="text-xs text-[var(--gray-muted)] mt-1">🧠 Forensic Wins</p>
                   </div>
                   <div className="glass-card p-4 text-center">
                     <p className="text-2xl font-bold text-green-600">{wonClaims.length}</p>
@@ -685,10 +699,18 @@ export function DashboardContent({ user }: { user: User }) {
                   </svg>
                 </button>
                 {showDetailStats && (
-                  <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mt-3">
+                  <div className="grid grid-cols-2 md:grid-cols-6 gap-4 mt-3">
                     <div className="glass-card p-4 text-center">
                       <p className="text-2xl font-bold text-amber-600">{processingCount}</p>
                       <p className="text-xs text-[var(--gray-muted)] mt-1">Processing</p>
+                    </div>
+                    <div
+                      className="glass-card p-4 text-center cursor-pointer hover:border-emerald-500/40 transition-colors"
+                      onClick={() => setScopeFilter(scopeFilter === "with_supplement_win" ? "any" : "with_supplement_win")}
+                      title="Click to filter to supplement wins only"
+                    >
+                      <p className="text-2xl font-bold text-emerald-400">{supplementWinCount}</p>
+                      <p className="text-xs text-[var(--gray-muted)] mt-1">📈 Supplement Wins</p>
                     </div>
                     <div className="glass-card p-4 text-center">
                       <p className="text-2xl font-bold gradient-text">{fmtMoney(totalContractorRcv)}</p>
@@ -970,7 +992,19 @@ export function DashboardContent({ user }: { user: User }) {
                               <a href={`/dashboard/claim/${claim.id}`} className="hover:underline" onClick={e => e.stopPropagation()}>
                                 <p className="font-medium text-[var(--white)] truncate max-w-[180px]">{claim.address}</p>
                               </a>
-                              <p className="text-[10px] text-[var(--gray-dim)] mt-0.5">{new Date(claim.created_at).toLocaleDateString()}</p>
+                              <div className="flex items-center gap-1.5 mt-0.5">
+                                <p className="text-[10px] text-[var(--gray-dim)]">{new Date(claim.created_at).toLocaleDateString()}</p>
+                                {(claimWins[claim.id]?.forensic ?? 0) > 0 && (
+                                  <span className="text-[9px] px-1.5 py-0.5 rounded bg-blue-500/15 text-blue-300 border border-blue-500/30" title="Forensic Win \u2014 carrier issued an approved scope after our forensic report">
+                                    \ud83e\udde0 Forensic Win
+                                  </span>
+                                )}
+                                {(claimWins[claim.id]?.supplement ?? 0) > 0 && (
+                                  <span className="text-[9px] px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-300 border border-emerald-500/30" title="Supplement Win \u2014 carrier increased their number after our supplement">
+                                    \ud83d\udcc8 Supplement Win
+                                  </span>
+                                )}
+                              </div>
                             </td>
                             <td className="px-3 py-2.5 text-[var(--gray)] truncate max-w-[120px]">{claim.carrier || "\u2014"}</td>
                             <td className="px-3 py-2.5 text-right text-xs tabular-nums font-medium text-[var(--white)]">
@@ -1079,6 +1113,16 @@ export function DashboardContent({ user }: { user: User }) {
                             <p className="text-[11px] text-[var(--gray-dim)] mt-0.5">
                               {claim.carrier || "No carrier"} &middot; {new Date(claim.created_at).toLocaleDateString()}
                             </p>
+                            {((claimWins[claim.id]?.forensic ?? 0) > 0 || (claimWins[claim.id]?.supplement ?? 0) > 0) && (
+                              <div className="flex items-center gap-1 mt-1 flex-wrap">
+                                {(claimWins[claim.id]?.forensic ?? 0) > 0 && (
+                                  <span className="text-[9px] px-1.5 py-0.5 rounded bg-blue-500/15 text-blue-300 border border-blue-500/30">🧠 Forensic Win</span>
+                                )}
+                                {(claimWins[claim.id]?.supplement ?? 0) > 0 && (
+                                  <span className="text-[9px] px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">📈 Supplement Win</span>
+                                )}
+                              </div>
+                            )}
                           </div>
                           <div className="flex items-center gap-2 shrink-0">
                             {isWon ? (

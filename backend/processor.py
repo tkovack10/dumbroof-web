@@ -6197,6 +6197,25 @@ async def process_claim(claim_id: str):
                     if not (existing.data and existing.data[0].get("original_carrier_rcv")):
                         sb.table("claims").update({"original_carrier_rcv": _orig}).eq("id", claim_id).execute()
                         print(f"[DB] Set original_carrier_rcv baseline: ${_orig:,.2f}")
+
+                        # Forensic Win event — carrier issued an approved scope after our forensic.
+                        # Insert a claim_wins row so the dashboard tile + filter chip light up.
+                        # Idempotent: skip if a forensic_approval row already exists for this claim.
+                        try:
+                            already = sb.table("claim_wins").select("id").eq("claim_id", claim_id).eq("win_type", "forensic_approval").limit(1).execute()
+                            if not (already.data and len(already.data) > 0):
+                                sb.table("claim_wins").insert({
+                                    "claim_id": claim_id,
+                                    "win_type": "forensic_approval",
+                                    "amount": _orig,
+                                    "previous_rcv": 0,
+                                    "new_rcv": _orig,
+                                    "triggered_by": "processor.py:write_carrier_baseline",
+                                    "notes": "Carrier issued first scope after forensic delivery",
+                                }).execute()
+                                print(f"[DB] FORENSIC WIN logged: ${_orig:,.2f}")
+                        except Exception as wfe:
+                            print(f"[DB] forensic_approval claim_wins insert failed (non-fatal): {wfe}", flush=True)
                 except Exception as e:
                     print(f"[DB] original_carrier_rcv write failed: {e}", flush=True)
 
