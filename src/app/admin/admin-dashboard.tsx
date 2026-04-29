@@ -62,15 +62,31 @@ import { ClaimsMap } from "@/components/claims-map";
 
 type Tab = "claims" | "repairs" | "inspectors" | "beta" | "companies" | "map";
 
-interface CompanyRow {
-  key: string;                   // company_id or solo admin user_id
-  companyName: string;
-  hasLogo: boolean;
-  members: { userId: string; name: string; email: string; isAdmin: boolean }[];
+// Shape returned by /api/admin/directory (service-role, RLS-bypassed)
+interface DirectoryUser {
+  id: string;
+  email: string;
+  name: string;
+  contact_name: string | null;
+  company_name: string | null;
   phone: string;
-  claimsCount: number;
-  planId: string | null;
-  planStatus: string | null;
+  claim_count: number;
+  last_sign_in_at: string | null;
+  created_at: string | null;
+  is_admin: boolean;
+  role: string | null;
+  company_id: string | null;
+}
+
+interface DirectoryCompany {
+  key: string;
+  company_name: string;
+  has_logo: boolean;
+  members: { user_id: string; name: string; email: string; is_admin: boolean; claim_count: number }[];
+  phone: string;
+  claims_count: number;
+  plan_id: string | null;
+  plan_status: string | null;
 }
 
 export function AdminDashboard({ userId }: { userId: string }) {
@@ -80,12 +96,15 @@ export function AdminDashboard({ userId }: { userId: string }) {
   const [inspectors, setInspectors] = useState<InspectorApplication[]>([]);
   const [repairs, setRepairs] = useState<Repair[]>([]);
   const [betaSignups, setBetaSignups] = useState<BetaSignup[]>([]);
-  const [companies, setCompanies] = useState<CompanyRow[]>([]);
+  const [companies, setCompanies] = useState<DirectoryCompany[]>([]);
+  const [signupUsers, setSignupUsers] = useState<DirectoryUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [repairsLoading, setRepairsLoading] = useState(true);
   const [inspectorsLoading, setInspectorsLoading] = useState(true);
   const [betaLoading, setBetaLoading] = useState(true);
+  const [signupsLoading, setSignupsLoading] = useState(true);
   const [companiesLoading, setCompaniesLoading] = useState(true);
+  const [signupSearch, setSignupSearch] = useState("");
   const [reprocessing, setReprocessing] = useState<string | null>(null);
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
   const [expandedCompany, setExpandedCompany] = useState<string | null>(null);
@@ -110,51 +129,42 @@ export function AdminDashboard({ userId }: { userId: string }) {
     forensic: 0, supplement: 0, supplementDollars: 0, settled: 0, settledDollars: 0,
   });
 
-  const fetchUserProfiles = useCallback(async () => {
-    const map: Record<string, { name: string; email: string; phone: string; company: string }> = {};
-
-    // 1. Company profiles (preferred — has company name + phone for direct outreach)
-    const { data } = await supabase
-      .from("company_profiles")
-      .select("user_id, company_name, contact_name, email, phone");
-    const emailMap: Record<string, string> = {};
-    if (data) {
-      for (const p of data) {
-        map[p.user_id] = {
-          name: p.contact_name || p.company_name || "Unknown",
-          email: p.email || "",
-          phone: p.phone || "",
-          company: p.company_name || "",
-        };
-        if (p.email && p.company_name) {
-          emailMap[p.email.toLowerCase()] = p.company_name;
-        }
-      }
-    }
-    setEmailToCompany(emailMap);
-
-    // 2. Auth users fallback — fills in users without company profiles
+  const fetchDirectory = useCallback(async () => {
+    setSignupsLoading(true);
+    setCompaniesLoading(true);
     try {
-      const res = await fetch("/api/admin/users");
-      if (res.ok) {
-        const authUsers: { id: string; email: string }[] = await res.json();
-        for (const u of authUsers) {
-          if (!map[u.id] && u.email) {
-            map[u.id] = {
-              name: u.email.split("@")[0].replace(/[._]/g, " ").replace(/\b\w/g, c => c.toUpperCase()),
-              email: u.email,
-              phone: "",
-              company: "",
-            };
-          }
+      const res = await fetch("/api/admin/directory");
+      if (!res.ok) {
+        console.error("[admin] directory fetch failed", await res.text().catch(() => ""));
+        return;
+      }
+      const data: { users: DirectoryUser[]; companies: DirectoryCompany[] } = await res.json();
+
+      // userMap powers the Claims-table user cell. Built from the same
+      // service-role data so EVERY user shows their company, not just
+      // members of the admin's own company (RLS used to filter that out).
+      const map: Record<string, { name: string; email: string; phone: string; company: string }> = {};
+      const emailMap: Record<string, string> = {};
+      for (const u of data.users) {
+        map[u.id] = {
+          name: u.name,
+          email: u.email,
+          phone: u.phone,
+          company: u.company_name || "",
+        };
+        if (u.email && u.company_name) {
+          emailMap[u.email.toLowerCase()] = u.company_name;
         }
       }
-    } catch {
-      // Non-critical — company_profiles map still works
+      setUserMap(map);
+      setEmailToCompany(emailMap);
+      setSignupUsers(data.users);
+      setCompanies(data.companies);
+    } finally {
+      setSignupsLoading(false);
+      setCompaniesLoading(false);
     }
-
-    setUserMap(map);
-  }, [supabase]);
+  }, []);
 
   const fetchClaims = useCallback(async () => {
     const { data } = await supabase
@@ -200,90 +210,9 @@ export function AdminDashboard({ userId }: { userId: string }) {
     setInspectorsLoading(false);
   }, [supabase]);
 
-  const fetchCompanies = useCallback(async () => {
-    setCompaniesLoading(true);
-    try {
-      // Pull company_profiles + subscriptions + claims in parallel
-      const [profilesRes, subsRes, claimsCountRes] = await Promise.all([
-        supabase
-          .from("company_profiles")
-          .select("user_id, company_id, company_name, contact_name, email, phone, logo_path, is_admin, role"),
-        supabase
-          .from("subscriptions")
-          .select("user_id, company_id, plan_id, status"),
-        supabase
-          .from("claims")
-          .select("user_id"),
-      ]);
-
-      const profiles = profilesRes.data || [];
-      const subs = subsRes.data || [];
-      const claimsRows = claimsCountRes.data || [];
-
-      // Per-user claim counts (we'll roll up to company)
-      const userClaimCounts = new Map<string, number>();
-      for (const c of claimsRows) {
-        userClaimCounts.set(c.user_id, (userClaimCounts.get(c.user_id) || 0) + 1);
-      }
-
-      // Group profiles into companies. Key:
-      //   - profile.company_id when set
-      //   - profile.user_id when company_id is NULL AND profile is an admin (solo)
-      //   - profiles with NULL company_id and is_admin=false are orphans;
-      //     fold each into its own pseudo-company (so they show up at all).
-      const groups = new Map<string, typeof profiles>();
-      for (const p of profiles) {
-        const key = p.company_id || p.user_id;
-        const existing = groups.get(key) || [];
-        existing.push(p);
-        groups.set(key, existing);
-      }
-
-      // Plan resolver: find any subscription tied to the company
-      // (by company_id, OR by any member's user_id) — first non-canceled wins.
-      const planFor = (members: typeof profiles): { planId: string | null; status: string | null } => {
-        const memberIds = new Set(members.map((m) => m.user_id));
-        const companyIds = new Set(members.map((m) => m.company_id).filter(Boolean));
-        const candidates = subs.filter(
-          (s) => (s.company_id && companyIds.has(s.company_id)) || memberIds.has(s.user_id)
-        );
-        const active = candidates.find((s) => s.status === "active" || s.status === "trialing")
-          || candidates.find((s) => s.status === "past_due")
-          || candidates[0];
-        return active ? { planId: active.plan_id, status: active.status } : { planId: null, status: null };
-      };
-
-      // Pick the canonical "company representative" — admin if any, else
-      // the first member. Used for company name + phone + logo.
-      const rows: CompanyRow[] = [];
-      for (const [key, members] of groups) {
-        const admin = members.find((m) => m.is_admin) || members[0];
-        const totalClaims = members.reduce((sum, m) => sum + (userClaimCounts.get(m.user_id) || 0), 0);
-        const { planId, status: planStatus } = planFor(members);
-        rows.push({
-          key,
-          companyName: admin.company_name || "(no company name)",
-          hasLogo: Boolean(admin.logo_path),
-          members: members.map((m) => ({
-            userId: m.user_id,
-            name: m.contact_name || m.email || "Unknown",
-            email: m.email || "",
-            isAdmin: !!m.is_admin,
-          })),
-          phone: admin.phone || "",
-          claimsCount: totalClaims,
-          planId,
-          planStatus,
-        });
-      }
-
-      // Order: most claims first, then by company name
-      rows.sort((a, b) => b.claimsCount - a.claimsCount || a.companyName.localeCompare(b.companyName));
-      setCompanies(rows);
-    } finally {
-      setCompaniesLoading(false);
-    }
-  }, [supabase]);
+  // fetchCompanies has been folded into fetchDirectory above —
+  // /api/admin/directory returns companies + users in one shot via
+  // service-role so RLS never hides other tenants from the admin view.
 
   const fetchBetaSignups = useCallback(async () => {
     setBetaLoading(true);
@@ -297,7 +226,7 @@ export function AdminDashboard({ userId }: { userId: string }) {
   }, [supabase]);
 
   useEffect(() => {
-    fetchUserProfiles();
+    fetchDirectory();
     fetchClaims();
     // Populate forensic/supplement win aggregates — both per-claim (for badges)
     // and the CLI-side totals (for platform-wide stat tiles).
@@ -333,7 +262,7 @@ export function AdminDashboard({ userId }: { userId: string }) {
     })();
     const interval = setInterval(fetchClaims, 30000);
     return () => clearInterval(interval);
-  }, [fetchUserProfiles, fetchClaims]);
+  }, [fetchDirectory, fetchClaims]);
 
   useEffect(() => {
     if (activeTab === "repairs") {
@@ -342,13 +271,9 @@ export function AdminDashboard({ userId }: { userId: string }) {
     if (activeTab === "inspectors") {
       fetchInspectors();
     }
-    if (activeTab === "beta") {
-      fetchBetaSignups();
-    }
-    if (activeTab === "companies") {
-      fetchCompanies();
-    }
-  }, [activeTab, fetchRepairs, fetchInspectors, fetchBetaSignups, fetchCompanies]);
+    // Signups + Companies share /api/admin/directory which is already
+    // loaded on mount, so no per-tab fetch needed here.
+  }, [activeTab, fetchRepairs, fetchInspectors]);
 
   const updateInspectorStatus = async (id: number, newStatus: string) => {
     await supabase
@@ -997,22 +922,133 @@ export function AdminDashboard({ userId }: { userId: string }) {
 
         {activeTab === "beta" && (
           <>
-            {/* Beta Signup Stats */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-              {[
-                { label: "Total Signups", value: betaSignups.length, color: "text-[var(--white)]" },
-                { label: "Pending", value: betaSignups.filter(s => s.status === "pending").length, color: "text-amber-600" },
-                { label: "Approved", value: betaSignups.filter(s => s.status === "approved").length, color: "text-green-600" },
-                { label: "Active", value: betaSignups.filter(s => s.status === "active").length, color: "text-emerald-600" },
-              ].map(({ label, value, color }) => (
-                <div key={label} className="glass-card p-4 text-center">
-                  <p className={`text-2xl font-bold ${color}`}>{value}</p>
-                  <p className="text-xs text-[var(--gray-muted)] mt-1">{label}</p>
+            {/* Signup Stats — sourced from /api/admin/directory (every auth.users row) */}
+            {(() => {
+              const now = Date.now();
+              const dayMs = 86_400_000;
+              const within = (s: DirectoryUser, days: number) =>
+                s.created_at && now - new Date(s.created_at).getTime() < days * dayMs;
+              const newToday = signupUsers.filter((s) => within(s, 1)).length;
+              const new7d = signupUsers.filter((s) => within(s, 7)).length;
+              const withCompany = signupUsers.filter((s) => s.company_name).length;
+              const withClaims = signupUsers.filter((s) => s.claim_count > 0).length;
+              return (
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+                  {[
+                    { label: "Total Signups", value: signupUsers.length, color: "text-[var(--white)]" },
+                    { label: "New (24h)", value: newToday, color: "text-emerald-400" },
+                    { label: "New (7d)", value: new7d, color: "text-blue-400" },
+                    { label: "Activated", value: withClaims, color: "text-amber-400", hint: `${withCompany} have a company profile · ${withClaims} have submitted ≥1 claim` },
+                  ].map(({ label, value, color, hint }) => (
+                    <div key={label} className="glass-card p-4 text-center" title={hint}>
+                      <p className={`text-2xl font-bold ${color}`}>{value}</p>
+                      <p className="text-xs text-[var(--gray-muted)] mt-1">{label}</p>
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
+              );
+            })()}
 
-            {/* Beta Signups Table */}
+            {/* Search + table */}
+            <div className="glass-card overflow-hidden">
+              <div className="px-6 py-3 bg-white/[0.04] border-b border-white/[0.04] flex items-center gap-3">
+                <input
+                  type="text"
+                  value={signupSearch}
+                  onChange={(e) => setSignupSearch(e.target.value)}
+                  placeholder="Search email, name, or company..."
+                  className="flex-1 bg-white/[0.04] border border-white/[0.06] rounded-lg px-3 py-1.5 text-sm text-[var(--white)] placeholder:text-[var(--gray-dim)] focus:outline-none focus:border-white/[0.15]"
+                />
+                <span className="text-xs text-[var(--gray-dim)] tabular-nums shrink-0">
+                  {signupsLoading
+                    ? "loading..."
+                    : `${signupUsers.filter((s) => {
+                        const q = signupSearch.trim().toLowerCase();
+                        if (!q) return true;
+                        return (
+                          s.email.toLowerCase().includes(q) ||
+                          s.name.toLowerCase().includes(q) ||
+                          (s.company_name || "").toLowerCase().includes(q)
+                        );
+                      }).length} of ${signupUsers.length}`}
+                </span>
+              </div>
+              {signupsLoading ? (
+                <div className="text-center py-16">
+                  <p className="text-[var(--gray-dim)] text-sm">Loading signups...</p>
+                </div>
+              ) : signupUsers.length === 0 ? (
+                <div className="text-center py-16">
+                  <p className="text-[var(--gray-dim)] text-sm">No signups yet.</p>
+                </div>
+              ) : (
+                <div>
+                  <div className="px-6 py-3 grid grid-cols-12 gap-4 text-xs font-semibold text-[var(--gray-dim)] uppercase tracking-wider border-b border-white/[0.04] bg-white/[0.02]">
+                    <div className="col-span-3">User</div>
+                    <div className="col-span-3">Email</div>
+                    <div className="col-span-3">Company</div>
+                    <div className="col-span-1 text-center">Claims</div>
+                    <div className="col-span-2 text-right">Joined</div>
+                  </div>
+                  <div className="divide-y divide-white/[0.04]">
+                    {signupUsers
+                      .filter((s) => {
+                        const q = signupSearch.trim().toLowerCase();
+                        if (!q) return true;
+                        return (
+                          s.email.toLowerCase().includes(q) ||
+                          s.name.toLowerCase().includes(q) ||
+                          (s.company_name || "").toLowerCase().includes(q)
+                        );
+                      })
+                      .map((u) => (
+                        <div key={u.id} className="px-6 py-3 grid grid-cols-12 gap-4 items-center hover:bg-white/[0.04] transition-colors text-sm">
+                          <div className="col-span-3 min-w-0">
+                            <p className="font-medium text-[var(--white)] truncate">{u.name}</p>
+                            {u.role && (
+                              <p className="text-[10px] text-[var(--gray-dim)] uppercase tracking-wide">
+                                {u.role}{u.is_admin ? " · admin" : ""}
+                              </p>
+                            )}
+                          </div>
+                          <div className="col-span-3 min-w-0">
+                            <p className="text-[var(--gray)] truncate">{u.email}</p>
+                            {u.phone && (
+                              <a
+                                href={`tel:${u.phone.replace(/[^0-9+]/g, "")}`}
+                                onClick={(e) => e.stopPropagation()}
+                                className="text-[var(--cyan)] text-[10px] hover:underline"
+                              >
+                                📞 {u.phone}
+                              </a>
+                            )}
+                          </div>
+                          <div className="col-span-3 min-w-0">
+                            {u.company_name ? (
+                              <p className="text-[var(--gray)] truncate">🏢 {u.company_name}</p>
+                            ) : (
+                              <p className="text-[var(--gray-dim)] text-xs italic">No company profile</p>
+                            )}
+                          </div>
+                          <div className="col-span-1 text-center text-[var(--gray)] tabular-nums">
+                            {u.claim_count > 0 ? u.claim_count : <span className="text-[var(--gray-dim)]">—</span>}
+                          </div>
+                          <div className="col-span-2 text-right text-xs text-[var(--gray-dim)]">
+                            {u.created_at ? new Date(u.created_at).toLocaleDateString() : "—"}
+                          </div>
+                        </div>
+                      ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </>
+        )}
+
+        {/* Legacy beta_signups block (no longer rendered — keeping fetcher
+            for any future reactivation). */}
+        {false && activeTab === "beta" && (
+          <>
             <div className="glass-card overflow-hidden">
               {betaLoading ? (
                 <div className="text-center py-16">
@@ -1261,9 +1297,9 @@ export function AdminDashboard({ userId }: { userId: string }) {
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
               {[
                 { label: "Total Companies", value: companies.length, color: "text-[var(--white)]" },
-                { label: "With Logo", value: companies.filter(c => c.hasLogo).length, color: "text-emerald-400" },
-                { label: "Paid Plan", value: companies.filter(c => c.planId && c.planId !== "starter" && c.planStatus !== "canceled").length, color: "text-blue-400" },
-                { label: "With Claims", value: companies.filter(c => c.claimsCount > 0).length, color: "text-amber-400" },
+                { label: "With Logo", value: companies.filter(c => c.has_logo).length, color: "text-emerald-400" },
+                { label: "Paid Plan", value: companies.filter(c => c.plan_id && c.plan_id !== "starter" && c.plan_status !== "canceled").length, color: "text-blue-400" },
+                { label: "With Claims", value: companies.filter(c => c.claims_count > 0).length, color: "text-amber-400" },
               ].map(({ label, value, color }) => (
                 <div key={label} className="glass-card p-4 text-center">
                   <p className={`text-2xl font-bold ${color}`}>{value}</p>
@@ -1302,13 +1338,13 @@ export function AdminDashboard({ userId }: { userId: string }) {
                             className="w-full px-6 py-4 grid grid-cols-12 gap-4 items-center hover:bg-white/[0.04] transition-colors text-sm text-left"
                           >
                             <div className="col-span-3">
-                              <p className="font-semibold text-[var(--white)] truncate">{c.companyName}</p>
+                              <p className="font-semibold text-[var(--white)] truncate">{c.company_name}</p>
                               {c.members[0]?.email && (
-                                <p className="text-xs text-[var(--gray-dim)] truncate">{c.members.find(m => m.isAdmin)?.email || c.members[0].email}</p>
+                                <p className="text-xs text-[var(--gray-dim)] truncate">{c.members.find(m => m.is_admin)?.email || c.members[0].email}</p>
                               )}
                             </div>
                             <div className="col-span-1 text-center">
-                              {c.hasLogo
+                              {c.has_logo
                                 ? <span className="text-emerald-400 text-xs font-semibold">Yes</span>
                                 : <span className="text-[var(--gray-dim)] text-xs">—</span>}
                             </div>
@@ -1331,16 +1367,16 @@ export function AdminDashboard({ userId }: { userId: string }) {
                                 <span className="text-[var(--gray-dim)] text-xs">—</span>
                               )}
                             </div>
-                            <div className="col-span-1 text-center text-[var(--gray)] text-sm font-medium tabular-nums">{c.claimsCount}</div>
+                            <div className="col-span-1 text-center text-[var(--gray)] text-sm font-medium tabular-nums">{c.claims_count}</div>
                             <div className="col-span-2">
-                              {c.planId ? (
+                              {c.plan_id ? (
                                 <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${
-                                  c.planStatus === "active" || c.planStatus === "trialing" ? "bg-emerald-500/15 text-emerald-300" :
-                                  c.planStatus === "past_due" ? "bg-amber-500/15 text-amber-300" :
-                                  c.planStatus === "canceled" ? "bg-red-500/15 text-red-300" :
+                                  c.plan_status === "active" || c.plan_status === "trialing" ? "bg-emerald-500/15 text-emerald-300" :
+                                  c.plan_status === "past_due" ? "bg-amber-500/15 text-amber-300" :
+                                  c.plan_status === "canceled" ? "bg-red-500/15 text-red-300" :
                                   "bg-white/[0.06] text-[var(--gray)]"
                                 }`}>
-                                  {c.planId.charAt(0).toUpperCase() + c.planId.slice(1)}{c.planStatus && c.planStatus !== "active" ? ` · ${c.planStatus}` : ""}
+                                  {c.plan_id.charAt(0).toUpperCase() + c.plan_id.slice(1)}{c.plan_status && c.plan_status !== "active" ? ` · ${c.plan_status}` : ""}
                                 </span>
                               ) : (
                                 <span className="text-[var(--gray-dim)] text-xs">No subscription</span>
@@ -1357,16 +1393,16 @@ export function AdminDashboard({ userId }: { userId: string }) {
                               <p className="text-[10px] uppercase tracking-wider text-[var(--gray-dim)] mb-2">Members ({c.members.length})</p>
                               <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                                 {c.members.map((m) => (
-                                  <div key={m.userId} className="flex items-center justify-between gap-3 px-3 py-2 rounded-lg bg-white/[0.03]">
+                                  <div key={m.user_id} className="flex items-center justify-between gap-3 px-3 py-2 rounded-lg bg-white/[0.03]">
                                     <div className="min-w-0">
                                       <p className="text-sm text-[var(--white)] truncate">
                                         {m.name}
-                                        {m.isAdmin && <span className="ml-2 text-[9px] uppercase tracking-wide text-amber-300">Admin</span>}
+                                        {m.is_admin && <span className="ml-2 text-[9px] uppercase tracking-wide text-amber-300">Admin</span>}
                                       </p>
                                       <p className="text-[10px] text-[var(--gray-dim)] truncate">{m.email}</p>
                                     </div>
                                     <span className="text-xs text-[var(--gray-muted)] tabular-nums shrink-0">
-                                      {(claims.filter(cl => cl.user_id === m.userId).length)} claims
+                                      {m.claim_count} claims
                                     </span>
                                   </div>
                                 ))}
