@@ -46,14 +46,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  if (!OVERAGE_PRICE_ID) {
-    console.error("[meter-overage] STRIPE_OVERAGE_PRICE_ID not configured");
-    return NextResponse.json(
-      { error: "OVERAGE_PRICE_ID not configured" },
-      { status: 500 }
-    );
-  }
-
   let body: MeterRequest;
   try {
     body = (await req.json()) as MeterRequest;
@@ -75,8 +67,10 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
   }
 
-  // Always insert the telemetry row first so we have a paper trail even if
-  // Stripe fails. Status will be flipped to 'sent' or 'failed' below.
+  // ALWAYS insert the telemetry row first so we have a paper trail. The
+  // reconcile cron picks up rows with status='pending' or 'failed', so even
+  // if OVERAGE_PRICE_ID is missing on this deploy we keep an audit trail
+  // that can be retried after the env var is fixed (within the 7-day window).
   const { data: eventRow, error: insErr } = await supabaseAdmin
     .from("overage_events")
     .insert({
@@ -96,6 +90,18 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Telemetry insert failed" }, { status: 500 });
   }
 
+  if (!OVERAGE_PRICE_ID) {
+    console.error("[meter-overage] STRIPE_OVERAGE_PRICE_ID not configured");
+    await supabaseAdmin
+      .from("overage_events")
+      .update({ meter_event_status: "failed", meter_error: "no_overage_price_id_configured" })
+      .eq("id", eventRow.id);
+    return NextResponse.json(
+      { ok: false, error: "OVERAGE_PRICE_ID not configured", event_id: eventRow.id },
+      { status: 500 }
+    );
+  }
+
   // No Stripe subscription = solo dogfood / starter being treated as paid by
   // mistake / bad config. Mark failed but still 200 — processor.py shouldn't
   // retry these forever.
@@ -113,6 +119,12 @@ export async function POST(req: NextRequest) {
     // The metered price MUST be attached as a subscription item before meter
     // events bill — Stripe matches the meter to the customer's active sub
     // line. Lazy-attach once per customer, then cache the item id.
+    //
+    // Race-safe: two concurrent overage claims can both reach this block
+    // before either has cached the id. To avoid a duplicate-price 400 from
+    // Stripe, we catch StripeInvalidRequestError (code='resource_already_exists'
+    // in some cases) and re-retrieve the subscription to find the now-existing
+    // item attached by the winning concurrent caller.
     if (!overageItemId) {
       const stripeSub = await stripe.subscriptions.retrieve(subId);
       const existing = stripeSub.items.data.find(
@@ -121,13 +133,30 @@ export async function POST(req: NextRequest) {
       if (existing) {
         overageItemId = existing.id;
       } else {
-        const created = await stripe.subscriptionItems.create({
-          subscription: subId,
-          price: OVERAGE_PRICE_ID,
-          // Metered prices have no quantity — meter events carry the count.
-          proration_behavior: "none",
-        });
-        overageItemId = created.id;
+        try {
+          const created = await stripe.subscriptionItems.create({
+            subscription: subId,
+            price: OVERAGE_PRICE_ID,
+            // Metered prices have no quantity — meter events carry the count.
+            proration_behavior: "none",
+          });
+          overageItemId = created.id;
+        } catch (createErr) {
+          const msg = createErr instanceof Error ? createErr.message : String(createErr);
+          // Stripe returns 400 with text like "Cannot add multiple subscription
+          // items with the same price" when another concurrent request already
+          // attached this price. Re-retrieve and use the now-existing item.
+          if (/multiple\s+subscription\s+items\s+with\s+the\s+same\s+price|already\s+exists/i.test(msg)) {
+            const refreshed = await stripe.subscriptions.retrieve(subId);
+            const winner = refreshed.items.data.find(
+              (item: { price: { id: string } }) => item.price.id === OVERAGE_PRICE_ID
+            );
+            if (!winner) throw createErr;
+            overageItemId = winner.id;
+          } else {
+            throw createErr;
+          }
+        }
       }
 
       await supabaseAdmin

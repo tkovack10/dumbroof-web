@@ -117,12 +117,26 @@ async function handle(req: NextRequest): Promise<NextResponse> {
         if (existing) {
           overageItemId = existing.id;
         } else {
-          const created = await stripe.subscriptionItems.create({
-            subscription: subRow.stripe_subscription_id,
-            price: OVERAGE_PRICE_ID,
-            proration_behavior: "none",
-          });
-          overageItemId = created.id;
+          try {
+            const created = await stripe.subscriptionItems.create({
+              subscription: subRow.stripe_subscription_id,
+              price: OVERAGE_PRICE_ID,
+              proration_behavior: "none",
+            });
+            overageItemId = created.id;
+          } catch (createErr) {
+            const msg = createErr instanceof Error ? createErr.message : String(createErr);
+            if (/multiple\s+subscription\s+items\s+with\s+the\s+same\s+price|already\s+exists/i.test(msg)) {
+              const refreshed = await stripe.subscriptions.retrieve(subRow.stripe_subscription_id);
+              const winner = refreshed.items.data.find(
+                (item) => item.price.id === OVERAGE_PRICE_ID
+              );
+              if (!winner) throw createErr;
+              overageItemId = winner.id;
+            } else {
+              throw createErr;
+            }
+          }
         }
         await supabaseAdmin
           .from("subscriptions")

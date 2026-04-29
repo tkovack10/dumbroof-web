@@ -237,6 +237,10 @@ export async function POST(req: NextRequest) {
         const sub = event.data.object as Stripe.Subscription;
         const customerId = sub.customer as string;
 
+        // Clear overage state too — if they re-subscribe later, stale
+        // overage_acknowledged_at would suppress the consent modal on their
+        // first new-cycle overage. Also clear stripe_overage_item_id since
+        // a new subscription will need a fresh lazy-attach.
         await supabaseAdmin
           .from("subscriptions")
           .update({
@@ -244,6 +248,9 @@ export async function POST(req: NextRequest) {
             plan_id: "starter",
             stripe_subscription_id: null,
             claims_used_this_period: 0,
+            overage_this_period: 0,
+            overage_acknowledged_at: null,
+            stripe_overage_item_id: null,
             updated_at: new Date().toISOString(),
           })
           .eq("stripe_customer_id", customerId);
@@ -255,29 +262,16 @@ export async function POST(req: NextRequest) {
 
     case "invoice.payment_succeeded": {
       try {
-        const invoice = event.data.object as Stripe.Invoice & {
-          subscription?: string | Stripe.Subscription | null;
-        };
+        const invoice = event.data.object as Stripe.Invoice;
         const customerId = invoice.customer as string;
 
-        // Mark this customer's pending overage events as 'sent' once Stripe
-        // confirms the invoice is paid. Reconciles for the daily retry cron
-        // and gives us a per-event audit trail. Best-effort: failures here
-        // are NOT critical because the daily reconcile cron picks them up.
-        const { data: subRow } = await supabaseAdmin
-          .from("subscriptions")
-          .select("user_id")
-          .eq("stripe_customer_id", customerId)
-          .limit(1)
-          .maybeSingle();
-
-        if (subRow?.user_id) {
-          await supabaseAdmin
-            .from("overage_events")
-            .update({ meter_event_status: "sent" })
-            .eq("subscription_user_id", subRow.user_id)
-            .eq("meter_event_status", "pending");
-        }
+        // Note on overage_events status: do NOT flip pending → sent here.
+        // The status is owned by the meter-overage route and reconcile cron
+        // (the only places that actually call Stripe). An invoice paying
+        // successfully tells us nothing about whether each individual meter
+        // event landed — and a fresh-cycle overage row created moments before
+        // this webhook fires would be wrongly marked 'sent' for the WRONG
+        // billing period.
 
         // Clear past_due flag on a previously-failed sub that just got paid.
         await supabaseAdmin
