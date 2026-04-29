@@ -46,23 +46,63 @@ type WindowMetrics = {
   cost_per_signup: number | null;
 };
 
+// Cached after first call within a single cron run — windows are nested so
+// we only need to enumerate auth.users once and bucket by recency.
+let _authUsersCache: Array<{ created_at: string }> | null = null;
+
+/**
+ * Drain auth.users via the admin API. Can't query `auth.users` directly via
+ * PostgREST (only `public` + `graphql_public` are exposed — see E171 +
+ * /lib/funnel-monitor/sources/supabase.ts). At ~125 users today this is one
+ * RPC call per page × ~3 pages = ~600ms, well under the maxDuration.
+ */
+async function listAllAuthUserCreatedAt(): Promise<Array<{ created_at: string }>> {
+  if (_authUsersCache) return _authUsersCache;
+  const all: Array<{ created_at: string }> = [];
+  let page = 1;
+  const perPage = 50; // >50 returns 500 "Database error finding users" on this account
+  let consecutiveEmpty = 0;
+  for (let i = 0; i < 60; i++) {
+    const { data, error } = await supabaseAdmin.auth.admin.listUsers({ page, perPage });
+    if (error) {
+      consecutiveEmpty += 1;
+      if (consecutiveEmpty >= 3) break;
+      page += 1;
+      continue;
+    }
+    const users = data?.users || [];
+    if (users.length === 0) {
+      consecutiveEmpty += 1;
+      if (consecutiveEmpty >= 3) break;
+      page += 1;
+      continue;
+    }
+    consecutiveEmpty = 0;
+    for (const u of users) all.push({ created_at: u.created_at });
+    if (users.length < perPage) break;
+    page += 1;
+  }
+  _authUsersCache = all;
+  return all;
+}
+
 async function gatherSignupsAndClaims(hoursAgo: number): Promise<{
   signups: number;
   claims_created: number;
 }> {
-  const since = new Date(Date.now() - hoursAgo * 60 * 60 * 1000).toISOString();
-  const [{ count: signups }, { count: claims_created }] = await Promise.all([
-    supabaseAdmin
-      .schema("auth")
-      .from("users")
-      .select("id", { count: "exact", head: true })
-      .gte("created_at", since),
+  const sinceMs = Date.now() - hoursAgo * 60 * 60 * 1000;
+  const sinceIso = new Date(sinceMs).toISOString();
+
+  const [users, { count: claims_created }] = await Promise.all([
+    listAllAuthUserCreatedAt(),
     supabaseAdmin
       .from("claims")
       .select("id", { count: "exact", head: true })
-      .gte("created_at", since),
+      .gte("created_at", sinceIso),
   ]);
-  return { signups: signups ?? 0, claims_created: claims_created ?? 0 };
+
+  const signups = users.filter((u) => new Date(u.created_at).getTime() >= sinceMs).length;
+  return { signups, claims_created: claims_created ?? 0 };
 }
 
 async function gatherMetaSpend(hoursAgo: number): Promise<number> {
