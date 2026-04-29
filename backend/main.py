@@ -1486,51 +1486,69 @@ def _save_pending_action(sb, scope: str, approval_id: str, tool_result: dict, us
     _pending_tool_actions.setdefault(scope, {})[approval_id] = tool_result
     # L2 source of truth: Supabase, survives multi-worker / replica fan-out.
     try:
+        # `tool_result` MUST be JSON-safe. Round-trip via json.dumps with
+        # default=str so any stray UUID / datetime / Decimal that snuck in
+        # from a tool handler gets stringified instead of silently breaking
+        # the upsert. Without this, supabase-py's serializer can hit a type
+        # it can't encode and the whole row drops on the floor.
+        safe_tool_result = json.loads(json.dumps(tool_result, default=str))
         sb.table("pending_tool_actions").upsert({
             "approval_id": approval_id,
             "scope": scope,
             "user_id": user_id or None,
-            "tool_result": tool_result,
+            "tool_result": safe_tool_result,
         }).execute()
     except Exception as e:
         # Fall back to in-memory only — single-worker case still works,
         # multi-worker users will see 404 on approve and need to retry.
-        print(f"[PENDING] Failed to persist {scope}/{approval_id} to Supabase (in-memory only): {e}")
+        # Log type + message so we can diagnose what's actually wrong.
+        print(f"[PENDING] Failed to persist {scope}/{approval_id} to Supabase (in-memory only): {type(e).__name__}: {e}", flush=True)
 
 
 def _pop_pending_action(sb, scope: str, approval_id: str) -> Optional[dict]:
     """Atomically retrieve and delete a pending tool action.
 
-    Uses the `pop_pending_tool_action(p_scope, p_approval_id)` Postgres
-    function — a single-statement DELETE ... RETURNING that:
-      - is atomic across concurrent approve POSTs (only one caller wins)
-      - returns NULL for missing AND expired rows in one go
-      - lets us distinguish "Supabase reachable but no row" from "Supabase
-        unreachable" so the L1 cache fallback only kicks in when Supabase
-        itself is broken — never to replay an already-consumed action.
+    Uses PostgREST's atomic DELETE-with-return-representation: a DELETE on
+    the (scope, approval_id) PK is atomic by Postgres semantics, and PostgREST
+    returns the deleted row(s) by default. So under concurrent approve POSTs,
+    only one caller's DELETE finds a row to return — the rest get an empty
+    list. No race, no separate read-then-delete.
+
+    Tracks `supabase_reachable=True` iff the DELETE returned without raising,
+    so the L1 cache fallback only kicks in when Supabase itself is broken —
+    never to replay an action another worker already consumed.
     """
     supabase_reachable = False
     try:
-        res = sb.rpc("pop_pending_tool_action", {
-            "p_scope": scope,
-            "p_approval_id": approval_id,
-        }).execute()
-        # RPC returned without raising → Supabase is up. The row may or may
-        # not have been there. supabase-py returns the function's RETURNING
-        # value as res.data — for jsonb returns, it's the parsed dict
-        # (or None when no row matched).
+        res = sb.table("pending_tool_actions") \
+            .delete() \
+            .eq("scope", scope) \
+            .eq("approval_id", approval_id) \
+            .execute()
         supabase_reachable = True
         if res.data:
-            # Successful pop. Evict any stale L1 entry on this worker so a
-            # subsequent retry on the same worker can't replay it.
+            row = res.data[0]
+            # Honor expiry — never replay an expired preview
+            try:
+                from datetime import datetime, timezone
+                expires_str = (row.get("expires_at") or "").replace("Z", "+00:00")
+                if expires_str:
+                    expires = datetime.fromisoformat(expires_str)
+                    if expires < datetime.now(timezone.utc):
+                        return None
+            except Exception:
+                pass
+            # Evict any stale L1 entry on this worker so a subsequent retry
+            # on the same worker can't replay it.
             _pending_tool_actions.get(scope, {}).pop(approval_id, None)
-            return res.data
+            return row.get("tool_result")
     except Exception as e:
-        print(f"[PENDING] Supabase RPC failed for {scope}/{approval_id}: {e}")
+        print(f"[PENDING] Supabase delete failed for {scope}/{approval_id}: {type(e).__name__}: {e}", flush=True)
 
     # Only fall back to L1 cache when Supabase was actually unreachable.
-    # If Supabase responded with "no row," another worker already popped it
-    # (or it expired / never existed) — replaying from L1 would double-execute.
+    # If Supabase responded with "no row" (deleted.data == []), we trust that
+    # — another worker already popped it (or it expired / never existed) —
+    # and return None. Replaying from L1 would double-execute the action.
     if supabase_reachable:
         return None
     bucket = _pending_tool_actions.get(scope, {})
