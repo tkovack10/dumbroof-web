@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 
 // Shared 3-state funnel UI used by /instant-forensic + /instant-supplement.
@@ -256,6 +257,8 @@ export function InstantFunnel({
             <p className="mt-4 text-xs text-[var(--gray-dim)] text-center">
               Free. No card required. Your files stay private — visible only to your team and DumbRoof support.
             </p>
+
+            <RecentWinsStrip />
           </>
         )}
 
@@ -276,6 +279,60 @@ export function InstantFunnel({
         )}
       </div>
     </main>
+  );
+}
+
+// Recent wins below the drop zone — real customer screenshots (address strip
+// already cropped out at /tmp/dumbroof-wins → /public/wins/). Each card shows
+// the celebration banner + lifecycle panel as a single 1080x1761 portrait
+// image. Scrolls horizontally on mobile, wraps to a 3-up grid on desktop.
+const RECENT_WINS = [
+  { src: "/wins/win5-buckingham.jpeg", amount: "+$137,562", pct: "7×", note: "Morrisville, PA" },
+  { src: "/wins/win3-bellfarm.jpeg", amount: "+$60,023", pct: "54%", note: "Saddle River, NJ" },
+  { src: "/wins/win1-greenway.jpeg", amount: "+$36,904", pct: "33%", note: "Yardley, PA" },
+  { src: "/wins/win6-deerrun.jpeg", amount: "+$40,685", pct: "denial overturned", note: "Binghamton, NY" },
+  { src: "/wins/win4-riverside.jpeg", amount: "+$21,565", pct: "75%", note: "Closed + paid" },
+  { src: "/wins/win2-alfred.jpeg", amount: "+$13,035", pct: "60%", note: "Binghamton, NY" },
+] as const;
+
+function RecentWinsStrip() {
+  return (
+    <section className="mt-10 -mx-5 px-5">
+      <div className="mb-4">
+        <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--gray-muted)] mb-1">
+          Recent customer wins
+        </p>
+        <h3 className="text-lg font-semibold text-[var(--white)]">
+          Real claims. Real numbers. Real movement.
+        </h3>
+      </div>
+      <div className="flex gap-3 overflow-x-auto snap-x snap-mandatory pb-3 [-webkit-overflow-scrolling:touch] scrollbar-thin">
+        {RECENT_WINS.map((win) => (
+          <figure
+            key={win.src}
+            className="relative shrink-0 w-[260px] snap-start rounded-2xl overflow-hidden border border-[var(--border-glass)] bg-[var(--bg-glass)]"
+          >
+            <Image
+              src={win.src}
+              alt={`${win.amount} won — ${win.note}`}
+              width={1080}
+              height={1761}
+              className="w-full h-auto"
+              sizes="260px"
+            />
+            <figcaption className="px-3 py-3 border-t border-[var(--border-glass)] bg-[rgba(0,0,0,0.4)]">
+              <p className="text-base font-bold text-white">{win.amount}</p>
+              <p className="text-xs text-[var(--gray-muted)]">
+                {win.pct} · {win.note}
+              </p>
+            </figcaption>
+          </figure>
+        ))}
+      </div>
+      <p className="text-xs text-[var(--gray-dim)] mt-1">
+        117 claims processed · $6.9M+ recovered for our customers
+      </p>
+    </section>
   );
 }
 
