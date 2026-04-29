@@ -4331,10 +4331,41 @@ async def acculynx_import(job_id: str, user_id: str = Body(...), slug: str = Bod
 async def poll_for_claims():
     """Background poller — checks for new claims every 10 seconds.
     Uses atomic status update to prevent duplicate processing across workers.
+
+    Also recovers stuck claims (processing > 30 min). Unlike `poll_for_repairs`
+    which resets stuck rows to `uploaded` (auto-retry), we mark stuck claims as
+    `error` instead. Reasons:
+      - Each retry costs ~$1.15 in Claude credits; an infinite-retry loop on a
+        perma-failing claim (corrupt file, bad format) silently racks up bills
+      - Most stuck claims are bug victims, not outage victims — Tom should
+        decide manually which deserve a reprocess
+      - The exception handler in run_processing already marks crashes as
+        error; this loop only catches the rarer cases where the worker
+        died mid-flight (OOM, container restart, infra outage)
+    See E192. 30-min cutoff vs repairs' 15-min because claim processing
+    legitimately takes 60-90s typical, up to 5+ min on large photo batches.
     """
     while True:
         try:
             sb = get_supabase_client()
+
+            # Recover stuck claims — mark "processing" claims older than 30
+            # minutes as "error" with a marker message. Preserves any existing
+            # error_message via COALESCE-like behavior (only set if currently
+            # null) — but we use a fixed marker since the row was stuck without
+            # any handler firing.
+            from datetime import datetime, timedelta, timezone
+            cutoff = (datetime.now(timezone.utc) - timedelta(minutes=30)).isoformat()
+            stuck = sb.table("claims").select("id, address").eq("status", "processing").lt("last_touched_at", cutoff).execute()
+            for c in (stuck.data or []):
+                print(f"[POLLER] Recovering stuck claim: {c['id']} ({c.get('address', 'unknown')}) — processing > 30 min")
+                sb.table("claims").update({
+                    "status": "error",
+                    "error_message": "Stuck in processing > 30 min — worker likely died mid-flight (OOM / container restart / infra outage). Reprocess via admin if needed.",
+                    "last_touched_at": datetime.now(timezone.utc).isoformat(),
+                }).eq("id", c["id"]).eq("status", "processing").execute()
+
+            # Pick up new claims
             result = sb.table("claims").select("id").eq("status", "uploaded").execute()
             for claim in result.data:
                 # Atomically claim this job by setting status to processing.
