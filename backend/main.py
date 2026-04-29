@@ -1865,6 +1865,145 @@ async def claim_brain_chat(claim_id: str, body: ChatMessage, authorization: Opti
     return StreamingResponse(stream_response(), media_type="text/event-stream")
 
 
+# ─────────────────────────────────────────────────────────────────────
+# Email-send side effects: log to claim_events + auto-schedule cadence
+# ─────────────────────────────────────────────────────────────────────
+# Background: claim_events is the canonical timeline Richard reads via
+# get_claim_timeline. Without these calls, every supplement / COC / AOB sent
+# via Richard's tools is invisible on the timeline (E193) and no follow-up
+# cadence is queued (E194). Tom hit this on 82 Moeller St 2026-04-29 — sent
+# supplement + COC on Apr 18, no carrier reply for 11 days, no automated
+# nudge in flight because the cadence step requires a separate manual tool
+# call that's easy to forget.
+
+# Per-tool default cadence presets (days after send → cadence_type).
+# None means "do not auto-schedule" — applies to homeowner-facing or
+# user-explicitly-customized sends where chasing the carrier is the wrong
+# behavior.
+_AUTO_CADENCE_BY_TOOL: dict[str, tuple[list[int], str] | None] = {
+    "send_supplement_email":   ([3, 7, 15],    "supplement_followup"),
+    "generate_coc":            ([7, 14, 21],   "coc_followup"),
+    "send_aob_to_carrier":     ([3, 7, 14, 21], "aob_submission_followup"),
+    "send_to_carrier":         ([3, 7, 15],    "carrier_followup"),
+    # Explicitly NO auto-cadence:
+    "send_aob_for_signature":  None,  # homeowner-facing; AOB signature flow has its own cadence
+    "send_custom_email":       None,  # user opted into custom; respect their judgment
+    "generate_invoice":        None,  # invoice tracking is a separate concern
+}
+
+# Tool name → claim_events event_type. Falls through to carrier_email_sent
+# for any unmapped email-shaped tool to ensure SOMETHING shows on the timeline.
+_EMAIL_EVENT_TYPE_BY_TOOL: dict[str, str] = {
+    "send_supplement_email":   "supplement_sent",
+    "generate_coc":            "coc_sent",
+    "send_aob_to_carrier":     "aob_sent",
+    "send_aob_for_signature":  "aob_for_signature_sent",
+    "send_custom_email":       "carrier_email_sent",
+    "send_to_carrier":         "carrier_email_sent",
+    "generate_invoice":        "carrier_email_sent",
+}
+
+
+def _record_email_send_side_effects(
+    sb,
+    claim_id: str,
+    user_id: Optional[str],
+    tool_name: str,
+    draft_or_preview: dict,
+    email_id: Optional[str],
+    skip_cadence: bool = False,
+) -> None:
+    """Idempotent post-send hook: log to claim_events + maybe schedule cadence.
+
+    Called after every successful send_claim_email() in approve_brain_action.
+    Failures here are non-fatal — the email already shipped; we just lose
+    timeline visibility / cadence on this one row.
+    """
+    from datetime import datetime, timedelta, timezone
+    try:
+        from claim_events import log_claim_event
+    except Exception as e:
+        print(f"[EMAIL-SIDE-EFFECT] log_claim_event import failed: {e}", flush=True)
+        return
+
+    to_email = draft_or_preview.get("to") or draft_or_preview.get("to_email") or ""
+    subject = draft_or_preview.get("subject") or ""
+    event_type = _EMAIL_EVENT_TYPE_BY_TOOL.get(tool_name, "carrier_email_sent")
+
+    # 1) Log the email send to the timeline so Richard's get_claim_timeline
+    # surfaces it on next read.
+    try:
+        log_claim_event(
+            sb,
+            claim_id=claim_id,
+            event_type=event_type,
+            source="richard_approve",
+            metadata={
+                "to": to_email,
+                "subject": subject,
+                "claim_email_id": email_id,
+                "tool_name": tool_name,
+            },
+            created_by=user_id,
+        )
+    except Exception as e:
+        print(f"[EMAIL-SIDE-EFFECT] log_claim_event failed for {claim_id}/{tool_name}: {type(e).__name__}: {e}", flush=True)
+
+    # 2) Auto-schedule a follow-up cadence if this tool has a preset and the
+    # caller didn't opt out via skip_cadence.
+    if skip_cadence:
+        return
+    cadence_preset = _AUTO_CADENCE_BY_TOOL.get(tool_name)
+    if not cadence_preset:
+        return
+    days, cadence_type = cadence_preset
+    if not days or not to_email:
+        return
+
+    base = datetime.now(timezone.utc)
+    # Use the same base string the cron uses for follow-up subjects.
+    rows = [
+        {
+            "claim_id": claim_id,
+            "user_id": user_id or None,
+            "cadence_type": cadence_type,
+            "followup_number": i + 1,
+            "scheduled_at": (base + timedelta(days=d)).isoformat(),
+            "to_email": to_email,
+            "cc": draft_or_preview.get("cc"),
+            "subject": subject if subject.lower().startswith("re:") else (f"Re: {subject}" if subject else ""),
+            "body_html": "",  # cron rebuilds body from prior send via _build_followup_body at fire time
+            "status": "pending",
+        }
+        for i, d in enumerate(days)
+    ]
+    try:
+        sb.table("claim_brain_cadence_sends").insert(rows).execute()
+        # Log a separate cadence_scheduled event so Richard can answer
+        # "is a cadence in place?" without joining tables.
+        try:
+            log_claim_event(
+                sb,
+                claim_id=claim_id,
+                event_type="cadence_scheduled",
+                source="richard_approve",
+                title=f"Auto-scheduled {len(days)}-step {cadence_type}",
+                metadata={
+                    "days": days,
+                    "cadence_type": cadence_type,
+                    "to": to_email,
+                    "trigger_tool": tool_name,
+                    "trigger_email_id": email_id,
+                },
+                created_by=user_id,
+            )
+        except Exception:
+            pass
+        print(f"[CADENCE] Auto-scheduled {len(days)}-step {cadence_type} for {claim_id} (trigger={tool_name})", flush=True)
+    except Exception as e:
+        print(f"[CADENCE] Auto-schedule failed for {claim_id}/{tool_name}: {type(e).__name__}: {e}", flush=True)
+
+
 @app.post("/api/claim-brain/{claim_id}/approve-action")
 async def approve_brain_action(claim_id: str, body: ToolApproval, background_tasks: BackgroundTasks, authorization: Optional[str] = Header(default=None)):
     """Approve or reject a pending Claim Brain tool action.
@@ -2011,6 +2150,18 @@ async def approve_brain_action(claim_id: str, body: ToolApproval, background_tas
                 attachments=resolved_attachments if resolved_attachments else None,
                 email_type=tool_name or "custom",
             )
+            # E193 + E194: log to claim_events so Richard's get_claim_timeline
+            # picks it up + auto-schedule a default carrier follow-up cadence.
+            # Both side effects are non-fatal — the email already shipped.
+            _record_email_send_side_effects(
+                sb=sb,
+                claim_id=claim_id,
+                user_id=user_id,
+                tool_name=tool_name,
+                draft_or_preview=draft,
+                email_id=email_result.get("email_id"),
+                skip_cadence=bool((body.overrides or {}).get("skip_cadence")),
+            )
             _audit_log(sb, claim_id, user_id, tool_name, {"approval_id": body.tool_call_id}, {"action": "sent", "message": f"email sent to {draft['to']}"}, 0)
             return {
                 "status": "sent",
@@ -2131,6 +2282,17 @@ async def approve_brain_action(claim_id: str, body: ToolApproval, background_tas
                 cc=preview.get("cc"),
                 attachments=resolved_attachments if resolved_attachments else None,
                 email_type="carrier_custom",
+            )
+            # E193 + E194: timeline event + auto-cadence. Same helper as the
+            # other email-draft path; works off `preview` here instead of `draft`.
+            _record_email_send_side_effects(
+                sb=sb,
+                claim_id=claim_id,
+                user_id=user_id,
+                tool_name=tool_name,
+                draft_or_preview=preview,
+                email_id=email_result.get("email_id"),
+                skip_cadence=bool((body.overrides or {}).get("skip_cadence")),
             )
             _audit_log(sb, claim_id, user_id, tool_name, preview, {"action": "sent", "message": f"sent to {preview['to_email']}"}, 0)
             return {"status": "sent", "message": f"Sent to {preview['to_email']}.", "email_id": email_result.get("email_id")}

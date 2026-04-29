@@ -33,6 +33,8 @@ CLAIM_EVENT_TYPES: dict[str, dict[str, str]] = {
     "adjuster_meeting_completed":  {"category": "milestone", "title": "Adjuster meeting completed",       "icon": "check-circle"},
     "supplement_sent":             {"category": "milestone", "title": "Supplement sent",                  "icon": "send"},
     "supplement_approved":         {"category": "milestone", "title": "Supplement approved",              "icon": "award"},
+    "aob_sent":                    {"category": "milestone", "title": "AOB sent to carrier",              "icon": "send"},
+    "aob_for_signature_sent":      {"category": "milestone", "title": "AOB sent for signature",           "icon": "pen"},
     "production_ready":            {"category": "milestone", "title": "Ready to build",                   "icon": "tool"},
     "production_sent":             {"category": "milestone", "title": "Sent to production",               "icon": "truck"},
     "install_scheduled":           {"category": "milestone", "title": "Install scheduled",                "icon": "calendar"},
@@ -50,6 +52,8 @@ CLAIM_EVENT_TYPES: dict[str, dict[str, str]] = {
     "homeowner_email_bounced":     {"category": "communication", "title": "Homeowner email bounced",      "icon": "alert-triangle"},
     "carrier_email_received":      {"category": "communication", "title": "Carrier email received",       "icon": "inbox"},
     "carrier_email_sent":          {"category": "communication", "title": "Email sent to carrier",        "icon": "send"},
+    "cadence_scheduled":           {"category": "communication", "title": "Follow-up cadence scheduled",  "icon": "clock"},
+    "cadence_followup_sent":       {"category": "communication", "title": "Cadence follow-up sent",       "icon": "send"},
     "sms_sent":                    {"category": "communication", "title": "SMS sent",                     "icon": "message-square"},
 
     # --- Documents ---
