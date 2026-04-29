@@ -106,8 +106,8 @@ async function gatherSignupsAndClaims(hoursAgo: number): Promise<{
 }
 
 async function gatherMetaSpend(hoursAgo: number): Promise<number> {
-  const token = process.env.META_ACCESS_TOKEN;
-  const accountId = process.env.META_AD_ACCOUNT_ID;
+  const token = process.env.META_ACCESS_TOKEN?.trim();
+  const accountId = process.env.META_AD_ACCOUNT_ID?.trim();
   if (!token || !accountId) return 0;
 
   const since = new Date(Date.now() - hoursAgo * 60 * 60 * 1000)
@@ -115,21 +115,27 @@ async function gatherMetaSpend(hoursAgo: number): Promise<number> {
     .slice(0, 10);
   const until = new Date().toISOString().slice(0, 10);
 
-  const url = new URL(
-    `https://graph.facebook.com/${META_API_VERSION}/act_${accountId}/insights`
-  );
-  url.searchParams.set("fields", "spend");
-  url.searchParams.set("level", "account");
-  url.searchParams.set("time_range", JSON.stringify({ since, until }));
-  url.searchParams.set("access_token", token);
+  // META_AD_ACCOUNT_ID env var already includes the `act_` prefix —
+  // matches src/lib/funnel-monitor/sources/meta-ads.ts. Adding our own
+  // would yield `act_act_X` and 404.
+  const url =
+    `https://graph.facebook.com/${META_API_VERSION}/${accountId}/insights` +
+    `?level=account&fields=spend` +
+    `&time_range=${encodeURIComponent(JSON.stringify({ since, until }))}` +
+    `&access_token=${encodeURIComponent(token)}`;
 
   try {
-    const res = await fetch(url.toString(), { cache: "no-store" });
-    if (!res.ok) return 0;
+    const res = await fetch(url, { cache: "no-store" });
+    if (!res.ok) {
+      const body = await res.text().catch(() => "");
+      console.warn(`[daily-funnel-summary] Meta insights ${res.status}: ${body.slice(0, 200)}`);
+      return 0;
+    }
     const body = (await res.json()) as { data?: Array<{ spend?: string }> };
     const spendStr = body.data?.[0]?.spend ?? "0";
     return parseFloat(spendStr) || 0;
-  } catch {
+  } catch (err) {
+    console.warn(`[daily-funnel-summary] Meta insights threw: ${err instanceof Error ? err.message : err}`);
     return 0;
   }
 }
@@ -141,12 +147,17 @@ async function buildReport(): Promise<WindowMetrics[]> {
         gatherSignupsAndClaims(w.hours),
         gatherMetaSpend(w.hours),
       ]);
+      // CPS is null both when there are no signups AND when spend lookup
+      // failed — `spend / signups` is meaningless in either case. The email
+      // renderer shows "—" so we don't surface a misleading "$0.00 CPS".
+      const haveSpend = spend > 0;
+      const haveSignups = counts.signups > 0;
       return {
         label: w.label,
         signups: counts.signups,
         claims_created: counts.claims_created,
         spend_dollars: spend,
-        cost_per_signup: counts.signups > 0 ? spend / counts.signups : null,
+        cost_per_signup: haveSpend && haveSignups ? spend / counts.signups : null,
       };
     })
   );
