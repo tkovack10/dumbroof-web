@@ -5305,7 +5305,7 @@ async def process_claim(claim_id: str):
         # Stale-UUID handling moved to _write_to_warehouse() — see E195. We previously
         # cleared excluded_line_items here unconditionally, which silently erased every
         # user exclusion on reprocess. The new flow re-translates `line_item_feedback`
-        # (status='excluded') descriptions → fresh UUIDs after write_line_items runs.
+        # (status='removed') descriptions → fresh UUIDs after write_line_items runs.
 
         # 9c. Inject user-added line items (survive reprocess)
         if sb:
