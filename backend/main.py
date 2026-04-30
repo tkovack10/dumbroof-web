@@ -2619,14 +2619,17 @@ async def approve_brain_action(claim_id: str, body: ToolApproval, background_tas
             try:
                 sb.table("line_item_feedback").insert({
                     "claim_id": claim_id,
-                    "user_id": user_id or None,
+                    # NOTE: line_item_feedback has no user_id column — Richard's
+                    # exclusions are tracked via claim_id. Adding user_id here
+                    # caused PGRST204 (which the bare except swallowed silently),
+                    # leaving exclusions un-persisted across reprocess. See E195.
                     "line_item_id": line_item_id,
                     "original_description": preview.get("description"),
-                    "status": "excluded",
-                    "reason": preview.get("reason"),
+                    "status": "removed",
+                    "notes": preview.get("reason"),
                 }).execute()
             except Exception as e:
-                print(f"[LINE ITEM REMOVE] feedback insert failed (non-fatal): {e}")
+                print(f"[LINE ITEM REMOVE] feedback insert failed (non-fatal): {e}", flush=True)
             _recompute_and_write_contractor_rcv(sb, claim_id, excluded_ids=set(existing))
             _audit_log(sb, claim_id, user_id, tool_name, preview, {"action": "sent", "message": f"excluded: {preview.get('description')}"}, 0)
             return {"status": "sent", "message": f"Excluded {preview.get('description')}."}
@@ -2648,16 +2651,17 @@ async def approve_brain_action(claim_id: str, body: ToolApproval, background_tas
             try:
                 sb.table("line_item_feedback").insert({
                     "claim_id": claim_id,
-                    "user_id": user_id or None,
+                    # See remove_line_item handler — line_item_feedback has no
+                    # user_id column. user_id + reason mismatches caused E195.
                     "line_item_id": line_item_id,
                     "original_description": preview.get("description"),
                     "corrected_qty": new_qty,
                     "corrected_unit_price": new_price,
-                    "status": "modified",
-                    "reason": preview.get("reason"),
+                    "status": "corrected",
+                    "notes": preview.get("reason"),
                 }).execute()
             except Exception as e:
-                print(f"[LINE ITEM MODIFY] feedback insert failed (non-fatal): {e}")
+                print(f"[LINE ITEM MODIFY] feedback insert failed (non-fatal): {e}", flush=True)
             _recompute_and_write_contractor_rcv(sb, claim_id)
             _audit_log(sb, claim_id, user_id, tool_name, preview, {"action": "sent", "message": f"modified: {preview.get('description')}"}, 0)
             return {"status": "sent", "message": f"Updated {preview.get('description')}."}

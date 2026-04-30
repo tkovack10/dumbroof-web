@@ -5301,13 +5301,11 @@ async def process_claim(claim_id: str):
         # The processor always generates ALL items. The dashboard hides excluded items.
         # Previously this filtered config by description match, which broke multi-structure
         # claims (excluding one "Metal roofing" removed ALL structures' installs).
-        # Clear stale excluded_line_items on reprocess (old UUIDs won't match new items).
-        if sb:
-            try:
-                sb.table("claims").update({"excluded_line_items": []}).eq("id", claim_id).execute()
-                print("[SCOPE REVIEW] Cleared stale excluded_line_items (fresh items on reprocess)")
-            except Exception:
-                pass
+        #
+        # Stale-UUID handling moved to _write_to_warehouse() — see E195. We previously
+        # cleared excluded_line_items here unconditionally, which silently erased every
+        # user exclusion on reprocess. The new flow re-translates `line_item_feedback`
+        # (status='excluded') descriptions → fresh UUIDs after write_line_items runs.
 
         # 9c. Inject user-added line items (survive reprocess)
         if sb:
@@ -6818,6 +6816,38 @@ def _write_to_warehouse(sb, claim_id: str, config: dict, photo_analysis: dict,
         source="usarm", price_list=price_list, region=region,
     )
     print(f"[WAREHOUSE] Wrote {usarm_count} USARM line items")
+
+    # 2b. Re-translate excluded_line_items from line_item_feedback. line_items
+    # rows get fresh UUIDs every reprocess, so exclusions stored by UUID go
+    # stale. We persist the human-readable description in line_item_feedback
+    # (status='removed') as the stable identity key — re-resolve to new UUIDs
+    # here after the new rows exist. See E195. Description-match drops splits/
+    # consolidations (acceptable: user can re-exclude in one click).
+    try:
+        excl_fb = sb.table("line_item_feedback").select(
+            "original_description"
+        ).eq("claim_id", claim_id).eq("status", "removed").execute()
+        excluded_descriptions = {
+            (r.get("original_description") or "").strip()
+            for r in (excl_fb.data or [])
+            if r.get("original_description")
+        }
+        if excluded_descriptions:
+            fresh = sb.table("line_items").select("id, description").eq(
+                "claim_id", claim_id
+            ).execute()
+            resolved_uuids: list[str] = []
+            for row in (fresh.data or []):
+                desc = (row.get("description") or "").strip()
+                if desc and desc in excluded_descriptions:
+                    resolved_uuids.append(row["id"])
+            sb.table("claims").update({"excluded_line_items": resolved_uuids}).eq("id", claim_id).execute()
+            print(f"[WAREHOUSE] Re-translated {len(resolved_uuids)}/{len(excluded_descriptions)} exclusions to fresh UUIDs")
+        else:
+            # No saved exclusions — clear any stale UUIDs sitting in the column.
+            sb.table("claims").update({"excluded_line_items": []}).eq("id", claim_id).execute()
+    except Exception as e:
+        print(f"[WAREHOUSE] Exclusion re-translation failed (non-fatal): {e}", flush=True)
 
     # 3. Carrier line items (if carrier data exists)
     if carrier_data:
