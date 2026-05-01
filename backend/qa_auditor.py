@@ -284,8 +284,27 @@ def audit_claim(
     """
     from qa_pdf_checks import run_pdf_checks
 
-    pdf_result = run_pdf_checks(claim, config)
+    # Wrap deterministic checks so a bug here can't disable the whole audit
+    # (processor.py's outer try/except would otherwise fail open with
+    # qa_audit_result=None, also disabling the prose audit). Preserve prose
+    # audit availability even on PDF check crash.
+    try:
+        pdf_result = run_pdf_checks(claim, config)
+    except Exception as e:
+        print(f"[QA] run_pdf_checks crashed (continuing with prose-only): {e}")
+        pdf_result = {
+            "critical": [],
+            "medium": [],
+            "low": [{
+                "issue": "QA_CHECK_EXCEPTION",
+                "severity": "low",
+                "check": "run_pdf_checks",
+                "detail": f"{type(e).__name__}: {str(e)[:200]}",
+            }],
+        }
+
     pdf_crit_count = len(pdf_result.get("critical", []))
+    prose_skipped = pdf_crit_count > 0
 
     # Short-circuit: if the deterministic PDF/brand check found a CRITICAL
     # (wrong logo, missing owner brand, other-tenant leak), skip the LLM
@@ -293,7 +312,7 @@ def audit_claim(
     # of what prose audit finds, so spending an Anthropic call to grade the
     # prose of a doc that's about to be regenerated is wasted spend. Returns
     # a stub prose_result so the merge logic below stays uniform.
-    if pdf_crit_count:
+    if prose_skipped:
         prose_result = {
             "critical": [],
             "medium": [],
@@ -341,11 +360,15 @@ def audit_claim(
         "summary": summary,
         "ground_truth": prose_result.get("ground_truth"),
         "audited_at": prose_result.get("audited_at") or datetime.utcnow().isoformat() + "Z",
-        # Telemetry: which checks ran, how many flags each contributed
+        # Telemetry: which checks ran, how many flags each contributed.
+        # When the prose audit was short-circuited, prose_* counts are null
+        # rather than 0 so dashboards can distinguish "ran clean" from
+        # "never ran".
         "audit_layers": {
-            "prose_critical": len(prose_result.get("critical") or []),
-            "prose_medium": len(prose_result.get("medium") or []),
-            "prose_low": len(prose_result.get("low") or []),
+            "prose_skipped": prose_skipped,
+            "prose_critical": None if prose_skipped else len(prose_result.get("critical") or []),
+            "prose_medium": None if prose_skipped else len(prose_result.get("medium") or []),
+            "prose_low": None if prose_skipped else len(prose_result.get("low") or []),
             "pdf_critical": pdf_crit_count,
             "pdf_medium": len(pdf_result.get("medium", [])),
             "pdf_low": len(pdf_result.get("low", [])),

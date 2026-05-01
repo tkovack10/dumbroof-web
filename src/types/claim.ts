@@ -155,11 +155,15 @@ export interface QAAuditResult {
   ground_truth?: Record<string, unknown>;
   audited_at?: string;
   audit_error?: string;
-  // Telemetry: per-layer flag counts (added 2026-05-01 with combined audit)
+  // Telemetry: per-layer flag counts (added 2026-05-01 with combined audit).
+  // prose_* fields are null when prose_skipped is true (deterministic
+  // critical short-circuited the LLM call). Dashboards should distinguish
+  // null ("never ran") from 0 ("ran and passed clean").
   audit_layers?: {
-    prose_critical: number;
-    prose_medium: number;
-    prose_low: number;
+    prose_skipped: boolean;
+    prose_critical: number | null;
+    prose_medium: number | null;
+    prose_low: number | null;
     pdf_critical: number;
     pdf_medium: number;
     pdf_low: number;

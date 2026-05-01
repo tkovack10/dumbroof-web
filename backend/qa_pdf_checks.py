@@ -64,8 +64,10 @@ def _supabase_get(path: str):
 
 
 # Pattern for stripping common punctuation/symbols during brand normalization.
-# Periods (M. Green vs M Green), apostrophes (Bob's vs Bobs), hyphens, &, commas.
-_PUNCT_RE = re.compile(r"[.,'`’\-_/\\&]")
+# Periods (M. Green vs M Green), apostrophes (Bob's vs Bobs, Bob’s vs Bobs),
+# hyphens including en-dash/em-dash (frequent in copy-pasted carrier names),
+# slashes, ampersand (handled separately above).
+_PUNCT_RE = re.compile(r"[.,'`’\-–—_/\\&]")
 
 
 def _norm(s: Optional[str]) -> str:
@@ -208,8 +210,39 @@ def _build_forbidden_brands(claim: dict, owner_company_name: str) -> list[str]:
     return forbidden
 
 
-def check_pdf_brand_text(claim: dict, config: dict) -> list[dict]:
-    """Open the rendered forensic PDF; verify only the owner's brand name appears.
+def _download_pdf_text(sb_url: str, sk: str, storage_path: str,
+                        first_n_pages: int = 2) -> tuple[str, Optional[str]]:
+    """Fetch PDF from Supabase Storage and return (text, error). Empty error on success."""
+    import urllib.request
+    download_url = f"{sb_url}/storage/v1/object/claim-documents/{storage_path}"
+    req = urllib.request.Request(
+        download_url,
+        headers={"apikey": sk, "Authorization": f"Bearer {sk}"},
+    )
+    try:
+        # 20s timeout: forensic PDFs are typically 1-25MB; longer than 20s
+        # almost always means Supabase Storage is degraded (522 storm pattern).
+        with urllib.request.urlopen(req, timeout=20) as resp:
+            pdf_bytes = resp.read()
+    except Exception as e:
+        return "", f"download failed: {str(e)[:120]}"
+    try:
+        doc = fitz.open(stream=pdf_bytes, filetype="pdf")
+        # Branding surfaces are concentrated on cover + page 2 (TOC + first
+        # title block). Pages beyond risk false-positives from carrier letter
+        # text that legitimately quotes a name overlapping with another admin.
+        text_pages = []
+        for p in range(min(first_n_pages, len(doc))):
+            text_pages.append(doc.load_page(p).get_text("text") or "")
+        doc.close()
+        return "\n".join(text_pages), None
+    except Exception as e:
+        return "", f"parse failed: {str(e)[:120]}"
+
+
+def check_pdf_brand_text(claim: dict, config: dict,
+                          *, owner_company_name: Optional[str] = None) -> list[dict]:
+    """Open EVERY rendered PDF; verify only the owner's brand name appears.
 
     This is the LAST line of defense — catches the case where:
       - config.company looks correct (passes check_brand_match)
@@ -218,6 +251,13 @@ def check_pdf_brand_text(claim: dict, config: dict) -> list[dict]:
     The 2026-05-01 brand-leak incident slipped through because the prose was
     correct AND config.company was correct — only the LOGO IMAGE was wrong.
     Looking at the rendered output is the only way to catch that class of bug.
+
+    Scans every PDF in output_files (forensic, estimate, scope comparison,
+    clarification letter, cover email) — a generator bug that swaps the
+    logo on only one document type would otherwise slip through.
+
+    `owner_company_name` can be passed in by the aggregator to avoid a
+    redundant company_profiles fetch (already pulled by check_brand_match).
     """
     flags: list[dict] = []
     user_id = claim.get("user_id")
@@ -226,91 +266,38 @@ def check_pdf_brand_text(claim: dict, config: dict) -> list[dict]:
     if not user_id or not file_path_root or not output_files:
         return flags
 
-    forensic_pdf = next((f for f in output_files if "FORENSIC" in f.upper()), None)
-    if not forensic_pdf:
-        return flags  # No forensic = forensic-only mode skipped or failed earlier
-
-    pdf_storage_path = f"{file_path_root}/output/{forensic_pdf}"
     sb_url = os.environ.get("SUPABASE_URL", "").rstrip("/")
     sk = os.environ.get("SUPABASE_SERVICE_KEY", "")
     if not sb_url or not sk:
         return [{"issue": "PDF_CHECK_SKIPPED", "severity": "low",
                  "detail": "SUPABASE_URL or SUPABASE_SERVICE_KEY missing"}]
 
-    import urllib.request
-    download_url = f"{sb_url}/storage/v1/object/claim-documents/{pdf_storage_path}"
-    req = urllib.request.Request(
-        download_url,
-        headers={"apikey": sk, "Authorization": f"Bearer {sk}"},
-    )
-    try:
-        # 20s timeout: forensic PDFs are typically 1-25MB; longer than 20s
-        # almost always means Supabase Storage is degraded (we've hit the 522
-        # storm pattern twice — see memory/feedback_supabase_recurring_522.md).
-        # Fail fast with a degraded flag so admins know the audit didn't run,
-        # rather than wedging the whole reprocess pipeline.
-        with urllib.request.urlopen(req, timeout=20) as resp:
-            pdf_bytes = resp.read()
-    except Exception as e:
-        return [{"issue": "PDF_DOWNLOAD_FAILED", "severity": "low",
-                 "detail": f"Could not fetch {pdf_storage_path} (timeout 20s): {str(e)[:150]}"}]
+    # Hoist owner profile fetch into the aggregator if provided
+    if owner_company_name is None:
+        owner_rows = _supabase_get(
+            f"/rest/v1/company_profiles?user_id=eq.{user_id}&select=company_name"
+        )
+        if owner_rows is SUPABASE_FETCH_FAILED:
+            return [{
+                "issue": "QA_CHECK_DEGRADED",
+                "severity": "low",
+                "check": "check_pdf_brand_text",
+                "detail": "Could not fetch owner profile — Supabase request failed. PDF brand check did not run.",
+            }]
+        owner_company_name = ""
+        if owner_rows:
+            owner_company_name = (owner_rows[0].get("company_name") or "").strip()
+    expected_name = owner_company_name or ""
 
-    try:
-        doc = fitz.open(stream=pdf_bytes, filetype="pdf")
-        # Cover page (page 0) + page 1 — covers nearly all branding surfaces
-        # (logo, title block, contact footer). Going beyond risks false-positives
-        # from carrier names / homeowner names that legitimately match an admin
-        # surname on later pages.
-        text_pages = []
-        for p in range(min(2, len(doc))):
-            text_pages.append(doc.load_page(p).get_text("text") or "")
-        cover_text = "\n".join(text_pages)
-        doc.close()
-    except Exception as e:
-        return [{"issue": "PDF_PARSE_FAILED", "severity": "low",
-                 "detail": f"Could not parse PDF: {str(e)[:150]}"}]
-
-    # Owner's expected brand
-    owner_rows = _supabase_get(
-        f"/rest/v1/company_profiles?user_id=eq.{user_id}&select=company_name"
-    )
-    if owner_rows is SUPABASE_FETCH_FAILED:
-        return [{
-            "issue": "QA_CHECK_DEGRADED",
-            "severity": "low",
-            "check": "check_pdf_brand_text",
-            "detail": "Could not fetch owner profile — Supabase request failed. PDF brand check did not run.",
-        }]
-    expected_name = ""
-    if owner_rows:
-        expected_name = (owner_rows[0].get("company_name") or "").strip()
-
-    # Normalize the cover text the same way we normalize brand names so a
-    # company name that line-wraps in the PDF ("Affordable Roofing Siding\n
-    # and Gutters") still matches the profile's flat "Affordable Roofing
-    # Siding and Gutters". Plain `.lower()` preserves newlines + punctuation
-    # and would false-fail; `_norm` strips both.
-    cover_norm = _norm(cover_text)
-
-    # 1. Verify expected brand appears (catches truly empty or default-USARM PDFs)
     expected_norm = _norm(expected_name)
-    if expected_norm and not _word_boundary_match(expected_norm, cover_norm):
-        flags.append({
-            "issue": "PDF_MISSING_OWNER_BRAND",
-            "severity": "critical",
-            "expected": expected_name,
-            "detail": f"Cover page does not contain owner company name '{expected_name}'",
-            "cover_excerpt": cover_text[:300],
-        })
+    forbidden = _build_forbidden_brands(claim, expected_name)
 
-    # 2. Verify NO other-tenant brand name leaks into the cover.
-    # Build a "safe zone" of normalized strings that contain words from
-    # legitimate other parties on this claim (homeowner name, carrier name,
-    # adjuster name, property address). If a forbidden brand match falls
-    # inside one of those strings, it's a name collision NOT a leak.
-    # Example saves: carrier "Liberty Mutual" should not flag admin
-    # "Liberty Roofing"; homeowner "Mark Greene" should not flag admin
-    # "M. Green Construction".
+    # Build "safe zone" of normalized strings from legitimate other parties on
+    # this claim (homeowner, carrier, adjuster, property address). If a
+    # forbidden brand match falls inside one of those strings AND the safe
+    # term itself contains that brand as a whole-phrase, it's a name collision,
+    # not a leak. Example: carrier "Liberty Mutual" suppresses admin "Liberty
+    # Roofing"; homeowner "Mark Greene" suppresses admin "M Green Construction".
     safe_terms_raw = [
         (config.get("insured", {}) or {}).get("name", ""),
         (claim.get("homeowner_name") or ""),
@@ -323,32 +310,70 @@ def check_pdf_brand_text(claim: dict, config: dict) -> list[dict]:
     ]
     safe_norms = [_norm(t) for t in safe_terms_raw if t and len(t.strip()) >= 4]
 
-    def _matches_outside_safe_zone(needle_norm: str) -> bool:
-        """True iff needle appears anywhere in cover that is NOT inside a safe term."""
-        if not _word_boundary_match(needle_norm, cover_norm):
+    def _matches_outside_safe_zone(needle_norm: str, hay_norm: str) -> bool:
+        """True iff needle appears in hay AND no safe-zone match covers it."""
+        if not _word_boundary_match(needle_norm, hay_norm):
             return False
-        # Word-boundary match found — but is every match inside a safe term?
+        # Word-boundary hit — suppress only if the brand also matches as a
+        # whole-phrase inside a safe term (i.e. needle's words are a contiguous
+        # subsequence of a legitimate party's name). Word-boundary on safe term
+        # closes the C5 hole where bare substring suppressed legitimate leaks.
         for safe in safe_norms:
-            if needle_norm in safe:
-                # The brand name is a substring of a legit safe term (homeowner/
-                # carrier/etc) — assume the match is on that legit usage and skip.
+            if _word_boundary_match(needle_norm, safe):
                 return False
         return True
 
-    forbidden = _build_forbidden_brands(claim, expected_name)
-    leaked = []
-    for name in forbidden:
-        if _matches_outside_safe_zone(_norm(name)):
-            leaked.append(name)
-    if leaked:
-        flags.append({
-            "issue": "PDF_BRAND_LEAK",
-            "severity": "critical",
-            "expected": expected_name,
-            "found": leaked,
-            "detail": f"Cover page contains other-tenant company name(s): {leaked}",
-            "cover_excerpt": cover_text[:300],
-        })
+    # Scan EVERY rendered PDF for FORBIDDEN brand leaks (the actual safety
+    # net — a generator bug that swaps the logo on any single doc would
+    # otherwise slip through).
+    #
+    # Only require the EXPECTED owner brand to appear on the FORENSIC PDF.
+    # Other doc types (Xactimate estimate, scope comparison, cover letter)
+    # legitimately render the company name only as a logo image OR only in a
+    # later-page footer, so requiring page-1-2 text presence on those would
+    # be a sea of false positives. The forensic cover is our canonical
+    # branded surface — missing brand there is genuinely anomalous.
+    for pdf_filename in output_files:
+        is_forensic = "FORENSIC" in pdf_filename.upper()
+        storage_path = f"{file_path_root}/output/{pdf_filename}"
+        text, err = _download_pdf_text(sb_url, sk, storage_path, first_n_pages=2)
+        if err:
+            flags.append({
+                "issue": "PDF_DOWNLOAD_OR_PARSE_FAILED",
+                "severity": "low",
+                "check": "check_pdf_brand_text",
+                "detail": f"{pdf_filename}: {err}",
+                "file": pdf_filename,
+            })
+            continue
+        text_norm = _norm(text)
+
+        # 1. Forensic-only: verify expected brand appears
+        if is_forensic and expected_norm and not _word_boundary_match(expected_norm, text_norm):
+            flags.append({
+                "issue": "PDF_MISSING_OWNER_BRAND",
+                "severity": "critical",
+                "file": pdf_filename,
+                "expected": expected_name,
+                "detail": f"{pdf_filename} cover does not contain owner company name '{expected_name}'",
+                "cover_excerpt": text[:300],
+            })
+
+        # 2. All PDFs: verify NO other-tenant brand name leaks
+        leaked = []
+        for name in forbidden:
+            if _matches_outside_safe_zone(_norm(name), text_norm):
+                leaked.append(name)
+        if leaked:
+            flags.append({
+                "issue": "PDF_BRAND_LEAK",
+                "severity": "critical",
+                "file": pdf_filename,
+                "expected": expected_name,
+                "found": leaked,
+                "detail": f"{pdf_filename} contains other-tenant company name(s): {leaked}",
+                "cover_excerpt": text[:300],
+            })
 
     return flags
 
@@ -429,21 +454,103 @@ def check_dol_noaa(claim: dict, config: dict) -> list[dict]:
 def run_pdf_checks(claim: dict, config: dict) -> dict:
     """Run all deterministic checks. Each check is wrapped so a single failure
     can't crash the audit. Returns a dict with critical/medium/low arrays.
+
+    Hoists the owner-profile lookup so check_brand_match and
+    check_pdf_brand_text don't both fetch the same row.
     """
     all_flags: list[dict] = []
-    for fn in (check_brand_match, check_pdf_brand_text, check_dol_noaa):
-        try:
-            all_flags.extend(fn(claim, config))
-        except Exception as e:
+
+    # Pre-fetch owner profile once; pass into individual checks
+    user_id = claim.get("user_id")
+    owner_company_name: Optional[str] = None
+    if user_id:
+        prof_rows = _supabase_get(
+            f"/rest/v1/company_profiles?user_id=eq.{user_id}"
+            "&select=company_name,contact_name,email,phone,office_phone,is_usarm,role"
+        )
+        if prof_rows is SUPABASE_FETCH_FAILED:
             all_flags.append({
-                "issue": "QA_CHECK_EXCEPTION",
+                "issue": "QA_CHECK_DEGRADED",
                 "severity": "low",
-                "check": fn.__name__,
-                "detail": f"{type(e).__name__}: {str(e)[:200]}",
+                "check": "owner_profile_prefetch",
+                "detail": "Could not pre-fetch company_profiles — Supabase request failed.",
             })
+            owner_profile = None
+        else:
+            owner_profile = prof_rows[0] if prof_rows else None
+            if owner_profile:
+                owner_company_name = (owner_profile.get("company_name") or "").strip()
+    else:
+        owner_profile = None
+
+    # Run brand_match using the pre-fetched profile
+    try:
+        all_flags.extend(_check_brand_match_with_profile(claim, config, owner_profile))
+    except Exception as e:
+        all_flags.append({
+            "issue": "QA_CHECK_EXCEPTION", "severity": "low",
+            "check": "check_brand_match",
+            "detail": f"{type(e).__name__}: {str(e)[:200]}",
+        })
+
+    # Run pdf_brand_text passing the company name to skip its own profile fetch
+    try:
+        all_flags.extend(check_pdf_brand_text(
+            claim, config, owner_company_name=owner_company_name
+        ))
+    except Exception as e:
+        all_flags.append({
+            "issue": "QA_CHECK_EXCEPTION", "severity": "low",
+            "check": "check_pdf_brand_text",
+            "detail": f"{type(e).__name__}: {str(e)[:200]}",
+        })
+
+    # NOAA cross-check — independent
+    try:
+        all_flags.extend(check_dol_noaa(claim, config))
+    except Exception as e:
+        all_flags.append({
+            "issue": "QA_CHECK_EXCEPTION", "severity": "low",
+            "check": "check_dol_noaa",
+            "detail": f"{type(e).__name__}: {str(e)[:200]}",
+        })
 
     return {
         "critical": [f for f in all_flags if f.get("severity") == "critical"],
         "medium": [f for f in all_flags if f.get("severity") == "medium"],
         "low": [f for f in all_flags if f.get("severity") == "low"],
     }
+
+
+def _check_brand_match_with_profile(claim: dict, config: dict,
+                                      profile: Optional[dict]) -> list[dict]:
+    """Internal — same as check_brand_match but takes a pre-fetched profile."""
+    flags: list[dict] = []
+    if not profile:
+        return flags
+    company = config.get("company", {}) or {}
+    field_pairs = [
+        ("company_name", "name", "critical", "company name"),
+        ("contact_name", "ceo_name", "critical", "owner / CEO name"),
+        ("email", "email", "critical", "company email"),
+    ]
+    for prof_key, cfg_key, sev, label in field_pairs:
+        expected = (profile.get(prof_key) or "").strip()
+        actual = (company.get(cfg_key) or "").strip()
+        if expected and actual and _norm(expected) != _norm(actual):
+            flags.append({
+                "issue": "BRAND_MISMATCH", "severity": sev, "field": label,
+                "expected": expected, "found": actual,
+                "detail": f"PDF {label} '{actual}' does not match owner profile '{expected}'",
+            })
+    profile_phones = {_norm(profile.get("phone") or ""), _norm(profile.get("office_phone") or "")}
+    profile_phones.discard("")
+    config_phones = {_norm(company.get("cell_phone") or ""), _norm(company.get("office_phone") or "")}
+    config_phones.discard("")
+    if profile_phones and config_phones and not (profile_phones & config_phones):
+        flags.append({
+            "issue": "BRAND_MISMATCH", "severity": "critical", "field": "phone",
+            "expected": sorted(profile_phones), "found": sorted(config_phones),
+            "detail": "PDF phone numbers do not overlap with owner profile phone numbers",
+        })
+    return flags
