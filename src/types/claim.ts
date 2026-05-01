@@ -133,9 +133,16 @@ export interface Claim {
 export interface QAAuditIssue {
   issue: string;
   location?: string;
-  found?: string;
-  expected?: string;
+  found?: string | string[];
+  expected?: string | string[];
   quote?: string;
+  // Added 2026-05-01 with the deterministic PDF/brand/NOAA layer:
+  severity?: "critical" | "medium" | "low";
+  field?: string;
+  detail?: string;
+  cover_excerpt?: string;
+  noaa_event_count?: number;
+  check?: string;
 }
 
 export interface QAAuditResult {
@@ -148,4 +155,13 @@ export interface QAAuditResult {
   ground_truth?: Record<string, unknown>;
   audited_at?: string;
   audit_error?: string;
+  // Telemetry: per-layer flag counts (added 2026-05-01 with combined audit)
+  audit_layers?: {
+    prose_critical: number;
+    prose_medium: number;
+    prose_low: number;
+    pdf_critical: number;
+    pdf_medium: number;
+    pdf_low: number;
+  };
 }

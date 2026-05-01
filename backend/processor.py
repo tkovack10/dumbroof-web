@@ -27,7 +27,7 @@ from carrier_intelligence import suggest_arguments
 from analytics import predict_settlement, detect_price_deviations
 from xactimate_lookup import XactRegistry, _clean_desc
 from code_compliance import enrich_line_items_with_citations
-from qa_auditor import audit_forensic_prose
+from qa_auditor import audit_claim, audit_forensic_prose
 from brand_isolation import is_personal_domain, stage_usarm_fallback_logo
 
 # Xactimate registry cache: market_code → XactRegistry instance
@@ -6161,13 +6161,17 @@ async def process_claim(claim_id: str):
                 print(f"[CARRIER-ANALYST] Analysis failed (non-fatal): {e}")
 
         # 11b. QA Auditor — last line of defense before customer sees PDFs.
-        # Reviews the generated forensic prose against ground-truth claim data
-        # and flags any hallucinated address/date/carrier/UPPA violation.
-        # See ~/.claude/plans/proud-wiggling-hearth.md Phase 1.
+        # Combined audit: deterministic brand/PDF/NOAA checks (qa_pdf_checks.py)
+        # PLUS the LLM prose audit (qa_auditor.audit_forensic_prose). Driven by
+        # the 2026-05-01 brand-leak incident — the LLM prose audit alone could
+        # not see that the embedded LOGO IMAGE was wrong even when prose was
+        # internally consistent. See ~/.claude/plans/proud-wiggling-hearth.md
+        # Phase 1 for the original prose-audit design; PDF/brand layer added
+        # 2026-05-01.
         qa_audit_result: Optional[dict] = None
         try:
-            print("[QA] Running forensic prose audit...")
-            qa_audit_result = audit_forensic_prose(
+            print("[QA] Running combined audit (brand + PDF + NOAA + prose)...")
+            qa_audit_result = audit_claim(
                 config,
                 claim,
                 claude,

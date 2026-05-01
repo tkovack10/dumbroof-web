@@ -263,6 +263,96 @@ def audit_forensic_prose(
     return result
 
 
+def audit_claim(
+    config: dict,
+    claim: dict,
+    claude: anthropic.Anthropic,
+    call_claude_fn=None,
+) -> dict:
+    """Combined audit — deterministic PDF/brand/NOAA checks + LLM prose audit.
+
+    Runs the deterministic checks FIRST (fast, no API cost) and merges their
+    flags into the final result. The LLM prose audit is still the workhorse
+    for content hallucinations; the deterministic checks catch the things
+    the LLM can't see (logo image, PDF text contents, NOAA cross-reference).
+
+    Driven by 2026-05-01 brand-leak incident: six claims shipped with the
+    wrong logo because the LLM prose was internally consistent — only the
+    embedded LOGO IMAGE was wrong, and prose audit can't see logos.
+
+    Returns the same `qa_audit_flags` schema the rest of the pipeline expects.
+    """
+    from qa_pdf_checks import run_pdf_checks
+
+    pdf_result = run_pdf_checks(claim, config)
+    pdf_crit_count = len(pdf_result.get("critical", []))
+
+    # Short-circuit: if the deterministic PDF/brand check found a CRITICAL
+    # (wrong logo, missing owner brand, other-tenant leak), skip the LLM
+    # prose audit entirely. The claim will be blocked + reprocessed regardless
+    # of what prose audit finds, so spending an Anthropic call to grade the
+    # prose of a doc that's about to be regenerated is wasted spend. Returns
+    # a stub prose_result so the merge logic below stays uniform.
+    if pdf_crit_count:
+        prose_result = {
+            "critical": [],
+            "medium": [],
+            "low": [],
+            "summary": "Prose audit skipped — deterministic PDF/brand critical takes precedence.",
+            "ground_truth": None,
+            "audited_at": None,
+        }
+        print(f"[QA] Short-circuiting prose audit — {pdf_crit_count} PDF/brand critical found")
+    else:
+        prose_result = audit_forensic_prose(config, claim, claude, call_claude_fn=call_claude_fn)
+
+    # Merge flag arrays. Order: prose flags first (carries the LLM's narrative
+    # summary), then deterministic — keeps the human-readable audit summary
+    # focused on prose issues with brand/NOAA flags appended below.
+    merged_critical = list(prose_result.get("critical") or []) + pdf_result.get("critical", [])
+    merged_medium = list(prose_result.get("medium") or []) + pdf_result.get("medium", [])
+    merged_low = list(prose_result.get("low") or []) + pdf_result.get("low", [])
+
+    passed = len(merged_critical) == 0
+    summary = prose_result.get("summary", "") or ""
+    if pdf_crit_count:
+        # Make the PDF-side critical front and center in the summary so
+        # admins see it without having to expand the flags list.
+        kinds = sorted({f.get("issue", "?") for f in pdf_result["critical"]})
+        summary = f"BLOCKED ({pdf_crit_count} PDF/brand critical: {', '.join(kinds)}). " + summary
+
+    if passed:
+        recommendation = "ship"
+    elif pdf_crit_count >= 1:
+        # ANY PDF/brand critical means the document needs regeneration — the
+        # logo or company info is wrong, no admin override of "hold" makes sense.
+        recommendation = "reprocess"
+    elif len(merged_critical) >= 3:
+        recommendation = "reprocess"
+    else:
+        recommendation = "hold"
+
+    return {
+        "passed": passed,
+        "critical": merged_critical,
+        "medium": merged_medium,
+        "low": merged_low,
+        "recommendation": recommendation,
+        "summary": summary,
+        "ground_truth": prose_result.get("ground_truth"),
+        "audited_at": prose_result.get("audited_at") or datetime.utcnow().isoformat() + "Z",
+        # Telemetry: which checks ran, how many flags each contributed
+        "audit_layers": {
+            "prose_critical": len(prose_result.get("critical") or []),
+            "prose_medium": len(prose_result.get("medium") or []),
+            "prose_low": len(prose_result.get("low") or []),
+            "pdf_critical": pdf_crit_count,
+            "pdf_medium": len(pdf_result.get("medium", [])),
+            "pdf_low": len(pdf_result.get("low", [])),
+        },
+    }
+
+
 def format_audit_for_email(claim: dict, audit: dict) -> str:
     """Plain-text summary for the Tom alert email."""
     lines = [
