@@ -131,6 +131,106 @@ def _call_claude_with_retry(client, max_retries=6, _step_name="unknown", _metada
     if last_error:
         raise last_error
 
+
+def _query_noaa_storm_window(noaa_client, lat: float, lon: float, dol_str: str,
+                              address: str = "", days_each_side: int = 2):
+    """Run NOAA queries across DOL ± N days and merge into one storm window.
+
+    Single-day NOAA queries miss multi-day systems and DOL-misremember errors
+    (e.g., 711 Perry St: homeowner said April 3, actual hail was April 1 at 0.6mi).
+    This helper queries each day in the window, merges all events, and returns
+    a single combined NOAAStormData whose top-level magnitudes reflect the
+    closest qualifying impact across the whole window.
+    """
+    from datetime import timedelta
+    from noaa_weather.api import NOAAStormData, _parse_date
+
+    # Parse DOL using the canonical helper (handles whitespace + every format
+    # the rest of the module accepts). Falls back to single-day query on parse
+    # failure so we don't silently lose a NOAA enrichment opportunity.
+    try:
+        dol = _parse_date(dol_str).date()
+    except (ValueError, TypeError, AttributeError):
+        return noaa_client.query(lat, lon, dol_str, address=address)
+
+    days = [dol + timedelta(days=d) for d in range(-days_each_side, days_each_side + 1)]
+    all_events = []
+    all_query_urls = []
+    episode_narratives: list[str] = []
+
+    for day in days:
+        try:
+            day_data = noaa_client.query(lat, lon, day.strftime("%Y-%m-%d"), address=address)
+        except Exception as e:
+            print(f"[NOAA] Window query failed for {day} (continuing): {e}")
+            continue
+        if day_data:
+            all_events.extend(day_data.events or [])
+            all_query_urls.extend(day_data.query_urls or [])
+            if day_data.episode_narrative:
+                episode_narratives.append(f"[{day.isoformat()}] {day_data.episode_narrative}")
+
+    # Dedup events by (date, lat, lon, magnitude, event_type) — SPC + Storm Events
+    # DB can both report the same event from different sources.
+    seen = set()
+    deduped = []
+    for e in all_events:
+        key = (
+            getattr(e, "date", None),
+            round(getattr(e, "latitude", 0) or 0, 3),
+            round(getattr(e, "longitude", 0) or 0, 3),
+            getattr(e, "magnitude", None),
+            getattr(e, "event_type", None),
+        )
+        if key in seen:
+            continue
+        seen.add(key)
+        deduped.append(e)
+
+    # Sort: closest hail first, then closest wind
+    def _sort_key(e):
+        is_hail = "Hail" in (getattr(e, "event_type", "") or "")
+        return (0 if is_hail else 1, getattr(e, "distance_miles", 999) or 999)
+    deduped.sort(key=_sort_key)
+
+    max_hail = max(
+        (float(getattr(e, "magnitude", 0) or 0) for e in deduped if "Hail" in (e.event_type or "")),
+        default=0.0,
+    )
+    max_wind = max(
+        (float(getattr(e, "magnitude", 0) or 0) for e in deduped if "Wind" in (e.event_type or "")),
+        default=0.0,
+    )
+    closest_hail_dist = min(
+        (e.distance_miles for e in deduped if "Hail" in (e.event_type or "")),
+        default=0.0,
+    )
+
+    combined = NOAAStormData(
+        property_address=address,
+        property_coords=(lat, lon),
+        date_of_loss=dol.isoformat(),
+        events=deduped,
+        event_count=len(deduped),
+        max_hail_inches=max_hail,
+        max_wind_mph=max_wind,
+        max_hail_distance_miles=closest_hail_dist,
+        # Mirror the NOAAClient's actual search radius so PDF copy ("within X mi")
+        # matches what was actually applied. Reading via getattr to stay safe if
+        # the client subclasses or hides the attribute.
+        search_radius_miles=round(getattr(noaa_client, "search_radius_miles", 25.0), 1),
+        episode_narrative=(
+            "Multi-day storm window scan: " + " | ".join(episode_narratives)
+            if episode_narratives else f"Searched {dol.isoformat()} ± {days_each_side} days for storm events near property."
+        ),
+        query_urls=all_query_urls,
+    )
+    print(f"[NOAA] Window scan ({dol.isoformat()} ± {days_each_side}d): "
+          f"{len(deduped)} events, max_hail={max_hail}\" @ {closest_hail_dist:.1f}mi, "
+          f"max_wind={max_wind}mph")
+    return combined
+
+
 # ===================================================================
 # CLIENTS
 # ===================================================================
@@ -5430,8 +5530,26 @@ async def process_claim(claim_id: str):
             if address_str and storm_date:
                 geo = geocode_address(address_str)
                 if geo:
-                    noaa_client = NOAAClient()
-                    storm_data = noaa_client.query(geo.latitude, geo.longitude, storm_date, address=address_str)
+                    # 25mi primary-impact radius (Tom's 2026-05-01 spec). Default
+                    # 0.05° (≈3.5mi) was silently missing storms for any address
+                    # more than walking distance from the nearest SPC report. 25mi
+                    # matches typical storm-cell footprint and captures hail damage
+                    # from storms that "tracked through the area" without dropping
+                    # hail directly on the property. SWDI cap stays at 50mi inside
+                    # the fetcher for storm-context events (used as supporting
+                    # narrative); the threshold analyzer only qualifies events ≤25mi.
+                    noaa_client = NOAAClient(search_radius_deg=25.0 / 69.0)  # ~0.362°
+                    # Search ±2 days around the homeowner-reported DOL. Multi-day storm
+                    # systems are common (Apr 1-5 2026 outbreak hit NW Ohio for 5 days),
+                    # and homeowners frequently misremember the exact storm date by 1-2
+                    # days. Single-day query at default radius silently misses these
+                    # (711 Perry St 2026-05-01: April 3 reported, actual hail April 1
+                    # at 0.6mi). Pick the day with the strongest impact (closest hail
+                    # or highest wind) to populate the canonical storm event.
+                    storm_data = _query_noaa_storm_window(
+                        noaa_client, geo.latitude, geo.longitude, storm_date,
+                        address=address_str, days_each_side=2,
+                    )
                     if storm_data and storm_data.event_count > 0:
                         analyzer = ThresholdAnalyzer()
                         analysis = analyzer.analyze(config, storm_data)

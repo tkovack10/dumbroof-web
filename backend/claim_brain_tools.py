@@ -1634,7 +1634,12 @@ def _handle_get_noaa_weather(claim_data: dict, tool_input: dict) -> dict:
 
     try:
         from noaa_weather.api import NOAAClient
-        client = NOAAClient()
+        # Pin to the historical 0.05° (~3.5mi) radius. processor.py widened the
+        # default to 0.362° (~25mi) for the forensic-report enrichment path, but
+        # Richard's `get_storm_data` tool callers (homeowner Q&A, scope chats)
+        # expect the tight property-centric view they had before. Bump explicitly
+        # in the tool description if Tom decides to widen this later.
+        client = NOAAClient(search_radius_deg=0.05)
         data = client.query(
             float(lat),
             float(lon),

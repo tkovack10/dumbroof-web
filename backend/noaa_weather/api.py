@@ -198,10 +198,11 @@ def _lookup_county_fips(lat: float, lon: float) -> tuple:
 
 
 class NOAAClient:
-    """Query NOAA Storm Events Database + SPC for storm event data."""
+    """Query NOAA Storm Events Database + SPC + SWDI for storm event data."""
 
     STORM_EVENTS_BASE = "https://www.ncei.noaa.gov/stormevents"
     SPC_BASE = "https://www.spc.noaa.gov/climo/reports"
+    SWDI_BASE = "https://www.ncei.noaa.gov/swdiws"
 
     def __init__(self, search_radius_deg: float = 0.05):
         """
@@ -245,7 +246,26 @@ class NOAAClient:
             print("[NOAA] Storm Events DB returned nothing — trying SPC daily")
             spc_events = self._query_spc_daily(lat, lon, dol, storm_data)
 
-        all_events = storm_events + spc_events
+        # 3. If neither primary source produced an event WITHIN the configured
+        # radius, fall back to SWDI NEXRAD radar — picks up hail signatures NWS
+        # spotters never saw. Critical for rural properties and recent storms
+        # (e.g. 711 Perry St, Defiance OH, April 2026: SPC had 0 reports within
+        # 60mi but NEXRAD detected 27 qualifying returns within 25mi). NEXRAD
+        # has more false-positives than spotter reports, so we filter to
+        # MAXSIZE >= 0.5" and PROB >= 50%. Gate on radius (not list emptiness)
+        # so a single far-away SPC junk hit can't suppress legitimate near-property
+        # NEXRAD evidence.
+        nexrad_events = []
+        within_radius = [
+            e for e in (storm_events + spc_events)
+            if e.distance_miles <= self.search_radius_miles
+        ]
+        if not within_radius:
+            print(f"[NOAA] No events within {self.search_radius_miles:.1f}mi from "
+                  f"primary sources — trying SWDI NEXRAD radar")
+            nexrad_events = self._query_swdi_nx3hail(lat, lon, dol, storm_data)
+
+        all_events = storm_events + spc_events + nexrad_events
 
         # Keep ALL county-level events (surrounding towns show storm significance)
         # but sort by distance so nearest events are first
@@ -408,6 +428,76 @@ class NOAAClient:
             print(f"[NOAA] Storm Events DB error: {e}")
             storm_data.query_urls[-1] += f" (error: {e})"
         return all_events
+
+    def _query_swdi_nx3hail(self, lat: float, lon: float, dol: datetime,
+                              storm_data: NOAAStormData) -> List[NOAAStormEvent]:
+        """Query SWDI NEXRAD Level-3 Hail signatures.
+
+        Returns ALL US hail signatures for the day; we distance-filter after
+        fetching. Useful when SPC and Storm Events DB return empty (rural
+        properties, very recent storms). NEXRAD has higher false-positive
+        rate than spotter reports — we filter to MAXSIZE>=0.5" and PROB>=50%.
+        """
+        # SWDI uses YYYYMMDD format
+        start = dol.strftime("%Y%m%d")
+        end = (dol + timedelta(days=1)).strftime("%Y%m%d")
+        url = f"{self.SWDI_BASE}/csv/nx3hail/{start}:{end}"
+        storm_data.query_urls.append(url)
+        events = []
+
+        try:
+            content = _fetch_url(url)
+            reader = csv.DictReader(io.StringIO(content))
+            for row in reader:
+                try:
+                    evt_lat = float(row.get("LAT") or 0)
+                    evt_lon = float(row.get("LON") or 0)
+                    if evt_lat == 0 and evt_lon == 0:
+                        continue
+                    dist = _haversine_miles(lat, lon, evt_lat, evt_lon)
+                    # Hard-cap at 50mi — SWDI returns nationwide
+                    if dist > 50.0:
+                        continue
+                    max_size = float(row.get("MAXSIZE") or 0)
+                    if max_size < 0.5:  # Filter trash returns
+                        continue
+                    prob_str = (row.get("PROB") or "0").strip()
+                    try:
+                        prob = float(prob_str)
+                    except ValueError:
+                        prob = 0
+                    if prob < 50:  # SWDI's own quality floor
+                        continue
+
+                    severity = (row.get("SEVPROB") or "").strip()
+                    ztime = (row.get("ZTIME") or "").strip()
+                    evt_date = ztime[:10] if ztime else dol.strftime("%Y-%m-%d")
+                    evt_time = ztime[11:19] if len(ztime) > 11 else ""
+                    detail_parts = [f"Prob: {prob}%"]
+                    if severity:
+                        detail_parts.append(f"Severe Prob: {severity}%")
+                    wsr_id = (row.get("WSR_ID") or "").strip()
+
+                    events.append(NOAAStormEvent(
+                        source="SWDI_NX3HAIL",
+                        event_type="Hail",
+                        date=evt_date,
+                        time_utc=evt_time,
+                        latitude=evt_lat,
+                        longitude=evt_lon,
+                        distance_miles=dist,
+                        magnitude=max_size,
+                        magnitude_type="hail_inches",
+                        narrative=f"NEXRAD radar hail signature — {', '.join(detail_parts)}",
+                        source_detail=f"NEXRAD {wsr_id}".strip(),
+                        noaa_url=url,
+                    ))
+                except (KeyError, ValueError, TypeError):
+                    continue
+        except Exception as e:
+            storm_data.query_urls[-1] += f" (error: {e})"
+        print(f"[NOAA] SWDI NEXRAD: {len(events)} hail signatures within 50mi (MAXSIZE>=0.5\", PROB>=50%)")
+        return events
 
     def _query_spc_daily(self, lat: float, lon: float, dol: datetime,
                          storm_data: NOAAStormData) -> List[NOAAStormEvent]:
