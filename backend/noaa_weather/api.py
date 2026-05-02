@@ -246,24 +246,26 @@ class NOAAClient:
             print("[NOAA] Storm Events DB returned nothing — trying SPC daily")
             spc_events = self._query_spc_daily(lat, lon, dol, storm_data)
 
-        # 3. If neither primary source produced an event WITHIN the configured
-        # radius, fall back to SWDI NEXRAD radar — picks up hail signatures NWS
-        # spotters never saw. Critical for rural properties and recent storms
-        # (e.g. 711 Perry St, Defiance OH, April 2026: SPC had 0 reports within
-        # 60mi but NEXRAD detected 27 qualifying returns within 25mi). NEXRAD
-        # has more false-positives than spotter reports, so we filter to
-        # MAXSIZE >= 0.5" and PROB >= 50%. Gate on radius (not list emptiness)
-        # so a single far-away SPC junk hit can't suppress legitimate near-property
-        # NEXRAD evidence.
-        nexrad_events = []
-        within_radius = [
-            e for e in (storm_events + spc_events)
-            if e.distance_miles <= self.search_radius_miles
-        ]
-        if not within_radius:
-            print(f"[NOAA] No events within {self.search_radius_miles:.1f}mi from "
-                  f"primary sources — trying SWDI NEXRAD radar")
-            nexrad_events = self._query_swdi_nx3hail(lat, lon, dol, storm_data)
+        # 3. ALWAYS query SWDI NEXRAD as a supplementary source — not just a
+        # fallback. Storm Events DB is county-scoped (limited spotter network)
+        # and SPC reports are often sparse. NEXRAD radar sees the actual storm
+        # cells across the entire region.
+        #
+        # Real example (Puffin Pl, Carmel IN, May 16-17 2025): Hamilton County
+        # Storm Events DB had ONE hail event (0.75" at 0.33mi). Skipping SWDI
+        # in that case meant we MISSED 65 NEXRAD hail signatures within 25mi
+        # including 1.5" hits at 16mi — flipping the claim from "moderate" to
+        # "exceeded threshold by 1.5x". The original gate was too restrictive:
+        # presence of ONE in-radius spotter report does not mean we have full
+        # coverage.
+        #
+        # NEXRAD has more false-positives than spotter reports, so we filter
+        # to MAXSIZE >= 0.5" and PROB >= 50% (SWDI's own confidence floor).
+        # Threshold analyzer downstream picks the LARGEST event within radius,
+        # not the closest, so radar evidence wins when it identifies bigger
+        # hail than the nearest spotter report.
+        print(f"[NOAA] Always-on SWDI NEXRAD scan (supplements Storm Events DB + SPC)")
+        nexrad_events = self._query_swdi_nx3hail(lat, lon, dol, storm_data)
 
         all_events = storm_events + spc_events + nexrad_events
 
