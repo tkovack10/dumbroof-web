@@ -117,12 +117,37 @@ def extract_coords_from_config(config: dict) -> Optional[Tuple[float, float]]:
 
 
 def build_address_from_config(config: dict) -> str:
-    """Build a geocodable address string from claim config."""
-    prop = config.get("property", {})
-    parts = [
-        prop.get("address", ""),
-        prop.get("city", ""),
-        prop.get("state", ""),
-        prop.get("zip", ""),
-    ]
+    """Build a geocodable address string from claim config.
+
+    The canonical `property.address` from carrier extraction usually already
+    contains city/state/zip ("711 Perry St, Defiance, OH 43512, USA"). Naively
+    appending property.{city,state,zip} produced malformed strings like
+    "Puffin Pl, Carmel, IN 46033, USA, Indiana, IN, 46033" that Nominatim
+    rejects, silently disabling NOAA enrichment.
+
+    Strategy: if `address` already looks complete (≥2 commas + contains the
+    state code), use it alone. Otherwise stitch parts together for legacy
+    configs where address is just street.
+    """
+    prop = config.get("property", {}) or {}
+    addr = (prop.get("address") or "").strip()
+    state = (prop.get("state") or "").strip().upper()
+    zip_code = (prop.get("zip") or "").strip()
+
+    # If address already has at least 2 commas, treat as complete. The most
+    # common malformed case (city='Indiana' instead of 'Carmel') would
+    # otherwise pollute the geocode input with a duplicate/wrong city token.
+    if addr.count(",") >= 2:
+        # Defensive: append zip if address doesn't end with a 5-digit zip — some
+        # extractions truncate. Skip if state token isn't even in the string
+        # (extreme edge case; trust extraction).
+        import re as _re
+        has_zip = bool(_re.search(r"\b\d{5}\b", addr))
+        if not has_zip and zip_code:
+            return f"{addr}, {zip_code}"
+        return addr
+
+    # Legacy / sparse config: address is just street → assemble normally
+    city = (prop.get("city") or "").strip()
+    parts = [addr, city, state, zip_code]
     return ", ".join(p for p in parts if p)
