@@ -331,12 +331,13 @@ function IssueRow({
 
   const save = async () => {
     setError(null);
-    if (!value.trim()) {
+    const strValue = Array.isArray(value) ? value.join("\n") : value;
+    if (!strValue.trim()) {
       setError("Value required");
       return;
     }
     setSaving(true);
-    const body = buildRegenBody(kind, value.trim());
+    const body = buildRegenBody(kind, strValue.trim());
     try {
       const res = await fetch(`${BACKEND}/api/regen/${claimId}`, {
         method: "POST",
