@@ -4519,8 +4519,13 @@ def _merge_measurement_extractions(extractions: list[dict]) -> dict:
 # MAIN PROCESSING PIPELINE
 # ===================================================================
 
-async def process_claim(claim_id: str):
-    """Full claim processing pipeline."""
+async def process_claim(claim_id: str, refresh_prices: bool = False):
+    """Full claim processing pipeline.
+
+    refresh_prices: when True, build_xactimate_estimate overwrites every
+    line_item.unit_price with current market data instead of preserving
+    contractor-curated values. Set by /api/reprocess?refresh_prices=true.
+    """
     global _TELEMETRY_SB, _TELEMETRY_CLAIM_ID
     sb = get_supabase_client()
     claude = get_anthropic_client()
@@ -6119,6 +6124,11 @@ async def process_claim(claim_id: str):
                 config["carrier"]["carrier_line_items"] = _scrub_codes_in_scope_rows(_rows, _claim_state)
 
         print(f"[PROCESS] Generating PDFs...")
+        # Threaded from /api/reprocess?refresh_prices=true — forces build_xactimate_estimate
+        # to overwrite every line_item.unit_price from current market data.
+        if refresh_prices:
+            config["_refresh_prices"] = True
+            print(f"[PROCESS] refresh_prices=True — line_item prices will overlay from market")
         pdfs = generate_pdfs(config, work_dir)
 
         # Forensic-only: keep only the forensic causation report (01_*)

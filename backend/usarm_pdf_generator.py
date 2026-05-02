@@ -2507,10 +2507,125 @@ def canonical_sort_key(item_name):
 # DOCUMENT 2: XACTIMATE-STYLE ESTIMATE
 # ===================================================================
 
+def _resolve_and_overlay_prices(config):
+    """Wire claim_config → market-specific Xactimate prices via XactRegistry.
+
+    Resolution order:
+      1. config["financials"]["price_list"] if present (e.g., "PAPH8X_MAR26").
+      2. XactRegistry.resolve_market(state, zip, city) using property fields.
+      3. Fail-fast if neither — DO NOT silently default to NY.
+
+    Mutation policy on config["line_items"]:
+      - If unit_price is missing/null/0: fill from registry (description lookup).
+      - If unit_price is a positive number: leave alone (curated value preserved).
+      - If config["_refresh_prices"] is True: overwrite all unit_prices regardless.
+    """
+    from xactimate_lookup import XactRegistry, DEFAULT_MARKETS, _get_all_markets
+
+    fin = config.get("financials", {}) or {}
+    prop = config.get("property", {}) or {}
+    market_code = fin.get("price_list")
+    available_markets = _get_all_markets().get("markets", {})
+
+    def _upgrade_or_fallback(stale_code, prop_dict):
+        if stale_code and stale_code in available_markets:
+            return stale_code, "exact"
+        if stale_code and len(stale_code) >= 6:
+            prefix = stale_code[:6]
+            candidates = sorted(c for c in available_markets if c.startswith(prefix))
+            if candidates:
+                return candidates[-1], f"upgraded from {stale_code}"
+        state = (prop_dict.get("state") or "").upper().strip()
+        if state and state in DEFAULT_MARKETS:
+            return DEFAULT_MARKETS[state], f"state-default for {state}"
+        return None, "unresolved"
+
+    if not market_code:
+        state = (prop.get("state") or "").upper().strip()
+        if not state:
+            raise ValueError(
+                "Cannot resolve Xactimate market: claim_config has no "
+                "financials.price_list and no property.state."
+            )
+        market_code = XactRegistry.resolve_market(
+            state=state,
+            zip_code=prop.get("zip"),
+            city=prop.get("city"),
+        )
+        print(f"  [pricing] derived market {market_code} from state={state}/{prop.get('city')}")
+
+    if market_code not in available_markets:
+        upgraded, how = _upgrade_or_fallback(market_code, prop)
+        if not upgraded:
+            raise ValueError(
+                f"Cannot resolve Xactimate market: '{market_code}' not in all-markets.json "
+                f"and no fallback available."
+            )
+        print(f"  [pricing] {market_code} not in all-markets.json — using {upgraded} ({how})")
+        market_code = upgraded
+
+    reg = XactRegistry()
+    n_priced = reg.load_market_prices(market_code=market_code)
+    print(f"  [pricing] market={market_code} ({reg._market_name}), overlaid {n_priced} registry items")
+
+    refresh_all = bool(config.get("_refresh_prices"))
+    line_items = config.get("line_items", []) or []
+    filled = refreshed = skipped = 0
+    missed = []
+
+    for li in line_items:
+        existing = li.get("unit_price")
+        has_curated = isinstance(existing, (int, float)) and existing > 0
+        if has_curated and not refresh_all:
+            skipped += 1
+            continue
+
+        desc = li.get("description") or ""
+        action = li.get("action")
+        looked_up = reg.lookup_price(desc, action=action)
+        if looked_up and looked_up.get("unit_price"):
+            new_price = looked_up["unit_price"]
+            if has_curated:
+                refreshed += 1
+            else:
+                filled += 1
+            li["unit_price"] = new_price
+            for k in ("xact_code", "unit", "category", "trade", "irc_code"):
+                if not li.get(k) and looked_up.get(k):
+                    li[k] = looked_up[k]
+        else:
+            missed.append(desc[:60])
+
+    print(f"  [pricing] line_items: filled={filled} refreshed={refreshed} kept={skipped} missed={len(missed)}")
+    if missed:
+        for m in missed[:5]:
+            print(f"    miss: {m}")
+        if len(missed) > 5:
+            print(f"    ...and {len(missed)-5} more")
+
+    return {
+        "market_code": market_code,
+        "market_name": reg._market_name,
+        "overlaid": n_priced,
+        "filled": filled,
+        "refreshed": refreshed,
+        "kept": skipped,
+        "missed": len(missed),
+    }
+
+
 def build_xactimate_estimate(config):
     """Build Xactimate-style line-item estimate with @page margin:0 fix."""
     lang = get_language(config)
     print(f"Building X Style Build Scope... [role: {lang['role']}]")
+
+    # Resolve market and overlay prices BEFORE rendering.
+    # If neither price_list nor state is set, log + continue with config-baked prices.
+    try:
+        _resolve_and_overlay_prices(config)
+    except ValueError as e:
+        print(f"  [pricing] WARNING: {e}")
+        print(f"  [pricing] continuing with config-baked prices (legacy mode)")
 
     logo_b64 = get_logo_b64(config)
     prop = config["property"]

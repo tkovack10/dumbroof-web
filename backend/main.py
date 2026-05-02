@@ -159,7 +159,7 @@ async def debug_profile(user_id: str):
 
 
 @app.post("/api/reprocess/{claim_id}")
-async def reprocess_claim(claim_id: str, background_tasks: BackgroundTasks):
+async def reprocess_claim(claim_id: str, background_tasks: BackgroundTasks, refresh_prices: bool = False):
     """Re-process a claim after additional documents are uploaded.
 
     Clears cached_photo_analysis so the photo narrative is regenerated
@@ -172,6 +172,12 @@ async def reprocess_claim(claim_id: str, background_tasks: BackgroundTasks):
     resend, leaving the user with stale/wrong-branded docs — which is
     exactly how the brand-leak fix on claim c875b3d8 had to be re-mailed
     by hand on 2026-04-29).
+
+    Query params:
+      refresh_prices=true — overwrite all line_item.unit_price values from the
+        current Xactimate market data. Default off so contractor-curated prices
+        survive reprocess. Use after a market price update or to fix a claim
+        that was generated before market-aware pricing was wired in.
     """
     sb = get_supabase_client()
     result = sb.table("claims").select("id, status").eq("id", claim_id).single().execute()
@@ -182,8 +188,8 @@ async def reprocess_claim(claim_id: str, background_tasks: BackgroundTasks):
         "cached_photo_analysis": None,
         "completion_email_sent_at": None,
     }).eq("id", claim_id).execute()
-    background_tasks.add_task(run_processing, claim_id)
-    return {"status": "reprocessing", "claim_id": claim_id}
+    background_tasks.add_task(run_processing, claim_id, refresh_prices=refresh_prices)
+    return {"status": "reprocessing", "claim_id": claim_id, "refresh_prices": refresh_prices}
 
 
 @app.post("/api/regen/{claim_id}")
@@ -283,10 +289,15 @@ async def trigger_processing(claim_id: str, background_tasks: BackgroundTasks):
     return {"status": "processing", "claim_id": claim_id}
 
 
-async def run_processing(claim_id: str):
-    """Run claim processing in background."""
+async def run_processing(claim_id: str, refresh_prices: bool = False):
+    """Run claim processing in background.
+
+    refresh_prices: if True, overwrite all line_item.unit_price values from current
+    Xactimate market data instead of preserving curated values. Default False so
+    normal reprocesses don't blow away contractor-edited prices.
+    """
     try:
-        await process_claim(claim_id)
+        await process_claim(claim_id, refresh_prices=refresh_prices)
     except Exception as e:
         import traceback, sys
         print(f"[ERROR] Failed to process claim {claim_id}: {e}", flush=True)

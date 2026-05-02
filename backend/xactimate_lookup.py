@@ -246,10 +246,66 @@ _MATERIAL_KEYWORDS = frozenset(
     {"slate", "cedar", "tile", "copper", "aluminum", "vinyl", "shake", "wood", "metal"}
 )
 
+# French → internal-code patterns (Quebec Xactimate Desktop exports — TX, MN, 5×MI markets)
+# Mirrors tools/import-pdf-pricelists.py:31-95 in the Operations repo.
+# Each tuple: (compiled French regex, list of internal codes that share this price).
+_FR_PATTERNS = [
+    (re.compile(r"enlever lamin.*bardeaux.*asphalte.*sans feutre", re.I), ["RFG SHTG"]),
+    (re.compile(r"^lamin.*bardeaux.*asphalte.*sans feutre", re.I),        ["RFG LAMI"]),
+    (re.compile(r"e&r ar.tier.*fa.ti.re.*profil standard.*bardeaux", re.I), ["RFG RDGC"]),
+    (re.compile(r"rang de d.part.*universal", re.I),                        ["RFG STRT"]),
+    (re.compile(r"papier de toiture.*30 lb", re.I),                         ["RFG FELT30"]),
+    (re.compile(r"barri.re de glace et l.eau$", re.I),                      ["RFG I&W"]),
+    (re.compile(r"^e&r rebord$", re.I),                                     ["RFG DRPE", "RFG DRIP"]),
+    (re.compile(r"solin mural.*escalier", re.I),                            ["RFG STPF_R", "RFG STPF"]),
+    (re.compile(r"e&r solin.*l.ve.tubes", re.I),                            ["RFG JKFL"]),
+    (re.compile(r"e&r solin de chemin.e.*moyen mod.le.*32.*36", re.I),      ["RFG CHFL"]),
+]
+
+# High-grade variants that share the standard regex but route to different prices
+_FR_DISQUALIFIERS = re.compile(
+    r"qualit.\s+sup.rieure|qualit.\s+premium|haute\s+qualit.|qualit.\s+haute",
+    re.I,
+)
+
+
+def _match_french_codes(raw_desc):
+    """Return list of internal codes matching a French allItems description, or [] if none.
+
+    Skips premium/high-grade variants — those map to registry codes outside the
+    22-code pipeline (e.g., RFG 400S) and would falsely overwrite standard-grade prices.
+    """
+    if not raw_desc:
+        return []
+    if _FR_DISQUALIFIERS.search(raw_desc):
+        return []
+    for pat, codes in _FR_PATTERNS:
+        if pat.search(raw_desc):
+            return codes
+    return []
+
+
+_FR_MARKERS = re.compile(r"\b(enlever|bardeaux|asphalte|feutre|cheneau|rebord|solin|chemin.e|gouttière)\b", re.I)
+
+
+def _looks_french(raw_desc):
+    return bool(raw_desc and _FR_MARKERS.search(raw_desc))
+
+
+def _reset_all_markets_cache():
+    """Test helper: bust the module-level all-markets cache so tests get fresh state."""
+    global _all_markets_cache
+    _all_markets_cache = None
+
 
 @functools.lru_cache(maxsize=512)
 def _clean_desc(desc):
-    """Strip action prefixes, section headers, structure brackets, item numbers, qualifiers, and normalize."""
+    """Strip action prefixes, section headers, structure brackets, item numbers, qualifiers, and normalize.
+
+    Final pass collapses any remaining hyphen-around-token sequences ("A - B - C") into spaces
+    so allItems' "Remove 3 tab - 25 yr. - comp. shingle - w/out felt" matches registry's
+    "Remove 3 tab - 25 yr. comp. shingle - w/out felt" after both have action+qualifiers stripped.
+    """
     d = desc.lower().strip()
     d = _STRUCT_PREFIX_RE.sub("", d).strip()  # strip [Structure #N (...)]
     d = _SECTION_RE.sub("", d).strip()
@@ -258,6 +314,10 @@ def _clean_desc(desc):
     d = _QUALIFIER_RE.sub("", d).strip()
     d = re.sub(r'\s*\(revised[^)]*\)', '', d, flags=re.I).strip()
     d = re.sub(r'\s*\(pre-appraisal[^)]*\)', '', d, flags=re.I).strip()
+    # Neutralize hyphens between non-whitespace tokens (≥2 chars on each side) so "- 25 yr. -"
+    # runs collapse to plain spaces while leaving "3-tab" / "1/2" intact.
+    d = re.sub(r"(?<=\S{2})\s*[-–—]\s*(?=\S{2})", " ", d)
+    d = re.sub(r"\s+", " ", d).strip()
     return d
 
 
@@ -297,27 +357,57 @@ class XactRegistry:
         self.underpayment_patterns = data.get("carrier_underpayment_patterns", [])
 
         # Build indexes for O(1) lookup
-        self._by_code = {}  # (xact_code, action) → item
-        self._by_desc = {}  # cleaned description → item
-        self._by_desc_raw = {}  # raw description → item
+        self._by_code = {}         # (xact_code, action) → item
+        self._by_desc = {}         # cleaned description → item (last-write-wins)
+        self._by_desc_action = {}  # (cleaned description, action) → item — disambiguates R/I pairs
+        self._by_desc_raw = {}     # raw description → item
         for item in self.items:
             code = item.get("xact_code")
             if code:
                 self._by_code[(code, item["action"])] = item
             self._by_desc_raw[item["description"].lower()] = item
-            self._by_desc[_clean_desc(item["description"])] = item
+            cleaned = _clean_desc(item["description"])
+            self._by_desc[cleaned] = item
+            self._by_desc_action[(cleaned, item["action"])] = item
+
+        # Snapshot baseline prices so load_market_prices() can restore on market switch.
+        self._baseline_prices = {id(it): it.get("unit_price") for it in self.items}
+        self._market_code = self.default_market
+        self._market_name = self.market_name
 
     # ------------------------------------------------------------------
     # 0. Multi-Market Price Overlay
     # ------------------------------------------------------------------
 
+    def _restore_baseline_prices(self):
+        """Reset every registry item's unit_price to the value captured at __init__."""
+        for item in self.items:
+            baseline = self._baseline_prices.get(id(item))
+            if baseline is not None:
+                item["unit_price"] = baseline
+
+    @staticmethod
+    def _infer_action(raw_desc):
+        """Infer (remove|install|r&r) from the raw description prefix."""
+        if not raw_desc:
+            return "install"
+        s = raw_desc.lstrip().lower()
+        if s.startswith("r&r ") or s.startswith("r & r "):
+            return "r&r"
+        if s.startswith("remove ") or s.startswith("tear off ") or s.startswith("tear out ") or s.startswith("detach"):
+            return "remove"
+        return "install"
+
     def load_market_prices(self, all_markets_path=None, market_code=None):
         """Overlay prices from Alfonso's all-markets.json onto registry items.
 
-        Maps internal pipeline codes → (xact_code, action) → registry items,
-        then updates unit_price from the market-specific price.
+        Three-stage:
+          0. Restore baseline prices (so switching markets is deterministic).
+          1. 22-code pipeline overlay: internal code → (xact_code, action) → item.
+          2. Full-catalog allItems overlay: (cleaned_desc, inferred_action) → item.
+             French markets route through _match_french_codes() for direct internal-code lookup.
 
-        Returns count of prices updated.
+        Returns count of unique registry items priced.
         """
         all_data = _get_all_markets()
         if not all_data:
@@ -328,28 +418,73 @@ class XactRegistry:
             logger.info("Market code %s not found in all-markets.json", market_code)
             return 0
 
+        # Stage 0: baseline restore for deterministic market switching
+        self._restore_baseline_prices()
+
         market = markets[market_code]
         items_data = market.get("items", {})
-        updated = 0
+        priced_ids = set()
 
+        # Pass 1: 22-code pipeline overlay
         for internal_code, item_data in items_data.items():
             price = item_data.get("price")
             if price is None:
                 continue  # NEEDS_DESKTOP — skip null prices
-
             mapping = INTERNAL_TO_XACT.get(internal_code)
             if not mapping:
                 continue
-
             xact_code, action = mapping
             registry_item = self._by_code.get((xact_code, action))
             if registry_item:
                 registry_item["unit_price"] = price
-                updated += 1
+                priced_ids.add(id(registry_item))
+
+        # Pass 2: full-catalog allItems overlay
+        all_items = market.get("allItems", [])
+        fr_misses = 0
+        for ai in all_items:
+            price = ai.get("price")
+            raw_desc = ai.get("description")
+            if price is None or not raw_desc:
+                continue
+
+            # French markets: route through internal-code lookup
+            fr_codes = _match_french_codes(raw_desc)
+            if fr_codes:
+                for internal_code in fr_codes:
+                    mapping = INTERNAL_TO_XACT.get(internal_code)
+                    if not mapping:
+                        continue
+                    xact_code, reg_action = mapping
+                    registry_item = self._by_code.get((xact_code, reg_action))
+                    if registry_item:
+                        registry_item["unit_price"] = price
+                        priced_ids.add(id(registry_item))
+                continue
+
+            # English: action-aware description match
+            action = self._infer_action(raw_desc)
+            cleaned = _clean_desc(raw_desc)
+
+            registry_item = self._by_desc_action.get((cleaned, action))
+            if registry_item is None:
+                registry_item = self._by_desc.get(cleaned)
+            if registry_item is None and action == "install":
+                registry_item = self._by_desc_action.get((cleaned, "r&r"))
+
+            if registry_item:
+                registry_item["unit_price"] = price
+                priced_ids.add(id(registry_item))
+            elif _looks_french(raw_desc):
+                fr_misses += 1
+
+        if fr_misses:
+            logger.debug("Market %s: %d French allItems with no _FR_PATTERNS match",
+                        market_code, fr_misses)
 
         self._market_code = market_code
         self._market_name = market.get("name", market_code)
-        return updated
+        return len(priced_ids)
 
     @staticmethod
     def resolve_market(state, zip_code=None, city=None):
@@ -452,18 +587,30 @@ class XactRegistry:
     def lookup_price(self, description, action=None):
         """Fuzzy-match a description against the registry.
 
+        If `action` is None, infer from the description prefix ("Remove ", "R&R ").
+        This ensures "Remove Laminated comp. shingle rfg." doesn't fall back to
+        the Install variant via last-write-wins on _by_desc.
+
         Returns the best matching item dict or None.
         """
         desc_lower = description.lower().strip()
 
+        # Auto-infer action when caller didn't pass one — prevents R/I collision
+        # in callers that just hand us a description string.
+        if action is None:
+            action = self._infer_action(description)
+
         # Exact raw match
         if desc_lower in self._by_desc_raw:
             item = self._by_desc_raw[desc_lower]
-            if action is None or item["action"] == action:
+            if item["action"] == action:
                 return item
 
-        # Exact cleaned match
+        # Exact cleaned match — prefer (cleaned, action) over plain cleaned
         cleaned = _clean_desc(description)
+        item = self._by_desc_action.get((cleaned, action))
+        if item:
+            return item
         if cleaned in self._by_desc:
             item = self._by_desc[cleaned]
             if action is None or item["action"] == action:
