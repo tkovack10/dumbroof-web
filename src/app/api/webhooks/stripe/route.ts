@@ -4,7 +4,75 @@ import { getPlanByPriceId } from "@/lib/stripe-config";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { sendCapiEvent, CapiEventName } from "@/lib/meta-conversions-api";
 import { syncTeamSeats } from "@/lib/billing/sync-team-seats";
+import { getResend, EMAIL_FROM } from "@/lib/resend";
 import Stripe from "stripe";
+
+// Internal recipients for revenue-event alerts (every paid/failed invoice).
+// Not customer-facing — these are operations alerts so Tom + Kristen see every
+// dollar moving through the platform in real time.
+const REVENUE_ALERT_TO = ["tom@dumbroof.ai", "kristen@dumbroof.ai"];
+
+async function sendInvoicePaidAlert(invoice: Stripe.Invoice): Promise<void> {
+  try {
+    const total = (invoice.total || 0) / 100;
+    const customerName = invoice.customer_name || "Unknown customer";
+    const customerEmail = invoice.customer_email || "";
+    const periodStart = invoice.period_start
+      ? new Date(invoice.period_start * 1000).toISOString().slice(0, 10)
+      : "?";
+    const periodEnd = invoice.period_end
+      ? new Date(invoice.period_end * 1000).toISOString().slice(0, 10)
+      : "?";
+    const lines = (invoice.lines?.data || [])
+      .map((l) => `<li>$${((l.amount || 0) / 100).toFixed(2)} — ${l.description || "(no description)"}</li>`)
+      .join("");
+    const dashboardUrl = `https://dashboard.stripe.com/invoices/${invoice.id}`;
+
+    await getResend().emails.send({
+      from: EMAIL_FROM,
+      to: REVENUE_ALERT_TO,
+      subject: `💰 $${total.toFixed(2)} paid by ${customerName}`,
+      html: `
+        <h2>$${total.toFixed(2)} paid</h2>
+        <p><strong>${customerName}</strong>${customerEmail ? ` &lt;${customerEmail}&gt;` : ""}</p>
+        <p>Period: ${periodStart} → ${periodEnd}</p>
+        <p>Invoice: <a href="${dashboardUrl}">${invoice.id}</a></p>
+        <h3>Line items</h3>
+        <ul>${lines}</ul>
+      `,
+    });
+  } catch (e) {
+    console.error("[webhook] sendInvoicePaidAlert failed:", e);
+  }
+}
+
+async function sendInvoiceFailedAlert(invoice: Stripe.Invoice): Promise<void> {
+  try {
+    const total = (invoice.total || 0) / 100;
+    const customerName = invoice.customer_name || "Unknown customer";
+    const customerEmail = invoice.customer_email || "";
+    const attempts = invoice.attempt_count ?? 0;
+    const nextAttempt = invoice.next_payment_attempt
+      ? new Date(invoice.next_payment_attempt * 1000).toISOString()
+      : "no retry scheduled";
+    const dashboardUrl = `https://dashboard.stripe.com/invoices/${invoice.id}`;
+
+    await getResend().emails.send({
+      from: EMAIL_FROM,
+      to: REVENUE_ALERT_TO,
+      subject: `⚠️ Payment FAILED — $${total.toFixed(2)} from ${customerName}`,
+      html: `
+        <h2>Payment failed: $${total.toFixed(2)}</h2>
+        <p><strong>${customerName}</strong>${customerEmail ? ` &lt;${customerEmail}&gt;` : ""}</p>
+        <p>Attempt count: ${attempts}</p>
+        <p>Next retry: ${nextAttempt}</p>
+        <p>Invoice: <a href="${dashboardUrl}">${invoice.id}</a></p>
+      `,
+    });
+  } catch (e) {
+    console.error("[webhook] sendInvoiceFailedAlert failed:", e);
+  }
+}
 
 // Stripe webhooks need the raw request body for signature verification,
 // which only works reliably on the Node runtime.
@@ -260,6 +328,11 @@ export async function POST(req: NextRequest) {
       break;
     }
 
+    // invoice.paid covers ALL successful payments (subscription auto-charges
+    // AND manually-paid invoices). invoice.payment_succeeded fires alongside
+    // for subscription auto-charges. Handling both with the same logic and
+    // de-duping the email via Stripe's event idempotency keeps it simple.
+    case "invoice.paid":
     case "invoice.payment_succeeded": {
       try {
         const invoice = event.data.object as Stripe.Invoice;
@@ -282,8 +355,16 @@ export async function POST(req: NextRequest) {
           })
           .eq("stripe_customer_id", customerId)
           .eq("status", "past_due");
+
+        // Only send the alert once per invoice — invoice.paid and
+        // invoice.payment_succeeded both fire on subscription auto-charges.
+        // Send on invoice.paid (the canonical event); payment_succeeded
+        // is handled here only for the past_due-clearing side effect.
+        if (event.type === "invoice.paid") {
+          await sendInvoicePaidAlert(invoice);
+        }
       } catch (e) {
-        console.error("[webhook invoice.payment_succeeded] handler failed:", e);
+        console.error(`[webhook ${event.type}] handler failed:`, e);
       }
       break;
     }
@@ -302,6 +383,8 @@ export async function POST(req: NextRequest) {
             updated_at: new Date().toISOString(),
           })
           .eq("stripe_customer_id", customerId);
+
+        await sendInvoiceFailedAlert(invoice);
       } catch (e) {
         console.error("[webhook invoice.payment_failed] handler failed:", e);
       }
