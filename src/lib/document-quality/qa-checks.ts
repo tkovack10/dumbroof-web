@@ -1,4 +1,5 @@
 import type { CheckResult, Grade, ClaimQuality } from "./types";
+import { expectedPrice, marketExists, getMarketName } from "./market-prices";
 
 /**
  * QA check pipeline for the daily document quality cron.
@@ -47,6 +48,8 @@ export type ClaimRow = {
   approval_grade: string | null;
   error_message: string | null;
   last_processed_at: string;
+  /** Full claim_config JSONB blob — needed for price audit */
+  claim_config: unknown;
 };
 
 /** Helper: extract state code from a US address string. */
@@ -407,6 +410,157 @@ function checkDamageScore(claim: ClaimRow): CheckResult {
 }
 
 /* ----------------------------------------------------------------------------
+ * Price audit — verifies each line_item's unit_price matches the resolved
+ * Xactimate market for the claim's address. Detects:
+ *   - market_code missing (claim from a state we haven't onboarded)
+ *   - line_items priced from a different market (e.g. NY-baseline on TX claim)
+ *   - line_items with $0 unit_price (build_line_items couldn't find a match)
+ *   - R/I collision (Remove and Install of same item priced identically)
+ * ------------------------------------------------------------------------- */
+
+type LineItem = {
+  description?: string;
+  unit_price?: number;
+  qty?: number;
+  unit?: string;
+  action?: string | null;
+};
+
+function checkLineItemPrices(claim: ClaimRow): CheckResult {
+  const cfg = claim.claim_config;
+  if (!cfg || typeof cfg !== "object") {
+    return {
+      name: "price_audit",
+      passed: false,
+      severity: "warning",
+      message: "claim_config missing — cannot audit prices",
+    };
+  }
+
+  const cfgObj = cfg as Record<string, unknown>;
+  const fin = (cfgObj.financials as Record<string, unknown>) || {};
+  const rawLineItems = (cfgObj.line_items as unknown[]) || [];
+  const lineItems = rawLineItems as LineItem[];
+  const marketCode = (fin.market_code as string) || (fin.price_list as string) || null;
+
+  if (!marketCode) {
+    return {
+      name: "price_audit",
+      passed: false,
+      severity: "critical",
+      message: "no market_code on claim — every line_item priced from NY baseline (claim materially wrong)",
+    };
+  }
+  if (!marketExists(marketCode)) {
+    return {
+      name: "price_audit",
+      passed: false,
+      severity: "critical",
+      message: `market_code '${marketCode}' not in all-markets.json — falls back to NY baseline`,
+    };
+  }
+  if (lineItems.length === 0) {
+    return {
+      name: "price_audit",
+      passed: false,
+      severity: "warning",
+      message: "no line_items to audit",
+    };
+  }
+
+  let zeroCount = 0;
+  let mismatchCount = 0;
+  let matchedCount = 0;
+  let unmappedCount = 0;
+  const sampleMismatches: string[] = [];
+
+  // R/I collision detection: track (cleaned_desc → set of unit_prices)
+  const riGroups = new Map<string, Set<number>>();
+
+  for (const li of lineItems) {
+    const desc = (li.description || "").trim();
+    const price = Number(li.unit_price ?? 0);
+    if (!desc) continue;
+
+    if (price === 0) {
+      zeroCount++;
+      continue;
+    }
+
+    const action = (li.action as "remove" | "install" | "r&r" | null) || null;
+    const expected = expectedPrice(marketCode, desc, action);
+
+    if (expected == null) {
+      unmappedCount++;
+      continue;
+    }
+
+    // 5% tolerance — accepts O&P / sales tax / minor re-overlay drift
+    const deviation = Math.abs(price - expected) / Math.max(expected, 0.01);
+    if (deviation > 0.05) {
+      mismatchCount++;
+      if (sampleMismatches.length < 3) {
+        sampleMismatches.push(
+          `"${desc.slice(0, 38)}" $${price.toFixed(2)} vs market $${expected.toFixed(2)} (${(deviation * 100).toFixed(0)}% off)`,
+        );
+      }
+    } else {
+      matchedCount++;
+    }
+
+    // Group for R/I collision detection (post-strip-action key)
+    const stripped = desc.toLowerCase().replace(/^(r&r |remove |install )/i, "").trim();
+    if (!riGroups.has(stripped)) riGroups.set(stripped, new Set());
+    riGroups.get(stripped)!.add(price);
+  }
+
+  // Detect R/I collision — same stripped desc, same price across BOTH a "Remove ..." and a non-Remove
+  let riCollisions = 0;
+  for (const li of lineItems) {
+    const desc = (li.description || "").toLowerCase();
+    if (!desc.startsWith("remove ")) continue;
+    const stripped = desc.replace(/^remove /, "").trim();
+    const prices = riGroups.get(stripped);
+    const removePrice = Number(li.unit_price ?? 0);
+    if (prices && prices.size === 1 && prices.has(removePrice) && removePrice > 50) {
+      // Single shared price > $50 — Remove probably collapsed to Install
+      riCollisions++;
+    }
+  }
+
+  const total = lineItems.length;
+  const market = getMarketName(marketCode) || marketCode;
+
+  // Verdict
+  if (mismatchCount === 0 && zeroCount === 0 && riCollisions === 0) {
+    return {
+      name: "price_audit",
+      passed: true,
+      severity: "info",
+      message: `all ${matchedCount}/${total} priced items match ${market}${unmappedCount > 0 ? ` (${unmappedCount} unmapped)` : ""}`,
+    };
+  }
+
+  const issues: string[] = [];
+  if (mismatchCount >= 3) issues.push(`${mismatchCount} prices off-market`);
+  else if (mismatchCount > 0) issues.push(`${mismatchCount} prices drift >5% from ${market}`);
+  if (zeroCount > 0) issues.push(`${zeroCount} items at $0`);
+  if (riCollisions > 0) issues.push(`${riCollisions} R/I collisions (Remove == Install price)`);
+
+  const severity: "critical" | "warning" =
+    mismatchCount >= 3 || zeroCount >= 3 || riCollisions >= 2 ? "critical" : "warning";
+
+  const sampleStr = sampleMismatches.length > 0 ? ` — e.g. ${sampleMismatches.join("; ")}` : "";
+
+  return {
+    name: "price_audit",
+    passed: false,
+    severity,
+    message: `${issues.join(", ")}${sampleStr}`,
+  };
+}
+
+/* ----------------------------------------------------------------------------
  * Pipeline + grading
  * ------------------------------------------------------------------------- */
 
@@ -422,6 +576,7 @@ const ALL_CHECKS = [
   checkRoofSectionsBug,
   checkEstimateRequest,
   checkDamageScore,
+  checkLineItemPrices,
 ];
 
 /**

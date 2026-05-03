@@ -72,7 +72,7 @@ async function runDocumentQualityReview(): Promise<{
   const { data: claims, error: queryError } = await supabaseAdmin
     .from("claims")
     .select(
-      "id, slug, address, carrier, status, phase, contractor_rcv, current_carrier_rcv, original_carrier_rcv, report_mode, output_files, trade_count, o_and_p_enabled, tax_rate, weather_data, scope_comparison, roof_sections, estimate_request, measurement_files, scope_files, photo_files, damage_score, damage_grade, approval_score, approval_grade, error_message, last_processed_at"
+      "id, slug, address, carrier, status, phase, contractor_rcv, current_carrier_rcv, original_carrier_rcv, report_mode, output_files, trade_count, o_and_p_enabled, tax_rate, weather_data, scope_comparison, roof_sections, estimate_request, measurement_files, scope_files, photo_files, damage_score, damage_grade, approval_score, approval_grade, error_message, last_processed_at, claim_config"
     )
     .eq("status", "ready")
     .gte("last_processed_at", windowStart)
