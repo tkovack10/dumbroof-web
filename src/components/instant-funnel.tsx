@@ -286,13 +286,20 @@ export function InstantFunnel({
 // already cropped out at /tmp/dumbroof-wins → /public/wins/). Each card shows
 // the celebration banner + lifecycle panel as a single 1080x1761 portrait
 // image. Scrolls horizontally on mobile, wraps to a 3-up grid on desktop.
+// Ordered by dollar amount descending — leads with the strongest single-claim
+// recovery. Mix of percentage-driven wins (denial overturned, 7×) and
+// closed-and-paid claims (4/4 lifecycle phase) so the carousel feels varied
+// instead of "just big numbers."
 const RECENT_WINS = [
-  { src: "/wins/win5-buckingham.jpeg", amount: "+$137,562", pct: "7×", note: "Morrisville, PA" },
-  { src: "/wins/win3-bellfarm.jpeg", amount: "+$60,023", pct: "54%", note: "Saddle River, NJ" },
-  { src: "/wins/win1-greenway.jpeg", amount: "+$36,904", pct: "33%", note: "Yardley, PA" },
-  { src: "/wins/win6-deerrun.jpeg", amount: "+$40,685", pct: "denial overturned", note: "Binghamton, NY" },
-  { src: "/wins/win4-riverside.jpeg", amount: "+$21,565", pct: "75%", note: "Closed + paid" },
-  { src: "/wins/win2-alfred.jpeg", amount: "+$13,035", pct: "60%", note: "Binghamton, NY" },
+  { src: "/wins/win5-buckingham.jpeg", amount: "+$137,562", pct: "7× increase", note: "Morrisville, PA" },
+  { src: "/wins/win3-bellfarm.jpeg", amount: "+$60,023", pct: "54% increase", note: "Saddle River, NJ" },
+  { src: "/wins/win6-deerrun.jpeg", amount: "+$40,685", pct: "Denial overturned", note: "Binghamton, NY" },
+  { src: "/wins/win1-greenway.jpeg", amount: "+$36,904", pct: "33% increase", note: "Yardley, PA" },
+  { src: "/wins/win7-30k-77pct.jpeg", amount: "+$30,628", pct: "77% increase", note: "Closed + paid" },
+  { src: "/wins/win4-riverside.jpeg", amount: "+$21,565", pct: "75% increase", note: "Closed + paid" },
+  { src: "/wins/win8-19k-160pct.jpeg", amount: "+$19,850", pct: "160% increase", note: "Recently won" },
+  { src: "/wins/win9-19k-48pct-binghamton.jpeg", amount: "+$19,644", pct: "48% increase", note: "Binghamton, NY" },
+  { src: "/wins/win2-alfred.jpeg", amount: "+$13,035", pct: "60% increase", note: "Binghamton, NY" },
 ] as const;
 
 function RecentWinsStrip() {
