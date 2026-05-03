@@ -34,9 +34,15 @@ from brand_isolation import is_personal_domain, stage_usarm_fallback_logo
 _XACT_REGISTRIES = {}
 
 
-def _get_registry(state: str, city: str = None) -> XactRegistry:
-    """Get XactRegistry for a state/market, with multi-market price overlay."""
-    market = XactRegistry.resolve_market(state, city=city)
+def _get_registry(state: str, city: str = None, zip_code: str = "", market_code: str = "") -> XactRegistry:
+    """Get XactRegistry for a state/market, with multi-market price overlay.
+
+    market_code: pre-resolved market (e.g. "OHDT8X_APR26"). Skips re-resolution
+    when passed — used by process_claim to ensure registry uses the same market
+    as the rest of the pipeline (Dayton for Laura OH zip 45337, not Cleveland
+    state-default).
+    """
+    market = market_code or XactRegistry.resolve_market(state, zip_code=zip_code, city=city)
     if market not in _XACT_REGISTRIES:
         reg = XactRegistry()
         reg.load_market_prices(market_code=market)
@@ -2589,14 +2595,20 @@ def build_claim_config(
                                                   zip_code=_zip, city=_city, market_code=market_code)
 
     # Enrich line items with Xactimate codes, IRC citations, supplement arguments, AND correct prices
+    # Pass the resolved market_code so the registry overlay uses Dayton for zip 45337,
+    # not Cleveland (the OH state-default fallback).
     registry = None
     try:
-        registry = _get_registry(state, city=claim.get("address", "").split(",")[-2].strip() if "," in claim.get("address", "") else None)
+        registry = _get_registry(state, city=_city, zip_code=_zip, market_code=market_code)
         enriched_count = 0
         price_corrected = 0
         for li in line_items:
-            lookup_desc = _clean_desc(li.get("description", ""))
-            reg_item = registry.lookup_price(lookup_desc)
+            # Pass the RAW description so lookup_price can infer action ("Remove ..." → "remove").
+            # If we pre-cleaned, the action prefix was stripped and lookup_price would default
+            # to "install" — silently returning the Install variant for Remove items, which
+            # then poisoned the price override at the bottom of this loop.
+            raw_desc = li.get("description", "")
+            reg_item = registry.lookup_price(raw_desc)
             if reg_item:
                 # Validate trade compatibility before enriching (prevent siding-roofing cross-contamination)
                 reg_trade = (reg_item.get("trade") or "").lower()
@@ -2686,7 +2698,7 @@ def build_claim_config(
     if carrier_data and carrier_data.get("carrier_line_items"):
         try:
             if not registry:
-                registry = _get_registry(state, city=prop.get("city"))
+                registry = _get_registry(state, city=prop.get("city"), zip_code=prop.get("zip", ""), market_code=market_code)
 
             # Debug: verify measurements are populated before scope comparison
             _meas_vals = {k: v for k, v in scope_meas.items() if v}
