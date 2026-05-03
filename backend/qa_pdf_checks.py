@@ -457,12 +457,22 @@ def run_pdf_checks(claim: dict, config: dict) -> dict:
 
     Hoists the owner-profile lookup so check_brand_match and
     check_pdf_brand_text don't both fetch the same row.
+
+    USARM SHORT-CIRCUIT: If the owner is a USARM internal user (is_usarm=true),
+    skip the brand checks entirely. USARM claims rotate among team members
+    (Devon Allen, BR Scittarelli, KS Collon, etc.) — each has their own
+    company_profiles row but the canonical PDF brand is "USA Roof Masters".
+    The per-assignee mismatch is by design, not a brand leak. The is_usarm
+    forbidden-list exclusion in _build_forbidden_brands already protects
+    EXTERNAL claims from picking up USARM branding; we don't need a per-claim
+    brand audit on USARM's own internal pipeline.
     """
     all_flags: list[dict] = []
 
     # Pre-fetch owner profile once; pass into individual checks
     user_id = claim.get("user_id")
     owner_company_name: Optional[str] = None
+    is_usarm_owner = False
     if user_id:
         prof_rows = _supabase_get(
             f"/rest/v1/company_profiles?user_id=eq.{user_id}"
@@ -480,8 +490,27 @@ def run_pdf_checks(claim: dict, config: dict) -> dict:
             owner_profile = prof_rows[0] if prof_rows else None
             if owner_profile:
                 owner_company_name = (owner_profile.get("company_name") or "").strip()
+                is_usarm_owner = bool(owner_profile.get("is_usarm"))
     else:
         owner_profile = None
+
+    # Skip brand + PDF text checks for USARM internal claims (see docstring).
+    # NOAA cross-check still runs because it's storm-evidence about the
+    # claim address, not brand-isolation about the owner.
+    if is_usarm_owner:
+        try:
+            all_flags.extend(check_dol_noaa(claim, config))
+        except Exception as e:
+            all_flags.append({
+                "issue": "QA_CHECK_EXCEPTION", "severity": "low",
+                "check": "check_dol_noaa",
+                "detail": f"{type(e).__name__}: {str(e)[:200]}",
+            })
+        return {
+            "critical": [f for f in all_flags if f.get("severity") == "critical"],
+            "medium": [f for f in all_flags if f.get("severity") == "medium"],
+            "low": [f for f in all_flags if f.get("severity") == "low"],
+        }
 
     # Run brand_match using the pre-fetched profile
     try:

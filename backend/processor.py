@@ -4817,7 +4817,29 @@ async def process_claim(claim_id: str, refresh_prices: bool = False):
                 elif is_personal_domain(domain):
                     print(f"[PROCESS] Skipping domain-fallback for personal-domain user: {domain}", flush=True)
                 elif admin_profiles.data:
-                    for ap in admin_profiles.data:
+                    # Sort admin profiles by preference so the brand resolver
+                    # picks the canonical brand owner when multiple admins share
+                    # a domain. Three-tier priority:
+                    #   (1) USARM founder email (tkovack@usaroofmasters.com) wins
+                    #       absolute first when domain is usaroofmasters.com.
+                    #   (2) Profiles with non-empty company_name beat empty ones
+                    #       (kscollon@usaroofmasters.com had empty company_name
+                    #       and was being picked at random, defaulting to the
+                    #       "Your Roofing Company" placeholder on 22 claims).
+                    #   (3) Oldest profile (lowest created_at) wins ties — the
+                    #       original founder of any tenant tends to hold the
+                    #       canonical brand identity.
+                    def _admin_priority(ap):
+                        ap_email = (ap.get("email") or "").lower()
+                        is_tom = ap_email == "tkovack@usaroofmasters.com"
+                        has_brand = bool((ap.get("company_name") or "").strip())
+                        return (
+                            0 if is_tom else 1,
+                            0 if has_brand else 1,
+                            ap.get("created_at") or "",
+                        )
+                    sorted_admins = sorted(admin_profiles.data, key=_admin_priority)
+                    for ap in sorted_admins:
                         ap_email = (ap.get("email") or "").lower()
                         if "@" not in ap_email:
                             continue
@@ -4829,7 +4851,9 @@ async def process_claim(claim_id: str, refresh_prices: bool = False):
                             continue
                         if ap_email.endswith(f"@{domain}"):
                             company_profile = {**ap, "user_id": _uid}
-                            print(f"[PROCESS] Using domain-matched admin profile ({domain})", flush=True)
+                            print(f"[PROCESS] Using domain-matched admin profile "
+                                  f"({domain}, picked={ap_email}, "
+                                  f"company={(ap.get('company_name') or '<empty>')[:30]!r})", flush=True)
                             break
             except Exception as e:
                 print(f"[PROCESS] Domain admin lookup failed: {e}", flush=True)
