@@ -339,6 +339,82 @@ function RecentWinsStrip() {
       <p className="text-xs text-[var(--gray-dim)] mt-1">
         117 claims processed · $6.9M+ recovered for our customers
       </p>
+
+      <CustomerQuotes />
+    </section>
+  );
+}
+
+// Direct customer quotes — different psychological lever than the dollar
+// screenshots above. Quotes hit on time savings, denial overturns,
+// competitive win rate, and a credibility-building honest minor-flaws note
+// to defang the "AI sounds too good to be true" objection.
+const CUSTOMER_QUOTES = [
+  {
+    quote:
+      "We used to pay a supplement company 10% of approved supplements. This is better and cheaper.",
+    attribution: "Roofing owner — switched from a 10% supplement vendor",
+  },
+  {
+    quote:
+      "We had a claim that was denied. We sent the carrier the forensic report hoping for a reinspection. They contacted the homeowner the next day saying the roof is approved. They didn't even send someone out for a reinspection. Amazing.",
+    attribution: "Roofing contractor — denial overturned",
+  },
+  {
+    quote:
+      "We are in the Chicago suburbs and there's been some great hail. Tons of roofing companies here though. We've been giving our leads the forensic report while we're still on site after the inspection. All 7 homeowners we showed picked us over the other companies in the neighborhood. Standard operating procedure for our reps moving forward.",
+    attribution: "Roofing owner — Chicago suburbs",
+  },
+  {
+    quote:
+      "To be honest, I was skeptical of this and signed up just to see what it was. Our first DumbRoof claim just went from $18k to $27k. I'm impressed.",
+    attribution: "First-time user",
+  },
+  {
+    quote:
+      "I used to spend hours writing estimates, ordering code reports, writing supplement emails. It's really amazing the time I've saved using the DumbRoof supplement automations — not to mention two separate carriers have told me they're impressed with the reports we sent in.",
+    attribution: "Roofing contractor",
+  },
+  {
+    quote: "Impressive. Fast. Couple minor errors but it was easy to make edits.",
+    attribution: "Honest review",
+  },
+] as const;
+
+function CustomerQuotes() {
+  return (
+    <section className="mt-10">
+      <div className="mb-4">
+        <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--gray-muted)] mb-1">
+          What customers are saying
+        </p>
+        <h3 className="text-lg font-semibold text-[var(--white)]">
+          Real roofers. Real claims. Real results.
+        </h3>
+      </div>
+      <div className="space-y-3">
+        {CUSTOMER_QUOTES.map((q, i) => (
+          <figure
+            key={i}
+            className="rounded-2xl border border-[var(--border-glass)] bg-[var(--bg-glass)] p-4"
+          >
+            <svg
+              className="w-5 h-5 text-[var(--gray-dim)] mb-2"
+              fill="currentColor"
+              viewBox="0 0 24 24"
+              aria-hidden="true"
+            >
+              <path d="M9 7H6a3 3 0 00-3 3v2a3 3 0 003 3h1v3a1 1 0 001 1h2a1 1 0 001-1v-7a4 4 0 00-2-3.46V7zm10 0h-3a3 3 0 00-3 3v2a3 3 0 003 3h1v3a1 1 0 001 1h2a1 1 0 001-1v-7a4 4 0 00-2-3.46V7z" />
+            </svg>
+            <blockquote className="text-sm text-[var(--white)] leading-relaxed">
+              {q.quote}
+            </blockquote>
+            <figcaption className="mt-3 text-xs text-[var(--gray-muted)]">
+              — {q.attribution}
+            </figcaption>
+          </figure>
+        ))}
+      </div>
     </section>
   );
 }
