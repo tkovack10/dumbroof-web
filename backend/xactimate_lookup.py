@@ -296,6 +296,87 @@ def _reset_all_markets_cache():
     """Test helper: bust the module-level all-markets cache so tests get fresh state."""
     global _all_markets_cache
     _all_markets_cache = None
+    # Also drop cached market-price maps and city/zip caches so tests start fresh
+    get_market_prices.cache_clear()
+
+
+# INTERNAL_TO_XACT keys → English canonical descriptions used in registry baseline.
+# When a French description matches an internal code, we look up that code's canonical
+# English desc here so French markets index into the same (cleaned, action) keyspace.
+# R&R items are stored as action="r&r" (matches _infer_action output for English R&R).
+_FR_INTERNAL_TO_DESC = {
+    "RFG SHTG":   ("Remove Laminated - comp. shingle rfg. - w/out felt", "remove"),
+    "RFG LAMI":   ("Laminated - comp. shingle rfg. - w/out felt", "install"),
+    "RFG RDGC":   ("R&R Hip / Ridge cap - Standard profile - composition shingles", "r&r"),
+    "RFG STRT":   ("Asphalt starter - universal starter course", "install"),
+    "RFG FELT30": ("Roofing felt - 30 lb.", "install"),
+    "RFG I&W":    ("Ice & water barrier", "install"),
+    "RFG DRPE":   ("R&R Drip edge", "r&r"),  # French E&R Rebord covers both Remove+Install
+    "RFG DRIP":   ("R&R Drip edge", "r&r"),
+    "RFG STPF_R": ("R&R Step flashing", "r&r"),
+    "RFG STPF":   ("R&R Step flashing", "r&r"),
+    "RFG JKFL":   ("R&R Flashing - pipe jack", "r&r"),
+    "RFG CHFL":   ('R&R Chimney flashing - average (32" x 36")', "r&r"),
+    "SFG GUTW":   ("R&R Gutter / downspout - aluminum - up to 5\"", "r&r"),
+    "SFG DNSW":   ("R&R Gutter / downspout - aluminum - up to 5\"", "r&r"),
+}
+
+
+@functools.lru_cache(maxsize=32)
+def get_market_prices(market_code):
+    """Return per-market price lookup keyed by (cleaned_description, action).
+
+    SINGLE SOURCE OF TRUTH for line_item.unit_price across the platform.
+    Reads pricing/all-markets.json markets[market_code].allItems, infers action
+    from each raw description, and builds a dict for O(1) price lookup.
+
+    For French markets (TX/MN/5xMI Quebec exports) where descriptions are in
+    French, also indexes via _match_french_codes() so callers using English
+    canonical descriptions resolve to the same keyspace.
+
+    Returns {} if market_code is unknown or has no allItems.
+
+    Schema:
+        {
+          ("laminated comp. shingle rfg.", "install"): 294.73,
+          ("ice & water barrier", "install"): 2.32,
+          ...
+          # Plus action=None entries for callers that don't infer action
+          ("ice & water barrier", None): 2.32,
+        }
+    """
+    if not market_code:
+        return {}
+    am = _get_all_markets()
+    market = am.get("markets", {}).get(market_code, {})
+    all_items = market.get("allItems", []) or []
+    out = {}
+
+    for ai in all_items:
+        raw = ai.get("description", "") or ""
+        price = ai.get("price")
+        if not raw or price is None:
+            continue
+
+        # Path 1: English description path
+        english_action = XactRegistry._infer_action(raw)
+        cleaned = _clean_desc(raw)
+        out[(cleaned, english_action)] = price
+        out.setdefault((cleaned, None), price)
+
+        # Path 2: French description → resolve to English canonical via internal codes
+        fr_codes = _match_french_codes(raw)
+        for code in fr_codes:
+            mapping = _FR_INTERNAL_TO_DESC.get(code)
+            if not mapping:
+                continue
+            eng_desc, eng_action = mapping
+            eng_cleaned = _clean_desc(eng_desc)
+            # Don't overwrite an existing English match with French (English wins)
+            out.setdefault((eng_cleaned, eng_action), price)
+            out.setdefault((eng_cleaned, None), price)
+
+    return out
 
 
 @functools.lru_cache(maxsize=512)

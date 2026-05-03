@@ -400,51 +400,65 @@ _DESC_TO_PRICING_KEY = {
 from xactimate_lookup import XactRegistry as _XactRegistry
 
 
-def get_pricing_for_state(state: str, zip_code: str = "", city: str = "") -> dict:
-    """Get pricing from Alfonso's all-markets.json based on state/zip/city.
+def get_pricing_for_state(state: str, zip_code: str = "", city: str = "", market_code: str = "") -> dict:
+    """Get pricing for a claim location.
 
-    Resolves property location → best Xactimate market → 92 item prices.
-    Falls back to old per-state files for any keys not in Alfonso's data.
+    Single source of truth: pricing/all-markets.json[market_code].allItems.
+    Iterates _DESC_TO_PRICING_KEY (canonical_desc → short_key) and resolves each
+    description's price via xactimate_lookup.get_market_prices(market_code).
+
+    Args:
+      state/zip_code/city: used to resolve market_code if not provided.
+      market_code: pre-resolved Xactimate market (e.g. "OHDT8X_APR26"). If passed,
+        skips resolution. Threaded down from process_claim so we resolve once.
+
+    Returns dict[short_key, price] + _market_code, _market_name, _meta keys.
+    Falls back to per-state legacy JSONs (pricing/{state}.json) only if a
+    short_key has no match in the market — surfacing missing items.
     """
-    cache_key = f"{state}_{zip_code}_{city}".lower()
+    cache_key = f"{state}_{zip_code}_{city}_{market_code}".lower()
     if cache_key in _PRICING_CACHE:
         return _PRICING_CACHE[cache_key]
 
-    # Resolve to best market code
-    market_code = _XactRegistry.resolve_market(state, zip_code=zip_code, city=city)
+    # Resolve market_code if caller didn't pass one (defensive — process_claim
+    # always passes one in the wired-up path).
+    if not market_code:
+        market_code = _XactRegistry.resolve_market(state, zip_code=zip_code, city=city)
 
-    # Load all-markets.json (cached at module level in xactimate_lookup)
-    from xactimate_lookup import _get_all_markets
-    all_data = _get_all_markets()
+    from xactimate_lookup import _get_all_markets, get_market_prices, _clean_desc, XactRegistry
+    market_prices = get_market_prices(market_code)
+    market_meta = _get_all_markets().get("markets", {}).get(market_code, {})
 
-    market = all_data.get("markets", {}).get(market_code, {})
-    market_items = market.get("items", {})
-
-    # Build pricing dict from Alfonso's descriptions → pricing keys
+    # Build short_key → price by inverting _DESC_TO_PRICING_KEY against market_prices
     pricing = {}
-    for desc, item_data in market_items.items():
-        price = item_data.get("price")
+    for canonical_desc, short_key in _DESC_TO_PRICING_KEY.items():
+        action = XactRegistry._infer_action(canonical_desc)
+        cleaned = _clean_desc(canonical_desc)
+        # Try (cleaned, action), then (cleaned, None), then nothing
+        price = market_prices.get((cleaned, action))
         if price is None:
-            continue
-        key = _DESC_TO_PRICING_KEY.get(desc)
-        if key:
-            pricing[key] = price
+            price = market_prices.get((cleaned, None))
+        if price is not None:
+            pricing[short_key] = price
 
-    # Also store raw descriptions for direct lookup
+    # Metadata
     pricing["_market_code"] = market_code
-    pricing["_market_name"] = market.get("name", "")
+    pricing["_market_name"] = market_meta.get("name", "")
     pricing["_meta"] = True
 
-    # Fill gaps from old per-state files (for items Alfonso doesn't have yet)
+    # Legacy per-state JSON fallback only for short_keys NOT in market data.
+    # all-markets.json doesn't have e.g. "scaffold_staging", "slate_specialist_labor" — those
+    # come from nybi26.json/papi26.json. We still need them until Alfonso publishes those rates.
     old_price_list = STATE_PRICE_LIST.get(state.upper(), "NYBI26").lower()
     old_pricing = _load_pricing(old_price_list)
     if old_pricing:
         for k, v in old_pricing.items():
-            if k not in pricing:
+            if k not in pricing and not k.startswith("_"):
                 pricing[k] = v
 
     mapped = sum(1 for k in pricing if not k.startswith("_"))
-    print(f"[PRICING] {market_code} ({market.get('name', '')}): {mapped} prices loaded ({len(market_items)} items in market)")
+    from_market = sum(1 for desc, short in _DESC_TO_PRICING_KEY.items() if short in pricing)
+    print(f"[PRICING] {market_code} ({market_meta.get('name', '')}): {mapped} keys total ({from_market} from market, rest from legacy fallback)")
 
     _PRICING_CACHE[cache_key] = pricing
     return pricing
@@ -2563,10 +2577,16 @@ def build_claim_config(
     _zip = _zip_match.group(1) if _zip_match else ""
     _addr_parts = [p.strip() for p in claim_addr.split(",")]
     _city = _addr_parts[1] if len(_addr_parts) >= 3 else ""
+
+    # Resolve Xactimate market ONCE — single source of truth for unit_price.
+    # Becomes config["financials"]["market_code"]; threaded through build_line_items.
+    market_code = _XactRegistry.resolve_market(state, zip_code=_zip, city=_city)
+    print(f"[PRICING] Claim {claim_id} resolved to market {market_code} (state={state}, zip={_zip}, city={_city})")
+
     line_items = build_multi_structure_line_items(measurements, photo_analysis, state, user_notes=user_notes or "",
                                                   estimate_request=claim.get("estimate_request"),
                                                   roof_sections=claim.get("roof_sections"),
-                                                  zip_code=_zip, city=_city)
+                                                  zip_code=_zip, city=_city, market_code=market_code)
 
     # Enrich line items with Xactimate codes, IRC citations, supplement arguments, AND correct prices
     registry = None
@@ -2907,6 +2927,10 @@ def build_claim_config(
         config["weather"]["storm_date"] = config["dates"]["date_of_loss"]
 
     # Set correct price list for state if not from carrier
+    # Single source of truth for market resolution — set once near top of process_claim.
+    # All downstream pricing reads from this field, not from price_list (which is a
+    # display label and may be stale on legacy claims).
+    config["financials"]["market_code"] = market_code
     if not config["financials"].get("price_list"):
         config["financials"]["price_list"] = STATE_PRICE_LIST.get(state, "NYBI26")
     if state in STATE_PRICE_LIST_IS_PROXY:
@@ -3425,7 +3449,8 @@ def build_roof_sections(measurements: dict, photo_analysis: dict = None, provide
 
 def build_multi_structure_line_items(measurements: dict, photo_analysis: dict, state: str,
                                       user_notes: str = "", estimate_request: dict = None,
-                                      roof_sections: dict = None, zip_code: str = "", city: str = "") -> list:
+                                      roof_sections: dict = None, zip_code: str = "", city: str = "",
+                                      market_code: str = "") -> list:
     """Build complete line item sections per structure. Never combines structures.
 
     For single-structure claims (most claims), passes through to build_line_items().
@@ -3434,6 +3459,10 @@ def build_multi_structure_line_items(measurements: dict, photo_analysis: dict, s
 
     If roof_sections contains user_material_override entries, splits structures into
     sub-groups by material and generates separate line items per material.
+
+    market_code: resolved Xactimate market for this claim (e.g. "OHDT8X_APR26").
+    Threaded into build_line_items so per-line-item unit_price reads from
+    pricing/all-markets.json[market_code].allItems instead of legacy fallbacks.
     """
     structs = measurements.get("structures", [{}])
 
@@ -3446,7 +3475,7 @@ def build_multi_structure_line_items(measurements: dict, photo_analysis: dict, s
                 slope_overrides.setdefault(si, {})[section.get("pitch", "")] = section["user_material_override"]
 
     if len(structs) <= 1 and not slope_overrides:
-        return build_line_items(measurements, photo_analysis, state, user_notes, estimate_request, zip_code=zip_code, city=city)
+        return build_line_items(measurements, photo_analysis, state, user_notes, estimate_request, zip_code=zip_code, city=city, market_code=market_code)
 
     # For single-structure claims with slope overrides, treat as multi-structure
     if len(structs) <= 1 and slope_overrides:
@@ -3508,7 +3537,7 @@ def build_multi_structure_line_items(measurements: dict, photo_analysis: dict, s
                 mat_er = {"roof_material": mat}
                 sub_notes = f"{mat}. {user_notes}" if user_notes else mat
 
-                items = build_line_items(sub_meas, photo_analysis, state, sub_notes, mat_er, zip_code=zip_code, city=city)
+                items = build_line_items(sub_meas, photo_analysis, state, sub_notes, mat_er, zip_code=zip_code, city=city, market_code=market_code)
                 if len(structs) > 1:
                     for item in items:
                         item["structure"] = struct_name  # metadata for PDF sectioning
@@ -3543,7 +3572,7 @@ def build_multi_structure_line_items(measurements: dict, photo_analysis: dict, s
                 elif struct_note and _classify_from_text(struct_note):
                     struct_er = None
 
-            items = build_line_items(struct_measurements, photo_analysis, state, combined_notes, struct_er, zip_code=zip_code, city=city)
+            items = build_line_items(struct_measurements, photo_analysis, state, combined_notes, struct_er, zip_code=zip_code, city=city, market_code=market_code)
 
             if len(structs) > 1:
                 for item in items:
@@ -3675,10 +3704,15 @@ def _extract_damage_triggers(photo_analysis: dict) -> dict:
     return triggers
 
 
-def build_line_items(measurements: dict, photo_analysis: dict, state: str, user_notes: str = "", estimate_request: dict = None, zip_code: str = "", city: str = "") -> list:
-    """Build Xactimate line items from measurements, analysis, and user context."""
-    # Use location-specific pricing from Alfonso's all-markets.json
-    PRICING = get_pricing_for_state(state, zip_code=zip_code, city=city)
+def build_line_items(measurements: dict, photo_analysis: dict, state: str, user_notes: str = "", estimate_request: dict = None, zip_code: str = "", city: str = "", market_code: str = "") -> list:
+    """Build Xactimate line items from measurements, analysis, and user context.
+
+    market_code: resolved Xactimate market for this claim. When passed, all unit_price
+    values resolve from pricing/all-markets.json[market_code].allItems via the
+    canonical-desc → short_key map (_DESC_TO_PRICING_KEY).
+    """
+    # Use location-specific pricing — single source of truth via market_code
+    PRICING = get_pricing_for_state(state, zip_code=zip_code, city=city, market_code=market_code)
 
     meas = measurements.get("measurements", {})
     structs = measurements.get("structures", [{}])
