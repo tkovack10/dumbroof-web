@@ -2581,7 +2581,7 @@ def build_claim_config(
     # Resolve Xactimate market ONCE — single source of truth for unit_price.
     # Becomes config["financials"]["market_code"]; threaded through build_line_items.
     market_code = _XactRegistry.resolve_market(state, zip_code=_zip, city=_city)
-    print(f"[PRICING] Claim {claim_id} resolved to market {market_code} (state={state}, zip={_zip}, city={_city})")
+    print(f"[PRICING] Resolved to market {market_code} (state={state}, zip={_zip}, city={_city})")
 
     line_items = build_multi_structure_line_items(measurements, photo_analysis, state, user_notes=user_notes or "",
                                                   estimate_request=claim.get("estimate_request"),
