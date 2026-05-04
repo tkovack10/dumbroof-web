@@ -75,6 +75,68 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+# ─── Two-tier approval gating (governance v2 Day 2-3b) ────────────────────
+# Tools that REQUIRE user approval before executing (preview card flow).
+# Everything NOT in this set executes immediately (auto-approve) — the
+# user sees the executed result instead of a click-to-approve preview.
+# Internal-state changes (line items, photo annotations) are reversible
+# and don't leave the platform; outbound comms stay gated because hitting
+# "send" on the wrong $250k email is unrecoverable.
+APPROVAL_GATED_TOOL_NAMES = frozenset({
+    # Outbound carrier comms — irreversible
+    "send_supplement_email",
+    "send_custom_email",
+    "send_aob_to_carrier",
+    "send_aob_for_signature",
+    "send_to_carrier",
+    # Doc generation that may forward to carrier
+    "generate_invoice",
+    "generate_coc",
+    # Cadence — schedules outbound emails
+    "schedule_follow_up_cadence",
+    "cancel_cadence",
+    # Credentials — irreversible to leak
+    "save_integration_key",
+    # Outbound personal comms
+    "invite_team_member",
+})
+
+# Auto-approve BUT rate-limited. trigger_reprocess regenerates all 5 PDFs
+# and burns ~$1.15 in Anthropic credits per call. Auto-chain (Day 5) +
+# self-correction loop could otherwise fire 2-3 reprocesses per turn.
+# Default = 1 reprocess per claim per 5 minutes. Env-overridable.
+REPROCESS_RATE_LIMIT_SECONDS = int(os.environ.get("RICHARD_REPROCESS_RATE_LIMIT_SECONDS", "300"))
+
+
+def _check_reprocess_rate_limit(sb, claim_id: str) -> tuple[bool, Optional[int]]:
+    """Return (allowed, retry_after_seconds).
+
+    Looks up the most recent reprocess in processing_logs. If we can't
+    determine recency, default to allowed (fail-open) — a rate-limit lookup
+    failure shouldn't block a legitimate user request.
+    """
+    try:
+        from datetime import datetime, timezone
+        res = sb.table("processing_logs").select("created_at,step_name").eq(
+            "claim_id", claim_id
+        ).in_("step_name", ["reprocess", "process", "process_claim", "claim_reprocess"]).order(
+            "created_at", desc=True
+        ).limit(1).execute()
+        if not res.data:
+            return True, None
+        last_str = (res.data[0].get("created_at") or "").replace("Z", "+00:00")
+        if not last_str:
+            return True, None
+        last = datetime.fromisoformat(last_str)
+        elapsed = (datetime.now(timezone.utc) - last).total_seconds()
+        if elapsed >= REPROCESS_RATE_LIMIT_SECONDS:
+            return True, None
+        return False, max(1, int(REPROCESS_RATE_LIMIT_SECONDS - elapsed))
+    except Exception as e:
+        print(f"[REPROCESS_RATE_LIMIT] lookup failed for {claim_id}, fail-open: {e}", flush=True)
+        return True, None
+
+
 cors_origins = [
     "https://dumbroof.ai",
     "https://www.dumbroof.ai",
@@ -1579,7 +1641,12 @@ def _pop_pending_action(sb, scope: str, approval_id: str) -> Optional[dict]:
 
 
 @app.post("/api/claim-brain/{claim_id}/chat")
-async def claim_brain_chat(claim_id: str, body: ChatMessage, authorization: Optional[str] = Header(default=None)):
+async def claim_brain_chat(
+    claim_id: str,
+    body: ChatMessage,
+    background_tasks: BackgroundTasks,
+    authorization: Optional[str] = Header(default=None),
+):
     """Claim Brain — streaming AI chat for a specific claim with tool use."""
     from claim_brain_tools import CLAIM_BRAIN_TOOLS, execute_tool
 
@@ -1775,7 +1842,11 @@ async def claim_brain_chat(claim_id: str, body: ChatMessage, authorization: Opti
                         except Exception as te:
                             tool_result = {"action": "error", "message": str(te)}
 
-                        # If it's a preview (needs approval), store it and send to frontend
+                        # If it's a preview (needs approval), decide tier:
+                        #   - APPROVAL_GATED tools → existing preview flow
+                        #   - trigger_reprocess → rate-limit check, then auto-execute
+                        #   - everything else → auto-execute via approve_brain_action
+                        # See APPROVAL_GATED_TOOL_NAMES near top of this module.
                         if tool_result.get("action") == "preview":
                             import uuid
                             approval_id = str(uuid.uuid4())[:8]
@@ -1784,21 +1855,87 @@ async def claim_brain_chat(claim_id: str, body: ChatMessage, authorization: Opti
                             _save_pending_action(sb, claim_id, approval_id, tool_result, user_id)
 
                             tool_result["approval_id"] = approval_id
-                            tool_results_for_frontend.append(tool_result)
 
-                            # Send the tool action card to frontend
-                            yield f"data: {json.dumps({'tool_action': tool_result})}\n\n"
+                            # ─── Tier 2: rate-limited auto-approve (trigger_reprocess) ───
+                            if tool_name == "trigger_reprocess":
+                                allowed, retry_after = _check_reprocess_rate_limit(sb, claim_id)
+                                if not allowed:
+                                    # Drop the pending action — won't be approved manually either
+                                    try:
+                                        _pop_pending_action(sb, claim_id, approval_id)
+                                    except Exception:
+                                        pass
+                                    rate_limited_msg = (
+                                        f"Reprocess rate-limited — last reprocess was less than "
+                                        f"{REPROCESS_RATE_LIMIT_SECONDS // 60} minutes ago. "
+                                        f"Try again in {retry_after}s."
+                                    )
+                                    tool_use_results.append({
+                                        "type": "tool_result",
+                                        "tool_use_id": tool_use_id,
+                                        "content": json.dumps({
+                                            "status": "rate_limited",
+                                            "retry_after_seconds": retry_after,
+                                            "message": rate_limited_msg,
+                                        }),
+                                        "is_error": True,
+                                    })
+                                    continue
 
-                            # Provide tool result back to Claude so it can continue
-                            tool_use_results.append({
-                                "type": "tool_result",
-                                "tool_use_id": tool_use_id,
-                                "content": json.dumps({
-                                    "status": "preview_sent",
-                                    "message": tool_result.get("message", ""),
-                                    "awaiting_user_approval": True,
-                                }),
-                            })
+                            # ─── Tier 1: human approval-gated (outbound comms) ───
+                            if tool_name in APPROVAL_GATED_TOOL_NAMES:
+                                tool_results_for_frontend.append(tool_result)
+                                yield f"data: {json.dumps({'tool_action': tool_result})}\n\n"
+                                tool_use_results.append({
+                                    "type": "tool_result",
+                                    "tool_use_id": tool_use_id,
+                                    "content": json.dumps({
+                                        "status": "preview_sent",
+                                        "message": tool_result.get("message", ""),
+                                        "awaiting_user_approval": True,
+                                    }),
+                                })
+                                continue
+
+                            # ─── Tier 3: auto-approve (internal state changes) ───
+                            # Synthesize an approval body and reuse the existing
+                            # approve_brain_action execution path so we don't
+                            # duplicate the per-tool logic. Auth flows through
+                            # via the same `authorization` header from the chat
+                            # request — JWT enforcement still works correctly.
+                            try:
+                                fake_body = ToolApproval(tool_call_id=approval_id, approved=True)
+                                executed = await approve_brain_action(
+                                    claim_id=claim_id,
+                                    body=fake_body,
+                                    background_tasks=background_tasks,
+                                    authorization=authorization,
+                                )
+                                # Build a "completed" tool_action card for the FE.
+                                # Status comes from the executed result so the FE
+                                # renders ✅ instead of an Approve/Discard preview.
+                                completed_card = {
+                                    **tool_result,
+                                    "auto_approved": True,
+                                    "status": (executed or {}).get("status", "sent") if isinstance(executed, dict) else "sent",
+                                    "result_message": (executed or {}).get("message", "") if isinstance(executed, dict) else "",
+                                }
+                                tool_results_for_frontend.append(completed_card)
+                                yield f"data: {json.dumps({'tool_action': completed_card})}\n\n"
+                                tool_use_results.append({
+                                    "type": "tool_result",
+                                    "tool_use_id": tool_use_id,
+                                    "content": json.dumps(executed if isinstance(executed, dict) else {"status": "sent"}),
+                                })
+                            except Exception as auto_err:
+                                err_msg = f"Auto-approve execution failed: {type(auto_err).__name__}: {auto_err}"
+                                print(f"[AUTO_APPROVE] {tool_name}: {err_msg}", flush=True)
+                                tool_use_results.append({
+                                    "type": "tool_result",
+                                    "tool_use_id": tool_use_id,
+                                    "content": json.dumps({"error": err_msg}),
+                                    "is_error": True,
+                                })
                         elif tool_result.get("action") == "complete":
                             # Tool completed without needing approval (e.g., status check)
                             yield f"data: {json.dumps({'tool_action': tool_result})}\n\n"
