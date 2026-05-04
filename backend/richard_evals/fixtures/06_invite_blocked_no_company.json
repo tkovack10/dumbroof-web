@@ -1,0 +1,22 @@
+{
+  "name": "invite_blocked_no_company",
+  "track": [
+    "track1"
+  ],
+  "scope": "user",
+  "description": "Setup chat with no company_profile asks to invite \u2014 precondition blocks before LLM runs.",
+  "user_messages": [
+    "I want to invite a new team member"
+  ],
+  "company_profile": {},
+  "asserts": [
+    {
+      "type": "precondition_blocks",
+      "tool": "invite_team_member",
+      "code": "company_profile_incomplete"
+    },
+    {
+      "type": "no_company_invites_row_created"
+    }
+  ]
+}

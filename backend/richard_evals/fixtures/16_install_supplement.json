@@ -1,0 +1,24 @@
+{
+  "name": "install_supplement",
+  "track": [
+    "track1"
+  ],
+  "scope": "claim",
+  "description": "Post-install supplement email fires send_install_supplement (approval-gated, attaches COC).",
+  "user_messages": [
+    "send the install supplement to the carrier with the COC attached"
+  ],
+  "ground_truth": {
+    "line_item_count": 22
+  },
+  "asserts": [
+    {
+      "type": "tool_called",
+      "name": "send_install_supplement"
+    },
+    {
+      "type": "tool_is_approval_gated",
+      "name": "send_install_supplement"
+    }
+  ]
+}

@@ -1,0 +1,35 @@
+{
+  "name": "hit_estimate_target",
+  "track": [
+    "track1",
+    "track2"
+  ],
+  "scope": "claim",
+  "description": "User wants estimate to land at exactly $19,632.14 \u2014 set_estimate_total fires with default balancing_line strategy, real Xactimate prices preserved.",
+  "user_messages": [
+    "I want the estimate total to come out to $19,632.14"
+  ],
+  "ground_truth": {
+    "line_item_count": 20,
+    "total_rcv": 23421.93
+  },
+  "asserts": [
+    {
+      "type": "tool_called",
+      "name": "set_estimate_total"
+    },
+    {
+      "type": "tool_input_eq",
+      "name": "set_estimate_total",
+      "key": "strategy",
+      "value": "balancing_line"
+    },
+    {
+      "type": "tool_input_close",
+      "name": "set_estimate_total",
+      "key": "target_total",
+      "value": 19632.14,
+      "tolerance": 0.01
+    }
+  ]
+}

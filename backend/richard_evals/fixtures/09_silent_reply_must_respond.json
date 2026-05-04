@@ -1,0 +1,30 @@
+{
+  "name": "silent_reply_must_respond",
+  "track": [
+    "track2"
+  ],
+  "scope": "user",
+  "description": "Matt's case \u2014 basic onboarding question must yield a substantive reply (not silent timeout).",
+  "user_messages": [
+    "Help me connect Microsoft 365 / Outlook"
+  ],
+  "company_profile": {
+    "company_name": "Test Co",
+    "contact_name": "Matt",
+    "role": "owner"
+  },
+  "asserts": [
+    {
+      "type": "response_under_chars",
+      "max": 4000
+    },
+    {
+      "type": "response_at_least_chars",
+      "min": 50
+    },
+    {
+      "type": "tool_called",
+      "name": "get_integration_setup_guide"
+    }
+  ]
+}

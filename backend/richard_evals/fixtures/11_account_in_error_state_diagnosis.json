@@ -1,0 +1,29 @@
+{
+  "name": "account_in_error_state_diagnosis",
+  "track": [
+    "track2"
+  ],
+  "scope": "user",
+  "description": "User has a placeholder claim in error state. Richard must surface that state, not pretend everything is fine.",
+  "user_messages": [
+    "My account isn't working"
+  ],
+  "company_profile": {
+    "company_name": "New Co",
+    "contact_name": "Alice",
+    "role": "owner"
+  },
+  "asserts": [
+    {
+      "type": "response_at_least_chars",
+      "min": 100
+    },
+    {
+      "type": "response_does_not_contain_phrase",
+      "phrases": [
+        "everything looks good",
+        "no issues"
+      ]
+    }
+  ]
+}

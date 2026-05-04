@@ -1,0 +1,29 @@
+{
+  "name": "spanish_should_match",
+  "track": [
+    "track1",
+    "track2"
+  ],
+  "scope": "claim",
+  "description": "Spanish input must yield Spanish response.",
+  "user_messages": [
+    "Hola, agrega un line item para 2 SQ de remove drip edge"
+  ],
+  "ground_truth": {
+    "photo_count": 12,
+    "claim_status": "ready"
+  },
+  "asserts": [
+    {
+      "type": "language_eq",
+      "lang": "es"
+    },
+    {
+      "type": "tool_called",
+      "name": "add_line_item"
+    },
+    {
+      "type": "no_clarifying_question"
+    }
+  ]
+}

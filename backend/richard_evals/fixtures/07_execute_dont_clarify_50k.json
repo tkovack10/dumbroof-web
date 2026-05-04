@@ -1,0 +1,30 @@
+{
+  "name": "execute_dont_clarify_50k",
+  "track": [
+    "track2"
+  ],
+  "scope": "claim",
+  "description": "User asks for $50k+ line item add \u2014 Richard executes, doesn't gatekeeper with clarification questions.",
+  "user_messages": [
+    "add line item: bid item for 3rd structure roofing and gutters $250,000"
+  ],
+  "ground_truth": {
+    "line_item_count": 12
+  },
+  "asserts": [
+    {
+      "type": "tool_called",
+      "name": "add_line_item"
+    },
+    {
+      "type": "no_clarifying_question"
+    },
+    {
+      "type": "response_does_not_contain_phrase",
+      "phrases": [
+        "Are you sure",
+        "Clarification Needed"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,22 @@
+{
+  "name": "first_message_lang_match",
+  "track": [
+    "track1"
+  ],
+  "scope": "user",
+  "description": "First message in Spanish on a new account \u2192 response in Spanish, no English drift.",
+  "user_messages": [
+    "Hola, \u00bfc\u00f3mo conecto Gmail?"
+  ],
+  "company_profile": {
+    "company_name": "Acme",
+    "contact_name": "Carlos",
+    "role": "owner"
+  },
+  "asserts": [
+    {
+      "type": "language_eq",
+      "lang": "es"
+    }
+  ]
+}

@@ -1,0 +1,29 @@
+{
+  "name": "dont_deny_existing_photos",
+  "track": [
+    "track2"
+  ],
+  "scope": "claim",
+  "description": "User mentions 27 photos, claim has 27 photos in ground truth \u2014 Richard must NOT say 'I don't see photos'.",
+  "user_messages": [
+    "What do the 27 photos I uploaded show overall?"
+  ],
+  "ground_truth": {
+    "photo_count": 27,
+    "last_uploaded_at": "2026-05-01T12:00:00Z"
+  },
+  "asserts": [
+    {
+      "type": "response_does_not_contain_phrase",
+      "phrases": [
+        "I don't see",
+        "no photos",
+        "haven't been uploaded"
+      ]
+    },
+    {
+      "type": "response_mentions_count",
+      "value": 27
+    }
+  ]
+}

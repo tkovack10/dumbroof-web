@@ -1,0 +1,20 @@
+{
+  "name": "add_wind_cause",
+  "track": [
+    "track1"
+  ],
+  "scope": "claim",
+  "description": "Add wind to cause_of_loss \u2014 update_cause_of_loss fires.",
+  "user_messages": [
+    "add wind to the cause of loss \u2014 we have nail pull-through evidence"
+  ],
+  "ground_truth": {
+    "photo_count": 25
+  },
+  "asserts": [
+    {
+      "type": "tool_called",
+      "name": "update_cause_of_loss"
+    }
+  ]
+}
