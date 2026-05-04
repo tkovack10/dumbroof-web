@@ -1670,12 +1670,35 @@ async def claim_brain_chat(claim_id: str, body: ChatMessage, authorization: Opti
     # Persist user message to chat_messages (live conversation context)
     append_message(sb, "claim", claim_id, user_id or "anonymous", "user", str(user_content)[:10000])
 
+    # Working memory: load prior plan (governance v2 Day 5) and prepend to
+    # the system prompt so multi-step plans survive between turns.
+    try:
+        from richard_post import load_working_memory, should_clear_working_memory, WorkingMemory as _WM
+        prior_wm = load_working_memory(sb, "claim", claim_id)
+        # Bright-line clear rules — see backend/richard_post.py
+        _last_at = None
+        if prior_wm.updated_at:
+            try:
+                from datetime import datetime as _dt
+                _last_at = _dt.fromisoformat(str(prior_wm.updated_at).replace("Z", "+00:00"))
+            except Exception:
+                _last_at = None
+        if should_clear_working_memory(body.message or "", _last_at):
+            prior_wm = _WM()
+        wm_block = prior_wm.to_prompt_block()
+        if wm_block:
+            system_prompt = wm_block + system_prompt
+    except Exception as _wm_err:
+        print(f"[WORKING_MEMORY] load skipped: {type(_wm_err).__name__}: {_wm_err}")
+        prior_wm = None
+
     async def stream_response():
         try:
             messages = list(history)
             messages.append({"role": "user", "content": user_content})
             full_text_parts = []
             tool_results_for_frontend = []
+            executed_tool_names: list[str] = []  # Day 5: track for auto-chain
 
             # Tool use loop — may iterate if Claude calls tools.
             # Rounds, not individual tool calls — Claude can fire multiple tools per round.
@@ -1736,6 +1759,7 @@ async def claim_brain_chat(claim_id: str, body: ChatMessage, authorization: Opti
                         tool_name = block.name
                         tool_input = block.input
                         tool_use_id = block.id
+                        executed_tool_names.append(tool_name)  # Day 5: auto-chain tracking
 
                         # Enforce hard cap — refuse rather than run away.
                         if total_tool_calls >= max_total_tool_calls:
@@ -1841,9 +1865,81 @@ async def claim_brain_chat(claim_id: str, body: ChatMessage, authorization: Opti
                 if final_message.stop_reason != "tool_use":
                     break
 
+            # ─── Auto-chain rules (governance v2 Day 5) ───
+            # Deterministically fire follow-up tools the user clearly asked for
+            # but the LLM forgot to chain (e.g. "add line item AND reprocess"
+            # → trigger_reprocess fires after add_line_item).
+            try:
+                from richard_post import evaluate_auto_chains
+                from claim_brain_tools import execute_tool as _execute_chained_tool
+                chains = evaluate_auto_chains(body.message or "", executed_tool_names)
+                for chain_tool_name, chain_tool_input in chains:
+                    print(f"[AUTO_CHAIN] firing {chain_tool_name} after {executed_tool_names}", flush=True)
+                    chain_result = await _execute_chained_tool(sb, claim_id, user_id, chain_tool_name, chain_tool_input)
+                    executed_tool_names.append(chain_tool_name)
+                    # If it returned a preview and tool isn't approval-gated,
+                    # auto-execute via the same path the inline tool loop uses.
+                    # (APPROVAL_GATED_TOOL_NAMES + _check_reprocess_rate_limit
+                    # ship in Day 2-3b PR; defensive guards in case this PR
+                    # lands on a deployment that hasn't picked up Day 2-3b.)
+                    _gated_names: set = globals().get("APPROVAL_GATED_TOOL_NAMES") or frozenset()
+                    _rate_check = globals().get("_check_reprocess_rate_limit")
+                    if chain_result.get("action") == "preview" and chain_tool_name not in _gated_names:
+                        # Rate-limit gate for trigger_reprocess
+                        if chain_tool_name == "trigger_reprocess" and _rate_check:
+                            allowed, retry_after = _rate_check(sb, claim_id)
+                            if not allowed:
+                                rl_msg = (
+                                    f"Auto-chain reprocess skipped — rate limited "
+                                    f"(retry in {retry_after}s)."
+                                )
+                                yield f"data: {json.dumps({'tool_action': {'tool_name': chain_tool_name, 'auto_chain': True, 'status': 'rate_limited', 'message': rl_msg}})}\n\n"
+                                continue
+                        import uuid as _uuid_chain
+                        chain_approval_id = str(_uuid_chain.uuid4())[:8]
+                        _save_pending_action(sb, claim_id, chain_approval_id, chain_result, user_id)
+                        chain_result["approval_id"] = chain_approval_id
+                        try:
+                            chain_fake_body = ToolApproval(tool_call_id=chain_approval_id, approved=True)
+                            chain_executed = await approve_brain_action(
+                                claim_id=claim_id,
+                                body=chain_fake_body,
+                                background_tasks=background_tasks,
+                                authorization=authorization,
+                            )
+                            chain_card = {
+                                **chain_result,
+                                "auto_chain": True,
+                                "auto_approved": True,
+                                "status": (chain_executed or {}).get("status", "sent"),
+                                "result_message": (chain_executed or {}).get("message", ""),
+                            }
+                            yield f"data: {json.dumps({'tool_action': chain_card})}\n\n"
+                        except Exception as chain_exec_err:
+                            print(f"[AUTO_CHAIN] {chain_tool_name} execute failed: {chain_exec_err}", flush=True)
+            except Exception as _chain_err:
+                print(f"[AUTO_CHAIN] skipped: {type(_chain_err).__name__}: {_chain_err}", flush=True)
+
             # Store the final text in conversation history (Supabase, persistent)
             full_response = "".join(full_text_parts)
             append_message(sb, "claim", claim_id, user_id or "anonymous", "assistant", full_response[:50000])
+
+            # ─── Working memory persistence (governance v2 Day 5) ───
+            # Update working memory based on this turn's tools, then write
+            # back to chat_messages.working_memory on the assistant row we
+            # just inserted. Best-effort — column may not exist pre-migration.
+            try:
+                from richard_post import update_working_memory_from_turn, WorkingMemory
+                base_wm = prior_wm if isinstance(prior_wm, WorkingMemory) else WorkingMemory()
+                next_wm = update_working_memory_from_turn(base_wm, body.message or "", executed_tool_names)
+                if not next_wm.is_empty():
+                    sb.table("chat_messages").update({"working_memory": next_wm.to_jsonb()}).eq(
+                        "scope", "claim"
+                    ).eq("scope_key", claim_id).eq("role", "assistant").order(
+                        "created_at", desc=True
+                    ).limit(1).execute()
+            except Exception as _wm_save_err:
+                print(f"[WORKING_MEMORY] save skipped: {type(_wm_save_err).__name__}: {_wm_save_err}", flush=True)
 
             # Log to telemetry
             prompt_tokens = None
