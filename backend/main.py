@@ -1928,16 +1928,28 @@ async def claim_brain_chat(claim_id: str, body: ChatMessage, authorization: Opti
             # Update working memory based on this turn's tools, then write
             # back to chat_messages.working_memory on the assistant row we
             # just inserted. Best-effort — column may not exist pre-migration.
+            #
+            # Code-review fix #5: PostgREST UPDATE doesn't support order +
+            # limit chained on the filter. Original `.eq().eq().eq().order().limit()
+            # .execute()` failed silently (the order() chained on UPDATE is
+            # invalid). Two-step approach: SELECT id of the row first, then
+            # UPDATE by id.
             try:
                 from richard_post import update_working_memory_from_turn, WorkingMemory
                 base_wm = prior_wm if isinstance(prior_wm, WorkingMemory) else WorkingMemory()
                 next_wm = update_working_memory_from_turn(base_wm, body.message or "", executed_tool_names)
                 if not next_wm.is_empty():
-                    sb.table("chat_messages").update({"working_memory": next_wm.to_jsonb()}).eq(
+                    sel = sb.table("chat_messages").select("id").eq(
                         "scope", "claim"
                     ).eq("scope_key", claim_id).eq("role", "assistant").order(
                         "created_at", desc=True
                     ).limit(1).execute()
+                    if sel.data:
+                        target_id = sel.data[0].get("id")
+                        if target_id is not None:
+                            sb.table("chat_messages").update(
+                                {"working_memory": next_wm.to_jsonb()}
+                            ).eq("id", target_id).execute()
             except Exception as _wm_save_err:
                 print(f"[WORKING_MEMORY] save skipped: {type(_wm_save_err).__name__}: {_wm_save_err}", flush=True)
 
