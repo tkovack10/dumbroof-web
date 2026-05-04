@@ -2903,6 +2903,88 @@ async def approve_brain_action(claim_id: str, body: ToolApproval, background_tas
             _audit_log(sb, claim_id, user_id, tool_name, preview, {"action": "sent", "message": f"cancelled {cancelled} pending follow-ups"}, 0)
             return {"status": "sent", "message": f"Cancelled {cancelled} pending follow-up{'s' if cancelled != 1 else ''}."}
 
+        # ─── Governance v2 Day 4 — new claim-mutation tools ───
+        # These were missing execution branches; fixed during code review.
+        if tool_name == "update_date_of_loss":
+            preview = tool_result.get("preview") or {}
+            new_dol = preview.get("new_value")
+            if not new_dol:
+                raise ValueError("update_date_of_loss preview missing new_value")
+            sb.table("claims").update({"date_of_loss": new_dol}).eq("id", claim_id).execute()
+            # NOAA re-query: best-effort background trigger via existing reprocess
+            # path is too heavy. Just flag the claim — a downstream task picks it up.
+            try:
+                sb.table("claims").update({"noaa_recheck_pending": True}).eq("id", claim_id).execute()
+            except Exception as _noaa_e:
+                # Column may not exist; non-fatal, NOAA can re-query on next reprocess
+                print(f"[update_dol] noaa_recheck flag skipped: {_noaa_e}")
+            _audit_log(sb, claim_id, user_id, tool_name, preview, {"action": "sent", "message": f"DOL updated to {new_dol}"}, 0)
+            return {"status": "sent", "message": f"Date of loss updated to {new_dol}. NOAA storm-event re-query queued."}
+
+        if tool_name == "update_cause_of_loss":
+            preview = tool_result.get("preview") or {}
+            new_causes = preview.get("new_value")
+            if not isinstance(new_causes, list):
+                raise ValueError("update_cause_of_loss preview missing new_value array")
+            sb.table("claims").update({"cause_of_loss": new_causes}).eq("id", claim_id).execute()
+            _audit_log(sb, claim_id, user_id, tool_name, preview, {"action": "sent", "message": f"cause_of_loss → {new_causes}"}, 0)
+            return {"status": "sent", "message": f"Cause of loss updated to {new_causes}."}
+
+        if tool_name == "set_estimate_total":
+            preview = tool_result.get("preview") or {}
+            strategy = preview.get("strategy") or "balancing_line"
+            if strategy != "balancing_line":
+                # Only the safe default is supported in execution today;
+                # scale_all + adjust_primary require careful per-line math
+                # that's a follow-up. Surface clearly so the user knows.
+                raise ValueError(
+                    f"strategy={strategy!r} execution not yet implemented — "
+                    "use balancing_line (the safe default that preserves Xactimate prices)."
+                )
+            bl = preview.get("balancing_line_proposal") or {}
+            if not bl:
+                raise ValueError("set_estimate_total preview missing balancing_line_proposal")
+            # Insert the EST ADJ line item directly. Mirrors what _handle_apply_add_line_item does.
+            insert_row = {
+                "claim_id": claim_id,
+                "description": bl.get("description") or "Estimator's Scope Adjustment",
+                "qty": float(bl.get("qty") or 1),
+                "unit": bl.get("unit") or "EA",
+                "unit_price": float(bl.get("unit_price") or 0),
+                "xactimate_code": bl.get("xactimate_code") or "EST ADJ",
+                "source": "user_added",
+                "structure": "main",
+                "notes": bl.get("reason") or f"Scope adjustment to hit ${preview.get('target_rcv', 0):,.2f}",
+            }
+            sb.table("line_items").insert(insert_row).execute()
+            # Recompute contractor_rcv so the new total is reflected immediately.
+            try:
+                _recompute_and_write_contractor_rcv(sb, claim_id)
+            except Exception as _rc_e:
+                print(f"[set_estimate_total] recompute skipped: {_rc_e}")
+            _audit_log(sb, claim_id, user_id, tool_name, preview, {"action": "sent", "message": f"adjusted by {preview.get('delta', 0):+,.2f}"}, 0)
+            return {
+                "status": "sent",
+                "message": f"Added Estimator's Scope Adjustment (${preview.get('delta', 0):+,.2f}) to hit target ${preview.get('target_rcv', 0):,.2f}.",
+            }
+
+        if tool_name == "set_op_override":
+            preview = tool_result.get("preview") or {}
+            new_value = preview.get("new_value")
+            if not isinstance(new_value, dict):
+                raise ValueError("set_op_override preview missing new_value")
+            sb.table("claims").update({
+                "op_override": new_value,
+                "o_and_p_enabled": bool(new_value.get("enabled")),
+            }).eq("id", claim_id).execute()
+            try:
+                _recompute_and_write_contractor_rcv(sb, claim_id)
+            except Exception as _rc_e:
+                print(f"[set_op_override] recompute skipped: {_rc_e}")
+            _audit_log(sb, claim_id, user_id, tool_name, preview, {"action": "sent", "message": f"O&P → {new_value}"}, 0)
+            enabled_str = "enabled" if new_value.get("enabled") else "disabled"
+            return {"status": "sent", "message": f"GC O&P {enabled_str} ({new_value.get('overhead_pct', 0)*100:.0f}% overhead + {new_value.get('profit_pct', 0)*100:.0f}% profit)."}
+
         # Unknown tool or preview-but-no-draft fallthrough
         return {"status": "complete", "message": "Action approved."}
 

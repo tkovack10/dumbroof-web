@@ -899,6 +899,152 @@ CLAIM_BRAIN_TOOLS = [
             },
         },
     },
+    # ─── New claim-level mutation tools (governance v2 Day 4) ────────────
+    {
+        "name": "update_date_of_loss",
+        "description": (
+            "Change the date of loss on this claim. Use when the homeowner "
+            "misremembered the date or the carrier rejected the original DOL. "
+            "Triggers an automatic NOAA re-query in the background to refresh "
+            "weather evidence for the new date. Does NOT auto-trigger reprocess "
+            "— the user must explicitly ask for that. APPROVAL-GATED because "
+            "DOL drives statute-of-limitations and forensic synthesis."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "new_date_of_loss": {
+                    "type": "string",
+                    "description": "New DOL in YYYY-MM-DD format (e.g. '2024-08-15').",
+                },
+                "reason": {
+                    "type": "string",
+                    "description": "Why the DOL is changing (homeowner correction, carrier rejection, NOAA verification, etc).",
+                },
+            },
+            "required": ["new_date_of_loss", "reason"],
+        },
+    },
+    {
+        "name": "update_cause_of_loss",
+        "description": (
+            "Add or remove hail / wind / other from the cause of loss array on "
+            "this claim. Use when forensic evidence shows the carrier missed a "
+            "peril (e.g. wind damage on a 'hail-only' claim) or vice versa. "
+            "Auto-approved because internal-state and reversible. Auto-triggers "
+            "the reprocess auto-chain rule (Day 5) if user said 'reprocess' in "
+            "the same turn or the claim is in 'ready' status."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "causes": {
+                    "type": "array",
+                    "items": {"type": "string", "enum": ["hail", "wind", "wind_driven_rain", "fallen_tree", "other"]},
+                    "description": "The full new cause-of-loss list (replaces current). Pass an empty list only with explicit user intent.",
+                },
+                "reason": {
+                    "type": "string",
+                    "description": "Forensic justification (which photos / measurements support each cause).",
+                },
+            },
+            "required": ["causes", "reason"],
+        },
+    },
+    {
+        "name": "set_estimate_total",
+        "description": (
+            "Hit a specific contractor RCV target (e.g. 'I want the estimate to "
+            "be exactly $19,632.14'). Default strategy adds an 'Estimator's "
+            "Scope Adjustment' line item at the bottom (Xactimate code EST ADJ) "
+            "with the necessary delta — preserves real Xactimate prices on "
+            "every other line item so carriers cannot reject for fabricated "
+            "unit prices. Use when the user says 'make the total be X', 'I "
+            "want the estimate at X', 'cap the estimate at X', etc."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "target_total": {
+                    "type": "number",
+                    "description": "Target contractor RCV in dollars. Example: 19632.14.",
+                },
+                "strategy": {
+                    "type": "string",
+                    "enum": ["balancing_line", "scale_all", "adjust_primary"],
+                    "description": (
+                        "balancing_line (default): add an 'EST ADJ' line item at the bottom. "
+                        "scale_all: proportionally scale every line item's unit price (WARNING: corrupts real Xactimate prices). "
+                        "adjust_primary: modify shingle qty + accessories proportionally."
+                    ),
+                    "default": "balancing_line",
+                },
+                "reason": {
+                    "type": "string",
+                    "description": "Why the user wants this total (carrier-approved cap, lump-sum bid, scope alignment, etc).",
+                },
+            },
+            "required": ["target_total", "reason"],
+        },
+    },
+    {
+        "name": "set_op_override",
+        "description": (
+            "Force GC overhead & profit on or off, regardless of trade count. "
+            "Defaults follow the 3+ trades rule (10% O + 11% P), but contractors "
+            "sometimes need to override (e.g. complex single-trade jobs that "
+            "warrant O&P, or carrier-stipulated waivers). Auto-approved — "
+            "internal state. Triggers recompute_estimate after the override "
+            "is set so totals reflect the new policy."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "enabled": {
+                    "type": "boolean",
+                    "description": "True to apply O&P, False to suppress. None to revert to auto (3+ trades rule).",
+                },
+                "overhead_pct": {
+                    "type": "number",
+                    "description": "Overhead percentage (default 0.10 = 10%). Pass null to use platform default.",
+                },
+                "profit_pct": {
+                    "type": "number",
+                    "description": "Profit percentage (default 0.11 = 11%). Pass null to use platform default.",
+                },
+                "reason": {
+                    "type": "string",
+                    "description": "Why the override (carrier stipulation, complex single-trade scope, etc).",
+                },
+            },
+            "required": ["enabled", "reason"],
+        },
+    },
+    {
+        "name": "send_install_supplement",
+        "description": (
+            "Send a post-installation supplement email to the carrier. "
+            "Different template from the pre-scope supplement — references "
+            "the completed work and auto-attaches the generated COC PDF. "
+            "Use after the roof has been installed and the contractor needs "
+            "to bill final RCV with proof of completion. APPROVAL-GATED "
+            "(outbound carrier comms)."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "include_coc": {
+                    "type": "boolean",
+                    "description": "Auto-attach the most recent COC PDF (default true). Set false only if a custom COC is being sent separately.",
+                    "default": True,
+                },
+                "additional_notes": {
+                    "type": "string",
+                    "description": "Optional carrier-facing notes to include in the email body (e.g. 'requesting final payment per attached COC').",
+                },
+            },
+        },
+    },
 ]
 
 
@@ -974,6 +1120,22 @@ async def execute_tool(
             company_profile = (profile_result.data or [{}])[0] if profile_result.data else {}
         except Exception:
             company_profile = {}
+
+        # ─── Tool preconditions (governance v2 Day 4) ───
+        # Catch schema-level constraints (e.g. invite_team_member with no
+        # company_profile) before dispatching to handlers that would crash.
+        # See backend/richard_tool_preconditions.py.
+        try:
+            from richard_tool_preconditions import check_preconditions
+            precond_result = check_preconditions(
+                sb, tool_name, claim_data, company_profile, user_id, tool_input
+            )
+            if precond_result is not None:
+                _audit_log(sb, claim_id, user_id, tool_name, tool_input, precond_result, time.time() - start)
+                return precond_result
+        except ImportError:
+            # Module not present (rolled-back state) — skip preconditions
+            pass
 
         # ─── Write tools (existing) ───────────────────
         if tool_name == "send_supplement_email":
@@ -1069,6 +1231,17 @@ async def execute_tool(
             result = _handle_preview_modify_line_item(sb, claim_id, tool_input)
         elif tool_name == "recompute_estimate":
             result = _handle_preview_recompute_estimate(sb, claim_id)
+        # ─── New mutation tools (governance v2 Day 4) ───
+        elif tool_name == "update_date_of_loss":
+            result = _handle_preview_update_date_of_loss(sb, claim_id, claim_data, tool_input)
+        elif tool_name == "update_cause_of_loss":
+            result = _handle_preview_update_cause_of_loss(sb, claim_id, claim_data, tool_input)
+        elif tool_name == "set_estimate_total":
+            result = _handle_preview_set_estimate_total(sb, claim_id, claim_data, tool_input)
+        elif tool_name == "set_op_override":
+            result = _handle_preview_set_op_override(sb, claim_id, claim_data, tool_input)
+        elif tool_name == "send_install_supplement":
+            result = await _handle_preview_send_install_supplement(sb, claim_id, user_id, claim_data, company_profile, tool_input)
         else:
             result = {"action": "error", "message": f"Unknown tool: {tool_name}"}
     except Exception as e:
@@ -4475,4 +4648,304 @@ def _classify_by_filename(filename: str, storage_path: str) -> dict:
             "low_confidence": True,
         },
         "message": f"Classified '{filename}' as {classification} by filename (low confidence).",
+    }
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# NEW MUTATION TOOL HANDLERS (governance v2 Day 4)
+# ═══════════════════════════════════════════════════════════════════════
+
+import re as _re
+
+
+def _handle_preview_update_date_of_loss(sb: Client, claim_id: str, claim_data: dict, tool_input: dict) -> dict:
+    """Preview a DOL change. Approval-gated — affects NOAA queries +
+    statute of limitations + forensic synthesis."""
+    new_dol = (tool_input.get("new_date_of_loss") or "").strip()
+    reason = (tool_input.get("reason") or "").strip()
+
+    if not _re.match(r"^\d{4}-\d{2}-\d{2}$", new_dol):
+        return {
+            "action": "error",
+            "message": f"Invalid date format '{new_dol}' — expected YYYY-MM-DD (e.g. 2024-08-15).",
+        }
+    if not reason:
+        return {
+            "action": "error",
+            "message": "Need a reason for the DOL change (homeowner correction, carrier rejection, NOAA verification, etc).",
+        }
+
+    current_dol = claim_data.get("date_of_loss") or "(not set)"
+    return {
+        "action": "preview",
+        "tool_name": "update_date_of_loss",
+        "type": "claim_field_update",
+        "preview": {
+            "field": "date_of_loss",
+            "current_value": current_dol,
+            "new_value": new_dol,
+            "reason": reason,
+            "side_effects": [
+                "NOAA storm-event re-query will fire in the background",
+                "Existing forensic report references to DOL become stale until reprocess",
+            ],
+        },
+        "message": (
+            f"Ready to change date of loss from **{current_dol}** to **{new_dol}**. "
+            f"Reason: {reason}. NOAA re-query will fire automatically. Reprocess is NOT auto-triggered."
+        ),
+    }
+
+
+def _handle_preview_update_cause_of_loss(sb: Client, claim_id: str, claim_data: dict, tool_input: dict) -> dict:
+    """Preview a cause-of-loss array update. Auto-approved (internal state)."""
+    causes = tool_input.get("causes")
+    reason = (tool_input.get("reason") or "").strip()
+
+    if not isinstance(causes, list):
+        return {"action": "error", "message": "`causes` must be an array (e.g. ['hail', 'wind'])."}
+    valid = {"hail", "wind", "wind_driven_rain", "fallen_tree", "other"}
+    bad = [c for c in causes if c not in valid]
+    if bad:
+        return {"action": "error", "message": f"Unknown causes: {bad}. Valid: {sorted(valid)}."}
+    if not reason:
+        return {"action": "error", "message": "Need a forensic justification for the cause-of-loss change."}
+
+    current = claim_data.get("cause_of_loss") or []
+    if isinstance(current, str):
+        # legacy single-value column
+        current = [current] if current else []
+    return {
+        "action": "preview",
+        "tool_name": "update_cause_of_loss",
+        "type": "claim_field_update",
+        "preview": {
+            "field": "cause_of_loss",
+            "current_value": current,
+            "new_value": causes,
+            "reason": reason,
+        },
+        "message": f"Ready to update cause of loss from {current or '(empty)'} → {causes}. Reason: {reason}.",
+    }
+
+
+def _handle_preview_set_estimate_total(sb: Client, claim_id: str, claim_data: dict, tool_input: dict) -> dict:
+    """Preview hitting a target contractor RCV. Auto-approved.
+
+    Default strategy = balancing_line: adds an 'EST ADJ' line item with the
+    necessary delta. Real Xactimate prices on every other line item stay
+    untouched.
+    """
+    try:
+        target = float(tool_input.get("target_total") or 0)
+    except (TypeError, ValueError):
+        return {"action": "error", "message": "`target_total` must be a number."}
+    if target <= 0:
+        return {"action": "error", "message": "`target_total` must be > 0."}
+
+    strategy = (tool_input.get("strategy") or "balancing_line").lower()
+    if strategy not in ("balancing_line", "scale_all", "adjust_primary"):
+        return {"action": "error", "message": f"Unknown strategy '{strategy}'. Use balancing_line | scale_all | adjust_primary."}
+
+    reason = (tool_input.get("reason") or "").strip()
+    if not reason:
+        return {"action": "error", "message": "Need a reason for the target total (e.g. carrier-approved cap, lump-sum bid)."}
+
+    current_rcv = float(claim_data.get("contractor_rcv") or 0)
+    delta = round(target - current_rcv, 2)
+
+    warning = None
+    if strategy == "scale_all":
+        warning = (
+            "WARNING: scale_all proportionally modifies every line item's unit price. "
+            "Resulting prices will NOT match real Xactimate codes — carriers may "
+            "reject for fabricated unit prices. balancing_line is safer."
+        )
+
+    return {
+        "action": "preview",
+        "tool_name": "set_estimate_total",
+        "type": "estimate_total_adjust",
+        "preview": {
+            "current_rcv": current_rcv,
+            "target_rcv": target,
+            "delta": delta,
+            "strategy": strategy,
+            "reason": reason,
+            "warning": warning,
+            "balancing_line_proposal": (
+                {
+                    "description": "Estimator's Scope Adjustment",
+                    "qty": 1,
+                    "unit": "EA",
+                    "unit_price": delta,
+                    "xactimate_code": "EST ADJ",
+                    "reason": f"Scope adjustment to hit target RCV ${target:,.2f}: {reason}",
+                }
+                if strategy == "balancing_line" else None
+            ),
+        },
+        "message": (
+            f"Ready to adjust estimate from **${current_rcv:,.2f}** → **${target:,.2f}** "
+            f"(delta ${delta:+,.2f}) using **{strategy}** strategy."
+            + (f" ⚠️ {warning}" if warning else "")
+        ),
+    }
+
+
+def _handle_preview_set_op_override(sb: Client, claim_id: str, claim_data: dict, tool_input: dict) -> dict:
+    """Preview an O&P override. Auto-approved (internal state)."""
+    enabled = tool_input.get("enabled")
+    if enabled is None or not isinstance(enabled, bool):
+        return {"action": "error", "message": "`enabled` must be true or false."}
+    overhead = tool_input.get("overhead_pct")
+    profit = tool_input.get("profit_pct")
+    reason = (tool_input.get("reason") or "").strip()
+    if not reason:
+        return {"action": "error", "message": "Need a reason for the O&P override."}
+
+    # Default platform values when overrides are absent
+    overhead = float(overhead) if isinstance(overhead, (int, float)) else 0.10
+    profit = float(profit) if isinstance(profit, (int, float)) else 0.11
+
+    current_enabled = bool(claim_data.get("o_and_p_enabled"))
+    return {
+        "action": "preview",
+        "tool_name": "set_op_override",
+        "type": "claim_field_update",
+        "preview": {
+            "field": "op_override",
+            "current_value": {"enabled": current_enabled, "auto_via_trade_count": True},
+            "new_value": {
+                "enabled": enabled,
+                "overhead_pct": overhead,
+                "profit_pct": profit,
+                "manual_override": True,
+            },
+            "reason": reason,
+        },
+        "message": (
+            f"Ready to {'enable' if enabled else 'disable'} GC O&P "
+            f"({overhead*100:.0f}% overhead + {profit*100:.0f}% profit). Reason: {reason}."
+        ),
+    }
+
+
+async def _handle_preview_send_install_supplement(
+    sb: Client,
+    claim_id: str,
+    user_id: str,
+    claim_data: dict,
+    company_profile: dict,
+    tool_input: dict,
+) -> dict:
+    """Preview a post-installation supplement email. Approval-gated.
+
+    Code-review fix #8: original implementation tried to delegate to
+    _handle_supplement_email with `template='install'` — but that handler
+    ignores `template` and KeyErrors if `to_email`/`subject`/`body` aren't
+    in tool_input. send_install_supplement's input schema doesn't include
+    those, so it would crash on every call.
+
+    Standalone handler: derives the carrier address from claim_data
+    (adjuster_email or previous_carrier_data.adjuster_email), sets the
+    subject to the claim number per email-rules convention, and composes
+    a post-installation supplement body inline.
+    """
+    include_coc = bool(tool_input.get("include_coc", True))
+    additional_notes = (tool_input.get("additional_notes") or "").strip()
+
+    # Derive carrier address — same fallback chain as _build_claim_brain_prompt
+    prev_data = claim_data.get("previous_carrier_data") or {}
+    adjuster_email = (
+        claim_data.get("adjuster_email")
+        or (prev_data.get("adjuster_email") if isinstance(prev_data, dict) else None)
+        or ""
+    )
+    if not adjuster_email:
+        return {
+            "action": "error",
+            "message": "Cannot send install supplement: no adjuster email on file. Update the claim with the adjuster's address first.",
+        }
+
+    claim_number = (
+        claim_data.get("claim_number")
+        or (prev_data.get("claim_number") if isinstance(prev_data, dict) else None)
+        or ""
+    )
+    if not claim_number:
+        return {
+            "action": "error",
+            "message": "Cannot send install supplement: claim number is missing. Per email rules, the subject must be the claim number only.",
+        }
+
+    address = claim_data.get("address") or "the property"
+    homeowner = claim_data.get("homeowner_name") or "the homeowner"
+    contractor_rcv = float(claim_data.get("contractor_rcv") or 0)
+    carrier = claim_data.get("carrier") or "the carrier"
+    company_name = company_profile.get("company_name") or "Our company"
+    contact_name = company_profile.get("contact_name") or "the project manager"
+
+    # Find the most recent COC PDF for this claim (best-effort)
+    attachments: list[dict] = []
+    if include_coc:
+        try:
+            res = sb.table("claim_emails").select("attachments").eq("claim_id", claim_id).eq(
+                "email_type", "coc"
+            ).order("sent_at", desc=True).limit(1).execute()
+            if res.data:
+                stored = res.data[0].get("attachments") or []
+                if isinstance(stored, list):
+                    for att in stored:
+                        if isinstance(att, dict):
+                            path = att.get("path") or att.get("storage_path")
+                            fname = att.get("filename") or "Certificate_of_Completion.pdf"
+                            if path:
+                                attachments.append({"path": path, "filename": fname})
+                                break
+        except Exception as e:
+            print(f"[install_supplement] COC lookup failed (non-fatal): {e}", flush=True)
+
+    # Compose install-supplement body. Contractor mode — no advocacy language.
+    notes_section = ""
+    if additional_notes:
+        notes_section = (
+            f"<p><strong>Additional notes:</strong> {additional_notes}</p>"
+        )
+    coc_line = (
+        "<p>The signed Certificate of Completion is attached for your records.</p>"
+        if attachments
+        else "<p>The Certificate of Completion is available on request.</p>"
+    )
+
+    body_html = (
+        f"<p>Dear adjuster,</p>"
+        f"<p>This message confirms that the storm-damage restoration work at "
+        f"<strong>{address}</strong> for <strong>{homeowner}</strong> has been completed.</p>"
+        f"<p>The contractor RCV for the completed scope is <strong>${contractor_rcv:,.2f}</strong>. "
+        f"Please process final payment per the attached documentation and your standard "
+        f"post-completion procedures.</p>"
+        f"{coc_line}"
+        f"{notes_section}"
+        f"<p>If you need any clarification or supporting documentation, "
+        f"please contact {contact_name} at {company_name}.</p>"
+        f"<p>Thank you,<br/>{company_name}</p>"
+    )
+
+    return {
+        "action": "preview",
+        "type": "email",
+        "tool_name": "send_install_supplement",
+        "draft": {
+            "to": adjuster_email,
+            "cc": None,
+            "subject": claim_number,  # Per email rules: subject = claim number only
+            "body_html": body_html,
+            "attachments": attachments,
+        },
+        "message": (
+            f"Draft post-installation supplement ready for {adjuster_email} "
+            f"(claim {claim_number}, contractor RCV ${contractor_rcv:,.2f})."
+            + (f" COC attached." if attachments else " No COC found — sending without attachment.")
+        ),
     }
