@@ -1,0 +1,6 @@
+.vercel
+
+# Python build artifacts (governance v2 cleanup)
+__pycache__/
+*.pyc
+*.pyo
