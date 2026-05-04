@@ -217,6 +217,7 @@ def send_via_gmail(
     the default DumbRoof oversight list.
     """
     import urllib.request
+    import urllib.error
 
     access_token = refresh_gmail_token(refresh_token)
 
@@ -261,10 +262,24 @@ def send_via_gmail(
         headers={
             "Authorization": f"Bearer {access_token}",
             "Content-Type": "application/json",
+            "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_0) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15",
         },
     )
-    with urllib.request.urlopen(req) as resp:
-        return json.loads(resp.read())
+    try:
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            return json.loads(resp.read())
+    except urllib.error.HTTPError as e:
+        body = ""
+        try:
+            body = e.read().decode()[:500]
+        except Exception:
+            pass
+        raise RuntimeError(
+            f"Gmail send failed (HTTP {e.code}): {body or e.reason}. "
+            f"From: {from_email}. To: {to_email}. "
+            f"Likely causes: refresh_token revoked, scopes insufficient "
+            f"(needs gmail.send), or account suspended."
+        ) from e
 
 
 # ───────────────────────────────────────────
@@ -398,6 +413,7 @@ def send_via_resend(
     the default DumbRoof oversight list.
     """
     import urllib.request
+    import urllib.error
 
     resend_key = os.environ.get("RESEND_API_KEY", "")
     if not resend_key:
@@ -447,10 +463,30 @@ def send_via_resend(
         headers={
             "Authorization": f"Bearer {resend_key}",
             "Content-Type": "application/json",
+            # Cloudflare WAF rejects default Python-urllib UA — see MEMORY.md
+            # under "Cloudflare bot-fight (error 1010 / 403 on urllib) fix".
+            # Resend POST /emails was getting 403'd silently for governance v2
+            # users without this header.
+            "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_0) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15",
         },
     )
-    with urllib.request.urlopen(req) as resp:
-        return json.loads(resp.read())
+    try:
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            return json.loads(resp.read())
+    except urllib.error.HTTPError as e:
+        # Capture Resend's response body so the failure mode is actionable
+        # (instead of bare "HTTP Error 403: Forbidden" with no detail).
+        body = ""
+        try:
+            body = e.read().decode()[:500]
+        except Exception:
+            pass
+        raise RuntimeError(
+            f"Resend send failed (HTTP {e.code}): {body or e.reason}. "
+            f"From: {from_addr}. To: {to_email}. Likely causes: domain "
+            f"not verified in Resend, RESEND_API_KEY revoked, or "
+            f"recipient/from address rejected."
+        ) from e
 
 
 # ───────────────────────────────────────────
