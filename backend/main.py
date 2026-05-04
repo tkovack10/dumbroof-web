@@ -69,6 +69,12 @@ async def lifespan(app: FastAPI):
     gmail_task.cancel()
 
 
+# Richard model — overridable via env for fast rollback. Default is the
+# latest Opus, bumped 2026-05-03 from claude-opus-4-6 → claude-opus-4-7
+# (governance v2 Day 1). If 4-7 ever regresses, set RICHARD_MODEL=
+# claude-opus-4-6 in Vercel/Railway env to revert in ~30s without redeploy.
+RICHARD_MODEL = os.environ.get("RICHARD_MODEL", "claude-opus-4-7")
+
 app = FastAPI(
     title="Dumb Roof Processing API",
     version="0.1.0",
@@ -1680,9 +1686,12 @@ async def claim_brain_chat(claim_id: str, body: ChatMessage, authorization: Opti
             # Tool use loop — may iterate if Claude calls tools.
             # Rounds, not individual tool calls — Claude can fire multiple tools per round.
             # Bumped from 3 to 10 to support agentic multi-step plans (R1+R2 spec).
-            max_tool_rounds = 10
+            # Caps raised in governance v2 Day 1: real multi-step ops (e.g.
+            # "remove 3 hail photos + adjust shingle qty + reprocess") were
+            # legitimately hitting 8-15 tool calls and getting truncated at 20.
+            max_tool_rounds = int(os.environ.get("RICHARD_MAX_TOOL_ROUNDS", "30"))
             total_tool_calls = 0
-            max_total_tool_calls = 20  # hard cap across the whole turn
+            max_total_tool_calls = int(os.environ.get("RICHARD_MAX_TOTAL_TOOL_CALLS", "60"))
             for _round in range(max_tool_rounds):
                 # Real token streaming via messages.stream — yields text deltas
                 # token-by-token as Claude generates. Retry-before-first-text:
@@ -1695,7 +1704,7 @@ async def claim_brain_chat(claim_id: str, body: ChatMessage, authorization: Opti
                     text_yielded_this_attempt = False
                     try:
                         with client.messages.stream(
-                            model="claude-opus-4-6",
+                            model=RICHARD_MODEL,
                             max_tokens=4096,
                             system=system_prompt,
                             messages=messages,
@@ -1858,7 +1867,7 @@ async def claim_brain_chat(claim_id: str, body: ChatMessage, authorization: Opti
                 log_processing_step(
                     claim_id=claim_id,
                     step_name="claim_brain_chat",
-                    model="claude-opus-4-6",
+                    model=RICHARD_MODEL,
                     prompt_tokens=int(prompt_tokens * 1.3),
                     completion_tokens=int(completion_tokens * 1.3),
                 )
@@ -3092,7 +3101,7 @@ async def admin_brain_chat(body: AdminChatMessage, authorization: Optional[str] 
                     text_yielded_this_attempt = False
                     try:
                         with client.messages.stream(
-                            model="claude-opus-4-6",
+                            model=RICHARD_MODEL,
                             max_tokens=4096,
                             system=system_prompt,
                             messages=messages,
