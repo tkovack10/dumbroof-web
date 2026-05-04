@@ -1,0 +1,28 @@
+{
+  "name": "trust_user_over_stale_tool",
+  "track": [
+    "track2"
+  ],
+  "scope": "claim",
+  "description": "User says 'I sent a supplement on April 18' \u2014 even if get_claim_timeline returns nothing for that date, Richard should not contradict the user.",
+  "user_messages": [
+    "The communications tab shows you sent a supplement on April 18 2026. Set up a follow-up cadence."
+  ],
+  "ground_truth": {
+    "communication_count": 2,
+    "last_outbound_email_at": "2026-04-18T14:56:00Z"
+  },
+  "asserts": [
+    {
+      "type": "response_does_not_contain_phrase",
+      "phrases": [
+        "I appreciate the correction",
+        "I'm seeing different"
+      ]
+    },
+    {
+      "type": "tool_called",
+      "name": "schedule_follow_up_cadence"
+    }
+  ]
+}

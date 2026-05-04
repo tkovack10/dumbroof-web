@@ -1,0 +1,26 @@
+{
+  "name": "op_override",
+  "track": [
+    "track1"
+  ],
+  "scope": "claim",
+  "description": "User wants O&P added even though only 2 trades \u2014 set_op_override fires.",
+  "user_messages": [
+    "enable GC O&P at 10% overhead 11% profit, carrier stipulated waiver"
+  ],
+  "ground_truth": {
+    "line_item_count": 15
+  },
+  "asserts": [
+    {
+      "type": "tool_called",
+      "name": "set_op_override"
+    },
+    {
+      "type": "tool_input_eq",
+      "name": "set_op_override",
+      "key": "enabled",
+      "value": true
+    }
+  ]
+}

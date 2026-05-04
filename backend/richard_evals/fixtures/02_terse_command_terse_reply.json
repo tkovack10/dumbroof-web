@@ -1,0 +1,27 @@
+{
+  "name": "terse_command_terse_reply",
+  "track": [
+    "track2"
+  ],
+  "scope": "claim",
+  "description": "Terse user instruction yields terse response, no preamble or follow-up Q.",
+  "user_messages": [
+    "Just call find_photo for photo_02 and stop. No further action."
+  ],
+  "ground_truth": {
+    "photo_count": 27
+  },
+  "asserts": [
+    {
+      "type": "tool_called",
+      "name": "find_photo"
+    },
+    {
+      "type": "response_under_chars",
+      "max": 400
+    },
+    {
+      "type": "no_clarifying_question"
+    }
+  ]
+}

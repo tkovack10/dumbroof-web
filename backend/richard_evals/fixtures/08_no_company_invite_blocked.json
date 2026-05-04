@@ -1,0 +1,19 @@
+{
+  "name": "no_company_invite_blocked",
+  "track": [
+    "track1"
+  ],
+  "scope": "user",
+  "description": "Ronaldo's case \u2014 fresh signup with no company_profile, Setup Richard handles invite gracefully.",
+  "user_messages": [
+    "invite alice@example.com to my team"
+  ],
+  "company_profile": {},
+  "asserts": [
+    {
+      "type": "precondition_blocks",
+      "tool": "invite_team_member",
+      "code": "company_profile_incomplete"
+    }
+  ]
+}

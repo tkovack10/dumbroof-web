@@ -1,0 +1,25 @@
+{
+  "name": "change_dol",
+  "track": [
+    "track1",
+    "track2"
+  ],
+  "scope": "claim",
+  "description": "Change date of loss \u2014 update_date_of_loss fires, no auto-reprocess unless user asked.",
+  "user_messages": [
+    "change the date of loss to 2024-08-15, homeowner misremembered"
+  ],
+  "ground_truth": {
+    "photo_count": 20
+  },
+  "asserts": [
+    {
+      "type": "tool_called",
+      "name": "update_date_of_loss"
+    },
+    {
+      "type": "tool_not_called",
+      "name": "trigger_reprocess"
+    }
+  ]
+}

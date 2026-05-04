@@ -1,0 +1,30 @@
+{
+  "name": "reprocess_chain",
+  "track": [
+    "track1",
+    "track2"
+  ],
+  "scope": "claim",
+  "description": "User says 'add line item AND reprocess'. Auto-chain must fire trigger_reprocess if LLM forgets.",
+  "user_messages": [
+    "add a line item: vinyl siding 2064 SF at $11.47 and reprocess"
+  ],
+  "ground_truth": {
+    "photo_count": 30,
+    "line_item_count": 18
+  },
+  "asserts": [
+    {
+      "type": "tool_called",
+      "name": "add_line_item"
+    },
+    {
+      "type": "tool_called",
+      "name": "trigger_reprocess"
+    },
+    {
+      "type": "auto_chain_fired",
+      "rule": "auto_reprocess_after_line_item_change"
+    }
+  ]
+}
