@@ -93,7 +93,16 @@ TASK:
 
 2. Identify knowledge gaps — topics users ask about that Richard didn't answer correctly (building codes, specific carrier tactics, Xactimate line items, I&W formula, etc.).
 
-3. For each gap, produce a unified diff against backend/main.py that adds context to _build_claim_brain_prompt. Each patch should be a specific, drop-in addition to the system prompt.
+3. For each gap, produce a unified diff against the appropriate file in backend/richard_prompts/ (governance v2 Day 6-7). DO NOT propose diffs against backend/main.py:_build_claim_brain_prompt anymore — the rules are now externalized into versioned markdown files.
+
+   Choose target_path by scope:
+   - Rules that apply to BOTH Setup and Claim Richard → backend/richard_prompts/common/{topic}.md (e.g. language_rule.md, communication_style_matching.md, execution_bias.md)
+   - Rules specific to per-claim chats → backend/richard_prompts/claim/{topic}.md (e.g. trust_hierarchy.md, ui_awareness.md, auto_reprocess_hint.md)
+   - Rules specific to Setup Richard → backend/richard_prompts/setup/{topic}.md
+
+   For NEW topics, propose creating a new file: target_path = backend/richard_prompts/{scope}/{new_topic}.md. The diff should be a fresh-file creation with the H2 heading + body.
+
+   For EXISTING topics, target_path is the existing file and the diff is a small in-file edit. Always prefer extending an existing file over creating a new one — the trainer should converge on a small canonical set of rules, not sprawl.
 
 Return ONLY this JSON:
 \`\`\`json
@@ -107,10 +116,10 @@ Return ONLY this JSON:
   ],
   "recommendations": [
     {
-      "target_path": "backend/main.py:_build_claim_brain_prompt",
+      "target_path": "backend/richard_prompts/claim/code_citation_requirement.md",
       "summary": "Add RCNYS code citation requirements",
       "rationale": "5 conversations this week where Richard dodged code questions",
-      "diff": "--- a/backend/main.py\\n+++ b/backend/main.py\\n@@ context @@\\n+ ## Code Citation Requirement"
+      "diff": "--- /dev/null\\n+++ b/backend/richard_prompts/claim/code_citation_requirement.md\\n@@ -0,0 +1,N @@\\n+## CODE CITATION REQUIREMENT\\n+...full body..."
     }
   ],
   "summary": "one-sentence assessment of Richard quality this week"
