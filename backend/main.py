@@ -1650,9 +1650,39 @@ async def claim_brain_chat(claim_id: str, body: ChatMessage, authorization: Opti
     # Build system prompt
     system_prompt = _build_claim_brain_prompt(claim_data, photos, scope_comparison, playbook, timeline_events)
 
-    # Spanish language mode
-    if body.locale == "es":
-        system_prompt += "\n\n## LANGUAGE: SPANISH\nThe user has selected Spanish. Respond ENTIRELY in Spanish. All explanations, recommendations, and coaching should be in Spanish. Technical terms (Xactimate codes, IRC sections, dollar amounts) stay in English. Email drafts should still be in English (carriers expect English).\n"
+    # Pre-flight middleware (governance v2 Day 2-3): language detection +
+    # ground truth snapshot. Runs BEFORE the LLM sees anything so the
+    # response language directive is deterministic and Richard can't deny
+    # the existence of UI-visible data. See backend/richard_middleware.py.
+    from richard_middleware import prepare_brain_request
+    brain_req = await prepare_brain_request(
+        sb=sb,
+        user_id=resolved_user_id,
+        claim_id=claim_id,
+        scope="claim",
+        user_message=body.message or "",
+    )
+
+    # Explicit locale (UI-selected) beats auto-detection from message text
+    effective_lang = body.locale if body.locale in ("es", "en") else brain_req.detected_language
+
+    # Build the prefix: language directive (if Spanish) + ground truth snapshot.
+    # Prepend to system_prompt so Richard sees these BEFORE the existing
+    # claim/photos/scope sections.
+    prefix_parts: list[str] = []
+    if effective_lang == "es":
+        prefix_parts.append(
+            "## RESPONSE LANGUAGE\n"
+            "The user is communicating in Spanish. Respond ENTIRELY in Spanish. "
+            "All explanations, recommendations, and coaching should be in Spanish. "
+            "Technical terms (Xactimate codes, IRC sections, dollar amounts) stay in English. "
+            "Email drafts should still be in English (carriers expect English).\n\n"
+        )
+    gt_block = brain_req.ground_truth.to_prompt_block()
+    if gt_block:
+        prefix_parts.append(gt_block)
+    if prefix_parts:
+        system_prompt = "".join(prefix_parts) + system_prompt
 
     # Load conversation history from Supabase (replaces in-process dict;
     # survives Railway restarts). Limit 50 to stay within context window.
@@ -3076,8 +3106,28 @@ async def admin_brain_chat(body: AdminChatMessage, authorization: Optional[str] 
     else:
         system_prompt = _build_admin_brain_prompt(company_profile, integrations)
 
-    if body.locale == "es":
+    # Pre-flight middleware (governance v2 Day 2-3):
+    # - Auto-detect Spanish even when no UI locale was set
+    # - For setup scope ('user'), catch per-claim questions and redirect
+    #   (Zach 2026-04-28 incident: setup Richard tried to answer claim Qs)
+    from richard_middleware import prepare_brain_request
+    brain_req = await prepare_brain_request(
+        sb=sb,
+        user_id=resolved_user_id,
+        claim_id=None,  # admin/setup chats are not bound to a claim
+        scope=scope,  # 'user' or 'company'
+        user_message=body.message or "",
+    )
+
+    # Explicit locale override beats auto-detection
+    effective_lang = body.locale if body.locale in ("es", "en") else brain_req.detected_language
+    if effective_lang == "es":
         system_prompt += "\n\n## LANGUAGE: SPANISH\nRespond in Spanish. Technical terms (API, OAuth, Microsoft 365) stay in English.\n"
+
+    # Setup-scope redirect: if user is asking a per-claim question on the
+    # setup chat, short-circuit with a redirect rather than burning an LLM
+    # call (which would just produce the same redirect from the prompt rule).
+    setup_redirect_message = brain_req.redirect_message if not brain_req.can_proceed else None
 
     # Persistent chat history (Supabase). Scope is 'user' or 'company'.
     history = load_conversation(sb, scope, user_id, limit=50)
@@ -3091,6 +3141,19 @@ async def admin_brain_chat(body: AdminChatMessage, authorization: Optional[str] 
     client = anthropic.Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
 
     async def stream_response():
+        # Setup-scope redirect short-circuit (governance v2 Day 2-3):
+        # If the user asked a per-claim question on the setup chat, return
+        # the canned redirect WITHOUT calling the LLM. Saves a paid call and
+        # makes the redirect deterministic regardless of LLM drift.
+        if setup_redirect_message:
+            yield f"data: {json.dumps({'text': setup_redirect_message})}\n\n"
+            try:
+                append_message(sb, scope, user_id, user_id, "assistant", setup_redirect_message)
+            except Exception as _e:
+                print(f"[ADMIN BRAIN] Failed to persist redirect (non-fatal): {_e}")
+            yield "data: [DONE]\n\n"
+            return
+
         try:
             messages = list(history)
             messages.append({"role": "user", "content": body.message})
