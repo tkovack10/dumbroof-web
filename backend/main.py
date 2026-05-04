@@ -111,23 +111,32 @@ REPROCESS_RATE_LIMIT_SECONDS = int(os.environ.get("RICHARD_REPROCESS_RATE_LIMIT_
 def _check_reprocess_rate_limit(sb, claim_id: str) -> tuple[bool, Optional[int]]:
     """Return (allowed, retry_after_seconds).
 
-    Looks up the most recent reprocess in processing_logs. If we can't
-    determine recency, default to allowed (fail-open) — a rate-limit lookup
-    failure shouldn't block a legitimate user request.
+    Reads `claims.last_processed_at` (set by processor.py when a reprocess
+    completes — see processor.py:6279). If the most recent reprocess was
+    less than REPROCESS_RATE_LIMIT_SECONDS ago, returns (False, retry_after).
+    Otherwise (True, None).
+
+    Code-review fix #7: original implementation queried processing_logs
+    with step_name in ("reprocess", "process", ...) but processor.py logs
+    SUB-steps (extract_measurements, analyze_photos, etc.) — never a
+    top-level "reprocess" row. Rate limit would have silently never fired.
+
+    Fail-open on error — a rate-limit lookup failure shouldn't block a
+    legitimate user request.
     """
     try:
         from datetime import datetime, timezone
-        res = sb.table("processing_logs").select("created_at,step_name").eq(
-            "claim_id", claim_id
-        ).in_("step_name", ["reprocess", "process", "process_claim", "claim_reprocess"]).order(
-            "created_at", desc=True
+        res = sb.table("claims").select("last_processed_at").eq(
+            "id", claim_id
         ).limit(1).execute()
         if not res.data:
             return True, None
-        last_str = (res.data[0].get("created_at") or "").replace("Z", "+00:00")
+        last_str = (res.data[0].get("last_processed_at") or "").replace("Z", "+00:00")
         if not last_str:
             return True, None
         last = datetime.fromisoformat(last_str)
+        if last.tzinfo is None:
+            last = last.replace(tzinfo=timezone.utc)
         elapsed = (datetime.now(timezone.utc) - last).total_seconds()
         if elapsed >= REPROCESS_RATE_LIMIT_SECONDS:
             return True, None
