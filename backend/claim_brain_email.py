@@ -185,6 +185,7 @@ def exchange_gmail_code(code: str, redirect_uri: str) -> dict:
 def refresh_gmail_token(refresh_token: str) -> str:
     """Refresh an expired access token."""
     import urllib.request
+    import urllib.error
     data = json.dumps({
         "client_id": GMAIL_CLIENT_ID,
         "client_secret": GMAIL_CLIENT_SECRET,
@@ -194,11 +195,31 @@ def refresh_gmail_token(refresh_token: str) -> str:
     req = urllib.request.Request(
         "https://oauth2.googleapis.com/token",
         data=data,
-        headers={"Content-Type": "application/json"},
+        headers={
+            "Content-Type": "application/json",
+            "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_0) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15",
+        },
     )
-    with urllib.request.urlopen(req) as resp:
-        result = json.loads(resp.read())
-        return result["access_token"]
+    try:
+        with urllib.request.urlopen(req, timeout=20) as resp:
+            result = json.loads(resp.read())
+            return result["access_token"]
+    except urllib.error.HTTPError as e:
+        body = ""
+        try:
+            body = e.read().decode()[:500]
+        except Exception:
+            pass
+        # Most common: refresh_token revoked (user removed app access in
+        # Google account settings) → Google returns 400 with
+        # error="invalid_grant". Surface clearly so the user knows to
+        # reconnect Gmail rather than thinking the platform is broken.
+        raise RuntimeError(
+            f"Gmail token refresh failed (HTTP {e.code}): {body or e.reason}. "
+            f"Most likely the user revoked the refresh_token in their Google "
+            f"account or the OAuth consent expired. Have them reconnect Gmail "
+            f"in Settings → Email Integration."
+        ) from e
 
 
 def send_via_gmail(
