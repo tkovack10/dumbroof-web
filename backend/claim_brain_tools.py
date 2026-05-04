@@ -4841,38 +4841,111 @@ async def _handle_preview_send_install_supplement(
 ) -> dict:
     """Preview a post-installation supplement email. Approval-gated.
 
-    Uses the existing send_supplement_email handler with template='install',
-    so we don't duplicate the email-composition machinery. Adds the COC
-    attachment automatically unless caller passes include_coc=False.
+    Code-review fix #8: original implementation tried to delegate to
+    _handle_supplement_email with `template='install'` — but that handler
+    ignores `template` and KeyErrors if `to_email`/`subject`/`body` aren't
+    in tool_input. send_install_supplement's input schema doesn't include
+    those, so it would crash on every call.
+
+    Standalone handler: derives the carrier address from claim_data
+    (adjuster_email or previous_carrier_data.adjuster_email), sets the
+    subject to the claim number per email-rules convention, and composes
+    a post-installation supplement body inline.
     """
-    include_coc = tool_input.get("include_coc", True)
+    include_coc = bool(tool_input.get("include_coc", True))
     additional_notes = (tool_input.get("additional_notes") or "").strip()
 
-    # Find the most recent COC PDF for this claim
-    coc_attachment_path: Optional[str] = None
+    # Derive carrier address — same fallback chain as _build_claim_brain_prompt
+    prev_data = claim_data.get("previous_carrier_data") or {}
+    adjuster_email = (
+        claim_data.get("adjuster_email")
+        or (prev_data.get("adjuster_email") if isinstance(prev_data, dict) else None)
+        or ""
+    )
+    if not adjuster_email:
+        return {
+            "action": "error",
+            "message": "Cannot send install supplement: no adjuster email on file. Update the claim with the adjuster's address first.",
+        }
+
+    claim_number = (
+        claim_data.get("claim_number")
+        or (prev_data.get("claim_number") if isinstance(prev_data, dict) else None)
+        or ""
+    )
+    if not claim_number:
+        return {
+            "action": "error",
+            "message": "Cannot send install supplement: claim number is missing. Per email rules, the subject must be the claim number only.",
+        }
+
+    address = claim_data.get("address") or "the property"
+    homeowner = claim_data.get("homeowner_name") or "the homeowner"
+    contractor_rcv = float(claim_data.get("contractor_rcv") or 0)
+    carrier = claim_data.get("carrier") or "the carrier"
+    company_name = company_profile.get("company_name") or "Our company"
+    contact_name = company_profile.get("contact_name") or "the project manager"
+
+    # Find the most recent COC PDF for this claim (best-effort)
+    attachments: list[dict] = []
     if include_coc:
         try:
             res = sb.table("claim_emails").select("attachments").eq("claim_id", claim_id).eq(
                 "email_type", "coc"
             ).order("sent_at", desc=True).limit(1).execute()
             if res.data:
-                attachments = res.data[0].get("attachments") or []
-                if isinstance(attachments, list) and attachments:
-                    first = attachments[0]
-                    if isinstance(first, dict):
-                        coc_attachment_path = first.get("path") or first.get("storage_path")
+                stored = res.data[0].get("attachments") or []
+                if isinstance(stored, list):
+                    for att in stored:
+                        if isinstance(att, dict):
+                            path = att.get("path") or att.get("storage_path")
+                            fname = att.get("filename") or "Certificate_of_Completion.pdf"
+                            if path:
+                                attachments.append({"path": path, "filename": fname})
+                                break
         except Exception as e:
             print(f"[install_supplement] COC lookup failed (non-fatal): {e}", flush=True)
 
-    # Delegate to the existing supplement-email handler with install context
-    enriched_input = {
-        **tool_input,
-        "template": "install",
-        "additional_notes": additional_notes,
-    }
-    if coc_attachment_path:
-        enriched_input["attachment_paths"] = [coc_attachment_path]
-
-    return await _handle_supplement_email(
-        sb, claim_id, user_id, claim_data, company_profile, enriched_input
+    # Compose install-supplement body. Contractor mode — no advocacy language.
+    notes_section = ""
+    if additional_notes:
+        notes_section = (
+            f"<p><strong>Additional notes:</strong> {additional_notes}</p>"
+        )
+    coc_line = (
+        "<p>The signed Certificate of Completion is attached for your records.</p>"
+        if attachments
+        else "<p>The Certificate of Completion is available on request.</p>"
     )
+
+    body_html = (
+        f"<p>Dear adjuster,</p>"
+        f"<p>This message confirms that the storm-damage restoration work at "
+        f"<strong>{address}</strong> for <strong>{homeowner}</strong> has been completed.</p>"
+        f"<p>The contractor RCV for the completed scope is <strong>${contractor_rcv:,.2f}</strong>. "
+        f"Please process final payment per the attached documentation and your standard "
+        f"post-completion procedures.</p>"
+        f"{coc_line}"
+        f"{notes_section}"
+        f"<p>If you need any clarification or supporting documentation, "
+        f"please contact {contact_name} at {company_name}.</p>"
+        f"<p>Thank you,<br/>{company_name}</p>"
+    )
+
+    return {
+        "action": "preview",
+        "type": "email",
+        "tool_name": "send_install_supplement",
+        "draft": {
+            "to": adjuster_email,
+            "cc": None,
+            "subject": claim_number,  # Per email rules: subject = claim number only
+            "body_html": body_html,
+            "attachments": attachments,
+        },
+        "message": (
+            f"Draft post-installation supplement ready for {adjuster_email} "
+            f"(claim {claim_number}, contractor RCV ${contractor_rcv:,.2f})."
+            + (f" COC attached." if attachments else " No COC found — sending without attachment.")
+        ),
+    }
