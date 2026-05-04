@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import type { ScopeComparisonRow, CodeCitation } from "@/types/scope-comparison";
 
 interface SupplementItem {
@@ -24,16 +25,29 @@ interface Props {
   userName?: string;
   companyName?: string;
   companyPhone?: string;
+  adjusterEmail?: string;
+  claimNumber?: string;
 }
 
-export function SupplementComposer({ claimId, claimAddress, carrierName, comparisonRows, carrierRcv, contractorRcv, userId, userName, companyName, companyPhone }: Props) {
+export function SupplementComposer({ claimId, claimAddress, carrierName, comparisonRows, carrierRcv, contractorRcv, userId, userName, companyName, companyPhone, adjusterEmail, claimNumber: claimNumberProp }: Props) {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [showComposer, setShowComposer] = useState(false);
   const [copied, setCopied] = useState(false);
-  const [toEmail, setToEmail] = useState("");
-  const [claimNumber, setClaimNumber] = useState("");
+  const [toEmail, setToEmail] = useState(adjusterEmail || "");
+  const [claimNumber, setClaimNumber] = useState(claimNumberProp || "");
   const [sending, setSending] = useState(false);
   const [sendResult, setSendResult] = useState<{ ok: boolean; message: string } | null>(null);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => { setMounted(true); }, []);
+
+  useEffect(() => {
+    if (adjusterEmail && !toEmail) setToEmail(adjusterEmail);
+  }, [adjusterEmail, toEmail]);
+
+  useEffect(() => {
+    if (claimNumberProp && !claimNumber) setClaimNumber(claimNumberProp);
+  }, [claimNumberProp, claimNumber]);
 
   const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "https://dumbroof-backend-production.up.railway.app";
 
@@ -293,9 +307,11 @@ export function SupplementComposer({ claimId, claimAddress, carrierName, compari
         </button>
       </div>
 
-      {/* Email Preview Modal */}
-      {showComposer && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+      {/* Email Preview Modal — portaled to document.body to escape the
+           glass-card's backdrop-filter containing block (which would otherwise
+           trap fixed positioning and clip the modal). */}
+      {showComposer && mounted && createPortal(
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
           <div className="bg-[rgb(15,18,35)] border border-[var(--border-glass)] rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col shadow-2xl">
             <div className="flex-shrink-0 px-6 py-4 border-b border-[var(--border-glass)] flex items-center justify-between">
               <h3 className="text-base font-bold text-[var(--white)]">Supplement Email</h3>
@@ -400,7 +416,8 @@ export function SupplementComposer({ claimId, claimAddress, carrierName, compari
               </div>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

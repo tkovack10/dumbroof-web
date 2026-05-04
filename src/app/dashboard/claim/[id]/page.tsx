@@ -1289,6 +1289,8 @@ export default function ClaimDetailPage() {
               userName={userProfile.name}
               companyName={userProfile.company}
               companyPhone={userProfile.phone}
+              adjusterEmail={claim.adjuster_email || ""}
+              claimNumber={claim.claim_number || ""}
             />
           </div>
         )}
