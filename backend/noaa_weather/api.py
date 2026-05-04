@@ -463,6 +463,15 @@ class NOAAClient:
                     max_size = float(row.get("MAXSIZE") or 0)
                     if max_size < 0.5:  # Filter trash returns
                         continue
+                    # Upper sanity bound — SWDI NEXRAD radar-derived hail
+                    # signatures can spike to obviously-bogus values (5-10")
+                    # on isolated cells without spotter corroboration. Real
+                    # 3"+ hail reaches Storm Events DB / SPC; if SWDI is the
+                    # ONLY source claiming that size, treat it as a radar
+                    # artifact. Hard-cap at 3.0" — anything bigger requires
+                    # spotter confirmation from another source.
+                    if max_size > 3.0:
+                        continue
                     prob_str = (row.get("PROB") or "0").strip()
                     try:
                         prob = float(prob_str)

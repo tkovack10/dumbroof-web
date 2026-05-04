@@ -199,18 +199,35 @@ def _query_noaa_storm_window(noaa_client, lat: float, lon: float, dol_str: str,
         return (0 if is_hail else 1, getattr(e, "distance_miles", 999) or 999)
     deduped.sort(key=_sort_key)
 
-    max_hail = max(
-        (float(getattr(e, "magnitude", 0) or 0) for e in deduped if "Hail" in (e.event_type or "")),
-        default=0.0,
-    )
-    max_wind = max(
-        (float(getattr(e, "magnitude", 0) or 0) for e in deduped if "Wind" in (e.event_type or "")),
-        default=0.0,
-    )
-    closest_hail_dist = min(
-        (e.distance_miles for e in deduped if "Hail" in (e.event_type or "")),
-        default=0.0,
-    )
+    # Property-relevance gate: pick the LARGEST hail/wind WITHIN search_radius,
+    # fall back to the nearest if nothing is in-radius. Without this gate, a
+    # SWDI NEXRAD report 30+ mi from the property (SWDI's hard cap is 50 mi)
+    # could "win" the max() and surface as the property's hail size — e.g.,
+    # Binghamton claims showing 3.5" hail from a multi-county outlier.
+    # Mirrors NOAAClient.query()'s per-day logic so window-scan + single-day
+    # paths agree on which event represents the property's storm.
+    search_radius_miles = float(getattr(noaa_client, "search_radius_miles", 25.0) or 25.0)
+
+    hail_events = [e for e in deduped if "Hail" in (e.event_type or "") and (float(getattr(e, "magnitude", 0) or 0) > 0)]
+    wind_events = [e for e in deduped if "Wind" in (e.event_type or "")]
+
+    def _pick_property_event(events):
+        if not events:
+            return None
+        local = [e for e in events if (e.distance_miles or 0) <= search_radius_miles]
+        if local:
+            return max(local, key=lambda e: float(getattr(e, "magnitude", 0) or 0))
+        return min(events, key=lambda e: e.distance_miles or 999)
+
+    hail_pick = _pick_property_event(hail_events)
+    wind_pick = _pick_property_event(wind_events)
+
+    max_hail = float(getattr(hail_pick, "magnitude", 0) or 0) if hail_pick else 0.0
+    max_wind = float(getattr(wind_pick, "magnitude", 0) or 0) if wind_pick else 0.0
+    # Distance reflects the SELECTED hail event, not min() across all hail —
+    # otherwise the reported pair (size, distance) can come from two different
+    # events and mislead the forensic narrative.
+    closest_hail_dist = float(hail_pick.distance_miles) if hail_pick else 0.0
 
     combined = NOAAStormData(
         property_address=address,
