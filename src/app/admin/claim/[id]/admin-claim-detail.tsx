@@ -504,6 +504,8 @@ export function AdminClaimDetail({ claim: initialClaim, userInfo }: Props) {
             userName={adminProfile.name}
             companyName={adminProfile.company}
             companyPhone={adminProfile.phone}
+            adjusterEmail={claim.adjuster_email || ""}
+            claimNumber={claim.claim_number || ""}
           />
         )}
 
