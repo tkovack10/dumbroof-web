@@ -79,6 +79,34 @@ DEFAULT_MARKETS = {
     "IL": "ILCC8X_APR26",   # Chicago
     "MN": "MNMN8X_APR26",   # Minneapolis (pending: 12/22 priced)
     "TX": "TXDF8X_APR26",   # Dallas-Fort Worth — largest TX metro (Alfonso 2026-04-17, 24 markets)
+    "IA": "IADM8X_02MAY26", # Des Moines — largest IA metro (Alfonso 2026-05-05, 10 markets)
+    "KS": "KSWI8X_02MAY26", # Wichita — largest KS metro (Alfonso 2026-05-05, 5 markets)
+    "OK": "OKOC8X_02MAY26", # Oklahoma City — largest OK metro (Alfonso 2026-05-05, 6 markets)
+}
+
+# Nearest priced state for every unpriced US state/territory. When a claim comes
+# in from a state we haven't onboarded, resolve_market substitutes the nearest
+# priced state's default market rather than silently dropping to NY pricing.
+# Mappings are by state-centroid → priced-state-centroid distance, biased toward
+# population/metro centers when ties are close.
+NEAREST_PRICED_STATE = {
+    # Northeast → NY
+    "ME": "NY", "NH": "NY", "VT": "NY", "MA": "NY", "RI": "NY", "CT": "NY",
+    # Mid-Atlantic / Southeast → MD
+    "VA": "MD", "DC": "MD", "NC": "MD", "SC": "MD", "FL": "MD",
+    # Appalachia / Ohio Valley → OH
+    "WV": "OH", "KY": "OH", "TN": "OH", "IN": "OH", "AL": "OH", "GA": "OH",
+    # Upper Midwest → IL
+    "WI": "IL", "MO": "IL",
+    # Plains / Northwest → MN (Iowa was here until 2026-05-05 when Alfonso added IA pricing)
+    "NE": "MN", "ND": "MN", "SD": "MN", "MT": "MN",
+    "ID": "MN", "WA": "MN", "OR": "MN", "AK": "MN",
+    # South / Mountain / West → TX (Kansas + Oklahoma were here until 2026-05-05)
+    "MS": "TX", "AR": "TX", "LA": "TX",
+    "NM": "TX", "AZ": "TX", "CO": "TX", "UT": "TX", "NV": "TX",
+    "WY": "TX", "CA": "TX", "HI": "TX",
+    # Territories → nearest CONUS port
+    "PR": "MD", "VI": "MD", "GU": "TX", "MP": "TX", "AS": "TX",
 }
 
 # Full state name → 2-letter code. Upstream address parsers are inconsistent
@@ -601,16 +629,25 @@ class XactRegistry:
 
         default = DEFAULT_MARKETS.get(state_upper)
         if not default:
-            # No Xactimate pricing loaded for this state. Warn loudly so this
-            # surfaces in claim processing_warnings and Tom sees it. Tom's
-            # directive (2026-04-20): never silently substitute wrong pricing
-            # for a state that we haven't onboarded.
+            # No Xactimate pricing for this state — substitute the nearest
+            # priced state instead of falling back to NY. Geographic proximity
+            # is a much better proxy for labor/material rates than alphabetical
+            # accident. Still recurse through resolve_market so city/zip
+            # routing inside the substitute state still applies (e.g. an Iowa
+            # claim near the MN border still resolves to Minneapolis, not the
+            # default MN market if a closer one were ever added).
+            substitute_state = NEAREST_PRICED_STATE.get(state_upper)
+            if substitute_state and substitute_state in DEFAULT_MARKETS:
+                logger.warning(
+                    "[PRICING] No price list for %s — substituting %s (nearest priced state). "
+                    "Add a %s market to all-markets.json + DEFAULT_MARKETS to use native pricing.",
+                    state_upper, substitute_state, state_upper,
+                )
+                return XactRegistry.resolve_market(substitute_state, zip_code, city)
             logger.error(
-                "[PRICING] No Xactimate price list loaded for state %s. "
-                "Falling back to NY pricing — claim will be materially wrong. "
-                "Add a market for %s to tools/xactimate/price-lists/all-markets.json + "
-                "DEFAULT_MARKETS in xactimate_lookup.py before releasing claims from %s.",
-                state_upper, state_upper, state_upper,
+                "[PRICING] State %s has no nearest-priced-state mapping. "
+                "Falling back to NY. Add %s to NEAREST_PRICED_STATE in xactimate_lookup.py.",
+                state_upper, state_upper,
             )
             return DEFAULT_MARKETS["NY"]
 
