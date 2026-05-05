@@ -37,10 +37,23 @@ export function CompanyProfileGate({
 
   const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      setLogoFile(file);
-      setLogoPreview(URL.createObjectURL(file));
+    if (!file) return;
+    // Reject non-raster formats — Adobe Illustrator (.ai), PDF, SVG, EPS,
+    // PSD, TIFF download fine but render as broken alt-text in PDF reports
+    // (root cause of E203, Team Builders 2026-05-05). Only PNG/JPG/WEBP/GIF
+    // are safe to embed in <img> tags rendered by Chrome headless.
+    const allowedTypes = ["image/png", "image/jpeg", "image/webp", "image/gif"];
+    const ext = (file.name.split(".").pop() || "").toLowerCase();
+    const allowedExts = ["png", "jpg", "jpeg", "webp", "gif"];
+    if (!allowedTypes.includes(file.type) && !allowedExts.includes(ext)) {
+      setError(`Unsupported logo format: ${ext || file.type || "unknown"}. ` +
+               `Please upload a PNG, JPG, or WEBP file. (AI, PDF, SVG, EPS won't render in reports.)`);
+      e.target.value = "";
+      return;
     }
+    setError("");
+    setLogoFile(file);
+    setLogoPreview(URL.createObjectURL(file));
   };
 
   const canSubmit =
@@ -257,7 +270,7 @@ export function CompanyProfileGate({
               <label className="flex-1 cursor-pointer">
                 <input
                   type="file"
-                  accept="image/*"
+                  accept=".png,.jpg,.jpeg,.webp,.gif,image/png,image/jpeg,image/webp,image/gif"
                   onChange={handleLogoChange}
                   className="hidden"
                 />
@@ -267,7 +280,11 @@ export function CompanyProfileGate({
               </label>
             </div>
             <p className="text-[11px] text-[var(--gray-muted)] mt-1.5">
-              PNG or JPG — appears on every page of every report.
+              PNG, JPG, or WEBP — appears on every page of every report.
+              <br />
+              <span className="text-[var(--gray-muted)]">
+                We can&apos;t embed AI, PDF, SVG, or EPS files.
+              </span>
             </p>
           </div>
 

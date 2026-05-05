@@ -4912,16 +4912,44 @@ async def process_claim(claim_id: str, refresh_prices: bool = False):
         # Preserve the original file extension so the PDF generator
         # can detect the correct MIME type (PNG vs JPEG vs etc).
         user_logo_downloaded = False
+        rejected_logo_format: str = ""  # set to e.g. ".ai" if upload was non-raster
         if company_profile and company_profile.get("logo_path"):
             try:
                 _logo_path = company_profile["logo_path"]
                 _logo_ext = os.path.splitext(_logo_path)[1].lower() or ".jpg"
                 logo_data = sb.storage.from_("claim-documents").download(_logo_path)
-                logo_dest = os.path.join(photos_dir, f"usarm_logo{_logo_ext}")
-                with open(logo_dest, "wb") as f:
-                    f.write(logo_data)
-                user_logo_downloaded = True
-                print(f"[PROCESS] Downloaded user logo ({_logo_ext}, {len(logo_data)} bytes)")
+                # Magic-byte raster validation. Adobe Illustrator (.ai), PDF,
+                # SVG, EPS download fine but render as broken alt-text in
+                # Chrome's <img> tag — root cause of E203 (Team Builders
+                # 2026-05-05). Rejecting here keeps the staged photos_dir
+                # clean and makes get_logo_b64() return "" → text fallback
+                # via render_logo_block().
+                head = logo_data[:64] if logo_data else b""
+                is_raster = (
+                    head.startswith(b"\x89PNG\r\n\x1a\n")
+                    or head.startswith(b"\xff\xd8\xff")
+                    or head.startswith(b"GIF87a") or head.startswith(b"GIF89a")
+                    or (head.startswith(b"RIFF") and len(head) >= 12 and head[8:12] == b"WEBP")
+                )
+                if is_raster:
+                    logo_dest = os.path.join(photos_dir, f"usarm_logo{_logo_ext}")
+                    with open(logo_dest, "wb") as f:
+                        f.write(logo_data)
+                    user_logo_downloaded = True
+                    print(f"[PROCESS] Downloaded user logo ({_logo_ext}, {len(logo_data)} bytes)")
+                else:
+                    rejected_logo_format = _logo_ext or "(unknown)"
+                    print(f"[PROCESS] REJECTED non-raster logo {_logo_path!r} "
+                          f"({_logo_ext}, magic={head[:8]!r}) — must be PNG/JPG/WEBP. "
+                          f"PDFs will render text-fallback header. User notification queued.")
+                    try:
+                        _notify_user_logo_format_rejected(
+                            claim=claim,
+                            company_profile=company_profile,
+                            rejected_ext=_logo_ext,
+                        )
+                    except Exception as ne:
+                        print(f"[PROCESS] Logo-rejection email failed (non-fatal): {ne}")
             except Exception as e:
                 print(f"[PROCESS] Could not download user logo: {e}")
 
@@ -6626,6 +6654,69 @@ async def process_claim(claim_id: str, refresh_prices: bool = False):
     # normal completion and non-fatal paths)
     _TELEMETRY_SB = None
     _TELEMETRY_CLAIM_ID = None
+
+
+def _notify_user_logo_format_rejected(claim: dict, company_profile: dict, rejected_ext: str):
+    """Email the user that their logo file format is unsupported.
+
+    Fires when processor.py detects a non-raster logo upload (.ai, .pdf,
+    .svg, .eps, etc.) at PDF-generation time. PDFs still render with the
+    text-fallback header (see usarm_pdf_generator.render_logo_block), but
+    the user needs to know so they can upload a PNG/JPG and re-run.
+
+    Driven by E203 / Team Builders 2026-05-05.
+    """
+    try:
+        from claim_brain_email import send_via_resend
+    except Exception as e:
+        print(f"[LOGO] Could not import send_via_resend: {e}")
+        return
+
+    user_email = (company_profile or {}).get("email") or ""
+    company_name = (company_profile or {}).get("company_name") or ""
+    contact_name = (company_profile or {}).get("contact_name") or "there"
+    address = claim.get("address", "your claim")
+    if not user_email:
+        print(f"[LOGO] No user email on profile — cannot notify about rejected {rejected_ext}")
+        return
+
+    subject = f"Action needed: your DumbRoof logo file isn't supported ({rejected_ext})"
+    body_html = f"""
+<div style='font-family:system-ui,sans-serif;max-width:600px;margin:0 auto;padding:24px;color:#1f2937'>
+  <h2 style='margin-top:0;color:#b91c1c'>Your logo couldn't be embedded</h2>
+  <p>Hi {contact_name},</p>
+  <p>We just processed your claim for <strong>{address}</strong>, but the logo
+     file you uploaded ({rejected_ext}) isn't a format we can embed in PDF reports.</p>
+  <p style='background:#fef3c7;border-left:4px solid #f59e0b;padding:12px;margin:16px 0'>
+     Your reports were generated with a text header showing
+     <strong>{company_name}</strong> in place of the logo image. They're
+     usable and on-brand — but a real logo looks better to carriers.</p>
+  <h3 style='margin-top:24px'>What to do</h3>
+  <ol style='line-height:1.6'>
+    <li>Open your logo in any image editor (Photoshop, Illustrator, Preview, even Canva).</li>
+    <li>Export it as <strong>PNG</strong> (preferred — preserves transparency) or <strong>JPG</strong>.</li>
+    <li>Upload the new file in <a href='https://dumbroof.ai/dashboard/settings'
+       style='color:#2563eb'>Settings</a>.</li>
+    <li>From the claim page, hit <strong>Reprocess</strong> — your reports
+       regenerate with the real logo and we'll resend them.</li>
+  </ol>
+  <p style='font-size:13px;color:#6b7280;margin-top:24px'>
+     We support: PNG, JPG/JPEG, WEBP, GIF.<br>
+     We can't embed: AI, PDF, SVG, EPS, PSD, TIFF.
+  </p>
+  <p style='font-size:12px;color:#9ca3af'>— DumbRoof</p>
+</div>
+"""
+    try:
+        send_via_resend(
+            company_name=company_name or "DumbRoof",
+            to_email=user_email,
+            subject=subject,
+            body_html=body_html,
+        )
+        print(f"[LOGO] Logo-rejection email sent to {user_email}")
+    except Exception as e:
+        print(f"[LOGO] send_via_resend failed: {e}")
 
 
 def _send_qa_alert_email(claim: dict, audit: dict):

@@ -378,6 +378,92 @@ def check_pdf_brand_text(claim: dict, config: dict,
     return flags
 
 
+def check_logo_present(claim: dict, config: dict) -> list[dict]:
+    """Verify the forensic causation PDF cover page contains an actual
+    embedded image. Catches:
+      - Empty <img src=""> rendered as broken alt-text (E203, Team Builders 2026-05-05).
+      - Non-raster logo uploads (.ai, .pdf, .svg, .eps) that download but won't render.
+      - Corrupt or 0-byte logo files that pass file-exists but render as broken.
+
+    Implementation: PyMuPDF page.get_images(full=True) returns embedded image
+    XObjects. Zero images on the cover page of the forensic PDF is the
+    canonical broken state. Other PDFs can legitimately have logo-as-text-only
+    in headers, so we scan only the forensic causation cover.
+    """
+    flags: list[dict] = []
+    user_id = claim.get("user_id")
+    file_path_root = claim.get("file_path") or ""
+    output_files = claim.get("output_files") or []
+    if not user_id or not file_path_root or not output_files:
+        return flags
+
+    sb_url = os.environ.get("SUPABASE_URL", "").rstrip("/")
+    sk = os.environ.get("SUPABASE_SERVICE_KEY", "")
+    if not sb_url or not sk:
+        return [{"issue": "QA_CHECK_SKIPPED", "severity": "low",
+                 "check": "check_logo_present",
+                 "detail": "SUPABASE_URL or SUPABASE_SERVICE_KEY missing"}]
+
+    forensic_files = [f for f in output_files if "FORENSIC" in f.upper()]
+    if not forensic_files:
+        return flags
+
+    import urllib.request
+    for pdf_filename in forensic_files:
+        storage_path = f"{file_path_root}/output/{pdf_filename}"
+        download_url = f"{sb_url}/storage/v1/object/claim-documents/{storage_path}"
+        req = urllib.request.Request(
+            download_url,
+            headers={"apikey": sk, "Authorization": f"Bearer {sk}"},
+        )
+        try:
+            with urllib.request.urlopen(req, timeout=20) as resp:
+                pdf_bytes = resp.read()
+        except Exception as e:
+            flags.append({
+                "issue": "QA_CHECK_DEGRADED",
+                "severity": "low",
+                "check": "check_logo_present",
+                "detail": f"{pdf_filename}: download failed: {str(e)[:120]}",
+            })
+            continue
+        try:
+            doc = fitz.open(stream=pdf_bytes, filetype="pdf")
+            if len(doc) == 0:
+                doc.close()
+                flags.append({
+                    "issue": "PDF_LOGO_MISSING",
+                    "severity": "critical",
+                    "check": "check_logo_present",
+                    "file": pdf_filename,
+                    "detail": f"{pdf_filename} has no pages — generation likely failed",
+                })
+                continue
+            cover_images = doc.load_page(0).get_images(full=True)
+            doc.close()
+        except Exception as e:
+            flags.append({
+                "issue": "QA_CHECK_DEGRADED",
+                "severity": "low",
+                "check": "check_logo_present",
+                "detail": f"{pdf_filename}: parse failed: {str(e)[:120]}",
+            })
+            continue
+
+        if not cover_images:
+            flags.append({
+                "issue": "PDF_LOGO_MISSING",
+                "severity": "critical",
+                "check": "check_logo_present",
+                "file": pdf_filename,
+                "detail": (f"{pdf_filename} cover page has zero embedded images. "
+                           "Logo failed to render — likely non-raster upload "
+                           "(.ai/.pdf/.svg/.eps), corrupt file, or missing logo_path."),
+            })
+
+    return flags
+
+
 def check_dol_noaa(claim: dict, config: dict) -> list[dict]:
     """NOAA cross-check on date of loss vs forensic claim of hail/wind.
 
@@ -531,6 +617,18 @@ def run_pdf_checks(claim: dict, config: dict) -> dict:
         all_flags.append({
             "issue": "QA_CHECK_EXCEPTION", "severity": "low",
             "check": "check_pdf_brand_text",
+            "detail": f"{type(e).__name__}: {str(e)[:200]}",
+        })
+
+    # Logo-present positive check — catches the empty-img-src failure mode
+    # that check_pdf_brand_text can't see (text content is "correct" but the
+    # logo image is missing or non-raster). E203 / Team Builders 2026-05-05.
+    try:
+        all_flags.extend(check_logo_present(claim, config))
+    except Exception as e:
+        all_flags.append({
+            "issue": "QA_CHECK_EXCEPTION", "severity": "low",
+            "check": "check_logo_present",
             "detail": f"{type(e).__name__}: {str(e)[:200]}",
         })
 

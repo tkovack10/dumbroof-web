@@ -71,41 +71,82 @@ def b64_img(config, filename):
     return f"data:{mime};base64,{data}"
 
 
+# Magic-byte signatures for raster image formats Chrome can render in <img>.
+# Adobe Illustrator (.ai), PDF, EPS, SVG and other vector/document formats
+# are explicitly rejected — they download fine but render as broken images
+# (root cause of E203, Team Builders 2026-05-05).
+_RASTER_MAGIC = (
+    (b"\x89PNG\r\n\x1a\n", "image/png"),
+    (b"\xff\xd8\xff",      "image/jpeg"),
+    (b"GIF87a",            "image/gif"),
+    (b"GIF89a",            "image/gif"),
+    (b"RIFF",              "image/webp"),  # WEBP — verified below by 'WEBP' at offset 8
+)
+
+
+def _detect_raster_mime(data: bytes) -> str:
+    """Return MIME for a confirmed raster image, or empty string if not raster."""
+    for sig, mime in _RASTER_MAGIC:
+        if data.startswith(sig):
+            if mime == "image/webp" and not (len(data) >= 12 and data[8:12] == b"WEBP"):
+                continue
+            return mime
+    return ""
+
+
 def get_logo_b64(config):
     """Return base64 data URI for the company logo.
 
-    Searches for the logo file with multiple extensions since users may
-    upload PNG, JPG, or other formats. Detects the actual MIME type from
-    the file extension (not hardcoded to JPEG) so the PDF renderer
-    processes the image correctly.
+    Globs `usarm_logo.*` / `logo.*` in photos_dir, then validates the file
+    is an actual raster image by inspecting magic bytes. Returns empty
+    string if no candidate found OR if the file is a non-raster format
+    (e.g. .ai, .pdf, .svg, .eps) — which Chrome refuses to render in <img>
+    and which previously rendered as broken alt-text on the cover page.
+
+    Caller pairs this with render_logo_block() so an empty return becomes
+    a clean text fallback instead of a broken <img src="">.
     """
     photos_dir = config["_paths"]["photos"]
-    logo_path = None
-    for name in ["usarm_logo.png", "usarm_logo.jpg", "usarm_logo.JPG",
-                 "usarm_logo.jpeg", "usarm_logo.webp",
-                 "logo.png", "logo.jpg", "logo.JPG"]:
-        candidate = os.path.join(photos_dir, name)
-        if os.path.exists(candidate):
-            logo_path = candidate
-            break
-    if not logo_path:
-        return ""
+    candidates = sorted(glob.glob(os.path.join(photos_dir, "usarm_logo.*")) +
+                        glob.glob(os.path.join(photos_dir, "logo.*")))
+    for logo_path in candidates:
+        try:
+            with open(logo_path, "rb") as f:
+                head = f.read(64)
+                if not head:
+                    continue
+                mime = _detect_raster_mime(head)
+                if not mime:
+                    print(f"[LOGO] Rejecting non-raster file {os.path.basename(logo_path)} "
+                          f"(magic={head[:8]!r}) — render would be broken alt-text")
+                    continue
+                f.seek(0)
+                data = base64.b64encode(f.read()).decode()
+                return f"data:{mime};base64,{data}"
+        except OSError as e:
+            print(f"[LOGO] Could not read {logo_path}: {e}")
+            continue
+    return ""
 
-    # Detect MIME type from extension
-    ext = os.path.splitext(logo_path)[1].lower()
-    mime_map = {
-        ".png": "image/png",
-        ".jpg": "image/jpeg",
-        ".jpeg": "image/jpeg",
-        ".webp": "image/webp",
-        ".gif": "image/gif",
-        ".svg": "image/svg+xml",
-    }
-    mime = mime_map.get(ext, "image/jpeg")
 
-    with open(logo_path, "rb") as f:
-        data = base64.b64encode(f.read()).decode()
-    return f"data:{mime};base64,{data}"
+def render_logo_block(logo_b64: str, company_name: str,
+                      css_class: str = "cover-logo",
+                      inline_style: str = "") -> str:
+    """Render the company logo OR a clean text fallback.
+
+    When logo_b64 is non-empty, emits the canonical <img> tag with the
+    same class/style the legacy template used. When empty, emits a styled
+    <div> with the company name — never an <img src=""> which browsers
+    render as the alt attribute (the broken-looking failure mode that
+    triggered E203).
+    """
+    safe_name = (company_name or "").strip()
+    if logo_b64:
+        style_attr = f' style="{inline_style}"' if inline_style else ""
+        return f'<img src="{logo_b64}" alt="{safe_name}" class="{css_class}"{style_attr}>'
+    inline = inline_style or ""
+    return (f'<div class="logo-text-fallback {css_class}" style="{inline}">'
+            f'{safe_name}</div>')
 
 
 def get_assoc_logo_b64(logo_basename):
@@ -601,6 +642,27 @@ tr:nth-child(even) td { background: #f8f9fa; }
     text-align: center;
 }
 .cover-page .cover-logo { height: 160pt; width: auto; max-width: 360pt; margin-bottom: 20pt; object-fit: contain; }
+.logo-text-fallback {
+    font-family: 'Helvetica Neue', Arial, sans-serif;
+    font-weight: 800;
+    color: #0d2137;
+    letter-spacing: 1pt;
+    padding: 6pt 12pt;
+    display: inline-block;
+    border-bottom: 3px solid #c8102e;
+}
+.cover-page .logo-text-fallback.cover-logo {
+    height: auto;
+    font-size: 32pt;
+    line-height: 1.1;
+    margin-bottom: 20pt;
+    letter-spacing: 2pt;
+}
+.header-bar .logo-text-fallback.logo-img {
+    font-size: 16pt;
+    padding: 4pt 8pt;
+    border-bottom-width: 2px;
+}
 .cover-page .cover-company {
     font-size: 28pt;
     font-weight: 800;
@@ -1995,7 +2057,7 @@ def build_forensic_report(config):
 
 <!-- COVER PAGE -->
 <div class="cover-page">
-    <img src="{logo_b64}" alt="{company['name']}" class="cover-logo">
+    {render_logo_block(logo_b64, company['name'], css_class='cover-logo')}
     <div class="cover-company">{company['name']}</div>
     <div class="cover-tagline">{company.get('tagline', '')}</div>
     <div style="width:60%; border-top:3px solid #c8102e; margin:0 auto 24pt;"></div>
@@ -2751,7 +2813,7 @@ body {{ margin: 0; padding: 0; }}
 <body>
 
 <div class="header-bar">
-    <img src="{logo_b64}" alt="{company['name']}" class="logo-img">
+    {render_logo_block(logo_b64, company['name'], css_class='logo-img')}
     <div class="header-text">
         <div class="company">{company['name']}</div>
         <h1>X STYLE BUILD SCOPE</h1>
@@ -3057,7 +3119,7 @@ td.var-pos {{ color: #c8102e; font-weight: 700; }}
 <body>
 
 <div class="header-bar">
-    <img src="{logo_b64}" alt="{company['name']}" class="logo-img">
+    {render_logo_block(logo_b64, company['name'], css_class='logo-img')}
     <div class="header-text">
         <div class="company">{company['name']}</div>
         <h1>{lang['doc3_title']}</h1>
@@ -3357,7 +3419,7 @@ h2 {{ font-size: 13pt; }}
 <body>
 
 <div style="text-align:center; margin-bottom:20pt;">
-    <img src="{logo_b64}" alt="{company['name']}" style="height:60pt; width:auto; margin-bottom:8pt;"><br>
+    {render_logo_block(logo_b64, company['name'], css_class='logo-img', inline_style='height:60pt; width:auto; margin-bottom:8pt;')}<br>
     <div style="font-size:18pt; font-weight:800; color:#0d2137; letter-spacing:2pt;">{company['name']}</div>
     <div style="font-size:9pt; color:#666;">{company['address']} | {company['city_state_zip']}<br>
     {contact_line}</div>
@@ -3491,7 +3553,7 @@ body {{ font-size: 11pt; line-height: 1.7; max-width: 600pt; margin: 0 auto; }}
 <body>
 
 <div style="text-align:center; margin-bottom:16pt;">
-    <img src="{logo_b64}" alt="{company['name']}" style="height:50pt; width:auto; margin-bottom:8pt;"><br>
+    {render_logo_block(logo_b64, company['name'], css_class='logo-img', inline_style='height:50pt; width:auto; margin-bottom:8pt;')}<br>
     <div style="font-size:16pt; font-weight:800; color:#0d2137; letter-spacing:1pt;">COVER EMAIL -- READY TO SEND</div>
 </div>
 
@@ -3612,7 +3674,7 @@ body {{ font-size: 11pt; line-height: 1.7; max-width: 600pt; margin: 0 auto; }}
 <body>
 
 <div style="text-align:center; margin-bottom:16pt;">
-    <img src="{logo_b64}" alt="{company['name']}" style="height:50pt; width:auto; margin-bottom:8pt;"><br>
+    {render_logo_block(logo_b64, company['name'], css_class='logo-img', inline_style='height:50pt; width:auto; margin-bottom:8pt;')}<br>
     <div style="font-size:16pt; font-weight:800; color:#0d2137; letter-spacing:1pt;">COVER LETTER &mdash; PRE-INSPECTION SUBMISSION</div>
 </div>
 

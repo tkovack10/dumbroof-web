@@ -231,10 +231,23 @@ function SettingsPageContent() {
 
   const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      setLogoFile(file);
-      setLogoPreview(URL.createObjectURL(file));
+    if (!file) return;
+    // Reject non-raster formats — Adobe Illustrator (.ai), PDF, SVG, EPS,
+    // PSD, TIFF download fine but render as broken alt-text in PDF reports
+    // (root cause of E203, Team Builders 2026-05-05).
+    const allowedTypes = ["image/png", "image/jpeg", "image/webp", "image/gif"];
+    const ext = (file.name.split(".").pop() || "").toLowerCase();
+    const allowedExts = ["png", "jpg", "jpeg", "webp", "gif"];
+    if (!allowedTypes.includes(file.type) && !allowedExts.includes(ext)) {
+      alert(
+        `Unsupported logo format: ${ext || file.type || "unknown"}. ` +
+        `Please upload a PNG, JPG, or WEBP file. (AI, PDF, SVG, EPS won't render in reports.)`
+      );
+      e.target.value = "";
+      return;
     }
+    setLogoFile(file);
+    setLogoPreview(URL.createObjectURL(file));
   };
 
   const handleSave = async (e: React.FormEvent) => {
@@ -391,7 +404,7 @@ function SettingsPageContent() {
               <div>
                 <label className="cursor-pointer bg-[var(--bg-glass)] border border-[var(--border-glass)] hover:border-[var(--border-glass)] px-4 py-2 rounded-lg text-sm font-medium text-[var(--gray)] transition-colors">
                   Upload Logo
-                  <input type="file" accept=".jpg,.jpeg,.png,.svg" onChange={handleLogoChange} className="hidden" />
+                  <input type="file" accept=".png,.jpg,.jpeg,.webp,.gif,image/png,image/jpeg,image/webp,image/gif" onChange={handleLogoChange} className="hidden" />
                 </label>
                 <p className="text-xs text-[var(--gray-dim)] mt-1">JPG, PNG, or SVG. Recommended 400x400px.</p>
               </div>
