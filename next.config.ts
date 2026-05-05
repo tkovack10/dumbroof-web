@@ -1,6 +1,13 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // The richard-trainer cron reads backend/richard_prompts/*.md at runtime to
+  // avoid re-recommending topics that are already covered. Vercel's serverless
+  // build trace doesn't follow filesystem reads to files outside src/, so we
+  // explicitly include them in the cron's bundle.
+  outputFileTracingIncludes: {
+    "/api/cron/richard-trainer": ["./backend/richard_prompts/**/*.md"],
+  },
   images: {
     formats: ["image/avif", "image/webp"],
     remotePatterns: [

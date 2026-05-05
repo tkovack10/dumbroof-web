@@ -16,6 +16,8 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
+import { promises as fs } from "node:fs";
+import path from "node:path";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { getResend, EMAIL_FROM, EMAIL_REPLY_TO } from "@/lib/resend";
 import {
@@ -28,6 +30,40 @@ import {
   parseJsonFromLlm,
   type AgentRecommendation,
 } from "@/lib/agent-common";
+
+/**
+ * Reads every .md under backend/richard_prompts/{common,claim,setup}/ and
+ * returns a single inlinable string the trainer LLM can scan to avoid
+ * re-recommending topics that are already covered. Bundled into this cron
+ * via outputFileTracingIncludes in next.config.ts.
+ *
+ * Returns empty string + warning if the dir is missing (defensive — we never
+ * want trainer-cron to crash because the snapshot file IO failed).
+ */
+async function loadExistingPromptsSnapshot(): Promise<string> {
+  const root = path.join(process.cwd(), "backend", "richard_prompts");
+  const scopes = ["common", "claim", "setup"] as const;
+  const blocks: string[] = [];
+  for (const scope of scopes) {
+    const dir = path.join(root, scope);
+    let files: string[];
+    try {
+      files = await fs.readdir(dir);
+    } catch (e) {
+      console.warn(`[richard-trainer] could not read ${dir}: ${e instanceof Error ? e.message : e}`);
+      continue;
+    }
+    for (const f of files.filter((n) => n.endsWith(".md")).sort()) {
+      try {
+        const body = await fs.readFile(path.join(dir, f), "utf8");
+        blocks.push(`### backend/richard_prompts/${scope}/${f}\n${body.trim()}`);
+      } catch (e) {
+        console.warn(`[richard-trainer] could not read ${scope}/${f}: ${e}`);
+      }
+    }
+  }
+  return blocks.join("\n\n---\n\n");
+}
 
 export const maxDuration = 120;
 export const dynamic = "force-dynamic";
@@ -63,7 +99,7 @@ Your single job: analyze Richard's recent conversations and identify where Richa
 
 Never invent gaps. Only flag issues supported by 2+ conversations.`;
 
-function buildUserPrompt(messages: BrainMessageRow[]): string {
+function buildUserPrompt(messages: BrainMessageRow[], existingPromptsSnapshot: string): string {
   // Group by claim_id to show conversation threads
   const threads = new Map<string, BrainMessageRow[]>();
   for (const m of messages) {
@@ -84,16 +120,33 @@ function buildUserPrompt(messages: BrainMessageRow[]): string {
     threadCount++;
   }
 
-  return `${messages.length} Richard chat messages from the last week, grouped by claim:
+  const existingSection = existingPromptsSnapshot
+    ? `# CURRENT richard_prompts/ CONTENTS (DO NOT RE-RECOMMEND TOPICS ALREADY COVERED HERE)
+
+Below is the live snapshot of every rule already shipped to production. Read this first. If a chat-issue is already addressed by one of these files, DO NOT propose a duplicate — either skip the recommendation OR propose extending the existing file with a small edit.
+
+${existingPromptsSnapshot}
+
+---
+
+`
+    : "";
+
+  return `${existingSection}# RICHARD CHAT TRANSCRIPTS
+
+${messages.length} Richard chat messages from the last week, grouped by claim:
 
 ${blocks.join("\n\n")}
 
-TASK:
+# TASK
+
 1. Identify user questions where Richard gave a wrong, generic, or unhelpful answer. Group by pattern (e.g. "Richard doesn't know RCNYS codes", "Richard gives marketing-speak instead of technical facts", "Richard repeats the same supplement advice regardless of claim state").
 
 2. Identify knowledge gaps — topics users ask about that Richard didn't answer correctly (building codes, specific carrier tactics, Xactimate line items, I&W formula, etc.).
 
-3. For each gap, produce a unified diff against the appropriate file in backend/richard_prompts/ (governance v2 Day 6-7). DO NOT propose diffs against backend/main.py:_build_claim_brain_prompt anymore — the rules are now externalized into versioned markdown files.
+3. **Cross-check against the CURRENT richard_prompts/ snapshot above. If a gap is already covered by an existing rule, do NOT propose a new file — either skip it (if the rule is already adequate and the failure is something else) OR propose a small in-file edit to tighten/extend the existing rule.**
+
+4. For each REMAINING gap (genuinely uncovered), produce a unified diff against the appropriate file in backend/richard_prompts/ (governance v2 Day 6-7). DO NOT propose diffs against backend/main.py:_build_claim_brain_prompt — the rules live in versioned markdown files now.
 
    Choose target_path by scope:
    - Rules that apply to BOTH Setup and Claim Richard → backend/richard_prompts/common/{topic}.md (e.g. language_rule.md, communication_style_matching.md, execution_bias.md)
@@ -172,9 +225,10 @@ async function runRichardTrainer(): Promise<TrainerReport> {
     };
   }
 
+  const existingPromptsSnapshot = await loadExistingPromptsSnapshot();
   const raw = await callAnthropic({
     systemPrompt: SYSTEM_PROMPT,
-    userPrompt: buildUserPrompt(messages),
+    userPrompt: buildUserPrompt(messages, existingPromptsSnapshot),
     maxTokens: 3072,
   });
 
