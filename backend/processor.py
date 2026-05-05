@@ -2074,6 +2074,7 @@ def synthesize_executive_summary(
     property_address: str = "",
     date_of_loss: str = "",
     state: str = "",
+    user_damage_type: str = "",
 ) -> list[str]:
     """Use Claude to synthesize raw damage data into a structured executive summary.
     Returns a list of paragraph strings (3-5 paragraphs)."""
@@ -2092,6 +2093,44 @@ def synthesize_executive_summary(
     state_u = (state or "").upper()
     state_code_prefix = _STATE_CODE_PREFIX.get(state_u, "IRC")
     state_code_guidance = f"{state_code_prefix} (or generic IRC)" if state_u else "IRC"
+
+    # Cause-of-loss constraint. The user's selection on the claim form is
+    # ground truth — NOAA + photo analysis are corroborating evidence. The
+    # model has a tendency to default to compound "hail and wind event"
+    # phrasing even when only one is present. Lock it to what user picked.
+    udt = (user_damage_type or "").lower().strip()
+    if udt == "hail":
+        cause_constraint = (
+            "\n\nCAUSE OF LOSS — HAIL ONLY (user selection + NOAA hail corroboration):\n"
+            "- Refer to the storm event as a 'hail event', 'hailstorm', or 'hail-producing storm system'.\n"
+            "- NEVER write 'hail and wind event', 'wind event', 'wind-driven', 'wind displacement', or any "
+            "  language implying wind was a primary cause. Wind is NOT part of this claim.\n"
+            "- Do NOT include 'rule out wind' arguments — affirmatively saying 'no wind damage observed' "
+            "  introduces wind into a claim where it doesn't belong and reads as if we considered it.\n"
+            "- Focus 100% of the causation language on hail signatures: circular impacts, granule "
+            "  displacement, mat exposure, soft-metal denting, EPDM puncture marks.\n"
+        )
+    elif udt == "wind":
+        cause_constraint = (
+            "\n\nCAUSE OF LOSS — WIND ONLY (user selection):\n"
+            "- Refer to the storm event as a 'wind event', 'high-wind storm', or 'wind-driven storm'.\n"
+            "- NEVER write 'hail and wind event' or imply hail was a primary cause unless photos "
+            "  unambiguously document hail damage as a co-equal cause.\n"
+            "- Focus on wind signatures: creased tabs, missing shingles, broken seal strips, "
+            "  directional patterns, ridge cap blow-off.\n"
+        )
+    elif udt == "combined":
+        cause_constraint = (
+            "\n\nCAUSE OF LOSS — COMBINED HAIL + WIND (user selection):\n"
+            "- The phrase 'hail and wind event' is appropriate. Document both signatures with equal weight.\n"
+        )
+    else:
+        cause_constraint = (
+            "\n\nCAUSE OF LOSS — UNSPECIFIED:\n"
+            "- Describe the storm event using language consistent with the photo evidence and NOAA data. "
+            "  Default to single-cause framing ('hail event' OR 'wind event') unless both are clearly documented.\n"
+        )
+
     prompt = f"""You are writing the Executive Summary for a forensic causation report on a storm-damaged property.
 Property address: {property_address}
 Property state: {state_u or 'unknown'}
@@ -2116,6 +2155,7 @@ Raw damage analysis from photo inspection:
 Weather data: Storm date {weather_data.get('storm_date', 'N/A')}, hail size {weather_data.get('hail_size', 'N/A')}
 Photo count: {photo_count}
 Key findings count: {len(key_findings)}
+{cause_constraint}
 {f"Carrier RCV: ${carrier_rcv:,.2f}" if carrier_rcv > 0 else "Carrier scope: NOT YET RECEIVED (pre-scope forensic report)"}
 {playbook_section}{intel_section}
 
@@ -5284,13 +5324,17 @@ async def process_claim(claim_id: str, refresh_prices: bool = False):
             few_shot_corrections = []
             if sb:
                 try:
-                    # Prioritize THIS claim's corrections, then fill with global
+                    # Prioritize THIS claim's corrections, then fill with global.
+                    # Claim-specific limit raised from 5 → 20 (2026-05-05): when a
+                    # user reviews ALL photos on a claim (Tom's white-glove pattern),
+                    # the 5-row cap silently dropped the majority of their guidance.
+                    # Global limit stays small (3) to avoid drift from other claims.
                     fb = sb.table("annotation_feedback") \
                         .select("original_annotation, corrected_annotation, original_tags, corrected_tags") \
                         .eq("claim_id", claim_id) \
                         .eq("status", "corrected") \
                         .order("created_at", desc=True) \
-                        .limit(5) \
+                        .limit(20) \
                         .execute()
                     few_shot_corrections = fb.data or []
                     if len(few_shot_corrections) < 5:
@@ -5804,6 +5848,7 @@ async def process_claim(claim_id: str, refresh_prices: bool = False):
                 property_address=exec_address,
                 date_of_loss=exec_dol,
                 state=config.get("property", {}).get("state", "") or state,
+                user_damage_type=(claim.get("estimate_request") or {}).get("damage_type", ""),
             )
             if isinstance(exec_paragraphs, list):
                 exec_paragraphs = _enforce_property_address(exec_paragraphs, exec_address)
