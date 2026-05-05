@@ -294,8 +294,15 @@ _PRICING_CACHE = {"nybi26": PRICING}
 # which now covers 108 markets across NY/NJ/PA/MD/DE/OH/MI/IL/MN/TX as of 2026-04-17.
 STATE_PRICE_LIST = {
     "NY": "NYBI26", "PA": "PAPI26", "NJ": "NJBI26",
+    "MD": "MDBA26", "DE": "DEDO26",
     "OH": "OHDT26", "MI": "MIDE26", "IL": "ILCC26", "MN": "MNMN26",
     "TX": "TXDF26",
+    # Added 2026-05-05 alongside Alfonso's IA/KS/OK pricing rollout (E210).
+    # Without these, claims in IA/KS/OK silently labeled NYBI26 even though
+    # line item prices correctly resolved to native IA/KS/OK markets.
+    "IA": "IADM26",  # Des Moines default (largest IA metro, 11 markets)
+    "KS": "KSWI26",  # Wichita default (largest KS metro)
+    "OK": "OKOC26",  # Oklahoma City default
 }
 STATE_PRICE_LIST_IS_PROXY = {}  # Midwest (OH/MI/IL/MN) + TX (24 mkts, Alfonso 2026-04-17) native
 
@@ -2646,6 +2653,18 @@ def build_claim_config(
     market_code = _XactRegistry.resolve_market(state, zip_code=_zip, city=_city)
     print(f"[PRICING] Resolved to market {market_code} (state={state}, zip={_zip}, city={_city})")
 
+    # Derive the SHORT price-list LABEL from the resolved market_code so the
+    # PDF header always shows what the prices actually are. E202 / E210
+    # regression: previously labeled via STATE_PRICE_LIST.get(state, "NYBI26")
+    # which silently fell to NYBI26 for any state without an entry — even
+    # when line items resolved to a real native market like IAWA8X_02MAY26.
+    # Format: "IAWA8X_02MAY26" → "IAWA26", "NYBI8X_MAR26" → "NYBI26".
+    if market_code:
+        _base = market_code.split("8X")[0] if "8X" in market_code else market_code.split("_")[0]
+        resolved_price_list_label = f"{_base}26"
+    else:
+        resolved_price_list_label = STATE_PRICE_LIST.get(state, "NYBI26")
+
     line_items = build_multi_structure_line_items(measurements, photo_analysis, state, user_notes=user_notes or "",
                                                   estimate_request=claim.get("estimate_request"),
                                                   roof_sections=claim.get("roof_sections"),
@@ -2900,7 +2919,7 @@ def build_claim_config(
         },
         "financials": {
             "tax_rate": tax_rate,
-            "price_list": STATE_PRICE_LIST.get(state, "NYBI26"),
+            "price_list": resolved_price_list_label,
             "price_list_is_proxy": STATE_PRICE_LIST_IS_PROXY.get(state, False),
             "deductible": carrier_data.get("carrier_deductible", 0) if carrier_data else 0,
         },
