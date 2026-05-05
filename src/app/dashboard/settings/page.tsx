@@ -406,7 +406,7 @@ function SettingsPageContent() {
                   Upload Logo
                   <input type="file" accept=".png,.jpg,.jpeg,.webp,.gif,image/png,image/jpeg,image/webp,image/gif" onChange={handleLogoChange} className="hidden" />
                 </label>
-                <p className="text-xs text-[var(--gray-dim)] mt-1">JPG, PNG, or SVG. Recommended 400x400px.</p>
+                <p className="text-xs text-[var(--gray-dim)] mt-1">PNG, JPG, or WEBP. Recommended 400x400px. (AI/PDF/SVG won&apos;t render in reports.)</p>
               </div>
             </div>
           </div>
