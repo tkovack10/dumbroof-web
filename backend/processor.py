@@ -89,6 +89,78 @@ def _format_date(date_str: str) -> str:
     except ValueError:
         return date_str  # Already formatted or unparseable
 
+
+# Date-of-loss recovery (E212): when carrier scope extraction fails to populate
+# the structured contact_info.date_of_loss field, scan the carrier_arguments
+# text for verbatim DOL phrasing. Carriers always cite the DOL in their scope
+# narrative ("Type of Loss: Hail damage dated 6/26/2023"). Order matters —
+# more specific patterns first to reduce false positives from line-item dates.
+_DOL_RECOVERY_PATTERNS = [
+    # "Hail damage dated 6/26/2023" / "loss dated 06-26-2023"
+    r"\bdated\s+(\d{1,2}[/\-]\d{1,2}[/\-]\d{2,4})\b",
+    # "loss occurred on June 26, 2023" / "loss occurred 6/26/2023" / "loss on 2023-06-26"
+    r"\bloss\s+(?:occurred\s+)?(?:on\s+)?(\d{1,2}[/\-]\d{1,2}[/\-]\d{2,4})\b",
+    # "Date of Loss: 6/26/2023" / "DOL: 06/26/2023"
+    r"\bdate\s+of\s+loss[:\s]+(\d{1,2}[/\-]\d{1,2}[/\-]\d{2,4})\b",
+    r"\bdol[:\s]+(\d{1,2}[/\-]\d{1,2}[/\-]\d{2,4})\b",
+    # ISO YYYY-MM-DD as a last-resort catch-all (high false-positive risk —
+    # line-item dates can match — so kept lowest priority).
+    r"\b(\d{4}-\d{2}-\d{2})\b",
+]
+
+
+def _normalize_date_iso(date_str: str) -> str:
+    """Normalize a free-form date string to ISO YYYY-MM-DD. Empty if unparseable.
+
+    Accepts MM/DD/YYYY, M/D/YY, YYYY-MM-DD, MM-DD-YYYY, "June 26, 2023",
+    "Jun 26 2023". Two-digit years <70 → 20xx, otherwise 19xx (per ANSI/POSIX
+    convention — "23" → 2023, "99" → 1999).
+    """
+    if not date_str:
+        return ""
+    s = date_str.strip()
+    # Try ISO first (cheap)
+    try:
+        return datetime.strptime(s, "%Y-%m-%d").date().isoformat()
+    except ValueError:
+        pass
+    for fmt in ("%m/%d/%Y", "%m-%d-%Y", "%m/%d/%y", "%m-%d-%y",
+                "%B %d, %Y", "%b %d, %Y", "%B %d %Y", "%b %d %Y",
+                "%d/%m/%Y", "%Y/%m/%d"):
+        try:
+            return datetime.strptime(s, fmt).date().isoformat()
+        except ValueError:
+            continue
+    return ""
+
+
+def _recover_dol_from_text(text_blocks) -> str:
+    """Last-ditch DOL recovery from carrier_arguments / acknowledged items.
+
+    Returns ISO YYYY-MM-DD on success, empty string on failure. Used when
+    extract_carrier_scope's structured contact_info.date_of_loss field is
+    empty but the DOL was cited verbatim in the narrative text.
+
+    Driven by E212 (Camp Creek Ct, Elgin SC 2026-05-06): the carrier scope
+    contained "Type of Loss: Hail damage dated 6/26/2023" inside
+    carrier_arguments but contact_info.date_of_loss was empty, so weather
+    enrichment skipped and the report shipped without storm corroboration.
+    """
+    import re
+    if isinstance(text_blocks, str):
+        combined = text_blocks
+    else:
+        combined = " ".join(str(t) for t in (text_blocks or []) if t)
+    if not combined:
+        return ""
+    for pat in _DOL_RECOVERY_PATTERNS:
+        m = re.search(pat, combined, re.IGNORECASE)
+        if m:
+            iso = _normalize_date_iso(m.group(1))
+            if iso:
+                return iso
+    return ""
+
 def _call_claude_with_retry(client, max_retries=6, _step_name="unknown", _metadata=None, **kwargs):
     """Call Claude API with retry on all transient errors + optional telemetry logging.
 
@@ -253,6 +325,122 @@ def _query_noaa_storm_window(noaa_client, lat: float, lon: float, dol_str: str,
           f"{len(deduped)} events, max_hail={max_hail}\" @ {closest_hail_dist:.1f}mi, "
           f"max_wind={max_wind}mph")
     return combined
+
+
+# E212 fallback helper: when DOL is missing entirely, scan the county for the
+# strongest qualifying storm in the last 18 months. Auto-adopt only when
+# exactly ONE event clears the severity threshold (≥1.0" hail OR ≥58 mph wind).
+# Mirrors `/api/noaa-scan` in main.py but runs server-side during processing.
+def _scan_county_for_qualifying_storm(geo, address: str = "") -> "dict | None":
+    """Return {iso_date, detail, count} if exactly one qualifying storm exists,
+    else None. count is the number of qualifying events found in 18mo (1 means
+    auto-adoptable, more means admin should review).
+    """
+    try:
+        from noaa_weather.api import _lookup_county_fips, _STATE_NAMES, _fetch_url
+        from datetime import datetime, timedelta
+        import csv, io, urllib.parse, time
+
+        state_fips, county_fips, county_name = _lookup_county_fips(geo.latitude, geo.longitude)
+        if not state_fips or not county_fips:
+            print(f"[NOAA-FALLBACK] county FIPS lookup failed for ({geo.latitude}, {geo.longitude})")
+            return None
+
+        end = datetime.now()
+        start = end - timedelta(days=548)  # 18 months
+        state_name = _STATE_NAMES.get(state_fips, "")
+        county_clean = county_name.replace(" COUNTY", "").replace(" PARISH", "")
+        county_fips_short = county_fips.lstrip("0") or "0"
+
+        base_params = {
+            "beginDate_mm": f"{start.month:02d}",
+            "beginDate_dd": f"{start.day:02d}",
+            "beginDate_yyyy": str(start.year),
+            "endDate_mm": f"{end.month:02d}",
+            "endDate_dd": f"{end.day:02d}",
+            "endDate_yyyy": str(end.year),
+            "county": f"{county_clean}:{county_fips_short}",
+            "hailfilter": "0.00",
+            "tornfilter": "0",
+            "windfilter": "000",
+            "sort": "DT",
+            "submitbutton": "Search",
+            "statefips": f"{state_fips},{state_name.replace(' ', '+')}",
+        }
+        query_parts = [f"{k}={urllib.parse.quote(str(v), safe='+:')}" for k, v in base_params.items()]
+        for evt_type in ["(C) Hail", "(C) Thunderstorm Wind"]:
+            query_parts.append(f"eventType={urllib.parse.quote(evt_type, safe='+')}")
+        url = f"https://www.ncei.noaa.gov/stormevents/csv?{'&'.join(query_parts)}"
+        print(f"[NOAA-FALLBACK] {county_clean} County scan: {url}")
+
+        content = None
+        for attempt in range(2):
+            try:
+                content = _fetch_url(url)
+                if content and "EVENT_ID" in content.split("\n")[0]:
+                    break
+                content = None
+            except Exception:
+                content = None
+            if attempt == 0:
+                time.sleep(2)
+        if not content:
+            print(f"[NOAA-FALLBACK] NOAA unavailable after 2 attempts")
+            return None
+
+        # Severity thresholds (HAAG-aligned: 1.0" hail = functional damage,
+        # 58mph wind = "Severe Thunderstorm" criterion)
+        HAIL_MIN_INCHES = 1.0
+        WIND_MIN_MPH = 58.0
+
+        qualifying = []
+        seen_dates = set()
+        reader = csv.DictReader(io.StringIO(content))
+        for row in reader:
+            begin_date = row.get("BEGIN_DATE_TIME", "")[:10]
+            if not begin_date or begin_date in seen_dates:
+                continue
+            seen_dates.add(begin_date)
+            evt_type = row.get("EVENT_TYPE", "") or ""
+            try:
+                magnitude = float(row.get("MAGNITUDE") or 0)
+            except (ValueError, TypeError):
+                magnitude = 0
+            if "Hail" in evt_type and magnitude >= HAIL_MIN_INCHES:
+                # Storm Events MAGNITUDE for hail is in inches
+                qualifying.append({
+                    "iso_date": begin_date,
+                    "detail": f"{magnitude:.2f}\" hail",
+                    "magnitude": magnitude,
+                    "event_type": "Hail",
+                })
+            elif "Wind" in evt_type and magnitude >= WIND_MIN_MPH:
+                qualifying.append({
+                    "iso_date": begin_date,
+                    "detail": f"{magnitude:.0f} mph wind",
+                    "magnitude": magnitude,
+                    "event_type": "Wind",
+                })
+
+        if not qualifying:
+            print(f"[NOAA-FALLBACK] zero qualifying storms in 18mo for {county_clean} County")
+            return None
+        # Sort by hail-priority then magnitude descending
+        qualifying.sort(key=lambda e: (0 if e["event_type"] == "Hail" else 1, -e["magnitude"]))
+        # Auto-adopt only if exactly ONE qualifying event exists. Multiple
+        # qualifying events = ambiguous; surface to admin.
+        if len(qualifying) == 1:
+            top = qualifying[0]
+            return {"iso_date": top["iso_date"], "detail": top["detail"], "count": 1}
+        # Multiple — refuse to auto-adopt, but still return the strongest with
+        # count>1 so the caller logs which date was the candidate.
+        top = qualifying[0]
+        print(f"[NOAA-FALLBACK] {len(qualifying)} qualifying storms — admin review needed. "
+              f"Strongest: {top['iso_date']} ({top['detail']})")
+        return None  # Treat as ambiguous, force admin review
+    except Exception as e:
+        print(f"[NOAA-FALLBACK] county scan failed: {e}")
+        return None
 
 
 # ===================================================================
@@ -2904,8 +3092,21 @@ def build_claim_config(
             "carrier_arguments": carrier_data.get("carrier_arguments", []) if carrier_data else [],
         },
         "dates": {
+            # E212 fix: extract_carrier_scope returns DOL nested under
+            # `carrier.date_of_loss` (not top-level). The legacy top-level
+            # read silently missed every extracted DOL. The text-recovery
+            # fallback handles cases where the model put the DOL into
+            # carrier_arguments instead of the structured field (e.g.
+            # "Hail damage dated 6/26/2023").
             "date_of_loss": _format_date(
-                claim.get("date_of_loss", "") or (weather_data or {}).get("storm_date", "") or (carrier_data or {}).get("date_of_loss", "") or ""
+                claim.get("date_of_loss", "")
+                or (weather_data or {}).get("storm_date", "")
+                or ((carrier_data or {}).get("carrier", {}) or {}).get("date_of_loss", "")
+                or _recover_dol_from_text(
+                    list((carrier_data or {}).get("carrier_arguments") or [])
+                    + list((carrier_data or {}).get("carrier_acknowledged_items") or [])
+                )
+                or ""
             ),
             "usarm_inspection_date": datetime.now().strftime("%B %d, %Y"),
             "report_date": datetime.now().strftime("%B %d, %Y"),
@@ -5560,6 +5761,34 @@ async def process_claim(claim_id: str, refresh_prices: bool = False):
             _get_roof_facets(),
         )
 
+        # 8b. E212: persist any DOL recovered from carrier scope back to the
+        # claims.date_of_loss column. The model often nests DOL under
+        # carrier.date_of_loss, and sometimes leaves it only in the
+        # carrier_arguments narrative ("Hail damage dated 6/26/2023").
+        # Without this write, future reprocesses + dashboards + NOAA enrichment
+        # never see the DOL even after we extracted it.
+        if sb and carrier_data and not claim.get("date_of_loss"):
+            extracted_dol = (
+                ((carrier_data.get("carrier") or {}).get("date_of_loss") or "")
+                or _recover_dol_from_text(
+                    list(carrier_data.get("carrier_arguments") or [])
+                    + list(carrier_data.get("carrier_acknowledged_items") or [])
+                )
+            )
+            if extracted_dol:
+                iso = _normalize_date_iso(extracted_dol) or extracted_dol
+                # _normalize_date_iso returns iso or "" — fall back to the raw
+                # if normalization failed (lets the column accept the raw
+                # text instead of silently swallowing it).
+                if iso:
+                    try:
+                        sb.table("claims").update({"date_of_loss": iso}).eq("id", claim_id).execute()
+                        claim["date_of_loss"] = iso
+                        print(f"[DOL] Persisted extracted DOL {iso} to claims row "
+                              f"(source: carrier_scope)")
+                    except Exception as e:
+                        print(f"[DOL] Failed to persist DOL (non-fatal): {e}")
+
         # 8c. Search for corroborating weather reports (NOAA, news, social media)
         city = measurements.get("property", {}).get("city", "")
         state = measurements.get("property", {}).get("state", "")
@@ -5908,6 +6137,61 @@ async def process_claim(claim_id: str, refresh_prices: bool = False):
                             print(f"[NOAA] Pre-seed fallback skipped: {fe}")
                 else:
                     print(f"[NOAA] Could not geocode address: {address_str}")
+            elif address_str and not storm_date:
+                # E212 fallback: address is good but DOL is missing. Run a
+                # county-wide 18-month scan for qualifying hail/wind. Auto-adopt
+                # only when EXACTLY ONE strong event matches (≥1.0" hail or
+                # ≥58 mph wind, ≤25mi). Otherwise log a warning so admin sees
+                # why the report shipped without weather, instead of a silent
+                # skip leaving weather_data={}.
+                geo = geocode_address(address_str)
+                if geo:
+                    candidate = _scan_county_for_qualifying_storm(geo, address_str)
+                    if candidate:
+                        adopted_iso = candidate["iso_date"]
+                        print(f"[NOAA] DOL missing — auto-adopted {adopted_iso} from county scan "
+                              f"({candidate['detail']}, {candidate['count']} qualifying event"
+                              f"{'s' if candidate['count'] != 1 else ''} in 18mo)")
+                        config["dates"]["date_of_loss"] = _format_date(adopted_iso)
+                        # Persist back to claims row so future reads see it.
+                        if sb and not claim.get("date_of_loss"):
+                            try:
+                                sb.table("claims").update({
+                                    "date_of_loss": adopted_iso,
+                                }).eq("id", claim_id).execute()
+                                claim["date_of_loss"] = adopted_iso
+                            except Exception as we:
+                                print(f"[NOAA] DOL auto-adopt persist failed: {we}")
+                        # Re-run NOAA query with the adopted DOL
+                        noaa_client = NOAAClient(search_radius_deg=25.0 / 69.0)
+                        storm_data = _query_noaa_storm_window(
+                            noaa_client, geo.latitude, geo.longitude, adopted_iso,
+                            address=address_str, days_each_side=2,
+                        )
+                        if storm_data and storm_data.event_count > 0:
+                            analyzer = ThresholdAnalyzer()
+                            analysis = analyzer.analyze(config, storm_data)
+                            noaa_apply_to_config(config, storm_data, analysis)
+                            config.setdefault("warnings", []).append(
+                                f"Date of loss auto-adopted from county scan ({adopted_iso}): "
+                                f"{candidate['detail']}. Verify before delivery."
+                            )
+                    else:
+                        msg = (
+                            f"Date of loss missing AND no qualifying storm found in county "
+                            f"18-month scan. Forensic report will ship without storm "
+                            f"corroboration. Confirm DOL with homeowner."
+                        )
+                        print(f"[NOAA] {msg}")
+                        config.setdefault("warnings", []).append(msg)
+                else:
+                    msg = f"Date of loss missing AND geocode failed for {address_str}. Weather enrichment skipped."
+                    print(f"[NOAA] {msg}")
+                    config.setdefault("warnings", []).append(msg)
+            elif not address_str:
+                msg = "No property address available — weather enrichment skipped."
+                print(f"[NOAA] {msg}")
+                config.setdefault("warnings", []).append(msg)
         except Exception as e:
             print(f"[NOAA] Weather query failed (non-fatal): {e}")
 
