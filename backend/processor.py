@@ -5139,22 +5139,26 @@ async def process_claim(claim_id: str, refresh_prices: bool = False):
             download_file(sb, "claim-documents", f"{file_path}/photos/{fname}", local)
             downloaded_paths.append(local)
 
-            # Opportunistically grab the CompanyCam sidecar sibling, if any.
-            # Imported photos named companycam_XXX.jpg get a matching
-            # companycam_XXX.companycam.json with {coordinates, captured_at}
-            # from the CompanyCam photo object — used as a fallback when the
-            # file's own EXIF was stripped by CompanyCam's server-side resize.
-            # Only CompanyCam-sourced photos have sidecars, so most fetches
-            # miss — optional=True avoids retry backoff on misses.
+            # Opportunistically grab sidecar siblings, if any. Two flavors:
+            #   <basename>.companycam.json — CompanyCam import metadata
+            #     ({coordinates: {lat, lng}, captured_at}). Used when
+            #     CompanyCam's server-side resize stripped EXIF.
+            #   <basename>.exif.json       — Dashboard-upload metadata
+            #     ({gps_lat, gps_lon, heading, exif_timestamp, ...}) read
+            #     client-side BEFORE canvas re-encode strips EXIF. See
+            #     src/lib/image-compress.ts.
+            # Only some photos have sidecars, so most fetches miss —
+            # optional=True avoids retry backoff on misses.
             base_no_ext = fname.rsplit(".", 1)[0]
-            sidecar_fname = f"{base_no_ext}.companycam.json"
-            sidecar_local = os.path.join(photos_dir, sidecar_fname)
-            download_file(
-                sb, "claim-documents",
-                f"{file_path}/photos/{sidecar_fname}",
-                sidecar_local,
-                optional=True,
-            )
+            for sidecar_suffix in ("companycam.json", "exif.json"):
+                sidecar_fname = f"{base_no_ext}.{sidecar_suffix}"
+                sidecar_local = os.path.join(photos_dir, sidecar_fname)
+                download_file(
+                    sb, "claim-documents",
+                    f"{file_path}/photos/{sidecar_fname}",
+                    sidecar_local,
+                    optional=True,
+                )
 
         # Ingest all downloaded files — extracts ZIPs, PDFs, converts HEIC/TIFF/etc.
         photo_paths = ingest_photos(downloaded_paths, photos_dir)
@@ -5206,37 +5210,69 @@ async def process_claim(claim_id: str, refresh_prices: bool = False):
             exif_metadata = extract_exif_batch(photo_paths, annotation_keys_early)
 
             # Fallback: for photos where EXIF extraction produced no GPS
-            # (common on CompanyCam/AccuLynx-sourced photos where the upload
-            # vendor strips EXIF server-side), check for a sibling
-            # .companycam.json sidecar with {coordinates.lat, coordinates.lng}
-            # captured from the CompanyCam photo object. The sidecar is
-            # uploaded alongside the photo during /api/integrations/
-            # companycam/projects/{id}/import.
+            # (browser canvas strips EXIF on dashboard uploads; CompanyCam/
+            # AccuLynx strip server-side), check for sibling sidecar files:
+            #   <name>.companycam.json → {coordinates: {lat, lng}}
+            #   <name>.exif.json       → {gps_lat, gps_lon, heading,
+            #                             exif_timestamp, altitude,
+            #                             focal_length_mm, software, make, model}
+            # The .exif.json sidecar is uploaded by the dashboard
+            # (src/lib/image-compress.ts) BEFORE the canvas re-encode strips
+            # the original EXIF. Same merge — fields already present from
+            # disk-EXIF win over sidecar fields (sidecar is fallback only).
             import json as _json
-            sidecar_hits = 0
+            cc_hits = 0
+            exif_hits = 0
             for i, photo_path in enumerate(photo_paths):
                 key = annotation_keys_early[i] if i < len(annotation_keys_early) else os.path.basename(photo_path)
                 entry = exif_metadata.setdefault(key, {})
-                if "gps_lat" in entry and "gps_lon" in entry:
-                    continue  # real EXIF already populated
                 base_no_ext = photo_path.rsplit(".", 1)[0]
-                sidecar_local = f"{base_no_ext}.companycam.json"
-                if not os.path.exists(sidecar_local):
-                    continue
-                try:
-                    with open(sidecar_local) as _f:
-                        meta = _json.load(_f)
-                    coords = meta.get("coordinates") or {}
-                    lat = coords.get("lat")
-                    lng = coords.get("lng")
-                    if lat is not None and lng is not None:
-                        entry["gps_lat"] = float(lat)
-                        entry["gps_lon"] = float(lng)
-                        sidecar_hits += 1
-                except Exception:
-                    continue
-            if sidecar_hits:
-                print(f"[EXIF] Sidecar fallback populated GPS on {sidecar_hits} photos")
+                # CompanyCam sidecar — only contributes GPS coordinates.
+                if not ("gps_lat" in entry and "gps_lon" in entry):
+                    cc_local = f"{base_no_ext}.companycam.json"
+                    if os.path.exists(cc_local):
+                        try:
+                            with open(cc_local) as _f:
+                                cc = _json.load(_f)
+                            coords = cc.get("coordinates") or {}
+                            lat = coords.get("lat")
+                            lng = coords.get("lng")
+                            if lat is not None and lng is not None:
+                                entry["gps_lat"] = float(lat)
+                                entry["gps_lon"] = float(lng)
+                                cc_hits += 1
+                        except Exception:
+                            pass
+                # Dashboard EXIF sidecar — contributes everything (gps, heading,
+                # timestamp, altitude, focal_length). Each field merged only
+                # if not already present from real on-disk EXIF.
+                exif_local = f"{base_no_ext}.exif.json"
+                if os.path.exists(exif_local):
+                    try:
+                        with open(exif_local) as _f:
+                            ex = _json.load(_f)
+                        merged_any = False
+                        for col in ("gps_lat", "gps_lon", "heading", "altitude",
+                                    "focal_length_mm", "exif_timestamp"):
+                            if col in entry:
+                                continue
+                            val = ex.get(col)
+                            if val is None:
+                                continue
+                            if col in ("gps_lat", "gps_lon", "heading", "altitude", "focal_length_mm"):
+                                try:
+                                    entry[col] = float(val)
+                                except (TypeError, ValueError):
+                                    continue
+                            else:
+                                entry[col] = str(val)
+                            merged_any = True
+                        if merged_any:
+                            exif_hits += 1
+                    except Exception:
+                        pass
+            if cc_hits or exif_hits:
+                print(f"[EXIF] Sidecar fallback populated {cc_hits} CompanyCam + {exif_hits} dashboard photos")
 
             if exif_metadata:
                 with_gps = sum(1 for v in exif_metadata.values() if "gps_lat" in v)

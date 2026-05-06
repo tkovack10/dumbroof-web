@@ -269,7 +269,10 @@ def write_photos(sb, claim_id: str, photo_analysis: dict, photo_integrity: dict 
 
         # EXIF metadata — lookup by annotation_key, fall back to filename
         exif = exif_metadata.get(key) or (exif_metadata.get(fname) if fname else None) or {}
-        for exif_col in ("gps_lat", "gps_lon", "heading", "altitude", "focal_length_mm"):
+        for exif_col in (
+            "gps_lat", "gps_lon", "heading", "altitude", "focal_length_mm",
+            "exif_timestamp", "exif_software",
+        ):
             val = exif.get(exif_col)
             if val is not None:
                 row[exif_col] = val

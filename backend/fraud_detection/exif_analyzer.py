@@ -211,6 +211,15 @@ def extract_exif_batch(photo_paths: list, photo_keys: Optional[list] = None) -> 
             entry["altitude"] = meta.altitude
         if meta.focal_length_mm is not None:
             entry["focal_length_mm"] = meta.focal_length_mm
+        # exif_timestamp + software were extracted into PhotoMetadata but never
+        # propagated to the batch result, so the photos table column has been
+        # 0% populated since the schema was added. write_photos in telemetry.py
+        # writes the entry dict straight onto the row, so adding these here
+        # is enough — no other code change needed.
+        if meta.timestamp:
+            entry["exif_timestamp"] = meta.timestamp
+        if meta.software:
+            entry["exif_software"] = meta.software
         if entry:
             result[key] = entry
     return result

@@ -274,9 +274,14 @@ export default function NewClaimPage() {
         `-${Date.now()}`);
       const claimPath = `${user.id}/${slug}`;
 
-      // Compress photos before upload (HEIC → JPEG, resize to 2048px max)
+      // Compress photos before upload (HEIC → JPEG, resize to 2048px max).
+      // EXIF metadata (GPS, heading, timestamp) is read BEFORE the canvas
+      // re-encode — canvas strips all EXIF — and emitted as <name>.exif.json
+      // sidecars uploaded into the same photos/ folder. Backend processor
+      // merges sidecars into the photos table during EXIF extraction.
       setUploadProgress("Compressing photos...");
-      const compressedPhotos = await compressImages(photoFiles);
+      const { photos: compressedPhotos, sidecars: exifSidecars } =
+        await compressImages(photoFiles);
 
       // Upload all file categories with concurrent batching
       const uploadCategory = async (files: File[], folder: string, label: string) => {
@@ -289,12 +294,19 @@ export default function NewClaimPage() {
         });
       };
 
-      const [mResult, pResult, sResult, wResult] = await Promise.all([
+      const [mResult, pResult, sResult, wResult, sidecarResult] = await Promise.all([
         uploadCategory(measurementFiles, "measurements", "measurements"),
         uploadCategory(compressedPhotos, "photos", "photos"),
         uploadCategory(scopeFiles, "scope", "carrier scope"),
         uploadCategory(weatherFiles, "weather", "weather data"),
+        // Sidecars go in the same photos/ folder so the backend can find them
+        // by basename match, but we DO NOT add them to photo_files[] — they
+        // would otherwise count against the Photo Review UI's photo count.
+        uploadCategory(exifSidecars, "photos", "photo metadata"),
       ]);
+      if (sidecarResult.errors.length > 0) {
+        console.warn("EXIF sidecar uploads failed:", sidecarResult.errors);
+      }
 
       const uploadedNames = {
         measurements: mResult.uploaded,
