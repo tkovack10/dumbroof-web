@@ -6,7 +6,7 @@ Run: python3 test_carrier_normalizer.py
 """
 from __future__ import annotations
 import unittest
-from carrier_normalizer import canonical_carrier_name, is_tpa, display_name
+from carrier_normalizer import canonical_carrier_name, canonical_carrier_brand_pair, is_tpa, display_name
 
 
 class CarrierNormalizerTests(unittest.TestCase):
@@ -198,6 +198,57 @@ class CarrierNormalizerTests(unittest.TestCase):
     def test_extreme_whitespace_does_not_create_orphan(self):
         # Multiple spaces should still match canonical, not split into "Nation Wide".
         self.assertEqual(canonical_carrier_name("nation   wide"), "Nationwide")
+
+    # ── Brand split (parent + brand pair) ──
+    def assert_pair(self, raw: str, parent: str, brand: str):
+        out = canonical_carrier_brand_pair(raw)
+        self.assertEqual(out, (parent, brand),
+                         msg=f"{raw!r} should be ({parent!r}, {brand!r}), got {out!r}")
+
+    def test_brand_safeco(self):
+        self.assert_pair("Safeco Insurance Company", "Liberty Mutual", "Safeco")
+    def test_brand_safeco_short(self):
+        self.assert_pair("Safeco", "Liberty Mutual", "Safeco")
+    def test_brand_foremost(self):
+        self.assert_pair("Foremost Insurance Group", "Farmers", "Foremost")
+        self.assert_pair("Farmers Property and Casualty Insurance Company (Foremost Insurance Group)", "Farmers", "Foremost")
+    def test_brand_crestbrook(self):
+        self.assert_pair("Crestbrook Insurance", "Nationwide", "Crestbrook")
+        self.assert_pair("Nationwide / Crestbrook Insurance (Private Client)", "Nationwide", "Crestbrook")
+    def test_brand_mid_century(self):
+        self.assert_pair("Mid-Century Insurance Company", "Farmers", "Mid-Century")
+    def test_brand_truck_exchange(self):
+        self.assert_pair("Truck Insurance Exchange (Farmers Insurance)", "Farmers", "Truck Insurance Exchange")
+    def test_brand_fidelity_guaranty(self):
+        self.assert_pair("FIDELITY AND GUARANTY INSURANCE UNDERWRITERS INC.", "Travelers", "Fidelity & Guaranty")
+
+    def test_brand_default_to_parent(self):
+        # Carriers without a distinct sub-brand: brand == parent
+        self.assert_pair("Liberty Mutual Insurance", "Liberty Mutual", "Liberty Mutual")
+        self.assert_pair("State Farm", "State Farm", "State Farm")
+        self.assert_pair("Travco Insurance Company", "Travelers", "Travelers")
+        self.assert_pair("Allstate New Jersey Insurance Company", "Allstate", "Allstate")
+
+    def test_brand_pair_garbage(self):
+        self.assertEqual(canonical_carrier_brand_pair(""), ("", ""))
+        self.assertEqual(canonical_carrier_brand_pair("?"), ("", ""))
+        self.assertEqual(canonical_carrier_brand_pair("Unknown"), ("", ""))
+        self.assertEqual(canonical_carrier_brand_pair(None), ("", ""))
+
+    def test_brand_tpa_no_brand_split(self):
+        # TPAs have no parent/brand split — pair returns (canonical, canonical)
+        self.assert_pair("Sedgwick", "tpa:Sedgwick", "tpa:Sedgwick")
+
+    # ── Backwards-compat: canonical_carrier_name unchanged behavior ──
+    def test_brand_split_doesnt_affect_parent_only_callers(self):
+        # The 6 brand-split carriers must still return the PARENT from
+        # canonical_carrier_name so existing callers keep merging at parent level.
+        self.assertEqual(canonical_carrier_name("Safeco Insurance Company"), "Liberty Mutual")
+        self.assertEqual(canonical_carrier_name("Foremost Insurance Group"), "Farmers")
+        self.assertEqual(canonical_carrier_name("Crestbrook"), "Nationwide")
+        self.assertEqual(canonical_carrier_name("Mid-Century Insurance Company"), "Farmers")
+        self.assertEqual(canonical_carrier_name("Truck Insurance Exchange (Farmers Insurance)"), "Farmers")
+        self.assertEqual(canonical_carrier_name("FIDELITY AND GUARANTY INSURANCE UNDERWRITERS INC."), "Travelers")
 
     # ── Helpers ──
     def test_is_tpa(self):

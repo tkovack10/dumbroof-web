@@ -357,11 +357,14 @@ def write_carrier_tactics(sb, claim_id: str, carrier: str, carrier_data: dict,
 
     # Canonicalize at write time so the table is clean from this commit forward.
     # Backfill normalizes pre-commit rows (see backfill_canonical_carriers.py).
+    # Resolve BOTH parent + brand so cross-portfolio intel pools at the parent
+    # level while operationally-distinct sub-brands (Safeco, Foremost, etc.)
+    # stay separable via carrier_brand. See E211 follow-up.
     try:
-        from carrier_normalizer import canonical_carrier_name
-        canonical = canonical_carrier_name(carrier)
-    except Exception:
-        canonical = carrier  # fail-open: never block claim processing on normalizer
+        from carrier_normalizer import canonical_carrier_brand_pair
+        canonical, brand = canonical_carrier_brand_pair(carrier)
+    except ImportError:
+        canonical, brand = carrier, carrier  # fail-open: never block claim processing
     if not canonical:
         # Garbage carrier value (?, NA, Unknown, placeholder) — skip the write
         # rather than pollute the dataset.
@@ -377,6 +380,7 @@ def write_carrier_tactics(sb, claim_id: str, carrier: str, carrier_data: dict,
         row = {
             "claim_id": claim_id,
             "carrier": carrier,
+            "carrier_brand": brand,
             "tactic_type": _classify_tactic(arg),
             "description": arg[:500],
             "region": region,
@@ -389,6 +393,7 @@ def write_carrier_tactics(sb, claim_id: str, carrier: str, carrier_data: dict,
             row = {
                 "claim_id": claim_id,
                 "carrier": carrier,
+                "carrier_brand": brand,
                 "tactic_type": "counter_argument",
                 "description": mapping.get("change", "")[:500],
                 "counter_argument": mapping.get("likely_argument", "")[:500],
@@ -444,13 +449,14 @@ def write_claim_outcome(sb, claim_id: str, config: dict, financials: dict,
 
     raw_carrier = config.get("carrier", {}).get("name", "")
     # Canonicalize carrier name so all spellings of the same insurer write
-    # to the same bucket. Garbage values become empty string and the row
-    # is skipped (don't pollute win-rate denominators with "Unknown" rows).
+    # to the same bucket. Resolve BOTH parent + brand. Garbage values
+    # become empty string and the row is skipped (don't pollute win-rate
+    # denominators with "Unknown" rows).
     try:
-        from carrier_normalizer import canonical_carrier_name
-        carrier = canonical_carrier_name(raw_carrier)
-    except Exception:
-        carrier = raw_carrier  # fail-open
+        from carrier_normalizer import canonical_carrier_brand_pair
+        carrier, brand = canonical_carrier_brand_pair(raw_carrier)
+    except ImportError:
+        carrier, brand = raw_carrier, raw_carrier  # fail-open
     if not carrier and raw_carrier:
         print(f"[WAREHOUSE] Skipping claim_outcomes write — unusable carrier {raw_carrier!r} for {claim_id}")
         return False
@@ -485,6 +491,7 @@ def write_claim_outcome(sb, claim_id: str, config: dict, financials: dict,
     row = {
         "claim_id": claim_id,
         "carrier": carrier,
+        "carrier_brand": brand if brand else carrier,
         "region": f"{config.get('property', {}).get('city', '')}, {state}".strip(", "),
         "state": state,
         "trades": trades,
@@ -544,10 +551,10 @@ def write_carrier_playbook_entry(sb, claim_id: str, carrier_raw: str,
         return False
 
     try:
-        from carrier_normalizer import canonical_carrier_name
-        carrier = canonical_carrier_name(carrier_raw)
-    except Exception:
-        carrier = carrier_raw
+        from carrier_normalizer import canonical_carrier_brand_pair
+        carrier, brand = canonical_carrier_brand_pair(carrier_raw)
+    except ImportError:
+        carrier, brand = carrier_raw, carrier_raw
     if not carrier:
         return False  # garbage carrier — skip
 
@@ -602,6 +609,7 @@ def write_carrier_playbook_entry(sb, claim_id: str, carrier_raw: str,
     row = {
         "claim_id": claim_id,
         "carrier": carrier,
+        "carrier_brand": brand if brand else carrier,
         "address": address[:300] if address else None,
         "date_of_loss": dol.isoformat() if dol else None,
         "date_processed": datetime.now().date().isoformat(),

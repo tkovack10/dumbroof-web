@@ -4338,12 +4338,16 @@ def load_carrier_playbook(carrier_name: str) -> str:
 
     # Canonicalize the carrier name so we read the merged bucket regardless
     # of spelling variants on this particular claim. E211 fix.
+    # Also resolve the brand (e.g. Safeco within Liberty Mutual) so we can
+    # drill down on operationally-distinct sub-brand intel beneath the parent.
     try:
-        from carrier_normalizer import canonical_carrier_name
-        canonical = canonical_carrier_name(carrier_name)
+        from carrier_normalizer import canonical_carrier_brand_pair
+        canonical, query_brand = canonical_carrier_brand_pair(carrier_name)
     except ImportError:
-        canonical = ""  # module unavailable — fail open
+        canonical, query_brand = "", ""  # module unavailable — fail open
     query_carrier = canonical or carrier_name  # fail-open if normalizer crashes
+    # Brand is interesting only when it differs from parent (the 6 sub-brands).
+    has_distinct_brand = bool(query_brand and query_brand != query_carrier)
 
     slug = (canonical or carrier_name).lower().replace("/", "-").replace(" ", "-").replace("--", "-").strip("-").replace("tpa:", "")
 
@@ -4455,6 +4459,34 @@ def load_carrier_playbook(carrier_name: str) -> str:
                     live_section += f"{prefix} +${mv:,.0f}: {likely}\n"
                     if change:
                         live_section += f"  Change: {change}\n"
+
+            # Brand drilldown: when the inbound claim is one of the 6
+            # operationally-distinct sub-brands (Safeco, Foremost, Crestbrook,
+            # Mid-Century, Truck Exchange, Fidelity & Guaranty), pull tactics
+            # filtered to JUST that brand. Adjuster behavior differs from the
+            # parent — e.g. Safeco negotiates while Liberty Mutual proper denies.
+            if has_distinct_brand:
+                brand_tactics_resp = sb.table("carrier_tactics") \
+                    .select("tactic_type,description,counter_argument,effective,trade") \
+                    .eq("carrier_brand", query_brand) \
+                    .order("created_at", desc=True) \
+                    .limit(15) \
+                    .execute()
+                brand_tactics = brand_tactics_resp.data or []
+                if brand_tactics:
+                    parent_label = query_carrier
+                    live_section += (
+                        f"\n### {query_brand} adjuster patterns "
+                        f"(sub-brand of {parent_label}):\n"
+                    )
+                    for t in brand_tactics[:6]:
+                        ttype = t.get("tactic_type") or "?"
+                        desc = (t.get("description") or "")[:140]
+                        live_section += f"- **{ttype}**: {desc}\n"
+                    live_section += (
+                        f"\n_Above patterns are {query_brand}-specific. "
+                        f"{parent_label} parent intel still applies above._\n"
+                    )
     except Exception as e:
         print(f"[PLAYBOOK] Supabase live data fetch failed for {carrier_name} (non-fatal): {e}")
 

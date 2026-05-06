@@ -12,6 +12,24 @@ Solution: every write goes through `canonical_carrier_name()` first.
 `load_carrier_playbook()` reads against the canonical name. A one-shot
 backfill normalizes the 1,741 existing tactics rows + 300 outcomes rows.
 
+Two-level identity (PARENT vs BRAND):
+- PARENT (canonical) is what `canonical_carrier_name()` returns and what
+  gets written to the `carrier` column. Cross-portfolio intel pools here.
+- BRAND is what `canonical_carrier_brand_pair()` returns as the second
+  tuple element and what gets written to `carrier_brand`. Most carriers
+  have no separate brand (BRAND == PARENT), but a handful of operationally
+  distinct sub-brands stay split:
+    Safeco               → parent: Liberty Mutual,  brand: Safeco
+    Foremost             → parent: Farmers,         brand: Foremost
+    Crestbrook           → parent: Nationwide,      brand: Crestbrook
+    Mid-Century          → parent: Farmers,         brand: Mid-Century
+    Truck Exchange       → parent: Farmers,         brand: Truck Insurance Exchange
+    Fidelity & Guaranty  → parent: Travelers,       brand: Fidelity & Guaranty
+  Reasoning: Safeco's adjusters negotiate while Liberty Mutual proper
+  denies fully. Same parent owner, distinct claim behavior. Splitting
+  preserves the operational signal while the parent column still pools
+  intel for cross-brand pattern recognition.
+
 Design choices:
 - Substring/regex matching, NOT exact-equal — so future spelling drift
   ("Liberty Mut Insurance") still routes correctly without a code change.
@@ -25,58 +43,70 @@ Design choices:
 """
 from __future__ import annotations
 import re
+from typing import Optional
 
-# Each tuple: (regex pattern, canonical name). First match wins.
+# Each tuple: (regex pattern, canonical PARENT, distinct BRAND or None).
+# - PARENT is what `canonical_carrier_name()` returns and what gets stored in
+#   the `carrier` column. Cross-portfolio intel pools at this level.
+# - BRAND is what `canonical_carrier_brand_pair()` returns as the second tuple
+#   element and what gets stored in `carrier_brand`. None means "same as
+#   parent" — most carriers don't have an operationally-distinct sub-brand.
 # Patterns are case-insensitive. Order matters — more specific first.
-_CARRIER_PATTERNS: list[tuple[str, str]] = [
+_CARRIER_PATTERNS: list[tuple[str, str, Optional[str]]] = [
     # ── TPAs / Independent Adjusters / Restoration (NOT carriers) ──
-    (r"\bsedgwick\b", "tpa:Sedgwick"),
-    (r"\bj\.?s\.?\s*held\b", "tpa:J.S. Held"),
-    (r"\bjohn\s*m\.?\s*dorner\b", "tpa:John M Dorner"),
-    (r"\beberl\s+claims?\b", "tpa:Eberl Claims Service"),
-    (r"\bcis\s+specialty\b", "tpa:CIS Specialty"),
-    (r"\bdecker\s+associates\b", "tpa:Decker Associates"),
-    (r"\blamarche\s+associates\b", "tpa:LaMarche Associates"),
-    (r"\bprofessional\s+claims?\s+adjustment\b", "tpa:Professional Claims Adjustment"),
-    (r"\bmark\s*1\s+restoration\b", "tpa:Mark 1 Restoration"),
+    (r"\bsedgwick\b",                          "tpa:Sedgwick",                      None),
+    (r"\bj\.?s\.?\s*held\b",                   "tpa:J.S. Held",                     None),
+    (r"\bjohn\s*m\.?\s*dorner\b",              "tpa:John M Dorner",                 None),
+    (r"\beberl\s+claims?\b",                   "tpa:Eberl Claims Service",          None),
+    (r"\bcis\s+specialty\b",                   "tpa:CIS Specialty",                 None),
+    (r"\bdecker\s+associates\b",               "tpa:Decker Associates",             None),
+    (r"\blamarche\s+associates\b",             "tpa:LaMarche Associates",           None),
+    (r"\bprofessional\s+claims?\s+adjustment\b", "tpa:Professional Claims Adjustment", None),
+    (r"\bmark\s*1\s+restoration\b",            "tpa:Mark 1 Restoration",            None),
+
+    # ── Operationally-distinct sub-brands (parent + brand split) ──
+    # These six match BEFORE their parent's general pattern so the brand
+    # override sticks. Parent column still gets cross-portfolio intel; brand
+    # column preserves per-brand adjuster-behavior signal.
+    (r"\bsafeco\b",                            "Liberty Mutual", "Safeco"),
+    (r"\bforemost\s+insurance\b",              "Farmers",        "Foremost"),
+    (r"\bcrestbrook\b",                        "Nationwide",     "Crestbrook"),
+    (r"\bmid[-\s]?century\s+insurance\b",      "Farmers",        "Mid-Century"),
+    (r"\btruck\s+insurance\s+exchange\b",      "Farmers",        "Truck Insurance Exchange"),
+    (r"\bfidelity\s+and\s+guaranty\b",         "Travelers",      "Fidelity & Guaranty"),
 
     # ── Specific multi-word carriers (must precede shorter patterns) ──
-    (r"\bnation\s*wide\b", "Nationwide"),  # split-word variants ("Nation wide")
-    (r"\bnationwide\s+(general|private|property|crestbrook|/\s*crestbrook)", "Nationwide"),
-    (r"\bcrestbrook\b", "Nationwide"),  # Crestbrook is Nationwide private-client
-    (r"\bnational\s+catastrophe\s+center\b|\bencompass\b", "Encompass"),
-    (r"\btruck\s+insurance\s+exchange\b", "Farmers"),  # owned by Farmers
-    (r"\bmid[-\s]?century\s+insurance\b", "Farmers"),  # also a Farmers brand
-    (r"\bfarmers?\s+property\s+(and|&)\s+casualty\b", "Farmers"),
-    (r"\bfarmers?\s+insurance(\s+exchange)?\b", "Farmers"),
-    (r"\bforemost\s+insurance\b", "Farmers"),  # Foremost is owned by Farmers
-    (r"^\s*farmers\s*$", "Farmers"),
-    (r"\bsafeco\b", "Liberty Mutual"),  # Safeco is owned by Liberty Mutual
-    (r"\bfirst\s+liberty\b|\bliberty\s+mutual(\s+\w+)*", "Liberty Mutual"),
-    (r"\bnycm\b|\bnew\s+york\s+central\s+mutual\b", "NYCM"),
-    (r"\b(travco|travelers?\s+home\s+and\s+marine|fidelity\s+and\s+guaranty)\b", "Travelers"),
-    (r"\btravelers?\b", "Travelers"),
-    (r"\busaa\b|\bunited\s+services\s+automobile\b", "USAA"),
-    (r"\b(all\s*state)\b", "Allstate"),  # covers "Allstate" + "All State" / "All state"
-    (r"\bstate\s+farm\b", "State Farm"),
-    (r"\bcolumbia\s+lloyds\b", "Columbia Lloyds"),
-    (r"\bgoodville\s+mutual\b", "Goodville Mutual"),
-    (r"\bhanover\s+insurance\b|\bthe\s+hanover\b", "Hanover"),
-    (r"\bguideone\b|\bguide\s+one\b", "GuideOne"),
-    (r"\bchubb\b", "Chubb"),
-    (r"\bamica\b", "Amica"),
-    (r"\bsterling\s+insurance\b", "Sterling"),
-    (r"\bpure\s+insurance\b", "Pure"),
-    (r"\bprogressive\b", "Progressive"),
-    (r"\bamerican\s+family\b", "American Family"),
-    (r"\bplymouth\s+rock\b", "Plymouth Rock"),
-    (r"\berie\s+insurance\b", "Erie"),
-    (r"\bleatherstocking\b", "Leatherstocking Cooperative"),
-    (r"\bhomesite\s+insurance\b", "Homesite"),
-    (r"\bmidstate\s+mutual\b", "Midstate Mutual"),
-    (r"\bassurant\b", "Assurant"),
-    (r"\bchurch\s+mutual\b", "Church Mutual"),
-    (r"\bwestfield\b", "Westfield"),
+    (r"\bnation\s*wide\b",                                                 "Nationwide", None),
+    (r"\bnationwide\s+(general|private|property|crestbrook|/\s*crestbrook)", "Nationwide", None),
+    (r"\bnational\s+catastrophe\s+center\b|\bencompass\b",                 "Encompass",  None),
+    (r"\bfarmers?\s+property\s+(and|&)\s+casualty\b",                      "Farmers",    None),
+    (r"\bfarmers?\s+insurance(\s+exchange)?\b",                            "Farmers",    None),
+    (r"^\s*farmers\s*$",                                                   "Farmers",    None),
+    (r"\bfirst\s+liberty\b|\bliberty\s+mutual(\s+\w+)*",                   "Liberty Mutual", None),
+    (r"\bnycm\b|\bnew\s+york\s+central\s+mutual\b",                        "NYCM",       None),
+    (r"\b(travco|travelers?\s+home\s+and\s+marine)\b",                     "Travelers",  None),
+    (r"\btravelers?\b",                                                    "Travelers",  None),
+    (r"\busaa\b|\bunited\s+services\s+automobile\b",                       "USAA",       None),
+    (r"\b(all\s*state)\b",                                                 "Allstate",   None),  # covers "Allstate" + "All State" / "All state"
+    (r"\bstate\s+farm\b",                                                  "State Farm", None),
+    (r"\bcolumbia\s+lloyds\b",                                             "Columbia Lloyds", None),
+    (r"\bgoodville\s+mutual\b",                                            "Goodville Mutual", None),
+    (r"\bhanover\s+insurance\b|\bthe\s+hanover\b",                         "Hanover",    None),
+    (r"\bguideone\b|\bguide\s+one\b",                                      "GuideOne",   None),
+    (r"\bchubb\b",                                                         "Chubb",      None),
+    (r"\bamica\b",                                                         "Amica",      None),
+    (r"\bsterling\s+insurance\b",                                          "Sterling",   None),
+    (r"\bpure\s+insurance\b",                                              "Pure",       None),
+    (r"\bprogressive\b",                                                   "Progressive", None),
+    (r"\bamerican\s+family\b",                                             "American Family", None),
+    (r"\bplymouth\s+rock\b",                                               "Plymouth Rock", None),
+    (r"\berie\s+insurance\b",                                              "Erie",       None),
+    (r"\bleatherstocking\b",                                               "Leatherstocking Cooperative", None),
+    (r"\bhomesite\s+insurance\b",                                          "Homesite",   None),
+    (r"\bmidstate\s+mutual\b",                                             "Midstate Mutual", None),
+    (r"\bassurant\b",                                                      "Assurant",   None),
+    (r"\bchurch\s+mutual\b",                                               "Church Mutual", None),
+    (r"\bwestfield\b",                                                     "Westfield",  None),
 ]
 
 # Garbage values that should be skipped entirely (empty string return).
@@ -90,35 +120,66 @@ _GARBAGE_PATTERNS: list[str] = [
 ]
 
 
-def canonical_carrier_name(raw: str | None) -> str:
-    """Return the canonical carrier name for any of its known spellings.
+def _resolve(raw: Optional[str]) -> tuple[str, Optional[str]]:
+    """Internal resolver: returns (parent_canonical, brand_or_None).
 
-    Returns:
-        - Canonical name (e.g. "State Farm", "Liberty Mutual") if matched.
-        - "tpa:Name" prefixed string for known TPAs / independent adjusters.
-        - Empty string for garbage values (caller should skip writing these rows).
-        - Title-cased trimmed input as a last resort (preserves novel carriers
-          for surfacing — they'll get their own bucket and we add a regex later).
+    `brand` is None when no operationally-distinct sub-brand applies. Callers
+    of `canonical_carrier_brand_pair()` get the parent as the brand fallback.
     """
     if not raw or not isinstance(raw, str):
-        return ""
-    # Collapse internal whitespace + trim BEFORE pattern matching. Otherwise
-    # variants like "All State " or "Nation wide" fall through to the title-
-    # case fallback and create new orphan buckets ("All State", "Nation Wide")
-    # separate from the canonical "Allstate" / "Nationwide" — the exact bug
-    # this normalizer was built to prevent. (Code review #1, 2026-05-05.)
+        return "", None
     s = re.sub(r"\s+", " ", raw).strip()
     if not s:
-        return ""
+        return "", None
     for pat in _GARBAGE_PATTERNS:
         if re.match(pat, s, re.IGNORECASE):
-            return ""
-    for pat, canonical in _CARRIER_PATTERNS:
+            return "", None
+    for pat, parent, brand in _CARRIER_PATTERNS:
         if re.search(pat, s, re.IGNORECASE):
-            return canonical
+            return parent, brand
     # Unknown carrier — preserve as title-cased + collapsed-whitespace.
     # Logged as a candidate to add to _CARRIER_PATTERNS.
-    return re.sub(r"\s+", " ", s).strip().title()
+    return s.title(), None
+
+
+def canonical_carrier_name(raw: Optional[str]) -> str:
+    """Return the canonical PARENT carrier name for any of its known spellings.
+
+    Backwards-compatible signature — still returns a single string. For the
+    parent + brand pair, use `canonical_carrier_brand_pair()` instead.
+
+    Returns:
+        - Canonical parent (e.g. "Liberty Mutual" for "Safeco Insurance Company").
+        - "tpa:Name" for known TPAs.
+        - Empty string for garbage values.
+        - Title-cased fallback for novel carriers.
+    """
+    parent, _ = _resolve(raw)
+    return parent
+
+
+def canonical_carrier_brand_pair(raw: Optional[str]) -> tuple[str, str]:
+    """Return (parent_canonical, brand_specific) for the carrier name.
+
+    `brand_specific` defaults to `parent_canonical` when no operationally-
+    distinct sub-brand exists — so writers can blindly populate both columns
+    without worrying about None handling.
+
+    Returns ("", "") for garbage / empty input. Callers should skip writes
+    when parent is empty.
+
+    Examples:
+        "Safeco Insurance Company" → ("Liberty Mutual", "Safeco")
+        "Liberty Mutual Insurance" → ("Liberty Mutual", "Liberty Mutual")
+        "State Farm Fire and Casualty" → ("State Farm", "State Farm")
+        "Foremost Insurance Group" → ("Farmers", "Foremost")
+        "Truck Insurance Exchange (Farmers Insurance)" → ("Farmers", "Truck Insurance Exchange")
+        "?" → ("", "")
+    """
+    parent, brand = _resolve(raw)
+    if not parent:
+        return "", ""
+    return parent, (brand if brand else parent)
 
 
 def is_tpa(canonical_name: str) -> bool:

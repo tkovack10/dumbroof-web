@@ -28,6 +28,8 @@ interface Props {
   highConfidenceArguments: number;
   canonicalCarriersTracked: number;
   tpasTracked: number;
+  brandsTracked: number;
+  subBrandSplitsCount: number;
 }
 
 const fmtMoney = (n: number, fractionDigits = 0) =>
@@ -445,7 +447,8 @@ export function MADashboardContent(p: Props) {
           </div>
           <div className="border-t border-slate-100 pt-3">
             <MetricRow label="Last 30 days" value={`+${p.tactics30d.toLocaleString()}`} color="emerald" sub="rate the system is learning at" />
-            <MetricRow label="Canonical carriers" value={String(p.canonicalCarriersTracked)} color="sky" sub="Real insurers (was fragmented across 68 spellings → now unified)" />
+            <MetricRow label="Canonical parents" value={String(p.canonicalCarriersTracked)} color="sky" sub="Real insurers (was fragmented across 68 spellings → now unified)" />
+            <MetricRow label="Distinct brands tracked" value={String(p.brandsTracked)} color="violet" sub={p.subBrandSplitsCount > 0 ? `${p.subBrandSplitsCount} sub-brand split(s) preserved (e.g. Safeco within Liberty Mutual)` : "Brand-level data growing as new claims process"} />
             <MetricRow label="TPAs / Adjusters tracked" value={String(p.tpasTracked)} sub="Sedgwick, J.S. Held, Eberl, etc. — segregated from carrier rollups" />
           </div>
         </Panel>
@@ -469,6 +472,13 @@ export function MADashboardContent(p: Props) {
               <div>
                 <div className="font-semibold text-slate-900">Carrier-name canonicalization</div>
                 <div className="text-slate-600">68 raw spellings → {p.canonicalCarriersTracked} canonical buckets. Liberty Mutual / Travelers / Allstate variants now merge.</div>
+              </div>
+            </div>
+            <div className="flex items-start gap-2">
+              <span className="text-emerald-600 font-bold mt-0.5 shrink-0">✓</span>
+              <div>
+                <div className="font-semibold text-slate-900">Parent + brand split (operational signal preserved)</div>
+                <div className="text-slate-600">Safeco / Foremost / Crestbrook / Mid-Century / Truck Exchange / Fidelity &amp; Guaranty stay separable. Parent column pools cross-portfolio intel; brand column preserves per-brand adjuster behavior.</div>
               </div>
             </div>
             <div className="flex items-start gap-2">

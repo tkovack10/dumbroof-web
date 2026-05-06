@@ -62,7 +62,7 @@ export default async function MADashboardPage() {
     supabaseAdmin.from("carrier_playbook_entries")
       .select("proven_arguments")
       .not("proven_arguments", "is", null),
-    supabaseAdmin.from("carrier_tactics").select("carrier"),
+    supabaseAdmin.from("carrier_tactics").select("carrier,carrier_brand"),
   ]);
 
   // Cost per claim (last 30 days) — paginated up to 10K logs
@@ -112,7 +112,7 @@ export default async function MADashboardPage() {
       if ((arg.confidence ?? "").toUpperCase() === "HIGH") highConfidenceArguments += 1;
     }
   }
-  const tacticsCarrierRows = (playbookCarriersRes.data as Array<{ carrier: string | null }> | null) ?? [];
+  const tacticsCarrierRows = (playbookCarriersRes.data as Array<{ carrier: string | null; carrier_brand: string | null }> | null) ?? [];
   const canonicalCarriersTracked = new Set(
     tacticsCarrierRows
       .map(r => r.carrier ?? "")
@@ -121,6 +121,13 @@ export default async function MADashboardPage() {
   const tpasTracked = new Set(
     tacticsCarrierRows.map(r => r.carrier ?? "").filter(c => c.startsWith("tpa:"))
   ).size;
+  // Distinct brands within real carriers (Safeco within Liberty Mutual, etc.)
+  const brandsTracked = new Set(
+    tacticsCarrierRows
+      .map(r => r.carrier_brand ?? "")
+      .filter(b => b && !b.startsWith("_") && !b.startsWith("tpa:"))
+  ).size;
+  const subBrandSplitsCount = Math.max(brandsTracked - canonicalCarriersTracked, 0);
 
   return (
     <MADashboardContent
@@ -154,6 +161,8 @@ export default async function MADashboardPage() {
       highConfidenceArguments={highConfidenceArguments}
       canonicalCarriersTracked={canonicalCarriersTracked}
       tpasTracked={tpasTracked}
+      brandsTracked={brandsTracked}
+      subBrandSplitsCount={subBrandSplitsCount}
     />
   );
 }
