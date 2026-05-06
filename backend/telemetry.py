@@ -342,9 +342,29 @@ def write_line_items(sb, claim_id: str, items: list, source: str = "usarm",
 
 def write_carrier_tactics(sb, claim_id: str, carrier: str, carrier_data: dict,
                           config: dict, revision_data: dict = None):
-    """Write carrier tactics from carrier arguments and revision diffs."""
+    """Write carrier tactics from carrier arguments and revision diffs.
+
+    Carrier name is canonicalized via carrier_normalizer.canonical_carrier_name
+    so all spellings of the same insurer (e.g. "Liberty Mutual Insurance"
+    vs "Liberty Mutual Mid Atlantic" vs "The First Liberty Insurance Corporation")
+    write to the same bucket. See E211.
+    """
     if not sb or not claim_id or not carrier:
         return 0
+
+    # Canonicalize at write time so the table is clean from this commit forward.
+    # Backfill normalizes pre-commit rows (see backfill_canonical_carriers.py).
+    try:
+        from carrier_normalizer import canonical_carrier_name
+        canonical = canonical_carrier_name(carrier)
+    except Exception:
+        canonical = carrier  # fail-open: never block claim processing on normalizer
+    if not canonical:
+        # Garbage carrier value (?, NA, Unknown, placeholder) — skip the write
+        # rather than pollute the dataset.
+        print(f"[WAREHOUSE] Skipping carrier_tactics write — unusable carrier {carrier!r}")
+        return 0
+    carrier = canonical
 
     rows = []
     region = config.get("property", {}).get("state", "")
@@ -419,7 +439,18 @@ def write_claim_outcome(sb, claim_id: str, config: dict, financials: dict,
     if not sb or not claim_id:
         return False
 
-    carrier = config.get("carrier", {}).get("name", "")
+    raw_carrier = config.get("carrier", {}).get("name", "")
+    # Canonicalize carrier name so all spellings of the same insurer write
+    # to the same bucket. Garbage values become empty string and the row
+    # is skipped (don't pollute win-rate denominators with "Unknown" rows).
+    try:
+        from carrier_normalizer import canonical_carrier_name
+        carrier = canonical_carrier_name(raw_carrier)
+    except Exception:
+        carrier = raw_carrier  # fail-open
+    if not carrier and raw_carrier:
+        print(f"[WAREHOUSE] Skipping claim_outcomes write — unusable carrier {raw_carrier!r} for {claim_id}")
+        return False
     state = config.get("property", {}).get("state", "")
     trades = config.get("scope", {}).get("trades", [])
     dashboard = config.get("dashboard", {})
@@ -487,6 +518,123 @@ def write_claim_outcome(sb, claim_id: str, config: dict, financials: dict,
         except Exception as e2:
             print(f"[WAREHOUSE] Claim outcome write FAILED (both upsert and insert): {e2}")
             return False
+
+
+def write_carrier_playbook_entry(sb, claim_id: str, carrier_raw: str,
+                                  claim: dict, config: dict, financials: dict,
+                                  photo_analysis: dict, carrier_data: Optional[dict]):
+    """Persist a per-claim playbook entry to Supabase carrier_playbook_entries.
+
+    Replaces the legacy update_carrier_playbook() filesystem writer that
+    was dead in production (PLATFORM_DIR doesn't exist on Railway, and
+    git push is gated by APP_ENV=cloud). The "Proven Arguments (What
+    Moved the Carrier)" structure produced by scope-revision detection
+    used to be thrown away on every claim — that ends here.
+
+    Upserts on (claim_id) so reprocess always overwrites with the latest
+    snapshot. Carrier name is canonicalized so reads via load_carrier_playbook
+    can find this entry under any spelling of the same insurer.
+
+    See E211 Layer 2.
+    """
+    if not sb or not claim_id or not carrier_raw:
+        return False
+
+    try:
+        from carrier_normalizer import canonical_carrier_name
+        carrier = canonical_carrier_name(carrier_raw)
+    except Exception:
+        carrier = carrier_raw
+    if not carrier:
+        return False  # garbage carrier — skip
+
+    address = claim.get("address", "") or config.get("property", {}).get("address", "")
+
+    # Date of loss — try multiple formats since extraction is inconsistent
+    dol_str = config.get("dates", {}).get("date_of_loss", "")
+    dol = None
+    if dol_str:
+        for fmt in ("%B %d, %Y", "%Y-%m-%d", "%m/%d/%Y"):
+            try:
+                dol = datetime.strptime(dol_str, fmt).date()
+                break
+            except (ValueError, TypeError):
+                continue
+
+    dashboard = config.get("dashboard", {})
+    is_won = (dashboard.get("status") == "won") or (claim.get("claim_outcome") == "won")
+    settlement = float(dashboard.get("carrier_current") or 0) if is_won else 0
+    usarm_rcv = float(financials.get("total") or 0)
+    carrier_rcv = float(config.get("carrier", {}).get("carrier_rcv") or 0)
+    variance = round(usarm_rcv - carrier_rcv, 2) if usarm_rcv and carrier_rcv else None
+
+    revisions = config.get("scope_revisions") or []
+    has_revision = bool(revisions)
+    revision_movement = None
+    revision_movement_pct = None
+    items_added_count = None
+    items_increased_count = None
+    proven_arguments = None
+    if has_revision:
+        latest = revisions[-1]
+        revision_movement = float(latest.get("movement") or 0) or None
+        revision_movement_pct = float(latest.get("movement_pct") or 0) or None
+        items_added_count = latest.get("items_added_count")
+        items_increased_count = latest.get("items_increased_count")
+        # The actual gold — every per-line-item change paired with what likely
+        # moved the carrier. Confidence labels: HIGH / MEDIUM / LOW. Surfaces in
+        # load_carrier_playbook() as "proven counter-arguments".
+        mappings = latest.get("argument_mapping") or []
+        if mappings:
+            proven_arguments = [
+                {
+                    "change": (m.get("change") or "")[:500],
+                    "likely_argument": (m.get("likely_argument") or "")[:500],
+                    "confidence": (m.get("confidence") or "").upper(),
+                    "trade": m.get("trade"),
+                }
+                for m in mappings[:30]
+            ]
+
+    row = {
+        "claim_id": claim_id,
+        "carrier": carrier,
+        "address": address[:300] if address else None,
+        "date_of_loss": dol.isoformat() if dol else None,
+        "date_processed": datetime.now().date().isoformat(),
+        "usarm_rcv": round(usarm_rcv, 2) if usarm_rcv else None,
+        "carrier_rcv": round(carrier_rcv, 2) if carrier_rcv else None,
+        "variance": variance,
+        "damage_type": (photo_analysis.get("damage_type") or "")[:50] or None,
+        "severity": (photo_analysis.get("severity") or "")[:50] or None,
+        "trades": config.get("scope", {}).get("trades") or None,
+        "phase": config.get("phase"),
+        "key_findings": (photo_analysis.get("key_findings") or [])[:10] or None,
+        "carrier_arguments": ((carrier_data or {}).get("carrier_arguments") or [])[:10] or None,
+        "carrier_acknowledged": ((carrier_data or {}).get("carrier_acknowledged_items") or [])[:10] or None,
+        "won": is_won,
+        "settlement_amount": settlement or None,
+        "has_revision": has_revision,
+        "revision_movement": revision_movement,
+        "revision_movement_pct": revision_movement_pct,
+        "items_added_count": items_added_count,
+        "items_increased_count": items_increased_count,
+        "proven_arguments": proven_arguments,
+    }
+    # Drop None values so we don't blow away existing fields on upsert
+    row = {k: v for k, v in row.items() if v is not None}
+    try:
+        sb.table("carrier_playbook_entries").upsert(row, on_conflict="claim_id").execute()
+        msg = f"[PLAYBOOK] Persisted entry for {carrier} / {address[:40]}"
+        if proven_arguments:
+            msg += f" ({len(proven_arguments)} proven arguments)"
+        elif has_revision:
+            msg += " (revision present)"
+        print(msg)
+        return True
+    except Exception as e:
+        print(f"[PLAYBOOK] write failed (non-fatal): {e}")
+        return False
 
 
 def write_pricing_benchmarks(sb, claim_id: str, items: list, source: str,

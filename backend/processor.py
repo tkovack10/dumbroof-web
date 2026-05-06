@@ -55,6 +55,7 @@ from telemetry import (
     write_line_items,
     write_carrier_tactics,
     write_claim_outcome,
+    write_carrier_playbook_entry,
     write_pricing_benchmarks,
 )
 
@@ -4335,7 +4336,16 @@ def load_carrier_playbook(carrier_name: str) -> str:
     if not carrier_name:
         return ""
 
-    slug = carrier_name.lower().replace("/", "-").replace(" ", "-").replace("--", "-").strip("-")
+    # Canonicalize the carrier name so we read the merged bucket regardless
+    # of spelling variants on this particular claim. E211 fix.
+    try:
+        from carrier_normalizer import canonical_carrier_name
+        canonical = canonical_carrier_name(carrier_name)
+    except Exception:
+        canonical = ""
+    query_carrier = canonical or carrier_name  # fail-open if normalizer crashes
+
+    slug = (canonical or carrier_name).lower().replace("/", "-").replace(" ", "-").replace("--", "-").strip("-").replace("tpa:", "")
 
     # 1. Static baseline from filesystem (hand-curated intel, keeps working
     #    for carriers we've manually written playbooks for)
@@ -4359,7 +4369,7 @@ def load_carrier_playbook(carrier_name: str) -> str:
         if sb:
             outcomes_resp = sb.table("claim_outcomes") \
                 .select("slug,win,usarm_rcv,original_carrier_rcv,current_carrier_rcv,settlement_amount,movement_amount,movement_pct,date_of_loss") \
-                .eq("carrier", carrier_name) \
+                .eq("carrier", query_carrier) \
                 .order("created_at", desc=True) \
                 .limit(25) \
                 .execute()
@@ -4367,7 +4377,7 @@ def load_carrier_playbook(carrier_name: str) -> str:
 
             tactics_resp = sb.table("carrier_tactics") \
                 .select("tactic_type,description,counter_argument,effective,trade,settlement_impact") \
-                .eq("carrier", carrier_name) \
+                .eq("carrier", query_carrier) \
                 .order("created_at", desc=True) \
                 .limit(30) \
                 .execute()
@@ -4407,6 +4417,44 @@ def load_carrier_playbook(carrier_name: str) -> str:
                         # Trim trailing timestamp + truncate for readability
                         slug = (w.get("slug") or "unknown").rsplit("-", 1)[0][:60]
                         live_section += f"- {slug}: +${mvmt:,.0f} ({pct:.1f}% movement)\n"
+
+            # E211 Layer 2: pull "Proven Arguments (What Moved the Carrier)"
+            # from carrier_playbook_entries — the rich revision-derived data
+            # the legacy filesystem path used to throw away.
+            entries_resp = sb.table("carrier_playbook_entries") \
+                .select("address,won,revision_movement,proven_arguments,carrier_arguments") \
+                .eq("carrier", query_carrier) \
+                .eq("has_revision", True) \
+                .order("revision_movement", desc=True) \
+                .limit(8) \
+                .execute()
+            entries = entries_resp.data or []
+            top_proven: list[dict] = []
+            for entry in entries:
+                pa = entry.get("proven_arguments") or []
+                if not isinstance(pa, list):
+                    continue
+                # Surface only HIGH/MEDIUM confidence to keep prompt clean
+                for arg in pa:
+                    if arg.get("confidence") in ("HIGH", "MEDIUM"):
+                        top_proven.append({
+                            **arg,
+                            "_movement": entry.get("revision_movement") or 0,
+                            "_address": entry.get("address") or "",
+                        })
+            if top_proven:
+                top_proven.sort(key=lambda x: -float(x.get("_movement") or 0))
+                live_section += f"\n### Proven moves on prior revisions (HIGH/MEDIUM confidence):\n"
+                for arg in top_proven[:6]:
+                    likely = (arg.get("likely_argument") or "")[:160]
+                    change = (arg.get("change") or "")[:120]
+                    trade = arg.get("trade") or ""
+                    conf = arg.get("confidence") or "?"
+                    mv = arg.get("_movement") or 0
+                    prefix = f"- **{conf}**" + (f" [{trade}]" if trade else "")
+                    live_section += f"{prefix} +${mv:,.0f}: {likely}\n"
+                    if change:
+                        live_section += f"  Change: {change}\n"
     except Exception as e:
         print(f"[PLAYBOOK] Supabase live data fetch failed for {carrier_name} (non-fatal): {e}")
 
@@ -7355,7 +7403,21 @@ def sync_to_github_dashboard(config: dict, claim: dict, photo_analysis: dict, ca
         json.dump(config_to_save, f, indent=2)
     print(f"[SYNC] Saved config: {config_path}")
 
-    # Update carrier playbook
+    # Update carrier playbook — Supabase writer (E211 Layer 2). Persists the
+    # rich "Proven Arguments (What Moved the Carrier)" structure that the
+    # legacy filesystem update_carrier_playbook() threw away on every claim
+    # in production (PLATFORM_DIR doesn't exist on Railway + git-push gated).
+    try:
+        write_carrier_playbook_entry(
+            sb, claim.get("id"), carrier_name,
+            claim, config, financials, photo_analysis, carrier_data,
+        )
+    except Exception as e:
+        print(f"[PLAYBOOK] write_carrier_playbook_entry failed (non-fatal): {e}")
+
+    # Legacy filesystem update — kept for local dev only (no-ops on Railway
+    # because PLATFORM_DIR doesn't resolve there). Will be removed once we
+    # confirm 30 days of Supabase entries are healthy.
     update_carrier_playbook(carrier_name, claim, config, financials, photo_analysis, carrier_data)
 
     # Update carrier playbook JSON from Supabase data
