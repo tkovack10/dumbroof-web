@@ -34,13 +34,14 @@ _CARRIER_PATTERNS: list[tuple[str, str]] = [
     (r"\bj\.?s\.?\s*held\b", "tpa:J.S. Held"),
     (r"\bjohn\s*m\.?\s*dorner\b", "tpa:John M Dorner"),
     (r"\beberl\s+claims?\b", "tpa:Eberl Claims Service"),
-    (r"\bcis\s+specialty\b|\bcis\b\s+specialty", "tpa:CIS Specialty"),
+    (r"\bcis\s+specialty\b", "tpa:CIS Specialty"),
     (r"\bdecker\s+associates\b", "tpa:Decker Associates"),
     (r"\blamarche\s+associates\b", "tpa:LaMarche Associates"),
     (r"\bprofessional\s+claims?\s+adjustment\b", "tpa:Professional Claims Adjustment"),
     (r"\bmark\s*1\s+restoration\b", "tpa:Mark 1 Restoration"),
 
     # ── Specific multi-word carriers (must precede shorter patterns) ──
+    (r"\bnation\s*wide\b", "Nationwide"),  # split-word variants ("Nation wide")
     (r"\bnationwide\s+(general|private|property|crestbrook|/\s*crestbrook)", "Nationwide"),
     (r"\bcrestbrook\b", "Nationwide"),  # Crestbrook is Nationwide private-client
     (r"\bnational\s+catastrophe\s+center\b|\bencompass\b", "Encompass"),
@@ -56,7 +57,7 @@ _CARRIER_PATTERNS: list[tuple[str, str]] = [
     (r"\b(travco|travelers?\s+home\s+and\s+marine|fidelity\s+and\s+guaranty)\b", "Travelers"),
     (r"\btravelers?\b", "Travelers"),
     (r"\busaa\b|\bunited\s+services\s+automobile\b", "USAA"),
-    (r"\ballstate\b", "Allstate"),
+    (r"\b(all\s*state)\b", "Allstate"),  # covers "Allstate" + "All State" / "All state"
     (r"\bstate\s+farm\b", "State Farm"),
     (r"\bcolumbia\s+lloyds\b", "Columbia Lloyds"),
     (r"\bgoodville\s+mutual\b", "Goodville Mutual"),
@@ -101,7 +102,12 @@ def canonical_carrier_name(raw: str | None) -> str:
     """
     if not raw or not isinstance(raw, str):
         return ""
-    s = raw.strip()
+    # Collapse internal whitespace + trim BEFORE pattern matching. Otherwise
+    # variants like "All State " or "Nation wide" fall through to the title-
+    # case fallback and create new orphan buckets ("All State", "Nation Wide")
+    # separate from the canonical "Allstate" / "Nationwide" — the exact bug
+    # this normalizer was built to prevent. (Code review #1, 2026-05-05.)
+    s = re.sub(r"\s+", " ", raw).strip()
     if not s:
         return ""
     for pat in _GARBAGE_PATTERNS:

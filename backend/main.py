@@ -1550,9 +1550,22 @@ and line items when relevant. Reference claim details (address, carrier, claim n
 
 
 def _load_carrier_playbook(carrier_name: str) -> str:
-    """Try to load carrier playbook from local files (if available on Railway)."""
+    """Try to load carrier playbook from local files (if available on Railway).
+
+    Canonicalizes the carrier name first so a "Safeco Insurance Company"
+    claim resolves to liberty-mutual.md, not safeco-insurance-company.md
+    (which doesn't exist). Pre-existing parity gap with load_carrier_playbook
+    in processor.py — flagged in E211 code review.
+    """
     if not carrier_name:
         return ""
+    try:
+        from carrier_normalizer import canonical_carrier_name
+        canonical = canonical_carrier_name(carrier_name)
+        if canonical:
+            carrier_name = canonical.replace("tpa:", "")
+    except ImportError:
+        pass
     slug = carrier_name.lower().replace(" ", "-").replace(".", "").replace(",", "")
     # Check common locations
     for base in ["/app/carrier_playbooks", "./carrier_playbooks", "../carrier_playbooks"]:

@@ -184,6 +184,21 @@ class CarrierNormalizerTests(unittest.TestCase):
         self.assertEqual(canonical_carrier_name("Novel Carrier Co."), "Novel Carrier Co.")
         self.assertEqual(canonical_carrier_name("  weird   spacing  "), "Weird Spacing")
 
+    # ── Whitespace-collapse fix (code review #1) ──
+    def test_allstate_split_word(self):
+        # "All State" with a space used to fall through to title-case fallback
+        # creating an orphan bucket. Now collapses + matches Allstate.
+        self.assertEqual(canonical_carrier_name("All State"), "Allstate")
+        self.assertEqual(canonical_carrier_name("All State "), "Allstate")
+        self.assertEqual(canonical_carrier_name("All state"), "Allstate")
+    def test_nationwide_split_word(self):
+        self.assertEqual(canonical_carrier_name("Nation wide"), "Nationwide")
+        self.assertEqual(canonical_carrier_name("Nation Wide"), "Nationwide")
+        self.assertEqual(canonical_carrier_name("nation wide "), "Nationwide")
+    def test_extreme_whitespace_does_not_create_orphan(self):
+        # Multiple spaces should still match canonical, not split into "Nation Wide".
+        self.assertEqual(canonical_carrier_name("nation   wide"), "Nationwide")
+
     # ── Helpers ──
     def test_is_tpa(self):
         self.assertTrue(is_tpa("tpa:Sedgwick"))

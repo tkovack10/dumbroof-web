@@ -33,6 +33,12 @@ export default async function MADashboardPage() {
     claims30dRes,
     winsAggRes,
     rcvAggRes,
+    tacticsTotalRes,
+    tactics30dRes,
+    playbookTotalRes,
+    playbook7dRes,
+    playbookProvenRes,
+    playbookCarriersRes,
   ] = await Promise.all([
     supabase.from("claims").select("id", { count: "exact", head: true }),
     supabase.from("claims").select("id", { count: "exact", head: true }).eq("claim_outcome", "won"),
@@ -48,6 +54,15 @@ export default async function MADashboardPage() {
     supabaseAdmin.from("claims")
       .select("contractor_rcv, original_carrier_rcv")
       .not("contractor_rcv", "is", null),
+    // E211 recursive-memory health metrics
+    supabaseAdmin.from("carrier_tactics").select("id", { count: "exact", head: true }),
+    supabaseAdmin.from("carrier_tactics").select("id", { count: "exact", head: true }).gte("created_at", thirtyDaysAgo),
+    supabaseAdmin.from("carrier_playbook_entries").select("id", { count: "exact", head: true }),
+    supabaseAdmin.from("carrier_playbook_entries").select("id", { count: "exact", head: true }).gte("created_at", sevenDaysAgo),
+    supabaseAdmin.from("carrier_playbook_entries")
+      .select("proven_arguments")
+      .not("proven_arguments", "is", null),
+    supabaseAdmin.from("carrier_tactics").select("carrier"),
   ]);
 
   // Cost per claim (last 30 days) — paginated up to 10K logs
@@ -86,6 +101,27 @@ export default async function MADashboardPage() {
   const totalCarrierRCV = rcvRows.reduce((s, r) => s + Number(r.original_carrier_rcv ?? 0), 0);
   const totalVariance = totalContractorRCV - totalCarrierRCV;
 
+  // Recursive memory aggregates (E211)
+  const provenRows = (playbookProvenRes.data as Array<{ proven_arguments: unknown }> | null) ?? [];
+  let totalProvenArguments = 0;
+  let highConfidenceArguments = 0;
+  for (const row of provenRows) {
+    if (!Array.isArray(row.proven_arguments)) continue;
+    for (const arg of row.proven_arguments as Array<{ confidence?: string }>) {
+      totalProvenArguments += 1;
+      if ((arg.confidence ?? "").toUpperCase() === "HIGH") highConfidenceArguments += 1;
+    }
+  }
+  const tacticsCarrierRows = (playbookCarriersRes.data as Array<{ carrier: string | null }> | null) ?? [];
+  const canonicalCarriersTracked = new Set(
+    tacticsCarrierRows
+      .map(r => r.carrier ?? "")
+      .filter(c => c && !c.startsWith("_") && !c.startsWith("tpa:"))
+  ).size;
+  const tpasTracked = new Set(
+    tacticsCarrierRows.map(r => r.carrier ?? "").filter(c => c.startsWith("tpa:"))
+  ).size;
+
   return (
     <MADashboardContent
       // Header counts
@@ -109,6 +145,15 @@ export default async function MADashboardPage() {
       totalContractorRCV={totalContractorRCV}
       totalCarrierRCV={totalCarrierRCV}
       totalVariance={totalVariance}
+      // Recursive memory (E211)
+      tacticsTotal={tacticsTotalRes.count ?? 0}
+      tactics30d={tactics30dRes.count ?? 0}
+      playbookTotal={playbookTotalRes.count ?? 0}
+      playbook7d={playbook7dRes.count ?? 0}
+      totalProvenArguments={totalProvenArguments}
+      highConfidenceArguments={highConfidenceArguments}
+      canonicalCarriersTracked={canonicalCarriersTracked}
+      tpasTracked={tpasTracked}
     />
   );
 }

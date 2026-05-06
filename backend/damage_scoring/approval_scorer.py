@@ -310,7 +310,26 @@ def _score_carrier_factor(config: dict) -> CarrierFactor:
 
 
 def _load_carrier_playbook(carrier_name: str) -> dict:
-    """Try to load carrier playbook JSON for intelligence."""
+    """Try to load carrier playbook JSON for intelligence.
+
+    Canonicalizes the carrier name first so spelling variants resolve to
+    the same file (e.g. "Safeco Insurance Company" → liberty-mutual.json).
+    Pre-existing parity gap with processor.load_carrier_playbook —
+    flagged in E211 code review.
+    """
+    if not carrier_name:
+        return {}
+    try:
+        import sys as _sys
+        _backend = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+        if _backend not in _sys.path:
+            _sys.path.insert(0, _backend)
+        from carrier_normalizer import canonical_carrier_name  # type: ignore
+        canonical = canonical_carrier_name(carrier_name)
+        if canonical:
+            carrier_name = canonical.replace("tpa:", "")
+    except ImportError:
+        pass
     base_dir = os.path.join(os.path.dirname(__file__), "..", "carrier_playbooks")
     slug = carrier_name.lower().replace(" ", "-").replace(",", "").replace(".", "")
 

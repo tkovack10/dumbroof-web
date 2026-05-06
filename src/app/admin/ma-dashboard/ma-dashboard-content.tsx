@@ -19,6 +19,15 @@ interface Props {
   totalContractorRCV: number;
   totalCarrierRCV: number;
   totalVariance: number;
+  // Recursive memory (E211)
+  tacticsTotal: number;
+  tactics30d: number;
+  playbookTotal: number;
+  playbook7d: number;
+  totalProvenArguments: number;
+  highConfidenceArguments: number;
+  canonicalCarriersTracked: number;
+  tpasTracked: number;
 }
 
 const fmtMoney = (n: number, fractionDigits = 0) =>
@@ -423,6 +432,67 @@ export function MADashboardContent(p: Props) {
           <MetricRow label="Nearest-State Fallback" value="37 unpriced states + DC + 5 territories" sub="No more silent NY default · all 50 states have pricing now (native or substituted)" />
           <MetricRow label="Carrier Playbooks" value="16+" sub="Per-carrier tactics, arguments, settlement patterns" />
           <MetricRow label="API Integrations" value="AccuLynx, EagleView, HailTrace, NOAA, Apollo, Stripe, Resend, Supabase" sub="Plus Cloudflare for inbound email + Vercel for frontend" />
+        </Panel>
+      </div>
+
+      {/* Recursive Memory — the self-learning loop (E211) */}
+      <div className="text-xs uppercase tracking-widest text-slate-500 font-bold px-4 sm:px-8 pt-3 pb-2">Recursive Memory · Self-Learning Loop (Live)</div>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 px-4 sm:px-8 pb-4">
+        <Panel title="Carrier Tactics Captured" badge={`+${p.tactics30d.toLocaleString()} last 30d`} badgeColor="green">
+          <div className="text-center py-3">
+            <div className="text-5xl font-black text-slate-900 tabular-nums">{p.tacticsTotal.toLocaleString()}</div>
+            <div className="text-xs text-slate-600 mt-1.5">total tactics tracked across all claims</div>
+          </div>
+          <div className="border-t border-slate-100 pt-3">
+            <MetricRow label="Last 30 days" value={`+${p.tactics30d.toLocaleString()}`} color="emerald" sub="rate the system is learning at" />
+            <MetricRow label="Canonical carriers" value={String(p.canonicalCarriersTracked)} color="sky" sub="Real insurers (was fragmented across 68 spellings → now unified)" />
+            <MetricRow label="TPAs / Adjusters tracked" value={String(p.tpasTracked)} sub="Sedgwick, J.S. Held, Eberl, etc. — segregated from carrier rollups" />
+          </div>
+        </Panel>
+
+        <Panel title="Proven Arguments (Compounding Gold)" badge={p.totalProvenArguments > 0 ? `${p.highConfidenceArguments} HIGH conf` : "Just shipped — collecting"} badgeColor={p.totalProvenArguments > 0 ? "purple" : "slate"}>
+          <div className="text-center py-3">
+            <div className="text-5xl font-black text-slate-900 tabular-nums">{p.totalProvenArguments.toLocaleString()}</div>
+            <div className="text-xs text-slate-600 mt-1.5">scope-revision-derived counter-arguments</div>
+          </div>
+          <div className="border-t border-slate-100 pt-3">
+            <MetricRow label="HIGH confidence" value={String(p.highConfidenceArguments)} color="emerald" sub="Surfaced in synthesis prompts as proven moves" />
+            <MetricRow label="Playbook entries (lifetime)" value={String(p.playbookTotal)} sub="One row per processed claim · upserts on reprocess" />
+            <MetricRow label="Last 7 days entries" value={`+${p.playbook7d}`} color="amber" sub="Was 0/week before E211 — filesystem write path was dead in production" />
+          </div>
+        </Panel>
+
+        <Panel title="Memory Health" badge="Layer 1 + 2 LIVE" badgeColor="green">
+          <div className="space-y-2 text-xs">
+            <div className="flex items-start gap-2">
+              <span className="text-emerald-600 font-bold mt-0.5 shrink-0">✓</span>
+              <div>
+                <div className="font-semibold text-slate-900">Carrier-name canonicalization</div>
+                <div className="text-slate-600">68 raw spellings → {p.canonicalCarriersTracked} canonical buckets. Liberty Mutual / Travelers / Allstate variants now merge.</div>
+              </div>
+            </div>
+            <div className="flex items-start gap-2">
+              <span className="text-emerald-600 font-bold mt-0.5 shrink-0">✓</span>
+              <div>
+                <div className="font-semibold text-slate-900">Supabase carrier_playbook_entries</div>
+                <div className="text-slate-600">Replaced dead filesystem writer. Captures HIGH/MEDIUM/LOW confidence proven arguments per scope revision.</div>
+              </div>
+            </div>
+            <div className="flex items-start gap-2">
+              <span className="text-emerald-600 font-bold mt-0.5 shrink-0">✓</span>
+              <div>
+                <div className="font-semibold text-slate-900">Read path merges intel across spellings</div>
+                <div className="text-slate-600">load_carrier_playbook() canonicalizes the inbound carrier name and pulls from the merged bucket.</div>
+              </div>
+            </div>
+            <div className="flex items-start gap-2">
+              <span className="text-amber-600 font-bold mt-0.5 shrink-0">⚠</span>
+              <div>
+                <div className="font-semibold text-slate-900">Open follow-ups</div>
+                <div className="text-slate-600">Win-recording gap (claim_outcomes missed 11/18 wins); auto-link tactics to outcomes via revision detection.</div>
+              </div>
+            </div>
+          </div>
         </Panel>
       </div>
 

@@ -4341,8 +4341,8 @@ def load_carrier_playbook(carrier_name: str) -> str:
     try:
         from carrier_normalizer import canonical_carrier_name
         canonical = canonical_carrier_name(carrier_name)
-    except Exception:
-        canonical = ""
+    except ImportError:
+        canonical = ""  # module unavailable — fail open
     query_carrier = canonical or carrier_name  # fail-open if normalizer crashes
 
     slug = (canonical or carrier_name).lower().replace("/", "-").replace(" ", "-").replace("--", "-").strip("-").replace("tpa:", "")
