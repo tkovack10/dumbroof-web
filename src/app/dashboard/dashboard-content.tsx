@@ -449,6 +449,13 @@ export function DashboardContent({ user }: { user: User }) {
               )}
             </div>
           </div>
+          <button
+            onClick={() => setReferOpen(true)}
+            className="block w-full text-left text-xs text-emerald-300 hover:text-emerald-200 transition-colors mb-2"
+            title="Refer another company — get a month free"
+          >
+            Refer &amp; Earn →
+          </button>
           <div className="flex items-center gap-2">
             <LanguageToggle />
             <button
@@ -513,6 +520,12 @@ export function DashboardContent({ user }: { user: User }) {
                       Admin
                     </a>
                   )}
+                  <button
+                    onClick={() => { setMenuOpen(false); setReferOpen(true); }}
+                    className="block w-full text-left px-4 py-2.5 text-sm text-emerald-300 hover:bg-white/[0.04] transition-colors"
+                  >
+                    Refer &amp; Earn
+                  </button>
                   <div className="border-t border-[var(--border-glass)] mt-1 pt-1">
                     <div className="px-4 py-2 text-xs text-[var(--gray-dim)]">
                       {user.email}
@@ -537,81 +550,69 @@ export function DashboardContent({ user }: { user: User }) {
       </nav>
 
       {/* Dashboard */}
-      <div className="md:ml-56 max-w-7xl mx-auto px-6 py-10">
-        <div className="flex items-center justify-between mb-6">
+      <div className="md:ml-56 max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-10">
+        {/* Title + action buttons */}
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-4">
           <div>
             <h1 className="text-2xl font-bold gradient-text">Dashboard</h1>
             <p className="text-[var(--gray-muted)] mt-1 text-sm">
               {activeTab === "claims" ? "Upload documents and generate claim packages." : "Diagnose leaks and generate repair documents."}
             </p>
           </div>
-          {/* Search bar */}
-          <div className="flex-1 max-w-md mx-6">
-            <div className="relative">
-              <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--gray-dim)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-              </svg>
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search by address, carrier, or homeowner..."
-                className="w-full pl-10 pr-4 py-2.5 bg-[var(--bg-input)] border border-[var(--border-glass)] rounded-xl text-sm text-[var(--white)] placeholder-[var(--gray-dim)] focus:border-[var(--cyan)] focus:outline-none focus:ring-1 focus:ring-[var(--cyan)] backdrop-blur-sm transition-colors"
-              />
-              {searchQuery && (
-                <button
-                  onClick={() => setSearchQuery("")}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--gray-dim)] hover:text-[var(--white)] transition-colors"
-                >
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              )}
-            </div>
-          </div>
-          <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
+          <div className="grid grid-cols-2 md:flex md:items-center gap-2">
             {canInvite && (
               <button
                 onClick={() => setInviteOpen(true)}
-                className="bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/30 text-purple-300 px-4 py-3 rounded-xl font-semibold transition-colors text-sm"
+                className="bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/30 text-purple-300 px-4 py-2.5 md:py-3 rounded-xl font-semibold transition-colors text-sm whitespace-nowrap"
                 title="Invite a teammate from your company"
               >
                 + Invite Teammate
               </button>
             )}
-            <button
-              onClick={() => setReferOpen(true)}
-              className="bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 px-4 py-3 rounded-xl font-semibold transition-colors text-sm"
-              title="Refer another company — get a month free"
-            >
-              Refer &amp; Earn
-            </button>
-            <a
-              href="/dashboard/send-document"
-              className="bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/30 text-blue-400 px-4 py-3 rounded-xl font-semibold transition-colors text-sm"
-            >
-              Send AOB
-            </a>
             <a
               href="/dashboard/quick-report"
-              className="bg-[var(--cyan)]/10 hover:bg-[var(--cyan)]/20 border border-[var(--cyan)]/30 text-[var(--cyan)] px-4 py-3 rounded-xl font-semibold transition-colors text-sm"
+              className="bg-[var(--cyan)]/10 hover:bg-[var(--cyan)]/20 border border-[var(--cyan)]/30 text-[var(--cyan)] px-4 py-2.5 md:py-3 rounded-xl font-semibold transition-colors text-sm whitespace-nowrap text-center"
             >
               Quick Report
             </a>
             <a
               href="/dashboard/new-repair"
-              className="bg-gradient-to-r from-[var(--pink)] via-[var(--purple)] to-[var(--blue)] hover:shadow-[var(--shadow-glow-pink)] text-white px-5 py-3 rounded-xl font-semibold transition-colors text-sm"
+              className="bg-gradient-to-r from-[var(--pink)] via-[var(--purple)] to-[var(--blue)] hover:shadow-[var(--shadow-glow-pink)] text-white px-4 py-2.5 md:py-3 rounded-xl font-semibold transition-colors text-sm whitespace-nowrap text-center"
             >
               + New Repair
             </a>
             <a
               href="/dashboard/new-claim"
-              className="bg-gradient-to-r from-[var(--pink)] via-[var(--purple)] to-[var(--blue)] hover:shadow-[var(--shadow-glow-pink)] text-white px-6 py-3 rounded-xl font-semibold transition-colors text-sm"
+              className="bg-gradient-to-r from-[var(--pink)] via-[var(--purple)] to-[var(--blue)] hover:shadow-[var(--shadow-glow-pink)] text-white px-4 py-2.5 md:py-3 rounded-xl font-semibold transition-colors text-sm whitespace-nowrap text-center"
             >
               + New Claim
             </a>
           </div>
+        </div>
+
+        {/* Search bar — full width, own row */}
+        <div className="relative mb-6">
+          <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--gray-dim)] pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+          </svg>
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search by address, carrier, or homeowner..."
+            className="w-full pl-10 pr-10 py-2.5 bg-[var(--bg-input)] border border-[var(--border-glass)] rounded-xl text-sm text-[var(--white)] placeholder-[var(--gray-dim)] focus:border-[var(--cyan)] focus:outline-none focus:ring-1 focus:ring-[var(--cyan)] backdrop-blur-sm transition-colors"
+          />
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery("")}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--gray-dim)] hover:text-[var(--white)] transition-colors"
+              aria-label="Clear search"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          )}
         </div>
 
         <OnboardingChecklist />
