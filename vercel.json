@@ -34,6 +34,10 @@
       "schedule": "30 16 * * *"
     },
     {
+      "path": "/api/cron/reconcile-period",
+      "schedule": "0 17 * * *"
+    },
+    {
       "path": "/api/cron/claim-brain-cadences",
       "schedule": "0 * * * *"
     },

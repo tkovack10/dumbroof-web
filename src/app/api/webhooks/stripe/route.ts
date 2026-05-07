@@ -265,23 +265,38 @@ export async function POST(req: NextRequest) {
           updates.current_period_start = period.start.toISOString();
           updates.current_period_end = period.end.toISOString();
 
-          // Reset claims_used on period change
+          // Reset claims_used on period change. Compare via epoch ms — string
+          // !== was unreliable because PostgREST returns timestamptz as
+          // "2026-05-02T12:34:56+00:00" while Date.toISOString() returns
+          // "2026-05-02T12:34:56.000Z" (USARM 2026-05-02 renewal incident).
           const { data: existing } = await supabaseAdmin
             .from("subscriptions")
             .select("current_period_start")
             .eq("stripe_customer_id", customerId)
             .limit(1);
 
-          if (
-            existing?.[0] &&
-            existing[0].current_period_start !== updates.current_period_start
-          ) {
+          const existingMs = existing?.[0]?.current_period_start
+            ? new Date(existing[0].current_period_start).getTime()
+            : null;
+          const newMs = period.start.getTime();
+          const periodAdvanced = existingMs === null || existingMs < newMs;
+
+          if (periodAdvanced) {
             // New billing cycle — reset both monthly counter AND overage state.
             // overage_acknowledged_at clears so the consent modal pops on the
             // next overage claim of the new cycle.
             updates.claims_used_this_period = 0;
             updates.overage_this_period = 0;
             updates.overage_acknowledged_at = null;
+            console.log(
+              "[webhook customer.subscription.updated] period advanced — resetting counters",
+              { customerId, subId: sub.id, existingMs, newMs }
+            );
+          } else {
+            console.log(
+              "[webhook customer.subscription.updated] period unchanged — no counter reset",
+              { customerId, subId: sub.id, existingMs, newMs }
+            );
           }
         } else {
           console.error(
