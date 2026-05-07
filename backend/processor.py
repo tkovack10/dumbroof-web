@@ -5142,19 +5142,67 @@ async def process_claim(claim_id: str, refresh_prices: bool = False):
                     print(f"[PROCESS] REST fallback: no profile found", flush=True)
         except Exception as e2:
             print(f"[PROCESS] REST fallback failed: {e2}", flush=True)
-    # Company-level profile resolution: users always inherit from company admin
-    # Admin profile is the source of truth for API keys, logo, branding, W9
-    if company_profile and not company_profile.get("is_admin"):
+    # E214: Company-level brand inheritance. Any user (including sub-admins)
+    # whose own row lacks a logo_path inherits brand assets from the company's
+    # canonical branded admin within the same company_id. Previously this
+    # gated on `not is_admin`, which left sub-admins (e.g. Tylor at USARM)
+    # uninherited even when they had no logo of their own and the founder
+    # admin (Tom) had the canonical logo on file. Now: every user with an
+    # empty logo_path inherits, regardless of their is_admin flag. Brand
+    # assets (logo, company name, address, website) come from the chosen
+    # admin; contact fields (name, phone, sending_email, role) stay user-
+    # specific via the {**admin, **user_specific} merge below.
+    if company_profile and not company_profile.get("logo_path"):
         _company_id = company_profile.get("company_id")
         _resolved = False
-        # Try company_id first
+        # User-specific fields that must NEVER be overridden by the inherited
+        # admin profile — contact identity, auth tokens, user-role flag, and
+        # the row's own user_id. Brand assets (logo, company_name, address,
+        # website, license_number) come from the admin.
+        _USER_SPECIFIC_FIELDS = (
+            "user_id", "id", "email", "sending_email", "contact_name",
+            "contact_title", "phone", "user_role", "is_admin",
+            "gmail_refresh_token", "gmail_access_token", "created_at",
+            "updated_at",
+        )
         if _company_id:
             try:
-                admin_result = sb.table("company_profiles").select("*").eq("company_id", _company_id).eq("is_admin", True).limit(1).execute()
-                if admin_result.data:
-                    company_profile = {**admin_result.data[0], "user_id": _uid}
+                # Prefer admins who actually HAVE a logo set — they're the
+                # canonical brand source. Without this filter, a query against
+                # a company with multiple admins (USARM has 6) could pick a
+                # logo-less admin and still leave us empty-handed.
+                # NOTE: PostgREST doesn't support `not.is.null` as a simple
+                # filter chain via supabase-py; pull all admins and filter in Python.
+                admin_result = (
+                    sb.table("company_profiles")
+                    .select("*")
+                    .eq("company_id", _company_id)
+                    .eq("is_admin", True)
+                    .execute()
+                )
+                candidates = [c for c in (admin_result.data or []) if (c.get("logo_path") or "").strip()]
+                if candidates:
+                    # Founder priority: tkovack@usaroofmasters.com first; then
+                    # earliest created_at as canonical brand source.
+                    def _admin_priority(c):
+                        ce = (c.get("email") or "").lower()
+                        return (
+                            0 if ce == "tkovack@usaroofmasters.com" else 1,
+                            c.get("created_at") or "",
+                        )
+                    chosen = sorted(candidates, key=_admin_priority)[0]
+                    # Merge: take brand from chosen admin, preserve user-specific
+                    # contact fields from the user's own row.
+                    user_specific = {
+                        k: company_profile.get(k)
+                        for k in _USER_SPECIFIC_FIELDS
+                        if company_profile.get(k) is not None
+                    }
+                    company_profile = {**chosen, **user_specific}
                     _resolved = True
-                    print(f"[PROCESS] Using company admin profile (company_id={_company_id})", flush=True)
+                    print(f"[PROCESS] Inherited brand from {chosen.get('email')} "
+                          f"(company_id={_company_id}) — preserved user-specific "
+                          f"fields: {list(user_specific.keys())[:6]}...", flush=True)
             except Exception as e:
                 print(f"[PROCESS] Company admin lookup failed: {e}", flush=True)
         # Fall back to domain matching. Personal-domain emails (gmail, yahoo,
