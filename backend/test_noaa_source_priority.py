@@ -69,21 +69,31 @@ class SourcePriorityTests(unittest.TestCase):
         self.assertEqual(pick.source, "SWDI_NX3HAIL")
         self.assertEqual(pick.magnitude, 2.5)
 
-    def test_radar_at_11mi_dropped_in_favor_of_nearest_fallback(self):
-        # NEXRAD 3.5" at 11mi — beyond radar radius of 10mi. Should fall
-        # through to "nearest event" rule and return the closer 1.0" radar
-        # report (only valid hail event). This prevents 30mi false-positive
-        # 3.5" radar hits from surfacing as the property's hail.
+    def test_only_out_of_range_radar_returns_none(self):
+        # E213 hardening (post-code-review): when the ONLY hail data is
+        # NEXRAD beyond `radar_radius_miles`, return None rather than
+        # surface a known-bad MESH magnitude. A 3.5" radar hit at 11mi
+        # being reported as "the property's hail" was the exact carrier-
+        # credibility risk this commit was opened to fix; Tier 3 must
+        # not silently bring it back.
         events = [
             FakeEvent("SWDI_NX3HAIL", "Hail", 3.5, 11.0),
             FakeEvent("SWDI_NX3HAIL", "Hail", 1.0, 30.0),
         ]
         pick = select_property_hail(events, search_radius_miles=25.0)
-        # Tier 3 fallback: nearest valid event of any source. 11mi is closer
-        # than 30mi, so the 3.5" wins via Tier 3, NOT via radar tier.
-        # Verifies that out-of-radar-radius events still surface as fallback
-        # rather than returning None (which would break downstream pipelines).
-        self.assertEqual(pick.distance_miles, 11.0)
+        self.assertIsNone(pick, "out-of-radius radar must NOT win Tier 3 fallback")
+
+    def test_far_ground_report_wins_over_far_radar(self):
+        # When ground report exists OUTSIDE search_radius but radar is also
+        # outside its tighter radius, ground report still wins Tier 3 because
+        # it's the only trustworthy source.
+        events = [
+            FakeEvent("STORM_EVENTS_DB", "Hail", 1.0, 30.0),
+            FakeEvent("SWDI_NX3HAIL",   "Hail", 3.5, 12.0),
+        ]
+        pick = select_property_hail(events, search_radius_miles=25.0)
+        self.assertEqual(pick.source, "STORM_EVENTS_DB")
+        self.assertEqual(pick.magnitude, 1.0)
 
     def test_ground_25mi_beats_radar_at_5mi(self):
         # Trust ground report at 24mi over radar overestimate at 5mi.
@@ -121,6 +131,15 @@ class SourcePriorityTests(unittest.TestCase):
     def test_no_hail_events(self):
         events = [
             FakeEvent("STORM_EVENTS_DB", "Thunderstorm Wind", 60.0, 1.0),
+        ]
+        self.assertIsNone(select_property_hail(events, search_radius_miles=25.0))
+
+    def test_all_zero_magnitude_returns_none(self):
+        # All hail events have magnitude=0 — should filter to empty and return None
+        # rather than picking the "least zero" by distance.
+        events = [
+            FakeEvent("STORM_EVENTS_DB", "Hail", 0.0, 1.0),
+            FakeEvent("SWDI_NX3HAIL", "Hail", 0.0, 5.0),
         ]
         self.assertIsNone(select_property_hail(events, search_radius_miles=25.0))
 

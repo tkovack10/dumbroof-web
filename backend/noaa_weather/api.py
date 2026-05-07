@@ -259,7 +259,20 @@ def select_property_hail(events, search_radius_miles: float,
     if radar:
         return max(radar, key=lambda e: float(e.magnitude or 0))
 
-    return min(valid, key=lambda e: e.distance_miles or 999)
+    # Tier 3 — source-aware fallback: only return events whose source AND
+    # distance combination is trustworthy. Specifically EXCLUDE radar events
+    # beyond `radar_radius_miles` even when they're the closest thing we
+    # have, because a 3"+ MESH false-positive at 11mi is the exact bug E213
+    # was opened to fix. If only out-of-range radar exists, return None and
+    # let downstream pipelines surface "no qualifying hail" honestly.
+    trustworthy = [
+        e for e in valid
+        if getattr(e, "source", "") not in RADAR_SOURCES
+        or (getattr(e, "distance_miles", 0) or 0) <= radar_radius_miles
+    ]
+    if not trustworthy:
+        return None
+    return min(trustworthy, key=lambda e: getattr(e, "distance_miles", 0) or 999)
 
 
 class NOAAClient:
