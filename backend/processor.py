@@ -284,7 +284,7 @@ def _query_noaa_storm_window(noaa_client, lat: float, lon: float, dol_str: str,
     hail_events = [e for e in deduped if "Hail" in (e.event_type or "") and (float(getattr(e, "magnitude", 0) or 0) > 0)]
     wind_events = [e for e in deduped if "Wind" in (e.event_type or "")]
 
-    def _pick_property_event(events):
+    def _pick_property_wind(events):
         if not events:
             return None
         local = [e for e in events if (e.distance_miles or 0) <= search_radius_miles]
@@ -292,8 +292,11 @@ def _query_noaa_storm_window(noaa_client, lat: float, lon: float, dol_str: str,
             return max(local, key=lambda e: float(getattr(e, "magnitude", 0) or 0))
         return min(events, key=lambda e: e.distance_miles or 999)
 
-    hail_pick = _pick_property_event(hail_events)
-    wind_pick = _pick_property_event(wind_events)
+    # E213: shared source-priority helper — prefers ground reports over
+    # NEXRAD radar within radius, tighter radius for radar.
+    from noaa_weather.api import select_property_hail
+    hail_pick = select_property_hail(hail_events, search_radius_miles)
+    wind_pick = _pick_property_wind(wind_events)
 
     max_hail = float(getattr(hail_pick, "magnitude", 0) or 0) if hail_pick else 0.0
     max_wind = float(getattr(wind_pick, "magnitude", 0) or 0) if wind_pick else 0.0
@@ -6088,19 +6091,31 @@ async def process_claim(claim_id: str, refresh_prices: bool = False):
                         # Persist weather data to claims table for map overlay
                         if sb:
                             try:
+                                # E213: hail_size and wind_speed used to share
+                                # the `magnitude` fallback, so wind events ended
+                                # up stored with `hail_size: 60.0` (mph!)
+                                # corrupting every downstream consumer (map
+                                # overlay, M&A dashboard, analytics). Now split
+                                # cleanly by event_type — no magnitude leakage.
+                                def _build_event_row(e):
+                                    et = (getattr(e, "event_type", "") or "")
+                                    is_hail = "Hail" in et
+                                    is_wind = "Wind" in et
+                                    mag = getattr(e, "magnitude", None)
+                                    return {
+                                        "event_type": et,
+                                        "date": str(e.begin_date) if hasattr(e, 'begin_date') else str(getattr(e, 'date', '')),
+                                        "hail_size": (mag if is_hail else None),
+                                        "wind_speed": (mag if is_wind else None),
+                                        "latitude": getattr(e, 'latitude', None) or getattr(e, 'begin_lat', None),
+                                        "longitude": getattr(e, 'longitude', None) or getattr(e, 'begin_lon', None),
+                                        "location": getattr(e, 'location', '') or getattr(e, 'begin_location', ''),
+                                        "distance_miles": getattr(e, 'distance_miles', None),
+                                        "source": getattr(e, 'source', ''),
+                                    }
                                 weather_json = {
                                     "events": [
-                                        {
-                                            "event_type": e.event_type,
-                                            "date": str(e.begin_date) if hasattr(e, 'begin_date') else str(getattr(e, 'date', '')),
-                                            "hail_size": getattr(e, 'hail_size_inches', None) or getattr(e, 'magnitude', None),
-                                            "wind_speed": getattr(e, 'wind_speed_mph', None),
-                                            "latitude": getattr(e, 'latitude', None) or getattr(e, 'begin_lat', None),
-                                            "longitude": getattr(e, 'longitude', None) or getattr(e, 'begin_lon', None),
-                                            "location": getattr(e, 'location', '') or getattr(e, 'begin_location', ''),
-                                            "distance_miles": getattr(e, 'distance_miles', None),
-                                            "source": getattr(e, 'source', ''),
-                                        }
+                                        _build_event_row(e)
                                         for e in (storm_data.events if hasattr(storm_data, 'events') else [])
                                         if getattr(e, 'latitude', None) or getattr(e, 'begin_lat', None)
                                     ],

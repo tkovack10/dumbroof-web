@@ -197,6 +197,71 @@ def _lookup_county_fips(lat: float, lon: float) -> tuple:
         return (None, None, None)
 
 
+# Source-priority constants for select_property_hail (E213 fix).
+# - STORM_EVENTS_DB: NWS-verified ground reports (trained spotters, public,
+#   law enforcement). Highest trust.
+# - SPC_DAILY: Storm Prediction Center daily report logs. Same ground-report
+#   class as STORM_EVENTS_DB but published faster (no ~60-day NCEI lag).
+# - SWDI_NX3HAIL: NEXRAD Level-3 radar HAIL signature product. Algorithm
+#   (HSDA / MESH) is well-documented to OVER-ESTIMATE large hail with
+#   distance from the radar. Useful as supporting narrative; bad as a
+#   property-specific magnitude.
+GROUND_REPORT_SOURCES = frozenset({"STORM_EVENTS_DB", "SPC_DAILY"})
+RADAR_SOURCES = frozenset({"SWDI_NX3HAIL"})
+
+# Tighter radius applied to RADAR_SOURCES specifically. NEXRAD volume scans
+# are most accurate within ~10mi of the radar's resolution cell; beyond that,
+# spurious 3"+ MESH hits are common. 25mi is fine for ground reports because
+# trained-spotter precision doesn't degrade with distance.
+RADAR_HAIL_RADIUS_MILES = 10.0
+
+
+def select_property_hail(events, search_radius_miles: float,
+                          radar_radius_miles: float = RADAR_HAIL_RADIUS_MILES):
+    """Pick the canonical hail event for the property, preferring ground
+    reports over NEXRAD radar estimates within radius.
+
+    Resolution order:
+      1. Ground reports (STORM_EVENTS_DB / SPC_DAILY) within `search_radius_miles`
+         → max magnitude wins.
+      2. NEXRAD radar (SWDI_NX3HAIL) within tighter `radar_radius_miles`
+         (default 10mi) → max magnitude wins. Falls through if all radar
+         hits are too far for trustworthy magnitude.
+      3. Nearest event of any source/distance — degraded fallback when nothing
+         qualifies (still better than returning None for a downstream pipeline
+         that needs a non-zero hail value).
+
+    Returns the chosen event or None if `events` is empty.
+
+    Driven by E213 (Binghamton 2025-07-03 outbreak): SWDI radar reported
+    3.0" hail at 3.0mi while STORM_EVENTS_DB had 2.0" at 1.4mi from a
+    trained spotter. The legacy `max(magnitude)`-within-25mi picker
+    surfaced the radar overestimate as the property's hail size, which
+    creates carrier-credibility risk if the carrier double-checks NCEI.
+    """
+    if not events:
+        return None
+    valid = [e for e in events
+             if (getattr(e, "magnitude", 0) or 0) > 0
+             and "Hail" in (getattr(e, "event_type", "") or "")]
+    if not valid:
+        return None
+
+    ground = [e for e in valid
+              if getattr(e, "source", "") in GROUND_REPORT_SOURCES
+              and (getattr(e, "distance_miles", 0) or 0) <= search_radius_miles]
+    if ground:
+        return max(ground, key=lambda e: float(e.magnitude or 0))
+
+    radar = [e for e in valid
+             if getattr(e, "source", "") in RADAR_SOURCES
+             and (getattr(e, "distance_miles", 0) or 0) <= radar_radius_miles]
+    if radar:
+        return max(radar, key=lambda e: float(e.magnitude or 0))
+
+    return min(valid, key=lambda e: e.distance_miles or 999)
+
+
 class NOAAClient:
     """Query NOAA Storm Events Database + SPC + SWDI for storm event data."""
 
@@ -281,16 +346,16 @@ class NOAAClient:
         all_wind = [e for e in all_events if e.magnitude_type == "wind_mph"]
 
         if all_hail:
-            # Use nearest hail event for max (closest to property = most relevant)
-            local_hail = [e for e in all_hail if e.distance_miles <= self.search_radius_miles]
-            if local_hail:
-                max_hail_event = max(local_hail, key=lambda e: e.magnitude)
-            else:
-                max_hail_event = min(all_hail, key=lambda e: e.distance_miles)
-            storm_data.max_hail_inches = max_hail_event.magnitude
-            storm_data.max_hail_distance_miles = max_hail_event.distance_miles
-            print(f"[NOAA] Hail: {len(all_hail)} reports, max near property: "
-                  f'{max_hail_event.magnitude}" at {max_hail_event.distance_miles:.1f} mi')
+            # E213: prefer ground reports over NEXRAD radar; tighter radius
+            # for radar (10mi) since NEXRAD MESH/HSDA over-estimates with
+            # distance. See select_property_hail for resolution order.
+            max_hail_event = select_property_hail(all_hail, self.search_radius_miles)
+            if max_hail_event:
+                storm_data.max_hail_inches = max_hail_event.magnitude
+                storm_data.max_hail_distance_miles = max_hail_event.distance_miles
+                print(f"[NOAA] Hail: {len(all_hail)} reports, "
+                      f"selected {max_hail_event.source} "
+                      f'{max_hail_event.magnitude}" at {max_hail_event.distance_miles:.1f} mi')
         storm_data.max_wind_mph = max((e.magnitude for e in all_wind), default=0.0)
 
         return storm_data
