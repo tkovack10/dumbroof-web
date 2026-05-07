@@ -53,16 +53,20 @@ function ContactField({
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(value);
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   const commit = async () => {
     const trimmed = draft.trim();
     if (trimmed === (value || "").trim()) {
       setEditing(false);
+      setSaveError(null);
       return;
     }
     setSaving(true);
+    setSaveError(null);
     try {
-      // Mark this field as manually entered in contact_source
+      // Read existing contact_source to merge in the new field's "manual" tag.
+      // RLS on claims allows SELECT for the row owner so this client read is fine.
       const { data: claimRow } = await supabase
         .from("claims")
         .select("contact_source")
@@ -71,19 +75,37 @@ function ContactField({
       const existingSource = (claimRow?.[0]?.contact_source as ContactSource) || {};
       const newSource = { ...existingSource, [field]: "manual" };
 
-      await supabase
-        .from("claims")
-        .update({
-          [field]: trimmed || null,
-          contact_source: newSource,
-        })
-        .eq("id", claimId);
+      // E215 fix: route through the admin-bypass API endpoint. Direct client
+      // UPDATE on claims silently fails under RLS — supabase-js returns
+      // {error: ...} without throwing, the field appeared saved on screen but
+      // disappeared on refresh because the DB write never landed.
+      const res = await fetch("/api/claims/update", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          claimId,
+          updates: {
+            [field]: trimmed || null,
+            contact_source: newSource,
+          },
+        }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        const msg = err?.error || `Save failed (${res.status})`;
+        console.warn("[contact-registry] save failed:", msg);
+        setSaveError(msg);
+        // Stay in editing state so user can fix the value or retry
+        return;
+      }
       onSave(trimmed);
+      setEditing(false);
     } catch (e) {
-      console.warn("[contact-registry] save failed", e);
+      const msg = e instanceof Error ? e.message : "Network error";
+      console.warn("[contact-registry] save failed:", msg);
+      setSaveError(msg);
     } finally {
       setSaving(false);
-      setEditing(false);
     }
   };
 
@@ -161,6 +183,11 @@ function ContactField({
           )}
         </div>
       </div>
+      {saveError && (
+        <div className="mt-1.5 text-[11px] text-rose-300 bg-rose-500/10 border border-rose-500/30 rounded px-2 py-1">
+          {saveError}
+        </div>
+      )}
     </div>
   );
 }

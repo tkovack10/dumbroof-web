@@ -11,6 +11,21 @@ const ALLOWED_FIELDS = new Set([
   "status",
   "phase",
   "estimate_request",
+  // Contact registry (E215 — added 2026-05-07): Contact details card on the
+  // claim detail page used to write directly to the claims table via the
+  // client supabase SDK. RLS on `claims` blocks the client write silently,
+  // so the field appeared to save but disappeared on refresh. Routing through
+  // this admin-bypass endpoint requires the contact columns to be on the
+  // whitelist. Auth/ownership gate above (lines 35-63) still applies.
+  "homeowner_name",
+  "homeowner_email",
+  "homeowner_phone",
+  "adjuster_name",
+  "adjuster_email",
+  "adjuster_phone",
+  "claim_number",
+  "policy_number",
+  "contact_source",
 ]);
 
 export async function POST(request: Request) {
