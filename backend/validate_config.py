@@ -109,13 +109,24 @@ def check_insured_fields(config, result):
 
 
 def check_company_fields(config, result):
-    """Check company section has all fields the generator reads."""
+    """Check company section has all fields the generator reads.
+
+    E216: `office_phone` was previously required, but most contractors only
+    have one phone (cell). The PDF generator at usarm_pdf_generator.py:3397
+    already handles missing office_phone gracefully — it just shows the cell
+    line alone, no orphan "Office: " label. Requiring at least ONE phone
+    keeps the contact line meaningful without forcing every sub-user to
+    populate a field most small companies don't have.
+    """
     company = config.get("company", {})
-    required = ["name", "ceo_name", "ceo_title", "email", "cell_phone",
-                "office_phone", "address", "city_state_zip"]
+    required = ["name", "ceo_name", "ceo_title", "email",
+                "address", "city_state_zip"]
     for field in required:
         if not company.get(field):
             result.error("COMP01", f"Missing company.{field}")
+    # At least one phone (office or cell) is required for the contact line.
+    if not (company.get("cell_phone") or company.get("office_phone")):
+        result.error("COMP01", "Missing company phone (need cell_phone or office_phone)")
 
 
 def check_carrier_fields(config, result):

@@ -1653,6 +1653,268 @@ Be VERY conservative — chalk marks and test square notations are NEVER fraud. 
     }
 
 
+# Inline budget for carrier-scope file blocks combined. Anthropic's
+# request_too_large fires above ~32 MB of base64 in the JSON body; source
+# bytes encode at 4/3, so 23 MB of source ≈ 30.7 MB of base64 — leaves
+# ~1.3 MB for the prompt + JSON envelope. (E216: prior to this guard, two
+# PDFs totaling 25 MB raw silently 413'd, leaving scope_comparison NULL
+# and the claim graded F by the doc-quality auditor.)
+_CARRIER_SCOPE_INLINE_BUDGET_BYTES = 23 * 1024 * 1024
+
+
+def _try_lossless_pdf_shrink(pdf_path: str) -> str:
+    """Re-save the PDF with PyMuPDF's most aggressive lossless options.
+
+    Returns a smaller .compressed.pdf path on success, otherwise the
+    original path. Frees up room before resorting to lossy rasterization.
+    """
+    try:
+        import fitz
+    except Exception:
+        return pdf_path
+    try:
+        out_dir = os.path.dirname(pdf_path) or "."
+        base = os.path.basename(pdf_path).rsplit(".", 1)[0]
+        out = os.path.join(out_dir, f"{base}.compressed.pdf")
+        doc = fitz.open(pdf_path)
+        try:
+            doc.save(
+                out,
+                garbage=4,
+                deflate=True,
+                deflate_images=True,
+                deflate_fonts=True,
+                clean=True,
+            )
+        finally:
+            doc.close()
+        if os.path.exists(out) and os.path.getsize(out) < os.path.getsize(pdf_path):
+            return out
+        try:
+            os.unlink(out)
+        except OSError:
+            pass
+    except Exception as e:
+        print(f"[CARRIER EXTRACT] Lossless shrink failed for "
+              f"{os.path.basename(pdf_path)}: {e}", flush=True)
+    return pdf_path
+
+
+def _render_pdf_to_image_blocks(pdf_path: str, label: str,
+                                budget_bytes: int) -> list[dict]:
+    """Lossy fallback: render each PDF page to JPEG at the highest DPI that
+    still fits inside `budget_bytes` (base64-expanded). Returns Anthropic
+    image blocks plus a leading text label flagging the rasterization.
+
+    The model reads scope text from the page images via OCR/vision — usable
+    down to ~75 DPI for typed estimate forms.
+    """
+    import fitz
+    label_block = {
+        "type": "text",
+        "text": (
+            f"{label}  NOTE: This carrier document was rasterized to one image "
+            "per page because the original PDF exceeded the inline upload "
+            "limit. Read scope content directly from each page image."
+        ),
+    }
+    last_attempt: list[dict] = []
+    for dpi in (130, 110, 90, 75, 60):
+        attempt: list[dict] = []
+        total = 0
+        fits = True
+        doc = fitz.open(pdf_path)
+        try:
+            zoom = dpi / 72.0
+            mat = fitz.Matrix(zoom, zoom)
+            for page in doc:
+                pix = page.get_pixmap(matrix=mat, alpha=False)
+                jpeg = pix.tobytes("jpeg", jpg_quality=70)
+                projected = total + (len(jpeg) * 4 // 3)
+                if projected > budget_bytes:
+                    fits = False
+                    break
+                total = projected
+                attempt.append({
+                    "type": "image",
+                    "source": {
+                        "type": "base64",
+                        "media_type": "image/jpeg",
+                        "data": base64.standard_b64encode(jpeg).decode(),
+                    },
+                })
+        finally:
+            doc.close()
+        if fits:
+            print(f"[CARRIER EXTRACT] Rasterized "
+                  f"{os.path.basename(pdf_path)} at {dpi} DPI "
+                  f"({len(attempt)} pages, ~{total // 1024}KB base64)",
+                  flush=True)
+            return [label_block] + attempt
+        last_attempt = attempt
+    # 60 DPI still didn't fit (giant document) — send what we have so the
+    # extractor still gets first N pages rather than nothing.
+    print(f"[CARRIER EXTRACT] Even 60 DPI rasterization didn't fully fit "
+          f"for {os.path.basename(pdf_path)} — sending first "
+          f"{len(last_attempt)} pages only", flush=True)
+    return [label_block] + last_attempt
+
+
+def _build_carrier_scope_blocks(all_paths: list[str]) -> list[dict]:
+    """Build Anthropic content blocks for carrier-scope extraction, with a
+    size guard: if the combined inline base64 payload would exceed
+    `_CARRIER_SCOPE_INLINE_BUDGET_BYTES`, shrink and/or rasterize each PDF
+    so the call doesn't 413.
+
+    Non-PDF inputs (txt, images) are passed through as before — only PDFs
+    are subject to the shrink/rasterize ladder.
+    """
+    file_blocks: list[dict] = []
+
+    def _label_for(idx: int, total: int, fpath: str) -> str:
+        if total > 1:
+            recency = ("NEWEST / current carrier position" if idx == 0
+                       else "older revision / historical baseline")
+            return (f"[DOCUMENT {idx+1} of {total} — {recency} — "
+                    f"filename: {os.path.basename(fpath)}]")
+        return f"[CARRIER DOCUMENT — filename: {os.path.basename(fpath)}]"
+
+    # First pass: classify each input + measure PDF sizes.
+    pdf_inputs: list[tuple[int, str, int]] = []  # (idx, path, raw_bytes)
+    other_inputs: list[tuple[int, str, str]] = []  # (idx, path, ext)
+    for i, fpath in enumerate(all_paths):
+        ext = fpath.lower().rsplit(".", 1)[-1] if "." in fpath else ""
+        if ext == "pdf":
+            try:
+                size = os.path.getsize(fpath)
+            except OSError:
+                size = 0
+            pdf_inputs.append((i, fpath, size))
+        else:
+            other_inputs.append((i, fpath, ext))
+
+    # Estimate total inline base64 size if we sent every PDF as-is.
+    total_b64_estimate = sum((sz * 4 // 3) for _, _, sz in pdf_inputs)
+
+    # Pass 1: try lossless shrink only if we're already over budget.
+    if total_b64_estimate > _CARRIER_SCOPE_INLINE_BUDGET_BYTES and pdf_inputs:
+        shrunken: list[tuple[int, str, int]] = []
+        for idx, fpath, _sz in pdf_inputs:
+            new_path = _try_lossless_pdf_shrink(fpath)
+            try:
+                new_sz = os.path.getsize(new_path)
+            except OSError:
+                new_sz = _sz
+            if new_path != fpath:
+                print(f"[CARRIER EXTRACT] Lossless shrink "
+                      f"{os.path.basename(fpath)}: "
+                      f"{_sz // 1024}KB → {new_sz // 1024}KB", flush=True)
+            shrunken.append((idx, new_path, new_sz))
+        pdf_inputs = shrunken
+        total_b64_estimate = sum((sz * 4 // 3) for _, _, sz in pdf_inputs)
+
+    # Pass 2: if still over budget, decide per-PDF whether to inline or
+    # rasterize. Greedy: inline the smallest first until the running budget
+    # would be exceeded; rasterize the remainder with their share of the
+    # leftover budget.
+    inline_paths: set[int] = set()
+    rasterize_paths: list[tuple[int, str]] = []
+    if total_b64_estimate <= _CARRIER_SCOPE_INLINE_BUDGET_BYTES:
+        # Everything fits inline — happy path.
+        inline_paths = {idx for idx, _, _ in pdf_inputs}
+    else:
+        running = 0
+        # Sort by ascending size — inline as many full PDFs as possible.
+        for idx, fpath, sz in sorted(pdf_inputs, key=lambda t: t[2]):
+            b64 = sz * 4 // 3
+            if running + b64 <= _CARRIER_SCOPE_INLINE_BUDGET_BYTES:
+                inline_paths.add(idx)
+                running += b64
+            else:
+                rasterize_paths.append((idx, fpath))
+        leftover = max(0, _CARRIER_SCOPE_INLINE_BUDGET_BYTES - running)
+        per_pdf_budget = (leftover // max(1, len(rasterize_paths))) if rasterize_paths else 0
+
+    # Build blocks in original input order so DOCUMENT N labels stay correct.
+    n_total = len(all_paths)
+    rasterize_map = {idx: fpath for idx, fpath in rasterize_paths}
+    pdf_lookup = {idx: (fpath, sz) for idx, fpath, sz in pdf_inputs}
+    other_lookup = {idx: (fpath, ext) for idx, fpath, ext in other_inputs}
+
+    for i in range(n_total):
+        if i in pdf_lookup:
+            fpath, _sz = pdf_lookup[i]
+            label = _label_for(i, n_total, fpath)
+            if i in inline_paths:
+                file_blocks.append({"type": "text", "text": label})
+                file_blocks.append({
+                    "type": "document",
+                    "source": {
+                        "type": "base64",
+                        "media_type": "application/pdf",
+                        "data": file_to_base64(fpath),
+                    },
+                })
+            else:
+                # Rasterize
+                file_blocks.extend(
+                    _render_pdf_to_image_blocks(
+                        rasterize_map[i], label, per_pdf_budget
+                    )
+                )
+            continue
+
+        if i in other_lookup:
+            fpath, ext = other_lookup[i]
+            label = _label_for(i, n_total, fpath)
+            if ext == "txt":
+                with open(fpath, "r", encoding="utf-8") as f:
+                    text_content = f.read()
+                file_blocks.append({
+                    "type": "text",
+                    "text": f"{label}\n\n{text_content}",
+                })
+            elif ext in ("jpg", "jpeg", "png", "gif", "webp",
+                         "heic", "heif", "tiff", "tif", "bmp"):
+                img_path = fpath
+                if ext not in ("jpg", "jpeg", "png", "gif", "webp"):
+                    from photo_utils import convert_to_jpeg as _to_jpeg
+                    converted = _to_jpeg(fpath)
+                    if not converted:
+                        raise ValueError(
+                            f"Carrier scope file '{os.path.basename(fpath)}' "
+                            f"is a {ext.upper()} that could not be converted "
+                            f"to JPEG."
+                        )
+                    img_path = converted
+                img_ext = img_path.lower().rsplit(".", 1)[-1]
+                img_media = {
+                    "jpg": "image/jpeg", "jpeg": "image/jpeg",
+                    "png": "image/png", "gif": "image/gif", "webp": "image/webp",
+                }.get(img_ext, "image/jpeg")
+                file_blocks.append({
+                    "type": "text",
+                    "text": (
+                        f"{label}  NOTE: This scope was uploaded as an IMAGE "
+                        "(photo/screenshot), not a PDF. Read the scope content "
+                        "directly from the image."
+                    ),
+                })
+                file_blocks.append({
+                    "type": "image",
+                    "source": {"type": "base64", "media_type": img_media,
+                               "data": file_to_base64(img_path)},
+                })
+            else:
+                raise ValueError(
+                    f"Carrier scope file '{os.path.basename(fpath)}' has "
+                    f"unsupported extension '.{ext}'. Supported: PDF, TXT, "
+                    f"JPG/JPEG/PNG/GIF/WEBP/HEIC/HEIF/TIFF/BMP."
+                )
+
+    return file_blocks
+
+
 def extract_carrier_scope(client: anthropic.Anthropic, pdf_path, extra_paths=None) -> dict:
     """Extract carrier scope data from insurance estimate PDF(s) or text file.
 
@@ -1662,7 +1924,9 @@ def extract_carrier_scope(client: anthropic.Anthropic, pdf_path, extra_paths=Non
                      document blocks so Claude sees ALL scope pages in one call.
     """
     all_paths = [pdf_path] + (extra_paths or [])
-    file_blocks = []
+    file_blocks = _build_carrier_scope_blocks(all_paths)
+    # Loop variable kept for the legacy single-file path below — preserved
+    # for the (now-dead) inline branch logic; kept harmless.
     for i, fpath in enumerate(all_paths):
         # Caller orders paths newest-first — DOCUMENT 1 is the current carrier
         # position, DOCUMENT 2+ are historical baselines.
@@ -5142,69 +5406,95 @@ async def process_claim(claim_id: str, refresh_prices: bool = False):
                     print(f"[PROCESS] REST fallback: no profile found", flush=True)
         except Exception as e2:
             print(f"[PROCESS] REST fallback failed: {e2}", flush=True)
-    # E214: Company-level brand inheritance. Any user (including sub-admins)
-    # whose own row lacks a logo_path inherits brand assets from the company's
-    # canonical branded admin within the same company_id. Previously this
-    # gated on `not is_admin`, which left sub-admins (e.g. Tylor at USARM)
-    # uninherited even when they had no logo of their own and the founder
-    # admin (Tom) had the canonical logo on file. Now: every user with an
-    # empty logo_path inherits, regardless of their is_admin flag. Brand
-    # assets (logo, company name, address, website) come from the chosen
-    # admin; contact fields (name, phone, sending_email, role) stay user-
-    # specific via the {**admin, **user_specific} merge below.
-    if company_profile and not company_profile.get("logo_path"):
+    # E216: Company-level brand inheritance for ALL users on a multi-user
+    # company — no longer gated on missing logo_path. Brand-consistency
+    # fields (company_name, address, city_state_zip, website,
+    # license_number, office_phone, logo_path) always come from the
+    # canonical admin so every PDF leaving the same tenant looks identical
+    # and so sub-users like Zach (mostly NULL row) get fully populated
+    # without retyping company data. User-specific contact + auth fields
+    # stay on the user's own row via the {**admin, **user_specific} merge.
+    #
+    # Picker: founder email (tkovack@usaroofmasters.com) > has_logo >
+    # has_brand > oldest created_at. Always picks SOME admin if at least
+    # one exists in the company — no empty-candidates trapdoor that
+    # previously dropped USARM sub-users into the domain-match fallback
+    # and surfaced kscollon (founding admin sort order) as their brand.
+    if company_profile and company_profile.get("company_id"):
         _company_id = company_profile.get("company_id")
         _resolved = False
         # User-specific fields that must NEVER be overridden by the inherited
-        # admin profile — contact identity, auth tokens, user-role flag, and
-        # the row's own user_id. Brand assets (logo, company_name, address,
-        # website, license_number) come from the admin.
+        # admin profile — contact identity, auth tokens, integrations the
+        # user owns personally. Brand assets (logo, company_name, address,
+        # city_state_zip, website, license_number, office_phone) come from
+        # the canonical admin.
         _USER_SPECIFIC_FIELDS = (
             "user_id", "id", "email", "sending_email", "contact_name",
-            "contact_title", "phone", "user_role", "is_admin",
-            "gmail_refresh_token", "gmail_access_token", "created_at",
-            "updated_at",
+            "contact_title", "phone", "user_role", "is_admin", "role",
+            "gmail_refresh_token", "gmail_access_token",
+            "microsoft_refresh_token", "microsoft_email", "microsoft_connected_at",
+            "smtp_host", "smtp_port", "smtp_username", "smtp_password_encrypted",
+            "smtp_from_email", "smtp_connected_at", "email_provider",
+            "stripe_connect_account_id", "stripe_connect_status",
+            "w9_path", "rep_visibility",
+            "created_at", "updated_at", "invited_by", "invite_accepted_at",
+            "referral_code", "settings", "onboarding_dismissed_at",
+            "richard_dry_run",
         )
-        if _company_id:
-            try:
-                # Prefer admins who actually HAVE a logo set — they're the
-                # canonical brand source. Without this filter, a query against
-                # a company with multiple admins (USARM has 6) could pick a
-                # logo-less admin and still leave us empty-handed.
-                # NOTE: PostgREST doesn't support `not.is.null` as a simple
-                # filter chain via supabase-py; pull all admins and filter in Python.
-                admin_result = (
-                    sb.table("company_profiles")
-                    .select("*")
-                    .eq("company_id", _company_id)
-                    .eq("is_admin", True)
-                    .execute()
+        try:
+            # Pull all admins for this company. PostgREST doesn't support
+            # `not.is.null` in a single chained filter, so we sort-pick in Python.
+            admin_result = (
+                sb.table("company_profiles")
+                .select("*")
+                .eq("company_id", _company_id)
+                .eq("is_admin", True)
+                .execute()
+            )
+
+            def _admin_priority(c):
+                ce = (c.get("email") or "").lower()
+                return (
+                    0 if ce == "tkovack@usaroofmasters.com" else 1,
+                    0 if (c.get("logo_path") or "").strip() else 1,
+                    0 if (c.get("company_name") or "").strip() else 1,
+                    c.get("created_at") or "",
                 )
-                candidates = [c for c in (admin_result.data or []) if (c.get("logo_path") or "").strip()]
-                if candidates:
-                    # Founder priority: tkovack@usaroofmasters.com first; then
-                    # earliest created_at as canonical brand source.
-                    def _admin_priority(c):
-                        ce = (c.get("email") or "").lower()
-                        return (
-                            0 if ce == "tkovack@usaroofmasters.com" else 1,
-                            c.get("created_at") or "",
-                        )
-                    chosen = sorted(candidates, key=_admin_priority)[0]
+
+            candidates = sorted((admin_result.data or []), key=_admin_priority)
+            if candidates:
+                chosen = candidates[0]
+                # Skip self-cascade — if the user's own row IS the chosen
+                # canonical admin, the merge would be a no-op anyway and
+                # the log line would be misleading.
+                if chosen.get("user_id") == company_profile.get("user_id"):
+                    print(f"[PROCESS] User is canonical admin for company_id={_company_id} — skip cascade", flush=True)
+                else:
                     # Merge: take brand from chosen admin, preserve user-specific
-                    # contact fields from the user's own row.
+                    # identity fields ONLY when they're non-empty. Empty-string
+                    # (not just None) also defers to admin so a sub-user who
+                    # signed up and saved an empty form doesn't blank out
+                    # company-level data.
+                    def _is_user_filled(v):
+                        if v is None:
+                            return False
+                        if isinstance(v, str) and not v.strip():
+                            return False
+                        return True
+
                     user_specific = {
                         k: company_profile.get(k)
                         for k in _USER_SPECIFIC_FIELDS
-                        if company_profile.get(k) is not None
+                        if _is_user_filled(company_profile.get(k))
                     }
                     company_profile = {**chosen, **user_specific}
                     _resolved = True
-                    print(f"[PROCESS] Inherited brand from {chosen.get('email')} "
-                          f"(company_id={_company_id}) — preserved user-specific "
-                          f"fields: {list(user_specific.keys())[:6]}...", flush=True)
-            except Exception as e:
-                print(f"[PROCESS] Company admin lookup failed: {e}", flush=True)
+                    print(f"[PROCESS] Inherited company brand from {chosen.get('email')} "
+                          f"(company_id={_company_id}, has_logo="
+                          f"{bool((chosen.get('logo_path') or '').strip())}) — "
+                          f"preserved user-specific fields: {list(user_specific.keys())[:6]}", flush=True)
+        except Exception as e:
+            print(f"[PROCESS] Company admin lookup failed: {e}", flush=True)
         # Fall back to domain matching. Personal-domain emails (gmail, yahoo,
         # msn, etc.) are EXCLUDED on both sides: a personal-domain user never
         # inherits another admin's brand, and a personal-domain admin never
