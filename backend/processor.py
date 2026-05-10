@@ -3342,7 +3342,14 @@ def build_claim_config(
         "photo_map": photo_map,
         "photo_sections": photo_sections,
         "forensic_findings": {
-            "damage_summary": photo_analysis.get("damage_summary", ""),
+            # Empty damage_summary fails the PDF generator's config validator
+            # (usarm_pdf_generator.py:3827). Falls through to a placeholder
+            # whenever no photo analysis ran — e.g. supplement_only mode where
+            # photos were never uploaded. The forensic causation report PDF is
+            # filtered out for supplement_only anyway, so the placeholder is
+            # never user-visible; it just satisfies validation.
+            "damage_summary": photo_analysis.get("damage_summary") or
+                "Supplement-only claim — see Xactimate estimate and supplement letter for line-item-level documentation.",
             "code_violations": deterministic_violations if deterministic_violations else [
                 {
                     "code": cv.get("code", ""),
