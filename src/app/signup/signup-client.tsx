@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { firePixelSignup } from "@/lib/meta-pixel-signup";
+import { getUtmFromBrowser } from "@/lib/utm";
 
 interface InviteContext {
   token: string;
@@ -102,11 +103,13 @@ export function SignupClient({
     setError("");
     setMessage("");
 
+    const utm = getUtmFromBrowser();
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
         emailRedirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(nextPath)}`,
+        ...(utm ? { data: utm } : {}),
       },
     });
 

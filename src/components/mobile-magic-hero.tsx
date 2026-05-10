@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/client";
 import type { InAppName } from "@/lib/device-detection";
 import { trackBoth, FunnelEvent } from "@/lib/track";
 import { firePixelSignup } from "@/lib/meta-pixel-signup";
+import { getUtmFromBrowser } from "@/lib/utm";
 
 type Props = {
   inAppName: InAppName;
@@ -69,6 +70,7 @@ export function MobileMagicHero({ inAppName, stats }: Props) {
     setLoading(true);
     setError("");
 
+    const utm = getUtmFromBrowser();
     const { data, error: signupError } = await supabase.auth.signUp({
       email: email.trim().toLowerCase(),
       password,
@@ -76,6 +78,7 @@ export function MobileMagicHero({ inAppName, stats }: Props) {
         // emailRedirectTo not needed — email confirmation is OFF in Supabase
         data: {
           signup_source: inAppName ? `mobile_${inAppName}` : "mobile_direct",
+          ...(utm ?? {}),
         },
       },
     });

@@ -4,6 +4,7 @@ import { Suspense, useState, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { firePixelSignup } from "@/lib/meta-pixel-signup";
+import { getUtmFromBrowser } from "@/lib/utm";
 
 export default function LoginPage() {
   return (
@@ -64,11 +65,13 @@ function LoginPageContent() {
     setMessage("");
 
     if (isSignUp) {
+      const utm = getUtmFromBrowser();
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
           emailRedirectTo: `${window.location.origin}/auth/callback`,
+          ...(utm ? { data: utm } : {}),
         },
       });
       if (error) {
