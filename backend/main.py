@@ -260,10 +260,15 @@ async def reprocess_claim(claim_id: str, background_tasks: BackgroundTasks, refr
     result = sb.table("claims").select("id, status").eq("id", claim_id).single().execute()
     if not result.data:
         raise HTTPException(status_code=404, detail="Claim not found")
+    from datetime import datetime, timezone
     sb.table("claims").update({
         "status": "processing",
         "cached_photo_analysis": None,
         "completion_email_sent_at": None,
+        # Prevent the stuck-claim watchdog (poll_for_claims @ main.py:5104)
+        # from immediately recovering this claim if its last_touched_at is
+        # stale from a prior failed run > 30 min ago.
+        "last_touched_at": datetime.now(timezone.utc).isoformat(),
     }).eq("id", claim_id).execute()
     background_tasks.add_task(run_processing, claim_id, refresh_prices=refresh_prices)
     return {"status": "reprocessing", "claim_id": claim_id, "refresh_prices": refresh_prices}
