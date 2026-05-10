@@ -71,5 +71,12 @@ export const config = {
     "/inspection-club",
     "/pa-club",
     "/integrations",
+    // Paid-traffic landing pages — Cards 07/08 lands at /instant-supplement,
+    // Whoops creatives at /fb/whoops/[variant]. Without these, the dr_utm
+    // cookie is never set for the highest-volume ad traffic.
+    "/fb/:path*",
+    "/instant",
+    "/instant-supplement",
+    "/instant-forensic",
   ],
 };
