@@ -598,11 +598,14 @@ export function AdminDashboard({ userId }: { userId: string }) {
                 const totalForensic = webForensic + cliWinsTotals.forensic;
                 const totalSupplement = webSupplement + cliWinsTotals.supplement;
                 // True supplement-win % = wins / claims where a supplement was
-                // actually shipped. CLI rows contribute supplements via
-                // cliWinsTotals.supplement (carrier rcv > original). Web rows
-                // contribute via the supplement_sent claim_event.
+                // actually shipped (NOT wins). CLI rows contribute supplement-
+                // shipped via cliWinsTotals.forensic — that field counts CLI
+                // claims with original_carrier_rcv > 0, which IS the
+                // supplement-shipped baseline (every USARM CLI claim with a
+                // carrier scope gets supplemented). Web rows contribute via
+                // the supplement_sent claim_event.
                 const webSupplementSent = claims.filter(c => claimComms[c.id]?.supplement_sent).length;
-                const totalSupplementSent = webSupplementSent + cliWinsTotals.supplement;
+                const totalSupplementSent = webSupplementSent + cliWinsTotals.forensic;
                 const truePctNum = totalSupplementSent > 0 ? Math.round((totalSupplement / totalSupplementSent) * 100) : 0;
                 const rawPctNum = stats.total > 0 ? Math.round((totalSupplement / stats.total) * 100) : 0;
 
