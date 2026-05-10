@@ -16,6 +16,9 @@ const COOKIE_TOKEN = "dr_instant_token";
 const COOKIE_FUNNEL = "dr_instant_funnel";
 const COOKIE_DOL = "dr_instant_dol";
 const COOKIE_DAMAGE = "dr_instant_damage_type";
+const COOKIE_ROOF_TYPE = "dr_instant_roof_type";
+const COOKIE_GUTTER_TYPE = "dr_instant_gutter_type";
+const COOKIE_SIDING_TYPE = "dr_instant_siding_type";
 const ANON_PREFIX = "anon-instant-intake";
 const BUCKET = "claim-documents";
 
@@ -40,6 +43,9 @@ export async function POST() {
   const funnel = funnelRaw as Funnel;
   const dol = jar.get(COOKIE_DOL)?.value || null;
   const damageType = jar.get(COOKIE_DAMAGE)?.value || null;
+  const roofType = jar.get(COOKIE_ROOF_TYPE)?.value || null;
+  const gutterType = jar.get(COOKIE_GUTTER_TYPE)?.value || null;
+  const sidingType = jar.get(COOKIE_SIDING_TYPE)?.value || null;
 
   const supabase = await createClient();
   const {
@@ -107,7 +113,22 @@ export async function POST() {
   const intakeNote =
     funnel === "forensic"
       ? `[instant-forensic funnel] DOL=${dol ?? "unspecified"} damage=${damageType ?? "unspecified"}`
-      : `[instant-supplement funnel]`;
+      : `[instant-supplement funnel] roof=${roofType ?? "unspecified"} gutter=${gutterType ?? "unspecified"} siding=${sidingType ?? "unspecified"}`;
+
+  // estimate_request shape is funnel-dependent. Forensic claims describe
+  // the damage event (DOL + storm type). Supplement claims describe the
+  // structure being supplemented (material types) since there are no
+  // photos for the processor to infer materials from.
+  let estimateRequest: Record<string, string> | undefined;
+  if (funnel === "forensic" && damageType) {
+    estimateRequest = { damage_type: damageType };
+  } else if (funnel === "supplement" && (roofType || gutterType || sidingType)) {
+    estimateRequest = {
+      ...(roofType ? { roof_type: roofType } : {}),
+      ...(gutterType ? { gutter_type: gutterType } : {}),
+      ...(sidingType ? { siding_type: sidingType } : {}),
+    };
+  }
 
   const insertPayload: Record<string, unknown> = {
     user_id: user.id,
@@ -122,14 +143,9 @@ export async function POST() {
     scope_files: movedByFolder.scope || null,
     user_notes: intakeNote,
     ...(dol ? { date_of_loss: dol } : {}),
-    ...(funnel === "forensic" && damageType
-      ? {
-          estimate_request: {
-            damage_type: damageType,
-          },
-        }
-      : {}),
+    ...(estimateRequest ? { estimate_request: estimateRequest } : {}),
     ...(funnel === "forensic" ? { report_mode: "forensic_only" } : {}),
+    ...(funnel === "supplement" ? { report_mode: "supplement_only" } : {}),
   };
 
   const { data: inserted, error: dbError } = await supabaseAdmin
@@ -148,6 +164,9 @@ export async function POST() {
   jar.delete(COOKIE_FUNNEL);
   jar.delete(COOKIE_DOL);
   jar.delete(COOKIE_DAMAGE);
+  jar.delete(COOKIE_ROOF_TYPE);
+  jar.delete(COOKIE_GUTTER_TYPE);
+  jar.delete(COOKIE_SIDING_TYPE);
 
   return NextResponse.json({
     ok: true,

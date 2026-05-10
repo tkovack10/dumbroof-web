@@ -25,6 +25,7 @@ export default function InstantSupplementPage() {
   return (
     <InstantFunnel
       funnel="supplement"
+      collectsMaterials
       copy={{
         h1: "Turn an underpaid carrier scope into a winning supplement",
         sub: "Drop your EagleView and the carrier's scope. Richard builds the Xactimate-style estimate, runs the scope comparison, flags code violations, and unlocks the supplement dashboard.",

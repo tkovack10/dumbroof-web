@@ -245,6 +245,34 @@ function checkOutputFiles(claim: ClaimRow): CheckResult {
     };
   }
 
+  // Supplement-only: should have docs 02-05, NO 01 (Forensic Causation Report
+  // requires photos which this funnel intentionally doesn't collect).
+  if (mode === "supplement_only") {
+    const hasForensic = files.some((f) => /^01_|forensic.causation/i.test(f));
+    if (hasForensic) {
+      return {
+        name: "output_files",
+        passed: false,
+        severity: "warning",
+        message: `Supplement-only mode unexpectedly produced a Forensic Causation Report`,
+      };
+    }
+    if (files.length < 4) {
+      return {
+        name: "output_files",
+        passed: false,
+        severity: "critical",
+        message: `Supplement-only mode should have 4 PDFs (estimate, comparison, supplement letter, cover), has ${files.length}`,
+      };
+    }
+    return {
+      name: "output_files",
+      passed: true,
+      severity: "info",
+      message: `Supplement-only — ${files.length} files`,
+    };
+  }
+
   // Pre-scope: 3 docs minimum
   // Post-scope: 5 docs
   const minExpected = phase === "post-scope" ? 5 : 3;

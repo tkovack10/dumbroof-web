@@ -16,6 +16,7 @@ import { ReferCompanyModal } from "@/components/refer-company-modal";
 import { RichardLauncher } from "@/components/richard-launcher";
 import { OnboardingChecklist } from "@/components/onboarding-checklist";
 import { PhoneNagModal } from "@/components/phone-nag-modal";
+import { reportModeLabel } from "@/lib/report-mode";
 
 type StatusFilter = "all" | "processing" | "ready" | "attention";
 type ViewMode = "table" | "map";
@@ -24,6 +25,7 @@ type DashboardTab = "claims" | "repairs";
 type ScopeFilter =
   | "any"
   | "forensic_only"
+  | "supplement_only"
   | "pending_supplements"
   | "with_forensic_win"
   | "with_supplement_win"
@@ -300,6 +302,7 @@ export function DashboardContent({ user }: { user: User }) {
       if (scopeFilter !== "any") {
         const wins = claimWins[c.id] || { forensic: 0, supplement: 0 };
         if (scopeFilter === "forensic_only" && c.report_mode !== "forensic_only") return false;
+        if (scopeFilter === "supplement_only" && c.report_mode !== "supplement_only") return false;
         if (scopeFilter === "pending_supplements" && (c.pending_drafts ?? 0) === 0) return false;
         if (scopeFilter === "with_forensic_win" && wins.forensic === 0) return false;
         if (scopeFilter === "with_supplement_win" && wins.supplement === 0) return false;
@@ -854,6 +857,7 @@ export function DashboardContent({ user }: { user: User }) {
                   {([
                     { key: "any",                 label: "Any" },
                     { key: "forensic_only",       label: "Forensic only" },
+                    { key: "supplement_only",     label: "Supplement only" },
                     { key: "pending_supplements", label: "Pending supplements" },
                     { key: "with_forensic_win",   label: "Forensic win" },
                     { key: "with_supplement_win", label: "Supplement win" },
@@ -1072,8 +1076,8 @@ export function DashboardContent({ user }: { user: User }) {
                                 {(claim.pending_edits ?? 0) > 0 && (
                                   <span className="text-[10px] text-amber-600 font-medium">{claim.pending_edits} edit{(claim.pending_edits ?? 0) > 1 ? "s" : ""}</span>
                                 )}
-                                {claim.report_mode === "forensic_only" && (
-                                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-[var(--cyan)]/10 text-[var(--cyan)] font-semibold">Forensic Only</span>
+                                {reportModeLabel(claim.report_mode) && (
+                                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-[var(--cyan)]/10 text-[var(--cyan)] font-semibold">{reportModeLabel(claim.report_mode)}</span>
                                 )}
                               </div>
                             </td>
@@ -1141,8 +1145,8 @@ export function DashboardContent({ user }: { user: User }) {
                                 {claim.status === "needs_improvement" ? "Attention" : claim.status.charAt(0).toUpperCase() + claim.status.slice(1)}
                               </span>
                             )}
-                            {claim.report_mode === "forensic_only" && (
-                              <span className="text-[10px] px-2 py-0.5 rounded-full bg-[var(--cyan)]/10 text-[var(--cyan)] font-semibold">Forensic</span>
+                            {reportModeLabel(claim.report_mode) && (
+                              <span className="text-[10px] px-2 py-0.5 rounded-full bg-[var(--cyan)]/10 text-[var(--cyan)] font-semibold">{claim.report_mode === "forensic_only" ? "Forensic" : "Supplement"}</span>
                             )}
                             <svg className={`w-4 h-4 text-[var(--gray-dim)] transition-transform ${expandedRow === claim.id ? "rotate-180" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                               <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />

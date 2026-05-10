@@ -2995,13 +2995,20 @@ def build_claim_config(
     if carrier_data and not carrier_data.get("carrier_line_items"):
         print(f"[PROCESS] WARNING: Scope files uploaded but carrier extraction found 0 line items — falling back to pre-scope", flush=True)
 
-    # Determine trades and O&P — siding/gutters are opt-in via estimate_request
-    # O&P is VALIDATED later against actual line items (Phase 1 fix)
+    # Determine trades and O&P — siding/gutters are opt-in via estimate_request.
+    # Two key shapes are supported:
+    #   gutter_type / siding_type — snake_case from /instant-supplement funnel;
+    #                                "na" excludes the trade.
+    #   gutters / siding          — legacy boolean from estimate-request wizard.
+    # O&P is VALIDATED later against actual line items (Phase 1 fix).
     _est_req = claim.get("estimate_request") or {}
     trades = ["roofing"]  # Always included
-    if _est_req.get("siding"):
+    _siding_type = _est_req.get("siding_type")
+    _siding_excluded = _siding_type in ("na", "brick_veneer", "stone_veneer")
+    if _est_req.get("siding") or (_siding_type and not _siding_excluded):
         trades.append("siding")
-    if _est_req.get("gutters"):
+    _gutter_type = _est_req.get("gutter_type")
+    if _est_req.get("gutters") or (_gutter_type and _gutter_type != "na"):
         trades.append("gutters")
     o_and_p = len(trades) >= 3  # Preliminary — validated after line items are built
 
@@ -3589,7 +3596,24 @@ def _detect_roof_material(photo_analysis: dict, user_notes: str = "",
     Returns one of: 'slate', 'tile', 'flat', 'metal_standing_seam', 'copper',
     'laminated', '3tab', or defaults to 'laminated'.
     """
-    # Definitive override from frontend estimate request
+    # Definitive override from frontend estimate request — checked BEFORE any
+    # photo / scope inference. Two key shapes are supported:
+    #   roof_type   — snake_case from /instant-supplement funnel (current)
+    #   roof_material — title-case from legacy estimate-request wizard
+    if estimate_request and estimate_request.get("roof_type"):
+        roof_type_map = {
+            "3_tab": "3tab",
+            "laminate": "laminated",
+            "high_grade_laminate": "laminated_premium",
+            "slate": "slate",
+            "standing_seam_metal": "metal_standing_seam",
+            "epdm": "flat",
+            "tpo": "flat",
+        }
+        mapped = roof_type_map.get(estimate_request["roof_type"])
+        if mapped:
+            print(f"[MATERIAL] Using estimate_request.roof_type: {estimate_request['roof_type']} → {mapped}")
+            return mapped
     if estimate_request and estimate_request.get("roof_material"):
         material_map = {
             "3-Tab": "3tab",
@@ -3793,7 +3817,29 @@ def _detect_siding_material(photo_analysis: dict, user_notes: str = "", estimate
     """Detect siding material from photo analysis, user notes, and wall measurements.
     Returns: aluminum, vinyl, vinyl_high, vinyl_insulated, cedar, fiber_cement, metal
     Default: aluminum (safer to price higher)."""
-    # estimate_request override is DEFINITIVE (user-selected from dropdown)
+    # estimate_request override is DEFINITIVE (user-selected from dropdown).
+    # Two key shapes are supported:
+    #   siding_type — snake_case from /instant-supplement funnel (current);
+    #                 returns "" for an "na" selection so siding work is excluded.
+    #   siding      — title-case from legacy estimate-request wizard.
+    if estimate_request and estimate_request.get("siding_type"):
+        st = estimate_request["siding_type"]
+        if st == "na":
+            print("[SIDING] estimate_request.siding_type=na → no siding work")
+            return ""
+        siding_type_map = {
+            "vinyl": "vinyl",
+            "aluminum": "aluminum",
+            "fiber_cement": "fiber_cement",
+            "wood": "cedar",
+            "stucco": "fiber_cement",  # closest comp; supplement may need manual fix
+            "brick_veneer": "",  # masonry — no comp siding line items
+            "stone_veneer": "",
+        }
+        mapped = siding_type_map.get(st)
+        if mapped is not None:
+            print(f"[SIDING] Using estimate_request.siding_type: {st} → {mapped or '(none)'}")
+            return mapped
     if estimate_request and estimate_request.get("siding"):
         siding_map = {
             "Vinyl Siding": "vinyl",
@@ -4525,18 +4571,45 @@ def build_line_items(measurements: dict, photo_analysis: dict, state: str, user_
                 items.append({"category": "ROOFING", "description": "R&R Flat seam copper roofing", "qty": copper_sf, "unit": "SF", "unit_price": PRICING.get("flat_seam_copper", 28.00)})
 
     # ===================== GUTTERS (opt-in via estimate_request only) =====================
+    # Two opt-in shapes:
+    #   gutters: bool        — legacy estimate-request wizard
+    #   gutter_type: string  — /instant-supplement funnel; "na" excludes gutters,
+    #                          other values map to specific products & prices.
     _est_req = estimate_request or {}
     has_gutter_line = any("gutter" in item["description"].lower() for item in items)
-    if _est_req.get("gutters") and not has_gutter_line:
+    _gutter_type = _est_req.get("gutter_type")
+    _gutters_requested = _est_req.get("gutters") or (_gutter_type and _gutter_type != "na")
+    if _gutters_requested and not has_gutter_line:
         gutter_lf = round(eave * 1.6) if eave > 0 else 0
         if gutter_lf > 0:
-            items.append({"category": "GUTTERS", "description": "R&R Seamless aluminum gutter & downspout", "qty": gutter_lf, "unit": "LF", "unit_price": PRICING.get("gutter_aluminum", 10.50)})
+            # gutter_type → product + Xactimate description + price key.
+            # Default (legacy `gutters: true` or unspecified type) is 5" K-style aluminum.
+            gutter_spec_map = {
+                "k_style_5": ("R&R Gutter / downspout - aluminum - up to 5\"", "gutter_aluminum", 10.50),
+                "k_style_6": ("R&R Gutter / downspout - aluminum - 6\"", "gutter_aluminum_6", 12.50),
+                "half_round": ("R&R Gutter / downspout - aluminum - half round", "gutter_half_round", 17.00),
+                "copper": ("R&R Copper half round gutter & downspout", "gutter_copper_half_round", 55.00),
+                "galvanized": ("R&R Gutter / downspout - galvanized", "gutter_galvanized", 12.00),
+            }
+            desc, price_key, default_price = gutter_spec_map.get(
+                _gutter_type or "", ("R&R Seamless aluminum gutter & downspout", "gutter_aluminum", 10.50)
+            )
+            items.append({"category": "GUTTERS", "description": desc, "qty": gutter_lf, "unit": "LF", "unit_price": PRICING.get(price_key, default_price)})
 
     # ===================== SIDING (opt-in via estimate_request only) =====================
     # ALWAYS includes house wrap when siding is scoped (R703.2 — continuous
     # weather-resistant exterior wall envelope required per IRC-based code).
     # House wrap corner rule forces full replacement when carrier approves partial.
-    if _est_req.get("siding"):
+    # Two opt-in shapes:
+    #   siding: bool        — legacy estimate-request wizard
+    #   siding_type: string — /instant-supplement funnel; "na" / brick_veneer /
+    #                          stone_veneer all exclude siding work.
+    _siding_type_opt = _est_req.get("siding_type")
+    _siding_requested = bool(
+        _est_req.get("siding")
+        or (_siding_type_opt and _siding_type_opt not in ("na", "brick_veneer", "stone_veneer"))
+    )
+    if _siding_requested:
         walls = measurements.get("walls", {})
         wall_area = walls.get("total_wall_area_sf", 0)
 
@@ -4593,7 +4666,7 @@ def build_line_items(measurements: dict, photo_analysis: dict, state: str, user_
 
     # ===================== WINDOW WRAPS =====================
     # Included when siding is in scope — windows need re-wrapping after siding replacement
-    if _est_req.get("siding"):
+    if _siding_requested:
         walls = measurements.get("walls", {})
         window_count = walls.get("window_count", 0)
         _ww_wall_area = walls.get("total_wall_area_sf", 0)
@@ -4613,7 +4686,7 @@ def build_line_items(measurements: dict, photo_analysis: dict, state: str, user_
             items.append({"category": "SIDING", "description": "R&R Wrap wood window frame & trim with aluminum sheet", "qty": window_count, "unit": "EA", "unit_price": PRICING.get("window_wrap_standard", 398.11)})
 
     # ===================== DOOR WRAPS =====================
-    if _est_req.get("siding"):
+    if _siding_requested:
         walls = measurements.get("walls", {})
         door_count = walls.get("door_count", 0)
         garage_door_count = walls.get("garage_door_count", 0)
@@ -5229,6 +5302,9 @@ async def process_claim(claim_id: str, refresh_prices: bool = False):
 
     # Check report mode — forensic_only skips measurements, line items, estimate
     # BUT: if measurements were uploaded to a forensic_only claim, auto-upgrade to full
+    # supplement_only is the mirror: skips photo annotation + forensic causation report,
+    # KEEPS measurements + line items + scope comparison + supplement letter.
+    # Auto-upgrades to full when photos arrive.
     report_mode = claim.get("report_mode", "full")
     if report_mode == "forensic_only" and claim.get("measurement_files"):
         report_mode = "full"
@@ -5237,8 +5313,17 @@ async def process_claim(claim_id: str, refresh_prices: bool = False):
             print(f"[PROCESS] Auto-upgraded forensic_only → full (measurements uploaded)", flush=True)
         except Exception:
             pass
+    if report_mode == "supplement_only" and claim.get("photo_files"):
+        report_mode = "full"
+        try:
+            sb.table("claims").update({"report_mode": "full"}).eq("id", claim_id).execute()
+            print(f"[PROCESS] Auto-upgraded supplement_only → full (photos uploaded)", flush=True)
+        except Exception:
+            pass
     if report_mode == "forensic_only":
         print(f"[PROCESS] FORENSIC ONLY mode — skipping measurements, line items, scope comparison", flush=True)
+    elif report_mode == "supplement_only":
+        print(f"[PROCESS] SUPPLEMENT ONLY mode — skipping photo annotation + forensic causation report", flush=True)
 
     # Detect if this is a REVISION (claim was already processed before)
     is_revision = bool(claim.get("output_files"))
@@ -5626,10 +5711,17 @@ async def process_claim(claim_id: str, refresh_prices: bool = False):
                 print(f"[PROCESS] Auto-upgraded forensic_only → full (measurements found after reconcile)", flush=True)
             except Exception:
                 pass
+        if report_mode == "supplement_only" and claim.get("photo_files"):
+            report_mode = "full"
+            try:
+                sb.table("claims").update({"report_mode": "full"}).eq("id", claim_id).execute()
+                print(f"[PROCESS] Auto-upgraded supplement_only → full (photos found after reconcile)", flush=True)
+            except Exception:
+                pass
 
         # 3. Download measurement files
         measurement_paths = []
-        for fname in claim.get("measurement_files", []):
+        for fname in claim.get("measurement_files") or []:
             local = os.path.join(source_dir, fname)
             download_file(sb, "claim-documents", f"{file_path}/measurements/{fname}", local)
             measurement_paths.append(local)
@@ -5639,7 +5731,7 @@ async def process_claim(claim_id: str, refresh_prices: bool = False):
         photo_paths = []
         photo_filenames = []
         downloaded_paths = []
-        for fname in claim.get("photo_files", []):
+        for fname in claim.get("photo_files") or []:
             local = os.path.join(photos_dir, fname)
             download_file(sb, "claim-documents", f"{file_path}/photos/{fname}", local)
             downloaded_paths.append(local)
@@ -5670,7 +5762,7 @@ async def process_claim(claim_id: str, refresh_prices: bool = False):
 
         # Upload extracted photos back to storage so Photo Review can serve them individually
         # Only needed when containers (ZIP/PDF) produced new files not already in storage
-        original_fnames = set(claim.get("photo_files", []))
+        original_fnames = set(claim.get("photo_files") or [])
         extracted_fnames = [os.path.basename(p) for p in photo_paths]
         new_photos = [p for p in photo_paths if os.path.basename(p) not in original_fnames]
         if new_photos:
@@ -5797,7 +5889,7 @@ async def process_claim(claim_id: str, refresh_prices: bool = False):
         scope_paths = []
         _scope_fnames_seen: set = set()
         _scope_fnames_ordered: list = []
-        for fname in claim.get("scope_files", []) or []:
+        for fname in claim.get("scope_files") or []:
             if fname and fname not in _scope_fnames_seen:
                 _scope_fnames_seen.add(fname)
                 _scope_fnames_ordered.append(fname)
@@ -5828,7 +5920,7 @@ async def process_claim(claim_id: str, refresh_prices: bool = False):
 
         # 5b. Download weather data (if any)
         weather_paths = []
-        for fname in claim.get("weather_files", []):
+        for fname in claim.get("weather_files") or []:
             local = os.path.join(source_dir, fname)
             download_file(sb, "claim-documents", f"{file_path}/weather/{fname}", local)
             weather_paths.append(local)
@@ -6193,8 +6285,10 @@ async def process_claim(claim_id: str, refresh_prices: bool = False):
             except Exception as geo_err:
                 print(f"[PROCESS] geocode fallback failed (non-fatal): {geo_err}", flush=True)
 
-        # 9b. Attach evidence photos to carrier line items for PDF scope comparison
-        if report_mode != "forensic_only":
+        # 9b. Attach evidence photos to carrier line items for PDF scope comparison.
+        # Skipped for forensic_only (no carrier line items to attach to) and
+        # supplement_only (no photos to attach in the first place).
+        if report_mode not in ("forensic_only", "supplement_only"):
             attach_evidence_photos(config, sb, claim_id)
 
         # 9b. excluded_line_items is a FRONTEND display concern only.
@@ -6994,10 +7088,15 @@ async def process_claim(claim_id: str, refresh_prices: bool = False):
             print(f"[PROCESS] refresh_prices=True — line_item prices will overlay from market")
         pdfs = generate_pdfs(config, work_dir)
 
-        # Forensic-only: keep only the forensic causation report (01_*)
+        # Forensic-only: keep only the forensic causation report (01_*).
+        # Supplement-only: drop the forensic causation report (01_*); keep estimate +
+        # scope comparison + supplement letter + cover (02_-05_).
         if report_mode == "forensic_only":
             pdfs = [p for p in pdfs if os.path.basename(p).startswith("01_")]
             print(f"[PROCESS] forensic_only: filtered to {len(pdfs)} PDFs (doc 01 only)")
+        elif report_mode == "supplement_only":
+            pdfs = [p for p in pdfs if not os.path.basename(p).startswith("01_")]
+            print(f"[PROCESS] supplement_only: filtered to {len(pdfs)} PDFs (dropped doc 01)")
         else:
             print(f"[PROCESS] Generated {len(pdfs)} PDFs")
 

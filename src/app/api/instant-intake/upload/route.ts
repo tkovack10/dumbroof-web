@@ -16,11 +16,44 @@ const COOKIE_TOKEN = "dr_instant_token";
 const COOKIE_FUNNEL = "dr_instant_funnel";
 const COOKIE_DOL = "dr_instant_dol";
 const COOKIE_DAMAGE = "dr_instant_damage_type";
+const COOKIE_ROOF_TYPE = "dr_instant_roof_type";
+const COOKIE_GUTTER_TYPE = "dr_instant_gutter_type";
+const COOKIE_SIDING_TYPE = "dr_instant_siding_type";
 const COOKIE_MAX_AGE = 60 * 60 * 24; // 24h
 
 const ANON_PREFIX = "anon-instant-intake";
 
 const VALID_DAMAGE_TYPES = new Set(["hail", "wind", "combined"]);
+// Mirrors the option values in src/components/instant-funnel.tsx — keep in
+// sync. Used to validate the supplement-funnel material fields before they're
+// stored as cookies and ultimately written to claims.estimate_request JSONB.
+const VALID_ROOF_TYPES = new Set([
+  "3_tab",
+  "laminate",
+  "high_grade_laminate",
+  "slate",
+  "standing_seam_metal",
+  "epdm",
+  "tpo",
+]);
+const VALID_GUTTER_TYPES = new Set([
+  "k_style_5",
+  "k_style_6",
+  "half_round",
+  "copper",
+  "galvanized",
+  "na",
+]);
+const VALID_SIDING_TYPES = new Set([
+  "vinyl",
+  "aluminum",
+  "fiber_cement",
+  "wood",
+  "stucco",
+  "brick_veneer",
+  "stone_veneer",
+  "na",
+]);
 
 function sanitizeFileName(name: string): string {
   return name.replace(/[^a-zA-Z0-9._-]/g, "_").replace(/_{2,}/g, "_");
@@ -96,6 +129,22 @@ export async function POST(request: Request) {
     const damageType = formData.get("damage_type");
     if (typeof damageType === "string" && VALID_DAMAGE_TYPES.has(damageType)) {
       jar.set(COOKIE_DAMAGE, damageType, baseCookieOpts);
+    }
+
+    // Supplement-funnel metadata: roof / gutter / siding type. The supplement
+    // funnel has no photos for the processor to infer materials from, so the
+    // user picks them up-front and we propagate to claims.estimate_request.
+    const roofType = formData.get("roof_type");
+    if (typeof roofType === "string" && VALID_ROOF_TYPES.has(roofType)) {
+      jar.set(COOKIE_ROOF_TYPE, roofType, baseCookieOpts);
+    }
+    const gutterType = formData.get("gutter_type");
+    if (typeof gutterType === "string" && VALID_GUTTER_TYPES.has(gutterType)) {
+      jar.set(COOKIE_GUTTER_TYPE, gutterType, baseCookieOpts);
+    }
+    const sidingType = formData.get("siding_type");
+    if (typeof sidingType === "string" && VALID_SIDING_TYPES.has(sidingType)) {
+      jar.set(COOKIE_SIDING_TYPE, sidingType, baseCookieOpts);
     }
 
     // Server-side Meta CAPI Upload event. iOS 14+ blocks the browser pixel for

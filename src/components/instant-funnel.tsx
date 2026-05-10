@@ -37,10 +37,48 @@ export type InstantFunnelProps = {
   copy: InstantFunnelCopy;
   inputs: DropConfig[];
   collectsDolStormType?: boolean;
+  collectsMaterials?: boolean;
 };
 
 type Phase = "idle" | "processing" | "unlock";
 type Storm = "" | "hail" | "wind" | "combined";
+
+// Material options for the supplement funnel — values are sent as cookies +
+// stored in claims.estimate_request JSONB so the processor can resolve the
+// right Xactimate codes when no photos are present to infer materials.
+const ROOF_TYPE_OPTIONS = [
+  ["3_tab", "3-tab"],
+  ["laminate", "Laminate / Architectural shingle"],
+  ["high_grade_laminate", "High-grade laminate"],
+  ["slate", "Slate"],
+  ["standing_seam_metal", "Standing seam metal"],
+  ["epdm", "EPDM"],
+  ["tpo", "TPO"],
+] as const;
+
+const GUTTER_TYPE_OPTIONS = [
+  ["k_style_5", '5" K-style aluminum'],
+  ["k_style_6", '6" K-style aluminum'],
+  ["half_round", "Half-round"],
+  ["copper", "Copper"],
+  ["galvanized", "Galvanized"],
+  ["na", "N/A — not part of this claim"],
+] as const;
+
+const SIDING_TYPE_OPTIONS = [
+  ["vinyl", "Vinyl"],
+  ["aluminum", "Aluminum"],
+  ["fiber_cement", "Fiber cement (Hardie)"],
+  ["wood", "Wood"],
+  ["stucco", "Stucco"],
+  ["brick_veneer", "Brick veneer"],
+  ["stone_veneer", "Stone veneer"],
+  ["na", "N/A — not part of this claim"],
+] as const;
+
+type RoofType = "" | (typeof ROOF_TYPE_OPTIONS)[number][0];
+type GutterType = "" | (typeof GUTTER_TYPE_OPTIONS)[number][0];
+type SidingType = "" | (typeof SIDING_TYPE_OPTIONS)[number][0];
 
 const STEP_DURATION_MS = 1500; // 4 steps × 1.5s = 6s minimum animation
 
@@ -49,11 +87,15 @@ export function InstantFunnel({
   copy,
   inputs,
   collectsDolStormType,
+  collectsMaterials,
 }: InstantFunnelProps) {
   const [phase, setPhase] = useState<Phase>("idle");
   const [files, setFiles] = useState<Record<string, File[]>>({});
   const [dol, setDol] = useState("");
   const [storm, setStorm] = useState<Storm>("");
+  const [roofType, setRoofType] = useState<RoofType>("");
+  const [gutterType, setGutterType] = useState<GutterType>("");
+  const [sidingType, setSidingType] = useState<SidingType>("");
   const [error, setError] = useState<string | null>(null);
   const [activeStep, setActiveStep] = useState(0);
   const [uploadDone, setUploadDone] = useState(false);
@@ -68,7 +110,8 @@ export function InstantFunnel({
 
   const allRequiredPresent =
     inputs.every((cfg) => !cfg.required || (files[cfg.folder]?.length ?? 0) > 0) &&
-    (!collectsDolStormType || (dol && storm));
+    (!collectsDolStormType || (dol && storm)) &&
+    (!collectsMaterials || (roofType && gutterType && sidingType));
 
   const fireBrowserPixel = (eventId: string) => {
     try {
@@ -89,6 +132,7 @@ export function InstantFunnel({
     let firstEventId: string | null = null;
     let dolSent = false;
     let damageSent = false;
+    let materialsSent = false;
 
     // Sequential upload — keeps a single anon token consistent across files
     // (the upload endpoint reuses the cookie's token if the funnel matches).
@@ -98,8 +142,8 @@ export function InstantFunnel({
       fd.append("file", file);
       fd.append("funnel", funnel);
       fd.append("folder", folder);
-      // Only attach DOL / damage_type to the FIRST request — the endpoint
-      // sets them as cookies and they don't need to be re-sent.
+      // Only attach DOL / damage_type / materials to the FIRST request — the
+      // endpoint sets them as cookies and they don't need to be re-sent.
       if (collectsDolStormType && !dolSent && dol) {
         fd.append("dol", dol);
         dolSent = true;
@@ -107,6 +151,12 @@ export function InstantFunnel({
       if (collectsDolStormType && !damageSent && storm) {
         fd.append("damage_type", storm);
         damageSent = true;
+      }
+      if (collectsMaterials && !materialsSent && roofType && gutterType && sidingType) {
+        fd.append("roof_type", roofType);
+        fd.append("gutter_type", gutterType);
+        fd.append("siding_type", sidingType);
+        materialsSent = true;
       }
 
       const res = await fetch("/api/instant-intake/upload", {
@@ -224,6 +274,62 @@ export function InstantFunnel({
                       </button>
                     ))}
                   </div>
+                </div>
+              </div>
+            )}
+
+            {collectsMaterials && (
+              <div className="space-y-4 mb-5">
+                <div>
+                  <label className="block text-sm font-semibold mb-1">
+                    Roof type <span className="text-[var(--red)]">*</span>
+                  </label>
+                  <select
+                    value={roofType}
+                    onChange={(e) => setRoofType(e.target.value as RoofType)}
+                    className="w-full bg-[var(--bg-glass)] border border-[var(--border-glass)] rounded-lg px-3 py-2 text-sm text-[var(--white)] outline-none focus:border-[var(--red)]"
+                  >
+                    <option value="">Select roof type…</option>
+                    {ROOF_TYPE_OPTIONS.map(([value, label]) => (
+                      <option key={value} value={value}>
+                        {label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold mb-1">
+                    Gutter type <span className="text-[var(--red)]">*</span>
+                  </label>
+                  <select
+                    value={gutterType}
+                    onChange={(e) => setGutterType(e.target.value as GutterType)}
+                    className="w-full bg-[var(--bg-glass)] border border-[var(--border-glass)] rounded-lg px-3 py-2 text-sm text-[var(--white)] outline-none focus:border-[var(--red)]"
+                  >
+                    <option value="">Select gutter type…</option>
+                    {GUTTER_TYPE_OPTIONS.map(([value, label]) => (
+                      <option key={value} value={value}>
+                        {label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold mb-1">
+                    Siding type <span className="text-[var(--red)]">*</span>
+                  </label>
+                  <select
+                    value={sidingType}
+                    onChange={(e) => setSidingType(e.target.value as SidingType)}
+                    className="w-full bg-[var(--bg-glass)] border border-[var(--border-glass)] rounded-lg px-3 py-2 text-sm text-[var(--white)] outline-none focus:border-[var(--red)]"
+                  >
+                    <option value="">Select siding type…</option>
+                    {SIDING_TYPE_OPTIONS.map(([value, label]) => (
+                      <option key={value} value={value}>
+                        {label}
+                      </option>
+                    ))}
+                  </select>
                 </div>
               </div>
             )}
