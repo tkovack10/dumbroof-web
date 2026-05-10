@@ -2308,6 +2308,75 @@ def _record_email_send_side_effects(
     except Exception as e:
         print(f"[EMAIL-SIDE-EFFECT] log_claim_event failed for {claim_id}/{tool_name}: {type(e).__name__}: {e}", flush=True)
 
+    # 1b) If the send included the forensic causation report PDF, emit a
+    # second, more specific event so the dashboard's communication-status
+    # badges can render which audience received it. The supplement-win %
+    # denominator on the dashboard is gated on `supplement_sent` (already
+    # logged above for supplement-shaped tools); these two events power the
+    # forensic-only badges (sent to homeowner / sent to carrier).
+    # Detection is filename-based — usarm_pdf_generator names the file
+    # `01_FORENSIC_CAUSATION_REPORT.pdf` and the token survives both the
+    # storage round-trip and the bare-filename attachment payload.
+    forensic_attached_paths: list[str] = []
+    for att in (draft_or_preview.get("attachments") or []):
+        if isinstance(att, dict):
+            if att.get("path"):
+                forensic_attached_paths.append(att["path"])
+            if att.get("filename"):
+                forensic_attached_paths.append(att["filename"])
+    for p in (draft_or_preview.get("attachment_paths") or []):
+        if isinstance(p, str) and p:
+            forensic_attached_paths.append(p)
+
+    if any("FORENSIC" in (p or "").upper() for p in forensic_attached_paths):
+        # Resolve recipient(s). A single send can hit BOTH audiences (e.g.
+        # To: carrier, CC: homeowner) — credit each one independently so the
+        # dashboard badges + supplement-win % denominator stay honest.
+        cc_value = (draft_or_preview.get("cc") or "").strip().lower() if isinstance(draft_or_preview.get("cc"), str) else ""
+        to_lower = (to_email or "").strip().lower()
+        try:
+            ho_res = sb.table("claims").select("homeowner_email").eq("id", claim_id).maybe_single().execute()
+            ho_email = ((ho_res.data or {}).get("homeowner_email") or "").strip().lower()
+        except Exception as e:
+            print(f"[EMAIL-SIDE-EFFECT] homeowner_email lookup failed for {claim_id}: {type(e).__name__}: {e}", flush=True)
+            ho_email = ""
+
+        homeowner_was_recipient = bool(ho_email) and (ho_email == to_lower or ho_email in cc_value)
+        # Carrier credit when the To wasn't the homeowner (covers the common
+        # To: carrier / CC: homeowner pattern AND the carrier-only case).
+        carrier_was_recipient = bool(to_lower) and to_lower != ho_email
+
+        events_to_emit: list[str] = []
+        if homeowner_was_recipient:
+            events_to_emit.append("forensic_sent_to_homeowner")
+        if carrier_was_recipient:
+            events_to_emit.append("forensic_sent_to_carrier")
+        # Edge case: no resolvable recipient kind (homeowner_email missing
+        # AND to_email empty). Default to carrier so the supplement-win flow
+        # still gets credit on the dashboard.
+        if not events_to_emit:
+            events_to_emit.append("forensic_sent_to_carrier")
+
+        for ev in events_to_emit:
+            try:
+                log_claim_event(
+                    sb,
+                    claim_id=claim_id,
+                    event_type=ev,
+                    source="richard_approve",
+                    metadata={
+                        "to": to_email,
+                        "cc": draft_or_preview.get("cc"),
+                        "subject": subject,
+                        "claim_email_id": email_id,
+                        "tool_name": tool_name,
+                        "detected_via": "attachment_filename",
+                    },
+                    created_by=user_id,
+                )
+            except Exception as e:
+                print(f"[EMAIL-SIDE-EFFECT] forensic event log failed for {claim_id}/{ev}: {type(e).__name__}: {e}", flush=True)
+
     # 2) Auto-schedule a follow-up cadence if this tool has a preset and the
     # caller didn't opt out via skip_cadence.
     if skip_cadence:

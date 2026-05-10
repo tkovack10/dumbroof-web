@@ -16,6 +16,7 @@ import { ReferCompanyModal } from "@/components/refer-company-modal";
 import { RichardLauncher } from "@/components/richard-launcher";
 import { OnboardingChecklist } from "@/components/onboarding-checklist";
 import { PhoneNagModal } from "@/components/phone-nag-modal";
+import { CommBadges, EMPTY_COMM, type CommStatus } from "@/components/comm-badges";
 import { reportModeLabel } from "@/lib/report-mode";
 
 type StatusFilter = "all" | "processing" | "ready" | "attention";
@@ -70,16 +71,32 @@ export function DashboardContent({ user }: { user: User }) {
   const [repFilter, setRepFilter] = useState<string>("all");
   const [carrierFilter, setCarrierFilter] = useState<string>("all");
   const [claimWins, setClaimWins] = useState<Record<string, { forensic: number; supplement: number }>>({});
+  const [claimComms, setClaimComms] = useState<Record<string, CommStatus>>({});
   const [teamMembers, setTeamMembers] = useState<Record<string, string>>({});
   const prevWinCountRef = useRef(0);
   const menuRef = useRef<HTMLDivElement>(null);
   const billing = useBillingQuota();
 
-  // Parallel fetch for claims (domain-shared) + repairs
+  // Parallel fetch for claims (domain-shared) + repairs + per-claim
+  // communication-status snapshot. The comms fetch rides along the 30s
+  // polling cadence so badges update when reps send a new email instead of
+  // requiring a page reload.
   const fetchAll = useCallback(async () => {
-    const [teamClaimsRes, repairsRes] = await Promise.all([
+    const [teamClaimsRes, repairsRes, eventsRes, seqRes] = await Promise.all([
       fetch("/api/team-claims").then(r => r.json()).catch(() => ({ claims: [] })),
       supabase.from("repairs").select("*").eq("user_id", user.id).order("created_at", { ascending: false }),
+      supabase
+        .from("claim_events")
+        .select("claim_id, event_type")
+        .in("event_type", [
+          "forensic_sent_to_homeowner",
+          "forensic_sent_to_carrier",
+          "supplement_sent",
+        ]),
+      supabase
+        .from("homeowner_sequences")
+        .select("claim_id, status")
+        .eq("status", "active"),
     ]);
     const claimsRes = { data: teamClaimsRes.claims || [] };
 
@@ -99,6 +116,25 @@ export function DashboardContent({ user }: { user: User }) {
         return prev;
       return next;
     });
+    // Aggregate comm events + sequences per claim. Cheap on the client even
+    // at thousands of rows; queries themselves are RLS-bounded to the user's
+    // company so each tenant only sees their own.
+    const commsAgg: Record<string, CommStatus> = {};
+    const ensureComm = (cid: string) => {
+      if (!commsAgg[cid]) commsAgg[cid] = { ...EMPTY_COMM };
+      return commsAgg[cid];
+    };
+    for (const e of eventsRes.data || []) {
+      const cid = e.claim_id as string;
+      const slot = ensureComm(cid);
+      if (e.event_type === "forensic_sent_to_homeowner") slot.forensic_to_homeowner = true;
+      else if (e.event_type === "forensic_sent_to_carrier") slot.forensic_to_carrier = true;
+      else if (e.event_type === "supplement_sent") slot.supplement_sent = true;
+    }
+    for (const s of seqRes.data || []) {
+      ensureComm(s.claim_id as string).engagement_active = true;
+    }
+    setClaimComms(commsAgg);
     setLoading(false);
   }, [user.id, supabase]);
 
@@ -267,6 +303,12 @@ export function DashboardContent({ user }: { user: User }) {
   // when a supplement is accepted and the carrier's number rises).
   const forensicWinCount = claims.filter(c => (claimWins[c.id]?.forensic ?? 0) > 0).length;
   const supplementWinCount = claims.filter(c => (claimWins[c.id]?.supplement ?? 0) > 0).length;
+  // Honest supplement-win denominator: claims where we actually shipped a
+  // supplement to the carrier, not every claim in the system. Forensic-only
+  // leads that fizzle and pre-supplement claims no longer drag the rate down.
+  const supplementSentCount = claims.filter(c => claimComms[c.id]?.supplement_sent).length;
+  const truePctNum = supplementSentCount > 0 ? Math.round((supplementWinCount / supplementSentCount) * 100) : 0;
+  const rawPctNum = claims.length > 0 ? Math.round((supplementWinCount / claims.length) * 100) : 0;
 
   // Animated count-up for win banner
   const animatedMovement = useCountUp(totalMovement, 2000, 300);
@@ -711,10 +753,20 @@ export function DashboardContent({ user }: { user: User }) {
                     <div
                       className="glass-card p-4 text-center cursor-pointer hover:border-emerald-500/40 transition-colors"
                       onClick={() => setScopeFilter(scopeFilter === "with_supplement_win" ? "any" : "with_supplement_win")}
-                      title="Click to filter to supplement wins only"
+                      title={`True Win % = wins / claims with a supplement actually shipped (${supplementWinCount} / ${supplementSentCount}). Raw Win % = wins / total claims (${supplementWinCount} / ${claims.length}).`}
                     >
                       <p className="text-2xl font-bold text-emerald-400">{supplementWinCount}</p>
                       <p className="text-xs text-[var(--gray-muted)] mt-1">📈 Supplement Wins</p>
+                      <div className="mt-2 grid grid-cols-2 gap-1 text-[10px] leading-tight">
+                        <div>
+                          <p className="font-bold text-emerald-300 tabular-nums">{truePctNum}%</p>
+                          <p className="text-[9px] text-[var(--gray-dim)]">True ({supplementWinCount}/{supplementSentCount})</p>
+                        </div>
+                        <div>
+                          <p className="font-bold text-[var(--gray)] tabular-nums">{rawPctNum}%</p>
+                          <p className="text-[9px] text-[var(--gray-dim)]">Raw ({supplementWinCount}/{claims.length})</p>
+                        </div>
+                      </div>
                     </div>
                     <div className="glass-card p-4 text-center">
                       <p className="text-2xl font-bold gradient-text">{fmtMoney(totalContractorRcv)}</p>
@@ -997,8 +1049,9 @@ export function DashboardContent({ user }: { user: User }) {
                               <a href={`/dashboard/claim/${claim.id}`} className="hover:underline" onClick={e => e.stopPropagation()}>
                                 <p className="font-medium text-[var(--white)] truncate max-w-[180px]">{claim.address}</p>
                               </a>
-                              <div className="flex items-center gap-1.5 mt-0.5">
+                              <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
                                 <p className="text-[10px] text-[var(--gray-dim)]">{new Date(claim.created_at).toLocaleDateString()}</p>
+                                <CommBadges status={claimComms[claim.id]} />
                                 {(claimWins[claim.id]?.forensic ?? 0) > 0 && (
                                   <span className="text-[9px] px-1.5 py-0.5 rounded bg-blue-500/15 text-blue-300 border border-blue-500/30" title="Forensic Win \u2014 carrier issued an approved scope after our forensic report">
                                     \ud83e\udde0 Forensic Win
@@ -1118,16 +1171,15 @@ export function DashboardContent({ user }: { user: User }) {
                             <p className="text-[11px] text-[var(--gray-dim)] mt-0.5">
                               {claim.carrier || "No carrier"} &middot; {new Date(claim.created_at).toLocaleDateString()}
                             </p>
-                            {((claimWins[claim.id]?.forensic ?? 0) > 0 || (claimWins[claim.id]?.supplement ?? 0) > 0) && (
-                              <div className="flex items-center gap-1 mt-1 flex-wrap">
-                                {(claimWins[claim.id]?.forensic ?? 0) > 0 && (
-                                  <span className="text-[9px] px-1.5 py-0.5 rounded bg-blue-500/15 text-blue-300 border border-blue-500/30">🧠 Forensic Win</span>
-                                )}
-                                {(claimWins[claim.id]?.supplement ?? 0) > 0 && (
-                                  <span className="text-[9px] px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">📈 Supplement Win</span>
-                                )}
-                              </div>
-                            )}
+                            <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                              <CommBadges status={claimComms[claim.id]} />
+                              {(claimWins[claim.id]?.forensic ?? 0) > 0 && (
+                                <span className="text-[9px] px-1.5 py-0.5 rounded bg-blue-500/15 text-blue-300 border border-blue-500/30">🧠 Forensic Win</span>
+                              )}
+                              {(claimWins[claim.id]?.supplement ?? 0) > 0 && (
+                                <span className="text-[9px] px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">📈 Supplement Win</span>
+                              )}
+                            </div>
                           </div>
                           <div className="flex items-center gap-2 shrink-0">
                             {isWon ? (

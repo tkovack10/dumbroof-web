@@ -46,6 +46,7 @@ interface Stats {
 }
 
 import { ClaimsMap } from "@/components/claims-map";
+import { CommBadges, EMPTY_COMM, type CommStatus } from "@/components/comm-badges";
 
 type Tab = "claims" | "repairs" | "inspectors" | "signups" | "companies" | "map";
 
@@ -110,6 +111,9 @@ export function AdminDashboard({ userId }: { userId: string }) {
   const [emailToCompany, setEmailToCompany] = useState<Record<string, string>>({});
   // claim_wins per-claim aggregates: forensic_approval / supplement counts
   const [claimWins, setClaimWins] = useState<Record<string, { forensic: number; supplement: number }>>({});
+  // claim_events + homeowner_sequences per-claim communication snapshot.
+  // Powers the per-row badge strip + the "true" supplement-win % denominator.
+  const [claimComms, setClaimComms] = useState<Record<string, CommStatus>>({});
   // CLI claims (from claim_outcomes source=cli) — included in platform-wide
   // forensic + supplement totals so the admin numbers match the homepage hero
   // and don't undercount Tom's local-CLI workflow.
@@ -170,10 +174,26 @@ export function AdminDashboard({ userId }: { userId: string }) {
   }, []);
 
   const fetchClaims = useCallback(async () => {
-    const { data } = await supabase
-      .from("claims")
-      .select("*")
-      .order("created_at", { ascending: false });
+    // Pull claims + comm-status events in parallel — both feed the table on
+    // every poll so reps don't have to reload to see new badges.
+    const [{ data }, eventsRes, seqRes] = await Promise.all([
+      supabase
+        .from("claims")
+        .select("*")
+        .order("created_at", { ascending: false }),
+      supabase
+        .from("claim_events")
+        .select("claim_id, event_type")
+        .in("event_type", [
+          "forensic_sent_to_homeowner",
+          "forensic_sent_to_carrier",
+          "supplement_sent",
+        ]),
+      supabase
+        .from("homeowner_sequences")
+        .select("claim_id, status")
+        .eq("status", "active"),
+    ]);
 
     const allClaims = data || [];
     setClaims(allClaims);
@@ -187,6 +207,23 @@ export function AdminDashboard({ userId }: { userId: string }) {
       error: allClaims.filter(c => c.status === "error").length,
       uniqueUsers: userIds.size,
     });
+
+    const commsAgg: Record<string, CommStatus> = {};
+    const ensureComm = (cid: string) => {
+      if (!commsAgg[cid]) commsAgg[cid] = { ...EMPTY_COMM };
+      return commsAgg[cid];
+    };
+    for (const e of eventsRes.data || []) {
+      const cid = e.claim_id as string;
+      const slot = ensureComm(cid);
+      if (e.event_type === "forensic_sent_to_homeowner") slot.forensic_to_homeowner = true;
+      else if (e.event_type === "forensic_sent_to_carrier") slot.forensic_to_carrier = true;
+      else if (e.event_type === "supplement_sent") slot.supplement_sent = true;
+    }
+    for (const s of seqRes.data || []) {
+      ensureComm(s.claim_id as string).engagement_active = true;
+    }
+    setClaimComms(commsAgg);
 
     setLoading(false);
   }, [supabase]);
@@ -560,6 +597,14 @@ export function AdminDashboard({ userId }: { userId: string }) {
                 const webSupplement = claims.filter(c => (claimWins[c.id]?.supplement ?? 0) > 0).length;
                 const totalForensic = webForensic + cliWinsTotals.forensic;
                 const totalSupplement = webSupplement + cliWinsTotals.supplement;
+                // True supplement-win % = wins / claims where a supplement was
+                // actually shipped. CLI rows contribute supplements via
+                // cliWinsTotals.supplement (carrier rcv > original). Web rows
+                // contribute via the supplement_sent claim_event.
+                const webSupplementSent = claims.filter(c => claimComms[c.id]?.supplement_sent).length;
+                const totalSupplementSent = webSupplementSent + cliWinsTotals.supplement;
+                const truePctNum = totalSupplementSent > 0 ? Math.round((totalSupplement / totalSupplementSent) * 100) : 0;
+                const rawPctNum = stats.total > 0 ? Math.round((totalSupplement / stats.total) * 100) : 0;
 
                 return [
                   { label: "Total Claims", value: String(stats.total), color: "text-[var(--white)]" },
@@ -570,13 +615,34 @@ export function AdminDashboard({ userId }: { userId: string }) {
                   { label: "Carrier RCV", value: fmt(totalCarrierRcv), color: "text-[var(--white)]" },
                   { label: "Variance", value: fmt(totalVariance), color: totalVariance > 0 ? "text-green-600" : "text-red-600" },
                   { label: "🧠 Forensic Wins", value: String(totalForensic), color: "text-blue-400" },
-                  { label: "📈 Supplement Wins", value: String(totalSupplement), color: "text-emerald-400" },
+                  {
+                    label: "📈 Supplement Wins",
+                    value: String(totalSupplement),
+                    color: "text-emerald-400",
+                    detail: { truePct: truePctNum, rawPct: rawPctNum, sent: totalSupplementSent, total: stats.total, wins: totalSupplement },
+                  },
                   { label: "💰 Settled Wins", value: String(wonClaims.length + cliWinsTotals.settled), color: "text-green-600" },
                 ];
-              })().map(({ label, value, color }) => (
-                <div key={label} className="glass-card p-4 text-center">
+              })().map(({ label, value, color, detail }) => (
+                <div
+                  key={label}
+                  className="glass-card p-4 text-center"
+                  title={detail ? `True Win % = wins / claims with a supplement actually shipped (${detail.wins} / ${detail.sent}). Raw Win % = wins / total claims (${detail.wins} / ${detail.total}).` : undefined}
+                >
                   <p className={`text-2xl font-bold ${color}`}>{value}</p>
                   <p className="text-xs text-[var(--gray-muted)] mt-1">{label}</p>
+                  {detail && (
+                    <div className="mt-2 grid grid-cols-2 gap-1 text-[10px] leading-tight">
+                      <div>
+                        <p className="font-bold text-emerald-300 tabular-nums">{detail.truePct}%</p>
+                        <p className="text-[9px] text-[var(--gray-dim)]">True ({detail.wins}/{detail.sent})</p>
+                      </div>
+                      <div>
+                        <p className="font-bold text-[var(--gray)] tabular-nums">{detail.rawPct}%</p>
+                        <p className="text-[9px] text-[var(--gray-dim)]">Raw ({detail.wins}/{detail.total})</p>
+                      </div>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
@@ -619,16 +685,15 @@ export function AdminDashboard({ userId }: { userId: string }) {
                         <td className="px-3 py-2.5 text-[var(--gray-dim)] text-xs">{claims.length - i}</td>
                         <td className="px-3 py-2.5">
                           <p className="font-medium text-[var(--white)] truncate max-w-[200px]">{claim.address}</p>
-                          {((claimWins[claim.id]?.forensic ?? 0) > 0 || (claimWins[claim.id]?.supplement ?? 0) > 0) && (
-                            <div className="flex items-center gap-1 mt-1 flex-wrap">
-                              {(claimWins[claim.id]?.forensic ?? 0) > 0 && (
-                                <span className="text-[9px] px-1.5 py-0.5 rounded bg-blue-500/15 text-blue-300 border border-blue-500/30" title="Forensic Win — carrier issued an approved scope after our forensic">🧠 Forensic</span>
-                              )}
-                              {(claimWins[claim.id]?.supplement ?? 0) > 0 && (
-                                <span className="text-[9px] px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-300 border border-emerald-500/30" title="Supplement Win — carrier increased their number after our supplement">📈 Supplement</span>
-                              )}
-                            </div>
-                          )}
+                          <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                            <CommBadges status={claimComms[claim.id]} />
+                            {(claimWins[claim.id]?.forensic ?? 0) > 0 && (
+                              <span className="text-[9px] px-1.5 py-0.5 rounded bg-blue-500/15 text-blue-300 border border-blue-500/30" title="Forensic Win — carrier issued an approved scope after our forensic">🧠 Forensic</span>
+                            )}
+                            {(claimWins[claim.id]?.supplement ?? 0) > 0 && (
+                              <span className="text-[9px] px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-300 border border-emerald-500/30" title="Supplement Win — carrier increased their number after our supplement">📈 Supplement</span>
+                            )}
+                          </div>
                         </td>
                         <td className="px-3 py-2.5 text-[var(--gray)] truncate max-w-[150px]">{claim.carrier || "—"}</td>
                         <td className="px-3 py-2.5 truncate max-w-[200px]">

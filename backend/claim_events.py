@@ -28,6 +28,8 @@ CLAIM_EVENT_TYPES: dict[str, dict[str, str]] = {
     "claim_opened":                {"category": "milestone", "title": "Claim opened",                     "icon": "home"},
     "aob_signed":                  {"category": "milestone", "title": "AOB signed",                       "icon": "pen"},
     "forensic_generated":          {"category": "milestone", "title": "Forensic report generated",        "icon": "file-search"},
+    "forensic_sent_to_carrier":    {"category": "milestone", "title": "Forensic sent to carrier",         "icon": "send"},
+    "forensic_sent_to_homeowner":  {"category": "milestone", "title": "Forensic sent to homeowner",       "icon": "image"},
     "scope_received":              {"category": "milestone", "title": "Carrier scope received",           "icon": "inbox"},
     "adjuster_meeting_scheduled":  {"category": "milestone", "title": "Adjuster meeting scheduled",       "icon": "calendar"},
     "adjuster_meeting_completed":  {"category": "milestone", "title": "Adjuster meeting completed",       "icon": "check-circle"},
