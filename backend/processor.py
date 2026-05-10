@@ -5234,9 +5234,16 @@ async def process_claim(claim_id: str, refresh_prices: bool = False):
                 reason = quota.get("reason") or "quota_exceeded"
                 print(f"[PROCESS] Quota blocked claim {claim_id} for user {claim_user_id}: {reason}", flush=True)
                 try:
+                    # Column is `error_message`, not `processing_error` —
+                    # legacy bug that left quota-blocked claims stuck in
+                    # 'processing' (Supabase silently rejects unknown columns
+                    # then the whole update fails). The poller would then
+                    # re-pick up the claim, retry, fail again, increment the
+                    # counter again — burning the user's free quota on a
+                    # silent loop. Only the watchdog at 30 min broke them out.
                     sb.table("claims").update({
                         "status": "quota_blocked",
-                        "processing_error": f"Quota: {reason}. plan={quota.get('plan_id')} remaining={quota.get('remaining')}",
+                        "error_message": f"Quota: {reason}. plan={quota.get('plan_id')} remaining={quota.get('remaining')}",
                     }).eq("id", claim_id).execute()
                 except Exception as upd_err:
                     print(f"[PROCESS] Failed to mark claim quota_blocked: {upd_err}", flush=True)
