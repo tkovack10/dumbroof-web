@@ -76,6 +76,7 @@ export const config = {
     // cookie is never set for the highest-volume ad traffic.
     "/fb/:path*",
     "/instant",
+    "/instant/:path*",
     "/instant-supplement",
     "/instant-forensic",
   ],

@@ -130,12 +130,18 @@ export async function POST() {
     };
   }
 
+  // Supplement claims arrive WITH a carrier scope, so they're conceptually
+  // post-scope from day one (the dashboard/lifecycle bar should reflect that
+  // the user has already received the carrier's position). Forensic claims
+  // upload only photos and have not yet received the carrier's scope.
+  const initialPhase = funnel === "supplement" ? "post-scope" : "pre-scope";
+
   const insertPayload: Record<string, unknown> = {
     user_id: user.id,
     address: "Pending — please update",
     carrier: "",
     slug,
-    phase: "pre-scope",
+    phase: initialPhase,
     status: "uploaded",
     file_path: claimPath,
     measurement_files: movedByFolder.measurements || null,
