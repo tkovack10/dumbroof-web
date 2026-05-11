@@ -5221,16 +5221,23 @@ async def process_claim(claim_id: str, refresh_prices: bool = False):
     if not claim:
         raise ValueError(f"Claim {claim_id} not found")
 
-    # 1b. Quota gate + atomic increment (single source of truth).
-    # The Next.js preflight at /api/claims/preflight catches UI uploads before
-    # bytes leave the browser. This server-side check catches non-UI paths
-    # (AccuLynx imports, CompanyCam syncs, email ingest, future API integrations).
-    # Reject BEFORE any Claude calls so blocked uploads cost ~$0 instead of ~$1.15.
+    # 1b. Quota GATE only. The counter increment (formerly co-located here)
+    # has been moved to the end-of-pipeline success path
+    # (`_increment_quota_for_successful_claim` called near where status flips
+    # to 'ready'). This prevents the failure mode that hit jsimonstn /
+    # chawnhayes25 / kspahr78 on 2026-05-10 (E218): every crash inside
+    # process_claim was incrementing the counter, so 3 retries of a
+    # NoneType crash burned the user's entire 3-claim free-tier quota in
+    # ~3 minutes. Now: a crash leaves the counter unchanged; only successful
+    # PDF delivery ticks the meter.
     #
-    # Increment is atomic with the gate (gate first, then increment) — this is
-    # the ONE place the counter ticks. Frontend no longer increments client-side.
-    # Skip if the claim is being reprocessed (output_files already exists) so
-    # revision runs don't double-count.
+    # The Next.js preflight at /api/claims/preflight catches UI uploads
+    # before bytes leave the browser. This server-side gate catches non-UI
+    # paths (AccuLynx imports, CompanyCam syncs, email ingest, future API
+    # integrations). Reject BEFORE any Claude calls so blocked uploads cost
+    # ~$0 instead of ~$1.15. Skip the gate for reprocesses since the original
+    # run already counted (or successfully completed without counting on the
+    # new flow — either way reprocesses don't double-count).
     claim_user_id = claim.get("user_id")
     is_reprocess = bool(claim.get("output_files"))
     if claim_user_id and not is_reprocess:
@@ -5270,48 +5277,9 @@ async def process_claim(claim_id: str, refresh_prices: bool = False):
                 except Exception as log_err:
                     print(f"[PROCESS] Failed to log quota_block_event: {log_err}", flush=True)
                 return  # Stop processing — no Claude calls, no spend
-
-            # Gate passed — atomically increment the counter for the resolved
-            # subscription (could be the team owner's row when company-pooled).
-            try:
-                inc_resp = sb.rpc("increment_claim_usage", {"p_user_id": claim_user_id}).execute()
-                inc = inc_resp.data if inc_resp.data else {}
-
-                # $75/claim overage: fire a Stripe usage record when this tick
-                # crossed a paid plan into overage. Idempotent (Stripe sums
-                # action='increment' usage records per period). Failure is
-                # logged + persisted to overage_events with status='failed' for
-                # the daily reconcile cron — never blocks claim processing.
-                if inc.get("overage_billed"):
-                    try:
-                        from billing_overage import fire_overage_meter
-                        meter_resp = fire_overage_meter(
-                            user_id=claim_user_id,
-                            subscription_user_id=inc.get("subscription_user_id") or claim_user_id,
-                            claim_id=claim_id,
-                            plan_id=inc.get("plan_id") or "unknown",
-                            overage_count_after=inc.get("overage_this_period", 0),
-                            stripe_subscription_id=inc.get("stripe_subscription_id"),
-                            stripe_overage_item_id=inc.get("stripe_overage_item_id"),
-                        )
-                        if not meter_resp.get("ok"):
-                            print(f"[PROCESS] Overage meter NOT fired (will reconcile): {meter_resp}", flush=True)
-                        else:
-                            print(f"[PROCESS] Overage metered: usage_record={meter_resp.get('stripe_usage_record_id')} overage_count={inc.get('overage_this_period')}", flush=True)
-                    except Exception as meter_err:
-                        print(f"[PROCESS] Overage meter exception (non-fatal): {meter_err}", flush=True)
-
-                # sales_rep metered billing — still TODO. Mirror the overage
-                # bridge once the first sales_rep customer signs up.
-                if inc.get("plan_id") == "sales_rep" and inc.get("subscription_user_id"):
-                    print(f"[PROCESS] WARN: sales_rep meter event not fired (TODO billing). sub_user={inc.get('subscription_user_id')}", flush=True)
-            except Exception as inc_err:
-                # Counter increment failure is bad (we'll under-bill) but should
-                # NOT block the user's claim from processing. Log loudly.
-                print(f"[PROCESS] CRITICAL: increment_claim_usage failed (claim still processing): {inc_err}", flush=True)
         except Exception as q_err:
             # Don't block processing if the RPC itself fails (better to over-serve
-            # than to block paying customers behind an infra outage)
+            # than to block paying customers behind an infra outage).
             print(f"[PROCESS] Quota check errored (non-fatal, allowing): {q_err}", flush=True)
 
     # Check report mode — forensic_only skips measurements, line items, estimate
@@ -7312,6 +7280,55 @@ async def process_claim(claim_id: str, refresh_prices: bool = False):
 
         # Core update (status + output_files + photo_integrity — always works)
         sb.table("claims").update(update_data).eq("id", claim_id).execute()
+
+        # 12b. Tick the quota counter NOW that PDFs are written and status
+        # is ready/qa_review_pending. Previously fired right after the gate
+        # at line 5277, which meant any crash between the gate and PDF
+        # generation burned the user's quota even though they got nothing
+        # (E218: 3 retries of a NoneType crash exhausted users' 3-claim
+        # free-tier quota in ~3 min). Now: only fires on success. Reprocesses
+        # skip via `is_reprocess` (they didn't tick on the original run if
+        # that crashed; they tick now on the successful reprocess).
+        if claim_user_id and not is_reprocess:
+            try:
+                inc_resp = sb.rpc("increment_claim_usage", {"p_user_id": claim_user_id}).execute()
+                inc = inc_resp.data if inc_resp.data else {}
+
+                # $75/claim overage: fire a Stripe usage record when this
+                # tick crossed a paid plan into overage. Idempotent (Stripe
+                # sums action='increment' usage records per period).
+                # Failure is logged + persisted to overage_events with
+                # status='failed' for the daily reconcile cron — never
+                # blocks claim delivery.
+                if inc.get("overage_billed"):
+                    try:
+                        from billing_overage import fire_overage_meter
+                        meter_resp = fire_overage_meter(
+                            user_id=claim_user_id,
+                            subscription_user_id=inc.get("subscription_user_id") or claim_user_id,
+                            claim_id=claim_id,
+                            plan_id=inc.get("plan_id") or "unknown",
+                            overage_count_after=inc.get("overage_this_period", 0),
+                            stripe_subscription_id=inc.get("stripe_subscription_id"),
+                            stripe_overage_item_id=inc.get("stripe_overage_item_id"),
+                        )
+                        if not meter_resp.get("ok"):
+                            print(f"[PROCESS] Overage meter NOT fired (will reconcile): {meter_resp}", flush=True)
+                        else:
+                            print(f"[PROCESS] Overage metered: usage_record={meter_resp.get('stripe_usage_record_id')} overage_count={inc.get('overage_this_period')}", flush=True)
+                    except Exception as meter_err:
+                        print(f"[PROCESS] Overage meter exception (non-fatal): {meter_err}", flush=True)
+
+                # sales_rep metered billing — still TODO. Mirror the
+                # overage bridge once the first sales_rep customer signs up.
+                if inc.get("plan_id") == "sales_rep" and inc.get("subscription_user_id"):
+                    print(f"[PROCESS] WARN: sales_rep meter event not fired (TODO billing). sub_user={inc.get('subscription_user_id')}", flush=True)
+            except Exception as inc_err:
+                # Counter increment failure is bad (we'll under-bill) but
+                # MUST NOT block delivery — the user already got their PDFs.
+                # The reconcile cron should catch under-bills via the
+                # overage_events table.
+                print(f"[PROCESS] CRITICAL: increment_claim_usage failed (claim already delivered): {inc_err}", flush=True)
 
         # Save revision data to DB — split into isolated writes so one failure doesn't kill the others
         _carrier_info = carrier_data.get("carrier", {}) if carrier_data else {}
