@@ -41,6 +41,7 @@ export interface Correspondence {
   analysis_status: string;
   status: string;
   created_at: string;
+  attachment_paths?: string[];  // populated by per-user Gmail poller (abec24f)
 }
 
 export interface EmailDraft {

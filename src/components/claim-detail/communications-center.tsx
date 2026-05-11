@@ -1,7 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { Correspondence, EditRequest, EmailDraft } from "@/types/claim-comms";
+
+interface AttachmentSig {
+  path: string;
+  signed_url: string;
+  filename: string;
+}
 
 interface CommunicationsCenterProps {
   editRequests: EditRequest[];
@@ -37,6 +43,38 @@ export function CommunicationsCenter(props: CommunicationsCenterProps) {
   const [expandedEmail, setExpandedEmail] = useState<string | null>(null);
   const [editingDraft, setEditingDraft] = useState<string | null>(null);
   const [editedHtml, setEditedHtml] = useState<string>("");
+  // Cache of signed URLs per correspondence_id. Fetched lazily on expansion —
+  // signed URLs have a 1h TTL so we don't pre-fetch for every row.
+  const [attachmentsByCorrId, setAttachmentsByCorrId] = useState<Record<string, AttachmentSig[]>>({});
+
+  // When the user expands a row that has attachments but we don't have signed
+  // URLs cached yet, fetch them via /api/correspondence/attachments.
+  useEffect(() => {
+    if (!expandedEmail) return;
+    if (attachmentsByCorrId[expandedEmail] !== undefined) return; // already fetched (even if empty)
+    const email = props.correspondence.find((e) => e.id === expandedEmail);
+    if (!email || !email.attachment_paths || email.attachment_paths.length === 0) {
+      setAttachmentsByCorrId((prev) => ({ ...prev, [expandedEmail]: [] }));
+      return;
+    }
+    let cancelled = false;
+    fetch("/api/correspondence/attachments", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ correspondence_id: expandedEmail }),
+    })
+      .then((r) => (r.ok ? r.json() : Promise.reject(r.statusText)))
+      .then((data) => {
+        if (cancelled) return;
+        setAttachmentsByCorrId((prev) => ({ ...prev, [expandedEmail]: data.attachments || [] }));
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        console.error("Failed to fetch correspondence attachments:", err);
+        setAttachmentsByCorrId((prev) => ({ ...prev, [expandedEmail]: [] }));
+      });
+    return () => { cancelled = true; };
+  }, [expandedEmail, attachmentsByCorrId, props.correspondence]);
 
   const pendingEdits = props.editRequests.filter((r) => r.status === "pending");
   const pendingDrafts = props.drafts.filter((d) => d.status === "draft" || d.status === "edited");
@@ -271,6 +309,38 @@ export function CommunicationsCenter(props: CommunicationsCenterProps) {
                           {email.text_body}
                         </div>
                       </div>
+
+                      {/* Attachments — populated by per-user Gmail poller. Each chip is
+                          a 1h-signed download link. To use one as a new carrier scope,
+                          download it and upload via the highlights-panel Upload button
+                          (existing v1 flow). */}
+                      {email.attachment_paths && email.attachment_paths.length > 0 && (
+                        <div className="mt-3">
+                          <p className="text-xs font-semibold text-[var(--gray-dim)] mb-2">
+                            Attachments ({email.attachment_paths.length})
+                          </p>
+                          <div className="flex flex-wrap gap-2">
+                            {(attachmentsByCorrId[email.id] ?? null) === null ? (
+                              <span className="text-xs text-[var(--gray-dim)] italic">Loading…</span>
+                            ) : (
+                              (attachmentsByCorrId[email.id] || []).map((att) => (
+                                <a
+                                  key={att.path}
+                                  href={att.signed_url}
+                                  download={att.filename}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-white/[0.06] border border-white/[0.1] text-[var(--gray)] hover:text-white hover:bg-white/[0.1] transition-colors max-w-[280px]"
+                                  title={att.filename}
+                                >
+                                  <span aria-hidden="true">📎</span>
+                                  <span className="truncate">{att.filename}</span>
+                                </a>
+                              ))
+                            )}
+                          </div>
+                        </div>
+                      )}
 
                       {email.analysis_status === "pending" && email.status === "matched" && (
                         <button
