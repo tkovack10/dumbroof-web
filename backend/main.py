@@ -2246,13 +2246,30 @@ _AUTO_CADENCE_BY_TOOL: dict[str, tuple[list[int], str] | None] = {
 # Tool name → claim_events event_type. Falls through to carrier_email_sent
 # for any unmapped email-shaped tool to ensure SOMETHING shows on the timeline.
 _EMAIL_EVENT_TYPE_BY_TOOL: dict[str, str] = {
-    "send_supplement_email":   "supplement_sent",
-    "generate_coc":            "coc_sent",
-    "send_aob_to_carrier":     "aob_sent",
-    "send_aob_for_signature":  "aob_for_signature_sent",
-    "send_custom_email":       "carrier_email_sent",
-    "send_to_carrier":         "carrier_email_sent",
-    "generate_invoice":        "carrier_email_sent",
+    "send_supplement_email":         "supplement_sent",
+    "send_install_supplement_email": "install_supplement_sent",
+    "generate_coc":                  "coc_sent",
+    "send_aob_to_carrier":           "aob_sent",
+    "send_aob_for_signature":        "aob_for_signature_sent",
+    "send_custom_email":             "carrier_email_sent",
+    "send_to_carrier":               "carrier_email_sent",
+    "generate_invoice":              "carrier_email_sent",
+}
+
+# email_type (from /api/supplement-email/send DirectEmailRequest) → tool name,
+# so the direct-send path can reuse _record_email_send_side_effects without
+# inventing a parallel event-mapping table. Keep in sync with the callers in
+# supplement-composer / install-supplement-builder / coc / signatures / invoices /
+# send-documents-block. Unknown email_types fall through to send_custom_email,
+# which still gets carrier_email_sent + the forensic-PDF attachment detection.
+_EMAIL_TYPE_TO_TOOL_NAME: dict[str, str] = {
+    "supplement":         "send_supplement_email",
+    "install_supplement": "send_install_supplement_email",
+    "coc":                "generate_coc",
+    "aob":                "send_aob_to_carrier",
+    "aob_for_signature":  "send_aob_for_signature",
+    "invoice":            "generate_invoice",
+    "custom":             "send_custom_email",
 }
 
 
@@ -4345,6 +4362,36 @@ async def send_supplement_email_direct(body: DirectEmailRequest):
             email_type=body.email_type,
             attachments=attachments if attachments else None,
         )
+
+        # Mirror Richard's approve-path side effect: log the matching claim_event
+        # so dashboard comm-status badges + supplement-win % denominator stay
+        # honest. Direct sends never trigger Richard's auto-cadence, so
+        # skip_cadence=True. Pre-fix: only the 5/10 backfill ever populated
+        # supplement_sent rows; every direct send since shipped silently.
+        if (result or {}).get("status") == "sent":
+            try:
+                tool_name = _EMAIL_TYPE_TO_TOOL_NAME.get(body.email_type or "", "send_custom_email")
+                draft_or_preview = {
+                    "to": body.to_email,
+                    "subject": body.subject,
+                    "cc": body.cc,
+                    "body_html": body.body_html,
+                    "attachment_paths": body.attachment_paths or [],
+                }
+                _record_email_send_side_effects(
+                    sb,
+                    claim_id=body.claim_id,
+                    user_id=user_id,
+                    tool_name=tool_name,
+                    draft_or_preview=draft_or_preview,
+                    email_id=None,
+                    skip_cadence=True,
+                )
+            except Exception as e:
+                # Non-fatal — the email already shipped; we just lose timeline
+                # visibility on this row.
+                print(f"[SUPPLEMENT-DIRECT] side-effect log failed for {body.claim_id}: {type(e).__name__}: {e}", flush=True)
+
         return result
     except Exception as e:
         print(f"[EMAIL ERROR] {e}", flush=True)
