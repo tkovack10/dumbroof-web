@@ -31,9 +31,14 @@ interface ScopeReviewContentProps {
   claimId?: string | null;
   /** When true, drops route-level chrome (nav, min-h-screen wrapper, external nav links) so the editor renders inside a host page. */
   embedded?: boolean;
+  /** Fires immediately after a successful POST to /api/reprocess. The host page (per-claim) uses
+   *  this to refetch the claim record and trigger its reprocessing banner + polling loop. Without
+   *  this, the host page's claim state stays stale and scope_comparison + supplement composer
+   *  never reflect the line-item edits the user just resubmitted. */
+  onAfterReprocess?: () => void;
 }
 
-export function ScopeReviewContent({ claimId: claimIdProp, embedded = false }: ScopeReviewContentProps = {}) {
+export function ScopeReviewContent({ claimId: claimIdProp, embedded = false, onAfterReprocess }: ScopeReviewContentProps = {}) {
   const searchParams = useSearchParams();
   const claimId = claimIdProp ?? searchParams.get("claim");
 
@@ -171,6 +176,12 @@ export function ScopeReviewContent({ claimId: claimIdProp, embedded = false }: S
       if (!res.ok) {
         const errData = await res.json().catch(() => ({ detail: "Unknown error" }));
         setError(`Reprocess failed: ${errData.detail || errData.error || res.statusText}`);
+      } else {
+        // Backend accepted the reprocess — notify the host page so it refetches
+        // the claim and shows its reprocessing banner. Without this, the
+        // per-claim page keeps the stale claim state and scope_comparison +
+        // supplement composer never reflect the line-item edits.
+        onAfterReprocess?.();
       }
     } catch (err) {
       setError(`Reprocess failed: ${err instanceof Error ? err.message : "Network error"}`);
@@ -535,10 +546,16 @@ export function ScopeReviewContent({ claimId: claimIdProp, embedded = false }: S
           <button
             onClick={handleRegenerate}
             disabled={regenerating}
-            className="text-sm text-[var(--gray-muted)] hover:text-[var(--white)] font-medium transition-colors disabled:opacity-50"
+            className="text-sm text-[var(--cyan)] hover:text-white font-semibold transition-colors disabled:opacity-50"
+            title="Resubmits your line-item edits and triggers a full reprocess — updates scope comparison, supplement composer, and all reports."
           >
-            {regenerating ? "Resubmitting..." : "Resubmit Now"}
+            {regenerating ? "Resubmitting & Reprocessing…" : "Resubmit & Reprocess Claim →"}
           </button>
+          {!regenerating && (
+            <p className="text-xs text-[var(--gray-muted)] text-center max-w-md">
+              Your edits are saved as you make them. Click to regenerate the scope comparison + supplement composer + all 5-document reports with the corrected line items. Takes ~30 seconds.
+            </p>
+          )}
         </div>
 
         {/* Back link — only on the standalone route. */}

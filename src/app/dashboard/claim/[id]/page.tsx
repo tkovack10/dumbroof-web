@@ -986,7 +986,17 @@ export default function ClaimDetailPage() {
               <div id="lifecycle-estimate"><EstimateView claimId={claim.id} refreshKey={claim.last_processed_at} /></div>
             ),
             estimateEditor: isReady ? (
-              <ScopeReviewContent claimId={claim.id} embedded />
+              <ScopeReviewContent
+                claimId={claim.id}
+                embedded
+                onAfterReprocess={() => {
+                  // Immediate visual feedback so the user sees the page reacting
+                  // to their "Resubmit Now" click. The polling effect at L235
+                  // takes over once claim.status flips to "uploaded"/"processing".
+                  setReprocessing(true);
+                  fetchClaim();
+                }}
+              />
             ) : null,
             estimateConfig: isReady && (claim.measurement_files?.length ?? 0) > 0 ? (
               <EstimateConfigPanel
@@ -1895,6 +1905,9 @@ export default function ClaimDetailPage() {
             try {
               await fetch(`${BACKEND_URL}/api/reprocess/${claim.id}`, { method: "POST" });
               setReprocessing(true);
+              // Refetch the claim so the page sees status=processing and the
+              // polling effect (L235) takes over until reprocess completes.
+              fetchClaim();
             } catch (err) {
               console.error("Failed to trigger reprocess after CRM import:", err);
             }
