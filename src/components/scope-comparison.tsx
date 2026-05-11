@@ -28,7 +28,7 @@ export function ScopeComparison({ claimId, carrierName, refreshKey }: Props) {
   const [data, setData] = useState<ScopeComparisonResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [activeTab, setActiveTab] = useState<Tab>("roofing");
+  const [activeTab, setActiveTab] = useState<Tab>("financial");
   const [expanded, setExpanded] = useState(true);
 
   useEffect(() => {
@@ -107,17 +107,17 @@ export function ScopeComparison({ claimId, carrierName, refreshKey }: Props) {
           {/* Tabs */}
           <div className="flex border-b border-[var(--border-glass)] px-6 gap-0">
             {([
+              ["financial", "Financial"],
+              ["missing", `Missing (${missingRows.length})`],
               ["roofing", `Roofing (${roofingRows.length})`],
               ["siding", `Exterior (${sidingRows.length})`],
-              ["missing", `Missing (${missingRows.length})`],
-              ["financial", "Financial Summary"],
             ] as [Tab, string][]).map(([key, label]) => (
               <button
                 key={key}
                 onClick={() => setActiveTab(key)}
                 className={`px-4 py-3 text-xs font-semibold border-b-2 transition-colors ${
                   activeTab === key
-                    ? "text-blue-600 border-blue-600"
+                    ? "text-[var(--cyan)] border-[var(--cyan)]"
                     : "text-[var(--gray-muted)] border-transparent hover:text-[var(--gray)]"
                 }`}
               >

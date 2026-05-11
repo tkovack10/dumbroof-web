@@ -32,6 +32,7 @@ import { HomeownerEngagementCard } from "@/components/homeowner-engagement-card"
 import { ReadyToBuildCard } from "@/components/ready-to-build-card";
 import { ClaimTimelineRail } from "@/components/claim-timeline-rail";
 import { EditReportFieldsCard } from "@/components/edit-report-fields-card";
+import { ClaimActionBar } from "@/components/claim-action-bar";
 
 function EditableField({ value, placeholder, field, claimId, prefix, className, onSave }: {
   value: string;
@@ -781,7 +782,7 @@ export default function ClaimDetailPage() {
         );
       })()}
 
-      <div className="max-w-4xl mx-auto px-6 py-10 space-y-6">
+      <div className="max-w-4xl mx-auto px-6 pt-10 pb-28 sm:pb-24 space-y-6">
         {/* Claim Lifecycle Progress Bar */}
         <ClaimLifecycleBar
           claim={claim}
@@ -1330,10 +1331,10 @@ export default function ClaimDetailPage() {
           {isReady && (claim.photo_files?.length ?? 0) > 0 && (
             <div className="bg-purple-500/10 border border-purple-500/30 rounded-lg px-4 py-3 mb-4 flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-purple-800">
+                <p className="text-sm font-medium text-white">
                   Review photo annotations for this claim
                 </p>
-                <p className="text-xs text-purple-600 mt-0.5">
+                <p className="text-xs text-purple-300 mt-0.5">
                   Approve, correct, or reject AI-generated annotations. Rejected photos are excluded on reprocess.
                   {(claim.excluded_photos?.length ?? 0) > 0 && (
                     <span className="ml-1 font-semibold">({claim.excluded_photos!.length} photo{claim.excluded_photos!.length > 1 ? "s" : ""} excluded)</span>
@@ -1342,7 +1343,7 @@ export default function ClaimDetailPage() {
               </div>
               <a
                 href={`/dashboard/photo-review?claim=${claim.id}`}
-                className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ml-4"
+                className="bg-white/[0.04] border border-purple-500/30 text-purple-300 hover:text-white hover:bg-white/[0.08] px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ml-4"
               >
                 Review Photos
               </a>
@@ -1353,10 +1354,10 @@ export default function ClaimDetailPage() {
           {isReady && (claim.contractor_rcv ?? 0) > 0 && (
             <div className="bg-teal-500/10 border border-teal-500/30 rounded-lg px-4 py-3 mb-4 flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-teal-800">
+                <p className="text-sm font-medium text-white">
                   Review AI-generated line items
                 </p>
-                <p className="text-xs text-teal-600 mt-0.5">
+                <p className="text-xs text-teal-300 mt-0.5">
                   Approve, correct, remove, or add line items. Changes update your contractor RCV.
                   {(claim.excluded_line_items?.length ?? 0) > 0 && (
                     <span className="ml-1 font-semibold">({claim.excluded_line_items!.length} item{claim.excluded_line_items!.length > 1 ? "s" : ""} excluded)</span>
@@ -1365,7 +1366,7 @@ export default function ClaimDetailPage() {
               </div>
               <a
                 href={`/dashboard/scope-review?claim=${claim.id}`}
-                className="bg-teal-600 hover:bg-teal-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ml-4"
+                className="bg-white/[0.04] border border-teal-500/30 text-teal-300 hover:text-white hover:bg-white/[0.08] px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ml-4"
               >
                 Review Scope
               </a>
@@ -1376,12 +1377,12 @@ export default function ClaimDetailPage() {
           {(isReady || claim.status === "needs_improvement") && !showUpload && !isReprocessingState && (
             <div className={`${claim.status === "needs_improvement" ? "bg-orange-500/10 border-orange-500/30" : "bg-blue-500/10 border-blue-500/30"} border rounded-lg px-4 py-3 mb-4 flex items-center justify-between`}>
               <div>
-                <p className={`text-sm font-medium ${claim.status === "needs_improvement" ? "text-orange-800" : "text-blue-800"}`}>
+                <p className="text-sm font-medium text-white">
                   {claim.status === "needs_improvement"
                     ? "Uploaded better documentation? Reprocess to re-score your claim."
                     : "Updated documents? Reprocess to generate new reports."}
                 </p>
-                <p className={`text-xs ${claim.status === "needs_improvement" ? "text-orange-600" : "text-blue-600"} mt-0.5`}>
+                <p className={`text-xs ${claim.status === "needs_improvement" ? "text-orange-300" : "text-blue-300"} mt-0.5`}>
                   {claim.status === "needs_improvement"
                     ? "Follow the tips above, upload more photos or evidence, then reprocess."
                     : "If you uploaded a revised scope or appraisal award, reprocess to compare and record changes."}
@@ -1390,7 +1391,7 @@ export default function ClaimDetailPage() {
               <button
                 onClick={handleReprocess}
                 disabled={reprocessing}
-                className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ml-4"
+                className={`bg-white/[0.04] border ${claim.status === "needs_improvement" ? "border-orange-500/30 text-orange-300" : "border-blue-500/30 text-blue-300"} hover:text-white hover:bg-white/[0.08] disabled:opacity-50 px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ml-4`}
               >
                 {reprocessing ? "Starting..." : "Reprocess Claim"}
               </button>
@@ -1399,12 +1400,12 @@ export default function ClaimDetailPage() {
 
           {/* Success/Error messages */}
           {uploadSuccess && (
-            <div className="bg-green-500/10 border border-green-500/30 text-green-700 text-sm rounded-lg px-4 py-3 mb-4">
+            <div className="bg-green-500/10 border border-green-500/30 text-green-300 text-sm rounded-lg px-4 py-3 mb-4">
               {uploadSuccess}
             </div>
           )}
           {uploadError && (
-            <div className="bg-red-500/10 border border-red-500/30 text-red-700 text-sm rounded-lg px-4 py-3 mb-4">
+            <div className="bg-red-500/10 border border-red-500/30 text-red-300 text-sm rounded-lg px-4 py-3 mb-4">
               {uploadError}
             </div>
           )}
@@ -2025,6 +2026,19 @@ export default function ClaimDetailPage() {
           }
           userId={currentUserId}
           filePath={claim.file_path}
+        />
+      )}
+
+      {/* Phase-aware sticky action bar (Phase 1 of per-claim page redesign) */}
+      {claim && (
+        <ClaimActionBar
+          claim={claim}
+          isReprocessing={reprocessing || isReprocessingState}
+          onUpload={() => {
+            setShowUpload(true);
+            setTimeout(() => formRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }), 100);
+          }}
+          onReprocess={handleReprocess}
         />
       )}
     </main>
