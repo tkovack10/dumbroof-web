@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { HighlightsPanel } from "./highlights-panel";
 import { TabBar } from "./tab-bar";
 import { Inspector, InspectorMobileSheet } from "./inspector";
@@ -26,9 +26,17 @@ import { V2_DESKTOP_TABS, type V2Props, type V2TabKey } from "./types";
  *     FlashSale) come pre-rendered as `slots.conditionalBanners` so they
  *     keep firing identically to v1.
  */
-export function V2Layout({ claim, slots, isReprocessing, onUpload, onReprocess, win }: V2Props) {
+export function V2Layout({ claim, slots, isReprocessing, onUpload, onReprocess, win, activeSupplementItem }: V2Props) {
   const [active, setActive] = useState<V2TabKey>("overview");
   const [inspectorOpen, setInspectorOpen] = useState(false);
+  // When a new active selection arrives from the SupplementComposer, auto-open
+  // the mobile inspector sheet so the user sees the linked context immediately.
+  // No-op on lg+ where the inspector is already visible in the right rail.
+  useEffect(() => {
+    if (activeSupplementItem && window.matchMedia("(max-width: 1023px)").matches) {
+      setInspectorOpen(true);
+    }
+  }, [activeSupplementItem?.id]);
 
   // Phase-aware primary action mirrors ClaimActionBar logic but surfaces
   // inline in the highlights panel on desktop.
@@ -115,6 +123,11 @@ export function V2Layout({ claim, slots, isReprocessing, onUpload, onReprocess, 
           contactCard={slots.contactCard}
           editFieldsCard={slots.editFieldsCard}
           timelineRail={slots.timelineRail}
+          activeSupplementItem={activeSupplementItem}
+          onClearActive={() => {
+            // No-op: clearing happens in page.tsx via onActiveItemChange(null).
+            // Inspector close button just hides locally on the next render.
+          }}
         />
       </div>
 
@@ -126,6 +139,7 @@ export function V2Layout({ claim, slots, isReprocessing, onUpload, onReprocess, 
         timelineRail={slots.timelineRail}
         open={inspectorOpen}
         onClose={() => setInspectorOpen(false)}
+        activeSupplementItem={activeSupplementItem}
       />
 
       {/* Sentinel for the V2_DESKTOP_TABS import — ensures the bundler keeps

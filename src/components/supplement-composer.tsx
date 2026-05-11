@@ -27,9 +27,14 @@ interface Props {
   companyPhone?: string;
   adjusterEmail?: string;
   claimNumber?: string;
+  /** Cross-tab linking (v2 Inspector). Fires whenever a row is clicked; pass
+   * null to clear. v1 callers can ignore. */
+  onActiveItemChange?: (item: SupplementItem | null) => void;
 }
 
-export function SupplementComposer({ claimId, claimAddress, carrierName, comparisonRows, carrierRcv, contractorRcv, userId, userName, companyName, companyPhone, adjusterEmail, claimNumber: claimNumberProp }: Props) {
+export type { SupplementItem };
+
+export function SupplementComposer({ claimId, claimAddress, carrierName, comparisonRows, carrierRcv, contractorRcv, userId, userName, companyName, companyPhone, adjusterEmail, claimNumber: claimNumberProp, onActiveItemChange }: Props) {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [showComposer, setShowComposer] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -115,11 +120,11 @@ export function SupplementComposer({ claimId, claimAddress, carrierName, compari
   const toggleItem = (id: string) => {
     const next = new Set(selected);
     const isAdding = !next.has(id);
+    const item = allItems.find((i) => i.id === id);
     if (isAdding) {
       next.add(id);
       // Auto-select the matching code citation when a missing/under item with
       // a citation is checked. Flash the citation row so the user sees the link.
-      const item = allItems.find((i) => i.id === id);
       const tag = item?.codeCitation?.code_tag;
       if ((item?.type === "missing" || item?.type === "under") && tag) {
         const codeId = `code-${tag}`;
@@ -132,7 +137,6 @@ export function SupplementComposer({ claimId, claimAddress, carrierName, compari
       next.delete(id);
       // When unchecking a missing/under item, also drop its code citation —
       // BUT only if no other still-selected missing/under item shares that tag.
-      const item = allItems.find((i) => i.id === id);
       const tag = item?.codeCitation?.code_tag;
       if ((item?.type === "missing" || item?.type === "under") && tag) {
         const stillNeeded = items.some(
@@ -142,6 +146,8 @@ export function SupplementComposer({ claimId, claimAddress, carrierName, compari
       }
     }
     setSelected(next);
+    // Cross-tab notification — Inspector reflects whichever row was just clicked.
+    if (onActiveItemChange && item) onActiveItemChange(item);
   };
 
   const selectAll = () => {

@@ -3,12 +3,15 @@
 import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import type { Claim } from "@/types/claim";
+import type { ActiveSupplementItem } from "./types";
 
 interface InspectorProps {
   claim: Claim;
   contactCard: ReactNode;
   editFieldsCard: ReactNode;
   timelineRail: ReactNode;
+  activeSupplementItem?: ActiveSupplementItem | null;
+  onClearActive?: () => void;
 }
 
 /**
@@ -21,12 +24,15 @@ interface InspectorProps {
  * Apple Pages / Final Cut "Inspector" pattern: persistent metadata about the
  * selected object, separate from the canvas, hide-able via toolbar toggle.
  */
-export function Inspector({ claim, contactCard, editFieldsCard, timelineRail }: InspectorProps) {
+export function Inspector({ claim, contactCard, editFieldsCard, timelineRail, activeSupplementItem, onClearActive }: InspectorProps) {
   return (
     <aside
       className="hidden lg:block sticky top-[200px] self-start w-[320px] shrink-0 max-h-[calc(100vh-220px)] overflow-y-auto pl-6 pr-2 py-2 space-y-4"
       aria-label="Claim inspector"
     >
+      {activeSupplementItem && (
+        <ActiveSelectionCard item={activeSupplementItem} onClear={onClearActive} />
+      )}
       <DamageScoreCard claim={claim} />
       <Section title="Contact details">{contactCard}</Section>
       <Section title="Editable fields">{editFieldsCard}</Section>
@@ -42,6 +48,8 @@ interface MobileSheetProps {
   timelineRail: ReactNode;
   open: boolean;
   onClose: () => void;
+  activeSupplementItem?: ActiveSupplementItem | null;
+  onClearActive?: () => void;
 }
 
 /**
@@ -57,6 +65,8 @@ export function InspectorMobileSheet({
   timelineRail,
   open,
   onClose,
+  activeSupplementItem,
+  onClearActive,
 }: MobileSheetProps) {
   // Lock body scroll when open so the sheet can scroll independently
   useEffect(() => {
@@ -112,6 +122,9 @@ export function InspectorMobileSheet({
           </button>
         </div>
         <div className="px-5 py-4 space-y-4 overflow-y-auto" style={{ maxHeight: "calc(80vh - 60px)" }}>
+          {activeSupplementItem && (
+            <ActiveSelectionCard item={activeSupplementItem} onClear={onClearActive} />
+          )}
           <DamageScoreCard claim={claim} />
           <Section title="Contact details">{contactCard}</Section>
           <Section title="Editable fields">{editFieldsCard}</Section>
@@ -141,6 +154,75 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
       >
         {children}
       </div>
+    </section>
+  );
+}
+
+/**
+ * Cross-tab linking: when the user clicks any row in the SupplementComposer,
+ * this card surfaces in the Inspector with the item details + matching code
+ * citation. Apple Pages "selection-binds-the-inspector" pattern.
+ */
+function ActiveSelectionCard({ item, onClear }: { item: ActiveSupplementItem; onClear?: () => void }) {
+  const typeStyle =
+    item.type === "missing"
+      ? "text-red-400 bg-red-500/15 border-red-500/30"
+      : item.type === "under"
+      ? "text-amber-400 bg-amber-500/15 border-amber-500/30"
+      : "text-[var(--cyan)] bg-[var(--cyan)]/15 border-[var(--cyan)]/30";
+
+  return (
+    <section className="bg-gradient-to-br from-[var(--cyan)]/8 to-[var(--blue)]/8 border border-[var(--cyan)]/30 rounded-xl p-4 animate-in">
+      <header className="flex items-start justify-between gap-2 mb-2">
+        <div className="text-[10px] font-bold uppercase tracking-wider text-[var(--cyan)]">
+          Active selection
+        </div>
+        {onClear && (
+          <button
+            onClick={onClear}
+            className="text-[var(--gray-muted)] hover:text-white text-sm leading-none"
+            aria-label="Clear selection"
+            title="Clear"
+          >
+            ×
+          </button>
+        )}
+      </header>
+      <div className="text-sm font-semibold text-white leading-tight">{item.label}</div>
+      <div className="flex items-center gap-2 mt-2">
+        <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold border uppercase ${typeStyle}`}>
+          {item.type}
+        </span>
+        {item.amount > 0 && (
+          <span className="text-sm font-bold text-green-400 tabular-nums">
+            +${Math.round(item.amount).toLocaleString()}
+          </span>
+        )}
+      </div>
+      {item.detail && (
+        <p className="text-[11px] text-[var(--gray)] mt-2 leading-relaxed line-clamp-3">
+          {item.detail}
+        </p>
+      )}
+      {item.codeCitation && (
+        <div className="mt-3 pt-3 border-t border-white/[0.06]">
+          <div className="text-[9px] font-bold uppercase tracking-wider text-[var(--gray-muted)] mb-1">
+            Code authority
+          </div>
+          <div className="text-xs font-bold text-[var(--cyan)]">{item.codeCitation.code_tag}</div>
+          <div className="text-[11px] text-white mt-0.5">{item.codeCitation.title}</div>
+          {item.codeCitation.requirement && (
+            <p className="text-[10px] text-[var(--gray)] mt-1.5 leading-relaxed line-clamp-3">
+              {item.codeCitation.requirement}
+            </p>
+          )}
+          {item.codeCitation.has_warranty_void && (
+            <div className="mt-2 inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold bg-red-500/15 text-red-400 border border-red-500/30">
+              WARRANTY VOID WITHOUT THIS ITEM
+            </div>
+          )}
+        </div>
+      )}
     </section>
   );
 }

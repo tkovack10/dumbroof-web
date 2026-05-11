@@ -1,5 +1,21 @@
 import type { ReactNode } from "react";
 import type { Claim } from "@/types/claim";
+import type { CodeCitation } from "@/types/scope-comparison";
+
+/**
+ * Cross-tab linked-selection state. When a user clicks a row in the
+ * SupplementComposer (Scope tab), the Inspector reveals an "Active selection"
+ * card with the item details + code citation. This is the v2-only Apple-Pages-
+ * style "selection-binds-the-inspector" pattern Tom asked for.
+ */
+export interface ActiveSupplementItem {
+  id: string;
+  label: string;
+  detail: string;
+  amount: number;
+  type: "missing" | "under" | "code" | "photo";
+  codeCitation?: CodeCitation | null;
+}
 
 /**
  * Render slots — the v1 page.tsx already constructs every block inline with
@@ -52,6 +68,8 @@ export interface V2Props {
   onReprocess: () => void;
   // Win celebration state — v2 highlights surface this differently from v1's WinBanner
   win?: { orig: number; updated: number; move: number; pct: number } | null;
+  // Cross-tab selection — when set, the Inspector shows an "Active selection" panel
+  activeSupplementItem?: ActiveSupplementItem | null;
 }
 
 export type V2TabKey = "overview" | "documents" | "scope" | "photos" | "comms" | "closeout";

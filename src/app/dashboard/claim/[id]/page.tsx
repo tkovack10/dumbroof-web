@@ -6,6 +6,7 @@ import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { resolveUiVersion, type UiVersion } from "@/lib/ui-version";
 import type { User } from "@supabase/supabase-js";
 import { V2Layout } from "@/components/claim-detail/v2/v2-layout";
+import type { SupplementItem } from "@/components/supplement-composer";
 import { FileUploadZone } from "@/components/file-upload-zone";
 import { PendingChangesBanner } from "@/components/pending-changes-banner";
 import { ScopeComparison } from "@/components/scope-comparison";
@@ -153,6 +154,9 @@ export default function ClaimDetailPage() {
   // UI version flag — Phase 2 gate. Reads URL ?ui= → user_metadata → 'v1'.
   const [authUser, setAuthUser] = useState<User | null>(null);
   const uiVersion: UiVersion = resolveUiVersion(searchParams.get("ui"), authUser);
+  // Phase 3b cross-tab linking: when a row is clicked in the SupplementComposer
+  // (Scope tab), the v2 Inspector reflects the selection. v1 ignores this state.
+  const [activeSupplementItem, setActiveSupplementItem] = useState<SupplementItem | null>(null);
 
   const quota = useBillingQuota();
   const [claim, setClaim] = useState<Claim | null>(null);
@@ -793,6 +797,7 @@ export default function ClaimDetailPage() {
       {uiVersion === "v2" ? (
         <V2Layout
           claim={claim}
+          activeSupplementItem={activeSupplementItem}
           isReprocessing={reprocessing || isReprocessingState}
           onUpload={() => {
             setShowUpload(true);
@@ -927,6 +932,7 @@ export default function ClaimDetailPage() {
                   companyPhone={userProfile.phone}
                   adjusterEmail={claim.adjuster_email || ""}
                   claimNumber={claim.claim_number || ""}
+                  onActiveItemChange={setActiveSupplementItem}
                 />
               </div>
             ) : null,
