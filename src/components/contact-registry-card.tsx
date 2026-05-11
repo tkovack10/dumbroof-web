@@ -129,60 +129,66 @@ function ContactField({
 
   return (
     <div className="py-2.5 border-b border-white/[0.04] last:border-b-0">
-      <div className="flex items-baseline justify-between gap-3">
-        <span className="text-xs uppercase tracking-wide text-[var(--gray-dim)] flex-shrink-0 w-[140px]">
-          {label}
-        </span>
-        <div className="flex-1 min-w-0 flex items-center gap-2 justify-end">
-          {editing ? (
-            <>
-              <input
-                type={type}
-                value={draft}
-                onChange={(e) => setDraft(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") commit();
-                  if (e.key === "Escape") cancel();
-                }}
-                disabled={saving}
-                autoFocus
-                className="flex-1 min-w-0 px-2 py-1 rounded bg-white/[0.04] border border-[var(--cyan)] text-sm text-[var(--white)] focus:outline-none"
-              />
-              <button
-                onClick={commit}
-                disabled={saving}
-                className="text-xs text-emerald-400 hover:text-emerald-300 font-medium"
-              >
-                {saving ? "…" : "Save"}
-              </button>
-              <button
-                onClick={cancel}
-                disabled={saving}
-                className="text-xs text-[var(--gray-dim)] hover:text-[var(--white)]"
-              >
-                Cancel
-              </button>
-            </>
-          ) : (
-            <>
-              <button
-                onClick={() => {
-                  setDraft(value);
-                  setEditing(true);
-                }}
-                className="text-sm text-[var(--white)] hover:text-[var(--cyan)] text-right truncate max-w-full transition-colors"
-              >
-                {value || <span className="text-[var(--gray-dim)] italic">Add {label.toLowerCase()}</span>}
-              </button>
-              {badgeText && (
-                <span className={`text-[10px] px-1.5 py-0.5 rounded border ${badgeColor} flex-shrink-0`}>
-                  {badgeText}
-                </span>
-              )}
-            </>
-          )}
+      {editing ? (
+        // Edit mode — stack vertically so the input gets the full row width
+        // (Bug B fix). Inline layout was crushing the input to ~30px on the
+        // narrow inspector column.
+        <div className="space-y-1.5">
+          <span className="text-xs uppercase tracking-wide text-[var(--gray-dim)] block">
+            {label}
+          </span>
+          <input
+            type={type}
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") commit();
+              if (e.key === "Escape") cancel();
+            }}
+            disabled={saving}
+            autoFocus
+            className="w-full px-2 py-1.5 rounded bg-white/[0.04] border border-[var(--cyan)] text-sm text-[var(--white)] focus:outline-none"
+          />
+          <div className="flex items-center gap-3 justify-end">
+            <button
+              onClick={cancel}
+              disabled={saving}
+              className="text-xs text-[var(--gray-dim)] hover:text-[var(--white)]"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={commit}
+              disabled={saving}
+              className="text-xs text-emerald-400 hover:text-emerald-300 font-medium"
+            >
+              {saving ? "Saving…" : "Save"}
+            </button>
+          </div>
         </div>
-      </div>
+      ) : (
+        <div className="flex items-baseline justify-between gap-3">
+          <span className="text-xs uppercase tracking-wide text-[var(--gray-dim)] flex-shrink-0 w-[140px]">
+            {label}
+          </span>
+          <div className="flex-1 min-w-0 flex items-center gap-2 justify-end">
+            <button
+              onClick={() => {
+                setDraft(value);
+                setEditing(true);
+              }}
+              className="text-sm text-[var(--white)] hover:text-[var(--cyan)] text-right truncate max-w-full transition-colors"
+            >
+              {value || <span className="text-[var(--gray-dim)] italic">Add {label.toLowerCase()}</span>}
+            </button>
+            {badgeText && (
+              <span className={`text-[10px] px-1.5 py-0.5 rounded border ${badgeColor} flex-shrink-0`}>
+                {badgeText}
+              </span>
+            )}
+          </div>
+        </div>
+      )}
       {saveError && (
         <div className="mt-1.5 text-[11px] text-rose-300 bg-rose-500/10 border border-rose-500/30 rounded px-2 py-1">
           {saveError}

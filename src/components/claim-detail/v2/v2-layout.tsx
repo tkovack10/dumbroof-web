@@ -106,7 +106,7 @@ export function V2Layout({ claim, slots, isReprocessing, onUpload, onReprocess, 
             <OverviewTab claim={claim} slots={slots} goToTab={setActive} />
           </TabPanel>
           <TabPanel show={active === "documents"}>
-            <DocumentsTab slots={slots} />
+            <DocumentsTab slots={slots} isReprocessing={isReprocessing} />
           </TabPanel>
           <TabPanel show={active === "scope"}>
             <ScopeTab slots={slots} />

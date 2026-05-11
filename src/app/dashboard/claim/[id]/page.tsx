@@ -911,7 +911,9 @@ export default function ClaimDetailPage() {
                 />
               </div>
             ) : null,
-            sourceDocs: isReady ? (
+            // Source docs are uploaded files in storage — they exist regardless of
+            // pipeline state. Don't blank them out during reprocess (Bug A fix).
+            sourceDocs: (
               <UploadedDocuments
                 filePath={claim.file_path}
                 measurementFiles={claim.measurement_files}
@@ -921,7 +923,7 @@ export default function ClaimDetailPage() {
                 cocFiles={claim.coc_files}
                 aobFiles={claim.aob_files}
               />
-            ) : null,
+            ),
             scopeComparison: <ScopeComparison claimId={claim.id} carrierName={claim.carrier} refreshKey={claim.last_processed_at} />,
             roofPhotoMap: (
               <RoofPhotoMap

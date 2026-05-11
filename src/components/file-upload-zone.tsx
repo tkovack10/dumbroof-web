@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 
 interface FileUploadZoneProps {
   label: string;
@@ -22,6 +22,18 @@ export function FileUploadZone({
   onFilesChange,
 }: FileUploadZoneProps) {
   const [isDragging, setIsDragging] = useState(false);
+  // Ref for explicit click triggering (Bug C fix). Chrome can fail to receive
+  // clicks on the absolute-overlay <input> trick when the parent has competing
+  // pointer handlers (drag handlers in this case). Explicit ref.click() works
+  // bulletproof across Chrome / Safari / Firefox.
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const handleZoneClick = useCallback(() => {
+    if (!inputRef.current) return;
+    // Reset value so the same file can be picked twice in a row (Chrome quirk).
+    inputRef.current.value = "";
+    inputRef.current.click();
+  }, []);
 
   const handleDrop = useCallback(
     (e: React.DragEvent) => {
@@ -86,6 +98,15 @@ export function FileUploadZone({
         }}
         onDragLeave={() => setIsDragging(false)}
         onDrop={handleDrop}
+        onClick={handleZoneClick}
+        role="button"
+        tabIndex={0}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            handleZoneClick();
+          }
+        }}
         className={`relative border-2 border-dashed rounded-xl p-6 text-center transition-colors cursor-pointer ${
           isDragging
             ? "border-[var(--red)] bg-[var(--pink)]/10"
@@ -95,11 +116,14 @@ export function FileUploadZone({
         }`}
       >
         <input
+          ref={inputRef}
           type="file"
           accept={accept}
           multiple={multiple}
           onChange={handleSelect}
-          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+          // Hidden — clicks on the parent div trigger inputRef.click() instead
+          // of relying on absolute-overlay positioning (Bug C, Chrome reliability).
+          className="sr-only"
         />
 
         {files.length === 0 ? (
