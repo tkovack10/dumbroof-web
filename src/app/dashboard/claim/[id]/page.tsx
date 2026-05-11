@@ -41,6 +41,7 @@ import { CommunicationsCenter } from "@/components/claim-detail/communications-c
 import type { Correspondence, EditRequest, EmailDraft } from "@/types/claim-comms";
 import { ScopeReviewContent } from "@/app/dashboard/scope-review/scope-review-content";
 import { PhotoReviewContent } from "@/app/dashboard/photo-review/photo-review-content";
+import { CrmImportModal } from "@/components/crm-import-modal";
 
 function EditableField({ value, placeholder, field, claimId, prefix, className, onSave }: {
   value: string;
@@ -129,6 +130,11 @@ export default function ClaimDetailPage() {
   const [roofMapPhotoUrls, setRoofMapPhotoUrls] = useState<Record<string, string>>({});
   const [hasForensicWin, setHasForensicWin] = useState(false);
   const formRef = useRef<HTMLDivElement>(null);
+  // CompanyCam / AccuLynx integration state — for "import more photos to an
+  // existing claim" flow. Same modal used by install-supplement / coc /
+  // new-claim flows; this is the 4th surface.
+  const [crmIntegrations, setCrmIntegrations] = useState<{ acculynx: boolean; companycam: boolean }>({ acculynx: false, companycam: false });
+  const [showCrmModal, setShowCrmModal] = useState(false);
 
   const fetchClaim = useCallback(async () => {
     const {
@@ -170,6 +176,18 @@ export default function ClaimDetailPage() {
   }, [claimId, router, supabase]);
 
   const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000";
+
+  // Fetch CRM integrations (CompanyCam + AccuLynx) so we know whether to show
+  // the "Import more photos" button. Same pattern as install-supplement-builder.
+  useEffect(() => {
+    if (!currentUserId) return;
+    fetch(`${BACKEND_URL}/api/integrations/status?user_id=${currentUserId}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (data) setCrmIntegrations({ acculynx: !!data.acculynx, companycam: !!data.companycam });
+      })
+      .catch(() => {});
+  }, [currentUserId, BACKEND_URL]);
 
   const fetchCorrespondence = useCallback(async () => {
     try {
@@ -539,6 +557,33 @@ export default function ClaimDetailPage() {
   // so the tree is only constructed when showUpload is true.
   const renderUploadForm = () => (
     <div ref={formRef} className="space-y-5">
+      {/* Import from CompanyCam / AccuLynx — only when at least one is connected.
+          Imports photos directly to {claim.file_path}/photos/, appends to
+          claim.photo_files, then triggers reprocess so the pipeline picks
+          up the new photos for analysis. */}
+      {(crmIntegrations.acculynx || crmIntegrations.companycam) && (
+        <div className="flex items-center justify-between gap-3 px-3 py-3 rounded-lg bg-[var(--cyan)]/5 border border-[var(--cyan)]/20">
+          <div className="min-w-0">
+            <p className="text-sm font-semibold text-white">Import photos from CRM</p>
+            <p className="text-xs text-[var(--gray-muted)]">
+              {[crmIntegrations.companycam && "CompanyCam", crmIntegrations.acculynx && "AccuLynx"]
+                .filter(Boolean)
+                .join(" + ")}{" "}
+              connected · imports straight into this claim and re-runs analysis
+            </p>
+          </div>
+          <button
+            onClick={() => setShowCrmModal(true)}
+            className="shrink-0 flex items-center gap-2 px-4 py-2 rounded-lg bg-[var(--cyan)]/10 text-[var(--cyan)] text-sm font-semibold hover:bg-[var(--cyan)]/20 transition-colors"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M7 16a4 4 0 01-.88-7.903A5 5 0 0115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+            </svg>
+            Import photos
+          </button>
+        </div>
+      )}
+
       {/* Category selector */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
         {(
@@ -1809,6 +1854,51 @@ export default function ClaimDetailPage() {
           }}
           onReprocess={handleReprocess}
           uiVersion={uiVersion}
+        />
+      )}
+
+      {/* CompanyCam / AccuLynx import modal — same component used by
+          install-supplement, COC, and new-claim flows. Mounts once at page
+          level so it works whether the user opened the upload form in v1
+          inline OR v2 Documents tab. */}
+      {claim && (
+        <CrmImportModal
+          open={showCrmModal}
+          onClose={() => setShowCrmModal(false)}
+          integrations={crmIntegrations}
+          backendUrl={BACKEND_URL}
+          userId={currentUserId}
+          targetPath={claim.file_path}
+          targetFolder="photos"
+          onImport={() => {}}
+          onPhotoPaths={async (paths) => {
+            if (!paths || paths.length === 0) return;
+            // Append the new filenames to claim.photo_files. The modal uploaded
+            // them under {file_path}/photos/{filename}; photo_files is a flat
+            // list of filenames in that folder (matching the existing
+            // companycam_NN.jpg convention on this claim's existing 50 photos).
+            const newFilenames = paths
+              .map((p) => p.split("/").pop() || "")
+              .filter(Boolean);
+            const merged = Array.from(new Set([...(claim.photo_files || []), ...newFilenames]));
+            try {
+              await supabase
+                .from("claims")
+                .update({ photo_files: merged })
+                .eq("id", claim.id);
+              setClaim({ ...claim, photo_files: merged });
+            } catch (err) {
+              console.error("Failed to merge imported photo paths:", err);
+            }
+            // Trigger reprocess so the new photos get analyzed by the pipeline
+            // (same pattern as gmail_poller.py:887 for forwarded edit-requests).
+            try {
+              await fetch(`${BACKEND_URL}/api/reprocess/${claim.id}`, { method: "POST" });
+              setReprocessing(true);
+            } catch (err) {
+              console.error("Failed to trigger reprocess after CRM import:", err);
+            }
+          }}
         />
       )}
     </main>
