@@ -239,6 +239,19 @@ export default function ClaimDetailPage() {
     return () => clearInterval(interval);
   }, [claim?.status, fetchClaim]);
 
+  // Auto-clear the local `reprocessing` flag once the claim flips back to
+  // ready/error/etc. (i.e., pipeline finished). The flag is set optimistically
+  // by handlers that trigger reprocess (handleReprocess, CRM import,
+  // scope-review onAfterReprocess) for immediate banner feedback. Without
+  // this sync, paths that don't manually setReprocessing(false) leave the
+  // banner stuck forever (caught in code review of commit 47b708f).
+  useEffect(() => {
+    if (!claim) return;
+    if (reprocessing && claim.status !== "uploaded" && claim.status !== "processing") {
+      setReprocessing(false);
+    }
+  }, [claim?.status, reprocessing]);
+
   // Load photo rows + sign URLs for the overhead roof map — only when facet
   // data exists. Deps are SCALARS (not the roof_facets object) to avoid
   // re-firing on every 5s status poll: `setClaim` produces a new object
