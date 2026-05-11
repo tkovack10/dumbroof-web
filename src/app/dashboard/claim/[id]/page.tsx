@@ -40,6 +40,7 @@ import { ClaimActionBar } from "@/components/claim-action-bar";
 import { CommunicationsCenter } from "@/components/claim-detail/communications-center";
 import type { Correspondence, EditRequest, EmailDraft } from "@/types/claim-comms";
 import { ScopeReviewContent } from "@/app/dashboard/scope-review/scope-review-content";
+import { PhotoReviewContent } from "@/app/dashboard/photo-review/photo-review-content";
 
 function EditableField({ value, placeholder, field, claimId, prefix, className, onSave }: {
   value: string;
@@ -857,6 +858,9 @@ export default function ClaimDetailPage() {
                 photoUrls={roofMapPhotoUrls}
               />
             ),
+            photoEditor: isReady ? (
+              <PhotoReviewContent claimId={claim.id} embedded />
+            ) : null,
             estimateView: (
               <div id="lifecycle-estimate"><EstimateView claimId={claim.id} refreshKey={claim.last_processed_at} /></div>
             ),

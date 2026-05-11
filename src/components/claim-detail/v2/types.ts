@@ -33,7 +33,8 @@ export interface V2Slots {
   estimateEditor: ReactNode;       // Embedded ScopeReviewContent (line-item edit/add/remove)
   estimateConfig: ReactNode;       // EstimateConfigPanel inline
   supplementComposer: ReactNode;   // SupplementComposer component
-  roofPhotoMap: ReactNode;         // RoofPhotoMap component
+  roofPhotoMap: ReactNode;         // RoofPhotoMap component (per-slope diagram)
+  photoEditor: ReactNode;          // Embedded PhotoReviewContent (per-photo approve/reject/edit/tag)
   communicationLog: ReactNode;     // CommunicationLog component
   communicationsCenter: ReactNode; // Edit requests + carrier correspondence + draft responses (consolidated)
   signatureManager: ReactNode;     // SignatureManager (AOB / Contingency)

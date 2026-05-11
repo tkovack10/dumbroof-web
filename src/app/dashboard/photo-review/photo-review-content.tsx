@@ -48,9 +48,16 @@ function statusBadge(status: string | null): { bg: string; label: string } {
   }
 }
 
-export function PhotoReviewContent() {
+interface PhotoReviewContentProps {
+  /** When set, overrides the `?claim=...` URL param. Used by embedded mode in the per-claim page. */
+  claimId?: string | null;
+  /** When true, drops route-level chrome (nav, min-h-screen wrapper, external nav links) so the editor renders inside a host page. */
+  embedded?: boolean;
+}
+
+export function PhotoReviewContent({ claimId: claimIdProp, embedded = false }: PhotoReviewContentProps = {}) {
   const searchParams = useSearchParams();
-  const claimId = searchParams.get("claim");
+  const claimId = claimIdProp ?? searchParams.get("claim");
 
   const [photos, setPhotos] = useState<PhotoForReview[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -258,8 +265,31 @@ export function PhotoReviewContent() {
   const skippedCount = photos.filter((p) => getEffectiveStatus(p) === null).length;
   const progress = photos.length > 0 ? (reviewedCount / photos.length) * 100 : 0;
 
-  // Shared nav bar
-  const navBar = (
+  // Outer-shell controls — when embedded, drop the full-route chrome so the editor sits inside the host page.
+  const OuterTag = embedded ? "div" : "main";
+  const outerClass = embedded ? "" : "min-h-screen bg-white/[0.04]";
+
+  // Shared nav bar — full chrome on the standalone route, condensed stats strip in embedded mode.
+  const navBar = embedded ? (
+    <div className="flex items-center justify-between px-1 pb-3 text-xs text-[var(--gray-dim)]">
+      <span className="font-semibold text-[var(--gray-muted)]">
+        {photos.length > 0 ? `${Math.min(currentIndex + 1, photos.length)} of ${photos.length}` : ""}
+      </span>
+      <div className="flex items-center gap-3">
+        {sessionStats.approved > 0 && <span className="text-green-400">{sessionStats.approved} approved</span>}
+        {sessionStats.corrected > 0 && <span className="text-blue-400">{sessionStats.corrected} corrected</span>}
+        {sessionStats.rejected > 0 && <span className="text-red-400">{sessionStats.rejected} rejected</span>}
+        {sessionStats.skipped > 0 && <span className="text-[var(--gray-muted)]">{sessionStats.skipped} skipped</span>}
+        <button
+          onClick={() => setViewMode((m) => m === "card" ? "grid" : "card")}
+          className="px-2 py-1 rounded bg-white/10 hover:bg-white/20 text-white text-xs font-medium transition-colors"
+          title="Toggle grid view (G)"
+        >
+          {viewMode === "card" ? "Grid" : "Card"}
+        </button>
+      </div>
+    </div>
+  ) : (
     <nav className="bg-[rgba(6,9,24,0.85)] backdrop-blur-[20px] border-b border-[var(--border-glass)] sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
         <a href="/dashboard" className="flex items-center gap-3">
@@ -296,23 +326,25 @@ export function PhotoReviewContent() {
 
   if (loading) {
     return (
-      <main className="min-h-screen bg-white/[0.04] flex items-center justify-center">
+      <OuterTag className={`${outerClass} ${embedded ? "" : "flex items-center justify-center"}`}>
         <p className="text-[var(--gray-dim)]">Loading photos...</p>
-      </main>
+      </OuterTag>
     );
   }
 
   if (photos.length === 0) {
     return (
-      <main className="min-h-screen bg-white/[0.04]">
+      <OuterTag className={outerClass}>
         {navBar}
-        <div className="max-w-lg mx-auto mt-20 text-center">
+        <div className={embedded ? "py-8 text-center" : "max-w-lg mx-auto mt-20 text-center"}>
           <div className="text-5xl mb-4">&#128247;</div>
           <h2 className="text-2xl font-bold text-[var(--white)] mb-2">No photos found</h2>
           <p className="text-[var(--gray-muted)] mb-6">This claim doesn&apos;t have any photos to review yet.</p>
-          <a href="/dashboard" className="text-sm text-[var(--gray-muted)] hover:text-[var(--white)]">Back to Dashboard</a>
+          {!embedded && (
+            <a href="/dashboard" className="text-sm text-[var(--gray-muted)] hover:text-[var(--white)]">Back to Dashboard</a>
+          )}
         </div>
-      </main>
+      </OuterTag>
     );
   }
 
@@ -320,10 +352,10 @@ export function PhotoReviewContent() {
   if (currentIndex >= photos.length && viewMode === "card") {
     const unreviewedCount = photos.filter((p) => getEffectiveStatus(p) === null).length;
     return (
-      <main className="min-h-screen bg-white/[0.04]">
+      <OuterTag className={outerClass}>
         {navBar}
         {errorBanner}
-        <div className="max-w-lg mx-auto mt-20 text-center">
+        <div className={embedded ? "py-8 text-center" : "max-w-lg mx-auto mt-20 text-center"}>
           <div className="text-5xl mb-4">&#10003;</div>
           <h2 className="text-2xl font-bold text-[var(--white)] mb-2">Review complete!</h2>
           <p className="text-[var(--gray-muted)] mb-6">
@@ -357,7 +389,7 @@ export function PhotoReviewContent() {
                 Review {unreviewedCount} Skipped Photo{unreviewedCount > 1 ? "s" : ""}
               </button>
             )}
-            {claimId && (
+            {claimId && !embedded && (
               <a
                 href={`/dashboard/scope-review?claim=${claimId}`}
                 className="bg-gradient-to-r from-[var(--pink)] via-[var(--purple)] to-[var(--blue)] hover:shadow-[var(--shadow-glow-pink)] text-white px-8 py-3 rounded-xl font-semibold transition-colors"
@@ -365,22 +397,24 @@ export function PhotoReviewContent() {
                 Continue to Scope Review
               </a>
             )}
-            <a href={claimId ? `/dashboard/claim/${claimId}` : "/dashboard"} className="text-sm text-[var(--gray-muted)] hover:text-[var(--white)]">
-              Back to Claim
-            </a>
+            {!embedded && (
+              <a href={claimId ? `/dashboard/claim/${claimId}` : "/dashboard"} className="text-sm text-[var(--gray-muted)] hover:text-[var(--white)]">
+                Back to Claim
+              </a>
+            )}
           </div>
         </div>
-      </main>
+      </OuterTag>
     );
   }
 
   // ==================== GRID VIEW ====================
   if (viewMode === "grid") {
     return (
-      <main className="min-h-screen bg-white/[0.04]">
+      <OuterTag className={outerClass}>
         {navBar}
         {errorBanner}
-        <div className="max-w-6xl mx-auto px-4 py-6">
+        <div className={embedded ? "py-2" : "max-w-6xl mx-auto px-4 py-6"}>
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
             {photos.map((photo, idx) => {
               const status = getEffectiveStatus(photo);
@@ -418,13 +452,13 @@ export function PhotoReviewContent() {
             })}
           </div>
         </div>
-      </main>
+      </OuterTag>
     );
   }
 
   // ==================== CARD VIEW ====================
   return (
-    <main className="min-h-screen bg-white/[0.04]">
+    <OuterTag className={outerClass}>
       {navBar}
 
       {/* Progress bar — two-tone */}
@@ -435,7 +469,7 @@ export function PhotoReviewContent() {
       {errorBanner}
 
       {/* Card */}
-      <div className="max-w-2xl mx-auto px-4 py-6">
+      <div className={embedded ? "py-2" : "max-w-2xl mx-auto px-4 py-6"}>
         {currentPhoto && (
           <div className={`bg-white rounded-2xl border border-[var(--border-glass)] overflow-hidden shadow-lg transition-all duration-300 ${stampType ? "scale-95 opacity-80" : ""}`}>
             {/* Header */}
@@ -648,6 +682,6 @@ export function PhotoReviewContent() {
           </button>
         </div>
       </div>
-    </main>
+    </OuterTag>
   );
 }
