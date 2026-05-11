@@ -19,8 +19,10 @@ interface TabBarProps {
 export function TabBar({ active, onChange, badges }: TabBarProps) {
   return (
     <>
-      {/* Desktop top tabs */}
-      <div className="hidden sm:flex sticky top-[68px] z-10 bg-[var(--navy)]/95 backdrop-blur-xl border-b border-white/[0.08]">
+      {/* Desktop top tabs — sits below the highlights panel which itself sits
+          below the dashboard top nav. Stack: nav (top:0, z:50) → highlights
+          (top:60, z:20) → tab bar (top:140, z:10). */}
+      <div className="hidden sm:flex sticky top-[140px] z-10 bg-[var(--navy)]/95 backdrop-blur-xl border-b border-white/[0.08]">
         <div className="max-w-7xl mx-auto w-full px-6 flex items-center gap-1 overflow-x-auto">
           {V2_DESKTOP_TABS.map((k) => {
             const isActive = active === k;

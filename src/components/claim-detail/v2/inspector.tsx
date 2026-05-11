@@ -24,7 +24,7 @@ interface InspectorProps {
 export function Inspector({ claim, contactCard, editFieldsCard, timelineRail }: InspectorProps) {
   return (
     <aside
-      className="hidden lg:block sticky top-[120px] self-start w-[320px] shrink-0 max-h-[calc(100vh-140px)] overflow-y-auto pl-6 pr-2 py-2 space-y-4"
+      className="hidden lg:block sticky top-[200px] self-start w-[320px] shrink-0 max-h-[calc(100vh-220px)] overflow-y-auto pl-6 pr-2 py-2 space-y-4"
       aria-label="Claim inspector"
     >
       <DamageScoreCard claim={claim} />

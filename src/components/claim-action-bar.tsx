@@ -9,6 +9,10 @@ interface ClaimActionBarProps {
   isReprocessing: boolean;
   onUpload: () => void;
   onReprocess: () => void;
+  /** When 'v2', the desktop pill is hidden because v2's highlights panel
+   * already surfaces the phase-aware actions. The mobile bar stays visible
+   * regardless — v2 mobile doesn't have desktop-style inline header actions. */
+  uiVersion?: "v1" | "v2";
 }
 
 type ActionKind = "primary" | "secondary";
@@ -33,7 +37,7 @@ function scrollToId(id: string) {
   if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
-export function ClaimActionBar({ claim, isReprocessing, onUpload, onReprocess }: ClaimActionBarProps) {
+export function ClaimActionBar({ claim, isReprocessing, onUpload, onReprocess, uiVersion = "v1" }: ClaimActionBarProps) {
   const router = useRouter();
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -187,8 +191,9 @@ export function ClaimActionBar({ claim, isReprocessing, onUpload, onReprocess }:
         </div>
       </div>
 
-      {/* Desktop: centered floating pill — `hidden sm:flex` */}
-      <div className="hidden sm:flex fixed bottom-6 left-1/2 -translate-x-1/2 z-30 max-w-[640px]">
+      {/* Desktop: centered floating pill — hidden on v2 because the v2 highlights
+          panel already exposes the phase-aware actions inline. */}
+      <div className={`${uiVersion === "v2" ? "hidden" : "hidden sm:flex"} fixed bottom-6 left-1/2 -translate-x-1/2 z-30 max-w-[640px]`}>
         <div className="flex items-center gap-2 bg-[var(--navy)]/95 backdrop-blur-xl border border-white/[0.1] rounded-full px-3 py-2 shadow-[0_8px_32px_rgba(0,0,0,0.4)]">
           {renderButton(primary)}
           {secondary.map(renderButton)}

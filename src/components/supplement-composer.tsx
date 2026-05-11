@@ -38,6 +38,15 @@ export function SupplementComposer({ claimId, claimAddress, carrierName, compari
   const [sending, setSending] = useState(false);
   const [sendResult, setSendResult] = useState<{ ok: boolean; message: string } | null>(null);
   const [mounted, setMounted] = useState(false);
+  // Tom's "click ice & water shield → auto-select code citation" magic.
+  // When a missing/under item is selected, the matching code-{tag} also gets
+  // selected and the citation row briefly flashes so the user sees the link.
+  const [flashedId, setFlashedId] = useState<string | null>(null);
+  useEffect(() => {
+    if (!flashedId) return;
+    const t = setTimeout(() => setFlashedId(null), 900);
+    return () => clearTimeout(t);
+  }, [flashedId]);
 
   useEffect(() => { setMounted(true); }, []);
 
@@ -105,8 +114,33 @@ export function SupplementComposer({ claimId, claimAddress, carrierName, compari
 
   const toggleItem = (id: string) => {
     const next = new Set(selected);
-    if (next.has(id)) next.delete(id);
-    else next.add(id);
+    const isAdding = !next.has(id);
+    if (isAdding) {
+      next.add(id);
+      // Auto-select the matching code citation when a missing/under item with
+      // a citation is checked. Flash the citation row so the user sees the link.
+      const item = allItems.find((i) => i.id === id);
+      const tag = item?.codeCitation?.code_tag;
+      if ((item?.type === "missing" || item?.type === "under") && tag) {
+        const codeId = `code-${tag}`;
+        if (!next.has(codeId)) {
+          next.add(codeId);
+          setFlashedId(codeId);
+        }
+      }
+    } else {
+      next.delete(id);
+      // When unchecking a missing/under item, also drop its code citation —
+      // BUT only if no other still-selected missing/under item shares that tag.
+      const item = allItems.find((i) => i.id === id);
+      const tag = item?.codeCitation?.code_tag;
+      if ((item?.type === "missing" || item?.type === "under") && tag) {
+        const stillNeeded = items.some(
+          (other) => other.id !== id && next.has(other.id) && other.codeCitation?.code_tag === tag
+        );
+        if (!stillNeeded) next.delete(`code-${tag}`);
+      }
+    }
     setSelected(next);
   };
 
@@ -267,23 +301,35 @@ export function SupplementComposer({ claimId, claimAddress, carrierName, compari
             <p className="text-[10px] uppercase font-bold text-blue-600 tracking-wide mb-1">Code Citations</p>
           </div>
         )}
-        {codeItems.map((item) => (
-          <label key={item.id} className={`flex items-start gap-3 px-6 py-3 cursor-pointer hover:bg-white/[0.04] transition-colors ${selected.has(item.id) ? "bg-blue-500/10/50" : ""}`}>
-            <input
-              type="checkbox"
-              checked={selected.has(item.id)}
-              onChange={() => toggleItem(item.id)}
-              className="mt-0.5 rounded border-[var(--border-glass)] text-blue-600 focus:ring-blue-500"
-            />
-            <div className="flex-1 min-w-0">
-              <p className="text-xs font-medium text-[var(--white)]">{item.label}</p>
-              <p className="text-[10px] text-[var(--gray-muted)] mt-0.5 line-clamp-2">{item.detail}</p>
-              {item.codeCitation?.has_warranty_void && (
-                <span className="inline-block mt-1 px-1.5 py-0.5 rounded text-[9px] font-bold bg-red-500/10 text-red-400">WARRANTY VOID</span>
-              )}
-            </div>
-          </label>
-        ))}
+        {codeItems.map((item) => {
+          const isFlashed = flashedId === item.id;
+          return (
+            <label
+              key={item.id}
+              ref={(el) => {
+                // Scroll the auto-selected citation into view so the user sees the link
+                if (el && isFlashed) el.scrollIntoView({ behavior: "smooth", block: "nearest" });
+              }}
+              className={`flex items-start gap-3 px-6 py-3 cursor-pointer hover:bg-white/[0.04] transition-all duration-300 ${
+                selected.has(item.id) ? "bg-blue-500/10/50" : ""
+              } ${isFlashed ? "ring-2 ring-[var(--cyan)] ring-inset shadow-[inset_0_0_18px_rgba(34,216,255,0.25)]" : ""}`}
+            >
+              <input
+                type="checkbox"
+                checked={selected.has(item.id)}
+                onChange={() => toggleItem(item.id)}
+                className="mt-0.5 rounded border-[var(--border-glass)] text-blue-600 focus:ring-blue-500"
+              />
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-medium text-[var(--white)]">{item.label}</p>
+                <p className="text-[10px] text-[var(--gray-muted)] mt-0.5 line-clamp-2">{item.detail}</p>
+                {item.codeCitation?.has_warranty_void && (
+                  <span className="inline-block mt-1 px-1.5 py-0.5 rounded text-[9px] font-bold bg-red-500/10 text-red-400">WARRANTY VOID</span>
+                )}
+              </div>
+            </label>
+          );
+        })}
       </div>
 
       {/* Footer with compose button */}

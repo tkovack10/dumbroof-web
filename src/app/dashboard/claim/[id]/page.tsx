@@ -2261,7 +2261,9 @@ export default function ClaimDetailPage() {
         />
       )}
 
-      {/* Phase-aware sticky action bar (Phase 1 of per-claim page redesign) */}
+      {/* Phase-aware sticky action bar (Phase 1 of per-claim page redesign).
+          On v2 desktop, the bar's pill is hidden — v2's highlights panel already
+          surfaces phase-aware actions. Mobile bar stays for both v1 and v2. */}
       {claim && (
         <ClaimActionBar
           claim={claim}
@@ -2271,6 +2273,7 @@ export default function ClaimDetailPage() {
             setTimeout(() => formRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }), 100);
           }}
           onReprocess={handleReprocess}
+          uiVersion={uiVersion}
         />
       )}
     </main>
@@ -2296,41 +2299,41 @@ function WinBanner({ orig, updated, move, pct }: { orig: number; updated: number
         <div className="absolute inset-0 bg-gradient-to-br from-green-600 via-emerald-500 to-green-400 animate-gradient-shift" />
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_50%,rgba(255,255,255,0.15),transparent_60%)]" />
 
-        <div className="relative max-w-4xl mx-auto px-6 py-10">
-          <div className="flex items-center justify-between flex-wrap gap-6">
+        <div className="relative max-w-4xl mx-auto px-4 sm:px-6 py-5 sm:py-10">
+          <div className="flex items-center justify-between flex-wrap gap-3 sm:gap-6">
             <div>
-              <div className="flex items-center gap-3 mb-3">
-                <div className="w-12 h-12 rounded-full bg-white/20 backdrop-blur flex items-center justify-center shadow-[0_0_20px_rgba(255,255,255,0.3)]">
-                  <svg className="w-7 h-7 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+              <div className="flex items-center gap-2 sm:gap-3 mb-2 sm:mb-3">
+                <div className="w-8 h-8 sm:w-12 sm:h-12 rounded-full bg-white/20 backdrop-blur flex items-center justify-center shadow-[0_0_20px_rgba(255,255,255,0.3)]">
+                  <svg className="w-4 h-4 sm:w-7 sm:h-7 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 18L9 11.25l4.306 4.307a11.95 11.95 0 015.814-5.519l2.74-1.22m0 0l-5.94-2.28m5.94 2.28l-2.28 5.941" />
                   </svg>
                 </div>
                 <div>
-                  <p className="text-xs font-bold text-white/70 uppercase tracking-[0.2em]">Carrier Moved</p>
-                  <p className="text-xs text-white/50 font-medium">dumb roof got the carrier to pay more</p>
+                  <p className="text-[10px] sm:text-xs font-bold text-white/70 uppercase tracking-[0.15em] sm:tracking-[0.2em]">Carrier Moved</p>
+                  <p className="text-[10px] sm:text-xs text-white/50 font-medium hidden sm:block">dumb roof got the carrier to pay more</p>
                 </div>
               </div>
-              <p className="text-6xl md:text-7xl font-black text-white tracking-tight tabular-nums">
+              <p className="text-3xl sm:text-6xl md:text-7xl font-black text-white tracking-tight tabular-nums leading-none">
                 +${animatedMove.toLocaleString()}
               </p>
-              <div className="flex items-center gap-4 mt-3">
-                <span className="inline-flex items-center gap-1.5 bg-white/20 backdrop-blur rounded-full px-4 py-1.5 text-sm font-bold text-white">
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+              <div className="flex items-center gap-2 sm:gap-4 mt-2 sm:mt-3 flex-wrap">
+                <span className="inline-flex items-center gap-1 sm:gap-1.5 bg-white/20 backdrop-blur rounded-full px-2.5 py-1 sm:px-4 sm:py-1.5 text-xs sm:text-sm font-bold text-white">
+                  <svg className="w-3 h-3 sm:w-4 sm:h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 10.5L12 3m0 0l7.5 7.5M12 3v18" />
                   </svg>
                   {animatedPct}% increase
                 </span>
-                <span className="text-sm text-white/60 tabular-nums font-medium">
+                <span className="text-[11px] sm:text-sm text-white/60 tabular-nums font-medium">
                   ${orig.toLocaleString()} → ${updated.toLocaleString()}
                 </span>
               </div>
             </div>
 
             <div className="text-center">
-              <div className="text-7xl animate-bounce" style={{ animationDuration: "2s" }}>
+              <div className="text-4xl sm:text-7xl animate-bounce" style={{ animationDuration: "2s" }}>
                 &#127942;
               </div>
-              <p className="text-sm font-black text-white/90 uppercase tracking-widest mt-2">Claim Won</p>
+              <p className="text-[10px] sm:text-sm font-black text-white/90 uppercase tracking-widest mt-1 sm:mt-2">Claim Won</p>
             </div>
           </div>
         </div>

@@ -41,7 +41,7 @@ export function HighlightsPanel({
 
   return (
     <div
-      className="sticky top-0 z-20 bg-[var(--navy)]/95 backdrop-blur-xl border-b border-white/[0.08]"
+      className="sticky top-[60px] z-20 bg-[var(--navy)]/95 backdrop-blur-xl border-b border-white/[0.08]"
       role="banner"
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 sm:py-4">
