@@ -1042,37 +1042,44 @@ def get_gmail_service_for_user(refresh_token: str):
     return build("gmail", "v1", credentials=creds, cache_discovery=False)
 
 
-def _classify_inbound_for_user(parsed: dict) -> Optional[str]:
-    """Heuristic-only classifier for per-user inbox. Returns one of:
-      - "carrier"  : From domain matches a known carrier → store as carrier_correspondence
-      - None       : skip (not claim-related)
+def _build_claim_number_subject_query(claim_numbers: list[str], sending_email: str = "") -> Optional[str]:
+    """Build a Gmail search query that ONLY returns messages whose subject
+    contains one of the user's claim numbers. Server-side filter — we never
+    fetch or read any other emails.
 
-    Note: this is intentionally narrower than classify_email() (used by the
-    claims@dumbroof.ai forwarder flow). For per-user inboxes:
-      - We do NOT need forwarded-email detection (it's the user's own inbox)
-      - We do NOT need AI classification (cost-conscious — Tom 2026-05-11)
-      - We do NOT need edit-request handling (edit requests come through claims@
-        not through the contractor's own inbox)
+    Returns None if the user has no claim numbers (skip the poll for this user).
     """
-    from_email = (parsed.get("from_email") or "").lower()
-    if not from_email:
+    # Sanitize: drop empties, dedupe, strip whitespace, skip values too short
+    # to be unique (>=4 chars rules out single digits / common words).
+    clean = sorted({(cn or "").strip() for cn in claim_numbers if cn and len(cn.strip()) >= 4})
+    if not clean:
         return None
-    # Carrier domain match — most reliable signal
-    if identify_carrier(from_email, parsed.get("text_body", "")):
-        return "carrier"
-    # Fallback: thread match handled in _process_user_message via in_reply_to
-    # lookup against email_drafts. If neither carrier domain nor thread match,
-    # skip — too risky to insert without confidence.
-    return None
+
+    # Gmail subject:(A OR B OR C) — token-level match. Cap at ~200 numbers per
+    # query to stay well under Gmail's query length limit. Heaviest USARM user
+    # today has <100 claims with numbers, so this is a future-proofing guard.
+    if len(clean) > 200:
+        clean = clean[-200:]  # newest claims most likely to have active comms
+
+    subject_clause = "subject:(" + " OR ".join(clean) + ")"
+    from_clause = f" -from:{sending_email}" if sending_email else ""
+    # newer_than:7d (not 1d) because subject-precise queries have ~0 false
+    # positive rate — safe to scan a wider window. Hourly cadence catches new
+    # arrivals quickly; the 7d window is just belt-and-suspenders for the
+    # edge case where the container restarts and misses a few hours.
+    return f"{subject_clause} is:unread newer_than:7d{from_clause}"
 
 
-async def _process_user_message(sb: Client, service, msg_id: str, user_id: str, sending_email: str) -> None:
-    """Process one Gmail message in a user's connected inbox.
+async def _process_user_message(
+    sb: Client, service, msg_id: str, user_id: str, sending_email: str,
+    claim_lookup: dict[str, dict],
+) -> None:
+    """Process one Gmail message that ALREADY matched a user's claim number
+    (Gmail's subject:() filter did the work). claim_lookup maps claim_number
+    → {id, address, carrier} for O(1) resolution.
 
-    Storage-only — no AI. If the message looks like a carrier reply (carrier
-    domain OR thread match to one of our outbound sends), insert into
-    carrier_correspondence with analysis_status='pending' and matched claim_id
-    (or NULL if matching fails). User can trigger analysis on demand from the
+    Storage-only — no AI. Insert into carrier_correspondence with
+    analysis_status='pending'. User triggers analysis on demand from the
     per-claim Comms tab.
     """
     try:
@@ -1081,13 +1088,13 @@ async def _process_user_message(sb: Client, service, msg_id: str, user_id: str, 
         print(f"[USER GMAIL POLLER] parse failed for {user_id}/{msg_id}: {type(e).__name__}: {e}", flush=True)
         return
 
-    # Skip our own sends (Gmail's -from:me filter catches most but not edge cases)
+    # Skip our own sends (defensive — the -from:me filter should catch these)
     from_email = (parsed.get("from_email") or "").lower().strip()
     if sending_email and from_email == sending_email.lower():
+        await asyncio.to_thread(_mark_as_read, service, msg_id)
         return
 
-    # Idempotency: skip messages we've already ingested. Use Gmail's message_id
-    # header (RFC 822) as the dedup key — same key the central poller uses.
+    # Idempotency: skip messages we've already ingested
     if parsed.get("message_id"):
         dup = sb.table("carrier_correspondence").select("id").eq(
             "message_id", parsed["message_id"]
@@ -1096,61 +1103,48 @@ async def _process_user_message(sb: Client, service, msg_id: str, user_id: str, 
             await asyncio.to_thread(_mark_as_read, service, msg_id)
             return
 
-    # Heuristic classification — must be carrier-shaped to proceed
-    classification = _classify_inbound_for_user(parsed)
-    in_reply_to = parsed.get("in_reply_to") or ""
+    # Identify WHICH claim_number this matched (Gmail returned the message because
+    # the subject contains ONE of the user's claim numbers — we just need to find
+    # which one). Subject-token match means we look for any claim_number that
+    # appears as a substring.
+    subject = parsed.get("subject", "") or ""
+    matched_claim = None
+    matched_claim_number = None
+    for cn, claim in claim_lookup.items():
+        if cn in subject:
+            matched_claim = claim
+            matched_claim_number = cn
+            break
 
-    # Thread match is a strong signal even without carrier domain — if this is
-    # a reply to one of our outbound sends, it's claim-related by definition.
-    has_thread_match = False
-    if in_reply_to:
-        thread_check = sb.table("email_drafts").select("claim_id").eq(
-            "gmail_thread_id", in_reply_to
-        ).limit(1).execute()
-        has_thread_match = bool(thread_check.data and thread_check.data[0].get("claim_id"))
-
-    if classification != "carrier" and not has_thread_match:
-        # Not claim-related — skip silently. Don't mark as read; user may want
-        # to act on it in their own inbox.
+    if not matched_claim:
+        # Defensive — shouldn't happen because Gmail filtered to subject-match
+        # only. If it does (e.g. the claim_number contained Gmail-special chars
+        # that didn't tokenize cleanly), skip without marking as read.
+        print(f"[USER GMAIL POLLER] {sending_email}: msg {msg_id} matched query but no claim_number found in subject={subject[:60]!r}", flush=True)
         return
 
-    # Match to a claim using existing cascade (thread → address → carrier → subject)
-    carrier_name = identify_carrier(from_email, parsed.get("text_body", ""))
-    claim_number = extract_claim_number(parsed.get("subject", "") + "\n" + parsed.get("text_body", ""))
-    address = extract_address(parsed.get("text_body", ""))
+    # Carrier name (informational only — not used for matching, but stored)
+    carrier_name = identify_carrier(from_email, parsed.get("text_body", "")) or matched_claim.get("carrier")
 
-    match = match_to_claim(
-        sb, user_id,
-        in_reply_to=in_reply_to,
-        claim_number=claim_number,
-        address=address,
-        carrier_name=carrier_name,
-        subject=parsed.get("subject", ""),
-    )
-
-    # Insert carrier_correspondence — analysis_status='pending' explicitly so
-    # the per-claim Comms tab knows AI hasn't run yet. User triggers analysis
-    # via "Analyze & Draft Response" button in CommunicationsCenter.
-    # Column names match the central poller's INSERT at gmail_poller.py:902.
     record = {
-        "claim_id": match.get("claim_id"),
+        "claim_id": matched_claim["id"],
         "user_id": user_id,
         "message_id": parsed.get("message_id"),
         "from_email": parsed.get("from_email"),
         "original_from": parsed.get("from_email"),
-        "original_subject": parsed.get("subject"),
+        "original_subject": subject,
         "original_date": parsed.get("date"),
         "text_body": parsed.get("text_body"),
         "html_body": parsed.get("html_body"),
-        "is_forwarded": False,  # per-user inbox = direct replies, not forwards
-        "carrier_name": carrier_name or match.get("carrier_name"),
-        "claim_number_parsed": claim_number,
-        "address_parsed": address,
-        "attachment_paths": [],  # storage-only path doesn't fetch attachments
-        "match_method": match.get("method"),
-        "match_confidence": match.get("confidence"),
-        "analysis_status": "pending",  # NO AI yet — user must opt-in
-        "status": "matched" if match.get("claim_id") else "unmatched",
+        "is_forwarded": False,
+        "carrier_name": carrier_name,
+        "claim_number_parsed": matched_claim_number,
+        "address_parsed": matched_claim.get("address"),
+        "attachment_paths": [],
+        "match_method": "claim_number_subject",
+        "match_confidence": 95,  # subject contains exact claim_number = high confidence
+        "analysis_status": "pending",  # NO AI yet
+        "status": "matched",
     }
 
     try:
@@ -1158,51 +1152,62 @@ async def _process_user_message(sb: Client, service, msg_id: str, user_id: str, 
         corr_id = (result.data or [{}])[0].get("id") if result.data else None
         print(
             f"[USER GMAIL POLLER] {sending_email} → corr {corr_id}, "
-            f"claim={match.get('claim_id') or 'UNMATCHED'}, "
-            f"carrier={carrier_name}, conf={match.get('confidence')}, "
-            f"from={from_email}, subject={(parsed.get('subject') or '')[:50]}",
+            f"claim={matched_claim['id']}, claim_number={matched_claim_number}, "
+            f"from={from_email}, subject={subject[:50]}",
             flush=True,
         )
     except Exception as e:
-        # Likely a unique-constraint violation on gmail_message_id if the dup
-        # check above raced. Idempotent no-op.
-        msg = str(e).lower()
-        if "duplicate" in msg or "unique" in msg:
+        msg_lower = str(e).lower()
+        if "duplicate" in msg_lower or "unique" in msg_lower:
             pass
         else:
             print(f"[USER GMAIL POLLER] Insert failed for {user_id}/{msg_id}: {type(e).__name__}: {e}", flush=True)
             return
 
-    # Mark as read so we don't reprocess on next cycle.
+    # Safe to mark as read — we ONLY fetched claim-number-matched messages.
     await asyncio.to_thread(_mark_as_read, service, msg_id)
 
 
 async def _poll_one_user(sb: Client, user: dict) -> None:
-    """Poll one connected contractor's Gmail inbox for unread carrier replies."""
+    """Poll one connected contractor's Gmail inbox for replies referencing
+    their claim numbers in the subject line. Privacy-preserving: Gmail's
+    subject:() filter means we never fetch any non-claim email.
+    """
     refresh_token = user.get("gmail_refresh_token") or ""
     user_id = user.get("user_id") or ""
     sending_email = (user.get("sending_email") or "").strip()
     if not refresh_token or not user_id:
         return
 
+    # Fetch THIS user's claim numbers + claim metadata. Empty claim_numbers =
+    # nothing to scan for, skip the user entirely (zero Gmail API cost).
+    try:
+        claims_res = sb.table("claims").select(
+            "id, claim_number, address, carrier"
+        ).eq("user_id", user_id).not_.is_("claim_number", "null").execute()
+    except Exception as e:
+        print(f"[USER GMAIL POLLER] {sending_email or user_id}: claim lookup failed: {type(e).__name__}: {e}", flush=True)
+        return
+
+    claims = claims_res.data or []
+    # Build {claim_number: {id, address, carrier}} for O(1) resolution after match
+    claim_lookup = {(c.get("claim_number") or "").strip(): c for c in claims if c.get("claim_number")}
+    if not claim_lookup:
+        return  # User has no claims with claim_numbers — nothing to scan
+
+    query = _build_claim_number_subject_query(list(claim_lookup.keys()), sending_email)
+    if not query:
+        return
+
     try:
         service = await asyncio.to_thread(get_gmail_service_for_user, refresh_token)
     except Exception as e:
-        # invalid_grant = user revoked. Surface clearly so we know to nudge
-        # them to reconnect. Other errors (rate limit, network) bubble up.
-        msg = str(e)
-        if "invalid_grant" in msg.lower() or "revoke" in msg.lower():
+        emsg = str(e)
+        if "invalid_grant" in emsg.lower() or "revoke" in emsg.lower():
             print(f"[USER GMAIL POLLER] {sending_email or user_id}: refresh_token revoked — needs reconnect", flush=True)
         else:
             print(f"[USER GMAIL POLLER] {sending_email or user_id}: service init failed: {type(e).__name__}: {e}", flush=True)
         return
-
-    # Build Gmail search query. -from:me on a per-user inbox skips our own outbound
-    # sends (which are CC'd back via Gmail to land in Sent → also visible in inbox
-    # if Gmail's "Show in inbox" is set). newer_than:1d caps to recent for cost
-    # bounding; hourly cadence means we'd never miss anything older than that anyway.
-    from_filter = f" -from:{sending_email}" if sending_email else ""
-    query = f"is:unread newer_than:1d{from_filter}"
 
     try:
         results = await asyncio.to_thread(
@@ -1218,12 +1223,12 @@ async def _poll_one_user(sb: Client, user: dict) -> None:
 
     messages = results.get("messages", []) or []
     if not messages:
-        return
+        return  # No claim-number-matched unread — common case, log nothing
 
-    print(f"[USER GMAIL POLLER] {sending_email or user_id}: {len(messages)} unread to triage", flush=True)
+    print(f"[USER GMAIL POLLER] {sending_email or user_id}: {len(messages)} claim-matched message(s) ({len(claim_lookup)} claim numbers scanned)", flush=True)
     for msg_ref in messages:
         try:
-            await _process_user_message(sb, service, msg_ref["id"], user_id, sending_email)
+            await _process_user_message(sb, service, msg_ref["id"], user_id, sending_email, claim_lookup)
         except Exception as e:
             print(f"[USER GMAIL POLLER] {user_id}/{msg_ref['id']}: process error: {type(e).__name__}: {e}", flush=True)
 
