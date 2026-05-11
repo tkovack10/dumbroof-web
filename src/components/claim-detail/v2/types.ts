@@ -29,7 +29,8 @@ export interface V2Slots {
   generatedDocs: ReactNode;        // Generated PDFs + SendDocumentsBlock
   sourceDocs: ReactNode;           // UploadedDocuments component
   scopeComparison: ReactNode;      // ScopeComparison component
-  estimateView: ReactNode;         // EstimateView component
+  estimateView: ReactNode;         // EstimateView component (read-only browse/tabs/photos)
+  estimateEditor: ReactNode;       // Embedded ScopeReviewContent (line-item edit/add/remove)
   estimateConfig: ReactNode;       // EstimateConfigPanel inline
   supplementComposer: ReactNode;   // SupplementComposer component
   roofPhotoMap: ReactNode;         // RoofPhotoMap component

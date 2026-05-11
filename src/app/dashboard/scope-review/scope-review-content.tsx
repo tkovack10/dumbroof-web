@@ -26,9 +26,16 @@ interface EditState {
   unit_price: string;
 }
 
-export function ScopeReviewContent() {
+interface ScopeReviewContentProps {
+  /** When set, overrides the `?claim=...` URL param. Used by embedded mode in the per-claim page. */
+  claimId?: string | null;
+  /** When true, drops route-level chrome (nav, min-h-screen wrapper, external nav links) so the editor renders inside a host page. */
+  embedded?: boolean;
+}
+
+export function ScopeReviewContent({ claimId: claimIdProp, embedded = false }: ScopeReviewContentProps = {}) {
   const searchParams = useSearchParams();
-  const claimId = searchParams.get("claim");
+  const claimId = claimIdProp ?? searchParams.get("claim");
 
   const [items, setItems] = useState<LineItemForReview[]>([]);
   const [loading, setLoading] = useState(true);
@@ -202,43 +209,59 @@ export function ScopeReviewContent() {
   const liveTotal = activeItems.reduce((sum, i) => sum + i.qty * i.unit_price, 0);
   const reviewedCount = items.filter((i) => i.feedback_status !== null).length;
 
+  const OuterTag = embedded ? "div" : "main";
+  const outerClass = embedded ? "" : "min-h-screen bg-white/[0.04]";
+  const containerClass = embedded ? "space-y-6" : "max-w-5xl mx-auto px-6 py-8 space-y-6";
+
   if (!claimId) {
     return (
-      <main className="min-h-screen bg-white/[0.04] flex items-center justify-center">
+      <OuterTag className={`${outerClass} ${embedded ? "" : "flex items-center justify-center"}`}>
         <p className="text-[var(--gray-dim)]">No claim specified. Go back to your dashboard.</p>
-      </main>
+      </OuterTag>
     );
   }
 
   if (loading) {
     return (
-      <main className="min-h-screen bg-white/[0.04] flex items-center justify-center">
+      <OuterTag className={`${outerClass} ${embedded ? "" : "flex items-center justify-center"}`}>
         <p className="text-[var(--gray-dim)]">Loading line items...</p>
-      </main>
+      </OuterTag>
     );
   }
 
   return (
-    <main className="min-h-screen bg-white/[0.04]">
-      {/* Nav */}
-      <nav className="bg-[rgba(6,9,24,0.85)] backdrop-blur-[20px] border-b border-[var(--border-glass)] sticky top-0 z-50">
-        <div className="max-w-5xl mx-auto px-6 py-4 flex items-center justify-between">
-          <a href="/dashboard" className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-[var(--pink)] to-[var(--blue)] flex items-center justify-center font-bold text-white text-xs">DR</div>
-            <span className="text-white font-bold text-lg tracking-tight">Scope Review</span>
-          </a>
-          <div className="flex items-center gap-4 text-sm text-[var(--gray-dim)]">
-            <span className="text-green-400">{sessionStats.approved} approved</span>
-            <span className="text-blue-400">{sessionStats.corrected} corrected</span>
-            <span className="text-red-400">{sessionStats.removed} removed</span>
-            <span className="text-purple-400">{sessionStats.added} added</span>
+    <OuterTag className={outerClass}>
+      {/* Route-level chrome — hidden in embedded mode (host page already has its own nav). */}
+      {!embedded && (
+        <nav className="bg-[rgba(6,9,24,0.85)] backdrop-blur-[20px] border-b border-[var(--border-glass)] sticky top-0 z-50">
+          <div className="max-w-5xl mx-auto px-6 py-4 flex items-center justify-between">
+            <a href="/dashboard" className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-[var(--pink)] to-[var(--blue)] flex items-center justify-center font-bold text-white text-xs">DR</div>
+              <span className="text-white font-bold text-lg tracking-tight">Scope Review</span>
+            </a>
+            <div className="flex items-center gap-4 text-sm text-[var(--gray-dim)]">
+              <span className="text-green-400">{sessionStats.approved} approved</span>
+              <span className="text-blue-400">{sessionStats.corrected} corrected</span>
+              <span className="text-red-400">{sessionStats.removed} removed</span>
+              <span className="text-purple-400">{sessionStats.added} added</span>
+            </div>
           </div>
+        </nav>
+      )}
+
+      {/* Embedded mode shows session stats compactly above the financial summary. */}
+      {embedded && (sessionStats.approved + sessionStats.corrected + sessionStats.removed + sessionStats.added > 0) && (
+        <div className="flex items-center gap-3 text-xs text-[var(--gray-dim)] px-1 pb-2">
+          {sessionStats.approved > 0 && <span className="text-green-400">{sessionStats.approved} approved</span>}
+          {sessionStats.corrected > 0 && <span className="text-blue-400">{sessionStats.corrected} corrected</span>}
+          {sessionStats.removed > 0 && <span className="text-red-400">{sessionStats.removed} removed</span>}
+          {sessionStats.added > 0 && <span className="text-purple-400">{sessionStats.added} added</span>}
         </div>
-      </nav>
+      )}
 
       {/* Error banner */}
       {error && (
-        <div className="max-w-5xl mx-auto px-6 mt-4">
+        <div className={embedded ? "mt-1" : "max-w-5xl mx-auto px-6 mt-4"}>
           <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3 flex items-center justify-between">
             <span>{error}</span>
             <button onClick={() => setError(null)} className="text-red-400 hover:text-red-600 ml-3">&times;</button>
@@ -246,7 +269,7 @@ export function ScopeReviewContent() {
         </div>
       )}
 
-      <div className="max-w-5xl mx-auto px-6 py-8 space-y-6">
+      <div className={containerClass}>
         {/* Roof Sections Editor */}
         {claimId && <RoofSectionsEditor claimId={claimId} />}
 
@@ -499,9 +522,9 @@ export function ScopeReviewContent() {
           );
         })}
 
-        {/* Action buttons */}
+        {/* Action buttons — external nav links suppressed in embedded mode (host page already provides them). */}
         <div className="flex flex-col items-center gap-3 pt-4">
-          {claimId && (
+          {claimId && !embedded && (
             <a
               href={`/dashboard/claim/${claimId}`}
               className="bg-gradient-to-r from-[var(--pink)] via-[var(--purple)] to-[var(--blue)] hover:shadow-[var(--shadow-glow-pink)] text-white px-8 py-3 rounded-xl font-semibold transition-colors inline-block"
@@ -518,11 +541,13 @@ export function ScopeReviewContent() {
           </button>
         </div>
 
-        {/* Back link */}
-        <div className="text-center pb-8">
-          <a href="/dashboard" className="text-sm text-[var(--gray-muted)] hover:text-[var(--white)]">Back to Dashboard</a>
-        </div>
+        {/* Back link — only on the standalone route. */}
+        {!embedded && (
+          <div className="text-center pb-8">
+            <a href="/dashboard" className="text-sm text-[var(--gray-muted)] hover:text-[var(--white)]">Back to Dashboard</a>
+          </div>
+        )}
       </div>
-    </main>
+    </OuterTag>
   );
 }
