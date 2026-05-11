@@ -34,9 +34,7 @@ export interface V2Slots {
   supplementComposer: ReactNode;   // SupplementComposer component
   roofPhotoMap: ReactNode;         // RoofPhotoMap component
   communicationLog: ReactNode;     // CommunicationLog component
-  carrierCorrespondence: ReactNode;// Carrier correspondence inline timeline
-  draftResponses: ReactNode;       // Draft Response Panels (zero or many)
-  editRequests: ReactNode;         // Edit Requests Panel
+  communicationsCenter: ReactNode; // Edit requests + carrier correspondence + draft responses (consolidated)
   signatureManager: ReactNode;     // SignatureManager (AOB / Contingency)
   homeownerEngagement: ReactNode;  // HomeownerEngagementCard
   readyToBuild: ReactNode;         // ReadyToBuildCard
