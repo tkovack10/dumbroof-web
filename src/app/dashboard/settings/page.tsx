@@ -5,6 +5,8 @@ import { useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { useBillingQuota } from "@/hooks/use-billing-quota";
 import { AdminBrainChat } from "@/components/admin-brain-chat";
+import { canSeeUiVersionToggle, type UiVersion } from "@/lib/ui-version";
+import type { User } from "@supabase/supabase-js";
 
 interface Forwarder {
   id: string;
@@ -32,6 +34,11 @@ function SettingsPageContent() {
   const passwordRef = useRef<HTMLDivElement>(null);
   const [loading, setLoading] = useState(true);
   const [currentUserId, setCurrentUserId] = useState<string>("");
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  // UI-version preference (Phase 2 redesign — admin-only toggle until v2 ships to all)
+  const [uiVersionPref, setUiVersionPref] = useState<UiVersion>("v1");
+  const [uiVersionSaving, setUiVersionSaving] = useState(false);
+  const [uiVersionSaved, setUiVersionSaved] = useState(false);
   const billing = useBillingQuota();
   const [portalLoading, setPortalLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -143,6 +150,10 @@ function SettingsPageContent() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
       setCurrentUserId(user.id);
+      setCurrentUser(user);
+      // Hydrate UI-version preference from user_metadata (default v1)
+      const stored = (user.user_metadata?.ui_version || "v1") as UiVersion;
+      setUiVersionPref(stored === "v2" ? "v2" : "v1");
 
       const { data } = await supabase
         .from("company_profiles")
@@ -1420,6 +1431,60 @@ function SettingsPageContent() {
           </form>
         </div>
       </div>
+
+      {/* UI Version toggle — admin-only during Phase 2 ramp.
+          Drop the gate (replace with `true`) once v2 ships to all users. */}
+      {canSeeUiVersionToggle(currentUser) && (
+        <div className="max-w-3xl mx-auto px-6 pb-10">
+          <div className="bg-white/[0.04] border border-white/[0.1] rounded-xl p-6">
+            <div className="mb-3">
+              <h2 className="text-xl font-bold text-[var(--white)] mb-1">
+                Per-claim page (beta)
+                <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-[var(--pink)]/15 text-[var(--pink)] border border-[var(--pink)]/30 align-middle">
+                  ADMIN
+                </span>
+              </h2>
+              <p className="text-sm text-[var(--gray-muted)]">
+                Try the redesigned per-claim layout with tabs, sticky highlights, and right-rail inspector. Reverts at any time. URL override: <code className="text-[var(--cyan)] text-xs">?ui=v2</code>.
+              </p>
+            </div>
+            <div className="flex items-center gap-3">
+              {(["v1", "v2"] as UiVersion[]).map((v) => {
+                const active = uiVersionPref === v;
+                return (
+                  <button
+                    key={v}
+                    onClick={async () => {
+                      if (active || uiVersionSaving) return;
+                      setUiVersionSaving(true);
+                      setUiVersionSaved(false);
+                      setUiVersionPref(v);
+                      const { error } = await supabase.auth.updateUser({ data: { ui_version: v } });
+                      setUiVersionSaving(false);
+                      if (error) {
+                        setUiVersionPref(active ? "v1" : "v2");
+                      } else {
+                        setUiVersionSaved(true);
+                        setTimeout(() => setUiVersionSaved(false), 2000);
+                      }
+                    }}
+                    disabled={uiVersionSaving}
+                    className={`flex-1 px-4 py-3 rounded-lg border text-sm font-semibold transition-colors ${
+                      active
+                        ? "bg-gradient-to-br from-[var(--pink)]/15 to-[var(--blue)]/15 border-[var(--pink)]/30 text-white"
+                        : "bg-white/[0.04] border-white/[0.1] text-[var(--gray-muted)] hover:text-white hover:bg-white/[0.08]"
+                    }`}
+                  >
+                    {v === "v1" ? "v1 — Current layout" : "v2 — Tabs & inspector"}
+                  </button>
+                );
+              })}
+              {uiVersionSaving && <span className="text-xs text-[var(--gray-muted)]">Saving…</span>}
+              {uiVersionSaved && <span className="text-xs text-[var(--cyan)]">Saved ✓</span>}
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 }

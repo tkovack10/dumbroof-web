@@ -2,7 +2,10 @@
 
 import { useEffect, useState, useCallback, useRef, useMemo } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
+import { resolveUiVersion, type UiVersion } from "@/lib/ui-version";
+import type { User } from "@supabase/supabase-js";
+import { V2Layout } from "@/components/claim-detail/v2/v2-layout";
 import { FileUploadZone } from "@/components/file-upload-zone";
 import { PendingChangesBanner } from "@/components/pending-changes-banner";
 import { ScopeComparison } from "@/components/scope-comparison";
@@ -144,8 +147,12 @@ interface EmailDraft {
 export default function ClaimDetailPage() {
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const supabase = createClient();
   const claimId = params.id as string;
+  // UI version flag — Phase 2 gate. Reads URL ?ui= → user_metadata → 'v1'.
+  const [authUser, setAuthUser] = useState<User | null>(null);
+  const uiVersion: UiVersion = resolveUiVersion(searchParams.get("ui"), authUser);
 
   const quota = useBillingQuota();
   const [claim, setClaim] = useState<Claim | null>(null);
@@ -182,6 +189,7 @@ export default function ClaimDetailPage() {
       router.push("/login");
       return;
     }
+    setAuthUser(user);
     if (user.id && !currentUserId) {
       setCurrentUserId(user.id);
       // Fetch company profile for supplement composer signature
@@ -782,6 +790,229 @@ export default function ClaimDetailPage() {
         );
       })()}
 
+      {uiVersion === "v2" ? (
+        <V2Layout
+          claim={claim}
+          isReprocessing={reprocessing || isReprocessingState}
+          onUpload={() => {
+            setShowUpload(true);
+            setTimeout(() => formRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }), 100);
+          }}
+          onReprocess={handleReprocess}
+          win={
+            claim.claim_outcome === "won" && (claim.settlement_amount ?? 0) > (claim.original_carrier_rcv ?? 0)
+              ? {
+                  orig: claim.original_carrier_rcv ?? 0,
+                  updated: claim.settlement_amount ?? 0,
+                  move: (claim.settlement_amount ?? 0) - (claim.original_carrier_rcv ?? 0),
+                  pct: (claim.original_carrier_rcv ?? 0) > 0
+                    ? Math.round((((claim.settlement_amount ?? 0) - (claim.original_carrier_rcv ?? 0)) / (claim.original_carrier_rcv ?? 0)) * 100)
+                    : 0,
+                }
+              : null
+          }
+          slots={{
+            pathBar: (
+              <ClaimLifecycleBar
+                claim={claim}
+                onScrollTo={(section) => {
+                  const el = document.getElementById(`lifecycle-${section}`);
+                  if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+                }}
+              />
+            ),
+            contactCard: (
+              <ContactRegistryCard
+                claimId={claim.id}
+                initial={{
+                  homeowner_name: claim.homeowner_name,
+                  homeowner_email: claim.homeowner_email,
+                  homeowner_phone: claim.homeowner_phone,
+                  adjuster_name: claim.adjuster_name,
+                  adjuster_email: claim.adjuster_email,
+                  adjuster_phone: claim.adjuster_phone,
+                  claim_number: claim.claim_number,
+                  policy_number: claim.policy_number,
+                  contact_source: claim.contact_source as Record<string, string | undefined> | null,
+                }}
+                onChange={(patch) => setClaim({ ...claim, ...patch })}
+              />
+            ),
+            editFieldsCard: (
+              <EditReportFieldsCard
+                claimId={claim.id}
+                initial={{
+                  date_of_loss: claim.date_of_loss,
+                  inspection_date: claim.inspection_date,
+                  homeowner_name: claim.homeowner_name,
+                  address: claim.address,
+                }}
+              />
+            ),
+            timelineRail: <ClaimTimelineRail claimId={claim.id} />,
+            communicationLog: isReady ? <CommunicationLog claimId={claim.id} /> : null,
+            generatedDocs: isReady && claim.output_files && claim.output_files.length > 0 ? (
+              <div>
+                <div className="grid sm:grid-cols-2 gap-3 mb-4">
+                  {claim.output_files.map((file) => (
+                    <button
+                      key={file}
+                      onClick={() => handleDownload(file)}
+                      disabled={downloading === file}
+                      className="flex items-center gap-3 bg-green-500/10 border border-green-500/30 rounded-xl px-4 py-3 text-left hover:bg-green-500/20 transition-colors disabled:opacity-50"
+                    >
+                      <svg className="w-5 h-5 text-green-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                      </svg>
+                      <span className="text-sm text-[var(--gray)] font-medium">
+                        {file.replace(/_/g, " ").replace(".pdf", "")}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+                <SendDocumentsBlock
+                  claimId={claim.id}
+                  claimAddress={claim.address}
+                  claimNumber={claim.claim_number || ""}
+                  adjusterEmail={claim.adjuster_email || ""}
+                  carrierName={claim.carrier || ""}
+                  outputFiles={claim.output_files}
+                  filePath={claim.file_path}
+                />
+              </div>
+            ) : null,
+            sourceDocs: isReady ? (
+              <UploadedDocuments
+                filePath={claim.file_path}
+                measurementFiles={claim.measurement_files}
+                scopeFiles={claim.scope_files}
+                weatherFiles={claim.weather_files}
+                otherFiles={claim.other_files}
+                cocFiles={claim.coc_files}
+                aobFiles={claim.aob_files}
+              />
+            ) : null,
+            scopeComparison: <ScopeComparison claimId={claim.id} carrierName={claim.carrier} refreshKey={claim.last_processed_at} />,
+            roofPhotoMap: (
+              <RoofPhotoMap
+                roofFacets={claim.roof_facets || null}
+                slopeDamage={claim.slope_damage || null}
+                fullReroofTrigger={Boolean(claim.full_reroof_trigger)}
+                photos={roofMapPhotos}
+                photoUrls={roofMapPhotoUrls}
+              />
+            ),
+            estimateView: (
+              <div id="lifecycle-estimate"><EstimateView claimId={claim.id} refreshKey={claim.last_processed_at} /></div>
+            ),
+            estimateConfig: isReady && (claim.measurement_files?.length ?? 0) > 0 ? (
+              <EstimateConfigPanel
+                claimId={claim.id}
+                existingRequest={claim.estimate_request}
+                onReprocess={() => { setClaim((prev) => prev ? { ...prev, status: "uploaded" } : prev); }}
+              />
+            ) : null,
+            supplementComposer: isReady && claim.scope_comparison && !isForensicOnly ? (
+              <div id="lifecycle-supplement">
+                <SupplementComposer
+                  claimId={claim.id}
+                  claimAddress={claim.address}
+                  carrierName={claim.carrier}
+                  comparisonRows={claim.scope_comparison as ScopeComparisonRow[]}
+                  carrierRcv={claim.current_carrier_rcv ?? claim.original_carrier_rcv ?? 0}
+                  contractorRcv={claim.contractor_rcv ?? 0}
+                  userId={currentUserId}
+                  userName={userProfile.name}
+                  companyName={userProfile.company}
+                  companyPhone={userProfile.phone}
+                  adjusterEmail={claim.adjuster_email || ""}
+                  claimNumber={claim.claim_number || ""}
+                />
+              </div>
+            ) : null,
+            uploadDocsBlock: null, // Add Documents block hoisted to action bar in v2
+            signatureManager: isReady ? (
+              <SignatureManager
+                claimId={claim.id}
+                claimAddress={claim.address}
+                carrierName={claim.carrier}
+                userId={currentUserId}
+                filePath={claim.file_path}
+                claimNumber={claim.claim_number || ""}
+                adjusterEmail={claim.adjuster_email || ""}
+              />
+            ) : null,
+            homeownerEngagement: isReady ? (
+              <HomeownerEngagementCard claimId={claim.id} homeownerEmail={claim.homeowner_email} />
+            ) : null,
+            readyToBuild: isReady ? (
+              <ReadyToBuildCard
+                claimId={claim.id}
+                claimOutcome={claim.claim_outcome || null}
+                hasForensicWin={hasForensicWin}
+              />
+            ) : null,
+            installSupplements: isReady && !isForensicOnly ? (
+              <InstallSupplementBuilder
+                claimId={claim.id}
+                claimAddress={claim.address}
+                carrierName={claim.carrier}
+                userId={currentUserId}
+                filePath={claim.file_path}
+                claimNumber={claim.claim_number || ""}
+                adjusterEmail={claim.adjuster_email || ""}
+              />
+            ) : null,
+            certificateOfCompletion: isReady && !isForensicOnly ? (
+              <div id="lifecycle-completion">
+                <CocBuilder
+                  claimId={claim.id}
+                  claimAddress={claim.address}
+                  carrierName={claim.carrier}
+                  userId={currentUserId}
+                  filePath={claim.file_path}
+                  claimNumber={claim.claim_number || ""}
+                  adjusterEmail={claim.adjuster_email || ""}
+                />
+              </div>
+            ) : null,
+            invoicing: isReady && !isForensicOnly ? (
+              <InvoiceBuilder
+                claimId={claim.id}
+                claimAddress={claim.address}
+                carrierName={claim.carrier}
+                userId={currentUserId}
+              />
+            ) : null,
+            // v2 doesn't merge the 3 comm surfaces yet (Phase 3 work) — render the carrier
+            // correspondence/draft/edit-request inline JSX as `null` for v2 and let the
+            // ones from v1 fall back to the existing implementation. We surface counts via
+            // the highlights chip + the Comms tab badge so nothing is hidden.
+            carrierCorrespondence: null,
+            draftResponses: null,
+            editRequests: null,
+            // Conditional banners — v2 renders them above the tabs; reuse the existing
+            // logic by leaving as null here and letting the dedicated banner components
+            // (PendingChangesBanner) keep firing (they're outside the v1/v2 gate).
+            conditionalBanners: !isReprocessingState ? <PendingChangesBanner claimId={claimId} /> : null,
+            lockedScopeComparison: isReady && isForensicOnly ? (
+              <LockedCard title="Line-by-Line Carrier Comparison" description="Compare your scope against the carrier's to find every underpayment and missing item." />
+            ) : null,
+            lockedEstimate: isReady && isForensicOnly && !(claim.measurement_files?.length) ? (
+              <LockedCard title="Code-Cited Estimate" description="Every line item backed by building codes, photo evidence, and regional Xactimate pricing." />
+            ) : null,
+            lockedInstall: isReady && isForensicOnly ? (
+              <LockedCard title="Install Supplement Documentation" description="Document items discovered during installation — plywood, extra layers, hidden damage." />
+            ) : null,
+            lockedCoc: isReady && isForensicOnly ? (
+              <LockedCard title="Certificate of Substantial Completion" description="Generate and send completion documents with embedded photos." />
+            ) : null,
+            lockedInvoice: isReady && isForensicOnly ? (
+              <LockedCard title="Invoice Builder" description="Generate and send invoices with Stripe payment links." />
+            ) : null,
+          }}
+        />
+      ) : (
       <div className="max-w-4xl mx-auto px-6 pt-10 pb-28 sm:pb-24 space-y-6">
         {/* Claim Lifecycle Progress Bar */}
         <ClaimLifecycleBar
@@ -2014,6 +2245,7 @@ export default function ClaimDetailPage() {
           );
         })}
       </div>
+      )}
 
       {/* Claim Brain — AI Chat */}
       {claim && (
