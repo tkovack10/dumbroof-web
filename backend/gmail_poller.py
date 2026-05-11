@@ -73,6 +73,21 @@ CARRIER_DOMAINS: dict[str, str] = {
     "mapfre.com": "MAPFRE",
     "csaa.com": "CSAA",
     "farmersinsurance.com": "Farmers",
+    # Added 2026-05-11 — Lemonade reply on 9 Highland would have skipped without this
+    "lemonade.com": "Lemonade",
+    "kemper.com": "Kemper",
+    "metlife.com": "MetLife",
+    "americanfamily.com": "American Family",
+    "auto-owners.com": "Auto-Owners",
+    "plymouthrock.com": "Plymouth Rock",
+    "homesite.com": "Homesite",
+    "esurance.com": "Esurance",
+    "rootinsurance.com": "Root",
+    "branch.com": "Branch",
+    "haag.com": "Haag Engineering",  # often handles carrier inspections
+    "nationalgeneral.com": "National General",
+    "stillwater.com": "Stillwater",
+    "encompassinsurance.com": "Encompass",
 }
 
 
