@@ -1126,6 +1126,49 @@ async def _process_user_message(
     # Carrier name (informational only — not used for matching, but stored)
     carrier_name = identify_carrier(from_email, parsed.get("text_body", "")) or matched_claim.get("carrier")
 
+    # Upload attachments (PDFs + images) to Supabase storage so the user can
+    # download them from the per-claim Comms tab. Carriers often send updated
+    # scopes, supplements, or denials as PDFs — this captures them.
+    #
+    # Path convention matches the central claims@dumbroof.ai poller:
+    # `{user_id}/{claim_slug}/correspondence/{timestamp}_{filename}`. The claim_slug
+    # is derived from the claim address (lowercase, alphanumeric+hyphen, max 50 chars).
+    attachment_paths: list[str] = []
+    attachments = parsed.get("attachments") or []
+    if attachments:
+        claim_slug = re.sub(
+            r"[^a-z0-9]+", "-",
+            (matched_claim.get("address") or "claim").lower()
+        )[:50] or "claim"
+        ts = int(datetime.utcnow().timestamp())
+        for att in attachments:
+            try:
+                filename = att.get("filename") or "attachment.bin"
+                # Gmail returns base64url-encoded content; pad and decode to raw bytes
+                file_bytes = base64.urlsafe_b64decode((att.get("content") or "") + "==")
+                if not file_bytes:
+                    continue
+                storage_path = f"{user_id}/{claim_slug}/correspondence/{ts}_{filename}"
+                sb.storage.from_("claim-documents").upload(
+                    storage_path, file_bytes,
+                    {"content-type": att.get("mimeType") or "application/octet-stream"},
+                )
+                attachment_paths.append(storage_path)
+                print(
+                    f"[USER GMAIL POLLER]   attached: {filename} "
+                    f"({len(file_bytes)//1024}KB, {att.get('mimeType','?')}) → {storage_path}",
+                    flush=True,
+                )
+            except Exception as upload_err:
+                # Most common failure: duplicate path collision (Gmail re-delivering
+                # same msg in a race) — log + continue, don't fail the whole insert.
+                emsg = str(upload_err)
+                if "already exists" in emsg.lower() or "duplicate" in emsg.lower():
+                    # File already uploaded on a prior cycle — reuse the path
+                    attachment_paths.append(storage_path)
+                else:
+                    print(f"[USER GMAIL POLLER]   upload failed for {filename}: {emsg}", flush=True)
+
     record = {
         "claim_id": matched_claim["id"],
         "user_id": user_id,
@@ -1140,7 +1183,7 @@ async def _process_user_message(
         "carrier_name": carrier_name,
         "claim_number_parsed": matched_claim_number,
         "address_parsed": matched_claim.get("address"),
-        "attachment_paths": [],
+        "attachment_paths": attachment_paths,
         "match_method": "claim_number_subject",
         "match_confidence": 95,  # subject contains exact claim_number = high confidence
         "analysis_status": "pending",  # NO AI yet
