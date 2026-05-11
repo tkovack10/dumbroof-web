@@ -8,11 +8,10 @@ interface Props {
 }
 
 /**
- * Photos tab — RoofPhotoMap (per-slope diagram) is the centerpiece. Below
- * it the per-photo editor lives in a collapsible "Refine photos" panel
- * (Phase 3c-3 embedded PhotoReviewContent — same pattern as the Scope tab's
- * "Refine line items"). Default collapsed because the editor is 653 LOC of
- * UI; ScopeReviewContent only mounts when the panel opens.
+ * Photos tab — collapsible "Refine photos" panel sits above the RoofPhotoMap
+ * per-slope diagram. Editor is Phase 3c-3 embedded PhotoReviewContent; same
+ * pattern as the Scope tab's "Refine line items". Default collapsed because
+ * the editor is 653 LOC of UI; PhotoReviewContent only mounts when opened.
  *
  * Standalone /dashboard/photo-review route still works for direct links.
  */
@@ -21,17 +20,6 @@ export function PhotosTab({ slots }: Props) {
 
   return (
     <div className="space-y-4">
-      {slots.roofPhotoMap && (
-        <section>{slots.roofPhotoMap}</section>
-      )}
-      {!slots.roofPhotoMap && (
-        <section className="bg-white/[0.04] border border-white/[0.1] rounded-xl p-6 text-center">
-          <div className="text-[var(--gray-muted)] text-sm">
-            Per-slope photo map will appear here once an EagleView measurement file is processed.
-          </div>
-        </section>
-      )}
-
       {slots.photoEditor && (
         <section className="bg-white/[0.04] border border-white/[0.1] rounded-xl overflow-hidden">
           <button
@@ -60,6 +48,17 @@ export function PhotosTab({ slots }: Props) {
               {slots.photoEditor}
             </div>
           )}
+        </section>
+      )}
+
+      {slots.roofPhotoMap && (
+        <section>{slots.roofPhotoMap}</section>
+      )}
+      {!slots.roofPhotoMap && (
+        <section className="bg-white/[0.04] border border-white/[0.1] rounded-xl p-6 text-center">
+          <div className="text-[var(--gray-muted)] text-sm">
+            Per-slope photo map will appear here once an EagleView measurement file is processed.
+          </div>
         </section>
       )}
     </div>

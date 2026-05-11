@@ -533,6 +533,80 @@ export default function ClaimDetailPage() {
     />
   );
 
+  // Upload form — shared between v1's inline render (page bottom) and v2's
+  // Documents tab slot. SAME JSX, SAME state, SAME handlers — just rendered
+  // in the right place for each UI version. Function form (not const JSX)
+  // so the tree is only constructed when showUpload is true.
+  const renderUploadForm = () => (
+    <div ref={formRef} className="space-y-5">
+      {/* Category selector */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+        {(
+          Object.entries(CATEGORY_CONFIG) as [
+            UploadCategory,
+            (typeof CATEGORY_CONFIG)[UploadCategory],
+          ][]
+        ).map(([key, config]) => (
+          <button
+            key={key}
+            onClick={() => {
+              setSelectedCategory(key);
+              setNewFiles([]);
+            }}
+            className={`px-3 py-2 rounded-lg text-xs font-medium transition-colors border ${
+              selectedCategory === key
+                ? "bg-gradient-to-r from-[var(--pink)] to-[var(--blue)] text-white border-[var(--navy)]"
+                : "bg-[var(--bg-glass)] text-[var(--gray)] border-[var(--border-glass)] hover:border-[var(--border-glass)]"
+            }`}
+          >
+            {config.label.split(" / ")[0]}
+          </button>
+        ))}
+      </div>
+
+      {/* File upload zone */}
+      <FileUploadZone
+        label={CATEGORY_CONFIG[selectedCategory].label}
+        description={CATEGORY_CONFIG[selectedCategory].description}
+        accept={CATEGORY_CONFIG[selectedCategory].accept}
+        multiple={CATEGORY_CONFIG[selectedCategory].multiple}
+        files={newFiles}
+        onFilesChange={setNewFiles}
+      />
+
+      {/* Actions */}
+      <div className="flex items-center gap-3">
+        <button
+          onClick={handleUploadDocuments}
+          disabled={newFiles.length === 0 || uploading}
+          className="bg-gradient-to-r from-[var(--pink)] via-[var(--purple)] to-[var(--blue)] hover:shadow-[var(--shadow-glow-pink)] disabled:opacity-50 disabled:cursor-not-allowed text-white px-6 py-2.5 rounded-xl font-semibold transition-colors text-sm"
+        >
+          {uploading ? (
+            <span className="flex items-center gap-2">
+              <svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+              </svg>
+              Uploading...
+            </span>
+          ) : (
+            `Upload ${newFiles.length} File${newFiles.length !== 1 ? "s" : ""}`
+          )}
+        </button>
+        <button
+          onClick={() => {
+            setShowUpload(false);
+            setNewFiles([]);
+            setUploadError("");
+          }}
+          className="text-[var(--gray-dim)] hover:text-[var(--gray)] text-sm transition-colors"
+        >
+          Cancel
+        </button>
+      </div>
+    </div>
+  );
+
   const LockedCard = ({ title, description }: { title: string; description: string }) => (
     <div className="glass-card p-6 text-center">
       <div className="w-12 h-12 rounded-xl bg-white/5 flex items-center justify-center mx-auto mb-3">
@@ -893,7 +967,10 @@ export default function ClaimDetailPage() {
                 />
               </div>
             ) : null,
-            uploadDocsBlock: null, // Add Documents block hoisted to action bar in v2
+            // v2 renders the SAME upload form as v1 inside the Documents tab when
+            // showUpload is true. Same JSX, same handlers, same downstream pipeline
+            // (upload → backend reprocess → carrier playbook book-keeping).
+            uploadDocsBlock: showUpload ? renderUploadForm() : null,
             signatureManager: isReady ? (
               <SignatureManager
                 claimId={claim.id}
@@ -1600,90 +1677,7 @@ export default function ClaimDetailPage() {
             </div>
           )}
 
-          {showUpload && (
-            <div ref={formRef} className="space-y-5">
-              {/* Category selector */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                {(
-                  Object.entries(CATEGORY_CONFIG) as [
-                    UploadCategory,
-                    (typeof CATEGORY_CONFIG)[UploadCategory],
-                  ][]
-                ).map(([key, config]) => (
-                  <button
-                    key={key}
-                    onClick={() => {
-                      setSelectedCategory(key);
-                      setNewFiles([]);
-                    }}
-                    className={`px-3 py-2 rounded-lg text-xs font-medium transition-colors border ${
-                      selectedCategory === key
-                        ? "bg-gradient-to-r from-[var(--pink)] to-[var(--blue)] text-white border-[var(--navy)]"
-                        : "bg-[var(--bg-glass)] text-[var(--gray)] border-[var(--border-glass)] hover:border-[var(--border-glass)]"
-                    }`}
-                  >
-                    {config.label.split(" / ")[0]}
-                  </button>
-                ))}
-              </div>
-
-              {/* File upload zone */}
-              <FileUploadZone
-                label={CATEGORY_CONFIG[selectedCategory].label}
-                description={CATEGORY_CONFIG[selectedCategory].description}
-                accept={CATEGORY_CONFIG[selectedCategory].accept}
-                multiple={CATEGORY_CONFIG[selectedCategory].multiple}
-                files={newFiles}
-                onFilesChange={setNewFiles}
-              />
-
-              {/* Actions */}
-              <div className="flex items-center gap-3">
-                <button
-                  onClick={handleUploadDocuments}
-                  disabled={newFiles.length === 0 || uploading}
-                  className="bg-gradient-to-r from-[var(--pink)] via-[var(--purple)] to-[var(--blue)] hover:shadow-[var(--shadow-glow-pink)] disabled:opacity-50 disabled:cursor-not-allowed text-white px-6 py-2.5 rounded-xl font-semibold transition-colors text-sm"
-                >
-                  {uploading ? (
-                    <span className="flex items-center gap-2">
-                      <svg
-                        className="animate-spin w-4 h-4"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                      >
-                        <circle
-                          className="opacity-25"
-                          cx="12"
-                          cy="12"
-                          r="10"
-                          stroke="currentColor"
-                          strokeWidth="4"
-                        />
-                        <path
-                          className="opacity-75"
-                          fill="currentColor"
-                          d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                        />
-                      </svg>
-                      Uploading...
-                    </span>
-                  ) : (
-                    `Upload ${newFiles.length} File${newFiles.length !== 1 ? "s" : ""}`
-                  )}
-                </button>
-                <button
-                  onClick={() => {
-                    setShowUpload(false);
-                    setNewFiles([]);
-                    setUploadError("");
-                  }}
-                  className="text-[var(--gray-dim)] hover:text-[var(--gray)] text-sm transition-colors"
-                >
-                  Cancel
-                </button>
-              </div>
-            </div>
-          )}
+          {showUpload && renderUploadForm()}
         </div>
 
         {/* AOB / Contingency Agreement — digital signatures */}

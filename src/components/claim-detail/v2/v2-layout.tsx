@@ -74,12 +74,27 @@ export function V2Layout({ claim, slots, isReprocessing, onUpload, onReprocess, 
         onReprocess={onReprocess}
         onPrimaryAction={primary.onClick}
         primaryActionLabel={primary.label}
+        onUploadGoToDocuments={() => setActive("documents")}
       />
       <TabBar active={active} onChange={setActive} badges={badges} />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 flex gap-0">
         {/* Main canvas */}
         <main className="flex-1 min-w-0 py-5 pb-32 sm:pb-24 lg:pb-10">
+          {/* Reprocessing feedback — backend pipeline takes ~30s; without this
+              banner the only visual cue is the Reprocess button text flipping. */}
+          {isReprocessing && (
+            <div className="mb-4 bg-[var(--cyan)]/10 border border-[var(--cyan)]/30 text-[var(--cyan)] text-sm rounded-xl px-4 py-3 flex items-center gap-3">
+              <svg className="animate-spin w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+              </svg>
+              <span>
+                <strong className="text-white">Reprocessing your claim</strong> — this takes ~30 seconds. Reports will refresh when done.
+              </span>
+            </div>
+          )}
+
           {/* Conditional banners (PendingChanges / NeedsImprovement / QAReview / FlashSale)
               render above tab content on every tab so urgent state is never hidden. */}
           {slots.conditionalBanners && (

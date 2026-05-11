@@ -10,6 +10,10 @@ interface HighlightsPanelProps {
   onReprocess: () => void;
   onPrimaryAction?: () => void;
   primaryActionLabel?: string;
+  // After firing onUpload (which sets showUpload=true on the page), v2 also
+  // needs to switch the active tab to Documents so the form is visible. v1
+  // doesn't pass this — the form appears inline at its own anchor.
+  onUploadGoToDocuments?: () => void;
 }
 
 const fmtMoney = (n: number) => `$${Math.round(n).toLocaleString()}`;
@@ -30,6 +34,7 @@ export function HighlightsPanel({
   onReprocess,
   onPrimaryAction,
   primaryActionLabel,
+  onUploadGoToDocuments,
 }: HighlightsPanelProps) {
   const carrierLabel = claim.carrier || "Unknown carrier";
   const phaseLabel = claim.phase === "pre-scope" ? "Pre-Scope" : claim.phase === "supplement" ? "Supplement" : claim.phase || "Active";
@@ -80,7 +85,10 @@ export function HighlightsPanel({
                 {primaryActionLabel || "Continue"}
               </button>
               <button
-                onClick={onUpload}
+                onClick={() => {
+                  onUpload();
+                  onUploadGoToDocuments?.();
+                }}
                 className="bg-white/[0.04] border border-white/[0.1] text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors hover:bg-white/[0.08] whitespace-nowrap"
               >
                 Upload
