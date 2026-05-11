@@ -971,3 +971,273 @@ def _mark_as_read(service, msg_id: str):
         ).execute()
     except Exception as e:
         print(f"[GMAIL POLLER] Failed to mark {msg_id} as read: {e}", flush=True)
+
+
+# ===================================================================
+# PER-USER GMAIL INBOX POLLER (Phase 3c follow-up, 2026-05-11)
+# ===================================================================
+#
+# The existing poll_gmail_inbox() above polls the central claims@dumbroof.ai
+# mailbox via service-account domain-wide delegation. That covers homeowner
+# replies and forwarded carrier emails.
+#
+# This separate flow polls each contractor's OWN connected Gmail inbox
+# (via OAuth refresh token stored on company_profiles.gmail_refresh_token)
+# for direct carrier replies — Lemonade replying to Tom's supplement, etc.
+#
+# Cost-conscious by design: NO AI calls in the poll path. Just match-by-
+# heuristic (carrier domain / thread / claim number) and INSERT into
+# carrier_correspondence with analysis_status='pending'. AI analysis fires
+# only when the user explicitly clicks "Analyze & Draft Response" in the
+# per-claim Comms tab (existing CommunicationsCenter UI). At 100 connected
+# inboxes the daily cost is essentially zero — Gmail API quota usage is
+# ~0.01% of the 1B/day allowance and no LLM tokens are spent.
+
+USER_POLL_INTERVAL_SECONDS = 3600  # hourly — see feedback_email_send_side_effects.md
+USER_POLL_MAX_RESULTS = 20         # per user per cycle (most users get <5 unread/hour)
+
+
+def get_gmail_service_for_user(refresh_token: str):
+    """Build a Gmail API client for an individual user via their OAuth refresh token.
+
+    Sibling to get_gmail_service() (above) which uses service-account delegation
+    for the central claims@dumbroof.ai mailbox. This variant is for the per-user
+    inbox flow where the user has granted offline access via the OAuth consent
+    screen (`/api/gmail-auth/authorize` → callback stores refresh_token on
+    company_profiles).
+    """
+    from google.oauth2.credentials import Credentials
+    # Reuse the same exchange helper the outbound send path uses — same
+    # OAuth client_id/secret env vars, same /oauth2/v4/token endpoint, same
+    # error semantics ("invalid_grant" = user revoked, surface clearly).
+    from claim_brain_email import refresh_gmail_token
+
+    access_token = refresh_gmail_token(refresh_token)
+    creds = Credentials(
+        token=access_token,
+        refresh_token=refresh_token,
+        token_uri="https://oauth2.googleapis.com/token",
+        # client_id/secret intentionally None — we've already minted the access
+        # token via refresh_gmail_token. Credentials only auto-refreshes when
+        # the access_token expires mid-session; for our short polling window
+        # (<60s of API calls per user per cycle) the minted token never needs
+        # to refresh in-flight.
+        scopes=["https://www.googleapis.com/auth/gmail.readonly", "https://www.googleapis.com/auth/gmail.modify"],
+    )
+    return build("gmail", "v1", credentials=creds, cache_discovery=False)
+
+
+def _classify_inbound_for_user(parsed: dict) -> Optional[str]:
+    """Heuristic-only classifier for per-user inbox. Returns one of:
+      - "carrier"  : From domain matches a known carrier → store as carrier_correspondence
+      - None       : skip (not claim-related)
+
+    Note: this is intentionally narrower than classify_email() (used by the
+    claims@dumbroof.ai forwarder flow). For per-user inboxes:
+      - We do NOT need forwarded-email detection (it's the user's own inbox)
+      - We do NOT need AI classification (cost-conscious — Tom 2026-05-11)
+      - We do NOT need edit-request handling (edit requests come through claims@
+        not through the contractor's own inbox)
+    """
+    from_email = (parsed.get("from_email") or "").lower()
+    if not from_email:
+        return None
+    # Carrier domain match — most reliable signal
+    if identify_carrier(from_email, parsed.get("text_body", "")):
+        return "carrier"
+    # Fallback: thread match handled in _process_user_message via in_reply_to
+    # lookup against email_drafts. If neither carrier domain nor thread match,
+    # skip — too risky to insert without confidence.
+    return None
+
+
+async def _process_user_message(sb: Client, service, msg_id: str, user_id: str, sending_email: str) -> None:
+    """Process one Gmail message in a user's connected inbox.
+
+    Storage-only — no AI. If the message looks like a carrier reply (carrier
+    domain OR thread match to one of our outbound sends), insert into
+    carrier_correspondence with analysis_status='pending' and matched claim_id
+    (or NULL if matching fails). User can trigger analysis on demand from the
+    per-claim Comms tab.
+    """
+    try:
+        parsed = await asyncio.to_thread(parse_gmail_message, service, msg_id)
+    except Exception as e:
+        print(f"[USER GMAIL POLLER] parse failed for {user_id}/{msg_id}: {type(e).__name__}: {e}", flush=True)
+        return
+
+    # Skip our own sends (Gmail's -from:me filter catches most but not edge cases)
+    from_email = (parsed.get("from_email") or "").lower().strip()
+    if sending_email and from_email == sending_email.lower():
+        return
+
+    # Idempotency: skip messages we've already ingested. Use Gmail's message_id
+    # header (RFC 822) as the dedup key — same key the central poller uses.
+    if parsed.get("message_id"):
+        dup = sb.table("carrier_correspondence").select("id").eq(
+            "message_id", parsed["message_id"]
+        ).limit(1).execute()
+        if dup.data:
+            await asyncio.to_thread(_mark_as_read, service, msg_id)
+            return
+
+    # Heuristic classification — must be carrier-shaped to proceed
+    classification = _classify_inbound_for_user(parsed)
+    in_reply_to = parsed.get("in_reply_to") or ""
+
+    # Thread match is a strong signal even without carrier domain — if this is
+    # a reply to one of our outbound sends, it's claim-related by definition.
+    has_thread_match = False
+    if in_reply_to:
+        thread_check = sb.table("email_drafts").select("claim_id").eq(
+            "gmail_thread_id", in_reply_to
+        ).limit(1).execute()
+        has_thread_match = bool(thread_check.data and thread_check.data[0].get("claim_id"))
+
+    if classification != "carrier" and not has_thread_match:
+        # Not claim-related — skip silently. Don't mark as read; user may want
+        # to act on it in their own inbox.
+        return
+
+    # Match to a claim using existing cascade (thread → address → carrier → subject)
+    carrier_name = identify_carrier(from_email, parsed.get("text_body", ""))
+    claim_number = extract_claim_number(parsed.get("subject", "") + "\n" + parsed.get("text_body", ""))
+    address = extract_address(parsed.get("text_body", ""))
+
+    match = match_to_claim(
+        sb, user_id,
+        in_reply_to=in_reply_to,
+        claim_number=claim_number,
+        address=address,
+        carrier_name=carrier_name,
+        subject=parsed.get("subject", ""),
+    )
+
+    # Insert carrier_correspondence — analysis_status='pending' explicitly so
+    # the per-claim Comms tab knows AI hasn't run yet. User triggers analysis
+    # via "Analyze & Draft Response" button in CommunicationsCenter.
+    # Column names match the central poller's INSERT at gmail_poller.py:902.
+    record = {
+        "claim_id": match.get("claim_id"),
+        "user_id": user_id,
+        "message_id": parsed.get("message_id"),
+        "from_email": parsed.get("from_email"),
+        "original_from": parsed.get("from_email"),
+        "original_subject": parsed.get("subject"),
+        "original_date": parsed.get("date"),
+        "text_body": parsed.get("text_body"),
+        "html_body": parsed.get("html_body"),
+        "is_forwarded": False,  # per-user inbox = direct replies, not forwards
+        "carrier_name": carrier_name or match.get("carrier_name"),
+        "claim_number_parsed": claim_number,
+        "address_parsed": address,
+        "attachment_paths": [],  # storage-only path doesn't fetch attachments
+        "match_method": match.get("method"),
+        "match_confidence": match.get("confidence"),
+        "analysis_status": "pending",  # NO AI yet — user must opt-in
+        "status": "matched" if match.get("claim_id") else "unmatched",
+    }
+
+    try:
+        result = sb.table("carrier_correspondence").insert(record).execute()
+        corr_id = (result.data or [{}])[0].get("id") if result.data else None
+        print(
+            f"[USER GMAIL POLLER] {sending_email} → corr {corr_id}, "
+            f"claim={match.get('claim_id') or 'UNMATCHED'}, "
+            f"carrier={carrier_name}, conf={match.get('confidence')}, "
+            f"from={from_email}, subject={(parsed.get('subject') or '')[:50]}",
+            flush=True,
+        )
+    except Exception as e:
+        # Likely a unique-constraint violation on gmail_message_id if the dup
+        # check above raced. Idempotent no-op.
+        msg = str(e).lower()
+        if "duplicate" in msg or "unique" in msg:
+            pass
+        else:
+            print(f"[USER GMAIL POLLER] Insert failed for {user_id}/{msg_id}: {type(e).__name__}: {e}", flush=True)
+            return
+
+    # Mark as read so we don't reprocess on next cycle.
+    await asyncio.to_thread(_mark_as_read, service, msg_id)
+
+
+async def _poll_one_user(sb: Client, user: dict) -> None:
+    """Poll one connected contractor's Gmail inbox for unread carrier replies."""
+    refresh_token = user.get("gmail_refresh_token") or ""
+    user_id = user.get("user_id") or ""
+    sending_email = (user.get("sending_email") or "").strip()
+    if not refresh_token or not user_id:
+        return
+
+    try:
+        service = await asyncio.to_thread(get_gmail_service_for_user, refresh_token)
+    except Exception as e:
+        # invalid_grant = user revoked. Surface clearly so we know to nudge
+        # them to reconnect. Other errors (rate limit, network) bubble up.
+        msg = str(e)
+        if "invalid_grant" in msg.lower() or "revoke" in msg.lower():
+            print(f"[USER GMAIL POLLER] {sending_email or user_id}: refresh_token revoked — needs reconnect", flush=True)
+        else:
+            print(f"[USER GMAIL POLLER] {sending_email or user_id}: service init failed: {type(e).__name__}: {e}", flush=True)
+        return
+
+    # Build Gmail search query. -from:me on a per-user inbox skips our own outbound
+    # sends (which are CC'd back via Gmail to land in Sent → also visible in inbox
+    # if Gmail's "Show in inbox" is set). newer_than:1d caps to recent for cost
+    # bounding; hourly cadence means we'd never miss anything older than that anyway.
+    from_filter = f" -from:{sending_email}" if sending_email else ""
+    query = f"is:unread newer_than:1d{from_filter}"
+
+    try:
+        results = await asyncio.to_thread(
+            lambda: service.users().messages().list(
+                userId="me",
+                q=query,
+                maxResults=USER_POLL_MAX_RESULTS,
+            ).execute()
+        )
+    except Exception as e:
+        print(f"[USER GMAIL POLLER] {sending_email or user_id}: list failed: {type(e).__name__}: {e}", flush=True)
+        return
+
+    messages = results.get("messages", []) or []
+    if not messages:
+        return
+
+    print(f"[USER GMAIL POLLER] {sending_email or user_id}: {len(messages)} unread to triage", flush=True)
+    for msg_ref in messages:
+        try:
+            await _process_user_message(sb, service, msg_ref["id"], user_id, sending_email)
+        except Exception as e:
+            print(f"[USER GMAIL POLLER] {user_id}/{msg_ref['id']}: process error: {type(e).__name__}: {e}", flush=True)
+
+
+async def poll_user_gmail_inboxes(sb: Client) -> None:
+    """Hourly poll of every contractor with a connected Gmail. Storage only,
+    no AI. See module-level docstring above for cost rationale.
+
+    Wired in backend/main.py lifespan alongside poll_gmail_inbox(sb).
+    """
+    # Defer first run to let claims@dumbroof.ai poller stabilize on cold-start
+    await asyncio.sleep(120)
+
+    print(f"[USER GMAIL POLLER] Starting — hourly poll of connected company inboxes (storage-only, no AI)", flush=True)
+    while True:
+        try:
+            users_res = sb.table("company_profiles").select(
+                "user_id, sending_email, gmail_refresh_token"
+            ).not_.is_("gmail_refresh_token", "null").execute()
+            users = [u for u in (users_res.data or []) if u.get("gmail_refresh_token")]
+            print(f"[USER GMAIL POLLER] Cycle start — {len(users)} connected inboxes", flush=True)
+
+            for user in users:
+                try:
+                    await _poll_one_user(sb, user)
+                except Exception as e:
+                    print(f"[USER GMAIL POLLER] user {user.get('user_id')} failed: {type(e).__name__}: {e}", flush=True)
+
+        except Exception as e:
+            print(f"[USER GMAIL POLLER] Top-level error: {type(e).__name__}: {e}", flush=True)
+
+        await asyncio.sleep(USER_POLL_INTERVAL_SECONDS)
