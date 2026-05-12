@@ -150,7 +150,7 @@ function SummaryCards({ financials: fin, summary }: { financials: ScopeCompariso
         <p className="text-lg font-bold text-blue-400">{fmt(fin.carrier_rcv)}</p>
       </div>
       <div className="bg-white/[0.04] rounded-lg p-3">
-        <p className="text-[10px] uppercase text-[var(--gray-muted)] font-semibold tracking-wide">USARM RCV</p>
+        <p className="text-[10px] uppercase text-[var(--gray-muted)] font-semibold tracking-wide">Contractor RCV</p>
         <p className="text-lg font-bold text-[var(--white)]">{fmt(fin.contractor_rcv)}</p>
       </div>
       <div className={`rounded-lg p-3 ${variance > 0 ? "bg-green-500/10" : "bg-red-500/10"}`}>
@@ -184,10 +184,10 @@ function ComparisonTable({ rows }: { rows: ScopeComparisonRow[] }) {
           <th className="px-3 py-2 text-[10px] font-semibold text-[var(--gray-dim)] uppercase">Line Item</th>
           <th className="px-3 py-2 text-[10px] font-semibold text-[var(--gray-dim)] uppercase text-center">Status</th>
           <th className="px-3 py-2 text-[10px] font-semibold text-[var(--gray-dim)] uppercase text-right">Carrier Qty</th>
-          <th className="px-3 py-2 text-[10px] font-semibold text-[var(--gray-dim)] uppercase text-right">USARM Qty</th>
+          <th className="px-3 py-2 text-[10px] font-semibold text-[var(--gray-dim)] uppercase text-right">Contractor Qty</th>
           <th className="px-3 py-2 text-[10px] font-semibold text-[var(--gray-dim)] uppercase">Unit</th>
           <th className="px-3 py-2 text-[10px] font-semibold text-[var(--gray-dim)] uppercase text-right">Carrier $</th>
-          <th className="px-3 py-2 text-[10px] font-semibold text-[var(--gray-dim)] uppercase text-right">USARM $</th>
+          <th className="px-3 py-2 text-[10px] font-semibold text-[var(--gray-dim)] uppercase text-right">Contractor $</th>
           <th className="px-3 py-2 text-[10px] font-semibold text-[var(--gray-dim)] uppercase text-right">Variance</th>
           <th className="px-3 py-2 text-[10px] font-semibold text-[var(--gray-dim)] uppercase">Notes</th>
         </tr>
@@ -353,7 +353,7 @@ function FinancialSummary({ rows, financials: fin }: { rows: ScopeComparisonRow[
             <tr className="bg-white/[0.04]">
               <th className="px-3 py-2 text-left text-[10px] font-semibold text-[var(--gray-dim)] uppercase">Trade</th>
               <th className="px-3 py-2 text-right text-[10px] font-semibold text-[var(--gray-dim)] uppercase">Carrier</th>
-              <th className="px-3 py-2 text-right text-[10px] font-semibold text-[var(--gray-dim)] uppercase">USARM</th>
+              <th className="px-3 py-2 text-right text-[10px] font-semibold text-[var(--gray-dim)] uppercase">Contractor</th>
               <th className="px-3 py-2 text-right text-[10px] font-semibold text-[var(--gray-dim)] uppercase">Variance</th>
             </tr>
           </thead>

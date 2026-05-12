@@ -272,7 +272,7 @@ export function AnalyticsContent({ user }: { user: User }) {
                 <p className="text-2xl font-bold text-[var(--white)] mt-1">{fmtMoney(avgClaimSize)}</p>
               </div>
               <div className="glass-card p-5 text-center col-span-2 md:col-span-1">
-                <p className="text-xs text-[var(--gray-dim)] font-medium uppercase">Total USARM RCV</p>
+                <p className="text-xs text-[var(--gray-dim)] font-medium uppercase">Total Contractor RCV</p>
                 <p className="text-2xl font-bold text-[var(--white)] mt-1">{fmtMoney(totalUsarmRcv)}</p>
               </div>
             </div>
@@ -294,7 +294,7 @@ export function AnalyticsContent({ user }: { user: User }) {
                         <th className="px-4 py-3 text-xs font-medium text-[var(--gray-muted)] uppercase text-right">Wins</th>
                         <th className="px-4 py-3 text-xs font-medium text-[var(--gray-muted)] uppercase text-center">Win Rate</th>
                         <th className="px-4 py-3 text-xs font-medium text-[var(--gray-muted)] uppercase text-right">Avg Movement</th>
-                        <th className="px-6 py-3 text-xs font-medium text-[var(--gray-muted)] uppercase text-right">Avg USARM RCV</th>
+                        <th className="px-6 py-3 text-xs font-medium text-[var(--gray-muted)] uppercase text-right">Avg Contractor RCV</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-white/[0.06]">
@@ -400,7 +400,7 @@ export function AnalyticsContent({ user }: { user: User }) {
                       <tr className="bg-white/[0.04] text-left">
                         <th className="px-6 py-3 text-xs font-medium text-[var(--gray-muted)] uppercase">Line Item</th>
                         <th className="px-4 py-3 text-xs font-medium text-[var(--gray-muted)] uppercase text-center">Unit</th>
-                        <th className="px-4 py-3 text-xs font-medium text-[var(--gray-muted)] uppercase text-right">USARM Avg</th>
+                        <th className="px-4 py-3 text-xs font-medium text-[var(--gray-muted)] uppercase text-right">Contractor Avg</th>
                         <th className="px-4 py-3 text-xs font-medium text-[var(--gray-muted)] uppercase text-right">Carrier Avg</th>
                         <th className="px-4 py-3 text-xs font-medium text-[var(--gray-muted)] uppercase text-right">Gap</th>
                         <th className="px-6 py-3 text-xs font-medium text-[var(--gray-muted)] uppercase text-right">Samples</th>
