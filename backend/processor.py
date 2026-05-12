@@ -3061,13 +3061,18 @@ def build_claim_config(
 
     # Manual scope lock: when the user (or admin) sets line items explicitly to mirror
     # their own Xactimate estimate, we must skip both the line-item rebuild AND the
-    # registry price-overlay. Set via claim_config._manual_scope_locked=true. Survives
+    # registry price-overlay. Set via claim_config.manual_scope_locked=true. Survives
     # reprocesses (the flag persists on the config we write back).
+    # Note: key MUST NOT start with underscore — processor.py:7120 strips _-prefixed
+    # keys on save. Also handles legacy `_manual_scope_locked` key from early rollout.
     _prior_config = claim.get("claim_config") or {}
-    _manual_scope_locked = bool(_prior_config.get("_manual_scope_locked"))
+    _manual_scope_locked = bool(
+        _prior_config.get("manual_scope_locked")
+        or _prior_config.get("_manual_scope_locked")
+    )
     if _manual_scope_locked and isinstance(_prior_config.get("line_items"), list) and _prior_config["line_items"]:
         line_items = _prior_config["line_items"]
-        print(f"[CONFIG] _manual_scope_locked=true — preserving {len(line_items)} user-set line items; skipping rebuild + overlay")
+        print(f"[CONFIG] manual_scope_locked=true — preserving {len(line_items)} user-set line items; skipping rebuild + overlay")
     else:
         line_items = build_multi_structure_line_items(measurements, photo_analysis, state, user_notes=user_notes or "",
                                                       estimate_request=claim.get("estimate_request"),
@@ -3536,7 +3541,7 @@ def build_claim_config(
 
     # Persist manual scope lock flag so future reprocesses continue to honor it.
     if _manual_scope_locked:
-        config["_manual_scope_locked"] = True
+        config["manual_scope_locked"] = True
 
     return config
 
