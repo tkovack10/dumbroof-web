@@ -3059,49 +3059,62 @@ def build_claim_config(
     else:
         resolved_price_list_label = STATE_PRICE_LIST.get(state, "NYBI26")
 
-    line_items = build_multi_structure_line_items(measurements, photo_analysis, state, user_notes=user_notes or "",
-                                                  estimate_request=claim.get("estimate_request"),
-                                                  roof_sections=claim.get("roof_sections"),
-                                                  zip_code=_zip, city=_city, market_code=market_code)
+    # Manual scope lock: when the user (or admin) sets line items explicitly to mirror
+    # their own Xactimate estimate, we must skip both the line-item rebuild AND the
+    # registry price-overlay. Set via claim_config._manual_scope_locked=true. Survives
+    # reprocesses (the flag persists on the config we write back).
+    _prior_config = claim.get("claim_config") or {}
+    _manual_scope_locked = bool(_prior_config.get("_manual_scope_locked"))
+    if _manual_scope_locked and isinstance(_prior_config.get("line_items"), list) and _prior_config["line_items"]:
+        line_items = _prior_config["line_items"]
+        print(f"[CONFIG] _manual_scope_locked=true — preserving {len(line_items)} user-set line items; skipping rebuild + overlay")
+    else:
+        line_items = build_multi_structure_line_items(measurements, photo_analysis, state, user_notes=user_notes or "",
+                                                      estimate_request=claim.get("estimate_request"),
+                                                      roof_sections=claim.get("roof_sections"),
+                                                      zip_code=_zip, city=_city, market_code=market_code)
 
     # Enrich line items with Xactimate codes, IRC citations, supplement arguments, AND correct prices
     # Pass the resolved market_code so the registry overlay uses Dayton for zip 45337,
-    # not Cleveland (the OH state-default fallback).
+    # not Cleveland (the OH state-default fallback). Skipped when scope is manually locked.
     registry = None
     try:
-        registry = _get_registry(state, city=_city, zip_code=_zip, market_code=market_code)
-        enriched_count = 0
-        price_corrected = 0
-        for li in line_items:
-            # Pass the RAW description so lookup_price can infer action ("Remove ..." → "remove").
-            # If we pre-cleaned, the action prefix was stripped and lookup_price would default
-            # to "install" — silently returning the Install variant for Remove items, which
-            # then poisoned the price override at the bottom of this loop.
-            raw_desc = li.get("description", "")
-            reg_item = registry.lookup_price(raw_desc)
-            if reg_item:
-                # Validate trade compatibility before enriching (prevent siding-roofing cross-contamination)
-                reg_trade = (reg_item.get("trade") or "").lower()
-                li_trade = (li.get("trade") or li.get("category", "").lower() or "")
-                trade_compatible = not reg_trade or not li_trade or reg_trade in li_trade.lower() or li_trade.lower() in reg_trade
-                if trade_compatible:
-                    # Add Xactimate metadata
-                    li["code"] = reg_item.get("xact_code", "")
-                    li["supplement_argument"] = reg_item.get("supplement_argument", "")
-                    li["irc_code"] = reg_item.get("irc_code", "")
-                    li["trade"] = li.get("trade") or reg_item.get("trade", "")
-                    enriched_count += 1
-                    # Override price from registry if registry price is higher (maximize legitimate estimate)
-                    reg_price = reg_item.get("unit_price", 0)
-                    current_price = li.get("unit_price", 0)
-                    if reg_price > 0 and reg_price > current_price * 1.05:  # >5% higher = use registry price
-                        li["unit_price"] = reg_price
-                        price_corrected += 1
-            else:
-                li.setdefault("code", "")
-                li.setdefault("supplement_argument", "")
-                li.setdefault("irc_code", "")
-        print(f"[XACT ENRICH] {enriched_count}/{len(line_items)} items enriched, {price_corrected} prices corrected from registry")
+        if _manual_scope_locked:
+            print(f"[XACT ENRICH] skipped — scope is manually locked")
+        else:
+            registry = _get_registry(state, city=_city, zip_code=_zip, market_code=market_code)
+            enriched_count = 0
+            price_corrected = 0
+            for li in line_items:
+                # Pass the RAW description so lookup_price can infer action ("Remove ..." → "remove").
+                # If we pre-cleaned, the action prefix was stripped and lookup_price would default
+                # to "install" — silently returning the Install variant for Remove items, which
+                # then poisoned the price override at the bottom of this loop.
+                raw_desc = li.get("description", "")
+                reg_item = registry.lookup_price(raw_desc)
+                if reg_item:
+                    # Validate trade compatibility before enriching (prevent siding-roofing cross-contamination)
+                    reg_trade = (reg_item.get("trade") or "").lower()
+                    li_trade = (li.get("trade") or li.get("category", "").lower() or "")
+                    trade_compatible = not reg_trade or not li_trade or reg_trade in li_trade.lower() or li_trade.lower() in reg_trade
+                    if trade_compatible:
+                        # Add Xactimate metadata
+                        li["code"] = reg_item.get("xact_code", "")
+                        li["supplement_argument"] = reg_item.get("supplement_argument", "")
+                        li["irc_code"] = reg_item.get("irc_code", "")
+                        li["trade"] = li.get("trade") or reg_item.get("trade", "")
+                        enriched_count += 1
+                        # Override price from registry if registry price is higher (maximize legitimate estimate)
+                        reg_price = reg_item.get("unit_price", 0)
+                        current_price = li.get("unit_price", 0)
+                        if reg_price > 0 and reg_price > current_price * 1.05:  # >5% higher = use registry price
+                            li["unit_price"] = reg_price
+                            price_corrected += 1
+                else:
+                    li.setdefault("code", "")
+                    li.setdefault("supplement_argument", "")
+                    li.setdefault("irc_code", "")
+            print(f"[XACT ENRICH] {enriched_count}/{len(line_items)} items enriched, {price_corrected} prices corrected from registry")
     except Exception as e:
         print(f"[XACT ENRICH] Failed (non-fatal, line items retain original format): {e}")
 
@@ -3520,6 +3533,10 @@ def build_claim_config(
 
     # Scope comparison already completed above (measurements-first methodology).
     # config["carrier"]["carrier_line_items"] contains comparison results, not raw carrier items.
+
+    # Persist manual scope lock flag so future reprocesses continue to honor it.
+    if _manual_scope_locked:
+        config["_manual_scope_locked"] = True
 
     return config
 
