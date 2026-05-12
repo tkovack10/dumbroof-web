@@ -3,17 +3,16 @@
  *
  * Resolution order (first match wins):
  *   1. URL search param `?ui=v1|v2` — ephemeral, NOT persisted to user metadata.
- *      Used for instant testing / side-by-side comparison without polluting
- *      a saved preference.
+ *      Used for instant testing / side-by-side comparison + as a support
+ *      escape hatch.
  *   2. Supabase `auth.users.user_metadata.ui_version` — persistent preference,
  *      written by the toggle in /dashboard/settings.
- *   3. Default: `"v1"`.
+ *   3. Default: `"v2"` (changed from `"v1"` 2026-05-12 — Tom called the
+ *      switchover to gather analytics + feedback while v1 stays as an
+ *      escape valve for any user who explicitly opts back).
  *
  * No new tables / migrations — uses Supabase user_metadata which is already
  * an open JSONB column writable by the user via supabase.auth.updateUser().
- *
- * The Phase 2 redesign (tabs + inspector + sticky highlights) is gated on
- * v2; v1 keeps the existing scrolling layout entirely unchanged.
  */
 
 import type { User } from "@supabase/supabase-js";
@@ -30,8 +29,8 @@ function parseVersion(raw: string | null | undefined): UiVersion | null {
 
 /**
  * Resolve the active UI version. Pass the URL query param value and the
- * authenticated user (or null if not yet loaded). Returns "v1" when both
- * sources are absent or invalid.
+ * authenticated user (or null if not yet loaded). Returns "v2" when both
+ * sources are absent or invalid (default flipped from v1 2026-05-12).
  */
 export function resolveUiVersion(
   urlParam: string | null | undefined,
@@ -43,20 +42,15 @@ export function resolveUiVersion(
   const fromMetadata = parseVersion(user?.user_metadata?.ui_version as string | undefined);
   if (fromMetadata) return fromMetadata;
 
-  return "v1";
+  return "v2";
 }
 
 /**
- * Whether the toggle should be visible to this user. During Phase 2 development
- * the toggle is gated to admins only — once Tom signs off on v2 we drop the
- * gate and surface it to everyone.
+ * Whether the toggle should be visible to this user.
+ * GA as of 2026-05-12 — every authenticated user can switch between v1 / v2
+ * via /dashboard/settings. Previously gated to admin emails only during the
+ * Phase 2 development window.
  */
-const ADMIN_EMAILS: ReadonlySet<string> = new Set([
-  "tkovack@usaroofmasters.com",
-  "tom@dumbroof.ai",
-]);
-
 export function canSeeUiVersionToggle(user: User | null | undefined): boolean {
-  if (!user?.email) return false;
-  return ADMIN_EMAILS.has(user.email.toLowerCase());
+  return !!user;
 }
