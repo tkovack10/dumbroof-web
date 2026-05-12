@@ -274,6 +274,27 @@ _MATERIAL_KEYWORDS = frozenset(
     {"slate", "cedar", "tile", "copper", "aluminum", "vinyl", "shake", "wood", "metal"}
 )
 
+# Discriminative qualifiers — if either query or candidate has one of these words that
+# the other side lacks, the fuzzy match must be rejected. Prevents "Vinyl siding" from
+# silently matching "Siding - vinyl - insulated" ($11.47 vs $7.55) and "Ridge cap - 3 tab"
+# from matching "Gable cornice return - 3 tab" ($132.90 vs $11.97).
+_DISCRIMINATIVE_QUALIFIERS = frozenset({
+    # Grade / quality
+    "insulated", "premium", "specialty", "high", "standard",
+    "architectural", "laminated",
+    # Material discriminators (also in _MATERIAL_KEYWORDS, but listed here for clarity)
+    "metal", "aluminum", "wood", "cedar", "vinyl", "slate", "tile", "copper", "fiber",
+    # Profile / type discriminators that pick between similarly-named items
+    "ridge", "hip", "valley", "starter", "drip", "cornice", "return", "gable",
+    "vent", "exhaust", "intake", "soffit",
+    "flashing", "step", "counter", "apron", "chimney", "skylight",
+    "gutter", "downspout", "corner", "post",
+    "siding", "wrap", "insulation", "fanfold",
+    "window", "door", "shutter", "fixture",
+    # Weight / spec variants
+    "30yr", "25yr", "40yr", "50yr",
+})
+
 # French → internal-code patterns (Quebec Xactimate Desktop exports — TX, MN, 5×MI markets)
 # Mirrors tools/import-pdf-pricelists.py:31-95 in the Operations repo.
 # Each tuple: (compiled French regex, list of internal codes that share this price).
@@ -743,6 +764,14 @@ class XactRegistry:
             if action and item["action"] != action:
                 continue
             item_clean = _clean_desc(item["description"])
+            item_words = _desc_words(item_clean)
+
+            # Discriminator guard: reject when either side has a discriminative qualifier
+            # that the other lacks. Catches "vinyl siding" → "siding vinyl insulated" and
+            # "ridge cap 3 tab" → "gable cornice return 3 tab" mis-matches.
+            sym_diff = query_words.symmetric_difference(item_words)
+            if sym_diff & _DISCRIMINATIVE_QUALIFIERS:
+                continue
 
             # Substring match (both directions)
             if cleaned in item_clean or item_clean in cleaned:
@@ -751,11 +780,15 @@ class XactRegistry:
             # Similarity score
             score = _similarity(cleaned, item_clean)
 
-            # Boost for word overlap
-            item_words = _desc_words(item_clean)
+            # Boost for word overlap, but require minimum coverage so a 2-of-5 thin overlap
+            # like {3, tab} can't sneak through.
             overlap = query_words & item_words
-            if len(overlap) >= 3 or (len(overlap) >= 2 and len(query_words) <= 4):
-                score += 0.3
+            if overlap:
+                coverage = len(overlap) / max(len(query_words), len(item_words), 1)
+                if coverage < 0.5:
+                    continue
+                if len(overlap) >= 3 or (len(overlap) >= 2 and len(query_words) <= 4):
+                    score += 0.3
 
             if score > best_score:
                 best_score = score

@@ -4432,7 +4432,10 @@ def build_line_items(measurements: dict, photo_analysis: dict, state: str, user_
         elif material == "metal_standing_seam":
             items.append({"category": "ROOFING", "description": "R&R Ridge cap - metal", "qty": ridge_hip_lf, "unit": "LF", "unit_price": PRICING.get("metal_ridge_cap", 22.00)})
         else:
-            desc = "R&R Ridge cap - laminated" if material == "laminated" else "R&R Ridge cap - 3 tab"
+            # Canonical Xactimate description — non-canonical names like "R&R Ridge cap - 3 tab"
+            # fuzzy-matched to "R&R Gable cornice return - 3 tab" ($132.90/EA) and overlaid that
+            # price during registry enrichment.
+            desc = "R&R Hip / Ridge cap - Standard profile - composition shingles"
             items.append({"category": "ROOFING", "description": desc, "qty": ridge_hip_lf, "unit": "LF", "unit_price": PRICING.get("laminated_ridge_cap", 7.49)})
 
     # ===================== RIDGE VENT (ridges only — shingle-over style) =====================
@@ -4636,16 +4639,18 @@ def build_line_items(measurements: dict, photo_analysis: dict, state: str, user_
             siding_mat = _detect_siding_material(photo_analysis, user_notes, estimate_request=estimate_request, measurements=measurements)
             print(f"[LINE ITEMS] Siding trade detected — {siding_mat}, {wall_area} SF")
 
-            # Siding material pricing map
+            # Siding material pricing map — descriptions match canonical Xactimate registry
+            # entries to prevent fuzzy mis-match (e.g. "R&R Vinyl siding" used to fuzzy-match
+            # "R&R Siding - vinyl - insulated" at $11.47 instead of standard $7.55).
             siding_prices = {
-                "aluminum": ("R&R Aluminum siding .024\"", PRICING.get("siding_aluminum_024", 12.47)),
-                "vinyl": ("R&R Vinyl siding", PRICING.get("siding_vinyl", 7.55)),
-                "vinyl_high": ("R&R Vinyl siding - high grade", PRICING.get("siding_vinyl_high", 7.83)),
-                "vinyl_premium": ("R&R Vinyl siding - premium", PRICING.get("siding_vinyl_premium", 8.21)),
-                "vinyl_insulated": ("R&R Vinyl siding - insulated", PRICING.get("siding_vinyl_insulated", 11.45)),
+                "aluminum": ("R&R Siding - .024 metal (aluminum/steel)", PRICING.get("siding_aluminum_024", 12.47)),
+                "vinyl": ("R&R Siding - vinyl", PRICING.get("siding_vinyl", 7.55)),
+                "vinyl_high": ("R&R Siding - vinyl - high grade", PRICING.get("siding_vinyl_high", 7.83)),
+                "vinyl_premium": ("R&R Siding - vinyl - specialty grade", PRICING.get("siding_vinyl_premium", 8.21)),
+                "vinyl_insulated": ("R&R Siding - vinyl - insulated", PRICING.get("siding_vinyl_insulated", 11.45)),
                 "cedar": ("R&R Cedar shingle siding", PRICING.get("siding_cedar_shingle", 18.13)),
-                "fiber_cement": ("R&R Fiber cement siding", PRICING.get("siding_vinyl_insulated", 11.45)),
-                "metal": ("R&R Metal siding .019\"", PRICING.get("siding_metal_019", 12.20)),
+                "fiber_cement": ("R&R Siding - fiber cement", PRICING.get("siding_vinyl_insulated", 11.45)),
+                "metal": ("R&R Siding - .019 metal (aluminum/steel)", PRICING.get("siding_metal_019", 12.20)),
             }
             desc, price = siding_prices.get(siding_mat, siding_prices["aluminum"])
             items.append({"category": "SIDING", "description": desc, "qty": wall_area, "unit": "SF", "unit_price": price})
