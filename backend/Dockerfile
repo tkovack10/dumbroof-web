@@ -7,6 +7,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     fonts-dejavu-core \
     poppler-utils \
     libheif-dev \
+    libcairo2 \
+    libpango-1.0-0 \
+    libpangocairo-1.0-0 \
+    librsvg2-2 \
+    ghostscript \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app

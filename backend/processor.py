@@ -5617,18 +5617,54 @@ async def process_claim(claim_id: str, refresh_prices: bool = False):
                     user_logo_downloaded = True
                     print(f"[PROCESS] Downloaded user logo ({_logo_ext}, {len(logo_data)} bytes)")
                 else:
-                    rejected_logo_format = _logo_ext or "(unknown)"
-                    print(f"[PROCESS] REJECTED non-raster logo {_logo_path!r} "
-                          f"({_logo_ext}, magic={head[:8]!r}) — must be PNG/JPG/WEBP. "
-                          f"PDFs will render text-fallback header. User notification queued.")
-                    try:
-                        _notify_user_logo_format_rejected(
-                            claim=claim,
-                            company_profile=company_profile,
-                            rejected_ext=_logo_ext,
-                        )
-                    except Exception as ne:
-                        print(f"[PROCESS] Logo-rejection email failed (non-fatal): {ne}")
+                    # Auto-convert before rejecting. Tom 2026-05-05 directive:
+                    # "ALWAYS CONVERT IT FOR THE USER." Most pro logos arrive
+                    # as .ai/.pdf/.svg and can be losslessly rasterized
+                    # server-side. Only emails the rejection if conversion
+                    # genuinely fails (unsupported format OR tool error).
+                    converted_png = _convert_logo_to_png(logo_data, _logo_ext)
+                    if converted_png:
+                        logo_dest = os.path.join(photos_dir, "usarm_logo.png")
+                        with open(logo_dest, "wb") as f:
+                            f.write(converted_png)
+                        user_logo_downloaded = True
+                        print(f"[PROCESS] Auto-converted user logo {_logo_ext} → PNG "
+                              f"({len(logo_data)} → {len(converted_png)} bytes)")
+                        # Persist the converted PNG back to storage and update
+                        # company_profiles.logo_path so subsequent runs skip
+                        # the conversion (and the QA auditor sees a raster
+                        # logo on the canonical path).
+                        try:
+                            _user_id = (company_profile or {}).get("user_id") or ""
+                            if _user_id:
+                                _converted_path = f"{_user_id}/branding/logo.png"
+                                # upsert — overwrites if already exists
+                                sb.storage.from_("claim-documents").upload(
+                                    path=_converted_path,
+                                    file=converted_png,
+                                    file_options={"upsert": "true", "content-type": "image/png"},
+                                )
+                                sb.table("company_profiles").update(
+                                    {"logo_path": _converted_path}
+                                ).eq("user_id", _user_id).execute()
+                                print(f"[PROCESS] Persisted converted PNG → {_converted_path} + updated company_profiles.logo_path")
+                        except Exception as ue:
+                            print(f"[PROCESS] Failed to persist converted logo (non-fatal — PDF still uses local copy): {type(ue).__name__}: {ue}")
+                    else:
+                        # Conversion genuinely failed (unsupported format or
+                        # tool error). Fall back to the existing email path.
+                        rejected_logo_format = _logo_ext or "(unknown)"
+                        print(f"[PROCESS] REJECTED non-raster logo {_logo_path!r} "
+                              f"({_logo_ext}, magic={head[:8]!r}) — auto-convert also failed. "
+                              f"PDFs will render text-fallback header. User notification queued.")
+                        try:
+                            _notify_user_logo_format_rejected(
+                                claim=claim,
+                                company_profile=company_profile,
+                                rejected_ext=_logo_ext,
+                            )
+                        except Exception as ne:
+                            print(f"[PROCESS] Logo-rejection email failed (non-fatal): {ne}")
             except Exception as e:
                 print(f"[PROCESS] Could not download user logo: {e}")
 
@@ -7553,6 +7589,97 @@ async def process_claim(claim_id: str, refresh_prices: bool = False):
     # normal completion and non-fatal paths)
     _TELEMETRY_SB = None
     _TELEMETRY_CLAIM_ID = None
+
+
+def _convert_logo_to_png(logo_data: bytes, src_ext: str) -> Optional[bytes]:
+    """Auto-convert designer-handover logo formats to PNG so contractors
+    don't lose their branding on PDFs.
+
+    Tom 2026-05-05 directive (feedback_logo_auto_convert.md): "ALWAYS
+    CONVERT IT FOR THE USER." Rejecting and emailing kills the funnel —
+    most professional logos arrive as `.ai` or `.pdf` (designer export)
+    or `.svg` (web-friendly). All three are convertible server-side
+    without user intervention.
+
+    Returns PNG bytes on success, None on failure. Caller upserts the
+    converted PNG back to storage and updates company_profiles.logo_path
+    so future runs skip the conversion.
+
+    Format coverage:
+      - .pdf / .ai     → pdftoppm @ 300 DPI (poppler-utils, installed)
+      - .svg           → cairosvg @ 2000px wide (requires libcairo2 apt)
+      - .psd / .tiff / .bmp / .eps → Pillow (EPS needs ghostscript apt)
+
+    Conversion failures log + return None — caller falls through to the
+    existing email-the-user rejection path.
+    """
+    src_ext = (src_ext or "").lower().lstrip(".")
+    if not src_ext or not logo_data:
+        return None
+
+    # PDF / Adobe Illustrator (AI files are PDF-compatible since CS2 era)
+    if src_ext in ("pdf", "ai"):
+        import tempfile, subprocess as _sp
+        with tempfile.NamedTemporaryFile(suffix=f".{src_ext}", delete=False) as src:
+            src.write(logo_data)
+            src_path = src.name
+        base = src_path[:-(len(src_ext) + 1)]
+        dst_png = base + ".png"
+        try:
+            r = _sp.run(
+                ["pdftoppm", "-png", "-r", "300", "-singlefile", "-f", "1", "-l", "1",
+                 src_path, base],
+                capture_output=True, timeout=30,
+            )
+            if r.returncode == 0 and os.path.exists(dst_png):
+                with open(dst_png, "rb") as f:
+                    return f.read()
+            err = (r.stderr or b"").decode("utf-8", errors="replace")[:200]
+            print(f"[LOGO-CONVERT] pdftoppm failed for .{src_ext}: rc={r.returncode}, err={err}")
+        except Exception as e:
+            print(f"[LOGO-CONVERT] pdftoppm error for .{src_ext}: {type(e).__name__}: {e}")
+        finally:
+            for p in (src_path, dst_png):
+                try:
+                    if os.path.exists(p):
+                        os.remove(p)
+                except Exception:
+                    pass
+        return None
+
+    # SVG via cairosvg (apt: libcairo2 + librsvg2-2; pip: cairosvg)
+    if src_ext == "svg":
+        try:
+            import cairosvg  # type: ignore
+            return cairosvg.svg2png(bytestring=logo_data, output_width=2000)
+        except ImportError:
+            print("[LOGO-CONVERT] cairosvg not installed — SVG conversion unavailable. "
+                  "Run: pip install cairosvg + apt install libcairo2")
+        except Exception as e:
+            print(f"[LOGO-CONVERT] SVG conversion failed: {type(e).__name__}: {e}")
+        return None
+
+    # PSD / TIFF / BMP / EPS via Pillow. EPS needs ghostscript installed.
+    if src_ext in ("psd", "tiff", "tif", "bmp", "eps"):
+        try:
+            from PIL import Image
+            from io import BytesIO
+            img = Image.open(BytesIO(logo_data))
+            # TIFF logos are often CMYK from print workflows → convert to RGB.
+            # PSD often has alpha (RGBA), preserved. P-mode (palette) → RGBA.
+            if img.mode == "CMYK":
+                img = img.convert("RGB")
+            elif img.mode == "P":
+                img = img.convert("RGBA")
+            buf = BytesIO()
+            img.save(buf, format="PNG")
+            return buf.getvalue()
+        except Exception as e:
+            print(f"[LOGO-CONVERT] {src_ext.upper()} → PNG via Pillow failed: {type(e).__name__}: {e}")
+        return None
+
+    # Unrecognized extension — let the caller's rejection path handle it.
+    return None
 
 
 def _notify_user_logo_format_rejected(claim: dict, company_profile: dict, rejected_ext: str):
