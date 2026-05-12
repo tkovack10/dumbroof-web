@@ -7069,9 +7069,13 @@ async def process_claim(claim_id: str, refresh_prices: bool = False):
             print(f"[PROCESS] Damage scoring failed (non-fatal): {e}")
 
         # 10a. Quality Gate — reject if BOTH scores fail (protects rep credibility)
+        # Bypassed for supplement_only: carrier already conceded damage by paying a scope,
+        # so photo-based DS/TAS gating doesn't apply — user is supplementing line items,
+        # not proving damage from scratch.
         DS_FAIL_THRESHOLD = 35   # D- or F
         TAS_FAIL_THRESHOLD = 50  # D or F
-        if ds and tas and ds.score < DS_FAIL_THRESHOLD and tas.score < TAS_FAIL_THRESHOLD:
+        quality_gate_applies = report_mode != "supplement_only"
+        if quality_gate_applies and ds and tas and ds.score < DS_FAIL_THRESHOLD and tas.score < TAS_FAIL_THRESHOLD:
             print(f"[QUALITY] Claim rejected — DS {ds.score} < {DS_FAIL_THRESHOLD} AND TAS {tas.score} < {TAS_FAIL_THRESHOLD}")
             guidance = _build_improvement_guidance(ds, tas)
             reject_data: dict = {
