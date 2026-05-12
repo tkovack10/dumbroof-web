@@ -41,13 +41,13 @@ export function CloseoutTab({ claim, slots }: Props) {
     {
       num: 4,
       title: "Install supplements",
-      status: slots.installSupplements && isWon ? "now" : "locked",
+      status: slots.installSupplements ? "now" : "locked",
       body: slots.installSupplements ?? slots.lockedInstall,
     },
     {
       num: 5,
       title: "Certificate of completion",
-      status: slots.certificateOfCompletion && isWon ? "now" : "locked",
+      status: slots.certificateOfCompletion ? "now" : "locked",
       body: slots.certificateOfCompletion ?? slots.lockedCoc,
     },
     {

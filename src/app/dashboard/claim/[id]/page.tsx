@@ -1062,7 +1062,7 @@ export default function ClaimDetailPage() {
                 hasForensicWin={hasForensicWin}
               />
             ) : null,
-            installSupplements: isReady && !isForensicOnly ? (
+            installSupplements: isReady ? (
               <InstallSupplementBuilder
                 claimId={claim.id}
                 claimAddress={claim.address}
@@ -1073,7 +1073,7 @@ export default function ClaimDetailPage() {
                 adjusterEmail={claim.adjuster_email || ""}
               />
             ) : null,
-            certificateOfCompletion: isReady && !isForensicOnly ? (
+            certificateOfCompletion: isReady ? (
               <div id="lifecycle-completion">
                 <CocBuilder
                   claimId={claim.id}
@@ -1107,12 +1107,8 @@ export default function ClaimDetailPage() {
             lockedEstimate: isReady && isForensicOnly && !(claim.measurement_files?.length) ? (
               <LockedCard title="Code-Cited Estimate" description="Every line item backed by building codes, photo evidence, and regional Xactimate pricing." />
             ) : null,
-            lockedInstall: isReady && isForensicOnly ? (
-              <LockedCard title="Install Supplement Documentation" description="Document items discovered during installation — plywood, extra layers, hidden damage." />
-            ) : null,
-            lockedCoc: isReady && isForensicOnly ? (
-              <LockedCard title="Certificate of Substantial Completion" description="Generate and send completion documents with embedded photos." />
-            ) : null,
+            lockedInstall: null,
+            lockedCoc: null,
             lockedInvoice: isReady && isForensicOnly ? (
               <LockedCard title="Invoice Builder" description="Generate and send invoices with Stripe payment links." />
             ) : null,
@@ -1781,7 +1777,7 @@ export default function ClaimDetailPage() {
         )}
 
         {/* Install Supplements — items discovered during installation */}
-        {isReady && !isForensicOnly && (
+        {isReady && (
           <InstallSupplementBuilder
             claimId={claim.id}
             claimAddress={claim.address}
@@ -1792,12 +1788,9 @@ export default function ClaimDetailPage() {
             adjusterEmail={claim.adjuster_email || ""}
           />
         )}
-        {isReady && isForensicOnly && (
-          <LockedCard title="Install Supplement Documentation" description="Document items discovered during installation — plywood, extra layers, hidden damage." />
-        )}
 
         {/* Certificate of Completion */}
-        {isReady && !isForensicOnly && (
+        {isReady && (
           <div id="lifecycle-completion">
             <CocBuilder
               claimId={claim.id}
@@ -1809,9 +1802,6 @@ export default function ClaimDetailPage() {
               adjusterEmail={claim.adjuster_email || ""}
             />
           </div>
-        )}
-        {isReady && isForensicOnly && (
-          <LockedCard title="Certificate of Substantial Completion" description="Generate and send completion documents with embedded photos." />
         )}
 
         {/* Invoicing */}
