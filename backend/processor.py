@@ -6843,6 +6843,16 @@ async def process_claim(claim_id: str, refresh_prices: bool = False):
             fpath = os.path.join(photos_dir, fname)
             if not os.path.isfile(fpath):
                 continue
+            # Skip non-photo files. The contractor logo (usarm_logo.png/.jpg)
+            # is staged into photos_dir alongside camera photos but it is NOT
+            # a photo — it's a brand asset that may have alpha (RGBA), needs
+            # to preserve original format, and is rendered tiny in the PDF
+            # header so doesn't need resize-for-bandwidth. Pre-fix: this loop
+            # tried to JPEG-encode RGBA logos and Pillow crashed mid-save,
+            # truncating the file on disk → PDF generator fell back to the
+            # text-only cover. (Noble Roofing of Owensboro, 2026-05-12.)
+            if fname.startswith("usarm_logo"):
+                continue
             if fname.lower().rsplit(".", 1)[-1] not in ("jpg", "jpeg", "png"):
                 continue
             if os.path.getsize(fpath) < 300_000:
@@ -6858,6 +6868,17 @@ async def process_claim(claim_id: str, refresh_prices: bool = False):
                         # across the resize — Pillow's .save strips it by default.
                         exif_bytes = img.info.get("exif", b"")
                         img.thumbnail((1024, 1024), Image.LANCZOS)
+                        # JPEG doesn't support alpha. Photos uploaded as RGBA
+                        # PNGs (rare but happens) would crash mid-save and
+                        # truncate the file on disk. Flatten alpha onto white
+                        # before encoding. Same fix family as the logo skip
+                        # above — defense in depth.
+                        if img.mode in ("RGBA", "LA", "P"):
+                            bg = Image.new("RGB", img.size, (255, 255, 255))
+                            if img.mode == "P":
+                                img = img.convert("RGBA")
+                            bg.paste(img, mask=img.split()[-1] if img.mode in ("RGBA", "LA") else None)
+                            img = bg
                         save_kwargs = {"quality": 50}
                         if exif_bytes:
                             save_kwargs["exif"] = exif_bytes
