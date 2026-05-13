@@ -2998,8 +2998,11 @@ def build_claim_config(
     # If we have a carrier scope, the property address is in it — recover here so
     # every downstream consumer (state parse, ZIP parse, market resolution, PDF
     # property block, geocoding) sees the real address transparently.
+    # Match the distinctive placeholder string, not just "pending" prefix, so real
+    # addresses like "Pending Brook Rd" don't trigger recovery. Empty/whitespace
+    # also qualifies — those rows have no user-set address to protect.
     _seed_addr = (claim.get("address") or "").strip().lower()
-    _is_seed_placeholder = _seed_addr.startswith("pending") or not _seed_addr
+    _is_seed_placeholder = "please update" in _seed_addr or not _seed_addr
     if _is_seed_placeholder and carrier_data:
         _carrier_block = carrier_data.get("carrier") or {}
         _recovered = (_carrier_block.get("property_address") or "").strip()
