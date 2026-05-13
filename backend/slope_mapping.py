@@ -36,10 +36,10 @@ CARDINAL_BEARINGS = {
     "NW": 315,
 }
 
-# Only true cardinal directions count. Claude's existing `elevation` tag on
-# photos uses "front/rear/left/right" (relative to the house, not geographic)
-# so it CANNOT be safely converted to N/S/E/W without a known house
-# orientation. We explicitly reject non-geographic values here.
+# True cardinal directions. Claude's existing `elevation` tag on photos can
+# also use house-relative values ("front/rear/left/right"); those CAN be
+# converted to N/S/E/W only when a known house orientation is supplied
+# (claims.front_of_house_cardinal). See _normalize_cardinal().
 ELEVATION_TO_CARDINAL = {
     "n": "N", "north": "N",
     "s": "S", "south": "S",
@@ -50,10 +50,12 @@ ELEVATION_TO_CARDINAL = {
     "se": "SE", "southeast": "SE",
     "sw": "SW", "southwest": "SW",
 }
-_NON_GEOGRAPHIC_ELEVATIONS = {
-    "front", "rear", "back", "left", "right",
-    "roof", "detail", "interior", "exterior",
-}
+# House-relative tags that the AI uses when GPS/heading were stripped.
+# `_relative_to_cardinal` rotates these onto absolute cardinals using the
+# known front-of-house orientation.
+_HOUSE_RELATIVE_TAGS = {"front", "rear", "back", "left", "right"}
+# Non-geographic, non-rotatable — these never resolve to a cardinal.
+_NON_GEOGRAPHIC_ELEVATIONS = {"roof", "detail", "interior", "exterior"}
 
 
 def _bucket_bearing(bearing_deg: float) -> str:
@@ -154,18 +156,47 @@ def synthesize_cardinal_facets() -> list:
     ]
 
 
-def _normalize_cardinal(val: Optional[str]) -> Optional[str]:
+def _relative_to_cardinal(tag: str, front_cardinal: str) -> Optional[str]:
+    """Rotate a house-relative tag onto an absolute cardinal.
+
+    Given the cardinal the FRONT of the house faces:
+      - front → front_cardinal
+      - rear/back → front_cardinal rotated 180°
+      - left → front_cardinal rotated -90° (counterclockwise)
+      - right → front_cardinal rotated +90° (clockwise)
+
+    "left" and "right" follow the convention of facing the house from the
+    street (i.e., standing on the road looking at the front door). This is
+    the natural perspective the inspector adopts when annotating photos.
+    """
+    if front_cardinal not in CARDINAL_BEARINGS:
+        return None
+    base = CARDINAL_BEARINGS[front_cardinal]
+    delta = {"front": 0, "rear": 180, "back": 180, "left": -90, "right": 90}.get(tag)
+    if delta is None:
+        return None
+    return _bucket_bearing(base + delta)
+
+
+def _normalize_cardinal(
+    val: Optional[str],
+    front_of_house_cardinal: Optional[str] = None,
+) -> Optional[str]:
     """Fold free-form direction strings into the 8-compass scheme.
 
-    Returns None for house-relative tags like "front/rear/left/right" — those
-    can't be converted to a geographic cardinal without knowing which face of
-    the house is north, which we don't.
+    House-relative tags (front/rear/left/right) resolve only when
+    front_of_house_cardinal is provided. Non-rotatable tags (roof, detail,
+    interior, exterior) always return None.
     """
     if not val:
         return None
     key = str(val).strip().lower()
     if key in _NON_GEOGRAPHIC_ELEVATIONS:
         return None
+    if key in _HOUSE_RELATIVE_TAGS:
+        if not front_of_house_cardinal:
+            return None
+        return _relative_to_cardinal(key, front_of_house_cardinal)
     if key in ELEVATION_TO_CARDINAL:
         return ELEVATION_TO_CARDINAL[key]
     upper = key.upper()
@@ -179,6 +210,7 @@ def assign_photos_to_slopes(
     roof_facets: list,
     property_lat: Optional[float] = None,
     property_lon: Optional[float] = None,
+    front_of_house_cardinal: Optional[str] = None,
 ) -> dict:
     """Assign each photo to a roof facet (slope).
 
@@ -186,7 +218,9 @@ def assign_photos_to_slopes(
       1. EXIF compass heading (most accurate; phone-native photos only)
       2. GPS triangulation — bearing from property centroid to photo GPS
          (works when heading was stripped by upload vendors like AccuLynx)
-      3. Claude Vision's existing elevation tag (only if geographic)
+      3. Claude Vision's elevation tag — either an absolute cardinal, OR
+         a house-relative tag (front/rear/left/right) rotated onto a
+         cardinal using front_of_house_cardinal.
 
     Args:
         photos: list of photo dicts {annotation_key, heading?, gps_lat?,
@@ -195,6 +229,9 @@ def assign_photos_to_slopes(
                 with {facet_id, cardinal, ...}
         property_lat/lon: geocoded property centroid (from claims.latitude/
                 longitude). Enables signal #2. Without this, GPS is ignored.
+        front_of_house_cardinal: 8-compass direction the front of the house
+                faces (claims.front_of_house_cardinal). Enables signal #3 for
+                photos tagged front/rear/left/right.
 
     Returns:
         dict mapping annotation_key -> facet_id. Photos that cannot be
@@ -252,8 +289,12 @@ def assign_photos_to_slopes(
                 pass
 
         # 3. Fallback: Claude Vision's elevation tag on the photo itself.
+        #    With front_of_house_cardinal known, house-relative tags
+        #    (front/rear/left/right) also resolve here.
         if not target_cardinal:
-            target_cardinal = _normalize_cardinal(photo.get("elevation"))
+            target_cardinal = _normalize_cardinal(
+                photo.get("elevation"), front_of_house_cardinal,
+            )
 
         if not target_cardinal:
             continue  # Skip — no signal to assign

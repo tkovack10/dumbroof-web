@@ -65,8 +65,10 @@ export function EstimateView({ claimId, refreshKey }: Props) {
           setItems(data.items || []);
         }
 
-        // Fetch photos via API route (bypasses RLS)
-        const photosRes = await fetch(`/api/claim-photos?claim_id=${claimId}`);
+        // Fetch photos via API route (bypasses RLS).
+        // cache: 'no-store' — signed URLs expire in 1h, and stale URLs render
+        // as broken-image icons on dark UI. Always fetch fresh.
+        const photosRes = await fetch(`/api/claim-photos?claim_id=${claimId}`, { cache: "no-store" });
         if (photosRes.ok) {
           const photosJson = await photosRes.json();
           setPhotos(photosJson.photos || []);
@@ -300,16 +302,30 @@ function DamageAssessment({
               {items.map((photo, i) => (
                 <div key={photo.annotation_key} className={`flex gap-4 ${style.bg} rounded-lg p-3`}>
                   {/* Photo thumbnail */}
-                  <div className="w-20 h-20 rounded-lg overflow-hidden bg-white/[0.04] shrink-0">
+                  <div className="w-20 h-20 rounded-lg overflow-hidden bg-white/[0.04] shrink-0 relative">
                     {photo.signed_url ? (
                       <img
                         src={photo.signed_url}
                         alt={photo.annotation_text || photo.annotation_key}
+                        loading="lazy"
                         className="w-full h-full object-cover"
+                        onError={(e) => {
+                          // Signed URL expired or storage 404'd. Swap to the
+                          // text fallback so users don't see Chrome's white
+                          // broken-image placeholder on dark UI.
+                          const img = e.currentTarget;
+                          img.style.display = "none";
+                          const fallback = img.nextElementSibling as HTMLElement | null;
+                          if (fallback) fallback.style.display = "flex";
+                        }}
                       />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center text-[var(--gray-dim)] text-[10px]">{photo.annotation_key}</div>
-                    )}
+                    ) : null}
+                    <div
+                      className="absolute inset-0 w-full h-full items-center justify-center text-[var(--gray-dim)] text-[10px] text-center px-1"
+                      style={{ display: photo.signed_url ? "none" : "flex" }}
+                    >
+                      {photo.annotation_key}
+                    </div>
                   </div>
                   {/* Info */}
                   <div className="min-w-0 flex-1">

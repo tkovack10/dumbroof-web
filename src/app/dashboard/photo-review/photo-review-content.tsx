@@ -68,7 +68,7 @@ export function PhotoReviewContent({ claimId: claimIdProp, embedded = false }: P
   const [submitting, setSubmitting] = useState(false);
   const [stampType, setStampType] = useState<"APPROVE" | "REJECT" | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [viewMode, setViewMode] = useState<ViewMode>("card");
+  const [viewMode, setViewMode] = useState<ViewMode>("grid");
 
   // Track which photos have been reviewed/skipped this session
   const [localStatuses, setLocalStatuses] = useState<Map<string, string>>(new Map());

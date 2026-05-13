@@ -47,7 +47,7 @@ export function V2Layout({ claim, slots, isReprocessing, onUpload, onReprocess, 
       return { label: "Open Closeout", onClick: () => setActive("closeout") };
     }
     if (hasScope) {
-      return { label: "Open Composer", onClick: () => setActive("scope") };
+      return { label: "Supplement Composer", onClick: () => setActive("scope") };
     }
     if (hasPDFs) {
       return { label: "Send to Carrier", onClick: () => setActive("documents") };

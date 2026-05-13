@@ -7045,10 +7045,30 @@ async def process_claim(claim_id: str, refresh_prices: bool = False):
                 # other vendors strip GPSImgDirection on re-save).
                 _prop_lat = claim.get("latitude")
                 _prop_lon = claim.get("longitude")
+                # Derive (or reuse) the cardinal direction the front of the
+                # house faces. This rotates Vision's house-relative elevation
+                # tags (front/rear/left/right) onto absolute cardinals so they
+                # match EagleView roof facets even with stripped EXIF.
+                _front_cardinal = claim.get("front_of_house_cardinal")
+                if not _front_cardinal and _prop_lat and _prop_lon:
+                    try:
+                        from noaa_weather.house_orientation import derive_front_of_house_cardinal
+                        _front_cardinal = derive_front_of_house_cardinal(_prop_lat, _prop_lon)
+                        if _front_cardinal:
+                            config["front_of_house_cardinal"] = _front_cardinal
+                            try:
+                                sb.table("claims").update({
+                                    "front_of_house_cardinal": _front_cardinal,
+                                }).eq("id", claim["id"]).execute()
+                            except Exception as _persist_err:
+                                print(f"[ORIENT] persist failed: {_persist_err}", flush=True)
+                    except Exception as _orient_err:
+                        print(f"[ORIENT] derive failed: {_orient_err}", flush=True)
                 _assignments = assign_photos_to_slopes(
                     _synthetic_photos, _facets_list,
                     property_lat=_prop_lat,
                     property_lon=_prop_lon,
+                    front_of_house_cardinal=_front_cardinal,
                 )
                 for _p in _synthetic_photos:
                     _sid = _assignments.get(_p.get("annotation_key"))

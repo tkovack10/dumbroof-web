@@ -285,7 +285,7 @@ export function ScopeReviewContent({ claimId: claimIdProp, embedded = false, onA
         {claimId && <RoofSectionsEditor claimId={claimId} />}
 
         {/* Financial summary */}
-        <div className="bg-white rounded-2xl border border-[var(--border-glass)] p-6">
+        <div className="bg-white/[0.04] rounded-2xl border border-[var(--border-glass)] p-6">
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
               <p className="text-xs text-[var(--gray-dim)]">Contractor RCV</p>
@@ -319,7 +319,7 @@ export function ScopeReviewContent({ claimId: claimIdProp, embedded = false, onA
           const catSubtotal = catActive.reduce((s, i) => s + i.qty * i.unit_price, 0);
 
           return (
-            <div key={cat} className="bg-white rounded-2xl border border-[var(--border-glass)] overflow-hidden">
+            <div key={cat} className="bg-white/[0.04] rounded-2xl border border-[var(--border-glass)] overflow-hidden">
               {/* Category header */}
               <button
                 onClick={() => toggleCategory(cat)}
