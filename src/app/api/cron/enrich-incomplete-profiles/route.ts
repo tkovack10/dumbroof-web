@@ -236,7 +236,7 @@ async function sendOutreachEmail(profile: IncompleteProfile): Promise<boolean> {
     const { error } = await getResend().emails.send({
       from: "Tom Kovack <tom@dumbroof.ai>",
       to: [profile.email],
-      reply_to: "tom@dumbroof.ai",
+      replyTo: "tom@dumbroof.ai",
       subject,
       html,
     });
