@@ -1962,7 +1962,8 @@ the actual purpose (e.g., "starter course" or "cap shingles"). These notes are e
     "insured_email": "Homeowner email if found",
     "insured_phone": "Homeowner phone if found",
     "adjuster_phone": "Adjuster phone if found",
-    "date_of_loss": "Date of loss if found"
+    "date_of_loss": "Date of loss if found",
+    "property_address": "FULL property/loss address as a single comma-separated string, e.g. '123 Main St, Brooklyn, NY 11215'. The address of the INSURED PROPERTY (the structure being claimed against), NOT the insured's mailing address if different. Empty string if not found."
   },
   "carrier_rcv": 0.00,
   "carrier_depreciation": 0.00,
@@ -2991,6 +2992,22 @@ def build_claim_config(
     prop = measurements.get("property", {})
     structs = measurements.get("structures", [{}])
     meas = measurements.get("measurements", {})
+
+    # Instant-supplement funnel seeds claims.address = "Pending — please update"
+    # because the user uploads the carrier scope BEFORE typing an address.
+    # If we have a carrier scope, the property address is in it — recover here so
+    # every downstream consumer (state parse, ZIP parse, market resolution, PDF
+    # property block, geocoding) sees the real address transparently.
+    _seed_addr = (claim.get("address") or "").strip().lower()
+    _is_seed_placeholder = _seed_addr.startswith("pending") or not _seed_addr
+    if _is_seed_placeholder and carrier_data:
+        _carrier_block = carrier_data.get("carrier") or {}
+        _recovered = (_carrier_block.get("property_address") or "").strip()
+        if _recovered:
+            claim["address"] = _recovered
+            claim["_address_recovered_from_scope"] = True
+            print(f"[CONFIG] Recovered property address from carrier scope: {_recovered}", flush=True)
+
     phase = "post-scope" if (carrier_data and carrier_data.get("carrier_line_items")) else "pre-scope"
     if carrier_data and not carrier_data.get("carrier_line_items"):
         print(f"[PROCESS] WARNING: Scope files uploaded but carrier extraction found 0 line items — falling back to pre-scope", flush=True)
@@ -7311,6 +7328,15 @@ async def process_claim(claim_id: str, refresh_prices: bool = False):
             update_data["adjuster_name"] = _adjuster_name
         if _adjuster_email:
             update_data["adjuster_email"] = _adjuster_email
+
+        # Backfill claims.address if the instant-supplement funnel seeded the
+        # "Pending — please update" placeholder and the carrier scope contained
+        # a real property address. build_claim_config sets _address_recovered_from_scope
+        # and mutates claim["address"] in place — mirror it to the top-level column
+        # so the dashboard table + downstream tooling reflect the real address.
+        if claim.get("_address_recovered_from_scope") and claim.get("address"):
+            update_data["address"] = claim["address"]
+            print(f"[PROCESS] Backfilling claims.address from carrier scope: {claim['address']}", flush=True)
 
         # Save scores (already computed above) + component subscores for calibration
         if ds and tas:
