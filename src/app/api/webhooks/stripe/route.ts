@@ -405,6 +405,51 @@ export async function POST(req: NextRequest) {
       }
       break;
     }
+
+    // Connect: fires whenever a connected account's capabilities or requirements
+    // change in Stripe (initial onboarding completion, ongoing re-verification,
+    // capability enablement/disablement). Without this, stripe_connect_status
+    // only updates when the user happens to visit /dashboard/settings (the
+    // POST {action:"status"} handler refetches on demand). With it, the dashboard
+    // and per-claim InvoiceBuilder always see the true Stripe state.
+    //
+    // For Connect events, event.account is the connected account ID. For
+    // platform-account events, event.account is undefined — we only act when
+    // it's a Connect account event AND we have a row to update.
+    case "account.updated": {
+      try {
+        const account = event.data.object as Stripe.Account;
+        // Only update if we have this account mapped to a user. Avoids accidentally
+        // matching the platform account's id to a phantom row.
+        const { data: profileRows } = await supabaseAdmin
+          .from("company_profiles")
+          .select("user_id, stripe_connect_status")
+          .eq("stripe_connect_account_id", account.id)
+          .limit(1);
+        const profile = profileRows?.[0];
+        if (!profile) {
+          // Either the platform's own account.updated event (we don't store the
+          // platform acct id in company_profiles) or a stale account ID — no-op.
+          break;
+        }
+
+        const isReady = Boolean(account.charges_enabled && account.payouts_enabled);
+        const newStatus = isReady ? "active" : "pending";
+        if (newStatus !== profile.stripe_connect_status) {
+          await supabaseAdmin
+            .from("company_profiles")
+            .update({ stripe_connect_status: newStatus })
+            .eq("stripe_connect_account_id", account.id);
+          console.log(
+            `[webhook account.updated] ${account.id} status ${profile.stripe_connect_status} → ${newStatus}`,
+            `(charges_enabled=${account.charges_enabled}, payouts_enabled=${account.payouts_enabled})`
+          );
+        }
+      } catch (e) {
+        console.error("[webhook account.updated] handler failed:", e);
+      }
+      break;
+    }
   }
 
   return NextResponse.json({ received: true });
