@@ -558,7 +558,14 @@ tr:nth-child(even) td { background: #f8f9fa; }
     align-items: center;
     gap: 18pt;
 }
-.header-bar .logo-img { height: 52pt; width: auto; }
+.header-bar .logo-img {
+    height: 52pt;
+    width: auto;
+    background: #fff;
+    padding: 5pt 8pt;
+    border-radius: 4pt;
+    box-sizing: content-box;
+}
 .header-bar .header-text { flex: 1; }
 .header-bar .company {
     font-size: 11pt;
@@ -660,8 +667,11 @@ tr:nth-child(even) td { background: #f8f9fa; }
 }
 .header-bar .logo-text-fallback.logo-img {
     font-size: 16pt;
-    padding: 4pt 8pt;
-    border-bottom-width: 2px;
+    padding: 6pt 12pt;
+    background: #fff;
+    color: #0d2137;
+    border-radius: 4pt;
+    border-bottom: 2px solid #c8102e;
 }
 .cover-page .cover-company {
     font-size: 28pt;
