@@ -84,6 +84,7 @@ CLAIM_EVENT_TYPES: dict[str, dict[str, str]] = {
     # --- System ---
     "ai_analysis_complete":        {"category": "system", "title": "AI analysis complete",                "icon": "cpu"},
     "gmail_poll_match":            {"category": "system", "title": "Gmail poll matched",                  "icon": "mail"},
+    "gmail_token_expired":         {"category": "system", "title": "Gmail authorization expired",         "icon": "alert-triangle"},
     "stripe_event":                {"category": "system", "title": "Stripe event",                        "icon": "credit-card"},
     "referral_rewarded":           {"category": "system", "title": "Referral reward applied",             "icon": "gift"},
 }

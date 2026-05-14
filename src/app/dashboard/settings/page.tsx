@@ -63,6 +63,12 @@ function SettingsPageContent() {
   const [passwordError, setPasswordError] = useState("");
   // Gmail integration state
   const [gmailConnected, setGmailConnected] = useState(false);
+  // True when a Gmail send recently failed with invalid_grant — the backend
+  // auto-clears gmail_refresh_token AND inserts a gmail_token_expired claim
+  // event. Surface a reconnect CTA so the user knows their carriers are
+  // currently seeing the @dumbroof.ai fallback sender.
+  const [gmailExpired, setGmailExpired] = useState(false);
+  const [gmailExpiredAt, setGmailExpiredAt] = useState<string | null>(null);
   const [gmailEmail, setGmailEmail] = useState("");
   const [gmailConnecting, setGmailConnecting] = useState(false);
   const [gmailDisconnecting, setGmailDisconnecting] = useState(false);
@@ -187,6 +193,28 @@ function SettingsPageContent() {
         if (data.gmail_refresh_token) {
           setGmailConnected(true);
           setGmailEmail(data.sending_email || data.email || "");
+        } else {
+          // No token now — but did we have one recently that expired?
+          // Surface the reconnect CTA when the latest gmail_token_expired
+          // event for this user is present. claim_events stores actor as
+          // created_by (not user_id).
+          try {
+            const { data: expiredEvent } = await supabase
+              .from("claim_events")
+              .select("created_at")
+              .eq("created_by", user.id)
+              .eq("event_type", "gmail_token_expired")
+              .order("created_at", { ascending: false })
+              .limit(1)
+              .maybeSingle();
+            if (expiredEvent?.created_at) {
+              setGmailExpired(true);
+              setGmailExpiredAt(expiredEvent.created_at);
+              setGmailEmail(data.sending_email || data.email || "");
+            }
+          } catch {
+            // Non-fatal — settings page renders the normal Connect Gmail CTA.
+          }
         }
         // Richard dry-run flag (short-circuits destructive approvals)
         setRichardDryRun(Boolean(data.richard_dry_run));
@@ -760,6 +788,19 @@ function SettingsPageContent() {
             Connect your Gmail to send emails from Claim Brain as yourself.
             Without Gmail, emails send via <strong>claims@dumbroof.ai</strong> with your company name.
           </p>
+
+          {gmailExpired && (
+            <div className="mb-6 rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
+              <div className="font-semibold text-white mb-1">⚠ Reconnect Gmail</div>
+              <p className="text-xs leading-relaxed">
+                Your Gmail authorization expired{gmailExpiredAt ? ` on ${new Date(gmailExpiredAt).toLocaleDateString()}` : ""}.
+                Recent emails sent through the platform have been delivered via
+                <strong> claims@dumbroof.ai</strong> instead of <strong>{gmailEmail || "your address"}</strong>.
+                Click <strong>Connect Gmail</strong> below to restore sending as yourself — carriers will see your address on
+                all future emails.
+              </p>
+            </div>
+          )}
 
           {(gmailJustConnected && !gmailConnected) && (
             <div className="bg-green-500/10 border border-green-500/30 text-green-400 text-sm rounded-lg px-4 py-3 mb-4">

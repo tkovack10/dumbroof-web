@@ -43,10 +43,30 @@ export async function GET() {
       claimCounts[c.user_id] = (claimCounts[c.user_id] || 0) + 1;
     }
 
+    // Pull last_sign_in_at from auth.users for each team member.
+    // admin.listUsers paginates at 1000 rows per page (Supabase default);
+    // for any realistic team, the team_ids will be a small subset of one
+    // page. If we ever cross 1000 total platform users this needs paging.
+    const lastSignInByUserId = new Map<string, string | null>();
+    try {
+      const { data: authPage } = await supabaseAdmin.auth.admin.listUsers({
+        page: 1,
+        perPage: 1000,
+      });
+      const teamSet = new Set(teamUserIds);
+      for (const au of authPage?.users ?? []) {
+        if (teamSet.has(au.id)) {
+          lastSignInByUserId.set(au.id, au.last_sign_in_at || null);
+        }
+      }
+    } catch (e) {
+      console.warn("[api/admin/team] listUsers failed (non-fatal):", e);
+    }
+
     const members = teamMembers.map((m) => ({
       id: m.id,
       email: m.email || "",
-      last_sign_in: null as string | null,
+      last_sign_in: lastSignInByUserId.get(m.id) ?? null,
       claims_count: claimCounts[m.id] || 0,
     }));
 

@@ -639,7 +639,40 @@ def send_claim_email(
             )
             send_method = "gmail"
         except Exception as e:
-            print(f"[WARN] Gmail send failed, trying Resend fallback: {e}", flush=True)
+            err_str = str(e)
+            print(f"[WARN] Gmail send failed, trying Resend fallback: {err_str}", flush=True)
+            # Detect OAuth invalidation (expired refresh token, revoked grant,
+            # or app moved out of test mode). When this happens the refresh
+            # token is permanently dead — every future send falls to Resend
+            # branded as @dumbroof.ai and the user never knows their carriers
+            # are seeing the wrong sender. Auto-clear the token + record a
+            # claim_event so the dashboard can surface a "Reconnect Gmail"
+            # banner.
+            #
+            # invalid_grant is the canonical Google OAuth response for an
+            # expired/revoked refresh token. 401/Unauthorized covers the
+            # general access-revoked case.
+            invalid_signals = ("invalid_grant", "Token has been expired or revoked",
+                               "unauthorized_client", "invalid_token", "401")
+            if any(sig in err_str for sig in invalid_signals):
+                try:
+                    sb.table("company_profiles").update({
+                        "gmail_refresh_token": None,
+                        "email_provider": None,
+                    }).eq("user_id", user_id).execute()
+                    print(f"[GMAIL-EXPIRED] cleared refresh_token for user_id={user_id} — user must reconnect", flush=True)
+                    sb.table("claim_events").insert({
+                        "claim_id": claim_id,
+                        "created_by": user_id,
+                        "event_type": "gmail_token_expired",
+                        "event_category": "system",
+                        "title": "Gmail authorization expired",
+                        "source": "system",
+                        "occurred_at": datetime.utcnow().isoformat(),
+                        "metadata": {"to": to_email, "reason": err_str[:200]},
+                    }).execute()
+                except Exception as _persist_err:
+                    print(f"[GMAIL-EXPIRED] cleanup failed (non-fatal): {_persist_err}", flush=True)
 
     # Final fallback — Resend with company branding. Always hits if every
     # provider-specific path failed.
