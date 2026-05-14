@@ -56,6 +56,10 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ url: accountLink.url });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Failed to create Connect link";
+    // Stripe errors carry useful context (code, type, raw) — surface to Vercel logs
+    // so we can diagnose Connect-not-enabled / capability-missing / etc. without
+    // round-tripping through the UI.
+    console.error("[stripe-connect] failed:", message, err);
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
