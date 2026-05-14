@@ -720,13 +720,160 @@ def download_file(sb: Client, bucket: str, path: str, local_path: str,
                 raise RuntimeError(f"Failed to download {path} after {max_retries} attempts: {e}")
 
 
+# Supabase storage upload starts to hang/timeout reliably above ~25MB on
+# our current plan (forensic PDFs with 100+ photos can hit 150MB+ when
+# uncompressed). 25MB is the empirically-safe sweet spot. Hard limit of
+# 100MB triggers lossy fallback regardless of compressibility.
+_UPLOAD_TARGET_BYTES = 25 * 1024 * 1024
+_UPLOAD_TIMEOUT_SECONDS = 300
+_UPLOAD_MAX_ATTEMPTS = 3
+
+
+def _compress_pdf_for_upload(pdf_path: str) -> str:
+    """Pre-compress a PDF before upload if it exceeds the safe-upload size.
+
+    Layered approach:
+      1. Lossless: PyMuPDF garbage+deflate+clean (cheap, often enough for
+         vector-heavy PDFs but limited gains on photo-heavy forensic reports).
+      2. Lossy fallback: re-render each page to JPEG at progressively lower
+         DPI (130 → 110 → 90 → 75 → 60). 90dpi keeps text crisp; 60dpi is
+         the absolute floor for legibility.
+
+    Returns the path to use for upload (compressed file or the original if
+    already small enough / compression didn't help).
+    """
+    try:
+        size = os.path.getsize(pdf_path)
+    except OSError:
+        return pdf_path
+    if size <= _UPLOAD_TARGET_BYTES:
+        return pdf_path
+
+    print(f"[UPLOAD] {os.path.basename(pdf_path)} is {size / 1024 / 1024:.1f}MB > "
+          f"{_UPLOAD_TARGET_BYTES // 1024 // 1024}MB target — compressing", flush=True)
+
+    shrunk = _try_lossless_pdf_shrink(pdf_path)
+    try:
+        shrunk_size = os.path.getsize(shrunk)
+    except OSError:
+        shrunk_size = size
+    if shrunk_size <= _UPLOAD_TARGET_BYTES:
+        print(f"[UPLOAD] Lossless: {size / 1024 / 1024:.1f}MB → "
+              f"{shrunk_size / 1024 / 1024:.1f}MB", flush=True)
+        return shrunk
+
+    # Lossy: rasterize each page as JPEG. Walk DPIs down until under target.
+    try:
+        import fitz
+    except Exception as e:
+        print(f"[UPLOAD] PyMuPDF unavailable for lossy fallback: {e} — uploading "
+              f"{shrunk_size / 1024 / 1024:.1f}MB as-is", flush=True)
+        return shrunk
+
+    out_dir = os.path.dirname(pdf_path) or "."
+    base = os.path.basename(pdf_path).rsplit(".", 1)[0]
+    for dpi in (130, 110, 90, 75, 60):
+        out = os.path.join(out_dir, f"{base}.raster_dpi{dpi}.pdf")
+        try:
+            src = fitz.open(shrunk)
+            dst = fitz.open()
+            try:
+                for page in src:
+                    pix = page.get_pixmap(dpi=dpi)
+                    img_bytes = pix.tobytes("jpeg", jpg_quality=70)
+                    rect = fitz.Rect(
+                        0, 0,
+                        pix.width * 72.0 / dpi,
+                        pix.height * 72.0 / dpi,
+                    )
+                    new_page = dst.new_page(width=rect.width, height=rect.height)
+                    new_page.insert_image(rect, stream=img_bytes)
+                dst.save(out, garbage=4, deflate=True, clean=True)
+            finally:
+                src.close()
+                dst.close()
+            out_size = os.path.getsize(out)
+            if out_size <= _UPLOAD_TARGET_BYTES:
+                print(f"[UPLOAD] Raster @ {dpi}dpi: {size / 1024 / 1024:.1f}MB → "
+                      f"{out_size / 1024 / 1024:.1f}MB", flush=True)
+                return out
+            try:
+                os.unlink(out)
+            except OSError:
+                pass
+        except Exception as e:
+            print(f"[UPLOAD] Raster @ {dpi}dpi failed: {e}", flush=True)
+
+    print(f"[UPLOAD] Could not get {os.path.basename(pdf_path)} under target "
+          f"even at 60dpi — uploading {shrunk_size / 1024 / 1024:.1f}MB anyway",
+          flush=True)
+    return shrunk
+
+
 def upload_file(sb: Client, bucket: str, path: str, local_path: str):
-    """Upload a file to Supabase Storage."""
-    with open(local_path, "rb") as f:
-        sb.storage.from_(bucket).upload(
-            path, f.read(),
-            file_options={"content-type": "application/pdf", "upsert": "true"}
-        )
+    """Upload a file to Supabase Storage with pre-compression, timeout, and retry.
+
+    PDFs are pre-compressed when oversized — see `_compress_pdf_for_upload`.
+    Each upload attempt is wrapped in a ThreadPoolExecutor with a hard
+    timeout so a stalled supabase-py call can't block the worker forever
+    (which is exactly what caused Christine Cir's 145-photo / 159MB-forensic
+    reprocess to hang for hours on 2026-05-14). Up to 3 attempts with
+    exponential backoff before raising.
+    """
+    import concurrent.futures
+
+    upload_path = (
+        _compress_pdf_for_upload(local_path)
+        if local_path.lower().endswith(".pdf")
+        else local_path
+    )
+    try:
+        size = os.path.getsize(upload_path)
+    except OSError:
+        size = 0
+
+    last_err: Exception | None = None
+    for attempt in range(_UPLOAD_MAX_ATTEMPTS):
+        t0 = time.time()
+        try:
+            with open(upload_path, "rb") as f:
+                data = f.read()
+
+            def _do_upload():
+                return sb.storage.from_(bucket).upload(
+                    path, data,
+                    file_options={"content-type": "application/pdf", "upsert": "true"}
+                )
+
+            with concurrent.futures.ThreadPoolExecutor(max_workers=1) as ex:
+                future = ex.submit(_do_upload)
+                try:
+                    future.result(timeout=_UPLOAD_TIMEOUT_SECONDS)
+                except concurrent.futures.TimeoutError:
+                    raise TimeoutError(
+                        f"upload of {os.path.basename(path)} "
+                        f"({size / 1024 / 1024:.1f}MB) exceeded "
+                        f"{_UPLOAD_TIMEOUT_SECONDS}s"
+                    )
+
+            elapsed = time.time() - t0
+            print(f"[UPLOAD] {os.path.basename(path)} "
+                  f"({size / 1024 / 1024:.1f}MB) in {elapsed:.1f}s", flush=True)
+            return
+        except Exception as e:
+            last_err = e
+            elapsed = time.time() - t0
+            if attempt < _UPLOAD_MAX_ATTEMPTS - 1:
+                wait = 5 * (2 ** attempt)
+                print(f"[UPLOAD] Retry {attempt + 1}/{_UPLOAD_MAX_ATTEMPTS} "
+                      f"after {elapsed:.1f}s for {os.path.basename(path)} "
+                      f"in {wait}s: {e}", flush=True)
+                time.sleep(wait)
+            else:
+                raise RuntimeError(
+                    f"Failed to upload {path} after {_UPLOAD_MAX_ATTEMPTS} "
+                    f"attempts: {last_err}"
+                ) from last_err
 
 
 def file_to_base64(path: str) -> str:
