@@ -1037,10 +1037,13 @@ export default function ClaimDetailPage() {
                 />
               </div>
             ) : null,
-            // v2 renders the SAME upload form as v1 inside the Documents tab when
-            // showUpload is true. Same JSX, same handlers, same downstream pipeline
-            // (upload → backend reprocess → carrier playbook book-keeping).
-            uploadDocsBlock: showUpload ? renderUploadForm() : null,
+            // v2: upload form is ALWAYS rendered inside the Documents tab so
+            // users don't need to discover an "Upload" button before they can
+            // attach a file. The header Upload button still works as a deep
+            // link — it switches to Documents and (no-op) sets showUpload=true.
+            // The form's Cancel button is now effectively redundant in v2;
+            // kept for v1 compat where the form IS still gated.
+            uploadDocsBlock: renderUploadForm(),
             signatureManager: isReady ? (
               <SignatureManager
                 claimId={claim.id}
