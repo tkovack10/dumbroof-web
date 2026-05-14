@@ -82,6 +82,8 @@ DEFAULT_MARKETS = {
     "IA": "IADM8X_02MAY26", # Des Moines — largest IA metro (Alfonso 2026-05-05, 10 markets)
     "KS": "KSWI8X_02MAY26", # Wichita — largest KS metro (Alfonso 2026-05-05, 5 markets)
     "OK": "OKOC8X_02MAY26", # Oklahoma City — largest OK metro (Alfonso 2026-05-05, 6 markets)
+    "AZ": "AZPH8X_02MAY26", # Phoenix — largest AZ metro (Alfonso 2026-05-14, 6 markets)
+    "SC": "SCCH8X_02MAY26", # Charleston — coastal SC anchor (Alfonso 2026-05-14, 10 markets)
 }
 
 # Nearest priced state for every unpriced US state/territory. When a claim comes
@@ -92,8 +94,8 @@ DEFAULT_MARKETS = {
 NEAREST_PRICED_STATE = {
     # Northeast → NY
     "ME": "NY", "NH": "NY", "VT": "NY", "MA": "NY", "RI": "NY", "CT": "NY",
-    # Mid-Atlantic / Southeast → MD
-    "VA": "MD", "DC": "MD", "NC": "MD", "SC": "MD", "FL": "MD",
+    # Mid-Atlantic / Southeast → MD (SC removed 2026-05-14 — Alfonso added 10 SC markets)
+    "VA": "MD", "DC": "MD", "NC": "MD", "FL": "MD",
     # Appalachia / Ohio Valley → OH
     "WV": "OH", "KY": "OH", "TN": "OH", "IN": "OH", "AL": "OH", "GA": "OH",
     # Upper Midwest → IL
@@ -101,9 +103,9 @@ NEAREST_PRICED_STATE = {
     # Plains / Northwest → MN (Iowa was here until 2026-05-05 when Alfonso added IA pricing)
     "NE": "MN", "ND": "MN", "SD": "MN", "MT": "MN",
     "ID": "MN", "WA": "MN", "OR": "MN", "AK": "MN",
-    # South / Mountain / West → TX (Kansas + Oklahoma were here until 2026-05-05)
+    # South / Mountain / West → TX (KS/OK left here 2026-05-05; AZ removed 2026-05-14)
     "MS": "TX", "AR": "TX", "LA": "TX",
-    "NM": "TX", "AZ": "TX", "CO": "TX", "UT": "TX", "NV": "TX",
+    "NM": "TX", "CO": "TX", "UT": "TX", "NV": "TX",
     "WY": "TX", "CA": "TX", "HI": "TX",
     # Territories → nearest CONUS port
     "PR": "MD", "VI": "MD", "GU": "TX", "MP": "TX", "AS": "TX",

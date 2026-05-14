@@ -495,6 +495,8 @@ STATE_PRICE_LIST = {
     "IA": "IADM26",  # Des Moines default (largest IA metro, 11 markets)
     "KS": "KSWI26",  # Wichita default (largest KS metro)
     "OK": "OKOC26",  # Oklahoma City default
+    "AZ": "AZPH26",  # Phoenix default (Alfonso 2026-05-14, 6 markets)
+    "SC": "SCCH26",  # Charleston default (Alfonso 2026-05-14, 10 markets)
 }
 STATE_PRICE_LIST_IS_PROXY = {}  # Midwest (OH/MI/IL/MN) + TX (24 mkts, Alfonso 2026-04-17) native
 
@@ -3316,6 +3318,7 @@ def build_claim_config(
         "NY": 0.08, "PA": 0.0, "NJ": 0.06625, "CT": 0.0635,
         "MD": 0.06, "DE": 0.0, "OH": 0.0725,
         "MI": 0.06, "IL": 0.0625, "MN": 0.06875,
+        "AZ": 0.056, "SC": 0.06,  # Added 2026-05-14 alongside Alfonso's AZ + SC pricing
     }
     tax_rate = _tax_rates.get(state, 0.08)
     if state not in _tax_rates:
