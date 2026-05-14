@@ -5122,88 +5122,114 @@ async def companycam_import(
         photos = photos[:100]
 
     sb = get_supabase_client()
-    uploaded = []
-    failed: list[dict] = []
 
+    # Concurrent per-photo handler. Each invocation is fully self-contained:
+    # download from CompanyCam → upload to Supabase → write sidecar. We run
+    # up to 8 of these in flight simultaneously to keep the whole batch under
+    # Cloudflare's ~100s ceiling.
+    #
+    # Sequential mode (the previous loop) hit 2:50 wall-clock for 67 photos,
+    # blowing past the proxy timeout. The client then sees "upload failed"
+    # while the backend silently keeps going — Rex's situation 2026-05-14.
+    # 8-way concurrency lands the same batch in ~22-30s. Even 100 photos
+    # finish in ~31s — well inside budget.
+    import asyncio
     import json as _json
-    for i, photo in enumerate(photos):
-        # Always fetch the "original" size — "web"/"medium" are resized for
-        # display and strip EXIF (GPS, heading, timestamp) during CompanyCam's
-        # server-side pipeline. We need the raw file for photo→slope mapping.
-        url = CompanyCamClient.get_photo_url(photo, size="original")
-        if not url:
-            failed.append({"index": i, "reason": "no_url"})
-            print(f"[CRM-IMPORT] photo {i}: no original URL on photo object", flush=True)
-            continue
-        fname = f"companycam_{i+1:03d}.jpg"  # set early so failure logs know which photo
-        try:
-            data = await client.download_photo(url)
-            if not data:
-                failed.append({"index": i, "reason": "download_empty"})
-                print(f"[CRM-IMPORT] photo {i}: download returned empty bytes", flush=True)
-                continue
-            # Generate safe filename
-            ext = ".jpg"
-            if url.lower().endswith(".png"):
-                ext = ".png"
-            fname = f"companycam_{i+1:03d}{ext}"
-            # Use target_path override if provided (for install supplements, COC, etc.)
-            if target_path:
-                folder = target_folder or "photos"
-                storage_path = f"{target_path}/{folder}/{fname}"
-            else:
-                storage_path = f"{user_id}/{slug}/photos/{fname}"
+    sem = asyncio.Semaphore(8)
+
+    async def _import_one(i: int, photo: dict) -> tuple[str, dict]:
+        """Returns ('ok', uploaded_row) or ('fail', failed_row)."""
+        async with sem:
+            url = CompanyCamClient.get_photo_url(photo, size="original")
+            if not url:
+                print(f"[CRM-IMPORT] photo {i}: no original URL on photo object", flush=True)
+                return ("fail", {"index": i, "reason": "no_url"})
+
+            fname = f"companycam_{i+1:03d}.jpg"
             try:
-                sb.storage.from_("claim-documents").upload(
-                    storage_path, data,
-                    file_options={"content-type": f"image/{ext.strip('.')}", "upsert": "true"}
-                )
-            except Exception as up_err:
-                # Storage error (quota, permission, network) — bubble up with
-                # context so the client can show something useful.
-                msg = str(up_err)[:200]
-                failed.append({"index": i, "reason": "supabase_upload", "detail": msg})
-                print(f"[CRM-IMPORT] photo {i} ({fname}) supabase upload failed: {msg}", flush=True)
-                continue
+                data = await client.download_photo(url)
+                if not data:
+                    print(f"[CRM-IMPORT] photo {i}: download returned empty bytes", flush=True)
+                    return ("fail", {"index": i, "reason": "download_empty"})
 
-            # Write a metadata sidecar so photo→slope mapping has GPS coords
-            # even when CompanyCam's download path stripped the EXIF. Their
-            # photo object carries coordinates + captured_at from the upload
-            # time, extracted client-side on their iPhone/Android app — so
-            # this data is intact regardless of what the file bytes contain.
-            sidecar = {
-                "source": "companycam",
-                "companycam_id": photo.get("id"),
-                "coordinates": photo.get("coordinates"),  # {lat, lng}
-                "captured_at": photo.get("captured_at"),
-                "photographer": photo.get("photographer", {}).get("id") if isinstance(photo.get("photographer"), dict) else None,
-                "description": photo.get("description"),
-            }
-            try:
-                sidecar_path = storage_path.rsplit(".", 1)[0] + ".companycam.json"
-                sb.storage.from_("claim-documents").upload(
-                    sidecar_path, _json.dumps(sidecar).encode("utf-8"),
-                    file_options={"content-type": "application/json", "upsert": "true"}
-                )
-            except Exception as _e:
-                # Sidecar failure is non-fatal — photo still uploaded
-                print(f"[CRM-IMPORT] Sidecar write failed for {fname} (non-fatal): {_e}", flush=True)
+                ext = ".jpg"
+                if url.lower().endswith(".png"):
+                    ext = ".png"
+                fname = f"companycam_{i+1:03d}{ext}"
 
-            uploaded.append({"name": fname, "path": storage_path})
-        except Exception as e:
-            msg = str(e)[:200]
-            failed.append({"index": i, "reason": "exception", "detail": msg})
-            print(f"[CRM-IMPORT] photo {i} ({fname}) failed: {msg}", flush=True)
+                if target_path:
+                    folder = target_folder or "photos"
+                    storage_path = f"{target_path}/{folder}/{fname}"
+                else:
+                    storage_path = f"{user_id}/{slug}/photos/{fname}"
+
+                try:
+                    sb.storage.from_("claim-documents").upload(
+                        storage_path, data,
+                        file_options={"content-type": f"image/{ext.strip('.')}", "upsert": "true"}
+                    )
+                except Exception as up_err:
+                    msg = str(up_err)[:200]
+                    print(f"[CRM-IMPORT] photo {i} ({fname}) supabase upload failed: {msg}", flush=True)
+                    return ("fail", {"index": i, "reason": "supabase_upload", "detail": msg})
+
+                # Sidecar (non-fatal — photo already landed)
+                sidecar = {
+                    "source": "companycam",
+                    "companycam_id": photo.get("id"),
+                    "coordinates": photo.get("coordinates"),
+                    "captured_at": photo.get("captured_at"),
+                    "photographer": photo.get("photographer", {}).get("id") if isinstance(photo.get("photographer"), dict) else None,
+                    "description": photo.get("description"),
+                }
+                try:
+                    sidecar_path = storage_path.rsplit(".", 1)[0] + ".companycam.json"
+                    sb.storage.from_("claim-documents").upload(
+                        sidecar_path, _json.dumps(sidecar).encode("utf-8"),
+                        file_options={"content-type": "application/json", "upsert": "true"}
+                    )
+                except Exception as _e:
+                    print(f"[CRM-IMPORT] Sidecar write failed for {fname} (non-fatal): {_e}", flush=True)
+
+                return ("ok", {"name": fname, "path": storage_path})
+
+            except Exception as e:
+                msg = str(e)[:200]
+                print(f"[CRM-IMPORT] photo {i} ({fname}) failed: {msg}", flush=True)
+                return ("fail", {"index": i, "reason": "exception", "detail": msg})
+
+    # Fire all photos in parallel, capped at 8 concurrent by the semaphore.
+    # return_exceptions=True so a stray crash in one coroutine doesn't kill
+    # the whole batch — we already wrap the body in try/except, but defense
+    # in depth here keeps the API endpoint from 500'ing on an unexpected bug.
+    import time as _time
+    _t0 = _time.monotonic()
+    results = await asyncio.gather(
+        *[_import_one(i, p) for i, p in enumerate(photos)],
+        return_exceptions=True,
+    )
+    _elapsed = _time.monotonic() - _t0
+
+    uploaded: list[dict] = []
+    failed: list[dict] = []
+    for i, r in enumerate(results):
+        if isinstance(r, BaseException):
+            # Should be rare since _import_one has its own try/except.
+            failed.append({"index": i, "reason": "gather_exception", "detail": str(r)[:200]})
             continue
+        kind, row = r
+        if kind == "ok":
+            uploaded.append(row)
+        else:
+            failed.append(row)
 
-    # Summary log for Railway — fast scan to spot patterns (auth, quota, network).
     if failed:
         reasons: dict[str, int] = {}
         for f in failed:
             reasons[f["reason"]] = reasons.get(f["reason"], 0) + 1
-        print(f"[CRM-IMPORT] DONE — {len(uploaded)} ok, {len(failed)} failed. reasons: {reasons}", flush=True)
+        print(f"[CRM-IMPORT] DONE — {len(uploaded)} ok, {len(failed)} failed in {_elapsed:.1f}s. reasons: {reasons}", flush=True)
     else:
-        print(f"[CRM-IMPORT] DONE — {len(uploaded)} ok, 0 failed", flush=True)
+        print(f"[CRM-IMPORT] DONE — {len(uploaded)} ok, 0 failed in {_elapsed:.1f}s", flush=True)
 
     return {
         "uploaded": uploaded,
