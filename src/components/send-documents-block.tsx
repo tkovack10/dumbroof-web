@@ -67,19 +67,26 @@ export function SendDocumentsBlock({ claimId, claimAddress, claimNumber, adjuste
   // page reload. The contactCard saves homeowner_email / adjuster_email via
   // /api/claims/update + setClaim(); those bubble down here as props. Sync
   // recipientEmail whenever the matching prop changes — but only if the user
-  // hasn't started typing their own override (i.e. current value still
-  // matches the OLD prop value).
+  // hasn't started typing their own override.
+  //
+  // Code-review bug fix (cf24242 → next commit): the original sync compared
+  // `current` against the NEW prop values, which can never match when the
+  // prop just changed — so the auto-sync silently no-op'd in exactly the
+  // case it was meant to handle. Track the LAST synced default in a ref so
+  // we can correctly detect "user hasn't overridden."
+  const lastSyncedDefaultRef = useRef<string>(adjusterEmail || "");
   useEffect(() => {
-    const wantedDefault = recipientType === "carrier" ? adjusterEmail : homeownerEmail;
-    // Match only if the user hasn't typed something else over the prop value.
+    const newDefault = (recipientType === "carrier" ? adjusterEmail : homeownerEmail) || "";
     setRecipientEmail((current) => {
-      if (current === wantedDefault) return current;
-      // If current is empty OR equals the OTHER side's prop (stale from last
-      // toggle), it's safe to overwrite with the new prop value.
-      if (!current || current === adjusterEmail || current === homeownerEmail) {
-        return wantedDefault || "";
+      // User-typed override (current diverges from the last value we synced).
+      // Leave it alone but update the ref so the next legitimate prop change
+      // is detected correctly.
+      if (current && current !== lastSyncedDefaultRef.current) {
+        lastSyncedDefaultRef.current = newDefault;
+        return current;
       }
-      return current;
+      lastSyncedDefaultRef.current = newDefault;
+      return newDefault;
     });
   }, [adjusterEmail, homeownerEmail, recipientType]);
 
