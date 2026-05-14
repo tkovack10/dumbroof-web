@@ -607,16 +607,25 @@ export function PhotoReviewContent({ claimId: claimIdProp, embedded = false }: P
               </div>
             )}
 
-            {/* Editor panel */}
+            {/* Editor panel — hardcoded dark surface + white text to guarantee
+                legibility regardless of any parent's bg-white wrapper. Tom's
+                2026-05-14 screenshot showed the form rendering white-on-white
+                even after bg-white/[0.04] tweaks because Tailwind opacity
+                tints stack with whatever parent context is winning at the
+                CSS cascade. Hardcoding kills the variability. */}
             {showEditor && (
-              <div className="px-5 pb-5 border-t border-white/[0.04] pt-4 space-y-3">
+              <div
+                className="px-5 pb-5 pt-4 space-y-3 border-t border-white/[0.04]"
+                style={{ backgroundColor: "rgb(15, 18, 35)", color: "#f5f5f5" }}
+              >
                 <div>
-                  <label className="block text-xs font-semibold text-[var(--gray-muted)] mb-1">Annotation</label>
+                  <label className="block text-xs font-semibold mb-1" style={{ color: "#cbd5e1" }}>Annotation</label>
                   <textarea
                     value={editAnnotation}
                     onChange={(e) => setEditAnnotation(e.target.value)}
                     rows={3}
-                    className="w-full rounded-lg border border-[var(--border-glass)] bg-white/5 text-[var(--white)] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    style={{ backgroundColor: "rgb(28, 32, 56)", color: "#ffffff", borderColor: "rgba(255,255,255,0.18)" }}
                   />
                 </div>
                 <div className="grid grid-cols-2 gap-3">
@@ -628,16 +637,16 @@ export function PhotoReviewContent({ claimId: claimIdProp, embedded = false }: P
                     { key: "severity", label: "Severity", options: SEVERITIES },
                   ].map(({ key, label, options }) => (
                     <div key={key}>
-                      <label className="block text-xs font-semibold text-[var(--gray-muted)] mb-1">{label}</label>
+                      <label className="block text-xs font-semibold mb-1" style={{ color: "#cbd5e1" }}>{label}</label>
                       <select
                         value={editTags[key] || ""}
                         onChange={(e) => setEditTags({ ...editTags, [key]: e.target.value })}
-                        className="w-full rounded-lg border border-[var(--border-glass)] bg-white/5 text-[var(--white)] px-2 py-1.5 text-sm appearance-none focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        style={{ colorScheme: "dark" }}
+                        className="w-full rounded-lg border px-2 py-1.5 text-sm appearance-none focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        style={{ backgroundColor: "rgb(28, 32, 56)", color: "#ffffff", borderColor: "rgba(255,255,255,0.18)", colorScheme: "dark" }}
                       >
-                        <option value="" className="bg-[var(--bg-deep)] text-[var(--white)]">—</option>
+                        <option value="" style={{ backgroundColor: "rgb(15, 18, 35)", color: "#ffffff" }}>—</option>
                         {options.map((o) => (
-                          <option key={o} value={o} className="bg-[var(--bg-deep)] text-[var(--white)]">
+                          <option key={o} value={o} style={{ backgroundColor: "rgb(15, 18, 35)", color: "#ffffff" }}>
                             {o.replace(/_/g, " ")}
                           </option>
                         ))}
@@ -646,11 +655,12 @@ export function PhotoReviewContent({ claimId: claimIdProp, embedded = false }: P
                   ))}
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-[var(--gray-muted)] mb-1">Notes (why the correction?)</label>
+                  <label className="block text-xs font-semibold mb-1" style={{ color: "#cbd5e1" }}>Notes (why the correction?)</label>
                   <input
                     value={editNotes}
                     onChange={(e) => setEditNotes(e.target.value)}
-                    className="w-full rounded-lg border border-[var(--border-glass)] bg-white/5 text-[var(--white)] placeholder:text-[var(--gray-dim)] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder:text-slate-400"
+                    style={{ backgroundColor: "rgb(28, 32, 56)", color: "#ffffff", borderColor: "rgba(255,255,255,0.18)" }}
                     placeholder="Optional"
                   />
                 </div>
