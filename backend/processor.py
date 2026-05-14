@@ -781,11 +781,13 @@ def _compress_pdf_for_upload(pdf_path: str) -> str:
                 for page in src:
                     pix = page.get_pixmap(dpi=dpi)
                     img_bytes = pix.tobytes("jpeg", jpg_quality=70)
-                    rect = fitz.Rect(
-                        0, 0,
-                        pix.width * 72.0 / dpi,
-                        pix.height * 72.0 / dpi,
-                    )
+                    width_pt = pix.width * 72.0 / dpi
+                    height_pt = pix.height * 72.0 / dpi
+                    # Free C-side pixel buffer before per-page work continues —
+                    # 145 pages at 130dpi can otherwise pile up hundreds of MB
+                    # of unreleased Pixmap memory before the loop returns.
+                    pix = None
+                    rect = fitz.Rect(0, 0, width_pt, height_pt)
                     new_page = dst.new_page(width=rect.width, height=rect.height)
                     new_page.insert_image(rect, stream=img_bytes)
                 dst.save(out, garbage=4, deflate=True, clean=True)
@@ -814,11 +816,15 @@ def upload_file(sb: Client, bucket: str, path: str, local_path: str):
     """Upload a file to Supabase Storage with pre-compression, timeout, and retry.
 
     PDFs are pre-compressed when oversized — see `_compress_pdf_for_upload`.
-    Each upload attempt is wrapped in a ThreadPoolExecutor with a hard
-    timeout so a stalled supabase-py call can't block the worker forever
-    (which is exactly what caused Christine Cir's 145-photo / 159MB-forensic
-    reprocess to hang for hours on 2026-05-14). Up to 3 attempts with
-    exponential backoff before raising.
+
+    Each upload attempt runs in a separate thread with a hard timeout, so a
+    stalled supabase-py call can't block the worker forever (the original
+    bug behind Christine Cir's 145-photo / 159MB-forensic hang on
+    2026-05-14, E227). On timeout we call `shutdown(wait=False)` and let
+    the stuck thread leak — CPython can't kill a running thread, but the
+    underlying socket eventually times out at the HTTP layer and the
+    daemon thread exits then. The next attempt starts fresh on a new
+    executor.
     """
     import concurrent.futures
 
@@ -832,33 +838,43 @@ def upload_file(sb: Client, bucket: str, path: str, local_path: str):
     except OSError:
         size = 0
 
-    last_err: Exception | None = None
+    # Read once — file is on local disk and stable for the lifetime of
+    # this call; no point re-reading on every retry.
+    with open(upload_path, "rb") as f:
+        data = f.read()
+
+    last_err: Optional[Exception] = None
     for attempt in range(_UPLOAD_MAX_ATTEMPTS):
         t0 = time.time()
+        # New executor per attempt — if the previous attempt's thread is
+        # still leaked (timeout, supabase-py stuck on socket read), we
+        # don't want to wait on it. Daemon threads exit when the worker
+        # process exits or the HTTP layer times out, whichever first.
+        ex = concurrent.futures.ThreadPoolExecutor(
+            max_workers=1, thread_name_prefix="supabase-upload"
+        )
         try:
-            with open(upload_path, "rb") as f:
-                data = f.read()
-
-            def _do_upload():
-                return sb.storage.from_(bucket).upload(
+            future = ex.submit(
+                lambda: sb.storage.from_(bucket).upload(
                     path, data,
                     file_options={"content-type": "application/pdf", "upsert": "true"}
                 )
-
-            with concurrent.futures.ThreadPoolExecutor(max_workers=1) as ex:
-                future = ex.submit(_do_upload)
-                try:
-                    future.result(timeout=_UPLOAD_TIMEOUT_SECONDS)
-                except concurrent.futures.TimeoutError:
-                    raise TimeoutError(
-                        f"upload of {os.path.basename(path)} "
-                        f"({size / 1024 / 1024:.1f}MB) exceeded "
-                        f"{_UPLOAD_TIMEOUT_SECONDS}s"
-                    )
+            )
+            try:
+                future.result(timeout=_UPLOAD_TIMEOUT_SECONDS)
+            except concurrent.futures.TimeoutError:
+                # Don't wait — the upload thread is wedged on the socket.
+                # Let it leak; the daemon thread will exit eventually.
+                raise TimeoutError(
+                    f"upload of {os.path.basename(path)} "
+                    f"({size / 1024 / 1024:.1f}MB) exceeded "
+                    f"{_UPLOAD_TIMEOUT_SECONDS}s"
+                )
 
             elapsed = time.time() - t0
             print(f"[UPLOAD] {os.path.basename(path)} "
                   f"({size / 1024 / 1024:.1f}MB) in {elapsed:.1f}s", flush=True)
+            ex.shutdown(wait=False)
             return
         except Exception as e:
             last_err = e
@@ -872,8 +888,12 @@ def upload_file(sb: Client, bucket: str, path: str, local_path: str):
             else:
                 raise RuntimeError(
                     f"Failed to upload {path} after {_UPLOAD_MAX_ATTEMPTS} "
-                    f"attempts: {last_err}"
-                ) from last_err
+                    f"attempts: {e}"
+                ) from e
+        finally:
+            # Never block here — wait=False guarantees we don't get stuck
+            # on a wedged upload thread.
+            ex.shutdown(wait=False)
 
 
 def file_to_base64(path: str) -> str:
