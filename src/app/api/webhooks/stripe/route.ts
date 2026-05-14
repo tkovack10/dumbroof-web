@@ -450,6 +450,34 @@ export async function POST(req: NextRequest) {
       }
       break;
     }
+
+    // Connect: fires if a contractor revokes dumbroof.ai's access from their
+    // own Stripe dashboard (Settings → Connected applications → Revoke). Without
+    // this, our DB keeps stripe_connect_status='active' pointing to an account
+    // we no longer have permission to bill against — subsequent payment-link
+    // creates fail with "Application access has been revoked".
+    //
+    // Mirrors the in-app disconnect path in /api/stripe-connect POST {action:"disconnect"}.
+    case "account.application.deauthorized": {
+      try {
+        // For this event Stripe sets event.account to the deauthorizing
+        // connected account id. event.data.object is the Application object,
+        // not the Account, so we MUST read event.account here.
+        const accountId = event.account;
+        if (!accountId) break;
+        await supabaseAdmin
+          .from("company_profiles")
+          .update({
+            stripe_connect_account_id: null,
+            stripe_connect_status: "disconnected",
+          })
+          .eq("stripe_connect_account_id", accountId);
+        console.log(`[webhook account.application.deauthorized] cleared mapping for ${accountId}`);
+      } catch (e) {
+        console.error("[webhook account.application.deauthorized] handler failed:", e);
+      }
+      break;
+    }
   }
 
   return NextResponse.json({ received: true });
