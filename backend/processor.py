@@ -729,18 +729,51 @@ _UPLOAD_TIMEOUT_SECONDS = 300
 _UPLOAD_MAX_ATTEMPTS = 3
 
 
+# Skip re-encoding for any embedded image smaller than this threshold —
+# captures logos, icons, separators, and tiny vector raster shims. Even if
+# we got 30% savings on a 30KB logo, the savings are noise compared to a
+# 200KB photo, and we'd risk visible quality loss on brand elements.
+_IMAGE_REENCODE_MIN_BYTES = 50 * 1024
+
+# Per-pass settings for image-only re-encode: (max_long_edge_px, jpeg_quality).
+# We walk most-preserving → most-aggressive. The forensic photo grid embeds
+# images at ~1500-2000px on the long edge; downsizing to 1200px is invisible
+# in a half-page photo card. q70 is the floor before visible blocking on
+# storm-damage textures.
+_IMAGE_REENCODE_PROFILES = (
+    (1600, 78),
+    (1200, 72),
+    (900, 68),
+    (700, 62),
+)
+
+
 def _compress_pdf_for_upload(pdf_path: str) -> str:
     """Pre-compress a PDF before upload if it exceeds the safe-upload size.
 
-    Layered approach:
-      1. Lossless: PyMuPDF garbage+deflate+clean (cheap, often enough for
-         vector-heavy PDFs but limited gains on photo-heavy forensic reports).
-      2. Lossy fallback: re-render each page to JPEG at progressively lower
-         DPI (130 → 110 → 90 → 75 → 60). 90dpi keeps text crisp; 60dpi is
-         the absolute floor for legibility.
+    Two-stage, both text-preserving:
 
-    Returns the path to use for upload (compressed file or the original if
-    already small enough / compression didn't help).
+      1. Lossless: PyMuPDF garbage+deflate+clean. Cheap, often enough for
+         vector-heavy PDFs. Doesn't help much on photo-heavy forensic
+         reports (most bytes are already DCT-encoded JPEGs that deflate
+         can't squeeze further).
+
+      2. Per-image re-encode: walk every embedded image, re-encode JPEGs
+         at progressively lower quality + max dimension via PIL, and
+         swap the image content in-place with `page.replace_image(xref)`.
+         Text, vector graphics, and small images (logos, icons —
+         see `_IMAGE_REENCODE_MIN_BYTES`) are untouched. Images with a
+         soft mask (alpha) are also skipped to preserve transparency-
+         aware brand elements.
+
+    Replaces the older whole-page raster fallback (E227 v1), which
+    flattened entire pages to JPEG and destroyed the text layer — this
+    made QA's `PDF_MISSING_OWNER_BRAND` check trip every time, since
+    `fitz.Page.get_text()` returned empty on rasterized pages even though
+    the cover visually contained the company name.
+
+    Returns the path to use for upload (compressed file or the original
+    if already small enough or compression couldn't help).
     """
     try:
         size = os.path.getsize(pdf_path)
@@ -762,53 +795,105 @@ def _compress_pdf_for_upload(pdf_path: str) -> str:
               f"{shrunk_size / 1024 / 1024:.1f}MB", flush=True)
         return shrunk
 
-    # Lossy: rasterize each page as JPEG. Walk DPIs down until under target.
     try:
         import fitz
+        from PIL import Image
+        from io import BytesIO
     except Exception as e:
-        print(f"[UPLOAD] PyMuPDF unavailable for lossy fallback: {e} — uploading "
+        print(f"[UPLOAD] Image-reencode deps unavailable: {e} — uploading "
               f"{shrunk_size / 1024 / 1024:.1f}MB as-is", flush=True)
         return shrunk
 
     out_dir = os.path.dirname(pdf_path) or "."
     base = os.path.basename(pdf_path).rsplit(".", 1)[0]
-    for dpi in (130, 110, 90, 75, 60):
-        out = os.path.join(out_dir, f"{base}.raster_dpi{dpi}.pdf")
+
+    for max_dim, quality in _IMAGE_REENCODE_PROFILES:
+        out = os.path.join(out_dir, f"{base}.imgq{quality}_d{max_dim}.pdf")
         try:
-            src = fitz.open(shrunk)
-            dst = fitz.open()
+            doc = fitz.open(shrunk)
+            processed_xrefs: set[int] = set()
+            replaced = 0
+            skipped_small = 0
+            skipped_alpha = 0
             try:
-                for page in src:
-                    pix = page.get_pixmap(dpi=dpi)
-                    img_bytes = pix.tobytes("jpeg", jpg_quality=70)
-                    width_pt = pix.width * 72.0 / dpi
-                    height_pt = pix.height * 72.0 / dpi
-                    # Free C-side pixel buffer before per-page work continues —
-                    # 145 pages at 130dpi can otherwise pile up hundreds of MB
-                    # of unreleased Pixmap memory before the loop returns.
-                    pix = None
-                    rect = fitz.Rect(0, 0, width_pt, height_pt)
-                    new_page = dst.new_page(width=rect.width, height=rect.height)
-                    new_page.insert_image(rect, stream=img_bytes)
-                dst.save(out, garbage=4, deflate=True, clean=True)
+                for page in doc:
+                    # full=True so we get smask in slot [1].
+                    for img_info in page.get_images(full=True):
+                        xref = img_info[0]
+                        smask = img_info[1]
+                        if xref in processed_xrefs:
+                            continue
+                        processed_xrefs.add(xref)
+                        # Soft mask = transparency-aware (logos, icons with
+                        # alpha). Re-encoding to JPEG drops alpha and the
+                        # leftover smask reference would render wrong.
+                        if smask:
+                            skipped_alpha += 1
+                            continue
+                        try:
+                            extracted = doc.extract_image(xref)
+                        except Exception:
+                            continue
+                        img_bytes = extracted.get("image") or b""
+                        if len(img_bytes) < _IMAGE_REENCODE_MIN_BYTES:
+                            skipped_small += 1
+                            continue
+                        try:
+                            with Image.open(BytesIO(img_bytes)) as pil_img:
+                                if pil_img.mode not in ("RGB", "L"):
+                                    pil_img = pil_img.convert("RGB")
+                                w, h = pil_img.size
+                                if max(w, h) > max_dim:
+                                    ratio = max_dim / float(max(w, h))
+                                    pil_img = pil_img.resize(
+                                        (int(w * ratio), int(h * ratio)),
+                                        Image.LANCZOS,
+                                    )
+                                buf = BytesIO()
+                                pil_img.save(
+                                    buf, format="JPEG",
+                                    quality=quality, optimize=True,
+                                )
+                                new_bytes = buf.getvalue()
+                        except Exception as e:
+                            print(f"[UPLOAD] xref={xref} re-encode failed: {e}",
+                                  flush=True)
+                            continue
+                        # Only swap when it actually saves bytes — PIL's
+                        # output can occasionally be larger than the original
+                        # for already-tight JPEGs.
+                        if len(new_bytes) >= len(img_bytes):
+                            continue
+                        try:
+                            page.replace_image(xref, stream=new_bytes)
+                            replaced += 1
+                        except Exception as e:
+                            print(f"[UPLOAD] xref={xref} replace failed: {e}",
+                                  flush=True)
+                doc.save(out, garbage=4, deflate=True, clean=True)
             finally:
-                src.close()
-                dst.close()
+                doc.close()
             out_size = os.path.getsize(out)
+            print(f"[UPLOAD] Image-reencode q{quality}/{max_dim}px: "
+                  f"{shrunk_size / 1024 / 1024:.1f}MB → "
+                  f"{out_size / 1024 / 1024:.1f}MB "
+                  f"(replaced={replaced}, "
+                  f"skipped_small={skipped_small}, "
+                  f"skipped_alpha={skipped_alpha})", flush=True)
             if out_size <= _UPLOAD_TARGET_BYTES:
-                print(f"[UPLOAD] Raster @ {dpi}dpi: {size / 1024 / 1024:.1f}MB → "
-                      f"{out_size / 1024 / 1024:.1f}MB", flush=True)
                 return out
+            # Try the next, more aggressive profile
             try:
                 os.unlink(out)
             except OSError:
                 pass
         except Exception as e:
-            print(f"[UPLOAD] Raster @ {dpi}dpi failed: {e}", flush=True)
+            print(f"[UPLOAD] Image-reencode q{quality}/{max_dim}px failed: {e}",
+                  flush=True)
 
     print(f"[UPLOAD] Could not get {os.path.basename(pdf_path)} under target "
-          f"even at 60dpi — uploading {shrunk_size / 1024 / 1024:.1f}MB anyway",
-          flush=True)
+          f"with image-only compression — uploading "
+          f"{shrunk_size / 1024 / 1024:.1f}MB anyway", flush=True)
     return shrunk
 
 
