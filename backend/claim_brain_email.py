@@ -511,6 +511,105 @@ def send_via_resend(
 
 
 # ───────────────────────────────────────────
+# Reactive alert — user's Gmail OAuth dropped
+# ───────────────────────────────────────────
+
+def _notify_user_gmail_disconnected(sb: Client, user_id: str) -> None:
+    """Email the user that their Gmail connection just dropped.
+
+    Fires from send_claim_email's invalid_grant branch. Without this alert
+    the user has no idea their carriers are now receiving emails branded
+    "from <them> via dumbroof.ai" instead of cleanly @their-domain.
+
+    Throttle: idempotency check on claim_events — only sends one alert per
+    user per 7 days. Repeated failed sends shouldn't spam the inbox.
+    """
+    from datetime import datetime as _dt, timedelta as _td, timezone as _tz
+    try:
+        prof_res = sb.table("company_profiles").select(
+            "email, contact_name, company_name"
+        ).eq("user_id", user_id).limit(1).execute()
+        prof = (prof_res.data or [{}])[0]
+        user_email = prof.get("email") or ""
+        if not user_email:
+            print(f"[GMAIL-EXPIRED] No email on profile for user_id={user_id} — cannot notify")
+            return
+        company_name = prof.get("company_name") or "your company"
+        contact_name = prof.get("contact_name") or "there"
+    except Exception as e:
+        print(f"[GMAIL-EXPIRED] profile lookup failed for {user_id}: {e}")
+        return
+
+    # Throttle — skip if we've already alerted this user in the last 7 days.
+    # Uses a separate claim_events row type so it doesn't pollute timeline.
+    try:
+        cutoff = (_dt.now(_tz.utc) - _td(days=7)).isoformat()
+        recent = sb.table("claim_events").select("id").eq(
+            "created_by", user_id
+        ).eq("event_type", "gmail_reconnect_alert_sent").gte(
+            "occurred_at", cutoff
+        ).limit(1).execute()
+        if recent.data:
+            print(f"[GMAIL-EXPIRED] Already alerted {user_email} within last 7d — throttling")
+            return
+    except Exception as e:
+        # Non-fatal — better to send a duplicate alert than skip a real one.
+        print(f"[GMAIL-EXPIRED] throttle check failed (continuing): {e}")
+
+    subject = "Action needed: reconnect your Gmail in DumbRoof"
+    body_html = f"""
+<div style='font-family:system-ui,sans-serif;max-width:600px;margin:0 auto;padding:24px;color:#1f2937'>
+  <h2 style='margin-top:0;color:#b91c1c'>Your Gmail connection dropped</h2>
+  <p>Hi {contact_name},</p>
+  <p>DumbRoof tried to send a claim email <strong>as you</strong> via your
+     {company_name} Gmail account, but Google rejected the request. The
+     most common cause is that the authorization expired or was revoked
+     in your Google account security settings.</p>
+  <p style='background:#fef3c7;border-left:4px solid #f59e0b;padding:12px;margin:16px 0'>
+     <strong>What's happening right now:</strong> your emails are still
+     going out — but from <em>noreply@dumbroof.ai</em> with your name on
+     them. Recipients see "from {company_name} via dumbroof.ai" in Gmail
+     instead of just your address. Carriers may treat that as less trustworthy.</p>
+  <h3 style='margin-top:24px;color:#0f172a'>How to fix (60 seconds)</h3>
+  <ol style='line-height:1.7'>
+    <li>Open <a href='https://dumbroof.ai/dashboard/settings'
+       style='color:#2563eb;font-weight:600'>dumbroof.ai/dashboard/settings</a>.</li>
+    <li>Find the <strong>Email Integration</strong> section.</li>
+    <li>Click <strong>Reconnect Gmail</strong> and approve access.</li>
+  </ol>
+  <p style='margin-top:24px'>After that, every send goes back out as you,
+     no "via dumbroof" annotation. Let us know if you hit any snags —
+     hello@dumbroof.ai.</p>
+  <p style='font-size:12px;color:#9ca3af;margin-top:24px'>— DumbRoof</p>
+</div>
+"""
+    try:
+        send_via_resend(
+            company_name="DumbRoof",
+            to_email=user_email,
+            subject=subject,
+            body_html=body_html,
+        )
+        print(f"[GMAIL-EXPIRED] Reconnect-Gmail alert sent to {user_email}")
+        # Record the alert so the throttle check above can detect it next time.
+        try:
+            sb.table("claim_events").insert({
+                "claim_id": None,
+                "created_by": user_id,
+                "event_type": "gmail_reconnect_alert_sent",
+                "event_category": "system",
+                "title": "Reconnect-Gmail alert emailed to user",
+                "source": "system",
+                "occurred_at": _dt.now(_tz.utc).isoformat(),
+                "metadata": {"to": user_email},
+            }).execute()
+        except Exception as _ev_err:
+            print(f"[GMAIL-EXPIRED] alert claim_events row insert failed (non-fatal): {_ev_err}")
+    except Exception as e:
+        print(f"[GMAIL-EXPIRED] send_via_resend failed for {user_email}: {e}")
+
+
+# ───────────────────────────────────────────
 # Unified send — auto-picks Gmail or Resend
 # ───────────────────────────────────────────
 
@@ -671,6 +770,15 @@ def send_claim_email(
                         "occurred_at": datetime.utcnow().isoformat(),
                         "metadata": {"to": to_email, "reason": err_str[:200]},
                     }).execute()
+                    # Reactive alert: notify the user their Gmail OAuth dropped.
+                    # Without this they don't know their carriers are now
+                    # seeing "from <them> via dumbroof.ai" instead of clean
+                    # @usaroofmasters.com (mharker case 2026-05-14). Throttled
+                    # to once-per-7-days via claim_events idempotency check.
+                    try:
+                        _notify_user_gmail_disconnected(sb, user_id)
+                    except Exception as _notify_err:
+                        print(f"[GMAIL-EXPIRED] notify-user email failed (non-fatal): {_notify_err}", flush=True)
                 except Exception as _persist_err:
                     print(f"[GMAIL-EXPIRED] cleanup failed (non-fatal): {_persist_err}", flush=True)
 
