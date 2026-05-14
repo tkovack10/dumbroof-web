@@ -21,10 +21,35 @@ const TAG_CONFIG: { key: string; color: string }[] = [
   { key: "elevation", color: "elevation" },
 ];
 
-const DAMAGE_TYPES = ["hail", "wind", "water", "impact", "wear", "mechanical", "unknown"];
-const TRADES = ["roofing", "siding", "gutters", "windows", "interior", "other"];
-const MATERIALS = ["asphalt_shingle", "metal", "vinyl_siding", "wood", "slate", "tile", "other"];
-const ELEVATIONS = ["roof", "front", "rear", "left", "right", "interior", "ground"];
+// Vocab aligned with what the Vision system actually produces in production.
+// Users couldn't correct AI mis-IDs to the real taxonomy with the old 7-option
+// list — e.g. Ebben needed "rain_diverter" to fix a gutter mis-ID, and the
+// AI tags damage as "hail_dent" or "chalk_test" but the dropdown only had
+// "hail". Sorted alphabetically inside categories so common picks are findable.
+const DAMAGE_TYPES = [
+  "hail", "hail_dent", "wind", "wind_crease", "chalk_test", "granule_loss",
+  "lifted_tab", "missing", "crack", "corrosion", "paint_deterioration",
+  "water", "water_stain", "water_intrusion", "leak",
+  "impact", "wear", "mechanical", "unknown",
+];
+const TRADES = ["roofing", "siding", "gutters", "windows", "interior", "exterior", "other"];
+const MATERIALS = [
+  // Shingles
+  "asphalt_shingle", "comp_shingle_3tab", "comp_shingle_laminated",
+  // Metal
+  "metal", "metal_flashing", "metal_vent", "metal_panel", "metal_roof_panel",
+  "metal_roofing", "metal_roofing_panel", "metal_standing_seam",
+  // Gutters & trim
+  "aluminum_gutter", "aluminum_trim", "rain_diverter",
+  // Siding
+  "vinyl_siding", "aluminum_siding", "fiber_cement_siding", "wood_siding",
+  "cedar_siding", "cedar_shake_siding", "wood_clapboard", "wood_clapboard_siding",
+  "fiber_cement",
+  // Other
+  "wood", "wood_trim", "wood_fence", "slate", "tile", "clay_tile",
+  "modified_bitumen", "copper", "other",
+];
+const ELEVATIONS = ["roof", "front", "rear", "left", "right", "interior", "exterior", "ground", "detail"];
 const SEVERITIES = ["minor", "moderate", "severe", "catastrophic"];
 
 type ViewMode = "card" | "grid";
@@ -588,11 +613,14 @@ export function PhotoReviewContent({ claimId: claimIdProp, embedded = false }: P
                       <select
                         value={editTags[key] || ""}
                         onChange={(e) => setEditTags({ ...editTags, [key]: e.target.value })}
-                        className="w-full rounded-lg border border-[var(--border-glass)] px-2 py-1.5 text-sm"
+                        className="w-full rounded-lg border border-[var(--border-glass)] bg-white/5 text-[var(--white)] px-2 py-1.5 text-sm appearance-none focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        style={{ colorScheme: "dark" }}
                       >
-                        <option value="">—</option>
+                        <option value="" className="bg-[var(--bg-deep)] text-[var(--white)]">—</option>
                         {options.map((o) => (
-                          <option key={o} value={o}>{o.replace(/_/g, " ")}</option>
+                          <option key={o} value={o} className="bg-[var(--bg-deep)] text-[var(--white)]">
+                            {o.replace(/_/g, " ")}
+                          </option>
                         ))}
                       </select>
                     </div>
@@ -603,7 +631,7 @@ export function PhotoReviewContent({ claimId: claimIdProp, embedded = false }: P
                   <input
                     value={editNotes}
                     onChange={(e) => setEditNotes(e.target.value)}
-                    className="w-full rounded-lg border border-[var(--border-glass)] px-3 py-2 text-sm"
+                    className="w-full rounded-lg border border-[var(--border-glass)] bg-white/5 text-[var(--white)] placeholder:text-[var(--gray-dim)] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                     placeholder="Optional"
                   />
                 </div>
