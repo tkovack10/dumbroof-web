@@ -12,6 +12,8 @@ export interface PhotoForReview {
   elevation: string | null;
   severity: string | null;
   signed_url: string;
+  annotated_path?: string | null;
+  annotated_url?: string | null;
   feedback_status: FeedbackStatus | null;
 }
 

@@ -54,7 +54,7 @@ export async function GET(req: NextRequest) {
   let query = supabaseAdmin
     .from("photos")
     .select(
-      "id, claim_id, annotation_key, annotation_text, damage_type, material, trade, elevation, severity, filename",
+      "id, claim_id, annotation_key, annotation_text, damage_type, material, trade, elevation, severity, filename, annotated_path",
       { count: "exact" }
     );
 
@@ -97,37 +97,51 @@ export async function GET(req: NextRequest) {
     reviewedCount = feedback?.length || 0;
   }
 
-  // Batch sign URLs — build path-to-index map for reliable mapping
-  const pathsToSign: string[] = [];
-  const pathToPhotoIdx: Map<number, number> = new Map();
+  // Batch sign URLs for both the original AND the annotated copy (when present).
+  // Two parallel maps so we can return both URLs and let the client choose to
+  // edit the marked-up version when it exists.
+  const origPaths: string[] = [];
+  const origPathToPhotoIdx: Map<number, number> = new Map();
+  const annotatedPaths: string[] = [];
+  const annotatedPathToPhotoIdx: Map<number, number> = new Map();
 
   photos.forEach((photo, idx) => {
     const claim = claimMap.get(photo.claim_id);
     if (!claim) return;
     const fname = resolveFilename(photo, claim);
-    const storagePath = `${claim.file_path}/photos/${fname}`;
-    pathToPhotoIdx.set(pathsToSign.length, idx);
-    pathsToSign.push(storagePath);
+    origPathToPhotoIdx.set(origPaths.length, idx);
+    origPaths.push(`${claim.file_path}/photos/${fname}`);
+    if (photo.annotated_path) {
+      annotatedPathToPhotoIdx.set(annotatedPaths.length, idx);
+      annotatedPaths.push(photo.annotated_path);
+    }
   });
 
-  // Batch create signed URLs (single API call instead of N individual calls)
   const signedUrlMap = new Map<number, string>();
-  if (pathsToSign.length > 0) {
-    const { data: signedData } = await supabaseAdmin.storage
-      .from("claim-documents")
-      .createSignedUrls(pathsToSign, 3600);
+  const annotatedUrlMap = new Map<number, string>();
 
-    if (signedData) {
-      signedData.forEach((item, i) => {
-        if (item.signedUrl) {
-          const photoIdx = pathToPhotoIdx.get(i);
-          if (photoIdx !== undefined) {
-            signedUrlMap.set(photoIdx, item.signedUrl);
-          }
-        }
+  await Promise.all([
+    (async () => {
+      if (!origPaths.length) return;
+      const { data } = await supabaseAdmin.storage
+        .from("claim-documents")
+        .createSignedUrls(origPaths, 3600);
+      data?.forEach((item, i) => {
+        const photoIdx = origPathToPhotoIdx.get(i);
+        if (photoIdx !== undefined && item.signedUrl) signedUrlMap.set(photoIdx, item.signedUrl);
       });
-    }
-  }
+    })(),
+    (async () => {
+      if (!annotatedPaths.length) return;
+      const { data } = await supabaseAdmin.storage
+        .from("claim-documents")
+        .createSignedUrls(annotatedPaths, 3600);
+      data?.forEach((item, i) => {
+        const photoIdx = annotatedPathToPhotoIdx.get(i);
+        if (photoIdx !== undefined && item.signedUrl) annotatedUrlMap.set(photoIdx, item.signedUrl);
+      });
+    })(),
+  ]);
 
   const result = photos.map((photo, idx) => {
     const claim = claimMap.get(photo.claim_id);
@@ -145,6 +159,8 @@ export async function GET(req: NextRequest) {
       elevation: photo.elevation,
       severity: photo.severity,
       signed_url: signedUrlMap.get(idx) || "",
+      annotated_path: photo.annotated_path || null,
+      annotated_url: annotatedUrlMap.get(idx) || null,
       feedback_status: feedbackMap.get(photo.id) || null,
     };
   });

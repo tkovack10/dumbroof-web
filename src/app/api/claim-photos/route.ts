@@ -21,7 +21,7 @@ export async function GET(req: NextRequest) {
 
   const { data: photos, error } = await supabaseAdmin
     .from("photos")
-    .select("annotation_key, annotation_text, damage_type, material, trade, severity, file_path, filename, slope_id")
+    .select("annotation_key, annotation_text, damage_type, material, trade, severity, file_path, filename, slope_id, annotated_path")
     .eq("claim_id", claimId)
     .order("annotation_key", { ascending: true });
 
@@ -65,10 +65,15 @@ export async function GET(req: NextRequest) {
         storagePath = photo.file_path;
       }
 
-      if (storagePath) {
+      // Markup: prefer the user-saved annotated PNG when present so the
+      // Damage Assessment list shows the marked-up version. Original stays
+      // intact in storage; this just biases the read.
+      const renderPath = photo.annotated_path || storagePath;
+
+      if (renderPath) {
         const { data } = await supabaseAdmin.storage
           .from("claim-documents")
-          .createSignedUrl(storagePath, 3600);
+          .createSignedUrl(renderPath, 3600);
         if (data?.signedUrl) signedUrl = data.signedUrl;
       }
       return { ...photo, signed_url: signedUrl };

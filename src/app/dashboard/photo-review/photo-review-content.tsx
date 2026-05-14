@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import type { PhotoForReview, PhotoFeedback, FeedbackStatus } from "@/types/photo-review";
 import { SEVERITY_COLORS } from "@/lib/claim-constants";
 import { getBackendUrl } from "@/lib/backend-config";
+import { PhotoMarkupModal } from "@/components/photo-markup-modal";
 
 const TAG_COLORS: Record<string, string> = {
   damage_type: "bg-red-100 text-red-700",
@@ -37,10 +38,15 @@ const MATERIALS = [
   // Shingles
   "asphalt_shingle", "comp_shingle_3tab", "comp_shingle_laminated",
   // Metal
-  "metal", "metal_flashing", "metal_vent", "metal_panel", "metal_roof_panel",
-  "metal_roofing", "metal_roofing_panel", "metal_standing_seam",
-  // Gutters & trim
-  "aluminum_gutter", "aluminum_trim", "rain_diverter",
+  "metal", "metal_flashing", "chimney_flashing", "metal_vent", "metal_panel",
+  "metal_roof_panel", "metal_roofing", "metal_roofing_panel", "metal_standing_seam",
+  // Gutters / drainage
+  "gutter", "aluminum_gutter", "downspout", "aluminum_downspout", "vinyl_downspout",
+  "gutter_guard", "rain_diverter",
+  // Trim & wraps
+  "aluminum_trim", "window_wrap",
+  // Windows
+  "window", "window_glass", "window_screen", "vinyl_window",
   // Siding
   "vinyl_siding", "aluminum_siding", "fiber_cement_siding", "wood_siding",
   "cedar_siding", "cedar_shake_siding", "wood_clapboard", "wood_clapboard_siding",
@@ -94,6 +100,9 @@ export function PhotoReviewContent({ claimId: claimIdProp, embedded = false }: P
   const [stampType, setStampType] = useState<"APPROVE" | "REJECT" | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>("grid");
+  // Markup modal — opens over the current photo with pen/arrow/circle tools.
+  // On save, refresh the photo list so the marked-up version surfaces.
+  const [markupOpen, setMarkupOpen] = useState(false);
 
   // Track which photos have been reviewed/skipped this session
   const [localStatuses, setLocalStatuses] = useState<Map<string, string>>(new Map());
@@ -578,6 +587,14 @@ export function PhotoReviewContent({ claimId: claimIdProp, embedded = false }: P
                   Approve (A)
                 </button>
                 <button
+                  onClick={() => setMarkupOpen(true)}
+                  disabled={submitting || !currentPhoto?.signed_url}
+                  className="py-3 px-4 rounded-xl bg-white/[0.04] hover:bg-white/[0.06] text-[var(--white)] font-semibold text-sm transition-colors border border-[var(--border-glass)] disabled:opacity-50"
+                  title="Draw on photo to highlight damage"
+                >
+                  ✎ Mark Up
+                </button>
+                <button
                   onClick={handleSkip}
                   disabled={submitting}
                   className="py-3 px-4 rounded-xl bg-white/[0.04] hover:bg-white/[0.06] text-[var(--gray-muted)] font-semibold text-sm transition-colors border border-[var(--border-glass)] disabled:opacity-50"
@@ -710,6 +727,20 @@ export function PhotoReviewContent({ claimId: claimIdProp, embedded = false }: P
           </button>
         </div>
       </div>
+
+      {markupOpen && currentPhoto?.signed_url && claimId && (
+        <PhotoMarkupModal
+          claimId={claimId}
+          annotationKey={currentPhoto.annotation_key}
+          imageUrl={currentPhoto.signed_url}
+          onClose={() => setMarkupOpen(false)}
+          onSaved={() => {
+            // Refresh photos so the marked-up version shows up in the
+            // card view and damage assessment list immediately.
+            fetchPhotos();
+          }}
+        />
+      )}
     </OuterTag>
   );
 }
