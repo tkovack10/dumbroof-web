@@ -1,12 +1,27 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import type { V2Slots } from "../types";
 
 interface Props {
   slots: V2Slots;
   claimId: string;
   manualScopeLocked: boolean;
+  currentTrades: string[];
+}
+
+const TRADE_KEYS = ["roofing", "siding", "gutters"] as const;
+type TradeKey = (typeof TRADE_KEYS)[number];
+
+function normalizeTrades(raw: string[]): Set<TradeKey> {
+  const out = new Set<TradeKey>();
+  for (const t of raw) {
+    const lower = t.toLowerCase().trim();
+    for (const k of TRADE_KEYS) {
+      if (lower.includes(k)) out.add(k);
+    }
+  }
+  return out;
 }
 
 /**
@@ -24,12 +39,20 @@ interface Props {
  * collapsible reveal is the MVP UX. Standalone route still works for direct
  * links.
  */
-export function ScopeTab({ slots, claimId, manualScopeLocked }: Props) {
+export function ScopeTab({ slots, claimId, manualScopeLocked, currentTrades }: Props) {
   const [editorOpen, setEditorOpen] = useState(false);
   const [uploadOpen, setUploadOpen] = useState(false);
 
+  const initialTrades = useMemo(() => normalizeTrades(currentTrades || []), [currentTrades]);
+
   return (
     <div className="space-y-4">
+      <TradeScopeToggle
+        claimId={claimId}
+        initial={initialTrades}
+        disabled={manualScopeLocked}
+      />
+
       {slots.scopeComparison || (slots.lockedScopeComparison && (
         <section className="bg-white/[0.04] border border-white/[0.1] rounded-xl p-4 sm:p-5">
           {slots.lockedScopeComparison}
@@ -262,5 +285,143 @@ function UploadEstimateModal({
         </div>
       </div>
     </div>
+  );
+}
+
+/**
+ * Trade-scope toggle — picks which trades the rebuilder emits. Drops items
+ * for unchecked trades, re-seeds defaults for newly-checked ones, then kicks
+ * a reprocess. Disabled when the scope is locked by an uploaded estimate
+ * (manual_scope_locked) because the rebuilder is bypassed in that mode.
+ *
+ * Backs the Tom 2026-05-14 ask after 69 Theron: "removing all roofing items +
+ * reprocess" couldn't make a claim siding-only because the rebuilder always
+ * re-seeded roofing. Now the rebuilder honors estimate_request and this
+ * toggle is the single UI surface for changing that.
+ */
+function TradeScopeToggle({
+  claimId,
+  initial,
+  disabled,
+}: {
+  claimId: string;
+  initial: Set<TradeKey>;
+  disabled: boolean;
+}) {
+  // Default to roofing-only if claim has no detected trades yet (fresh claim).
+  const seeded = initial.size === 0 ? new Set<TradeKey>(["roofing"]) : initial;
+  const [trades, setTrades] = useState<Set<TradeKey>>(seeded);
+  const [saving, setSaving] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+  const [dirty, setDirty] = useState(false);
+
+  const toggle = (k: TradeKey) => {
+    setTrades((prev) => {
+      const next = new Set(prev);
+      if (next.has(k)) next.delete(k);
+      else next.add(k);
+      return next;
+    });
+    setDirty(true);
+  };
+
+  const save = async () => {
+    if (trades.size === 0) {
+      setErr("Pick at least one trade.");
+      return;
+    }
+    setSaving(true);
+    setErr(null);
+    try {
+      const res = await fetch("/api/claim/set-trades", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ claim_id: claimId, trades: [...trades] }),
+      });
+      const data = (await res.json().catch(() => ({}))) as { error?: string };
+      if (!res.ok) {
+        throw new Error(data.error || `Save failed (${res.status})`);
+      }
+      // Hard reload — the new scope + reprocessing banner come from
+      // /api/team-claims fetched at page mount.
+      window.location.reload();
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Save failed");
+      setSaving(false);
+    }
+  };
+
+  const LABELS: Record<TradeKey, string> = {
+    roofing: "Roofing",
+    siding: "Siding",
+    gutters: "Gutters",
+  };
+
+  return (
+    <section className="bg-white/[0.04] border border-white/[0.1] rounded-xl p-4 sm:p-5">
+      <div className="flex items-start justify-between gap-3 flex-wrap">
+        <div>
+          <p className="text-sm font-semibold text-white">Trade scope</p>
+          <p className="text-xs text-[var(--gray-muted)] mt-0.5">
+            {disabled
+              ? "Locked by uploaded estimate. Re-upload or unlock to change trades."
+              : "Which trades should the rebuild include? Unchecking a trade drops its items on the next reprocess."}
+          </p>
+        </div>
+        <div className="flex items-center gap-2 flex-wrap">
+          {TRADE_KEYS.map((k) => {
+            const on = trades.has(k);
+            return (
+              <button
+                key={k}
+                type="button"
+                onClick={() => toggle(k)}
+                disabled={disabled || saving}
+                className={`text-xs font-semibold px-3 py-1.5 rounded-lg border transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+                  on
+                    ? "bg-[var(--cyan)]/15 text-[var(--cyan)] border-[var(--cyan)]/40"
+                    : "bg-white/[0.04] text-[var(--gray)] border-white/[0.1] hover:bg-white/[0.08]"
+                }`}
+              >
+                {on ? "✓ " : ""}
+                {LABELS[k]}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {err && (
+        <div className="mt-3 rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-2 text-xs text-red-200">
+          {err}
+        </div>
+      )}
+
+      {dirty && !disabled && (
+        <div className="mt-3 flex items-center justify-end gap-2">
+          <button
+            type="button"
+            onClick={() => {
+              setTrades(new Set(seeded));
+              setDirty(false);
+              setErr(null);
+            }}
+            disabled={saving}
+            className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-white/[0.06] hover:bg-white/[0.08] text-[var(--gray)] disabled:opacity-50"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={save}
+            disabled={saving || trades.size === 0}
+            className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-gradient-to-r from-[var(--pink)] via-[var(--purple)] to-[var(--blue)] hover:shadow-[var(--shadow-glow-pink)] text-white disabled:opacity-50"
+            title="Updates estimate_request and reprocesses the claim."
+          >
+            {saving ? "Saving & reprocessing…" : "Save & reprocess"}
+          </button>
+        </div>
+      )}
+    </section>
   );
 }

@@ -116,6 +116,10 @@ export function V2Layout({ claim, slots, isReprocessing, onUpload, onReprocess, 
                 (claim as unknown as { claim_config?: { manual_scope_locked?: boolean } })
                   .claim_config?.manual_scope_locked
               )}
+              currentTrades={
+                ((claim as unknown as { claim_config?: { scope?: { trades?: string[] } } })
+                  .claim_config?.scope?.trades) ?? []
+              }
             />
           </TabPanel>
           <TabPanel show={active === "photos"}>

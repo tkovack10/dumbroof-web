@@ -3284,14 +3284,23 @@ def build_claim_config(
     if carrier_data and not carrier_data.get("carrier_line_items"):
         print(f"[PROCESS] WARNING: Scope files uploaded but carrier extraction found 0 line items — falling back to pre-scope", flush=True)
 
-    # Determine trades and O&P — siding/gutters are opt-in via estimate_request.
+    # Determine trades and O&P — every trade is opt-in via estimate_request.
     # Two key shapes are supported:
-    #   gutter_type / siding_type — snake_case from /instant-supplement funnel;
-    #                                "na" excludes the trade.
-    #   gutters / siding          — legacy boolean from estimate-request wizard.
+    #   gutter_type / siding_type / roof_type — snake_case from /instant-supplement funnel;
+    #                                            "na" excludes the trade.
+    #   gutters / siding / roof_material      — legacy boolean/string from estimate-request wizard.
+    #
+    # Roofing used to be hardcoded ALWAYS-ON which made siding-only claims
+    # impossible: even if a contractor wiped roof_material from estimate_request,
+    # the rebuild would re-seed all roofing items (Tom 2026-05-14 — 69 Theron
+    # could not be made siding-only via the Refine Line Items editor).
     # O&P is VALIDATED later against actual line items (Phase 1 fix).
     _est_req = claim.get("estimate_request") or {}
-    trades = ["roofing"]  # Always included
+    trades: list[str] = []
+    _roof_type = _est_req.get("roof_type")
+    _roof_excluded = _roof_type in ("na", "none")
+    if _est_req.get("roof_material") or (_roof_type and not _roof_excluded):
+        trades.append("roofing")
     _siding_type = _est_req.get("siding_type")
     _siding_excluded = _siding_type in ("na", "brick_veneer", "stone_veneer")
     if _est_req.get("siding") or (_siding_type and not _siding_excluded):
@@ -3299,6 +3308,12 @@ def build_claim_config(
     _gutter_type = _est_req.get("gutter_type")
     if _est_req.get("gutters") or (_gutter_type and _gutter_type != "na"):
         trades.append("gutters")
+    # Safety net — if estimate_request is empty (legacy claim, pre-funnel), fall
+    # back to roofing-only so we don't silently produce empty scopes. Any claim
+    # built via the new funnel will always populate estimate_request.
+    if not trades:
+        print(f"[CONFIG] WARNING: estimate_request {_est_req!r} produced no trades — defaulting to roofing", flush=True)
+        trades = ["roofing"]
     o_and_p = len(trades) >= 3  # Preliminary — validated after line items are built
 
     # Determine state for tax rate — try measurements first, then parse from claim address
@@ -5031,6 +5046,41 @@ def build_line_items(measurements: dict, photo_analysis: dict, state: str, user_
             garage_lf = garage_door_count * 34
             items.append({"category": "SIDING", "description": "R&R Garage door wrap - aluminum coil stock", "qty": garage_lf, "unit": "LF", "unit_price": PRICING.get("garage_door_wrap_lf", 24.55)})
 
+    # ===================== TRADE-SCOPE FILTER =====================
+    # When estimate_request explicitly opts OUT of roofing (e.g., siding-only claim),
+    # strip every ROOFING line item plus the roofing-debris dumpster. Backward
+    # compatible: an absent/empty estimate_request still produces a full roofing
+    # scope (legacy default). Tom 2026-05-14 — 69 Theron could not be made
+    # siding-only because the builder always emitted roofing items regardless
+    # of the trade toggle. The trades list in process_claim is the canonical
+    # source of truth; we mirror its logic here.
+    _est_req_local = estimate_request or {}
+    _roof_type = _est_req_local.get("roof_type")
+    _roofing_requested = bool(
+        _est_req_local.get("roof_material")
+        or (_roof_type and _roof_type not in ("na", "none"))
+        # If estimate_request exists but mentions NO trade at all → assume legacy
+        # roofing-default. Only suppress roofing when the request explicitly
+        # picks another trade and omits roofing.
+        or not (
+            _est_req_local.get("siding")
+            or _est_req_local.get("siding_type")
+            or _est_req_local.get("gutters")
+            or _est_req_local.get("gutter_type")
+        )
+    )
+    if not _roofing_requested:
+        before = len(items)
+        items = [
+            i for i in items
+            if i.get("category") != "ROOFING"
+            and not (
+                i.get("category") == "DEBRIS"
+                and "roofing" in (i.get("description") or "").lower()
+            )
+        ]
+        print(f"[SCOPE] roofing not requested — stripped {before - len(items)} roofing items", flush=True)
+
     return _sort_line_items(items)
 
 
@@ -6652,15 +6702,47 @@ async def process_claim(claim_id: str, refresh_prices: bool = False):
         if report_mode not in ("forensic_only", "supplement_only"):
             attach_evidence_photos(config, sb, claim_id)
 
-        # 9b. excluded_line_items is a FRONTEND display concern only.
-        # The processor always generates ALL items. The dashboard hides excluded items.
-        # Previously this filtered config by description match, which broke multi-structure
-        # claims (excluding one "Metal roofing" removed ALL structures' installs).
+        # 9b. Apply user exclusions to config.line_items BEFORE PDF generation.
+        # line_item_feedback (status='removed') is the durable identity store —
+        # each removed row records the original_description plus an optional
+        # structure context (from the line_items row when Richard or the
+        # editor recorded it). We do GREEDY 1-to-1 matching by description
+        # (and by structure if recorded) so removing "Metal roofing" once
+        # only drops ONE matching item, not every structure's install. See
+        # the multi-structure regression note that this comment used to warn
+        # about — the fix is 1:1 matching, not skipping the filter.
         #
-        # Stale-UUID handling moved to _write_to_warehouse() — see E195. We previously
-        # cleared excluded_line_items here unconditionally, which silently erased every
-        # user exclusion on reprocess. The new flow re-translates `line_item_feedback`
-        # (status='removed') descriptions → fresh UUIDs after write_line_items runs.
+        # Stale-UUID handling stays in _write_to_warehouse() (E195) because
+        # PDF generation runs before the line_items table is rewritten.
+        if sb and report_mode not in ("forensic_only",):
+            try:
+                excl_fb = sb.table("line_item_feedback").select(
+                    "original_description"
+                ).eq("claim_id", claim_id).eq("status", "removed").execute()
+                removed_descs: list[str] = []
+                for r in (excl_fb.data or []):
+                    d = (r.get("original_description") or "").strip()
+                    if d:
+                        removed_descs.append(d)
+                if removed_descs:
+                    current_items = config.get("line_items") or []
+                    dropped = 0
+                    surviving: list[dict] = []
+                    remaining: dict[str, int] = {}
+                    for d in removed_descs:
+                        remaining[d] = remaining.get(d, 0) + 1
+                    for li in current_items:
+                        desc = (li.get("description") or "").strip()
+                        if desc and remaining.get(desc, 0) > 0:
+                            remaining[desc] -= 1
+                            dropped += 1
+                            continue
+                        surviving.append(li)
+                    if dropped:
+                        config["line_items"] = surviving
+                        print(f"[SCOPE] Dropped {dropped} user-excluded line items before PDF generation (had {len(current_items)}, kept {len(surviving)})", flush=True)
+            except Exception as e:
+                print(f"[SCOPE] Exclusion filter failed (non-fatal): {e}", flush=True)
 
         # 9c. Inject user-added line items (survive reprocess)
         if sb:
