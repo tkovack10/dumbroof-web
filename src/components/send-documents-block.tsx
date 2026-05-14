@@ -10,6 +10,7 @@ interface Props {
   claimAddress: string;
   claimNumber: string;
   adjusterEmail: string;
+  homeownerEmail?: string;
   carrierName?: string;
   filePath: string;
   outputFiles: string[];
@@ -37,7 +38,7 @@ function escapeHtml(value: string): string {
     .replace(/'/g, "&#39;");
 }
 
-export function SendDocumentsBlock({ claimId, claimAddress, claimNumber, adjusterEmail, filePath, outputFiles }: Props) {
+export function SendDocumentsBlock({ claimId, claimAddress, claimNumber, adjusterEmail, homeownerEmail = "", filePath, outputFiles }: Props) {
   const [recipientEmail, setRecipientEmail] = useState(adjusterEmail || "");
   const [ccEmail, setCcEmail] = useState("");
   const [editClaimNumber, setEditClaimNumber] = useState(claimNumber || "");
@@ -61,6 +62,26 @@ export function SendDocumentsBlock({ claimId, claimAddress, claimNumber, adjuste
       if (sentTimerRef.current) clearTimeout(sentTimerRef.current);
     };
   }, []);
+
+  // Auto-pre-fill the recipient from contact-card edits without requiring a
+  // page reload. The contactCard saves homeowner_email / adjuster_email via
+  // /api/claims/update + setClaim(); those bubble down here as props. Sync
+  // recipientEmail whenever the matching prop changes — but only if the user
+  // hasn't started typing their own override (i.e. current value still
+  // matches the OLD prop value).
+  useEffect(() => {
+    const wantedDefault = recipientType === "carrier" ? adjusterEmail : homeownerEmail;
+    // Match only if the user hasn't typed something else over the prop value.
+    setRecipientEmail((current) => {
+      if (current === wantedDefault) return current;
+      // If current is empty OR equals the OTHER side's prop (stale from last
+      // toggle), it's safe to overwrite with the new prop value.
+      if (!current || current === adjusterEmail || current === homeownerEmail) {
+        return wantedDefault || "";
+      }
+      return current;
+    });
+  }, [adjusterEmail, homeownerEmail, recipientType]);
 
   const toggleFile = (file: string) => {
     setSelectedFiles((prev) => {
@@ -172,7 +193,7 @@ export function SendDocumentsBlock({ claimId, claimAddress, claimNumber, adjuste
             aria-pressed={recipientType === "homeowner"}
             onClick={() => {
               setRecipientType("homeowner");
-              setRecipientEmail("");
+              setRecipientEmail(homeownerEmail || "");
               setErrorMsg(null);
             }}
             className={`flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold transition-colors ${

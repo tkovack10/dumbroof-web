@@ -9,6 +9,7 @@ export type CommStatus = {
   forensic_to_homeowner: boolean;
   forensic_to_carrier: boolean;
   supplement_sent: boolean;
+  coc_sent: boolean;
   engagement_active: boolean;
 };
 
@@ -16,10 +17,11 @@ export const EMPTY_COMM: CommStatus = {
   forensic_to_homeowner: false,
   forensic_to_carrier: false,
   supplement_sent: false,
+  coc_sent: false,
   engagement_active: false,
 };
 
-// Compact 4-icon strip showing whether each communication milestone has fired.
+// Compact 5-icon strip showing whether each communication milestone has fired.
 // Dim/grayscale = not yet, full opacity = sent. Hover for tooltip.
 export function CommBadges({ status }: { status?: CommStatus }) {
   const s = status || EMPTY_COMM;
@@ -27,6 +29,7 @@ export function CommBadges({ status }: { status?: CommStatus }) {
     { on: s.forensic_to_homeowner, icon: "🖼️", title: s.forensic_to_homeowner ? "Forensic sent to homeowner" : "Forensic not yet sent to homeowner" },
     { on: s.forensic_to_carrier,   icon: "📄", title: s.forensic_to_carrier   ? "Forensic sent to insurance" : "Forensic not yet sent to insurance" },
     { on: s.supplement_sent,       icon: "📋", title: s.supplement_sent       ? "Supplement sent to insurance" : "Supplement not yet sent to insurance" },
+    { on: s.coc_sent,              icon: "🏅", title: s.coc_sent              ? "Certificate of Completion sent" : "COC not yet sent" },
     { on: s.engagement_active,     icon: "📧", title: s.engagement_active     ? "Homeowner engagement sequence active" : "Homeowner engagement sequence not started" },
   ];
   return (

@@ -188,6 +188,7 @@ export function AdminDashboard({ userId }: { userId: string }) {
           "forensic_sent_to_homeowner",
           "forensic_sent_to_carrier",
           "supplement_sent",
+          "coc_sent",
         ]),
       supabase
         .from("homeowner_sequences")
@@ -219,6 +220,7 @@ export function AdminDashboard({ userId }: { userId: string }) {
       if (e.event_type === "forensic_sent_to_homeowner") slot.forensic_to_homeowner = true;
       else if (e.event_type === "forensic_sent_to_carrier") slot.forensic_to_carrier = true;
       else if (e.event_type === "supplement_sent") slot.supplement_sent = true;
+      else if (e.event_type === "coc_sent") slot.coc_sent = true;
     }
     for (const s of seqRes.data || []) {
       ensureComm(s.claim_id as string).engagement_active = true;

@@ -963,6 +963,7 @@ export default function ClaimDetailPage() {
                   claimAddress={claim.address}
                   claimNumber={claim.claim_number || ""}
                   adjusterEmail={claim.adjuster_email || ""}
+                  homeownerEmail={claim.homeowner_email || ""}
                   carrierName={claim.carrier || ""}
                   outputFiles={claim.output_files}
                   filePath={claim.file_path}
