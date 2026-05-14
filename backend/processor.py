@@ -1443,13 +1443,28 @@ Number the photos starting at {start_num}. Return ONLY valid JSON:
   "photo_tags": {{
     "photo_{start_num:02d}": {{
       "damage_type": "hail_dent | crack | missing | granule_loss | lifted_tab | wind_crease | chalk_test | corrosion | overview | none",
-      "material": "comp_shingle_laminated | comp_shingle_3tab | aluminum_siding | vinyl_siding | metal_flashing | aluminum_gutter | copper | slate | aluminum_trim | metal_vent",
+      "material": "comp_shingle_laminated | comp_shingle_3tab | aluminum_siding | vinyl_siding | cedar_siding | fiber_cement_siding | metal_flashing | chimney_flashing | aluminum_gutter | downspout | gutter_guard | rain_diverter | window | window_wrap | copper | slate | aluminum_trim | metal_vent",
       "trade": "roofing | siding | gutters | window_wraps | flashing | general",
       "elevation": "front | rear | left | right | roof | detail | interior",
       "severity": "minor | moderate | severe | critical"
     }}
   }}
-}}"""
+}}
+
+MATERIAL DISAMBIGUATION (avoid these common mis-IDs):
+- "rain_diverter" — a SHORT (~12-18 inch) angled metal strip mounted ABOVE
+  a window/door to push water away. Often confused with "aluminum_gutter"
+  but a real gutter spans the full eave length and has downspouts. If it's
+  a small piece of bent metal NOT spanning the full edge, it's a rain_diverter.
+- "chimney_flashing" — step/counter-flashing where the roof meets a chimney.
+  NOT generic "metal_flashing" — be specific when the chimney is visible.
+- "gutter_guard" — mesh or solid cover on top of a gutter. NOT the gutter
+  itself.
+- "downspout" — vertical drainage pipe from the gutter to grade. Separate
+  from the horizontal gutter.
+- "window_wrap" — the aluminum/vinyl cladding wrapping a window frame /
+  trim. Tag this even when damage is hail on the wrap itself.
+"""
         })
 
         response = _call_claude_with_retry(client,
@@ -5796,9 +5811,35 @@ async def process_claim(claim_id: str, refresh_prices: bool = False):
         photo_paths = []
         photo_filenames = []
         downloaded_paths = []
+
+        # Markup overlay: if a user marked up a photo via the dashboard,
+        # photos.annotated_path holds the marked-up PNG. Prefer that for
+        # everything downstream (Vision re-tag, forensic report, supplement
+        # letter) so what the user sees in the dashboard matches the PDF.
+        # Original photo stays in storage — we just substitute at download.
+        annotated_map: dict = {}
+        try:
+            _ap_rows = (
+                sb.table("photos")
+                .select("filename, annotated_path")
+                .eq("claim_id", claim_id)
+                .not_.is_("annotated_path", "null")
+                .execute()
+            )
+            for _r in (_ap_rows.data or []):
+                if _r.get("filename") and _r.get("annotated_path"):
+                    annotated_map[_r["filename"]] = _r["annotated_path"]
+            if annotated_map:
+                print(f"[PHOTOS] {len(annotated_map)} photos have user markup — substituting", flush=True)
+        except Exception as _e:
+            print(f"[PHOTOS] annotated_path lookup failed (non-fatal): {_e}", flush=True)
+
         for fname in claim.get("photo_files") or []:
             local = os.path.join(photos_dir, fname)
-            download_file(sb, "claim-documents", f"{file_path}/photos/{fname}", local)
+            # Use the marked-up PNG when present. Storage path differs but we
+            # keep the local filename so Vision/PDF readers find it by basename.
+            remote_path = annotated_map.get(fname) or f"{file_path}/photos/{fname}"
+            download_file(sb, "claim-documents", remote_path, local)
             downloaded_paths.append(local)
 
             # Opportunistically grab sidecar siblings, if any. Two flavors:
