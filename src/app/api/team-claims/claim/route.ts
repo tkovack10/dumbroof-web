@@ -32,12 +32,37 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Claim not found" }, { status: 404 });
   }
 
-  // Check access: own claim OR same email domain
+  // Own claim — always allowed.
   if (claim.user_id === user.id) {
     return NextResponse.json({ claim });
   }
 
-  // Check domain sharing
+  // Cross-rep access: gated by company membership AND the company's
+  // claims_visibility_mode. Admins/owners always see team-wide.
+  const { data: callerProfile } = await supabaseAdmin
+    .from("company_profiles")
+    .select("company_id, is_admin, role")
+    .eq("user_id", user.id)
+    .maybeSingle();
+  const callerIsAdmin =
+    !!callerProfile?.is_admin || callerProfile?.role === "owner" || callerProfile?.role === "admin";
+
+  if (callerProfile?.company_id && claim.company_id === callerProfile.company_id) {
+    if (callerIsAdmin) return NextResponse.json({ claim });
+    const { data: company } = await supabaseAdmin
+      .from("companies")
+      .select("claims_visibility_mode")
+      .eq("id", callerProfile.company_id)
+      .maybeSingle();
+    if (company?.claims_visibility_mode !== "own") {
+      return NextResponse.json({ claim });
+    }
+    return NextResponse.json({ error: "Restricted by company visibility setting" }, { status: 403 });
+  }
+
+  // Legacy fallback: email-domain sharing for claims/users that don't have
+  // a company_id wired yet (e.g. a solo user whose teammate hasn't been
+  // invited via the company_invites flow). Kept for back-compat.
   const { data: owner } = await supabaseAdmin.auth.admin.getUserById(claim.user_id);
   if (owner?.user?.email) {
     const ownerDomain = owner.user.email.split("@")[1];

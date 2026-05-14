@@ -35,6 +35,11 @@ function SettingsPageContent() {
   const [loading, setLoading] = useState(true);
   const [currentUserId, setCurrentUserId] = useState<string>("");
   const [currentUser, setCurrentUser] = useState<User | null>(null);
+  // Org-level editing is gated to admins/owners when the user is part of a
+  // company. Reps see a read-only "managed by admin" block instead and only
+  // the personal fields below are editable. See /dashboard/admin/company.
+  const [canManageOrg, setCanManageOrg] = useState<boolean>(true);
+  const [hasCompany, setHasCompany] = useState<boolean>(false);
   // UI-version preference (Phase 2 redesign — admin-only toggle until v2 ships to all)
   const [uiVersionPref, setUiVersionPref] = useState<UiVersion>("v1");
   const [uiVersionSaving, setUiVersionSaving] = useState(false);
@@ -172,6 +177,12 @@ function SettingsPageContent() {
           phone: data.phone || "",
           website: data.website || "",
         });
+        // Org-edit gate: anyone with a company_id who isn't admin/owner sees
+        // org fields as read-only. Solo users (no company_id) keep full edit.
+        const hasCo = !!data.company_id;
+        const isAdminOrOwner = !!data.is_admin || data.role === "owner" || data.role === "admin";
+        setHasCompany(hasCo);
+        setCanManageOrg(!hasCo || isAdminOrOwner);
         // Check Gmail connection
         if (data.gmail_refresh_token) {
           setGmailConnected(true);
@@ -385,9 +396,11 @@ function SettingsPageContent() {
 
       <div className="max-w-xl mx-auto px-6 py-10">
         <div className="mb-8">
-          <h1 className="text-2xl font-bold text-[var(--white)]">Company Profile</h1>
+          <h1 className="text-2xl font-bold text-[var(--white)]">Your Profile</h1>
           <p className="text-[var(--gray-muted)] mt-1">
-            Your company info and logo will appear on all generated claim documents.
+            {canManageOrg
+              ? "Your company info and logo will appear on all generated claim documents."
+              : "Your personal contact info. Company-level info is managed by your admin."}
           </p>
         </div>
 
@@ -398,8 +411,17 @@ function SettingsPageContent() {
           </div>
         )}
 
+        {hasCompany && !canManageOrg && (
+          <div className="mb-8 rounded-xl border border-[var(--border-glass)] bg-white/[0.04] px-4 py-3 text-sm text-[var(--gray)]">
+            Company name, address, logo, license, and website are managed by your
+            admin and propagate to every rep&apos;s claims. Ask your admin or
+            owner to make changes via the company settings page.
+          </div>
+        )}
+
         <form onSubmit={handleSave} className="space-y-8">
-          {/* Logo Upload */}
+          {/* Logo Upload — admins/owners and solo users only */}
+          {canManageOrg && (
           <div>
             <label className="block text-sm font-semibold text-[var(--white)] mb-2">Company Logo</label>
             <div className="flex items-center gap-6">
@@ -421,10 +443,19 @@ function SettingsPageContent() {
               </div>
             </div>
           </div>
+          )}
 
-          {/* Form Fields */}
+          {/* Form Fields — hide org-level fields for non-admin reps. The
+              trigger on company_profiles silently re-syncs them from the
+              companies row on save, so this is also defense in depth. */}
           <div className="space-y-4">
-            {fields.map(({ key, label, placeholder }) => (
+            {fields
+              .filter(({ key }) => {
+                if (canManageOrg) return true;
+                const ORG_FIELDS = new Set(["company_name", "address", "city_state_zip", "website"]);
+                return !ORG_FIELDS.has(key);
+              })
+              .map(({ key, label, placeholder }) => (
               <div key={key}>
                 <label className="block text-sm font-semibold text-[var(--white)] mb-1">{label}</label>
                 <input
