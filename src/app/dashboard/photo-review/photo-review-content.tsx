@@ -462,7 +462,7 @@ export function PhotoReviewContent({ claimId: claimIdProp, embedded = false }: P
                   <div className="aspect-square bg-white/[0.06]">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
-                      src={photo.signed_url}
+                      src={photo.annotated_url || photo.signed_url}
                       alt={photo.annotation_key}
                       className="w-full h-full object-cover"
                       loading="lazy"
@@ -533,10 +533,15 @@ export function PhotoReviewContent({ claimId: claimIdProp, embedded = false }: P
             <div className="relative aspect-[4/3] bg-white/[0.06]">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
-                src={currentPhoto.signed_url}
+                src={currentPhoto.annotated_url || currentPhoto.signed_url}
                 alt={currentPhoto.annotation_text || currentPhoto.annotation_key}
                 className="w-full h-full object-contain"
               />
+              {currentPhoto.annotated_url && (
+                <span className="absolute top-2 right-2 px-2 py-0.5 rounded-full text-[10px] font-bold bg-[var(--cyan)]/20 text-[var(--cyan)] border border-[var(--cyan)]/40 backdrop-blur-sm">
+                  ✎ Marked up
+                </span>
+              )}
               {/* Stamp overlay */}
               {stampType && (
                 <div className="absolute inset-0 flex items-center justify-center">
@@ -704,7 +709,7 @@ export function PhotoReviewContent({ claimId: claimIdProp, embedded = false }: P
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
-                  src={photo.signed_url}
+                  src={photo.annotated_url || photo.signed_url}
                   alt={photo.annotation_key}
                   className="w-full h-full object-cover"
                   loading="lazy"
@@ -744,7 +749,9 @@ export function PhotoReviewContent({ claimId: claimIdProp, embedded = false }: P
         <PhotoMarkupModal
           claimId={claimId}
           annotationKey={currentPhoto.annotation_key}
-          imageUrl={currentPhoto.signed_url}
+          // Open with the existing markup if there is one so the user can
+          // ADD to / refine prior strokes instead of starting blank.
+          imageUrl={currentPhoto.annotated_url || currentPhoto.signed_url}
           onClose={() => setMarkupOpen(false)}
           onSaved={() => {
             // Refresh photos so the marked-up version shows up in the

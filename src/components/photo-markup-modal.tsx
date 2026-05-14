@@ -134,30 +134,94 @@ export function PhotoMarkupModal({
     setSaving(true);
     setError(null);
     try {
-      // JPEG q=0.85 keeps overlay strokes crisp at 5-10× smaller payload
-      // than PNG. Native-resolution iPhone photos (3024×4032) produced
-      // 10-15 MB PNGs that blew through Vercel's body limit AND our own
-      // 8 MB backend cap → "Save failed (413)". JPEG keeps even a 4K
-      // photo under ~1.5 MB.
-      const dataUrl = canvas.toDataURL("image/jpeg", 0.85);
+      // Two-step export to guarantee we never hit Vercel's ~4.5 MB body
+      // limit, even on 12 MP iPhone photos:
+      //   1. Downscale canvas to max long-edge 2048px (plenty for PDF +
+      //      dashboard thumbnails; native 4K resolution is never needed
+      //      for marked-up forensic documentation).
+      //   2. Export as JPEG q=0.85 — keeps overlay strokes crisp.
+      // The downscaled JPEG typically lands at 200-800 KB. Vercel limit
+      // is no longer a concern.
+      const MAX_EDGE = 2048;
+      const srcW = canvas.width;
+      const srcH = canvas.height;
+      const scale = Math.min(1, MAX_EDGE / Math.max(srcW, srcH));
+      let exportSource: HTMLCanvasElement = canvas;
+      if (scale < 1) {
+        const off = document.createElement("canvas");
+        off.width = Math.round(srcW * scale);
+        off.height = Math.round(srcH * scale);
+        const offCtx = off.getContext("2d");
+        if (offCtx) {
+          offCtx.imageSmoothingEnabled = true;
+          offCtx.imageSmoothingQuality = "high";
+          offCtx.drawImage(canvas, 0, 0, off.width, off.height);
+          exportSource = off;
+        }
+      }
+
+      // Use a Blob (not data URL) so we can upload directly to Supabase
+      // via a signed upload URL — completely bypasses Vercel's body limit.
+      // The /api/photos/annotate route below just finalizes the row.
+      const blob: Blob | null = await new Promise((resolve) =>
+        exportSource.toBlob((b) => resolve(b), "image/jpeg", 0.85)
+      );
+      if (!blob) throw new Error("Could not encode canvas as JPEG.");
+
       const res = await fetch("/api/photos/annotate", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
           claim_id: claimId,
           annotation_key: annotationKey,
-          image_base64: dataUrl,
+          // Hand the server the raw byte size so it can detect oversize
+          // before signing the URL (defense in depth — the downscale
+          // should already keep us well under any limit).
+          byte_length: blob.size,
         }),
       });
+      const j = await res.json().catch(() => ({}));
       if (!res.ok) {
-        const j = await res.json().catch(() => ({}));
-        // Surface the API's specific error message if present, fall back to
-        // a generic status-code message only when the body is opaque.
-        const apiMsg = j.error || j.message;
-        throw new Error(apiMsg || `Save failed (${res.status})`);
+        throw new Error(j.error || j.message || `Save failed (${res.status})`);
       }
-      const j = await res.json();
-      onSaved?.(j.annotated_path);
+      if (!j.upload_url || !j.storage_path) {
+        throw new Error("Server didn't return an upload URL.");
+      }
+
+      // PUT the JPEG directly to Supabase via the signed URL. Supabase
+      // signed-upload endpoints expect FormData with the file under the
+      // empty key (the SDK convention), not a raw blob. No Vercel
+      // function involvement = no body-size cap.
+      const formData = new FormData();
+      formData.append("cacheControl", "3600");
+      formData.append("", blob, "marked.jpg");
+      const putRes = await fetch(j.upload_url, {
+        method: "PUT",
+        headers: { "x-upsert": "true" },
+        body: formData,
+      });
+      if (!putRes.ok) {
+        const txt = await putRes.text().catch(() => "");
+        throw new Error(`Upload failed (${putRes.status}): ${txt.slice(0, 200)}`);
+      }
+
+      // Finalize: tell the server the upload succeeded so it can record
+      // photos.annotated_path. Separate POST keeps this idempotent.
+      const finRes = await fetch("/api/photos/annotate", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          claim_id: claimId,
+          annotation_key: annotationKey,
+          finalize_storage_path: j.storage_path,
+        }),
+      });
+      const finJson = await finRes.json().catch(() => ({}));
+      if (!finRes.ok) {
+        throw new Error(finJson.error || `Finalize failed (${finRes.status})`);
+      }
+
+      onSaved?.(finJson.annotated_path || j.storage_path);
       onClose();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Save failed");
