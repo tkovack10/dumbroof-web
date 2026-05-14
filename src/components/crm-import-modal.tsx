@@ -273,9 +273,39 @@ export function CrmImportModal({
           }),
         }
       );
-      const data = await res.json();
+
+      // Capture the body whether the response was ok or not — backend often
+      // returns 200 with partial results, or a non-200 with { error, message,
+      // detail } that the generic catch was hiding.
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        const msg =
+          data.message ||
+          data.detail ||
+          data.error ||
+          `Import failed with status ${res.status}.`;
+        setError(`CompanyCam import: ${msg}`);
+        setStep("photos");
+        return;
+      }
+
+      const requested = selectedPhotoIndices.size;
+      const imported = data.count || 0;
+      // Partial-success: backend returned 200 but fewer than requested.
+      // Surface the gap so the user knows which photos didn't land.
+      if (imported < requested) {
+        const missed = requested - imported;
+        setError(
+          `Imported ${imported} of ${requested} photos. ${missed} failed — ` +
+          `usually a CompanyCam download timeout or rate-limit. Try the missing ones again in a minute.`
+        );
+        // Continue anyway with the photos that DID land, so the user isn't
+        // stuck. The error stays visible on the page below.
+      }
       setImportProgress(
-        `Imported ${data.count || 0} photos. Populating form...`
+        imported === requested
+          ? `Imported ${imported} photos. Populating form...`
+          : `Imported ${imported} of ${requested}. Continuing with what landed.`
       );
 
       onPhotoPaths?.(data.paths || []);
@@ -290,13 +320,20 @@ export function CrmImportModal({
 
       onImport({
         address: projectAddr || selectedProject.name || "",
-        importedPhotoCount: data.count || 0,
+        importedPhotoCount: imported,
         slug: newSlug,
       });
 
-      setTimeout(() => onClose(), 1000);
-    } catch {
-      setError("Failed to import from CompanyCam");
+      // Only auto-close on full success; on partial, let the user read the message.
+      if (imported === requested) {
+        setTimeout(() => onClose(), 1000);
+      } else {
+        setStep("photos");
+      }
+    } catch (e) {
+      // True network / JSON-parse failure — show what we know.
+      const msg = e instanceof Error ? e.message : "unknown network error";
+      setError(`Failed to import from CompanyCam: ${msg}`);
       setStep("photos");
     }
   };

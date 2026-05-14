@@ -5123,6 +5123,7 @@ async def companycam_import(
 
     sb = get_supabase_client()
     uploaded = []
+    failed: list[dict] = []
 
     import json as _json
     for i, photo in enumerate(photos):
@@ -5131,10 +5132,15 @@ async def companycam_import(
         # server-side pipeline. We need the raw file for photo→slope mapping.
         url = CompanyCamClient.get_photo_url(photo, size="original")
         if not url:
+            failed.append({"index": i, "reason": "no_url"})
+            print(f"[CRM-IMPORT] photo {i}: no original URL on photo object", flush=True)
             continue
+        fname = f"companycam_{i+1:03d}.jpg"  # set early so failure logs know which photo
         try:
             data = await client.download_photo(url)
             if not data:
+                failed.append({"index": i, "reason": "download_empty"})
+                print(f"[CRM-IMPORT] photo {i}: download returned empty bytes", flush=True)
                 continue
             # Generate safe filename
             ext = ".jpg"
@@ -5147,10 +5153,18 @@ async def companycam_import(
                 storage_path = f"{target_path}/{folder}/{fname}"
             else:
                 storage_path = f"{user_id}/{slug}/photos/{fname}"
-            sb.storage.from_("claim-documents").upload(
-                storage_path, data,
-                file_options={"content-type": f"image/{ext.strip('.')}", "upsert": "true"}
-            )
+            try:
+                sb.storage.from_("claim-documents").upload(
+                    storage_path, data,
+                    file_options={"content-type": f"image/{ext.strip('.')}", "upsert": "true"}
+                )
+            except Exception as up_err:
+                # Storage error (quota, permission, network) — bubble up with
+                # context so the client can show something useful.
+                msg = str(up_err)[:200]
+                failed.append({"index": i, "reason": "supabase_upload", "detail": msg})
+                print(f"[CRM-IMPORT] photo {i} ({fname}) supabase upload failed: {msg}", flush=True)
+                continue
 
             # Write a metadata sidecar so photo→slope mapping has GPS coords
             # even when CompanyCam's download path stripped the EXIF. Their
@@ -5173,14 +5187,31 @@ async def companycam_import(
                 )
             except Exception as _e:
                 # Sidecar failure is non-fatal — photo still uploaded
-                print(f"[CRM-IMPORT] Sidecar write failed for {fname} (non-fatal): {_e}")
+                print(f"[CRM-IMPORT] Sidecar write failed for {fname} (non-fatal): {_e}", flush=True)
 
             uploaded.append({"name": fname, "path": storage_path})
         except Exception as e:
-            print(f"[CRM-IMPORT] Failed to import photo {i}: {e}")
+            msg = str(e)[:200]
+            failed.append({"index": i, "reason": "exception", "detail": msg})
+            print(f"[CRM-IMPORT] photo {i} ({fname}) failed: {msg}", flush=True)
             continue
 
-    return {"uploaded": uploaded, "count": len(uploaded), "paths": [u["path"] for u in uploaded]}
+    # Summary log for Railway — fast scan to spot patterns (auth, quota, network).
+    if failed:
+        reasons: dict[str, int] = {}
+        for f in failed:
+            reasons[f["reason"]] = reasons.get(f["reason"], 0) + 1
+        print(f"[CRM-IMPORT] DONE — {len(uploaded)} ok, {len(failed)} failed. reasons: {reasons}", flush=True)
+    else:
+        print(f"[CRM-IMPORT] DONE — {len(uploaded)} ok, 0 failed", flush=True)
+
+    return {
+        "uploaded": uploaded,
+        "count": len(uploaded),
+        "paths": [u["path"] for u in uploaded],
+        "failed": failed,
+        "requested": len(photos),
+    }
 
 
 @app.post("/api/integrations/acculynx/jobs/{job_id}/import")
