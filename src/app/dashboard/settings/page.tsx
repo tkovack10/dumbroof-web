@@ -1583,14 +1583,30 @@ function StripeConnectSection({ justConnected }: { justConnected?: boolean }) {
       .catch(() => setStatus({ connected: false, status: "disconnected" }));
   }, []);
 
+  const [connectError, setConnectError] = useState<string | null>(null);
+
   const handleConnect = async () => {
     setConnecting(true);
+    setConnectError(null);
     try {
       const res = await fetch("/api/stripe-connect");
       const data = await res.json();
-      if (data.url) window.location.href = data.url;
-    } catch {
-      // fall through
+      if (!res.ok || data.error) {
+        const msg = data.error || `Stripe Connect failed (${res.status})`;
+        console.error("[stripe-connect]", msg, data);
+        setConnectError(msg);
+        setConnecting(false);
+        return;
+      }
+      if (data.url) {
+        window.location.href = data.url;
+        return;
+      }
+      setConnectError("No onboarding URL returned. Check Vercel logs for /api/stripe-connect.");
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Network error";
+      console.error("[stripe-connect] fetch threw:", e);
+      setConnectError(msg);
     }
     setConnecting(false);
   };
@@ -1694,6 +1710,11 @@ function StripeConnectSection({ justConnected }: { justConnected?: boolean }) {
             >
               {connecting ? "Redirecting to Stripe..." : "Connect Stripe Account"}
             </button>
+            {connectError && (
+              <div className="mt-3 bg-red-500/10 border border-red-500/30 text-red-400 text-sm rounded-lg px-4 py-3">
+                <strong>Stripe Connect error:</strong> {connectError}
+              </div>
+            )}
           </div>
         )}
       </div>
