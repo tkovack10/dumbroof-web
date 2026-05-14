@@ -109,7 +109,14 @@ export function V2Layout({ claim, slots, isReprocessing, onUpload, onReprocess, 
             <DocumentsTab slots={slots} isReprocessing={isReprocessing} />
           </TabPanel>
           <TabPanel show={active === "scope"}>
-            <ScopeTab slots={slots} />
+            <ScopeTab
+              slots={slots}
+              claimId={claim.id}
+              manualScopeLocked={Boolean(
+                (claim as unknown as { claim_config?: { manual_scope_locked?: boolean } })
+                  .claim_config?.manual_scope_locked
+              )}
+            />
           </TabPanel>
           <TabPanel show={active === "photos"}>
             <PhotosTab slots={slots} />

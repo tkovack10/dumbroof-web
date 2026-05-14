@@ -134,7 +134,12 @@ export function PhotoMarkupModal({
     setSaving(true);
     setError(null);
     try {
-      const dataUrl = canvas.toDataURL("image/png");
+      // JPEG q=0.85 keeps overlay strokes crisp at 5-10× smaller payload
+      // than PNG. Native-resolution iPhone photos (3024×4032) produced
+      // 10-15 MB PNGs that blew through Vercel's body limit AND our own
+      // 8 MB backend cap → "Save failed (413)". JPEG keeps even a 4K
+      // photo under ~1.5 MB.
+      const dataUrl = canvas.toDataURL("image/jpeg", 0.85);
       const res = await fetch("/api/photos/annotate", {
         method: "POST",
         headers: { "content-type": "application/json" },
@@ -146,7 +151,10 @@ export function PhotoMarkupModal({
       });
       if (!res.ok) {
         const j = await res.json().catch(() => ({}));
-        throw new Error(j.error || `Save failed (${res.status})`);
+        // Surface the API's specific error message if present, fall back to
+        // a generic status-code message only when the body is opaque.
+        const apiMsg = j.error || j.message;
+        throw new Error(apiMsg || `Save failed (${res.status})`);
       }
       const j = await res.json();
       onSaved?.(j.annotated_path);

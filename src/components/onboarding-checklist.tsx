@@ -43,7 +43,11 @@ const STEPS = [
     title: "Invite your team",
     sub: "Each teammate processes claims under your shared plan. Free to add.",
     cta: "Invite teammates →",
-    href: "/dashboard/team",
+    // The InviteTeammateModal is mounted on /dashboard. The ?invite=open
+    // query param tells dashboard-content.tsx to auto-open it on mount.
+    // (Previous href `/dashboard/team` 404'd — there is no /dashboard/team
+    // route. Caught from Ebben screenshot 2026-05-14.)
+    href: "/dashboard?invite=open",
     optional: false,
   },
   {

@@ -2773,6 +2773,45 @@ async def approve_brain_action(claim_id: str, body: ToolApproval, background_tas
             _audit_log(sb, claim_id, user_id, tool_name, preview, {"action": "sent", "message": f"reprocess requested ({preview.get('reason', '')})"}, 0)
             return {"status": "sent", "message": "Reprocess requested — you'll see updated results in 1-2 minutes."}
 
+        # ─── Upload user's own estimate (manual_scope_locked) ───
+        # Mirrors /api/claim/upload-estimate. Writes sanitized line_items to
+        # claim_config + sets manual_scope_locked=true, then triggers reprocess
+        # so scope_comparison + supplement composer + PDFs rebuild from the
+        # user's items. processor.py:build_claim_config honors the flag.
+        if tool_name == "upload_user_estimate":
+            preview = tool_result.get("preview") or {}
+            cleaned_items = preview.get("line_items") or []
+            if not cleaned_items:
+                return {"status": "error", "message": "No line items in preview — refusing to clobber claim_config."}
+
+            # Load existing config, merge, write back.
+            claim_row = sb.table("claims").select("claim_config").eq("id", claim_id).single().execute()
+            prior_cfg = (claim_row.data or {}).get("claim_config") or {}
+            next_cfg = {
+                **prior_cfg,
+                "line_items": cleaned_items,
+                "manual_scope_locked": True,
+            }
+            sb.table("claims").update({
+                "claim_config": next_cfg,
+                "status": "processing",
+                "cached_photo_analysis": None,
+            }).eq("id", claim_id).execute()
+            background_tasks.add_task(run_processing, claim_id)
+            _audit_log(
+                sb, claim_id, user_id, tool_name, preview,
+                {"action": "sent", "message": f"uploaded {len(cleaned_items)} user line items + reprocess"},
+                0,
+            )
+            return {
+                "status": "sent",
+                "message": (
+                    f"Uploaded {len(cleaned_items)} user-supplied line items and locked them. "
+                    f"Reprocess is running — scope comparison + supplement composer + PDFs will "
+                    f"rebuild from your prices in 1-2 minutes."
+                ),
+            }
+
         # ─── R4: send_to_carrier ───
         # If the user approved a send with N attachments and even one fails to
         # download, refuse rather than silently ship an email with missing files.

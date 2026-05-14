@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback, useRef, useMemo } from "react";
+import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import type { User } from "@supabase/supabase-js";
 import type { Claim } from "@/types/claim";
@@ -63,6 +64,22 @@ export function DashboardContent({ user }: { user: User }) {
   const [showDetailStats, setShowDetailStats] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [inviteOpen, setInviteOpen] = useState(false);
+  // Deep-link target: /dashboard?invite=open auto-opens the modal so the
+  // onboarding-checklist CTA (and any future link) lands users straight on
+  // the invite form. We strip the param after consuming it so a back/refresh
+  // doesn't re-open the modal involuntarily.
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
+  useEffect(() => {
+    if (searchParams.get("invite") === "open") {
+      setInviteOpen(true);
+      const fresh = new URLSearchParams(searchParams.toString());
+      fresh.delete("invite");
+      const qs = fresh.toString();
+      router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+    }
+  }, [searchParams, router, pathname]);
   const [referOpen, setReferOpen] = useState(false);
   const [referralCode, setReferralCode] = useState<string | null>(null);
   const [canInvite, setCanInvite] = useState(false);

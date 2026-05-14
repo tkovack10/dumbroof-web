@@ -63,12 +63,15 @@ export async function POST(req: NextRequest) {
   }
 
   const safeKey = String(annotation_key).replace(/[^a-zA-Z0-9._-]/g, "_");
-  const storagePath = `${claim.file_path}/photos/${safeKey}.marked.png`;
+  // JPEG (q=0.85) instead of PNG — overlay strokes stay sharp, payload is
+  // 5-10× smaller than lossless PNG. Photos are inherently lossy so PNG
+  // never made sense here.
+  const storagePath = `${claim.file_path}/photos/${safeKey}.marked.jpg`;
 
   const { error: uploadErr } = await supabaseAdmin.storage
     .from("claim-documents")
     .upload(storagePath, bytes, {
-      contentType: "image/png",
+      contentType: "image/jpeg",
       upsert: true,
     });
   if (uploadErr) {

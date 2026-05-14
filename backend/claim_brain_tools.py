@@ -651,6 +651,37 @@ CLAIM_BRAIN_TOOLS = [
         },
     },
     {
+        "name": "upload_user_estimate",
+        "description": (
+            "Replace the platform-generated Xactimate-style estimate with the user's own "
+            "line items. Sets manual_scope_locked=true so future reprocesses preserve the "
+            "user's prices exactly (no registry overlay, no line-item rebuild). The scope "
+            "comparison + supplement composer rebuild against the user's items automatically "
+            "via the reprocess kick. Use when the user uploads their own Xactimate JSON "
+            "export, or pastes line items they want to lock in. REQUIRES USER APPROVAL."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "line_items": {
+                    "type": "array",
+                    "description": (
+                        "Array of line items. Each item REQUIRES description (string), qty "
+                        "(positive number), unit_price (non-negative number). Optional: unit "
+                        "(defaults EA), category (ROOFING/SIDING/GUTTERS/INTERIOR/GENERAL), "
+                        "trade (roofing/siding/gutters/...), xactimate_code."
+                    ),
+                    "items": {"type": "object"},
+                },
+                "reason": {
+                    "type": "string",
+                    "description": "Why the user is uploading their own estimate (informational — shown in the preview).",
+                },
+            },
+            "required": ["line_items"],
+        },
+    },
+    {
         "name": "trigger_reprocess",
         "description": (
             "Re-run the full claim processing pipeline — regenerates photo annotations, "
@@ -1213,6 +1244,8 @@ async def execute_tool(
             result = _handle_preview_attach_to_claim(claim_data, tool_input)
         elif tool_name == "trigger_reprocess":
             result = _handle_preview_trigger_reprocess(claim_data, tool_input)
+        elif tool_name == "upload_user_estimate":
+            result = _handle_preview_upload_user_estimate(claim_data, tool_input)
         # ─── R4 agentic sends + cadence (preview → approval) ──
         elif tool_name == "send_to_carrier":
             result = _handle_preview_send_to_carrier(claim_data, tool_input)
@@ -2287,6 +2320,77 @@ def _handle_preview_attach_to_claim(claim_data: dict, tool_input: dict) -> dict:
             "classification_confidence": confidence,
         },
         "message": f"Ready to attach {filename} as {doc_type} on this claim.",
+    }
+
+
+def _handle_preview_upload_user_estimate(claim_data: dict, tool_input: dict) -> dict:
+    """Preview for upload_user_estimate. Sanitizes line_items the same way
+    /api/claim/upload-estimate does, then returns a preview the user must
+    approve. On approval, the execution path (in main.py) writes
+    claim_config.line_items + manual_scope_locked=true and triggers reprocess.
+    """
+    raw_items = tool_input.get("line_items")
+    if not isinstance(raw_items, list):
+        return {"action": "error", "message": "line_items must be an array."}
+    if not raw_items:
+        return {"action": "error", "message": "line_items cannot be empty."}
+    if len(raw_items) > 500:
+        return {"action": "error", "message": f"line_items too large ({len(raw_items)} provided; 500 max)."}
+
+    cleaned: list[dict] = []
+    for i, raw in enumerate(raw_items):
+        if not isinstance(raw, dict):
+            return {"action": "error", "message": f"line_items[{i}] must be an object."}
+        description = (raw.get("description") or "").strip() if isinstance(raw.get("description"), str) else ""
+        if not description:
+            return {"action": "error", "message": f"line_items[{i}].description is required."}
+        try:
+            qty = float(raw.get("qty"))
+            if qty <= 0:
+                raise ValueError("non-positive")
+        except (TypeError, ValueError):
+            return {"action": "error", "message": f"line_items[{i}].qty must be a positive number."}
+        try:
+            unit_price = float(raw.get("unit_price"))
+            if unit_price < 0:
+                raise ValueError("negative")
+        except (TypeError, ValueError):
+            return {"action": "error", "message": f"line_items[{i}].unit_price must be a non-negative number."}
+        cleaned.append({
+            "description": description,
+            "qty": qty,
+            "unit": (raw.get("unit") or "EA").strip() if isinstance(raw.get("unit"), str) else "EA",
+            "unit_price": unit_price,
+            "category": (raw.get("category") or "GENERAL").strip().upper() if isinstance(raw.get("category"), str) else "GENERAL",
+            "trade": (raw.get("trade") or "general").strip().lower() if isinstance(raw.get("trade"), str) else "general",
+            "xactimate_code": (raw.get("xactimate_code") or "").strip() if isinstance(raw.get("xactimate_code"), str) else "",
+            "source": "user_uploaded",
+        })
+
+    total = sum(it["qty"] * it["unit_price"] for it in cleaned)
+    reason = (tool_input.get("reason") or "").strip()
+
+    return {
+        "action": "preview",
+        "type": "upload_user_estimate",
+        "tool_name": "upload_user_estimate",
+        "preview": {
+            "action_label": "Upload User Estimate",
+            "claim_address": claim_data.get("address"),
+            "line_items_count": len(cleaned),
+            "estimate_total": round(total, 2),
+            "reason": reason or None,
+            "side_effects": [
+                "Replaces claim_config.line_items with the uploaded items",
+                "Sets manual_scope_locked=true (future reprocesses won't overwrite prices)",
+                "Triggers a reprocess so scope_comparison + supplement composer + PDFs rebuild",
+            ],
+            "line_items": cleaned,  # included so the approval UI can show a diff
+        },
+        "message": (
+            f"Ready to replace the platform estimate with {len(cleaned)} user-supplied line items "
+            f"(total ${total:,.2f}). Future reprocesses will preserve these prices."
+        ),
     }
 
 
