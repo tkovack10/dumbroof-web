@@ -505,18 +505,28 @@ export function PhotoReviewContent({ claimId: claimIdProp, embedded = false }: P
       {/* Card */}
       <div className={embedded ? "py-2" : "max-w-2xl mx-auto px-4 py-6"}>
         {currentPhoto && (
-          <div className={`bg-white rounded-2xl border border-[var(--border-glass)] overflow-hidden shadow-lg transition-all duration-300 ${stampType ? "scale-95 opacity-80" : ""}`}>
+          <div className={`bg-white/[0.04] rounded-2xl border border-[var(--border-glass)] overflow-hidden shadow-lg transition-all duration-300 ${stampType ? "scale-95 opacity-80" : ""}`}>
             {/* Header */}
-            <div className="px-5 py-3 border-b border-white/[0.04] flex items-center justify-between">
-              <div>
-                <p className="text-sm font-semibold text-[var(--white)]">{currentPhoto.address}</p>
+            <div className="px-5 py-3 border-b border-white/[0.04] flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-[var(--white)] truncate">{currentPhoto.address}</p>
                 <p className="text-xs text-[var(--gray-dim)]">{currentPhoto.annotation_key}</p>
               </div>
-              {getEffectiveStatus(currentPhoto) && (
-                <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold text-white ${statusBadge(getEffectiveStatus(currentPhoto)).bg}`}>
-                  {statusBadge(getEffectiveStatus(currentPhoto)).label}
-                </span>
-              )}
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  onClick={() => setMarkupOpen(true)}
+                  disabled={!currentPhoto.signed_url}
+                  className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-gradient-to-r from-[var(--pink)]/20 to-[var(--blue)]/20 hover:from-[var(--pink)]/30 hover:to-[var(--blue)]/30 text-[var(--white)] border border-[var(--border-glass)] transition-colors disabled:opacity-40"
+                  title="Draw on the photo to highlight damage"
+                >
+                  ✎ Mark Up
+                </button>
+                {getEffectiveStatus(currentPhoto) && (
+                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold text-white ${statusBadge(getEffectiveStatus(currentPhoto)).bg}`}>
+                    {statusBadge(getEffectiveStatus(currentPhoto)).label}
+                  </span>
+                )}
+              </div>
             </div>
 
             {/* Photo */}
@@ -585,14 +595,6 @@ export function PhotoReviewContent({ claimId: claimIdProp, embedded = false }: P
                   className="flex-1 py-3 rounded-xl bg-green-50 hover:bg-green-100 text-green-700 font-semibold text-sm transition-colors border border-green-200 disabled:opacity-50"
                 >
                   Approve (A)
-                </button>
-                <button
-                  onClick={() => setMarkupOpen(true)}
-                  disabled={submitting || !currentPhoto?.signed_url}
-                  className="py-3 px-4 rounded-xl bg-white/[0.04] hover:bg-white/[0.06] text-[var(--white)] font-semibold text-sm transition-colors border border-[var(--border-glass)] disabled:opacity-50"
-                  title="Draw on photo to highlight damage"
-                >
-                  ✎ Mark Up
                 </button>
                 <button
                   onClick={handleSkip}
