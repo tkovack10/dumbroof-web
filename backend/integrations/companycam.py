@@ -169,12 +169,30 @@ class CompanyCamClient:
         return next(iter(uri_map.values()), None)
 
     async def download_photo(self, url: str) -> bytes | None:
-        """Download a photo by URL. Returns raw bytes."""
+        """Download a photo by URL. Returns raw bytes on success, None on
+        failure. Failures are LOGGED (not silenced) so we can spot patterns
+        in Railway when imports go wrong — CompanyCam serves photos through
+        a CDN with redirects and the old bare-except was hiding everything
+        from us.
+        """
         try:
-            async with httpx.AsyncClient(timeout=60) as client:
+            # follow_redirects=True is critical — CompanyCam's "original"
+            # URLs sometimes 302 to a presigned S3 URL on their backing
+            # store, and httpx 0.x defaults to NOT following.
+            async with httpx.AsyncClient(timeout=90, follow_redirects=True) as client:
                 resp = await client.get(url)
                 if resp.status_code == 200:
                     return resp.content
-        except Exception:
-            pass
+                # Non-200 — surface why so the import-route logs are useful.
+                print(
+                    f"[CompanyCam] download non-200: status={resp.status_code} "
+                    f"url={url[:80]} body_preview={resp.text[:120] if resp.text else '<empty>'}",
+                    flush=True,
+                )
+        except httpx.TimeoutException as e:
+            print(f"[CompanyCam] download timeout: url={url[:80]} err={e}", flush=True)
+        except httpx.HTTPError as e:
+            print(f"[CompanyCam] download HTTP error: url={url[:80]} err={type(e).__name__}: {e}", flush=True)
+        except Exception as e:
+            print(f"[CompanyCam] download unexpected error: url={url[:80]} err={type(e).__name__}: {e}", flush=True)
         return None
