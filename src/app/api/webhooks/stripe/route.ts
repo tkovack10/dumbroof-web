@@ -128,19 +128,32 @@ export async function POST(req: NextRequest) {
   const body = await req.text();
   const sig = req.headers.get("stripe-signature");
 
-  if (!sig || !process.env.STRIPE_WEBHOOK_SECRET) {
-    return NextResponse.json({ error: "Missing signature" }, { status: 400 });
+  // Two Stripe destinations point at this endpoint with DIFFERENT signing secrets:
+  //   STRIPE_WEBHOOK_SECRET         platform-account events (subscriptions, checkouts)
+  //   STRIPE_CONNECT_WEBHOOK_SECRET connected-account events (account.updated, deauthorize)
+  // Try each in turn; whichever validates the signature wins.
+  const platformSecret = process.env.STRIPE_WEBHOOK_SECRET;
+  const connectSecret = process.env.STRIPE_CONNECT_WEBHOOK_SECRET;
+
+  if (!sig || (!platformSecret && !connectSecret)) {
+    return NextResponse.json({ error: "Missing signature or no webhook secrets configured" }, { status: 400 });
   }
 
-  let event: Stripe.Event;
-  try {
-    event = getStripe().webhooks.constructEvent(
-      body,
-      sig,
-      process.env.STRIPE_WEBHOOK_SECRET
-    );
-  } catch (err) {
-    console.error("Webhook signature verification failed:", err);
+  let event: Stripe.Event | null = null;
+  const verifyErrors: string[] = [];
+
+  for (const [label, secret] of [["platform", platformSecret] as const, ["connect", connectSecret] as const]) {
+    if (!secret) continue;
+    try {
+      event = getStripe().webhooks.constructEvent(body, sig, secret);
+      break;
+    } catch (err) {
+      verifyErrors.push(`${label}: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  }
+
+  if (!event) {
+    console.error("Webhook signature verification failed (tried both secrets):", verifyErrors.join(" | "));
     return NextResponse.json({ error: "Invalid signature" }, { status: 400 });
   }
 
