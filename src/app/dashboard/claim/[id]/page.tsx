@@ -38,6 +38,7 @@ import { ClaimTimelineRail } from "@/components/claim-timeline-rail";
 import { EditReportFieldsCard } from "@/components/edit-report-fields-card";
 import { ClaimActionBar } from "@/components/claim-action-bar";
 import { ClaimMoneyActions } from "@/components/claim-money-actions";
+import { ClaimProductionActions } from "@/components/claim-production-actions";
 import { CommunicationsCenter } from "@/components/claim-detail/communications-center";
 import type { Correspondence, EditRequest, EmailDraft } from "@/types/claim-comms";
 import { ScopeReviewContent } from "@/app/dashboard/scope-review/scope-review-content";
@@ -1879,6 +1880,10 @@ export default function ClaimDetailPage() {
           Upload check + Submit commission. Owns its own modal state so
           the rest of the claim detail page stays untouched. */}
       {claim && <ClaimMoneyActions claimId={claim.id} />}
+
+      {/* Phase 2 (Admin Workspace v2): self-contained production actions —
+          Schedule install (admin-only, team-gated). */}
+      {claim && <ClaimProductionActions claimId={claim.id} />}
 
       {/* CompanyCam / AccuLynx import modal — same component used by
           install-supplement, COC, and new-claim flows. Mounts once at page
