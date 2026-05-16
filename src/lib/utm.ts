@@ -53,21 +53,34 @@ export function extractUtmFromUrl(url: URL): UtmData | null {
 }
 
 /**
- * Serialize UTM data to a cookie value (URL-encoded JSON).
+ * Serialize UTM data to a cookie value (raw JSON).
+ *
+ * Do NOT manually URL-encode. Next.js `response.cookies.set` percent-encodes
+ * the value when writing the Set-Cookie header — encoding here causes a
+ * silent double-encode that breaks JSON.parse on the read side.
  */
 export function serializeUtm(data: UtmData): string {
-  return encodeURIComponent(JSON.stringify(data));
+  return JSON.stringify(data);
 }
 
 /**
  * Parse UTM data from cookie value.
+ *
+ * Tolerates legacy double-encoded values (cookies written before the
+ * serializeUtm fix may persist in browsers for up to 30 days): try a
+ * single decode first, and on JSON-parse failure retry with a second
+ * decode. New cookies need only the single decode.
  */
 export function parseUtmCookie(cookieValue: string | undefined): UtmData | null {
   if (!cookieValue) return null;
   try {
     return JSON.parse(decodeURIComponent(cookieValue)) as UtmData;
   } catch {
-    return null;
+    try {
+      return JSON.parse(decodeURIComponent(decodeURIComponent(cookieValue))) as UtmData;
+    } catch {
+      return null;
+    }
   }
 }
 
