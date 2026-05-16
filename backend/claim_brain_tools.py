@@ -1076,6 +1076,93 @@ CLAIM_BRAIN_TOOLS = [
             },
         },
     },
+
+    # ─── Phase 4: Retail tools ──────────────────────────────────────
+    {
+        "name": "create_retail_estimate",
+        "description": (
+            "Create a retail estimate for a non-insurance customer (cash, "
+            "homeowner-funded job). NOT a claim — retail jobs live in their "
+            "own table. Pulls per-unit prices from the company's retail price "
+            "list (company_profiles.settings.retail.price_list). Returns a "
+            "draft proposal for user approval. Use when the user says things "
+            "like 'make a retail estimate for the Smiths' or 'cash quote for "
+            "the gutter job at 12 Main St'. APPROVAL-GATED."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "customer_name": {"type": "string", "description": "Homeowner / customer name (required)"},
+                "customer_email": {"type": "string", "description": "Customer email (optional but required to email the proposal)"},
+                "customer_phone": {"type": "string", "description": "Customer phone (optional)"},
+                "address": {"type": "string", "description": "Job address"},
+                "city_state_zip": {"type": "string", "description": "City, State ZIP"},
+                "scope_description": {"type": "string", "description": "Free-form scope description Richard will parse for line items if line_items is omitted"},
+                "line_items": {
+                    "type": "array",
+                    "description": "Explicit line items override. If omitted, Richard infers from scope_description + company retail price list.",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "description": {"type": "string"},
+                            "qty": {"type": "number"},
+                            "unit": {"type": "string", "description": "SQ, SF, LF, EA, HR"},
+                            "unit_price": {"type": "number", "description": "Dollars (not cents)"},
+                        },
+                        "required": ["description", "qty", "unit_price"],
+                    },
+                },
+                "deposit_pct": {"type": "number", "description": "Deposit percentage (e.g. 25 for 25%). Falls back to company default."},
+                "send_now": {"type": "boolean", "description": "If true and customer_email is set, presents a draft email alongside the proposal. Default false (estimate saved as draft).", "default": False},
+                "notes": {"type": "string"},
+            },
+            "required": ["customer_name", "scope_description"],
+        },
+    },
+    {
+        "name": "send_company_intro_email",
+        "description": (
+            "Send a branded 'about us / why work with us' intro email to a "
+            "prospective customer. Pulls company logo, address, license, "
+            "website, and (optionally) recent wins from company_profiles. "
+            "Use when the user says 'send the Smiths our about-us info' or "
+            "'intro email to that lead'. APPROVAL-GATED."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "to_email": {"type": "string", "description": "Recipient email (required)"},
+                "first_name": {"type": "string", "description": "Recipient first name for the greeting (optional — defaults to 'there')"},
+                "customer_context": {"type": "string", "description": "Optional 1-line context to tailor the email (e.g. 'asked about gutter replacement' or 'referred by Jane Smith')"},
+                "include_recent_wins": {"type": "boolean", "description": "Include a 'recent jobs' highlight line. Default true.", "default": True},
+                "retail_job_id": {"type": "string", "description": "Link this send to a retail job (optional — for tracking on the job's timeline)"},
+            },
+            "required": ["to_email"],
+        },
+    },
+    {
+        "name": "send_retail_invoice",
+        "description": (
+            "Create a Stripe Connect payment link for a retail job and email "
+            "it to the customer. Routes funds to the company's connected "
+            "Stripe account (company_profiles.stripe_connect_account_id). "
+            "Supports deposit, progress, balance, or full invoices. Use when "
+            "the user says 'send the Smiths their deposit invoice' or "
+            "'invoice $4,500 for the balance'. APPROVAL-GATED."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "retail_job_id": {"type": "string", "description": "Existing retail_jobs.id (required when invoicing against a saved job)"},
+                "to_email": {"type": "string", "description": "Customer email (defaults to retail_jobs.customer_email if omitted)"},
+                "amount": {"type": "number", "description": "Invoice amount in dollars (not cents)"},
+                "description": {"type": "string", "description": "What this invoice is for"},
+                "kind": {"type": "string", "enum": ["deposit", "progress", "balance", "full"], "default": "full", "description": "Invoice kind — drives the email subject + copy"},
+                "notes": {"type": "string"},
+            },
+            "required": ["retail_job_id", "amount", "description"],
+        },
+    },
 ]
 
 
@@ -1275,6 +1362,13 @@ async def execute_tool(
             result = _handle_preview_set_op_override(sb, claim_id, claim_data, tool_input)
         elif tool_name == "send_install_supplement":
             result = await _handle_preview_send_install_supplement(sb, claim_id, user_id, claim_data, company_profile, tool_input)
+        # ─── Phase 4: Retail tools ─────────────────────────
+        elif tool_name == "create_retail_estimate":
+            result = await _handle_create_retail_estimate(sb, user_id, company_profile, tool_input)
+        elif tool_name == "send_company_intro_email":
+            result = await _handle_send_company_intro_email(sb, user_id, company_profile, tool_input)
+        elif tool_name == "send_retail_invoice":
+            result = await _handle_send_retail_invoice(sb, user_id, company_profile, tool_input)
         else:
             result = {"action": "error", "message": f"Unknown tool: {tool_name}"}
     except Exception as e:
@@ -5051,5 +5145,405 @@ async def _handle_preview_send_install_supplement(
             f"Draft post-installation supplement ready for {adjuster_email} "
             f"(claim {claim_number}, contractor RCV ${contractor_rcv:,.2f})."
             + (f" COC attached." if attachments else " No COC found — sending without attachment.")
+        ),
+    }
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# PHASE 4 — RETAIL TOOL HANDLERS
+# ═══════════════════════════════════════════════════════════════════════
+# Three tools that operate on the new retail_jobs / retail_invoices tables
+# (NOT claims). All three return preview payloads — the user approves in
+# chat, then the frontend POSTs to the corresponding TS endpoint to actually
+# write/send. This mirrors the existing send_custom_email / generate_invoice
+# pattern.
+
+
+async def _handle_create_retail_estimate(sb, user_id, company_profile, tool_input):
+    """Create a draft retail estimate. Saves a retail_jobs row in 'draft'
+    status and returns a preview payload for user approval.
+
+    Pricing: company_profiles.settings.retail.price_list (per Tom 2026-05-16
+    decision). If no price list is configured, falls back to whatever
+    line_items the caller supplied; if neither exists, returns an error
+    pointing the user to Company Settings → Retail.
+    """
+    company_id = company_profile.get("company_id")
+    if not company_id:
+        return {
+            "action": "error",
+            "message": "You don't have a company on your profile yet — set one up in Company Settings before creating retail estimates.",
+        }
+
+    settings = company_profile.get("settings") or {}
+    retail_cfg = settings.get("retail") or {}
+    company_price_list = {
+        # Normalize description → unit_price for fuzzy match below
+        (it.get("description") or "").strip().lower(): it
+        for it in (retail_cfg.get("price_list") or [])
+        if isinstance(it, dict) and it.get("description")
+    }
+    default_tax_rate = float(retail_cfg.get("default_tax_rate") or 0)
+    default_deposit_pct = float(
+        tool_input.get("deposit_pct")
+        if tool_input.get("deposit_pct") is not None
+        else retail_cfg.get("default_deposit_pct") or 0
+    )
+    default_terms = retail_cfg.get("default_terms") or ""
+    default_payment_schedule = retail_cfg.get("default_payment_schedule") or ""
+
+    # Resolve line items
+    raw_items = tool_input.get("line_items") or []
+    if not raw_items:
+        if not company_price_list:
+            return {
+                "action": "error",
+                "message": (
+                    "No line_items provided AND no retail price list configured in Company "
+                    "Settings → Retail. Either pass explicit line_items or set up your retail "
+                    "price list first."
+                ),
+                "tool_name": "create_retail_estimate",
+            }
+        # No items supplied — surface as a draft asking the user to confirm a
+        # blank estimate they can edit on the retail page.
+        raw_items = []
+
+    line_items = []
+    subtotal_cents = 0
+    for it in raw_items:
+        desc = (it.get("description") or "").strip()
+        qty = float(it.get("qty") or 0)
+        unit = it.get("unit") or "EA"
+        unit_price = it.get("unit_price")
+        if unit_price is None:
+            # Fall back to company price list (case-insensitive match)
+            match = company_price_list.get(desc.lower())
+            if match:
+                unit_price = float(match.get("unit_price") or 0)
+                unit = match.get("unit") or unit
+        unit_price = float(unit_price or 0)
+        amount = round(qty * unit_price, 2)
+        amount_cents = int(round(amount * 100))
+        subtotal_cents += amount_cents
+        line_items.append({
+            "description": desc,
+            "qty": qty,
+            "unit": unit,
+            "unit_price": unit_price,
+            "amount": amount,
+        })
+
+    tax_cents = int(round(subtotal_cents * default_tax_rate))
+    total_cents = subtotal_cents + tax_cents
+
+    # Persist as draft so the retail page picks it up immediately on approve.
+    insert_payload = {
+        "company_id": company_id,
+        "created_by": user_id,
+        "assigned_user_id": user_id,
+        "customer_name": tool_input["customer_name"],
+        "customer_email": tool_input.get("customer_email"),
+        "customer_phone": tool_input.get("customer_phone"),
+        "address": tool_input.get("address"),
+        "city_state_zip": tool_input.get("city_state_zip"),
+        "scope_description": tool_input.get("scope_description"),
+        "line_items": line_items,
+        "subtotal_cents": subtotal_cents,
+        "tax_rate": default_tax_rate,
+        "tax_cents": tax_cents,
+        "total_cents": total_cents,
+        "terms": default_terms or None,
+        "deposit_pct": default_deposit_pct,
+        "payment_schedule": default_payment_schedule or None,
+        "status": "draft",
+        "notes": tool_input.get("notes"),
+    }
+
+    try:
+        res = sb.table("retail_jobs").insert(insert_payload).execute()
+        job_row = (res.data or [{}])[0]
+        retail_job_id = job_row.get("id")
+    except Exception as e:
+        return {
+            "action": "error",
+            "message": f"Failed to save retail draft: {e}",
+            "tool_name": "create_retail_estimate",
+        }
+
+    preview = {
+        "action": "preview",
+        "type": "retail_estimate",
+        "tool_name": "create_retail_estimate",
+        "retail_job_id": retail_job_id,
+        "summary": {
+            "customer": tool_input["customer_name"],
+            "address": tool_input.get("address") or "—",
+            "line_count": len(line_items),
+            "subtotal": subtotal_cents / 100,
+            "tax_rate_pct": default_tax_rate * 100,
+            "tax": tax_cents / 100,
+            "total": total_cents / 100,
+            "deposit_pct": default_deposit_pct,
+            "deposit_amount": (total_cents / 100) * (default_deposit_pct / 100) if default_deposit_pct else None,
+        },
+        "line_items": line_items,
+        "review_url": f"/dashboard/admin/retail/{retail_job_id}",
+        "message": (
+            f"Retail estimate drafted for {tool_input['customer_name']}: "
+            f"${total_cents / 100:,.2f} across {len(line_items)} line items. "
+            f"Review and send from the retail page."
+        ),
+    }
+
+    if tool_input.get("send_now") and tool_input.get("customer_email"):
+        company_name = company_profile.get("company_name") or company_profile.get("name") or "your roofing team"
+        preview["draft_email"] = {
+            "to": tool_input["customer_email"],
+            "subject": f"Your estimate from {company_name}",
+            "body_html": (
+                f"<p>Hi {(tool_input['customer_name'].split() or ['there'])[0]},</p>"
+                f"<p>Thanks for the opportunity to bid on your project. The full "
+                f"estimate totals <strong>${total_cents / 100:,.2f}</strong> "
+                f"({len(line_items)} line items). The detailed proposal PDF is attached.</p>"
+                + (
+                    f"<p>To get on the schedule we ask for a "
+                    f"<strong>{default_deposit_pct:.0f}% deposit</strong> "
+                    f"(${(total_cents / 100) * (default_deposit_pct / 100):,.2f}); "
+                    f"the rest is due on completion.</p>"
+                    if default_deposit_pct else ""
+                )
+                + f"<p>Reply to this email with any questions.</p>"
+                  f"<p>— {company_name}</p>"
+            ),
+        }
+
+    return preview
+
+
+async def _handle_send_company_intro_email(sb, user_id, company_profile, tool_input):
+    """Build a branded 'about us' intro email. Returns a draft for approval —
+    the existing custom-email send path executes on user approve.
+    """
+    company_name = (
+        company_profile.get("company_name")
+        or company_profile.get("name")
+        or "our roofing team"
+    )
+    address = company_profile.get("address") or ""
+    city_state_zip = company_profile.get("city_state_zip") or ""
+    license_number = company_profile.get("license_number") or ""
+    website = company_profile.get("website") or ""
+    phone = company_profile.get("phone") or company_profile.get("office_phone") or ""
+    sending_email = company_profile.get("sending_email") or ""
+
+    first_name = (tool_input.get("first_name") or "there").strip() or "there"
+    context_line = (tool_input.get("customer_context") or "").strip()
+
+    # Recent wins — optional, best-effort (don't block on errors)
+    wins_html = ""
+    if tool_input.get("include_recent_wins", True):
+        try:
+            company_id = company_profile.get("company_id")
+            if company_id:
+                res = (
+                    sb.table("claims")
+                    .select("address, financials, status")
+                    .eq("company_id", company_id)
+                    .eq("status", "won")
+                    .order("last_touched_at", desc=True)
+                    .limit(3)
+                    .execute()
+                )
+                wins = res.data or []
+                if wins:
+                    rows = []
+                    for w in wins:
+                        addr = w.get("address") or "a recent project"
+                        total = ((w.get("financials") or {}).get("total")) or 0
+                        rows.append(f"<li><strong>{addr}</strong> — ${total:,.0f} recovered</li>")
+                    wins_html = (
+                        "<p><strong>Recent wins:</strong></p><ul>"
+                        + "".join(rows)
+                        + "</ul>"
+                    )
+        except Exception:
+            wins_html = ""
+
+    address_block = ""
+    if address or city_state_zip:
+        address_block = f"<p style='color:#666;font-size:12px;margin-top:24px'>{address}{', ' + city_state_zip if address and city_state_zip else city_state_zip}</p>"
+
+    body_html = (
+        f"<p>Hi {first_name},</p>"
+        + (f"<p>{context_line}</p>" if context_line else "")
+        + f"<p>I wanted to take a minute to introduce <strong>{company_name}</strong>.</p>"
+        + (f"<p>We're licensed (#{license_number}) and based locally. " if license_number else "<p>We're based locally. ")
+        + "We specialize in storm-damage restoration and full-replacement roofing — "
+        + "the difference is we use forensic photo documentation and Xactimate-grade "
+        + "scoping so you get every dollar your policy entitles you to.</p>"
+        + wins_html
+        + (f"<p>Best way to reach me directly: <strong>{phone}</strong>"
+           + (f" or <a href='{website if website.startswith('http') else 'https://' + website}'>{website}</a>." if website else ".")
+           + "</p>"
+           if phone or website else "")
+        + f"<p>Looking forward to talking,<br/>{company_name}</p>"
+        + address_block
+    )
+
+    subject = f"Quick intro — {company_name}"
+
+    draft = {
+        "to": tool_input["to_email"],
+        "subject": subject,
+        "body_html": body_html,
+        "attachments": [],
+    }
+
+    # Optional: stamp the retail_job's intro_email_sent_at *after* user approves.
+    # The frontend send path is responsible for that write on success.
+    return {
+        "action": "preview",
+        "type": "email",
+        "tool_name": "send_company_intro_email",
+        "draft": draft,
+        "retail_job_id": tool_input.get("retail_job_id"),
+        "from_email": sending_email or None,
+        "message": f"Intro email draft ready for {tool_input['to_email']}.",
+    }
+
+
+async def _handle_send_retail_invoice(sb, user_id, company_profile, tool_input):
+    """Stage a retail_invoices row and return a preview. The frontend executes
+    the actual Stripe Connect payment-link creation on approve via the same
+    mechanism used by /api/invoices/payment-link (claim invoices), so we don't
+    duplicate Stripe SDK code in Python.
+
+    Admin-only: retail invoicing moves real money out of the company's Connect
+    account. RLS on retail_invoices is admin-FOR-ALL, so a non-admin rep would
+    get a raw RLS exception on insert — surface a clean message instead.
+    """
+    if not company_profile.get("is_admin"):
+        return {
+            "action": "error",
+            "message": (
+                "Retail invoicing is admin-only. Ask a company admin to send the invoice, "
+                "or have them grant you admin role first."
+            ),
+            "tool_name": "send_retail_invoice",
+        }
+
+    company_id = company_profile.get("company_id")
+    if not company_id:
+        return {
+            "action": "error",
+            "message": "No company on profile — connect one in Company Settings first.",
+        }
+
+    retail_job_id = tool_input.get("retail_job_id")
+    if not retail_job_id:
+        return {
+            "action": "error",
+            "message": "retail_job_id is required — create the estimate first, then invoice against it.",
+        }
+
+    # Fetch the retail job
+    try:
+        res = sb.table("retail_jobs").select("*").eq("id", retail_job_id).limit(1).execute()
+        job = (res.data or [{}])[0] if res.data else {}
+    except Exception as e:
+        return {"action": "error", "message": f"Failed to load retail job: {e}"}
+
+    if not job or job.get("company_id") != company_id:
+        return {"action": "error", "message": "Retail job not found in your company."}
+
+    to_email = tool_input.get("to_email") or job.get("customer_email")
+    if not to_email:
+        return {
+            "action": "error",
+            "message": "No customer email on file. Pass to_email or update the retail job first.",
+        }
+
+    try:
+        amount_dollars = float(tool_input.get("amount") or 0)
+    except (TypeError, ValueError):
+        amount_dollars = 0
+    if amount_dollars <= 0:
+        return {"action": "error", "message": "amount must be > 0"}
+    amount_cents = int(round(amount_dollars * 100))
+
+    kind = tool_input.get("kind") or "full"
+    description = tool_input.get("description") or f"{kind.title()} invoice — {job.get('customer_name','')}"
+
+    connect_account_id = company_profile.get("stripe_connect_account_id")
+    connect_status = company_profile.get("stripe_connect_status")
+    if connect_status != "active" or not connect_account_id:
+        return {
+            "action": "error",
+            "message": (
+                "Stripe Connect isn't active for this company yet. Connect it in "
+                "Company Settings → Payments before invoicing retail customers."
+            ),
+        }
+
+    # Stage the invoice row as draft. Frontend executes the Stripe
+    # payment-link creation on approve and flips status → sent.
+    try:
+        ins = sb.table("retail_invoices").insert({
+            "retail_job_id": retail_job_id,
+            "company_id": company_id,
+            "created_by": user_id,
+            "kind": kind,
+            "amount_cents": amount_cents,
+            "description": description,
+            "sent_to_email": to_email,
+            "stripe_connect_account_id": connect_account_id,
+            "status": "draft",
+            "notes": tool_input.get("notes"),
+        }).execute()
+        invoice_row = (ins.data or [{}])[0]
+        invoice_id = invoice_row.get("id")
+    except Exception as e:
+        return {"action": "error", "message": f"Failed to stage retail invoice: {e}"}
+
+    company_name = company_profile.get("company_name") or company_profile.get("name") or "your roofing team"
+    subject_map = {
+        "deposit": f"Deposit invoice — {company_name}",
+        "progress": f"Progress invoice — {company_name}",
+        "balance": f"Balance due — {company_name}",
+        "full": f"Invoice — {company_name}",
+    }
+    subject = subject_map.get(kind, subject_map["full"])
+
+    return {
+        "action": "preview",
+        "type": "retail_invoice",
+        "tool_name": "send_retail_invoice",
+        "retail_invoice_id": invoice_id,
+        "retail_job_id": retail_job_id,
+        "summary": {
+            "customer": job.get("customer_name"),
+            "amount": amount_dollars,
+            "kind": kind,
+            "description": description,
+            "to_email": to_email,
+            "connect_account_id": connect_account_id,
+        },
+        "draft_email": {
+            "to": to_email,
+            "subject": subject,
+            "body_html": (
+                f"<p>Hi {(job.get('customer_name') or 'there').split()[0]},</p>"
+                f"<p>Your {kind} invoice for "
+                f"<strong>${amount_dollars:,.2f}</strong> is ready: {description}.</p>"
+                "<p>A secure payment link will be embedded when this email sends — click to pay by card.</p>"
+                f"<p>Thanks,<br/>{company_name}</p>"
+            ),
+        },
+        "execute_endpoint": f"/api/admin/retail/{retail_job_id}/invoices/{invoice_id}/send",
+        "message": (
+            f"Retail invoice staged: ${amount_dollars:,.2f} ({kind}) for "
+            f"{job.get('customer_name')}. Approve to create the Stripe Connect "
+            f"payment link and email it to {to_email}."
         ),
     }
