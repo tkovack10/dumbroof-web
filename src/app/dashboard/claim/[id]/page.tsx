@@ -39,6 +39,7 @@ import { EditReportFieldsCard } from "@/components/edit-report-fields-card";
 import { ClaimActionBar } from "@/components/claim-action-bar";
 import { ClaimMoneyActions } from "@/components/claim-money-actions";
 import { ClaimProductionActions } from "@/components/claim-production-actions";
+import { ClaimExpenseActions } from "@/components/claim-expense-actions";
 import { CommunicationsCenter } from "@/components/claim-detail/communications-center";
 import type { Correspondence, EditRequest, EmailDraft } from "@/types/claim-comms";
 import { ScopeReviewContent } from "@/app/dashboard/scope-review/scope-review-content";
@@ -1884,6 +1885,10 @@ export default function ClaimDetailPage() {
       {/* Phase 2 (Admin Workspace v2): self-contained production actions —
           Schedule install (admin-only, team-gated). */}
       {claim && <ClaimProductionActions claimId={claim.id} />}
+
+      {/* Phase 3 (Admin Workspace v2): self-contained expense capture —
+          floating "+ Receipt" button. Team-member gated. */}
+      {claim && <ClaimExpenseActions claimId={claim.id} />}
 
       {/* CompanyCam / AccuLynx import modal — same component used by
           install-supplement, COC, and new-claim flows. Mounts once at page
