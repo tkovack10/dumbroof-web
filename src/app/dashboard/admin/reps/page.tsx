@@ -1,6 +1,22 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useCallback } from "react";
+import Link from "next/link";
+import {
+  ClaimCheckpoints,
+  type CheckpointSet,
+} from "@/components/claim-checkpoints";
+
+interface RepClaim {
+  id: string;
+  address: string | null;
+  carrier_name: string | null;
+  status: string | null;
+  last_touched_at: string | null;
+  financials: { total?: number } | null;
+  checkpoints: CheckpointSet;
+  commission: { pending_count: number; pending_cents: number; paid_cents: number };
+}
 
 interface RepMetrics {
   user_id: string;
@@ -88,6 +104,33 @@ export default function RepsPage() {
   const [error, setError] = useState<string | null>(null);
   const [sortKey, setSortKey] = useState<SortKey>("claims_submitted");
   const [sortAsc, setSortAsc] = useState(false);
+  const [expandedRepId, setExpandedRepId] = useState<string | null>(null);
+  const [repClaimsCache, setRepClaimsCache] = useState<Record<string, RepClaim[]>>({});
+  const [loadingClaims, setLoadingClaims] = useState<string | null>(null);
+
+  const toggleRep = useCallback(
+    async (repId: string) => {
+      if (expandedRepId === repId) {
+        setExpandedRepId(null);
+        return;
+      }
+      setExpandedRepId(repId);
+      if (repClaimsCache[repId]) return;
+      setLoadingClaims(repId);
+      try {
+        const res = await fetch(`/api/admin/reps/${repId}/claims`);
+        if (res.ok) {
+          const json = await res.json();
+          setRepClaimsCache((prev) => ({ ...prev, [repId]: json.claims || [] }));
+        }
+      } catch {
+        // Non-fatal — user can re-click
+      } finally {
+        setLoadingClaims(null);
+      }
+    },
+    [expandedRepId, repClaimsCache]
+  );
 
   useEffect(() => {
     async function fetchReps() {
@@ -445,6 +488,7 @@ export default function RepsPage() {
                 <table className="w-full">
                   <thead>
                     <tr className="border-b border-[var(--border-glass)]">
+                      <th className="w-8 px-2 py-3.5" aria-label="expand" />
                       <SortHeader label="Rep" colKey="email" />
                       <SortHeader label="Claims" colKey="claims_submitted" align="right" />
                       <SortHeader label="This Month" colKey="claims_this_month" align="right" />
@@ -458,83 +502,18 @@ export default function RepsPage() {
                   <tbody>
                     {sortedReps.map((rep) => {
                       const hasAlert = alertEmails.has(rep.email);
+                      const expanded = expandedRepId === rep.user_id;
+                      const repClaims = repClaimsCache[rep.user_id];
                       return (
-                        <tr
+                        <RepRowFragment
                           key={rep.user_id}
-                          className={`border-b border-[var(--border-glass)] transition-colors hover:bg-white/[0.03] ${
-                            hasAlert ? "border-l-2 border-l-[var(--amber)]" : ""
-                          }`}
-                        >
-                          <td className="px-5 py-3.5">
-                            <div>
-                              <p className="text-sm font-medium text-[var(--white)]">
-                                {repName(rep.email)}
-                              </p>
-                              <p className="text-xs text-[var(--gray-dim)]">{rep.email}</p>
-                            </div>
-                          </td>
-                          <td className="px-5 py-3.5 text-sm text-right font-mono text-[var(--white)]">
-                            {rep.claims_submitted}
-                          </td>
-                          <td className="px-5 py-3.5 text-sm text-right font-mono">
-                            <span
-                              className={
-                                rep.claims_this_month > 0
-                                  ? "text-[var(--cyan)]"
-                                  : "text-[var(--gray-dim)]"
-                              }
-                            >
-                              {rep.claims_this_month}
-                            </span>
-                          </td>
-                          <td className="px-5 py-3.5 text-sm text-right font-mono">
-                            <span
-                              className={
-                                rep.wins > 0 ? "text-[var(--green)]" : "text-[var(--gray-dim)]"
-                              }
-                            >
-                              {rep.wins}
-                            </span>
-                          </td>
-                          <td className="px-5 py-3.5 text-sm text-right font-mono">
-                            <span
-                              className={
-                                rep.win_rate >= 50
-                                  ? "text-[var(--green)]"
-                                  : rep.win_rate >= 25
-                                    ? "text-[var(--amber)]"
-                                    : rep.win_rate > 0
-                                      ? "text-[var(--red-accent)]"
-                                      : "text-[var(--gray-dim)]"
-                              }
-                            >
-                              {rep.win_rate}%
-                            </span>
-                          </td>
-                          <td className="px-5 py-3.5 text-sm text-right font-mono text-[var(--white)]">
-                            {fmtMoney(rep.avg_rcv)}
-                          </td>
-                          <td className="px-5 py-3.5 text-sm text-right font-mono">
-                            {rep.avg_damage_score !== null ? (
-                              <span
-                                className={
-                                  rep.avg_damage_score >= 70
-                                    ? "text-[var(--green)]"
-                                    : rep.avg_damage_score >= 50
-                                      ? "text-[var(--amber)]"
-                                      : "text-[var(--red-accent)]"
-                                }
-                              >
-                                {rep.avg_damage_score}
-                              </span>
-                            ) : (
-                              <span className="text-[var(--gray-dim)]">--</span>
-                            )}
-                          </td>
-                          <td className="px-5 py-3.5 text-sm text-right text-[var(--gray-muted)]">
-                            {timeAgo(rep.last_activity)}
-                          </td>
-                        </tr>
+                          rep={rep}
+                          hasAlert={hasAlert}
+                          expanded={expanded}
+                          repClaims={repClaims}
+                          loadingClaims={loadingClaims === rep.user_id}
+                          onToggle={() => toggleRep(rep.user_id)}
+                        />
                       );
                     })}
                   </tbody>
@@ -564,6 +543,193 @@ export default function RepsPage() {
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+// ──────────────────────────────────────────────────────────────────────────
+// Below is the original closing markup that we replaced. We retain the
+// original Mafia of helpers (SortHeader, formatters) — the table body was
+// extracted to <RepRowFragment> to keep the new expandable-row logic readable.
+// ──────────────────────────────────────────────────────────────────────────
+
+function RepRowFragment({
+  rep,
+  hasAlert,
+  expanded,
+  repClaims,
+  loadingClaims,
+  onToggle,
+}: {
+  rep: RepMetrics;
+  hasAlert: boolean;
+  expanded: boolean;
+  repClaims: RepClaim[] | undefined;
+  loadingClaims: boolean;
+  onToggle: () => void;
+}) {
+  return (
+    <>
+      <tr
+        className={`border-b border-[var(--border-glass)] transition-colors hover:bg-white/[0.03] cursor-pointer ${
+          hasAlert ? "border-l-2 border-l-[var(--amber)]" : ""
+        } ${expanded ? "bg-white/[0.02]" : ""}`}
+        onClick={onToggle}
+      >
+        <td className="w-8 px-2 py-3.5 text-center">
+          <svg
+            className={`w-4 h-4 text-[var(--gray-muted)] transition-transform inline-block ${
+              expanded ? "rotate-90" : ""
+            }`}
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            strokeWidth={2}
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+          </svg>
+        </td>
+        <td className="px-5 py-3.5">
+          <div>
+            <p className="text-sm font-medium text-[var(--white)]">{repName(rep.email)}</p>
+            <p className="text-xs text-[var(--gray-dim)]">{rep.email}</p>
+          </div>
+        </td>
+        <td className="px-5 py-3.5 text-sm text-right font-mono text-[var(--white)]">
+          {rep.claims_submitted}
+        </td>
+        <td className="px-5 py-3.5 text-sm text-right font-mono">
+          <span
+            className={
+              rep.claims_this_month > 0 ? "text-[var(--cyan)]" : "text-[var(--gray-dim)]"
+            }
+          >
+            {rep.claims_this_month}
+          </span>
+        </td>
+        <td className="px-5 py-3.5 text-sm text-right font-mono">
+          <span className={rep.wins > 0 ? "text-[var(--green)]" : "text-[var(--gray-dim)]"}>
+            {rep.wins}
+          </span>
+        </td>
+        <td className="px-5 py-3.5 text-sm text-right font-mono">
+          <span
+            className={
+              rep.win_rate >= 50
+                ? "text-[var(--green)]"
+                : rep.win_rate >= 25
+                  ? "text-[var(--amber)]"
+                  : rep.win_rate > 0
+                    ? "text-[var(--red-accent)]"
+                    : "text-[var(--gray-dim)]"
+            }
+          >
+            {rep.win_rate}%
+          </span>
+        </td>
+        <td className="px-5 py-3.5 text-sm text-right font-mono text-[var(--white)]">
+          {fmtMoney(rep.avg_rcv)}
+        </td>
+        <td className="px-5 py-3.5 text-sm text-right font-mono">
+          {rep.avg_damage_score !== null ? (
+            <span
+              className={
+                rep.avg_damage_score >= 70
+                  ? "text-[var(--green)]"
+                  : rep.avg_damage_score >= 50
+                    ? "text-[var(--amber)]"
+                    : "text-[var(--red-accent)]"
+              }
+            >
+              {rep.avg_damage_score}
+            </span>
+          ) : (
+            <span className="text-[var(--gray-dim)]">--</span>
+          )}
+        </td>
+        <td className="px-5 py-3.5 text-sm text-right text-[var(--gray-muted)]">
+          {timeAgo(rep.last_activity)}
+        </td>
+      </tr>
+
+      {expanded && (
+        <tr className="border-b border-[var(--border-glass)] bg-white/[0.015]">
+          <td colSpan={9} className="px-5 py-4">
+            <RepClaimsPanel claims={repClaims} loading={loadingClaims} />
+          </td>
+        </tr>
+      )}
+    </>
+  );
+}
+
+function RepClaimsPanel({
+  claims,
+  loading,
+}: {
+  claims: RepClaim[] | undefined;
+  loading: boolean;
+}) {
+  if (loading || !claims) {
+    return (
+      <div className="space-y-2">
+        {Array.from({ length: 3 }).map((_, i) => (
+          <div key={i} className="h-10 bg-white/[0.03] rounded animate-shimmer" />
+        ))}
+      </div>
+    );
+  }
+
+  if (claims.length === 0) {
+    return (
+      <p className="text-sm text-[var(--gray-muted)] py-2">
+        No claims assigned to this rep yet.
+      </p>
+    );
+  }
+
+  return (
+    <div className="space-y-1">
+      <div className="grid grid-cols-12 gap-3 text-[10px] uppercase tracking-wide font-bold text-[var(--gray-dim)] px-2 py-1.5">
+        <span className="col-span-5">Claim</span>
+        <span className="col-span-2">Carrier</span>
+        <span className="col-span-3">Checkpoints</span>
+        <span className="col-span-1 text-right">RCV</span>
+        <span className="col-span-1 text-right">$ owed rep</span>
+      </div>
+      {claims.map((c) => (
+        <Link
+          key={c.id}
+          href={`/dashboard/claim/${c.id}`}
+          className="grid grid-cols-12 gap-3 items-center text-sm hover:bg-white/[0.04] px-2 py-2 rounded-lg transition-colors"
+        >
+          <span className="col-span-5 text-[var(--white)] truncate">
+            {c.address ?? c.id.slice(0, 8)}
+          </span>
+          <span className="col-span-2 text-[var(--gray-muted)] text-xs truncate">
+            {c.carrier_name ?? "—"}
+          </span>
+          <span className="col-span-3">
+            <ClaimCheckpoints mode="prefetched" checkpoints={c.checkpoints} size="sm" />
+          </span>
+          <span className="col-span-1 text-right font-mono text-xs text-[var(--gray)]">
+            {c.financials?.total ? fmtMoney(c.financials.total) : "--"}
+          </span>
+          <span className="col-span-1 text-right font-mono text-xs">
+            {c.commission.pending_count > 0 ? (
+              <span className="text-[var(--amber)]">
+                {fmtMoney(c.commission.pending_cents / 100)} pend
+              </span>
+            ) : c.commission.paid_cents > 0 ? (
+              <span className="text-[var(--green)]">
+                {fmtMoney(c.commission.paid_cents / 100)} paid
+              </span>
+            ) : (
+              <span className="text-[var(--gray-dim)]">--</span>
+            )}
+          </span>
+        </Link>
+      ))}
     </div>
   );
 }

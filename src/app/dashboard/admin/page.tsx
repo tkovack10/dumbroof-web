@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { MoneyStrip } from "@/components/money-strip";
 
 interface OverviewData {
   kpis: {
@@ -178,12 +179,15 @@ export default function AdminOverviewPage() {
     <div className="p-6 lg:p-8">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
-        <div className="mb-8 pl-10 lg:pl-0">
+        <div className="mb-6 pl-10 lg:pl-0">
           <h1 className="text-2xl font-bold gradient-text">Command Center</h1>
           <p className="text-[var(--gray-muted)] mt-1 text-sm">
             Company-wide overview and performance metrics
           </p>
         </div>
+
+        {/* Money strip — checks in today + commissions needing approval */}
+        <MoneyStrip variant="banner" />
 
         {/* KPI Grid */}
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
