@@ -5211,18 +5211,52 @@ async def _handle_create_retail_estimate(sb, user_id, company_profile, tool_inpu
 
     line_items = []
     subtotal_cents = 0
+    warnings: list[str] = []
+    # Normalize price list keys the same way PUT /api/admin/retail/settings
+    # normalizes them: trim + lowercase + collapse internal whitespace. Keeps
+    # "Laminate  shingle" (double space) matching "Laminate shingle".
+    import re as _re
+    def _norm(s: str) -> str:
+        return _re.sub(r"\s+", " ", (s or "").strip().lower())
+    normalized_price_list = {
+        _norm(k): v for k, v in company_price_list.items()
+    }
     for it in raw_items:
         desc = (it.get("description") or "").strip()
-        qty = float(it.get("qty") or 0)
+        try:
+            qty = float(it.get("qty") or 0)
+        except (TypeError, ValueError):
+            qty = 0
         unit = it.get("unit") or "EA"
-        unit_price = it.get("unit_price")
+        unit_price_in = it.get("unit_price")
+        matched_by_list = False
+        unit_price = None
+        if unit_price_in is not None:
+            try:
+                unit_price = float(unit_price_in)
+            except (TypeError, ValueError):
+                unit_price = None
         if unit_price is None:
-            # Fall back to company price list (case-insensitive match)
-            match = company_price_list.get(desc.lower())
+            match = normalized_price_list.get(_norm(desc))
             if match:
-                unit_price = float(match.get("unit_price") or 0)
+                try:
+                    unit_price = float(match.get("unit_price") or 0)
+                except (TypeError, ValueError):
+                    unit_price = 0
                 unit = match.get("unit") or unit
-        unit_price = float(unit_price or 0)
+                matched_by_list = True
+
+        if unit_price is None or unit_price <= 0:
+            warnings.append(
+                f"No price found for \"{desc}\" — add it to your retail price list "
+                f"(Retail → Prices & terms) or pass unit_price explicitly."
+            )
+            unit_price = 0
+        if qty <= 0:
+            warnings.append(
+                f"Quantity for \"{desc}\" is 0 — line will not contribute to the total."
+            )
+
         amount = round(qty * unit_price, 2)
         amount_cents = int(round(amount * 100))
         subtotal_cents += amount_cents
@@ -5232,6 +5266,7 @@ async def _handle_create_retail_estimate(sb, user_id, company_profile, tool_inpu
             "unit": unit,
             "unit_price": unit_price,
             "amount": amount,
+            "matched_by_price_list": matched_by_list,
         })
 
     tax_cents = int(round(subtotal_cents * default_tax_rate))
@@ -5288,9 +5323,14 @@ async def _handle_create_retail_estimate(sb, user_id, company_profile, tool_inpu
             "deposit_amount": (total_cents / 100) * (default_deposit_pct / 100) if default_deposit_pct else None,
         },
         "line_items": line_items,
+        "warnings": warnings,
         "review_url": f"/dashboard/admin/retail/{retail_job_id}",
         "message": (
-            f"Retail estimate drafted for {tool_input['customer_name']}: "
+            (
+                f"⚠️ {len(warnings)} pricing issue{'s' if len(warnings) != 1 else ''} — "
+                if warnings else ""
+            )
+            + f"Retail estimate drafted for {tool_input['customer_name']}: "
             f"${total_cents / 100:,.2f} across {len(line_items)} line items. "
             f"Review and send from the retail page."
         ),

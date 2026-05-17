@@ -663,6 +663,46 @@ function RepRowFragment({
   );
 }
 
+// Checkpoint slot → action verb the rep should take when not done.
+const CHECKPOINT_TODO: Record<
+  keyof RepClaim["checkpoints"],
+  { todo: string; done: string; color: string }
+> = {
+  forensic: {
+    todo: "Send forensic",
+    done: "Forensic sent",
+    color: "var(--cyan)",
+  },
+  supplement: {
+    todo: "Send supplement",
+    done: "Supplement sent",
+    color: "var(--amber)",
+  },
+  coc: {
+    todo: "Send COC",
+    done: "COC sent",
+    color: "var(--blue)",
+  },
+  engagement: {
+    todo: "Engage homeowner",
+    done: "Homeowner engaged",
+    color: "var(--pink)",
+  },
+  check_received: {
+    todo: "Collect check",
+    done: "Check received",
+    color: "var(--green)",
+  },
+};
+
+const TODO_ORDER: (keyof RepClaim["checkpoints"])[] = [
+  "forensic",
+  "supplement",
+  "coc",
+  "engagement",
+  "check_received",
+];
+
 function RepClaimsPanel({
   claims,
   loading,
@@ -674,7 +714,7 @@ function RepClaimsPanel({
     return (
       <div className="space-y-2">
         {Array.from({ length: 3 }).map((_, i) => (
-          <div key={i} className="h-10 bg-white/[0.03] rounded animate-shimmer" />
+          <div key={i} className="h-14 bg-white/[0.03] rounded animate-shimmer" />
         ))}
       </div>
     );
@@ -688,48 +728,161 @@ function RepClaimsPanel({
     );
   }
 
+  // Rollup: per checkpoint, count how many claims still need it
+  const needCounts = TODO_ORDER.reduce(
+    (acc, k) => {
+      acc[k] = claims.filter((c) => !c.checkpoints[k].done).length;
+      return acc;
+    },
+    {} as Record<keyof RepClaim["checkpoints"], number>
+  );
+  const totalActions = Object.values(needCounts).reduce((s, n) => s + n, 0);
+
   return (
-    <div className="space-y-1">
-      <div className="grid grid-cols-12 gap-3 text-[10px] uppercase tracking-wide font-bold text-[var(--gray-dim)] px-2 py-1.5">
-        <span className="col-span-5">Claim</span>
-        <span className="col-span-2">Carrier</span>
-        <span className="col-span-3">Checkpoints</span>
-        <span className="col-span-1 text-right">RCV</span>
-        <span className="col-span-1 text-right">$ owed rep</span>
+    <div className="space-y-3">
+      {/* Action rollup chips — at-a-glance "this rep has X to-dos" */}
+      <div className="flex items-center gap-2 flex-wrap pb-2 border-b border-[var(--border-glass)]">
+        <span className="text-[10px] uppercase tracking-wide text-[var(--gray-muted)] font-bold mr-1">
+          {totalActions === 0
+            ? "✓ All up to date"
+            : `${totalActions} action${totalActions === 1 ? "" : "s"} needed`}
+        </span>
+        {TODO_ORDER.map((k) => {
+          const n = needCounts[k];
+          if (n === 0) return null;
+          const meta = CHECKPOINT_TODO[k];
+          return (
+            <span
+              key={k}
+              className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full"
+              style={{
+                color: meta.color,
+                background: `color-mix(in srgb, ${meta.color} 14%, transparent)`,
+              }}
+            >
+              {n} · {meta.todo}
+            </span>
+          );
+        })}
       </div>
-      {claims.map((c) => (
-        <Link
-          key={c.id}
-          href={`/dashboard/claim/${c.id}`}
-          className="grid grid-cols-12 gap-3 items-center text-sm hover:bg-white/[0.04] px-2 py-2 rounded-lg transition-colors"
-        >
-          <span className="col-span-5 text-[var(--white)] truncate">
-            {c.address ?? c.id.slice(0, 8)}
-          </span>
-          <span className="col-span-2 text-[var(--gray-muted)] text-xs truncate">
-            {c.carrier_name ?? "—"}
-          </span>
-          <span className="col-span-3">
-            <ClaimCheckpoints mode="prefetched" checkpoints={c.checkpoints} size="sm" />
-          </span>
-          <span className="col-span-1 text-right font-mono text-xs text-[var(--gray)]">
-            {c.financials?.total ? fmtMoney(c.financials.total) : "--"}
-          </span>
-          <span className="col-span-1 text-right font-mono text-xs">
-            {c.commission.pending_count > 0 ? (
-              <span className="text-[var(--amber)]">
-                {fmtMoney(c.commission.pending_cents / 100)} pend
-              </span>
-            ) : c.commission.paid_cents > 0 ? (
-              <span className="text-[var(--green)]">
-                {fmtMoney(c.commission.paid_cents / 100)} paid
-              </span>
-            ) : (
-              <span className="text-[var(--gray-dim)]">--</span>
-            )}
-          </span>
-        </Link>
-      ))}
+
+      {/* Per-claim action cards */}
+      <div className="space-y-2">
+        {claims.map((c) => {
+          const todos = TODO_ORDER.filter((k) => !c.checkpoints[k].done);
+          const dones = TODO_ORDER.filter((k) => c.checkpoints[k].done);
+          const allDone = todos.length === 0;
+          return (
+            <div
+              key={c.id}
+              className={`rounded-xl border bg-white/[0.02] p-3 transition-colors hover:bg-white/[0.04] ${
+                allDone
+                  ? "border-[var(--green)]/30"
+                  : "border-[var(--border-glass)]"
+              }`}
+            >
+              {/* Header: address + money */}
+              <div className="flex items-start justify-between gap-3 mb-2">
+                <div className="min-w-0">
+                  <Link
+                    href={`/dashboard/claim/${c.id}`}
+                    className="block text-sm font-semibold text-white hover:text-[var(--cyan)] truncate transition-colors"
+                  >
+                    {c.address ?? c.id.slice(0, 8)}
+                  </Link>
+                  <p className="text-xs text-[var(--gray-muted)] truncate">
+                    {c.carrier_name ?? "—"}
+                    {c.status && (
+                      <span className="ml-2 text-[var(--gray-dim)]">
+                        · {c.status}
+                      </span>
+                    )}
+                  </p>
+                </div>
+                <div className="text-right flex-shrink-0">
+                  <p className="text-xs font-mono text-[var(--white)]">
+                    {c.financials?.total ? fmtMoney(c.financials.total) : "--"}
+                    <span className="text-[10px] text-[var(--gray-muted)] ml-1">RCV</span>
+                  </p>
+                  {c.commission.pending_count > 0 && (
+                    <p className="text-[10px] font-mono text-[var(--amber)]">
+                      {fmtMoney(c.commission.pending_cents / 100)} commission pending
+                    </p>
+                  )}
+                  {c.commission.paid_cents > 0 && (
+                    <p className="text-[10px] font-mono text-[var(--green)]">
+                      {fmtMoney(c.commission.paid_cents / 100)} paid out
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              {/* To-do action pills */}
+              {todos.length > 0 && (
+                <div className="flex items-center gap-1.5 flex-wrap mb-1.5">
+                  {todos.map((k) => {
+                    const meta = CHECKPOINT_TODO[k];
+                    return (
+                      <Link
+                        key={k}
+                        href={`/dashboard/claim/${c.id}`}
+                        className="inline-flex items-center gap-1 text-[11px] font-semibold px-2.5 py-1 rounded-lg border transition-colors hover:brightness-125"
+                        style={{
+                          color: meta.color,
+                          borderColor: `color-mix(in srgb, ${meta.color} 45%, transparent)`,
+                          background: `color-mix(in srgb, ${meta.color} 12%, transparent)`,
+                        }}
+                      >
+                        <span
+                          className="w-1.5 h-1.5 rounded-full"
+                          style={{ background: meta.color }}
+                        />
+                        {meta.todo}
+                      </Link>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* Done row */}
+              {dones.length > 0 && (
+                <div className="flex items-center gap-2 flex-wrap text-[10px] text-[var(--gray-dim)]">
+                  {dones.map((k) => {
+                    const meta = CHECKPOINT_TODO[k];
+                    return (
+                      <span
+                        key={k}
+                        className="inline-flex items-center gap-1"
+                        title={
+                          c.checkpoints[k].at
+                            ? new Date(c.checkpoints[k].at!).toLocaleDateString()
+                            : ""
+                        }
+                      >
+                        <svg
+                          className="w-2.5 h-2.5"
+                          style={{ color: "var(--green)" }}
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                          strokeWidth={3}
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            d="M4.5 12.75l6 6 9-13.5"
+                          />
+                        </svg>
+                        {meta.done}
+                      </span>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }

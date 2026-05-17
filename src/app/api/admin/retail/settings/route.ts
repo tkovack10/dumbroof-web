@@ -94,20 +94,45 @@ export async function PUT(req: Request) {
 
   const body = (await req.json().catch(() => ({}))) as Partial<RetailSettings>;
 
-  // Validate + normalize
+  // Validate + normalize. QA Phase 4.5 review (post-`70f8719`) findings:
+  //   - reject negative qty (would produce credit lines in Richard estimates)
+  //   - cap unit_price at $100,000 (typo guard: 52500 vs 525)
+  //   - collapse internal whitespace on description so Richard's case-
+  //     insensitive lookup ("Laminate shingle" vs "Laminate  shingle") works
+  //   - reject malformed price_list payload (string/object) rather than
+  //     silently wiping the list to empty
+  const UNIT_PRICE_CEILING_DOLLARS = 100_000;
+  if (body.price_list !== undefined && !Array.isArray(body.price_list)) {
+    return NextResponse.json(
+      { error: "price_list must be an array" },
+      { status: 400 }
+    );
+  }
   const cleanPriceList: PriceItem[] = [];
   if (Array.isArray(body.price_list)) {
     for (const raw of body.price_list) {
       const it = raw as Partial<PriceItem>;
-      const description = (it.description ?? "").toString().trim();
+      const description = (it.description ?? "")
+        .toString()
+        .trim()
+        .replace(/\s+/g, " ");
       const unit_price = Number(it.unit_price);
-      if (!description || !Number.isFinite(unit_price) || unit_price < 0) continue;
+      if (
+        !description ||
+        !Number.isFinite(unit_price) ||
+        unit_price < 0 ||
+        unit_price > UNIT_PRICE_CEILING_DOLLARS
+      ) {
+        continue;
+      }
       const item: PriceItem = {
         description,
         unit: it.unit ? String(it.unit).toUpperCase().slice(0, 12) : "EA",
         unit_price,
       };
-      if (typeof it.qty === "number" && Number.isFinite(it.qty)) item.qty = it.qty;
+      if (typeof it.qty === "number" && Number.isFinite(it.qty) && it.qty >= 0) {
+        item.qty = it.qty;
+      }
       if (it.category) item.category = String(it.category).slice(0, 60);
       cleanPriceList.push(item);
     }
@@ -177,9 +202,15 @@ const SUGGESTED_SEED: PriceItem[] = [
 
 /**
  * POST /api/admin/retail/settings — seed mode.
- * Body: { mode: 'seed_defaults' }
+ * Body: { mode: 'seed_defaults', force?: boolean }
+ *
  * Replaces the price_list with a sensible 21-item starter set. Admin-only.
  * Keeps existing tax / deposit / terms intact.
+ *
+ * QA Phase 4.5 review fix: by default only seeds when price_list is empty.
+ * Pass `force: true` to overwrite a non-empty list (the modal asks for
+ * confirmation before sending force). Also snapshots the previous price_list
+ * to settings.retail.previous_price_list as a one-step undo.
  */
 export async function POST(req: Request) {
   const supabase = await createClient();
@@ -205,11 +236,33 @@ export async function POST(req: Request) {
   }
 
   const existing = (profile.settings ?? {}) as Record<string, unknown>;
-  const existingRetail = (existing.retail ?? {}) as Partial<RetailSettings>;
-  const merged: RetailSettings = {
+  const existingRetail = (existing.retail ?? {}) as Partial<RetailSettings> & {
+    previous_price_list?: PriceItem[];
+  };
+  const currentList = Array.isArray(existingRetail.price_list)
+    ? existingRetail.price_list
+    : [];
+
+  if (currentList.length > 0 && !body.force) {
+    return NextResponse.json(
+      {
+        error:
+          "price_list is not empty. Pass force:true to overwrite (previous list will be snapshotted to settings.retail.previous_price_list).",
+        existing_count: currentList.length,
+      },
+      { status: 409 }
+    );
+  }
+
+  const merged: RetailSettings & {
+    previous_price_list?: PriceItem[];
+  } = {
     ...EMPTY_SETTINGS,
     ...existingRetail,
     price_list: SUGGESTED_SEED,
+    // Snapshot whatever was there so an admin can recover from a force=true
+    // overwrite. Only set when we actually replaced something.
+    ...(currentList.length > 0 ? { previous_price_list: currentList } : {}),
   };
 
   const { error } = await supabaseAdmin
@@ -221,5 +274,8 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  return NextResponse.json({ settings: merged });
+  return NextResponse.json({
+    settings: merged,
+    snapshotted: currentList.length > 0,
+  });
 }

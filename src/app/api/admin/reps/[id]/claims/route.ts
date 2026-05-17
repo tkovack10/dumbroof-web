@@ -5,6 +5,8 @@ import { supabaseAdmin } from "@/lib/supabase/admin";
 interface ClaimRow {
   id: string;
   address: string | null;
+  homeowner_name: string | null;
+  homeowner_email: string | null;
   carrier_name: string | null;
   status: string | null;
   last_touched_at: string | null;
@@ -62,11 +64,16 @@ export async function GET(
     return NextResponse.json({ claims: [] });
   }
 
-  // Pull the rep's claims (assigned_user_id is the canonical rep field)
+  // Pull the rep's claims. The existing /api/admin/reps metrics endpoint
+  // counts by claims.user_id (claim creator), so we need parity here OR the
+  // expand panel shows "no claims" while the row says "63 claims." Per
+  // migration 20260419, assigned_user_id was backfilled from user_id and
+  // bumped on assignment changes — so a claim belongs to a rep if EITHER
+  // matches.
   const { data: claimRows } = await supabaseAdmin
     .from("claims")
-    .select("id, address, carrier_name, status, last_touched_at, created_at, financials")
-    .eq("assigned_user_id", repUserId)
+    .select("id, address, carrier_name, status, last_touched_at, created_at, financials, homeowner_email, homeowner_name")
+    .or(`user_id.eq.${repUserId},assigned_user_id.eq.${repUserId}`)
     .order("last_touched_at", { ascending: false })
     .limit(100);
 

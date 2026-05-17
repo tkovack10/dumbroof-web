@@ -35,6 +35,9 @@ export function RetailSettingsModal({ open, onClose }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"items" | "terms">("items");
   const [categoryFilter, setCategoryFilter] = useState<Category | "all">("all");
+  // QA Phase 4.5 patch: track in-flight unsaved edits so we don't silently
+  // overwrite them on reopen, and warn the user on close-with-edits.
+  const [isDirty, setIsDirty] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -48,6 +51,7 @@ export function RetailSettingsModal({ open, onClose }: Props) {
       const json = await res.json();
       setData(json.settings as RetailSettings);
       setCanEdit(!!json.can_edit);
+      setIsDirty(false);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to load");
     } finally {
@@ -56,12 +60,31 @@ export function RetailSettingsModal({ open, onClose }: Props) {
   }, []);
 
   useEffect(() => {
-    if (open) {
-      load();
-      setActiveTab("items");
-      setCategoryFilter("all");
+    if (!open) return;
+    // QA Phase 4.5 fix: don't clobber unsaved edits on reopen. If the user
+    // already has dirty data (closed the modal without saving), keep it
+    // and let them either save or explicitly discard.
+    if (isDirty && data) {
+      return;
     }
-  }, [open, load]);
+    load();
+    setActiveTab("items");
+    setCategoryFilter("all");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
+
+  const handleClose = useCallback(() => {
+    if (saving || seeding) return;
+    if (isDirty) {
+      if (!window.confirm("You have unsaved changes. Discard them?")) {
+        return;
+      }
+      setIsDirty(false);
+      // Force a refetch on next open
+      setData(null);
+    }
+    onClose();
+  }, [saving, seeding, isDirty, onClose]);
 
   const save = useCallback(async () => {
     if (!data) return;
@@ -79,6 +102,7 @@ export function RetailSettingsModal({ open, onClose }: Props) {
       }
       const json = await res.json();
       setData(json.settings as RetailSettings);
+      setIsDirty(false);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Save failed");
     } finally {
@@ -87,7 +111,11 @@ export function RetailSettingsModal({ open, onClose }: Props) {
   }, [data]);
 
   const seedDefaults = useCallback(async () => {
-    if (!window.confirm("Replace the current price list with the 21-item starter set? Your existing items will be lost.")) {
+    const willOverwrite = (data?.price_list?.length ?? 0) > 0;
+    const prompt = willOverwrite
+      ? "Replace the current price list with the 21-item starter set? Your current list will be snapshotted as previous_price_list (one-step undo)."
+      : "Seed your price list with 21 starter items?";
+    if (!window.confirm(prompt)) {
       return;
     }
     setSeeding(true);
@@ -96,7 +124,11 @@ export function RetailSettingsModal({ open, onClose }: Props) {
       const res = await fetch("/api/admin/retail/settings", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ mode: "seed_defaults" }),
+        body: JSON.stringify({
+          mode: "seed_defaults",
+          // Server requires force:true to overwrite a non-empty list.
+          ...(willOverwrite ? { force: true } : {}),
+        }),
       });
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
@@ -104,15 +136,17 @@ export function RetailSettingsModal({ open, onClose }: Props) {
       }
       const json = await res.json();
       setData(json.settings as RetailSettings);
+      setIsDirty(false);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Seed failed");
     } finally {
       setSeeding(false);
     }
-  }, []);
+  }, [data]);
 
   const updateItem = useCallback(
     (i: number, patch: Partial<PriceItem>) => {
+      setIsDirty(true);
       setData((prev) => {
         if (!prev) return prev;
         const next = [...prev.price_list];
@@ -124,6 +158,7 @@ export function RetailSettingsModal({ open, onClose }: Props) {
   );
 
   const removeItem = useCallback((i: number) => {
+    setIsDirty(true);
     setData((prev) => {
       if (!prev) return prev;
       const next = prev.price_list.filter((_, idx) => idx !== i);
@@ -132,6 +167,7 @@ export function RetailSettingsModal({ open, onClose }: Props) {
   }, []);
 
   const addItem = useCallback(() => {
+    setIsDirty(true);
     setData((prev) => {
       if (!prev) return prev;
       return {
@@ -158,7 +194,7 @@ export function RetailSettingsModal({ open, onClose }: Props) {
   return (
     <div
       className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4"
-      onClick={() => !saving && onClose()}
+      onClick={handleClose}
     >
       <div
         className="w-full sm:max-w-3xl bg-[rgb(15,18,35)] sm:rounded-2xl rounded-t-2xl border border-[var(--border-glass)] max-h-[92vh] overflow-hidden flex flex-col"
@@ -174,7 +210,7 @@ export function RetailSettingsModal({ open, onClose }: Props) {
           </div>
           <button
             type="button"
-            onClick={onClose}
+            onClick={handleClose}
             disabled={saving}
             className="text-[var(--gray-muted)] hover:text-white text-2xl leading-none"
             aria-label="Close"
@@ -365,13 +401,14 @@ export function RetailSettingsModal({ open, onClose }: Props) {
                     min="0"
                     max="50"
                     value={(data.default_tax_rate * 100).toFixed(2)}
-                    onChange={(e) =>
+                    onChange={(e) => {
+                      setIsDirty(true);
                       setData((prev) =>
                         prev
                           ? { ...prev, default_tax_rate: (parseFloat(e.target.value) || 0) / 100 }
                           : prev
-                      )
-                    }
+                      );
+                    }}
                     disabled={!canEdit}
                     className="w-full px-3 py-2 rounded-xl border border-[var(--border-glass)] bg-white/[0.04] text-white text-sm focus:outline-none focus:border-[var(--cyan)] disabled:opacity-60"
                   />
@@ -389,13 +426,14 @@ export function RetailSettingsModal({ open, onClose }: Props) {
                     min="0"
                     max="100"
                     value={data.default_deposit_pct}
-                    onChange={(e) =>
+                    onChange={(e) => {
+                      setIsDirty(true);
                       setData((prev) =>
                         prev
                           ? { ...prev, default_deposit_pct: parseFloat(e.target.value) || 0 }
                           : prev
-                      )
-                    }
+                      );
+                    }}
                     disabled={!canEdit}
                     className="w-full px-3 py-2 rounded-xl border border-[var(--border-glass)] bg-white/[0.04] text-white text-sm focus:outline-none focus:border-[var(--cyan)] disabled:opacity-60"
                   />
@@ -411,7 +449,10 @@ export function RetailSettingsModal({ open, onClose }: Props) {
                 </label>
                 <textarea
                   value={data.default_terms}
-                  onChange={(e) => setData((prev) => (prev ? { ...prev, default_terms: e.target.value } : prev))}
+                  onChange={(e) => {
+                    setIsDirty(true);
+                    setData((prev) => (prev ? { ...prev, default_terms: e.target.value } : prev));
+                  }}
                   disabled={!canEdit}
                   rows={4}
                   placeholder="e.g. Estimate valid 30 days. Workmanship warranty 5 years on labor. Materials carry mfr warranty."
@@ -425,9 +466,10 @@ export function RetailSettingsModal({ open, onClose }: Props) {
                 </label>
                 <textarea
                   value={data.default_payment_schedule}
-                  onChange={(e) =>
-                    setData((prev) => (prev ? { ...prev, default_payment_schedule: e.target.value } : prev))
-                  }
+                  onChange={(e) => {
+                    setIsDirty(true);
+                    setData((prev) => (prev ? { ...prev, default_payment_schedule: e.target.value } : prev));
+                  }}
                   disabled={!canEdit}
                   rows={3}
                   placeholder="e.g. 25% deposit at signing, 50% on material delivery, 25% on completion."
@@ -442,11 +484,11 @@ export function RetailSettingsModal({ open, onClose }: Props) {
         <div className="p-6 border-t border-[var(--border-glass)] flex items-center gap-3 justify-end">
           <button
             type="button"
-            onClick={onClose}
+            onClick={handleClose}
             disabled={saving}
             className="px-4 py-2 rounded-xl text-sm text-[var(--gray)] hover:text-white hover:bg-white/[0.04] transition-colors"
           >
-            Close
+            {isDirty ? "Discard" : "Close"}
           </button>
           {canEdit && (
             <button
