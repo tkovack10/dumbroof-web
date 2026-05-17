@@ -1,887 +1,181 @@
 "use client";
 
-import { useEffect, useState, useMemo, useCallback } from "react";
-import Link from "next/link";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import {
-  ClaimCheckpoints,
-  type CheckpointSet,
-} from "@/components/claim-checkpoints";
+  ClaimFilterChips,
+  type ClaimGridFilter,
+  type ClaimGridCounts,
+} from "@/components/claim-filter-chips";
+import {
+  ClaimRowAction,
+  type ClaimGridRow,
+} from "@/components/claim-row-action";
 
-interface RepClaim {
-  id: string;
-  address: string | null;
-  carrier_name: string | null;
-  status: string | null;
-  last_touched_at: string | null;
-  financials: { total?: number } | null;
-  checkpoints: CheckpointSet;
-  commission: { pending_count: number; pending_cents: number; paid_cents: number };
-}
-
-interface RepMetrics {
+interface RepRollup {
   user_id: string;
-  email: string;
-  claims_submitted: number;
-  claims_this_month: number;
-  wins: number;
-  win_rate: number;
-  total_rcv: number;
-  avg_rcv: number;
-  avg_damage_score: number | null;
-  last_activity: string | null;
-  needs_improvement_count: number;
+  email: string | null;
+  claim_count: number;
+  checks_collected: number;
+  all_lit: number;
 }
 
-interface Alert {
-  email: string;
-  type: "inactive" | "low_quality";
-  message: string;
+interface GridResponse {
+  claims: ClaimGridRow[];
+  counts: ClaimGridCounts;
+  reps: RepRollup[];
 }
 
-interface RepsData {
-  reps: RepMetrics[];
-  alerts: Alert[];
-}
-
-type SortKey =
-  | "email"
-  | "claims_submitted"
-  | "claims_this_month"
-  | "wins"
-  | "win_rate"
-  | "avg_rcv"
-  | "avg_damage_score"
-  | "last_activity";
-
-function fmtMoney(val: number): string {
-  if (val === 0) return "--";
-  if (val >= 1_000_000) return `$${(val / 1_000_000).toFixed(1)}M`;
-  if (val >= 1_000) return `$${(val / 1_000).toFixed(0)}K`;
-  return `$${val.toFixed(0)}`;
-}
-
-function fmtMoneyFull(val: number): string {
-  if (val === 0) return "--";
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(val);
-}
-
-function timeAgo(timestamp: string | null): string {
-  if (!timestamp) return "Never";
-  const diff = Date.now() - new Date(timestamp).getTime();
-  const mins = Math.floor(diff / 60000);
-  if (mins < 1) return "Just now";
-  if (mins < 60) return `${mins}m ago`;
-  const hours = Math.floor(mins / 60);
-  if (hours < 24) return `${hours}h ago`;
-  const days = Math.floor(hours / 24);
-  if (days < 7) return `${days}d ago`;
-  return `${Math.floor(days / 7)}w ago`;
-}
-
-function repName(email: string): string {
-  const local = email.split("@")[0];
-  // Capitalize first letter of each part (e.g., "mharker" -> "Mharker", "tom.kovack" -> "Tom Kovack")
-  return local
+function repName(email: string | null): string {
+  if (!email) return "—";
+  return email
+    .split("@")[0]
     .split(/[._-]/)
     .map((s) => s.charAt(0).toUpperCase() + s.slice(1))
     .join(" ");
 }
 
-const medalColors = [
-  { bg: "rgba(255, 215, 0, 0.15)", border: "#FFD700", text: "#FFD700", label: "1st" },
-  { bg: "rgba(192, 192, 192, 0.15)", border: "#C0C0C0", text: "#C0C0C0", label: "2nd" },
-  { bg: "rgba(205, 127, 50, 0.15)", border: "#CD7F32", text: "#CD7F32", label: "3rd" },
-];
-
 export default function RepsPage() {
-  const [data, setData] = useState<RepsData | null>(null);
+  const [filter, setFilter] = useState<ClaimGridFilter>("all");
+  const [selectedRep, setSelectedRep] = useState<string | null>(null);
+  const [data, setData] = useState<GridResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [sortKey, setSortKey] = useState<SortKey>("claims_submitted");
-  const [sortAsc, setSortAsc] = useState(false);
-  const [expandedRepId, setExpandedRepId] = useState<string | null>(null);
-  const [repClaimsCache, setRepClaimsCache] = useState<Record<string, RepClaim[]>>({});
-  const [loadingClaims, setLoadingClaims] = useState<string | null>(null);
 
-  const toggleRep = useCallback(
-    async (repId: string) => {
-      if (expandedRepId === repId) {
-        setExpandedRepId(null);
-        return;
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const params = new URLSearchParams({ filter, scope: "active" });
+      if (selectedRep) params.set("rep", selectedRep);
+      const res = await fetch(`/api/admin/claims-grid?${params.toString()}`, {
+        cache: "no-store",
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.error || `HTTP ${res.status}`);
       }
-      setExpandedRepId(repId);
-      if (repClaimsCache[repId]) return;
-      setLoadingClaims(repId);
-      try {
-        const res = await fetch(`/api/admin/reps/${repId}/claims`);
-        if (res.ok) {
-          const json = await res.json();
-          setRepClaimsCache((prev) => ({ ...prev, [repId]: json.claims || [] }));
-        }
-      } catch {
-        // Non-fatal — user can re-click
-      } finally {
-        setLoadingClaims(null);
-      }
-    },
-    [expandedRepId, repClaimsCache]
-  );
+      const json = (await res.json()) as GridResponse;
+      setData(json);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to load");
+    } finally {
+      setLoading(false);
+    }
+  }, [filter, selectedRep]);
 
   useEffect(() => {
-    async function fetchReps() {
-      try {
-        const res = await fetch("/api/admin/reps");
-        if (!res.ok) {
-          const body = await res.json().catch(() => ({}));
-          throw new Error(body.error || `HTTP ${res.status}`);
-        }
-        const json = await res.json();
-        setData(json);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to load");
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    fetchReps();
-    const interval = setInterval(fetchReps, 30000);
-    return () => clearInterval(interval);
-  }, []);
+    load();
+  }, [load]);
 
   const sortedReps = useMemo(() => {
-    if (!data) return [];
-    const sorted = [...data.reps];
-    sorted.sort((a, b) => {
-      let aVal: number | string = 0;
-      let bVal: number | string = 0;
-
-      switch (sortKey) {
-        case "email":
-          aVal = a.email.toLowerCase();
-          bVal = b.email.toLowerCase();
-          break;
-        case "claims_submitted":
-          aVal = a.claims_submitted;
-          bVal = b.claims_submitted;
-          break;
-        case "claims_this_month":
-          aVal = a.claims_this_month;
-          bVal = b.claims_this_month;
-          break;
-        case "wins":
-          aVal = a.wins;
-          bVal = b.wins;
-          break;
-        case "win_rate":
-          aVal = a.win_rate;
-          bVal = b.win_rate;
-          break;
-        case "avg_rcv":
-          aVal = a.avg_rcv;
-          bVal = b.avg_rcv;
-          break;
-        case "avg_damage_score":
-          aVal = a.avg_damage_score ?? -1;
-          bVal = b.avg_damage_score ?? -1;
-          break;
-        case "last_activity":
-          aVal = a.last_activity ? new Date(a.last_activity).getTime() : 0;
-          bVal = b.last_activity ? new Date(b.last_activity).getTime() : 0;
-          break;
-      }
-
-      if (typeof aVal === "string" && typeof bVal === "string") {
-        return sortAsc ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
-      }
-      return sortAsc ? (aVal as number) - (bVal as number) : (bVal as number) - (aVal as number);
-    });
-    return sorted;
-  }, [data, sortKey, sortAsc]);
-
-  function handleSort(key: SortKey) {
-    if (sortKey === key) {
-      setSortAsc(!sortAsc);
-    } else {
-      setSortKey(key);
-      setSortAsc(false);
-    }
-  }
-
-  function SortHeader({ label, colKey, align }: { label: string; colKey: SortKey; align?: string }) {
-    const isActive = sortKey === colKey;
-    return (
-      <th
-        className={`px-5 py-3.5 text-xs font-semibold text-[var(--gray-muted)] uppercase tracking-wider cursor-pointer select-none hover:text-[var(--white)] transition-colors ${
-          align === "right" ? "text-right" : "text-left"
-        }`}
-        onClick={() => handleSort(colKey)}
-      >
-        <span className="inline-flex items-center gap-1">
-          {label}
-          {isActive && (
-            <svg
-              className="w-3 h-3"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              strokeWidth={2}
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d={sortAsc ? "M5 15l7-7 7 7" : "M19 9l-7 7-7-7"}
-              />
-            </svg>
-          )}
-        </span>
-      </th>
-    );
-  }
-
-  if (loading) {
-    return (
-      <div className="p-6 lg:p-8">
-        <div className="max-w-7xl mx-auto">
-          <div className="mb-8 pl-10 lg:pl-0">
-            <div className="h-8 w-56 bg-white/[0.06] rounded-lg animate-shimmer" />
-            <div className="h-4 w-80 bg-white/[0.04] rounded mt-2 animate-shimmer" />
-          </div>
-          {/* Leaderboard skeleton */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-            {Array.from({ length: 3 }).map((_, i) => (
-              <div key={i} className="glass-card p-6 animate-shimmer">
-                <div className="h-6 w-32 bg-white/[0.06] rounded mb-3" />
-                <div className="h-8 w-24 bg-white/[0.06] rounded mb-2" />
-                <div className="h-3 w-40 bg-white/[0.04] rounded" />
-              </div>
-            ))}
-          </div>
-          {/* Stats skeleton */}
-          <div className="grid grid-cols-3 gap-4 mb-8">
-            {Array.from({ length: 3 }).map((_, i) => (
-              <div key={i} className="glass-card p-5 animate-shimmer">
-                <div className="h-8 w-16 bg-white/[0.06] rounded mb-2" />
-                <div className="h-3 w-24 bg-white/[0.04] rounded" />
-              </div>
-            ))}
-          </div>
-          {/* Table skeleton */}
-          <div className="glass-card p-4 animate-shimmer">
-            {Array.from({ length: 5 }).map((_, i) => (
-              <div key={i} className="h-12 bg-white/[0.03] rounded mb-2" />
-            ))}
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="p-6 lg:p-8">
-        <div className="max-w-7xl mx-auto">
-          <div className="glass-card p-8 text-center">
-            <p className="text-[var(--red-accent)] text-lg font-semibold mb-2">
-              Failed to load rep data
-            </p>
-            <p className="text-[var(--gray-dim)] text-sm">{error}</p>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  if (!data) return null;
-
-  const { reps, alerts } = data;
-
-  // Top 3 reps by total_rcv (original sort from API)
-  const top3 = reps.slice(0, 3);
-
-  // Team summary stats
-  const totalActiveReps = reps.filter(
-    (r) => r.claims_submitted > 0
-  ).length;
-  const totalClaimsThisMonth = reps.reduce(
-    (sum, r) => sum + r.claims_this_month,
-    0
-  );
-  const avgWinRate =
-    reps.length > 0
-      ? Math.round(reps.reduce((sum, r) => sum + r.win_rate, 0) / reps.length)
-      : 0;
-
-  // Identify reps with alerts for row highlighting
-  const alertEmails = new Set(alerts.map((a) => a.email));
+    if (!data?.reps) return [];
+    return [...data.reps].sort((a, b) => b.claim_count - a.claim_count);
+  }, [data]);
 
   return (
     <div className="p-6 lg:p-8 min-h-screen">
       <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="mb-8 pl-10 lg:pl-0">
-          <h1 className="text-2xl font-bold gradient-text">Rep Scorecard</h1>
+        <div className="mb-5 pl-10 lg:pl-0">
+          <h1 className="text-2xl font-bold gradient-text">Team / Reps</h1>
           <p className="text-[var(--gray-muted)] mt-1 text-sm">
-            Track performance, leaderboard rankings, and coaching opportunities.
+            Every claim, every rep, what&apos;s left to do.
           </p>
         </div>
 
-        {/* Leaderboard - Top 3 */}
-        {top3.length > 0 && (
-          <div className="mb-8">
-            <h2 className="text-lg font-semibold text-[var(--white)] mb-4">Leaderboard</h2>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {top3.map((rep, i) => {
-                const medal = medalColors[i];
-                return (
-                  <div
-                    key={rep.user_id}
-                    className="rounded-xl p-6 border transition-colors"
+        {/* Rep selector strip */}
+        <div className="mb-4 flex items-center gap-2 flex-wrap">
+          <button
+            type="button"
+            onClick={() => setSelectedRep(null)}
+            className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors ${
+              selectedRep === null
+                ? "border-[var(--cyan)] bg-[var(--cyan)]/[0.08] text-white"
+                : "border-[var(--border-glass)] bg-white/[0.02] text-[var(--gray)] hover:bg-white/[0.04]"
+            }`}
+          >
+            Everyone
+            <span className="ml-1.5 text-[10px] text-[var(--gray-muted)]">
+              {data?.counts.all ?? "—"}
+            </span>
+          </button>
+          {sortedReps.map((rep) => {
+            const isActive = selectedRep === rep.user_id;
+            return (
+              <button
+                key={rep.user_id}
+                type="button"
+                onClick={() => setSelectedRep(isActive ? null : rep.user_id)}
+                className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors flex items-center gap-1.5 ${
+                  isActive
+                    ? "border-[var(--cyan)] bg-[var(--cyan)]/[0.08] text-white"
+                    : "border-[var(--border-glass)] bg-white/[0.02] text-[var(--gray)] hover:bg-white/[0.04]"
+                }`}
+              >
+                <span>{repName(rep.email)}</span>
+                <span className="text-[10px] text-[var(--gray-muted)] font-mono">
+                  {rep.claim_count}
+                </span>
+                {rep.checks_collected > 0 && (
+                  <span
+                    className="inline-flex items-center text-[10px] font-mono px-1 rounded"
                     style={{
-                      background: medal.bg,
-                      borderColor: `color-mix(in srgb, ${medal.border} 40%, transparent)`,
+                      background: "color-mix(in srgb, var(--green) 25%, transparent)",
+                      color: "var(--green)",
                     }}
+                    title={`${rep.checks_collected} check${rep.checks_collected === 1 ? "" : "s"} collected`}
                   >
-                    <div className="flex items-center gap-3 mb-4">
-                      <div
-                        className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0"
-                        style={{
-                          background: `color-mix(in srgb, ${medal.border} 25%, transparent)`,
-                          color: medal.text,
-                          border: `2px solid ${medal.border}`,
-                        }}
-                      >
-                        {medal.label}
-                      </div>
-                      <div className="min-w-0">
-                        <p className="text-sm font-semibold text-[var(--white)] truncate">
-                          {repName(rep.email)}
-                        </p>
-                        <p className="text-xs text-[var(--gray-dim)] truncate">{rep.email}</p>
-                      </div>
-                    </div>
-                    <p
-                      className="text-2xl font-bold font-mono mb-3"
-                      style={{ color: medal.text }}
-                    >
-                      {fmtMoneyFull(rep.total_rcv)}
-                    </p>
-                    <div className="flex items-center gap-4 text-xs text-[var(--gray-muted)]">
-                      <span>
-                        <span className="text-[var(--white)] font-semibold">{rep.claims_submitted}</span>{" "}
-                        claims
-                      </span>
-                      <span>
-                        <span className="text-[var(--green)] font-semibold">{rep.wins}</span> wins
-                      </span>
-                      <span>
-                        <span className="text-[var(--cyan)] font-semibold">{rep.win_rate}%</span> rate
-                      </span>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
-
-        {/* Team Summary Stats */}
-        <div className="grid grid-cols-3 gap-4 mb-8">
-          <div className="glass-card p-5 text-center">
-            <p className="text-3xl font-bold text-[var(--cyan)]">{totalActiveReps}</p>
-            <p className="text-xs text-[var(--gray-muted)] mt-1.5">Active Reps</p>
-          </div>
-          <div className="glass-card p-5 text-center">
-            <p className="text-3xl font-bold gradient-text font-mono">{totalClaimsThisMonth}</p>
-            <p className="text-xs text-[var(--gray-muted)] mt-1.5">Claims This Month</p>
-          </div>
-          <div className="glass-card p-5 text-center">
-            <p className="text-3xl font-bold text-[var(--green)]">{avgWinRate}%</p>
-            <p className="text-xs text-[var(--gray-muted)] mt-1.5">Avg Win Rate</p>
-          </div>
+                    {rep.checks_collected}$
+                  </span>
+                )}
+              </button>
+            );
+          })}
         </div>
 
-        {/* Coaching Alerts */}
-        {alerts.length > 0 && (
-          <div className="mb-8">
-            <h2 className="text-lg font-semibold text-[var(--white)] mb-4">Coaching Alerts</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {alerts.map((alert, i) => {
-                const isRed = alert.type === "low_quality";
-                const borderColor = isRed ? "var(--red-accent)" : "var(--amber)";
-                const bgColor = isRed
-                  ? "rgba(255, 90, 106, 0.08)"
-                  : "rgba(255, 194, 51, 0.08)";
+        {/* Filter chips */}
+        <div className="mb-5">
+          <ClaimFilterChips
+            active={filter}
+            counts={data?.counts ?? null}
+            onChange={setFilter}
+          />
+        </div>
 
-                return (
-                  <div
-                    key={i}
-                    className="p-4 rounded-xl border"
-                    style={{ borderColor, backgroundColor: bgColor }}
-                  >
-                    <div className="flex items-center gap-3">
-                      <div
-                        className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0"
-                        style={{
-                          background: `color-mix(in srgb, ${borderColor} 20%, transparent)`,
-                        }}
-                      >
-                        {isRed ? (
-                          <svg
-                            className="w-4 h-4"
-                            style={{ color: borderColor }}
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            stroke="currentColor"
-                            strokeWidth={2}
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"
-                            />
-                          </svg>
-                        ) : (
-                          <svg
-                            className="w-4 h-4"
-                            style={{ color: borderColor }}
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            stroke="currentColor"
-                            strokeWidth={2}
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z"
-                            />
-                          </svg>
-                        )}
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium text-[var(--white)]">
-                          {repName(alert.email)}
-                        </p>
-                        <p className="text-xs" style={{ color: borderColor }}>
-                          {alert.message}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
+        {error && (
+          <div className="rounded-xl border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm text-red-200 mb-4">
+            {error}
           </div>
         )}
 
-        {/* Full Rep Table */}
-        <div>
-          <h2 className="text-lg font-semibold text-[var(--white)] mb-4">All Reps</h2>
-          <div className="glass-card overflow-hidden">
-            {sortedReps.length > 0 ? (
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead>
-                    <tr className="border-b border-[var(--border-glass)]">
-                      <th className="w-8 px-2 py-3.5" aria-label="expand" />
-                      <SortHeader label="Rep" colKey="email" />
-                      <SortHeader label="Claims" colKey="claims_submitted" align="right" />
-                      <SortHeader label="This Month" colKey="claims_this_month" align="right" />
-                      <SortHeader label="Wins" colKey="wins" align="right" />
-                      <SortHeader label="Win Rate" colKey="win_rate" align="right" />
-                      <SortHeader label="Avg RCV" colKey="avg_rcv" align="right" />
-                      <SortHeader label="Avg DS" colKey="avg_damage_score" align="right" />
-                      <SortHeader label="Last Active" colKey="last_activity" align="right" />
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {sortedReps.map((rep) => {
-                      const hasAlert = alertEmails.has(rep.email);
-                      const expanded = expandedRepId === rep.user_id;
-                      const repClaims = repClaimsCache[rep.user_id];
-                      return (
-                        <RepRowFragment
-                          key={rep.user_id}
-                          rep={rep}
-                          hasAlert={hasAlert}
-                          expanded={expanded}
-                          repClaims={repClaims}
-                          loadingClaims={loadingClaims === rep.user_id}
-                          onToggle={() => toggleRep(rep.user_id)}
-                        />
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            ) : (
-              <div className="p-8 text-center">
-                <svg
-                  className="w-12 h-12 text-[var(--gray-dim)] mx-auto mb-4"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                  strokeWidth={1}
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z"
-                  />
-                </svg>
-                <p className="text-lg font-semibold text-[var(--white)] mb-1">No reps found</p>
-                <p className="text-sm text-[var(--gray-dim)]">
-                  Team members will appear here once they submit claims.
-                </p>
-              </div>
+        {/* Claims list */}
+        {loading ? (
+          <div className="space-y-2">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div key={i} className="h-16 bg-white/[0.03] rounded-xl animate-shimmer" />
+            ))}
+          </div>
+        ) : !data || data.claims.length === 0 ? (
+          <div className="glass-card p-12 text-center">
+            <p className="text-sm text-[var(--gray-muted)]">
+              No claims match this filter.
+            </p>
+            {selectedRep && (
+              <button
+                type="button"
+                onClick={() => setSelectedRep(null)}
+                className="mt-2 text-xs text-[var(--cyan)] hover:underline"
+              >
+                Clear rep filter
+              </button>
             )}
           </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ──────────────────────────────────────────────────────────────────────────
-// Below is the original closing markup that we replaced. We retain the
-// original Mafia of helpers (SortHeader, formatters) — the table body was
-// extracted to <RepRowFragment> to keep the new expandable-row logic readable.
-// ──────────────────────────────────────────────────────────────────────────
-
-function RepRowFragment({
-  rep,
-  hasAlert,
-  expanded,
-  repClaims,
-  loadingClaims,
-  onToggle,
-}: {
-  rep: RepMetrics;
-  hasAlert: boolean;
-  expanded: boolean;
-  repClaims: RepClaim[] | undefined;
-  loadingClaims: boolean;
-  onToggle: () => void;
-}) {
-  return (
-    <>
-      <tr
-        className={`border-b border-[var(--border-glass)] transition-colors hover:bg-white/[0.03] cursor-pointer ${
-          hasAlert ? "border-l-2 border-l-[var(--amber)]" : ""
-        } ${expanded ? "bg-white/[0.02]" : ""}`}
-        onClick={onToggle}
-      >
-        <td className="w-8 px-2 py-3.5 text-center">
-          <svg
-            className={`w-4 h-4 text-[var(--gray-muted)] transition-transform inline-block ${
-              expanded ? "rotate-90" : ""
-            }`}
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-            strokeWidth={2}
-          >
-            <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
-          </svg>
-        </td>
-        <td className="px-5 py-3.5">
-          <div>
-            <p className="text-sm font-medium text-[var(--white)]">{repName(rep.email)}</p>
-            <p className="text-xs text-[var(--gray-dim)]">{rep.email}</p>
+        ) : (
+          <div className="space-y-2">
+            {data.claims.map((c) => (
+              <ClaimRowAction key={c.id} claim={c} />
+            ))}
           </div>
-        </td>
-        <td className="px-5 py-3.5 text-sm text-right font-mono text-[var(--white)]">
-          {rep.claims_submitted}
-        </td>
-        <td className="px-5 py-3.5 text-sm text-right font-mono">
-          <span
-            className={
-              rep.claims_this_month > 0 ? "text-[var(--cyan)]" : "text-[var(--gray-dim)]"
-            }
-          >
-            {rep.claims_this_month}
-          </span>
-        </td>
-        <td className="px-5 py-3.5 text-sm text-right font-mono">
-          <span className={rep.wins > 0 ? "text-[var(--green)]" : "text-[var(--gray-dim)]"}>
-            {rep.wins}
-          </span>
-        </td>
-        <td className="px-5 py-3.5 text-sm text-right font-mono">
-          <span
-            className={
-              rep.win_rate >= 50
-                ? "text-[var(--green)]"
-                : rep.win_rate >= 25
-                  ? "text-[var(--amber)]"
-                  : rep.win_rate > 0
-                    ? "text-[var(--red-accent)]"
-                    : "text-[var(--gray-dim)]"
-            }
-          >
-            {rep.win_rate}%
-          </span>
-        </td>
-        <td className="px-5 py-3.5 text-sm text-right font-mono text-[var(--white)]">
-          {fmtMoney(rep.avg_rcv)}
-        </td>
-        <td className="px-5 py-3.5 text-sm text-right font-mono">
-          {rep.avg_damage_score !== null ? (
-            <span
-              className={
-                rep.avg_damage_score >= 70
-                  ? "text-[var(--green)]"
-                  : rep.avg_damage_score >= 50
-                    ? "text-[var(--amber)]"
-                    : "text-[var(--red-accent)]"
-              }
-            >
-              {rep.avg_damage_score}
-            </span>
-          ) : (
-            <span className="text-[var(--gray-dim)]">--</span>
-          )}
-        </td>
-        <td className="px-5 py-3.5 text-sm text-right text-[var(--gray-muted)]">
-          {timeAgo(rep.last_activity)}
-        </td>
-      </tr>
-
-      {expanded && (
-        <tr className="border-b border-[var(--border-glass)] bg-white/[0.015]">
-          <td colSpan={9} className="px-5 py-4">
-            <RepClaimsPanel claims={repClaims} loading={loadingClaims} />
-          </td>
-        </tr>
-      )}
-    </>
-  );
-}
-
-// Checkpoint slot → action verb the rep should take when not done.
-const CHECKPOINT_TODO: Record<
-  keyof RepClaim["checkpoints"],
-  { todo: string; done: string; color: string }
-> = {
-  forensic: {
-    todo: "Send forensic",
-    done: "Forensic sent",
-    color: "var(--cyan)",
-  },
-  supplement: {
-    todo: "Send supplement",
-    done: "Supplement sent",
-    color: "var(--amber)",
-  },
-  coc: {
-    todo: "Send COC",
-    done: "COC sent",
-    color: "var(--blue)",
-  },
-  engagement: {
-    todo: "Engage homeowner",
-    done: "Homeowner engaged",
-    color: "var(--pink)",
-  },
-  check_received: {
-    todo: "Collect check",
-    done: "Check received",
-    color: "var(--green)",
-  },
-};
-
-const TODO_ORDER: (keyof RepClaim["checkpoints"])[] = [
-  "forensic",
-  "supplement",
-  "coc",
-  "engagement",
-  "check_received",
-];
-
-function RepClaimsPanel({
-  claims,
-  loading,
-}: {
-  claims: RepClaim[] | undefined;
-  loading: boolean;
-}) {
-  if (loading || !claims) {
-    return (
-      <div className="space-y-2">
-        {Array.from({ length: 3 }).map((_, i) => (
-          <div key={i} className="h-14 bg-white/[0.03] rounded animate-shimmer" />
-        ))}
-      </div>
-    );
-  }
-
-  if (claims.length === 0) {
-    return (
-      <p className="text-sm text-[var(--gray-muted)] py-2">
-        No claims assigned to this rep yet.
-      </p>
-    );
-  }
-
-  // Rollup: per checkpoint, count how many claims still need it
-  const needCounts = TODO_ORDER.reduce(
-    (acc, k) => {
-      acc[k] = claims.filter((c) => !c.checkpoints[k].done).length;
-      return acc;
-    },
-    {} as Record<keyof RepClaim["checkpoints"], number>
-  );
-  const totalActions = Object.values(needCounts).reduce((s, n) => s + n, 0);
-
-  return (
-    <div className="space-y-3">
-      {/* Action rollup chips — at-a-glance "this rep has X to-dos" */}
-      <div className="flex items-center gap-2 flex-wrap pb-2 border-b border-[var(--border-glass)]">
-        <span className="text-[10px] uppercase tracking-wide text-[var(--gray-muted)] font-bold mr-1">
-          {totalActions === 0
-            ? "✓ All up to date"
-            : `${totalActions} action${totalActions === 1 ? "" : "s"} needed`}
-        </span>
-        {TODO_ORDER.map((k) => {
-          const n = needCounts[k];
-          if (n === 0) return null;
-          const meta = CHECKPOINT_TODO[k];
-          return (
-            <span
-              key={k}
-              className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full"
-              style={{
-                color: meta.color,
-                background: `color-mix(in srgb, ${meta.color} 14%, transparent)`,
-              }}
-            >
-              {n} · {meta.todo}
-            </span>
-          );
-        })}
-      </div>
-
-      {/* Per-claim action cards */}
-      <div className="space-y-2">
-        {claims.map((c) => {
-          const todos = TODO_ORDER.filter((k) => !c.checkpoints[k].done);
-          const dones = TODO_ORDER.filter((k) => c.checkpoints[k].done);
-          const allDone = todos.length === 0;
-          return (
-            <div
-              key={c.id}
-              className={`rounded-xl border bg-white/[0.02] p-3 transition-colors hover:bg-white/[0.04] ${
-                allDone
-                  ? "border-[var(--green)]/30"
-                  : "border-[var(--border-glass)]"
-              }`}
-            >
-              {/* Header: address + money */}
-              <div className="flex items-start justify-between gap-3 mb-2">
-                <div className="min-w-0">
-                  <Link
-                    href={`/dashboard/claim/${c.id}`}
-                    className="block text-sm font-semibold text-white hover:text-[var(--cyan)] truncate transition-colors"
-                  >
-                    {c.address ?? c.id.slice(0, 8)}
-                  </Link>
-                  <p className="text-xs text-[var(--gray-muted)] truncate">
-                    {c.carrier_name ?? "—"}
-                    {c.status && (
-                      <span className="ml-2 text-[var(--gray-dim)]">
-                        · {c.status}
-                      </span>
-                    )}
-                  </p>
-                </div>
-                <div className="text-right flex-shrink-0">
-                  <p className="text-xs font-mono text-[var(--white)]">
-                    {c.financials?.total ? fmtMoney(c.financials.total) : "--"}
-                    <span className="text-[10px] text-[var(--gray-muted)] ml-1">RCV</span>
-                  </p>
-                  {c.commission.pending_count > 0 && (
-                    <p className="text-[10px] font-mono text-[var(--amber)]">
-                      {fmtMoney(c.commission.pending_cents / 100)} commission pending
-                    </p>
-                  )}
-                  {c.commission.paid_cents > 0 && (
-                    <p className="text-[10px] font-mono text-[var(--green)]">
-                      {fmtMoney(c.commission.paid_cents / 100)} paid out
-                    </p>
-                  )}
-                </div>
-              </div>
-
-              {/* To-do action pills */}
-              {todos.length > 0 && (
-                <div className="flex items-center gap-1.5 flex-wrap mb-1.5">
-                  {todos.map((k) => {
-                    const meta = CHECKPOINT_TODO[k];
-                    return (
-                      <Link
-                        key={k}
-                        href={`/dashboard/claim/${c.id}`}
-                        className="inline-flex items-center gap-1 text-[11px] font-semibold px-2.5 py-1 rounded-lg border transition-colors hover:brightness-125"
-                        style={{
-                          color: meta.color,
-                          borderColor: `color-mix(in srgb, ${meta.color} 45%, transparent)`,
-                          background: `color-mix(in srgb, ${meta.color} 12%, transparent)`,
-                        }}
-                      >
-                        <span
-                          className="w-1.5 h-1.5 rounded-full"
-                          style={{ background: meta.color }}
-                        />
-                        {meta.todo}
-                      </Link>
-                    );
-                  })}
-                </div>
-              )}
-
-              {/* Done row */}
-              {dones.length > 0 && (
-                <div className="flex items-center gap-2 flex-wrap text-[10px] text-[var(--gray-dim)]">
-                  {dones.map((k) => {
-                    const meta = CHECKPOINT_TODO[k];
-                    return (
-                      <span
-                        key={k}
-                        className="inline-flex items-center gap-1"
-                        title={
-                          c.checkpoints[k].at
-                            ? new Date(c.checkpoints[k].at!).toLocaleDateString()
-                            : ""
-                        }
-                      >
-                        <svg
-                          className="w-2.5 h-2.5"
-                          style={{ color: "var(--green)" }}
-                          fill="none"
-                          viewBox="0 0 24 24"
-                          stroke="currentColor"
-                          strokeWidth={3}
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            d="M4.5 12.75l6 6 9-13.5"
-                          />
-                        </svg>
-                        {meta.done}
-                      </span>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          );
-        })}
+        )}
       </div>
     </div>
   );

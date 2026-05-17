@@ -29,6 +29,7 @@ export async function GET(
   }
 
   // RLS on claim_events scopes by company membership — one query, all events.
+  // Accept BOTH new (Phase 1 invented) + legacy (backend/main.py emitter) names.
   const { data: events } = await supabase
     .from("claim_events")
     .select("event_type, occurred_at, metadata")
@@ -37,54 +38,89 @@ export async function GET(
       "forensic_sent_to_carrier",
       "forensic_sent_to_homeowner",
       "supplement_sent_to_carrier",
+      "supplement_sent",
+      "install_supplement_sent",
       "coc_sent_to_homeowner",
+      "coc_sent",
       "homeowner_engagement_sent",
+      "homeowner_email_sent",
+      "sequence_started",
       "check_received",
     ])
     .order("occurred_at", { ascending: false });
 
-  const latestByType: Record<string, { occurred_at: string; metadata: unknown } | null> = {
-    forensic_sent_to_carrier: null,
-    forensic_sent_to_homeowner: null,
-    supplement_sent_to_carrier: null,
-    coc_sent_to_homeowner: null,
-    homeowner_engagement_sent: null,
+  type Slot = { occurred_at: string; metadata: unknown } | null;
+  const byCheckpoint: {
+    forensic: Slot;
+    supplement: Slot;
+    coc: Slot;
+    engagement: Slot;
+    check_received: Slot;
+  } = {
+    forensic: null,
+    supplement: null,
+    coc: null,
+    engagement: null,
     check_received: null,
   };
 
-  for (const e of events || []) {
-    if (latestByType[e.event_type] === null) {
-      latestByType[e.event_type] = {
-        occurred_at: e.occurred_at,
-        metadata: e.metadata,
-      };
+  function bumpLatest(
+    key: keyof typeof byCheckpoint,
+    occurred_at: string,
+    metadata: unknown
+  ) {
+    if (!byCheckpoint[key] || byCheckpoint[key]!.occurred_at < occurred_at) {
+      byCheckpoint[key] = { occurred_at, metadata };
     }
   }
 
-  const forensic =
-    latestByType.forensic_sent_to_carrier || latestByType.forensic_sent_to_homeowner;
+  for (const e of events || []) {
+    switch (e.event_type) {
+      case "forensic_sent_to_carrier":
+      case "forensic_sent_to_homeowner":
+        bumpLatest("forensic", e.occurred_at, e.metadata);
+        break;
+      case "supplement_sent_to_carrier":
+      case "supplement_sent":
+      case "install_supplement_sent":
+        bumpLatest("supplement", e.occurred_at, e.metadata);
+        break;
+      case "coc_sent_to_homeowner":
+      case "coc_sent":
+        bumpLatest("coc", e.occurred_at, e.metadata);
+        break;
+      case "homeowner_engagement_sent":
+      case "homeowner_email_sent":
+      case "sequence_started":
+        bumpLatest("engagement", e.occurred_at, e.metadata);
+        break;
+      case "check_received":
+        bumpLatest("check_received", e.occurred_at, e.metadata);
+        break;
+    }
+  }
 
   return NextResponse.json({
     checkpoints: {
       forensic: {
-        done: !!forensic,
-        at: forensic?.occurred_at ?? null,
+        done: !!byCheckpoint.forensic,
+        at: byCheckpoint.forensic?.occurred_at ?? null,
       },
       supplement: {
-        done: !!latestByType.supplement_sent_to_carrier,
-        at: latestByType.supplement_sent_to_carrier?.occurred_at ?? null,
+        done: !!byCheckpoint.supplement,
+        at: byCheckpoint.supplement?.occurred_at ?? null,
       },
       coc: {
-        done: !!latestByType.coc_sent_to_homeowner,
-        at: latestByType.coc_sent_to_homeowner?.occurred_at ?? null,
+        done: !!byCheckpoint.coc,
+        at: byCheckpoint.coc?.occurred_at ?? null,
       },
       engagement: {
-        done: !!latestByType.homeowner_engagement_sent,
-        at: latestByType.homeowner_engagement_sent?.occurred_at ?? null,
+        done: !!byCheckpoint.engagement,
+        at: byCheckpoint.engagement?.occurred_at ?? null,
       },
       check_received: {
-        done: !!latestByType.check_received,
-        at: latestByType.check_received?.occurred_at ?? null,
+        done: !!byCheckpoint.check_received,
+        at: byCheckpoint.check_received?.occurred_at ?? null,
       },
     },
   });

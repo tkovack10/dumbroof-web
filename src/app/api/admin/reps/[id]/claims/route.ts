@@ -84,13 +84,20 @@ export async function GET(
 
   const claimIds = claims.map((c) => c.id);
 
-  // Pull all checkpoint events in one shot
+  // Pull all checkpoint events in one shot. Accept BOTH the new names + the
+  // legacy emitter names (see backend/main.py:2253-2255) so existing USARM
+  // history lights up correctly.
   const checkpointTypes = [
     "forensic_sent_to_carrier",
     "forensic_sent_to_homeowner",
     "supplement_sent_to_carrier",
+    "supplement_sent",
+    "install_supplement_sent",
     "coc_sent_to_homeowner",
+    "coc_sent",
     "homeowner_engagement_sent",
+    "homeowner_email_sent",
+    "sequence_started",
     "check_received",
   ];
   const { data: eventRows } = await supabaseAdmin
@@ -130,11 +137,22 @@ export async function GET(
       e.event_type === "forensic_sent_to_homeowner"
     ) {
       key = "forensic";
-    } else if (e.event_type === "supplement_sent_to_carrier") {
+    } else if (
+      e.event_type === "supplement_sent_to_carrier" ||
+      e.event_type === "supplement_sent" ||
+      e.event_type === "install_supplement_sent"
+    ) {
       key = "supplement";
-    } else if (e.event_type === "coc_sent_to_homeowner") {
+    } else if (
+      e.event_type === "coc_sent_to_homeowner" ||
+      e.event_type === "coc_sent"
+    ) {
       key = "coc";
-    } else if (e.event_type === "homeowner_engagement_sent") {
+    } else if (
+      e.event_type === "homeowner_engagement_sent" ||
+      e.event_type === "homeowner_email_sent" ||
+      e.event_type === "sequence_started"
+    ) {
       key = "engagement";
     } else if (e.event_type === "check_received") {
       key = "check_received";
