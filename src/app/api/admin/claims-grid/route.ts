@@ -98,11 +98,13 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
   }
 
-  const { data: profileRows, error: profileErr } = await supabaseAdmin
+  const profileResp = await supabaseAdmin
     .from("company_profiles")
     .select("is_admin, company_id, email")
     .eq("user_id", user.id)
     .limit(1);
+  const profileRows = profileResp.data;
+  const profileErr = profileResp.error as { message?: string } | null;
 
   const url = new URL(req.url);
   const filter = (url.searchParams.get("filter") || "all") as Filter;
