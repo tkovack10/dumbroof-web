@@ -19,13 +19,22 @@ export async function GET() {
   }
 
   // Authenticated team-member access. Returns only the caller's own team
-  // (scoped via getTeamUserIds) so this is safe to expose to non-admins —
-  // they can already see their own team members elsewhere (claim assignee
-  // display, rep page, etc). Required by Phase 5 Slice B's per-claim
-  // assignment dropdown which needs to be usable by the current assignee
-  // even if they're not an admin.
+  // (scoped via getTeamUserIds) so it's safe to expose to non-admins —
+  // they can already see their teammates elsewhere. Required by Phase 5
+  // Slice B's assignment dropdown which non-admin assignees use.
+  //
+  // last_sign_in_at is admin-only — peers shouldn't see when teammates
+  // last logged in (privacy). Gate that field behind is_admin.
 
   try {
+    // Check caller's admin status to decide whether to include last_sign_in
+    const { data: callerProfile } = await supabaseAdmin
+      .from("company_profiles")
+      .select("is_admin")
+      .eq("user_id", user.id)
+      .maybeSingle();
+    const callerIsAdmin = !!callerProfile?.is_admin;
+
     const { userIds: teamUserIds, members: teamMembers } = await getTeamUserIds(user);
 
     // Get claims count per user
@@ -39,30 +48,31 @@ export async function GET() {
       claimCounts[c.user_id] = (claimCounts[c.user_id] || 0) + 1;
     }
 
-    // Pull last_sign_in_at from auth.users for each team member.
-    // admin.listUsers paginates at 1000 rows per page (Supabase default);
-    // for any realistic team, the team_ids will be a small subset of one
-    // page. If we ever cross 1000 total platform users this needs paging.
+    // Pull last_sign_in_at only when caller is admin. Skip the auth admin
+    // listUsers call for non-admins to also save a round trip.
     const lastSignInByUserId = new Map<string, string | null>();
-    try {
-      const { data: authPage } = await supabaseAdmin.auth.admin.listUsers({
-        page: 1,
-        perPage: 1000,
-      });
-      const teamSet = new Set(teamUserIds);
-      for (const au of authPage?.users ?? []) {
-        if (teamSet.has(au.id)) {
-          lastSignInByUserId.set(au.id, au.last_sign_in_at || null);
+    if (callerIsAdmin) {
+      try {
+        const { data: authPage } = await supabaseAdmin.auth.admin.listUsers({
+          page: 1,
+          perPage: 1000,
+        });
+        const teamSet = new Set(teamUserIds);
+        for (const au of authPage?.users ?? []) {
+          if (teamSet.has(au.id)) {
+            lastSignInByUserId.set(au.id, au.last_sign_in_at || null);
+          }
         }
+      } catch (e) {
+        console.warn("[api/admin/team] listUsers failed (non-fatal):", e);
       }
-    } catch (e) {
-      console.warn("[api/admin/team] listUsers failed (non-fatal):", e);
     }
 
     const members = teamMembers.map((m) => ({
       id: m.id,
       email: m.email || "",
-      last_sign_in: lastSignInByUserId.get(m.id) ?? null,
+      // null for non-admin callers — peers don't see each other's login times
+      last_sign_in: callerIsAdmin ? (lastSignInByUserId.get(m.id) ?? null) : null,
       claims_count: claimCounts[m.id] || 0,
     }));
 

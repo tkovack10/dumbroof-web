@@ -21,7 +21,7 @@ interface CheckRow {
  *
  * Revenue accounting (in order of preference):
  *   1. Sum of confirmed check_uploads.amount_cents for the claim
- *   2. Falls back to claims.financials.total (USARM-computed RCV) when
+ *   2. Falls back to claims.contractor_rcv (USARM-computed RCV) when
  *      no checks are on file
  * Expenses are summed by type for the breakdown.
  */
