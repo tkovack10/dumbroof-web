@@ -42,7 +42,6 @@ export async function GET() {
     email: user.email || profileRows[0].email || null,
   });
   const teamUserIds = teamLookup.userIds;
-  const companyId = teamLookup.companyId;
   if (teamUserIds.length === 0) {
     return NextResponse.json(emptyResponse());
   }
@@ -53,11 +52,13 @@ export async function GET() {
   const thirtyDaysAgo = new Date(now - 30 * day).toISOString();
 
   const [checksResp, winsResp, claimsResp] = await Promise.all([
-    // Checks this week — per rep
+    // Checks this week — scoped by uploader_user_id so the query works for
+    // domain-fallback teams whose company_profiles.company_id is null
+    // (avoids the sentinel-UUID empty-response bug from QA).
     supabaseAdmin
       .from("check_uploads")
       .select("uploader_user_id, amount_cents, received_at, claim_id, payor")
-      .eq("company_id", companyId ?? "00000000-0000-0000-0000-000000000000")
+      .in("uploader_user_id", teamUserIds)
       .gte("received_at", sevenDaysAgo)
       .order("received_at", { ascending: false }),
     // Wins last 30 days (status='won' or contractor_rcv significantly above carrier)
