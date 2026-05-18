@@ -3,6 +3,7 @@
 import { Fragment, useEffect, useState, useCallback, useMemo } from "react";
 import Link from "next/link";
 import { JobPnlCard } from "@/components/job-pnl-card";
+import { RichardSuggestionBanner } from "@/components/richard-suggestion-banner";
 
 interface Job {
   claim_id: string;
@@ -154,6 +155,9 @@ export default function ExpensesPage() {
             + Record an expense
           </button>
         </div>
+
+        {/* Richard inline suggestion — Bet 2 */}
+        <RichardSuggestionBanner surface="job_pnl" />
 
         {/* Company totals */}
         {totals && (

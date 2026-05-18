@@ -10,6 +10,7 @@ import {
 } from "@/components/company-phase-progress";
 import { AdminRightRail } from "@/components/admin-right-rail";
 import { AdminTabStrip } from "@/components/admin-tab-strip";
+import { RichardSuggestionBanner } from "@/components/richard-suggestion-banner";
 import { createClient } from "@/lib/supabase/client";
 import {
   ClaimFilterChips,
@@ -98,6 +99,9 @@ export default function CommandCenterPage() {
 
         <div className="lg:grid lg:grid-cols-[1fr,280px] lg:gap-6">
           <div>
+
+        {/* Richard inline suggestion — Bet 2 */}
+        <RichardSuggestionBanner surface="command_center" />
 
         {/* WHAT'S NEXT hero — Phase 6 Slice 2 morning briefing */}
         <WhatsNextHero firstName={firstName} />

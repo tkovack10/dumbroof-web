@@ -41,6 +41,7 @@ import { ClaimMoneyActions } from "@/components/claim-money-actions";
 import { ClaimProductionActions } from "@/components/claim-production-actions";
 import { ClaimExpenseActions } from "@/components/claim-expense-actions";
 import { ClaimAssignmentDropdown } from "@/components/claim-assignment-dropdown";
+import { RichardSuggestionBanner } from "@/components/richard-suggestion-banner";
 import { CommunicationsCenter } from "@/components/claim-detail/communications-center";
 import type { Correspondence, EditRequest, EmailDraft } from "@/types/claim-comms";
 import { ScopeReviewContent } from "@/app/dashboard/scope-review/scope-review-content";
@@ -880,6 +881,11 @@ export default function ClaimDetailPage() {
           <WinBanner orig={orig} updated={updated} move={move} pct={pct} />
         );
       })()}
+
+      {/* Richard inline suggestion — Bet 2 */}
+      <div className="max-w-4xl mx-auto px-6 pt-4">
+        <RichardSuggestionBanner surface="claim_detail" claimId={claim.id} />
+      </div>
 
       {uiVersion === "v2" ? (
         <V2Layout

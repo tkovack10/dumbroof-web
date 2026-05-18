@@ -9,6 +9,7 @@ import {
 } from "@/components/production-calendar";
 import { ScheduleClaimModal } from "@/components/schedule-claim-modal";
 import { AdminTabStrip } from "@/components/admin-tab-strip";
+import { RichardSuggestionBanner } from "@/components/richard-suggestion-banner";
 
 type View = "week" | "month";
 type ProductionTab = "unscheduled" | "calendar" | "crews";
@@ -148,6 +149,9 @@ export default function ProductionPage() {
             + New install
           </button>
         </div>
+
+        {/* Richard inline suggestion — Bet 2 */}
+        <RichardSuggestionBanner surface="production" />
 
         {/* KPI row */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
