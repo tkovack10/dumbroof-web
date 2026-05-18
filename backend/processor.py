@@ -2463,18 +2463,72 @@ For each change, identify which USARM argument most likely convinced the carrier
 # ===================================================================
 
 def extract_weather_data(client: anthropic.Anthropic, file_path: str) -> dict:
-    """Extract weather/storm data from HailTrace, NOAA, or similar report."""
+    """Extract weather/storm data from HailTrace, NOAA, or similar report.
+
+    Accepted formats: .txt, .csv, .zip (containing csv/txt), .pdf, and raster
+    images (jpg/png/gif/webp). Anything else raises ValueError so the caller
+    can degrade gracefully — never send an unsupported media_type to the
+    Anthropic API. Drove this from OmniNext 2026-05-18 (Augusta KS): user
+    uploaded NOAA `storm_data_search_results.csv.zip`, the else-branch sent
+    media_type=application/zip in an image block, Anthropic rejected,
+    and the unwrapped _get_weather_data crashed the whole claim.
+    """
     ext = file_path.lower().rsplit(".", 1)[-1] if "." in file_path else ""
     media_type = get_media_type(file_path)
+    # Anthropic only accepts these 4 for image blocks. Everything else either
+    # uses a document block (PDF) or text block (txt/csv/zip-extracted).
+    _IMAGE_MEDIA_OK = {"image/jpeg", "image/png", "image/gif", "image/webp"}
 
     content = []
     if ext == "txt":
-        # Email body extracted as text
-        with open(file_path, "r", encoding="utf-8") as f:
+        with open(file_path, "r", encoding="utf-8", errors="replace") as f:
             text_content = f.read()
         content.append({
             "type": "text",
-            "text": f"[WEATHER REPORT — extracted from email]\n\n{text_content}",
+            "text": f"[WEATHER REPORT — extracted from email/text]\n\n{text_content}",
+        })
+    elif ext == "csv":
+        # NOAA Storm Events DB exports + HailTrace bulk results both come as CSV.
+        # Cap at 200KB so a malicious or accidental multi-MB CSV doesn't blow
+        # the prompt budget — the storm DB rows we care about live near the
+        # top of the file after the user filters by date/location.
+        with open(file_path, "r", encoding="utf-8", errors="replace") as f:
+            text_content = f.read(200_000)
+        content.append({
+            "type": "text",
+            "text": f"[WEATHER REPORT — CSV/tabular]\n\n{text_content}",
+        })
+    elif ext == "zip":
+        # NOAA Storm Events Database "Search Results" downloads ship as
+        # `storm_data_search_results.csv.zip` — extract the first CSV/TXT
+        # member and treat as text. Skip image members (radar PNGs etc).
+        import zipfile
+        try:
+            with zipfile.ZipFile(file_path) as zf:
+                # Prefer CSV, then TXT, then skip.
+                candidates = sorted(
+                    [n for n in zf.namelist()
+                     if n.lower().endswith((".csv", ".txt"))
+                     and not n.startswith("__MACOSX/")],
+                    key=lambda n: (not n.lower().endswith(".csv"), len(n)),
+                )
+                if not candidates:
+                    raise ValueError(
+                        f"Weather ZIP {os.path.basename(file_path)} contains no "
+                        f"CSV or TXT files we can read."
+                    )
+                with zf.open(candidates[0]) as zmember:
+                    text_content = zmember.read(200_000).decode("utf-8", errors="replace")
+                print(f"[WEATHER] Extracted {candidates[0]} from "
+                      f"{os.path.basename(file_path)} ({len(text_content)} chars)")
+        except zipfile.BadZipFile as e:
+            raise ValueError(
+                f"Weather file {os.path.basename(file_path)} has .zip extension "
+                f"but is not a valid ZIP archive: {e}"
+            )
+        content.append({
+            "type": "text",
+            "text": f"[WEATHER REPORT — extracted from ZIP/{candidates[0]}]\n\n{text_content}",
         })
     elif media_type == "application/pdf":
         file_b64 = file_to_base64(file_path)
@@ -2482,12 +2536,18 @@ def extract_weather_data(client: anthropic.Anthropic, file_path: str) -> dict:
             "type": "document",
             "source": {"type": "base64", "media_type": media_type, "data": file_b64},
         })
-    else:
+    elif media_type in _IMAGE_MEDIA_OK:
         file_b64 = file_to_base64(file_path)
         content.append({
             "type": "image",
             "source": {"type": "base64", "media_type": media_type, "data": file_b64},
         })
+    else:
+        raise ValueError(
+            f"Weather file {os.path.basename(file_path)} has unsupported "
+            f"format '.{ext}' (media_type={media_type!r}). Supported: PDF, "
+            f"TXT, CSV, ZIP (containing CSV/TXT), JPG, PNG, GIF, WEBP."
+        )
 
     content.append({
         "type": "text",
@@ -3577,6 +3637,11 @@ def build_claim_config(
         # corrupt file, Anthropic transient error after retry exhaustion). Surface
         # so they know to re-upload rather than assuming pre-scope was intentional.
         _early_warnings.append("SCOPE_EXTRACTION_FAILED")
+    if claim.get("_weather_extraction_failed"):
+        # User uploaded a weather file (HailTrace/NOAA/etc.) but the extractor
+        # couldn't parse it. Forensic/estimate still ship — but the
+        # weather-corroboration paragraph in the forensic report will be empty.
+        _early_warnings.append("WEATHER_EXTRACTION_FAILED")
 
     config = {
         "phase": phase,
@@ -6524,7 +6589,20 @@ async def process_claim(claim_id: str, refresh_prices: bool = False):
                 return {}
             resolved = resolve_eml_to_document(weather_paths[0], source_dir)
             print("[PROCESS] Extracting weather data...")
-            return await asyncio.to_thread(extract_weather_data, claude, resolved)
+            try:
+                return await asyncio.to_thread(extract_weather_data, claude, resolved)
+            except (ValueError, FileNotFoundError, anthropic.APIError) as e:
+                # Bad weather file (wrong format, corrupt, bytes don't match
+                # extension) must NOT crash the whole claim. The forensic +
+                # estimate + scope comparison are still derivable from
+                # measurements + photos + carrier scope. Surface the failure
+                # on the shared claim dict so build_claim_config can emit a
+                # processing_warning the user can act on.
+                print(f"[PROCESS] Weather extraction failed — claim ships "
+                      f"without weather corroboration: {type(e).__name__}: {e}",
+                      flush=True)
+                claim["_weather_extraction_failed"] = f"{type(e).__name__}: {e}"
+                return {}
 
         print("[PROCESS] Running extraction steps in parallel...")
         measurements, photo_analysis, photo_integrity, carrier_data, weather_data, roof_facets_data = await asyncio.gather(
