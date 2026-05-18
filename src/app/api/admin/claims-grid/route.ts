@@ -99,11 +99,18 @@ export async function GET(req: Request) {
     .select("is_admin, company_id")
     .eq("user_id", user.id)
     .limit(1);
+  console.log("[claims-grid] auth", {
+    user_id: user.id,
+    rows_found: profileRows?.length ?? 0,
+    is_admin: profileRows?.[0]?.is_admin,
+    company_id: profileRows?.[0]?.company_id,
+  });
   if (!profileRows?.[0]?.is_admin) {
     return NextResponse.json({ error: "Not authorized" }, { status: 403 });
   }
   const companyId = profileRows[0].company_id;
   if (!companyId) {
+    console.log("[claims-grid] EARLY-EXIT no companyId");
     return NextResponse.json({ claims: [], counts: emptyCounts(), reps: [] });
   }
 
@@ -144,8 +151,15 @@ export async function GET(req: Request) {
     claimsQuery = claimsQuery.in("user_id", teamUserIds);
   }
 
-  const { data: claimRows } = await claimsQuery;
+  const { data: claimRows, error: claimsErr } = await claimsQuery;
   const claims = (claimRows || []) as ClaimRow[];
+  console.log("[claims-grid] claims-query", {
+    company_id: companyId,
+    team_count: teamUserIds.length,
+    rep_filter: repFilter,
+    rows_returned: claims.length,
+    error: claimsErr?.message,
+  });
 
   if (claims.length === 0) {
     return NextResponse.json({
