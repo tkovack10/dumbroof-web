@@ -9,6 +9,7 @@ import {
   type CompanyPhaseCounts,
 } from "@/components/company-phase-progress";
 import { AdminRightRail } from "@/components/admin-right-rail";
+import { AdminTabStrip } from "@/components/admin-tab-strip";
 import { createClient } from "@/lib/supabase/client";
 import {
   ClaimFilterChips,
@@ -32,6 +33,8 @@ interface GridResponse {
   phase_counts?: CompanyPhaseCounts;
 }
 
+type TimeTab = "today" | "this_week" | "all_open";
+
 export default function CommandCenterPage() {
   const [filter, setFilter] = useState<ClaimGridFilter>("all");
   const [grid, setGrid] = useState<GridResponse | null>(null);
@@ -39,6 +42,7 @@ export default function CommandCenterPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [firstName, setFirstName] = useState<string | undefined>(undefined);
+  const [timeTab, setTimeTab] = useState<TimeTab>("all_open");
 
   // Pull the caller's first name once for the hero greeting
   useEffect(() => {
@@ -151,6 +155,32 @@ export default function CommandCenterPage() {
           </div>
         )}
 
+        {/* Time tabs — Phase 6 Slice 6 */}
+        {(() => {
+          const allClaims = grid?.claims ?? [];
+          const now = Date.now();
+          const day = 86_400_000;
+          const todayCount = allClaims.filter((c) => {
+            if (!c.last_touched_at) return false;
+            return now - new Date(c.last_touched_at).getTime() < day;
+          }).length;
+          const weekCount = allClaims.filter((c) => {
+            if (!c.last_touched_at) return false;
+            return now - new Date(c.last_touched_at).getTime() < 7 * day;
+          }).length;
+          return (
+            <AdminTabStrip<TimeTab>
+              tabs={[
+                { key: "today", label: "Today", count: todayCount },
+                { key: "this_week", label: "This week", count: weekCount },
+                { key: "all_open", label: "All open", count: grid?.counts.all ?? null },
+              ]}
+              active={timeTab}
+              onChange={setTimeTab}
+            />
+          );
+        })()}
+
         {/* Filter chips */}
         <div className="mb-5">
           <ClaimFilterChips
@@ -186,9 +216,29 @@ export default function CommandCenterPage() {
           </div>
         ) : (
           <div className="space-y-2">
-            {grid.claims.map((c) => (
-              <ClaimRowAction key={c.id} claim={c} />
-            ))}
+            {(() => {
+              const now = Date.now();
+              const day = 86_400_000;
+              const visible = grid.claims.filter((c) => {
+                if (timeTab === "all_open") return true;
+                if (!c.last_touched_at) return false;
+                const age = now - new Date(c.last_touched_at).getTime();
+                if (timeTab === "today") return age < day;
+                return age < 7 * day; // this_week
+              });
+              if (visible.length === 0) {
+                return (
+                  <div className="glass-card p-12 text-center">
+                    <p className="text-sm text-[var(--gray-muted)]">
+                      No claims touched in this window.
+                    </p>
+                  </div>
+                );
+              }
+              return visible.map((c) => (
+                <ClaimRowAction key={c.id} claim={c} />
+              ));
+            })()}
           </div>
         )}
 
