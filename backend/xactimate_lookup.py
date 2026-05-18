@@ -86,6 +86,37 @@ DEFAULT_MARKETS = {
     "SC": "SCCH8X_02MAY26", # Charleston — coastal SC anchor (Alfonso 2026-05-14, 10 markets)
 }
 
+# Cross-state zip-prefix overrides for unpriced states. When a claim's state
+# isn't in DEFAULT_MARKETS, NEAREST_PRICED_STATE picks a substitute state but
+# then resolve_market falls through to that state's DEFAULT (e.g. Chicago for
+# IL) — which can be hundreds of miles from the actual property. This map
+# routes specific zip prefixes in unpriced states directly to the
+# geographically correct market in a neighboring priced state.
+#
+# Cox Roofing 2026-05-18 (7227 Michigan Ave St Louis MO 63111) drove this:
+# MO→IL substitution defaulted to ILCC (Chicago, 290 mi away) instead of
+# ILES (East St Louis, 5 mi across the river). Carrier pricing was already
+# in East St Louis range, so our Chicago supplement looked uncalibrated.
+#
+# Keyed by (origin_state_2letter, zip_prefix_3digit) → market_code.
+# Runs BEFORE NEAREST_PRICED_STATE in resolve_market. When the unpriced
+# state gets onboarded with native pricing, delete its entries here.
+CROSS_STATE_ZIP_OVERRIDE = {
+    # Missouri: no native pricing.
+    ("MO", "630"): "ILES8X_APR26",  # St Louis metro MO → East St Louis IL
+    ("MO", "631"): "ILES8X_APR26",  # St Louis MO city → East St Louis IL
+    ("MO", "633"): "ILES8X_APR26",  # St Charles MO → East St Louis IL
+    ("MO", "640"): "KSKC8X_02MAY26",  # Kansas City MO → Kansas City KS (same metro)
+    ("MO", "641"): "KSKC8X_02MAY26",  # Kansas City MO → Kansas City KS
+    ("MO", "660"): "KSKC8X_02MAY26",  # northwestern MO suburbs → Kansas City KS
+    # Wisconsin: no native pricing. Madison/Milwaukee are closer to Chicago
+    # than Minneapolis but routing through IL puts them at Chicago default,
+    # which is correct. Left as default-IL fallback; no override needed.
+    # West Virginia: WV→OH default goes to Dayton (OHDT). Charleston/Huntington
+    # WV are closer to Cincinnati/Columbus than Dayton — flagged for future
+    # work but no priced metro is dramatically closer than the existing default.
+}
+
 # Nearest priced state for every unpriced US state/territory. When a claim comes
 # in from a state we haven't onboarded, resolve_market substitutes the nearest
 # priced state's default market rather than silently dropping to NY pricing.
@@ -652,13 +683,30 @@ class XactRegistry:
 
         default = DEFAULT_MARKETS.get(state_upper)
         if not default:
-            # No Xactimate pricing for this state — substitute the nearest
-            # priced state instead of falling back to NY. Geographic proximity
-            # is a much better proxy for labor/material rates than alphabetical
-            # accident. Still recurse through resolve_market so city/zip
-            # routing inside the substitute state still applies (e.g. an Iowa
-            # claim near the MN border still resolves to Minneapolis, not the
-            # default MN market if a closer one were ever added).
+            # No Xactimate pricing for this state. Before falling back to the
+            # nearest priced state's default, check for a zip-prefix override
+            # that routes specific metros directly to a geographically-correct
+            # market in a neighboring priced state. This prevents bugs like
+            # MO 63xxx (St Louis) silently going to Chicago via IL default.
+            markets_dict_local = _get_all_markets().get("markets", {})
+            if zip_code:
+                zip_clean_o = "".join(c for c in str(zip_code) if c.isdigit())[:5]
+                if len(zip_clean_o) >= 3:
+                    override = CROSS_STATE_ZIP_OVERRIDE.get((state_upper, zip_clean_o[:3]))
+                    if override and override in markets_dict_local:
+                        logger.info(
+                            "[PRICING] No price list for %s; routing zip %s to %s via "
+                            "CROSS_STATE_ZIP_OVERRIDE (geographically nearest priced market).",
+                            state_upper, zip_clean_o, override,
+                        )
+                        return override
+
+            # No override — substitute the nearest priced state's default.
+            # Geographic proximity is a much better proxy for labor/material
+            # rates than alphabetical accident. Still recurse through
+            # resolve_market so city/zip routing inside the substitute state
+            # still applies (e.g. an Iowa claim near the MN border still
+            # resolves to Minneapolis if a closer market were ever added).
             substitute_state = NEAREST_PRICED_STATE.get(state_upper)
             if substitute_state and substitute_state in DEFAULT_MARKETS:
                 logger.warning(
