@@ -103,6 +103,28 @@ export default function CommissionsPage() {
     load();
   }, [load]);
 
+  // Always-on pending summary for the primary CTA, regardless of which
+  // tab is open. Refetched whenever the list reloads.
+  const [pendingSummary, setPendingSummary] = useState<{
+    count: number;
+    cents: number;
+  } | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/admin/commissions?status=pending")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((json) => {
+        if (cancelled || !json?.requests) return;
+        const rows = json.requests as CommissionRequest[];
+        const cents = rows.reduce((s, r) => s + r.amount_cents, 0);
+        setPendingSummary({ count: rows.length, cents });
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [tab]);
+
   const decide = useCallback(
     async (id: string, action: "approve" | "reject" | "mark_paid") => {
       setBusyId(id);
@@ -141,13 +163,22 @@ export default function CommissionsPage() {
               Approve, reject, and pay rep commission requests. 10% on checks, $100 per signed AOB.
             </p>
           </div>
-          {tab === "pending" && data.length > 0 && (
-            <a
-              href="#first-pending"
-              className="bg-gradient-to-r from-[var(--pink)] via-[var(--purple)] to-[var(--blue)] hover:shadow-[var(--shadow-glow-pink)] text-white px-5 py-2 rounded-xl text-sm font-bold transition-all"
+          {pendingSummary && pendingSummary.count > 0 ? (
+            <button
+              type="button"
+              onClick={() => setTab("pending")}
+              className="bg-gradient-to-r from-[var(--pink)] via-[var(--purple)] to-[var(--blue)] hover:shadow-[var(--shadow-glow-pink)] text-white px-5 py-2.5 rounded-xl text-sm font-bold transition-all"
             >
-              Review {data.length} pending →
-            </a>
+              Approve {pendingSummary.count} pending{" "}
+              <span className="font-mono opacity-90">
+                ({fmtMoneyCents(pendingSummary.cents)})
+              </span>
+              {" →"}
+            </button>
+          ) : (
+            <span className="text-xs text-[var(--green)] font-semibold inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-[var(--green)]/10 border border-[var(--green)]/30">
+              ✓ Nothing pending
+            </span>
           )}
         </div>
 

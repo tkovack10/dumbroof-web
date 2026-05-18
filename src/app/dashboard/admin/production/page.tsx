@@ -1,14 +1,17 @@
 "use client";
 
 import { useEffect, useState, useCallback, useMemo } from "react";
+import Link from "next/link";
 import {
   ProductionCalendar,
   type Schedule,
   type Crew,
 } from "@/components/production-calendar";
 import { ScheduleClaimModal } from "@/components/schedule-claim-modal";
+import { AdminTabStrip } from "@/components/admin-tab-strip";
 
 type View = "week" | "month";
+type ProductionTab = "unscheduled" | "calendar" | "crews";
 
 function startOfWeek(d: Date): Date {
   const x = new Date(d);
@@ -44,6 +47,7 @@ export default function ProductionPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showCrewModal, setShowCrewModal] = useState(false);
+  const [tab, setTab] = useState<ProductionTab>("calendar");
 
   const [editing, setEditing] = useState<Schedule | null>(null);
   const [creatingAt, setCreatingAt] = useState<Date | null>(null);
@@ -157,6 +161,70 @@ export default function ProductionPage() {
           />
         </div>
 
+        {/* Tabs — Phase 6 #5 */}
+        <AdminTabStrip<ProductionTab>
+          tabs={[
+            { key: "unscheduled", label: "Unscheduled", count: counts.needNotify },
+            { key: "calendar",    label: "Calendar",    count: counts.scheduled },
+            { key: "crews",       label: "Crews",       count: crews.length },
+          ]}
+          active={tab}
+          onChange={setTab}
+        />
+
+        {tab === "unscheduled" && (
+          <div className="glass-card p-8 text-center mb-6">
+            <p className="text-base font-semibold text-white mb-2">
+              Per-trade unscheduled blocks land with Slice C
+            </p>
+            <p className="text-sm text-[var(--gray-muted)] max-w-lg mx-auto">
+              When a rep marks a claim &quot;Ready to Build,&quot; each trade
+              (roofing / siding / gutters) will appear here as its own block —
+              production drags each one onto the calendar independently.{" "}
+              <Link href="/dashboard/admin?filter=awaiting_production" className="text-[var(--cyan)] hover:underline">
+                See claims awaiting production →
+              </Link>
+            </p>
+          </div>
+        )}
+
+        {tab === "crews" && (
+          <div className="glass-card p-6 mb-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-base font-bold text-white">Crews</h3>
+              <button
+                type="button"
+                onClick={() => setShowCrewModal(true)}
+                className="text-xs text-[var(--cyan)] hover:text-white font-semibold transition-colors"
+              >
+                + Add crew
+              </button>
+            </div>
+            {crews.length === 0 ? (
+              <p className="text-sm text-[var(--gray-muted)]">
+                No crews yet. Click <em>+ Add crew</em> to create one.
+              </p>
+            ) : (
+              <div className="space-y-2">
+                {crews.map((c) => (
+                  <div
+                    key={c.id}
+                    className="flex items-center gap-3 p-3 rounded-xl border border-[var(--border-glass)] bg-white/[0.02]"
+                  >
+                    <span
+                      className="w-4 h-4 rounded-full"
+                      style={{ background: c.color }}
+                    />
+                    <span className="text-sm text-white">{c.name}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {tab !== "calendar" ? null : (
+          <>
         {/* Controls */}
         <div className="glass-card p-3 mb-4 flex items-center justify-between flex-wrap gap-3">
           <div className="flex items-center gap-1">
@@ -238,6 +306,8 @@ export default function ProductionPage() {
               setModalOpen(true);
             }}
           />
+        )}
+          </>
         )}
       </div>
 
