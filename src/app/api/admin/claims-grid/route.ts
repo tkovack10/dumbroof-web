@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
+import { getTeamUserIds } from "@/lib/team-lookup";
+
+// Force dynamic so Vercel doesn't cache the response shape between auth states.
+export const dynamic = "force-dynamic";
 
 /**
  * GET /api/admin/claims-grid
@@ -96,44 +100,51 @@ export async function GET(req: Request) {
 
   const { data: profileRows, error: profileErr } = await supabaseAdmin
     .from("company_profiles")
-    .select("is_admin, company_id")
+    .select("is_admin, company_id, email")
     .eq("user_id", user.id)
     .limit(1);
-  if (!profileRows?.[0]?.is_admin) {
-    console.log(`[cg-dbg] uid=${user.id} rows=${profileRows?.length ?? 0} err=${profileErr?.message ?? "none"} admin=${profileRows?.[0]?.is_admin} cid=${profileRows?.[0]?.company_id} -> 403`);
-    return NextResponse.json({ error: "Not authorized" }, { status: 403 });
-  }
-  const companyId = profileRows[0].company_id;
-  if (!companyId) {
-    console.log(`[cg-dbg] uid=${user.id} admin=true cid=NULL -> early-exit-empty`);
-    return NextResponse.json({ claims: [], counts: emptyCounts(), reps: [] });
-  }
 
   const url = new URL(req.url);
   const filter = (url.searchParams.get("filter") || "all") as Filter;
   const repFilter = url.searchParams.get("rep");
   const scope = url.searchParams.get("scope") || "active";
   const limit = Math.min(parseInt(url.searchParams.get("limit") || "200"), 500);
+  const wantDiag = url.searchParams.get("diag") === "1";
 
-  // 1. Pull team members so we can hydrate rep names + render the rep selector
-  const { data: teamProfiles } = await supabaseAdmin
-    .from("company_profiles")
-    .select("user_id, email")
-    .eq("company_id", companyId);
-
-  const repMap = new Map<string, string>();
-  for (const p of teamProfiles || []) {
-    if (p.user_id && p.email) repMap.set(p.user_id as string, p.email as string);
+  if (!profileRows?.[0]?.is_admin) {
+    return NextResponse.json({ error: "Not authorized" }, { status: 403 });
   }
-  const teamUserIds = Array.from(repMap.keys());
 
-  // 2. Pull claims for the whole team (or just one rep if filter set)
+  // Use the same team-resolution helper that powers /api/admin/team (the
+  // endpoint we know is working). It falls back to domain matching when
+  // company_id isn't set — which is the bug the original code path likely hit.
+  const teamLookup = await getTeamUserIds({
+    id: user.id,
+    email: user.email || profileRows[0].email || null,
+  });
+  const teamUserIds = teamLookup.userIds;
+  const companyId = teamLookup.companyId;
+  const repMap = new Map<string, string>();
+  for (const m of teamLookup.members) {
+    if (m.id && m.email) repMap.set(m.id, m.email);
+  }
+
+  if (teamUserIds.length === 0) {
+    return NextResponse.json({
+      claims: [],
+      counts: emptyCounts(),
+      reps: [],
+      ...(wantDiag ? { _diag: { reason: "empty_team", user_id: user.id } } : {}),
+    });
+  }
+
+  // Pull claims for the whole team (or just one rep if filter set). Filter
+  // by team user_ids — works even when company_id is null on legacy rows.
   let claimsQuery = supabaseAdmin
     .from("claims")
     .select(
       "id, address, homeowner_name, carrier_name, status, user_id, assigned_user_id, last_touched_at, created_at, financials"
     )
-    .eq("company_id", companyId)
     .order("last_touched_at", { ascending: false })
     .limit(limit);
 
@@ -141,14 +152,15 @@ export async function GET(req: Request) {
     claimsQuery = claimsQuery.or(
       `user_id.eq.${repFilter},assigned_user_id.eq.${repFilter}`
     );
-  } else if (teamUserIds.length > 0) {
-    // Defense-in-depth: also constrain to team users (company_id should already do it)
+  } else {
     claimsQuery = claimsQuery.in("user_id", teamUserIds);
   }
 
   const { data: claimRows, error: claimsErr } = await claimsQuery;
   const claims = (claimRows || []) as ClaimRow[];
-  console.log(`[cg-dbg] cid=${companyId} team=${teamUserIds.length} rep=${repFilter ?? "-"} rows=${claims.length} err=${claimsErr?.message ?? "none"}`);
+  if (claimsErr) {
+    console.error("[claims-grid] query error:", claimsErr.message);
+  }
 
   if (claims.length === 0) {
     return NextResponse.json({
