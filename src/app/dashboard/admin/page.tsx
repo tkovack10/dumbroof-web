@@ -3,6 +3,12 @@
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { MoneyStrip } from "@/components/money-strip";
+import { WhatsNextHero } from "@/components/whats-next-hero";
+import {
+  CompanyPhaseProgress,
+  type CompanyPhaseCounts,
+} from "@/components/company-phase-progress";
+import { createClient } from "@/lib/supabase/client";
 import {
   ClaimFilterChips,
   type ClaimGridFilter,
@@ -22,6 +28,7 @@ interface Alert {
 interface GridResponse {
   claims: ClaimGridRow[];
   counts: ClaimGridCounts;
+  phase_counts?: CompanyPhaseCounts;
 }
 
 export default function CommandCenterPage() {
@@ -30,6 +37,18 @@ export default function CommandCenterPage() {
   const [alerts, setAlerts] = useState<Alert[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [firstName, setFirstName] = useState<string | undefined>(undefined);
+
+  // Pull the caller's first name once for the hero greeting
+  useEffect(() => {
+    const supabase = createClient();
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (!user?.email) return;
+      const local = user.email.split("@")[0];
+      const first = local.split(/[._-]/)[0];
+      if (first) setFirstName(first.charAt(0).toUpperCase() + first.slice(1));
+    });
+  }, []);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -72,8 +91,17 @@ export default function CommandCenterPage() {
           </p>
         </div>
 
+        {/* WHAT'S NEXT hero — Phase 6 Slice 2 morning briefing */}
+        <WhatsNextHero firstName={firstName} />
+
         {/* Money strip */}
         <MoneyStrip variant="banner" />
+
+        {/* Company phase progress — Phase 6 Slice 3 */}
+        <CompanyPhaseProgress
+          counts={grid?.phase_counts ?? null}
+          loading={loading && !grid}
+        />
 
         {/* Alerts row (only render if non-empty) */}
         {alerts.length > 0 && (

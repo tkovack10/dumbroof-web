@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { tradeColor, tradeKey } from "@/lib/trade-colors";
 
 interface LineItem {
   trade?: string | null;
@@ -21,14 +22,11 @@ interface TradeRoll {
   amount: number;
 }
 
-const TRADE_ORDER = ["roofing", "siding", "gutters", "misc"];
+// Sort order: roofing → siding → gutters → downspouts → flashing → skylights → misc
+const TRADE_ORDER = ["roofing", "siding", "gutters", "downspouts", "flashing", "skylights", "misc"];
 
 function normalizeTrade(t: string | null | undefined): string {
-  const x = (t || "misc").toLowerCase();
-  if (x === "roof") return "roofing";
-  if (x === "gutter") return "gutters";
-  if (TRADE_ORDER.includes(x)) return x;
-  return "misc";
+  return tradeKey(t);
 }
 
 function fmtNum(n: number): string {
@@ -141,25 +139,32 @@ export function WorkorderCard({ claimId }: { claimId: string }) {
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
         {rolls
           .filter((r) => r.trade !== "misc")
-          .map((r) => (
-            <div
-              key={r.trade}
-              className="p-3 rounded-xl border border-[var(--border-glass)] bg-white/[0.02]"
-            >
-              <p className="text-xs uppercase tracking-wide text-[var(--gray-muted)] font-bold">
-                {r.trade}
-              </p>
-              <p className="font-mono text-xl font-bold text-white mt-1">
-                {fmtNum(r.qty)}{" "}
-                <span className="text-xs text-[var(--gray-muted)] font-normal uppercase">
-                  {r.unit || "—"}
-                </span>
-              </p>
-              <p className="text-[10px] text-[var(--gray-dim)] mt-1">
-                {r.items} line {r.items === 1 ? "item" : "items"} · {fmtMoney(r.amount)}
-              </p>
-            </div>
-          ))}
+          .map((r) => {
+            const tc = tradeColor(r.trade);
+            return (
+              <div
+                key={r.trade}
+                className="p-3 rounded-xl border bg-white/[0.02]"
+                style={{ borderColor: tc.border }}
+              >
+                <p
+                  className="text-xs uppercase tracking-wide font-bold"
+                  style={{ color: tc.color }}
+                >
+                  {tc.label}
+                </p>
+                <p className="font-mono text-xl font-bold text-white mt-1">
+                  {fmtNum(r.qty)}{" "}
+                  <span className="text-xs text-[var(--gray-muted)] font-normal uppercase">
+                    {r.unit || "—"}
+                  </span>
+                </p>
+                <p className="text-[10px] text-[var(--gray-dim)] mt-1">
+                  {r.items} line {r.items === 1 ? "item" : "items"} · {fmtMoney(r.amount)}
+                </p>
+              </div>
+            );
+          })}
       </div>
 
       {miscItems.length > 0 && (

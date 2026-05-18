@@ -10,10 +10,15 @@ import {
   ClaimRowAction,
   type ClaimGridRow,
 } from "@/components/claim-row-action";
+import {
+  CompanyPhaseProgress,
+  type CompanyPhaseCounts,
+} from "@/components/company-phase-progress";
 
 interface GridResponse {
   claims: ClaimGridRow[];
   counts: ClaimGridCounts;
+  phase_counts?: CompanyPhaseCounts;
 }
 
 const STAGES: { key: string; label: string; color: string }[] = [
@@ -108,6 +113,11 @@ export default function PipelinePage() {
             Every claim, grouped by stage. Click any stage header to collapse.
           </p>
         </div>
+
+        <CompanyPhaseProgress
+          counts={data?.phase_counts ?? null}
+          loading={loading && !data}
+        />
 
         <div className="mb-5">
           <ClaimFilterChips

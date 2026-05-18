@@ -10,6 +10,10 @@ import {
   ClaimRowAction,
   type ClaimGridRow,
 } from "@/components/claim-row-action";
+import {
+  CompanyPhaseProgress,
+  type CompanyPhaseCounts,
+} from "@/components/company-phase-progress";
 
 interface RepRollup {
   user_id: string;
@@ -23,6 +27,7 @@ interface GridResponse {
   claims: ClaimGridRow[];
   counts: ClaimGridCounts;
   reps: RepRollup[];
+  phase_counts?: CompanyPhaseCounts;
 }
 
 function repName(email: string | null): string {
@@ -131,6 +136,11 @@ export default function RepsPage() {
             );
           })}
         </div>
+
+        <CompanyPhaseProgress
+          counts={data?.phase_counts ?? null}
+          loading={loading && !data}
+        />
 
         {/* Filter chips */}
         <div className="mb-5">

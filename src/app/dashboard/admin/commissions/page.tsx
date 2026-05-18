@@ -134,11 +134,21 @@ export default function CommissionsPage() {
   return (
     <div className="p-6 lg:p-8 min-h-screen">
       <div className="max-w-7xl mx-auto">
-        <div className="mb-6 pl-10 lg:pl-0">
-          <h1 className="text-2xl font-bold gradient-text">Commissions</h1>
-          <p className="text-[var(--gray-muted)] mt-1 text-sm">
-            Approve, reject, and pay rep commission requests. 10% on checks, $100 per signed AOB.
-          </p>
+        <div className="mb-6 pl-10 lg:pl-0 flex items-start justify-between flex-wrap gap-4">
+          <div>
+            <h1 className="text-2xl font-bold gradient-text">Commissions</h1>
+            <p className="text-[var(--gray-muted)] mt-1 text-sm">
+              Approve, reject, and pay rep commission requests. 10% on checks, $100 per signed AOB.
+            </p>
+          </div>
+          {tab === "pending" && data.length > 0 && (
+            <a
+              href="#first-pending"
+              className="bg-gradient-to-r from-[var(--pink)] via-[var(--purple)] to-[var(--blue)] hover:shadow-[var(--shadow-glow-pink)] text-white px-5 py-2 rounded-xl text-sm font-bold transition-all"
+            >
+              Review {data.length} pending →
+            </a>
+          )}
         </div>
 
         {/* Tabs */}

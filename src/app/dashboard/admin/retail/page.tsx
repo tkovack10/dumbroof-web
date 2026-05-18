@@ -161,6 +161,23 @@ export default function RetailPage() {
               <em>&quot;invoice $4,500 deposit&quot;</em>.
             </p>
           </div>
+          <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => {
+              // Open Richard launcher with a prompt — Phase 4 retail flow
+              window.dispatchEvent(
+                new CustomEvent("richard-launcher:open", {
+                  detail: {
+                    prompt: "Help me create a retail estimate for ",
+                  },
+                })
+              );
+            }}
+            className="bg-gradient-to-r from-[var(--pink)] via-[var(--purple)] to-[var(--blue)] hover:shadow-[var(--shadow-glow-pink)] text-white px-5 py-2 rounded-xl text-sm font-bold transition-all"
+          >
+            + Ask Richard for an estimate
+          </button>
           <button
             type="button"
             onClick={() => setSettingsOpen(true)}
@@ -188,6 +205,7 @@ export default function RetailPage() {
               Prices &amp; terms
             </span>
           </button>
+          </div>
         </div>
 
         {/* KPIs */}

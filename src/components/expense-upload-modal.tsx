@@ -3,6 +3,7 @@
 import { useState, useCallback, useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { directUpload } from "@/lib/upload-utils";
+import { expenseTypeColor } from "@/lib/trade-colors";
 
 /**
  * Local YYYY-MM-DD — DO NOT use `toISOString().slice(0,10)` here.
@@ -197,21 +198,26 @@ export function ExpenseUploadModal({ claimId, open, onClose, onSaved }: Props) {
               Type
             </label>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-              {TYPE_OPTIONS.map((t) => (
-                <button
-                  key={t.value}
-                  type="button"
-                  onClick={() => setType(t.value)}
-                  className={`flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium border transition-colors ${
-                    type === t.value
-                      ? "border-[var(--cyan)] bg-[var(--cyan)]/[0.08] text-white"
-                      : "border-[var(--border-glass)] bg-white/[0.02] text-[var(--gray)] hover:bg-white/[0.04]"
-                  }`}
-                >
-                  <span>{t.emoji}</span>
-                  <span>{t.label}</span>
-                </button>
-              ))}
+              {TYPE_OPTIONS.map((t) => {
+                const tc = expenseTypeColor(t.value);
+                const active = type === t.value;
+                return (
+                  <button
+                    key={t.value}
+                    type="button"
+                    onClick={() => setType(t.value)}
+                    className="flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium border transition-colors hover:brightness-110"
+                    style={{
+                      borderColor: active ? tc.color : "var(--border-glass)",
+                      background: active ? tc.bg : "rgba(255,255,255,0.02)",
+                      color: active ? tc.color : "var(--gray)",
+                    }}
+                  >
+                    <span>{t.emoji}</span>
+                    <span>{t.label}</span>
+                  </button>
+                );
+              })}
             </div>
           </div>
 

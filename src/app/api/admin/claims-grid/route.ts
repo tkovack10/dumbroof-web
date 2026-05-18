@@ -258,12 +258,31 @@ export async function GET(req: Request) {
   // Counts BEFORE filter (so filter chips can show totals across all)
   const counts = computeCounts(scoped);
 
+  // Company-level 3-phase rollup (Phase 6 Slice 3) — same primitive as the
+  // per-claim lifecycle bar, scoped to the whole company.
+  //   open             = no forensic sent yet
+  //   awaiting_carrier = forensic sent, no supplement sent yet
+  //   ready_to_pay     = supplement sent, no check received yet
+  // Mutually exclusive — every claim falls into exactly one bucket.
+  const phase_counts = { open: 0, awaiting_carrier: 0, ready_to_pay: 0 };
+  for (const c of scoped) {
+    if (!c.checkpoints.forensic.done) {
+      phase_counts.open++;
+    } else if (!c.checkpoints.supplement.done) {
+      phase_counts.awaiting_carrier++;
+    } else if (!c.checkpoints.check_received.done) {
+      phase_counts.ready_to_pay++;
+    }
+    // claims with check_received fall out of the active pipeline
+  }
+
   // Apply the requested filter
   const filtered = applyFilter(scoped, filter);
 
   return NextResponse.json({
     claims: filtered,
     counts,
+    phase_counts,
     reps: buildRepRollup(repMap, scoped),
   });
 }

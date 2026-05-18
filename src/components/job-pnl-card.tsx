@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { ExpenseUploadModal } from "@/components/expense-upload-modal";
+import { expenseTypeColor } from "@/lib/trade-colors";
 
 interface Expense {
   id: string;
@@ -15,15 +16,11 @@ interface Expense {
   notes: string | null;
 }
 
-const TYPE_COLORS: Record<string, string> = {
-  material: "var(--cyan)",
-  labor: "var(--pink)",
-  dumpster: "var(--amber)",
-  subcontractor: "var(--purple)",
-  permit: "var(--blue)",
-  rental: "var(--green)",
-  misc: "var(--gray)",
-};
+// Color each expense type via the canonical trade-color map so the P&L
+// breakdown bars match the trade scheme used on production / workorder views.
+function colorForType(t: string): string {
+  return expenseTypeColor(t).color;
+}
 
 const TYPE_LABEL: Record<string, string> = {
   material: "Material",
@@ -141,7 +138,7 @@ export function JobPnlCard({
               <div key={t} className="flex items-center gap-2 text-xs">
                 <span
                   className="w-2 h-2 rounded-full flex-shrink-0"
-                  style={{ background: TYPE_COLORS[t] }}
+                  style={{ background: colorForType(t) }}
                 />
                 <span className="text-[var(--gray)] flex-1">
                   {TYPE_LABEL[t] ?? t}
@@ -183,7 +180,7 @@ export function JobPnlCard({
                 >
                   <span
                     className="w-2 h-2 rounded-full flex-shrink-0"
-                    style={{ background: TYPE_COLORS[e.type] }}
+                    style={{ background: colorForType(e.type) }}
                   />
                   <div className="flex-1 min-w-0">
                     <p className="text-white truncate">

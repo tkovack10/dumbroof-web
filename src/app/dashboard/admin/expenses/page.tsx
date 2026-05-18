@@ -130,11 +130,29 @@ export default function ExpensesPage() {
   return (
     <div className="p-6 lg:p-8 min-h-screen">
       <div className="max-w-7xl mx-auto">
-        <div className="mb-6 pl-10 lg:pl-0">
-          <h1 className="text-2xl font-bold gradient-text">Job P&amp;L</h1>
-          <p className="text-[var(--gray-muted)] mt-1 text-sm">
-            Receipts in, RCV out, net by job. Negative margins flagged red.
-          </p>
+        <div className="mb-6 pl-10 lg:pl-0 flex items-start justify-between flex-wrap gap-4">
+          <div>
+            <h1 className="text-2xl font-bold gradient-text">Job P&amp;L</h1>
+            <p className="text-[var(--gray-muted)] mt-1 text-sm">
+              Receipts in, RCV out, net by job. Negative margins flagged red.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              // Open Richard with a prompt — reuses the receipt-OCR tool path
+              window.dispatchEvent(
+                new CustomEvent("richard-launcher:open", {
+                  detail: {
+                    prompt: "I want to record an expense receipt for ",
+                  },
+                })
+              );
+            }}
+            className="bg-gradient-to-r from-[var(--pink)] via-[var(--purple)] to-[var(--blue)] hover:shadow-[var(--shadow-glow-pink)] text-white px-5 py-2 rounded-xl text-sm font-bold transition-all"
+          >
+            + Record an expense
+          </button>
         </div>
 
         {/* Company totals */}
