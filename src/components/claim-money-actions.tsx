@@ -32,22 +32,45 @@ export function ClaimMoneyActions({ claimId }: { claimId: string }) {
       const [{ data: profile }, { data: claim }] = await Promise.all([
         supabase
           .from("company_profiles")
-          .select("company_id")
+          .select("company_id, email")
           .eq("user_id", user.id)
           .maybeSingle(),
         supabase
           .from("claims")
-          .select("company_id")
+          .select("company_id, user_id, assigned_user_id")
           .eq("id", claimId)
           .maybeSingle(),
       ]);
-      if (cancelled) return;
-      const ok = !!(
+      if (cancelled || !claim) return;
+      // Authorized when ANY of these hold:
+      //   1. Same company_id (canonical)
+      //   2. Caller is the claim owner (user_id)
+      //   3. Caller is the assigned rep
+      //   4. Same email domain (legacy pre-company_id teams) — covers the
+      //      48 USARM claims with null company_id that the strict check missed
+      const sameCompany = !!(
         profile?.company_id &&
-        claim?.company_id &&
+        claim.company_id &&
         profile.company_id === claim.company_id
       );
-      setCanSubmit(ok);
+      const owns = claim.user_id === user.id;
+      const assigned = claim.assigned_user_id === user.id;
+      const callerDomain = (user.email || profile?.email || "")
+        .split("@")[1]
+        ?.toLowerCase();
+      const claimOwnerDomain = await (async () => {
+        if (!callerDomain) return null;
+        const { data: ownerProfile } = await supabase
+          .from("company_profiles")
+          .select("email")
+          .eq("user_id", claim.user_id)
+          .maybeSingle();
+        return (ownerProfile?.email || "").split("@")[1]?.toLowerCase() ?? null;
+      })();
+      const sameDomain = !!(
+        callerDomain && claimOwnerDomain && callerDomain === claimOwnerDomain
+      );
+      setCanSubmit(sameCompany || owns || assigned || sameDomain);
     }
     check();
     return () => {

@@ -7,11 +7,11 @@ interface ClaimRow {
   address: string | null;
   homeowner_name: string | null;
   homeowner_email: string | null;
-  carrier_name: string | null;
+  carrier: string | null;
   status: string | null;
   last_touched_at: string | null;
   created_at: string | null;
-  financials: { total?: number } | null;
+  contractor_rcv: number | null;
 }
 
 interface EventRow {
@@ -72,7 +72,7 @@ export async function GET(
   // matches.
   const { data: claimRows } = await supabaseAdmin
     .from("claims")
-    .select("id, address, carrier_name, status, last_touched_at, created_at, financials, homeowner_email, homeowner_name")
+    .select("id, address, carrier, status, last_touched_at, created_at, contractor_rcv, homeowner_email, homeowner_name")
     .or(`user_id.eq.${repUserId},assigned_user_id.eq.${repUserId}`)
     .order("last_touched_at", { ascending: false })
     .limit(100);

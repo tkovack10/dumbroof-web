@@ -24,22 +24,39 @@ export function ClaimExpenseActions({ claimId }: { claimId: string }) {
       const [{ data: profile }, { data: claim }] = await Promise.all([
         supabase
           .from("company_profiles")
-          .select("company_id")
+          .select("company_id, email")
           .eq("user_id", user.id)
           .maybeSingle(),
         supabase
           .from("claims")
-          .select("company_id")
+          .select("company_id, user_id, assigned_user_id")
           .eq("id", claimId)
           .maybeSingle(),
       ]);
-      if (cancelled) return;
-      const ok = !!(
+      if (cancelled || !claim) return;
+      const sameCompany = !!(
         profile?.company_id &&
-        claim?.company_id &&
+        claim.company_id &&
         profile.company_id === claim.company_id
       );
-      setCanSubmit(ok);
+      const owns = claim.user_id === user.id;
+      const assigned = claim.assigned_user_id === user.id;
+      const callerDomain = (user.email || profile?.email || "")
+        .split("@")[1]
+        ?.toLowerCase();
+      let sameDomain = false;
+      if (callerDomain && !sameCompany && !owns && !assigned) {
+        const { data: ownerProfile } = await supabase
+          .from("company_profiles")
+          .select("email")
+          .eq("user_id", claim.user_id)
+          .maybeSingle();
+        const claimDomain = (ownerProfile?.email || "")
+          .split("@")[1]
+          ?.toLowerCase();
+        sameDomain = !!(claimDomain && callerDomain === claimDomain);
+      }
+      setCanSubmit(sameCompany || owns || assigned || sameDomain);
     }
     check();
     return () => {

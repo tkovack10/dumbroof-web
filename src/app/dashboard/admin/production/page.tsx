@@ -17,17 +17,23 @@ function startOfWeek(d: Date): Date {
   return x;
 }
 
+const MONTH_SHORT = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+const MONTH_LONG = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+
 function fmtRange(view: View, cursor: Date): string {
+  // Build manually instead of toLocaleDateString — Vercel edge ICU data has
+  // produced odd output like "May 17 – 2026 (day: 23)" in production.
   if (view === "week") {
     const start = startOfWeek(cursor);
     const end = new Date(start.getTime() + 6 * 86_400_000);
     const sameMonth = start.getMonth() === end.getMonth();
-    if (sameMonth) {
-      return `${start.toLocaleDateString("en-US", { month: "short", day: "numeric" })} – ${end.toLocaleDateString("en-US", { day: "numeric", year: "numeric" })}`;
-    }
-    return `${start.toLocaleDateString("en-US", { month: "short", day: "numeric" })} – ${end.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}`;
+    const startStr = `${MONTH_SHORT[start.getMonth()]} ${start.getDate()}`;
+    const endStr = sameMonth
+      ? `${end.getDate()}, ${end.getFullYear()}`
+      : `${MONTH_SHORT[end.getMonth()]} ${end.getDate()}, ${end.getFullYear()}`;
+    return `${startStr} – ${endStr}`;
   }
-  return cursor.toLocaleDateString("en-US", { month: "long", year: "numeric" });
+  return `${MONTH_LONG[cursor.getMonth()]} ${cursor.getFullYear()}`;
 }
 
 export default function ProductionPage() {
