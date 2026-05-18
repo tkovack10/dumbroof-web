@@ -54,7 +54,9 @@ export async function GET() {
       .eq("company_id", companyId),
     supabaseAdmin
       .from("claims")
-      .select("id, address, homeowner_name, carrier_name, status, financials, last_touched_at")
+      // claims.carrier (not carrier_name); no `financials` jsonb — use
+      // contractor_rcv (numeric). Alias to keep response shape stable.
+      .select("id, address, homeowner_name, carrier_name:carrier, status, contractor_rcv, last_touched_at")
       .eq("company_id", companyId)
       .order("last_touched_at", { ascending: false })
       .limit(500),
@@ -95,7 +97,7 @@ export async function GET() {
   const jobs = claims.map((c) => {
     const checksTotalCents = checksByClaim.get(c.id) ?? 0;
     const financialsTotalCents = Math.round(
-      ((c.financials as { total?: number } | null)?.total ?? 0) * 100
+      Number((c as { contractor_rcv?: number | null }).contractor_rcv ?? 0) * 100
     );
     const revenueCents = checksTotalCents > 0 ? checksTotalCents : financialsTotalCents;
     const expSlot = expByClaim.get(c.id) ?? { total: 0, byType: {} };

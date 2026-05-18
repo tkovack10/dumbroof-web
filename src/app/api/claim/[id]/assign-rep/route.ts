@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { logClaimEvent } from "@/lib/claim-events";
+import { PUBLIC_DOMAINS } from "@/lib/team-lookup";
 
 /**
  * POST /api/claim/[id]/assign-rep
@@ -76,7 +77,10 @@ export async function POST(
     return NextResponse.json({ error: "Not authorized" }, { status: 403 });
   }
 
-  // Validate the new rep is in the caller's company (when assigning, not unassigning)
+  // Validate the new rep is in the caller's company (when assigning, not unassigning).
+  // Domain fallback intentionally EXCLUDES public mailbox domains (gmail.com,
+  // outlook.com, etc.) — otherwise any gmail user could reassign any other
+  // gmail user's claim. PUBLIC_DOMAINS is defined in team-lookup.ts.
   if (newRepId && newRepProfile) {
     const sameCompany =
       callerProfile?.company_id &&
@@ -89,7 +93,10 @@ export async function POST(
       const newRepDomain = (newRepProfile.email || "")
         .split("@")[1]
         ?.toLowerCase();
-      return !!(callerDomain && newRepDomain && callerDomain === newRepDomain);
+      if (!callerDomain || !newRepDomain) return false;
+      if (callerDomain !== newRepDomain) return false;
+      if (PUBLIC_DOMAINS.has(callerDomain)) return false;
+      return true;
     })();
     if (!sameCompany && !sameDomain) {
       return NextResponse.json(
@@ -111,27 +118,56 @@ export async function POST(
   }
 
   const previousRepId = claim.assigned_user_id;
-  const { error: updErr } = await supabaseAdmin
+  // Concurrency guard: the UPDATE must match the previous assignee we just
+  // read. If a second admin reassigned between our read and write, the
+  // .eq() narrows to zero rows and the count comes back 0 → 409 conflict.
+  // Without this, two simultaneous reassignments would silently last-writer-
+  // wins and the timeline audit log would lie about previous_rep_user_id.
+  const updQuery = supabaseAdmin
     .from("claims")
-    .update({ assigned_user_id: newRepId })
+    .update({
+      assigned_user_id: newRepId,
+      last_touched_at: new Date().toISOString(),
+    })
     .eq("id", claimId);
+  const guarded =
+    previousRepId === null
+      ? updQuery.is("assigned_user_id", null)
+      : updQuery.eq("assigned_user_id", previousRepId);
+  // .select() returns updated rows; row count tells us if the guarded
+  // condition matched (zero rows = someone else won the race).
+  const { data: updatedRows, error: updErr } = await guarded.select("id");
 
   if (updErr) {
     return NextResponse.json({ error: updErr.message }, { status: 500 });
   }
+  if (!updatedRows || updatedRows.length === 0) {
+    return NextResponse.json(
+      {
+        error: "Reassignment conflict — claim was already updated by someone else. Refresh and try again.",
+      },
+      { status: 409 }
+    );
+  }
 
-  await logClaimEvent(claimId, "rep_assigned", {
-    source: "user",
-    createdBy: user.id,
-    title: newRepId
-      ? `Rep assigned: ${newRepProfile?.email ?? newRepId}`
-      : "Rep unassigned",
-    metadata: {
-      previous_rep_user_id: previousRepId,
-      new_rep_user_id: newRepId,
-      new_rep_email: newRepProfile?.email ?? null,
-    },
-  });
+  // Emit event but don't fail the request if it errors (timeline write is
+  // best-effort; the assignment itself already succeeded).
+  try {
+    await logClaimEvent(claimId, "rep_assigned", {
+      source: "user",
+      createdBy: user.id,
+      title: newRepId
+        ? `Rep assigned: ${newRepProfile?.email ?? newRepId}`
+        : "Rep unassigned",
+      metadata: {
+        previous_rep_user_id: previousRepId,
+        new_rep_user_id: newRepId,
+        new_rep_email: newRepProfile?.email ?? null,
+      },
+    });
+  } catch (e) {
+    console.warn("[assign-rep] timeline write failed (non-fatal):", e);
+  }
 
   return NextResponse.json({
     ok: true,

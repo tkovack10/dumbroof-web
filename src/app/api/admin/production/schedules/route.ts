@@ -76,7 +76,9 @@ export async function GET(req: Request) {
   const claimIds = Array.from(new Set(rows.map((r) => r.claim_id)));
   const { data: claims } = await supabaseAdmin
     .from("claims")
-    .select("id, address, homeowner_name, homeowner_email, carrier_name, status")
+    // Alias carrier → carrier_name in the response shape so the
+    // <ProductionCalendar> consumer's Claim type doesn't need to change.
+    .select("id, address, homeowner_name, homeowner_email, carrier_name:carrier, status")
     .in("id", claimIds);
 
   const claimById = new Map(

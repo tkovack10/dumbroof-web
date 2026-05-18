@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { ExpenseUploadModal } from "@/components/expense-upload-modal";
+import { PUBLIC_DOMAINS } from "@/lib/team-lookup";
 
 /**
  * Phase 3 — bounded expense capture button for claim detail.
@@ -45,7 +46,13 @@ export function ClaimExpenseActions({ claimId }: { claimId: string }) {
         .split("@")[1]
         ?.toLowerCase();
       let sameDomain = false;
-      if (callerDomain && !sameCompany && !owns && !assigned) {
+      if (
+        callerDomain &&
+        !sameCompany &&
+        !owns &&
+        !assigned &&
+        !PUBLIC_DOMAINS.has(callerDomain)
+      ) {
         const { data: ownerProfile } = await supabase
           .from("company_profiles")
           .select("email")

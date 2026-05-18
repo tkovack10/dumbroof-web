@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { CheckUploadModal } from "@/components/check-upload-modal";
 import { CommissionRequestModal } from "@/components/commission-request-modal";
 import { createClient } from "@/lib/supabase/client";
+import { PUBLIC_DOMAINS } from "@/lib/team-lookup";
 
 /**
  * Phase 1 — bounded add-on to the claim detail page.
@@ -67,8 +68,13 @@ export function ClaimMoneyActions({ claimId }: { claimId: string }) {
           .maybeSingle();
         return (ownerProfile?.email || "").split("@")[1]?.toLowerCase() ?? null;
       })();
+      // Exclude public mailbox domains (gmail.com, etc.) so any
+      // gmail user can't see floating actions on another gmail user's claim.
       const sameDomain = !!(
-        callerDomain && claimOwnerDomain && callerDomain === claimOwnerDomain
+        callerDomain &&
+        claimOwnerDomain &&
+        callerDomain === claimOwnerDomain &&
+        !PUBLIC_DOMAINS.has(callerDomain)
       );
       setCanSubmit(sameCompany || owns || assigned || sameDomain);
     }

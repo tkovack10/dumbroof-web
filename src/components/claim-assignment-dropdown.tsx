@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { PUBLIC_DOMAINS } from "@/lib/team-lookup";
 
 interface TeamMember {
   id: string;
@@ -76,7 +77,7 @@ export function ClaimAssignmentDropdown({ claimId }: { claimId: string }) {
         .split("@")[1]
         ?.toLowerCase();
       let sameDomain = false;
-      if (callerDomain && !sameCompany) {
+      if (callerDomain && !sameCompany && !PUBLIC_DOMAINS.has(callerDomain)) {
         const { data: ownerProf } = await supabase
           .from("company_profiles")
           .select("email")

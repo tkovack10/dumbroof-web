@@ -18,16 +18,12 @@ export async function GET() {
     return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
   }
 
-  // Admin check
-  const { data: profileRows } = await supabaseAdmin
-    .from("company_profiles")
-    .select("is_admin")
-    .eq("user_id", user.id)
-    .limit(1);
-
-  if (!profileRows?.[0]?.is_admin) {
-    return NextResponse.json({ error: "Not authorized" }, { status: 403 });
-  }
+  // Authenticated team-member access. Returns only the caller's own team
+  // (scoped via getTeamUserIds) so this is safe to expose to non-admins —
+  // they can already see their own team members elsewhere (claim assignee
+  // display, rep page, etc). Required by Phase 5 Slice B's per-claim
+  // assignment dropdown which needs to be usable by the current assignee
+  // even if they're not an admin.
 
   try {
     const { userIds: teamUserIds, members: teamMembers } = await getTeamUserIds(user);

@@ -85,7 +85,10 @@ export async function GET(req: Request) {
       .in("user_id", repIds),
     supabaseAdmin
       .from("claims")
-      .select("id, address, homeowner_name, carrier_name, financials")
+      // claims.carrier (not carrier_name); claims has no `financials` jsonb —
+      // the canonical money field is contractor_rcv (numeric). Alias both so
+      // the client `Claim` type doesn't need to change.
+      .select("id, address, homeowner_name, carrier_name:carrier, contractor_rcv")
       .in("id", claimIds),
   ]);
 
@@ -100,7 +103,9 @@ export async function GET(req: Request) {
       address: string | null;
       homeowner_name: string | null;
       carrier_name: string | null;
-      financials: { total?: number } | null;
+      // Preserved as `financials.total` for downstream consumer compat
+      // even though it's sourced from claims.contractor_rcv.
+      financials: { total: number } | null;
     }
   >(
     (claims || []).map((c) => [
@@ -109,7 +114,10 @@ export async function GET(req: Request) {
         address: (c.address as string | null) ?? null,
         homeowner_name: (c.homeowner_name as string | null) ?? null,
         carrier_name: (c.carrier_name as string | null) ?? null,
-        financials: (c.financials as { total?: number } | null) ?? null,
+        // Preserve the legacy `financials.total` shape downstream consumers expect.
+        financials: c.contractor_rcv != null
+          ? { total: Number(c.contractor_rcv) }
+          : null,
       },
     ])
   );

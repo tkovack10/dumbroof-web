@@ -60,7 +60,7 @@ export async function POST(
 
   const { data: claim } = await supabaseAdmin
     .from("claims")
-    .select("id, homeowner_name, homeowner_email, address, carrier_name")
+    .select("id, homeowner_name, homeowner_email, address, carrier")
     .eq("id", schedule.claim_id)
     .maybeSingle();
   if (!claim?.homeowner_email) {
