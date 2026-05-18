@@ -1,8 +1,8 @@
 {
-  "generated": "2026-05-05",
+  "generated": "2026-05-14",
   "priceListVersion": "MAR26",
   "profile": "8D",
-  "note": "NY/NJ/PA prices from Xactimate Online Excel exports + xactimate-prices.html (MAR26). 6 items (RFG RGVC, STP7, HIGH, CLN DMPW, GEN PRMT, CLN GCLN) require Xactimate Desktop. Other markets need price list requests via Xactimate.\n\nArizona (6) + South Carolina (10) added 2026-05-14 by Alfonso.",
+  "note": "NY/NJ/PA prices from Xactimate Online Excel exports + xactimate-prices.html (MAR26). 6 items (RFG RGVC, STP7, HIGH, CLN DMPW, GEN PRMT, CLN GCLN) require Xactimate Desktop. Other markets need price list requests via Xactimate.",
   "nullItemsNote": "RFG RGVC / RFG STP7 / RFG HIGH / CLN DMPW / GEN PRMT / CLN GCLN \u00e2\u20ac\u201d not exportable via Online API, requires Desktop price lookup.",
   "pendingMarketsNote": "Markets beyond NY/NJ/PA require requesting price lists in Xactimate Desktop \u00e2\u2020\u2019 Preferences \u00e2\u2020\u2019 Price Lists \u00e2\u2020\u2019 Request Price List.",
   "markets": {
@@ -92186,6 +92186,5 @@
         }
       ]
     }
-  },
-  "_last_updated": "2026-05-14"
+  }
 }
