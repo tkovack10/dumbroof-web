@@ -43,13 +43,13 @@ interface ClaimRow {
   id: string;
   address: string | null;
   homeowner_name: string | null;
-  carrier_name: string | null;
+  carrier: string | null;
   status: string | null;
   user_id: string;
   assigned_user_id: string | null;
   last_touched_at: string | null;
   created_at: string | null;
-  financials: { total?: number } | null;
+  contractor_rcv: number | null;
 }
 
 interface EventRow {
@@ -81,7 +81,7 @@ interface EnrichedClaim {
   rep_user_id: string;
   rep_email: string | null;
   last_touched_at: string | null;
-  financials: { total?: number } | null;
+  contractor_rcv: number | null;
   checkpoints: Checkpoints;
   is_scheduled: boolean;
   all_lit: boolean;
@@ -98,46 +98,38 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
   }
 
-  const profileResp = await supabaseAdmin
+  const { data: profileRows } = await supabaseAdmin
     .from("company_profiles")
     .select("is_admin, company_id, email")
     .eq("user_id", user.id)
     .limit(1);
-  const profileRows = profileResp.data;
-  const profileErr = profileResp.error as { message?: string } | null;
+
+  if (!profileRows?.[0]?.is_admin) {
+    return NextResponse.json({ error: "Not authorized" }, { status: 403 });
+  }
 
   const url = new URL(req.url);
   const filter = (url.searchParams.get("filter") || "all") as Filter;
   const repFilter = url.searchParams.get("rep");
   const scope = url.searchParams.get("scope") || "active";
   const limit = Math.min(parseInt(url.searchParams.get("limit") || "200"), 500);
-  const wantDiag = url.searchParams.get("diag") === "1";
 
-  if (!profileRows?.[0]?.is_admin) {
-    return NextResponse.json({ error: "Not authorized" }, { status: 403 });
-  }
-
-  // Use the same team-resolution helper that powers /api/admin/team (the
-  // endpoint we know is working). It falls back to domain matching when
-  // company_id isn't set — which is the bug the original code path likely hit.
+  // Use the same team-resolution helper that powers /api/admin/team. It has
+  // the domain-fallback path for legacy users whose company_profiles row
+  // lacks a company_id, which avoids the empty-response bug we hit when
+  // filtering by .eq("company_id", X) directly.
   const teamLookup = await getTeamUserIds({
     id: user.id,
     email: user.email || profileRows[0].email || null,
   });
   const teamUserIds = teamLookup.userIds;
-  const companyId = teamLookup.companyId;
   const repMap = new Map<string, string>();
   for (const m of teamLookup.members) {
     if (m.id && m.email) repMap.set(m.id, m.email);
   }
 
   if (teamUserIds.length === 0) {
-    return NextResponse.json({
-      claims: [],
-      counts: emptyCounts(),
-      reps: [],
-      ...(wantDiag ? { _diag: { reason: "empty_team", user_id: user.id } } : {}),
-    });
+    return NextResponse.json({ claims: [], counts: emptyCounts(), reps: [] });
   }
 
   // Pull claims for the whole team (or just one rep if filter set). Filter
@@ -145,7 +137,7 @@ export async function GET(req: Request) {
   let claimsQuery = supabaseAdmin
     .from("claims")
     .select(
-      "id, address, homeowner_name, carrier_name, status, user_id, assigned_user_id, last_touched_at, created_at, financials"
+      "id, address, homeowner_name, carrier, status, user_id, assigned_user_id, last_touched_at, created_at, contractor_rcv"
     )
     .order("last_touched_at", { ascending: false })
     .limit(limit);
@@ -163,6 +155,7 @@ export async function GET(req: Request) {
   if (claimsErr) {
     console.error("[claims-grid] query error:", claimsErr.message);
   }
+  void claimsErr;
 
   if (claims.length === 0) {
     return NextResponse.json({
@@ -242,12 +235,12 @@ export async function GET(req: Request) {
       id: c.id,
       address: c.address,
       homeowner_name: c.homeowner_name,
-      carrier_name: c.carrier_name,
+      carrier_name: c.carrier,
       status: c.status,
       rep_user_id: repId,
       rep_email: repMap.get(repId) ?? null,
       last_touched_at: c.last_touched_at,
-      financials: c.financials,
+      contractor_rcv: c.contractor_rcv,
       checkpoints,
       is_scheduled: scheduledClaimIds.has(c.id),
       all_lit: isAllLit(checkpoints),
@@ -272,22 +265,6 @@ export async function GET(req: Request) {
     claims: filtered,
     counts,
     reps: buildRepRollup(repMap, scoped),
-    ...(wantDiag
-      ? {
-          _diag: {
-            user_id: user.id,
-            company_id: companyId,
-            team_count: teamUserIds.length,
-            team_first: teamUserIds[0] ?? null,
-            rep_filter: repFilter,
-            claims_query_returned: claims.length,
-            claims_after_scope: scoped.length,
-            claims_after_filter: filtered.length,
-            claims_err: claimsErr?.message ?? null,
-            profile_err: profileErr?.message ?? null,
-          },
-        }
-      : {}),
   });
 }
 

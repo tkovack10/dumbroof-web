@@ -19,7 +19,7 @@ export interface ClaimGridRow {
   rep_user_id: string;
   rep_email: string | null;
   last_touched_at: string | null;
-  financials: { total?: number } | null;
+  contractor_rcv: number | null;
   checkpoints: ClaimGridCheckpoints;
   is_scheduled: boolean;
   all_lit: boolean;
@@ -39,7 +39,7 @@ const DOTS: {
   { key: "engagement", verb: "Engage homeowner",done: "Homeowner engaged",color: "var(--pink)", actionParam: "engage_homeowner" },
 ];
 
-function fmtRcv(total?: number): string {
+function fmtRcv(total?: number | null): string {
   if (!total) return "—";
   if (total >= 1_000_000) return `$${(total / 1_000_000).toFixed(1)}M`;
   if (total >= 1_000) return `$${(total / 1_000).toFixed(0)}K`;
@@ -224,7 +224,7 @@ export function ClaimRowAction({ claim }: { claim: ClaimGridRow }) {
 
         {/* RCV + last activity */}
         <div className="text-right flex-shrink-0 hidden sm:block">
-          <p className="text-xs font-mono text-white">{fmtRcv(claim.financials?.total)}</p>
+          <p className="text-xs font-mono text-white">{fmtRcv(claim.contractor_rcv ?? undefined)}</p>
           <p className="text-[10px] text-[var(--gray-muted)]">{timeAgo(claim.last_touched_at)}</p>
         </div>
       </div>
