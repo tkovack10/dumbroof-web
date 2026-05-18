@@ -14,6 +14,7 @@ import {
   CompanyPhaseProgress,
   type CompanyPhaseCounts,
 } from "@/components/company-phase-progress";
+import { AdminRightRail } from "@/components/admin-right-rail";
 
 interface GridResponse {
   claims: ClaimGridRow[];
@@ -114,6 +115,9 @@ export default function PipelinePage() {
           </p>
         </div>
 
+        <div className="lg:grid lg:grid-cols-[1fr,280px] lg:gap-6">
+          <div>
+
         <CompanyPhaseProgress
           counts={data?.phase_counts ?? null}
           loading={loading && !data}
@@ -198,6 +202,13 @@ export default function PipelinePage() {
             })}
           </div>
         )}
+
+          </div>
+          {/* Right rail — Phase 6 Slice 5 */}
+          <div className="hidden lg:block">
+            <AdminRightRail />
+          </div>
+        </div>
       </div>
     </div>
   );

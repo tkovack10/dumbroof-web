@@ -8,6 +8,7 @@ import {
   CompanyPhaseProgress,
   type CompanyPhaseCounts,
 } from "@/components/company-phase-progress";
+import { AdminRightRail } from "@/components/admin-right-rail";
 import { createClient } from "@/lib/supabase/client";
 import {
   ClaimFilterChips,
@@ -90,6 +91,9 @@ export default function CommandCenterPage() {
             Every active claim, what&apos;s next, money in motion.
           </p>
         </div>
+
+        <div className="lg:grid lg:grid-cols-[1fr,280px] lg:gap-6">
+          <div>
 
         {/* WHAT'S NEXT hero — Phase 6 Slice 2 morning briefing */}
         <WhatsNextHero firstName={firstName} />
@@ -187,6 +191,13 @@ export default function CommandCenterPage() {
             ))}
           </div>
         )}
+
+          </div>
+          {/* Right rail — Phase 6 Slice 5 */}
+          <div className="hidden lg:block mt-0">
+            <AdminRightRail />
+          </div>
+        </div>
       </div>
     </div>
   );

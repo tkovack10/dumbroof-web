@@ -14,6 +14,7 @@ import {
   CompanyPhaseProgress,
   type CompanyPhaseCounts,
 } from "@/components/company-phase-progress";
+import { AdminRightRail } from "@/components/admin-right-rail";
 
 interface RepRollup {
   user_id: string;
@@ -86,6 +87,9 @@ export default function RepsPage() {
             Every claim, every rep, what&apos;s left to do.
           </p>
         </div>
+
+        <div className="lg:grid lg:grid-cols-[1fr,280px] lg:gap-6">
+          <div>
 
         {/* Rep selector strip */}
         <div className="mb-4 flex items-center gap-2 flex-wrap">
@@ -186,6 +190,13 @@ export default function RepsPage() {
             ))}
           </div>
         )}
+
+          </div>
+          {/* Right rail — Phase 6 Slice 5 */}
+          <div className="hidden lg:block">
+            <AdminRightRail />
+          </div>
+        </div>
       </div>
     </div>
   );
