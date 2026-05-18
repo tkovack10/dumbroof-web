@@ -94,23 +94,18 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
   }
 
-  const { data: profileRows } = await supabaseAdmin
+  const { data: profileRows, error: profileErr } = await supabaseAdmin
     .from("company_profiles")
     .select("is_admin, company_id")
     .eq("user_id", user.id)
     .limit(1);
-  console.log("[claims-grid] auth", {
-    user_id: user.id,
-    rows_found: profileRows?.length ?? 0,
-    is_admin: profileRows?.[0]?.is_admin,
-    company_id: profileRows?.[0]?.company_id,
-  });
   if (!profileRows?.[0]?.is_admin) {
+    console.log(`[cg-dbg] uid=${user.id} rows=${profileRows?.length ?? 0} err=${profileErr?.message ?? "none"} admin=${profileRows?.[0]?.is_admin} cid=${profileRows?.[0]?.company_id} -> 403`);
     return NextResponse.json({ error: "Not authorized" }, { status: 403 });
   }
   const companyId = profileRows[0].company_id;
   if (!companyId) {
-    console.log("[claims-grid] EARLY-EXIT no companyId");
+    console.log(`[cg-dbg] uid=${user.id} admin=true cid=NULL -> early-exit-empty`);
     return NextResponse.json({ claims: [], counts: emptyCounts(), reps: [] });
   }
 
@@ -153,13 +148,7 @@ export async function GET(req: Request) {
 
   const { data: claimRows, error: claimsErr } = await claimsQuery;
   const claims = (claimRows || []) as ClaimRow[];
-  console.log("[claims-grid] claims-query", {
-    company_id: companyId,
-    team_count: teamUserIds.length,
-    rep_filter: repFilter,
-    rows_returned: claims.length,
-    error: claimsErr?.message,
-  });
+  console.log(`[cg-dbg] cid=${companyId} team=${teamUserIds.length} rep=${repFilter ?? "-"} rows=${claims.length} err=${claimsErr?.message ?? "none"}`);
 
   if (claims.length === 0) {
     return NextResponse.json({
