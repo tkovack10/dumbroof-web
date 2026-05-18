@@ -40,6 +40,7 @@ import { ClaimActionBar } from "@/components/claim-action-bar";
 import { ClaimMoneyActions } from "@/components/claim-money-actions";
 import { ClaimProductionActions } from "@/components/claim-production-actions";
 import { ClaimExpenseActions } from "@/components/claim-expense-actions";
+import { ClaimAssignmentDropdown } from "@/components/claim-assignment-dropdown";
 import { CommunicationsCenter } from "@/components/claim-detail/communications-center";
 import type { Correspondence, EditRequest, EmailDraft } from "@/types/claim-comms";
 import { ScopeReviewContent } from "@/app/dashboard/scope-review/scope-review-content";
@@ -1889,6 +1890,10 @@ export default function ClaimDetailPage() {
       {/* Phase 3 (Admin Workspace v2): self-contained expense capture —
           floating "+ Receipt" button. Team-member gated. */}
       {claim && <ClaimExpenseActions claimId={claim.id} />}
+
+      {/* Phase 5 Slice B: rep assignment dropdown — admin OR current
+          assignee can reassign. */}
+      {claim && <ClaimAssignmentDropdown claimId={claim.id} />}
 
       {/* CompanyCam / AccuLynx import modal — same component used by
           install-supplement, COC, and new-claim flows. Mounts once at page
