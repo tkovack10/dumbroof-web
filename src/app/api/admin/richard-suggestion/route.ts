@@ -89,7 +89,7 @@ export async function GET(req: Request) {
 
   switch (surface) {
     case "command_center":
-      suggestion = await commandCenterSuggestion(teamUserIds);
+      suggestion = await commandCenterSuggestion(teamUserIds, companyId);
       break;
     case "claim_detail":
       if (claimId) suggestion = await claimDetailSuggestion(claimId, teamUserIds);
@@ -115,12 +115,13 @@ export async function GET(req: Request) {
 // ────────────────────────────────────────────────────────────────────────
 
 async function commandCenterSuggestion(
-  teamUserIds: string[]
+  teamUserIds: string[],
+  companyId: string | null
 ): Promise<Suggestion | null> {
   // Pull active claims + last forensic event per claim. Surface the count
   // of claims with no forensic_sent in the next-action queue.
   const TERMINAL = ["lost", "closed", "paid", "completed"];
-  const { data: claimRows } = await supabaseAdmin
+  const claimsQuery = supabaseAdmin
     .from("claims")
     .select(
       "id, address, carrier, status, user_id, assigned_user_id, last_touched_at, contractor_rcv, current_carrier_rcv"
@@ -128,6 +129,11 @@ async function commandCenterSuggestion(
     .in("user_id", teamUserIds)
     .order("last_touched_at", { ascending: false })
     .limit(500);
+  // Belt-and-suspenders symmetric with jobPnlSuggestion: fold in company_id
+  // when available so a future getTeamUserIds bug can't leak cross-tenant.
+  const { data: claimRows } = companyId
+    ? await claimsQuery.eq("company_id", companyId)
+    : await claimsQuery;
 
   const claims = ((claimRows || []) as unknown as ClaimRowMini[]).filter(
     (c) => !c.status || !TERMINAL.includes(c.status.toLowerCase())
@@ -409,13 +415,16 @@ async function jobPnlSuggestion(
   companyId: string | null
 ): Promise<Suggestion | null> {
   // Sum expenses per claim, compare to contractor_rcv. Find biggest variance.
-  const { data: claims } = await supabaseAdmin
+  const claimsQuery = supabaseAdmin
     .from("claims")
     .select("id, address, contractor_rcv")
     .in("user_id", teamUserIds)
     .not("contractor_rcv", "is", null)
     .gt("contractor_rcv", 0)
     .limit(500);
+  const { data: claims } = companyId
+    ? await claimsQuery.eq("company_id", companyId)
+    : await claimsQuery;
   if (!claims || claims.length === 0) return null;
 
   const claimIds = claims.map((c) => c.id as string);
