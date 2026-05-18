@@ -10,26 +10,60 @@ interface Props {
 }
 
 // Required first-time profile completion. Submits to /api/onboarding/profile
-// which writes to company_profiles + (if a logo file is provided) uploads to
+// which writes to company_profiles + uploads logo to
 // claim-documents/{user_id}/branding/logo.{ext} and stamps logo_path.
 //
-// Logo is optional v1 — we don't want to block users who don't have a digital
-// logo handy. Without one, PDFs render header text only.
+// Matches CompanyProfileGate (used by /dashboard/new-claim) field-for-field:
+// company_name + contact_name + phone + address + city_state_zip + logo are
+// all required. Storm Nation 2026-05-17 lesson: gmail signups via
+// /instant-supplement were getting through with company_name only, then
+// shipping unbranded reports because logo + address were skipped here.
 export function OnboardingProfileClient({ userId, userEmail, next }: Props) {
   const [companyName, setCompanyName] = useState("");
   const [contactName, setContactName] = useState("");
   const [contactTitle, setContactTitle] = useState("Owner");
   const [phone, setPhone] = useState("");
+  const [address, setAddress] = useState("");
+  const [cityStateZip, setCityStateZip] = useState("");
   const [website, setWebsite] = useState("");
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) {
+      setLogoFile(null);
+      return;
+    }
+    // Match CompanyProfileGate: raster only — Chrome headless can't embed
+    // .ai/.pdf/.svg/.eps cleanly in <img>, they render as broken alt-text.
+    // Backend auto-converts when these slip through, but we'd rather catch
+    // at upload time so the user sees their actual logo right here.
+    const allowedTypes = ["image/png", "image/jpeg", "image/webp", "image/gif"];
+    const ext = (file.name.split(".").pop() || "").toLowerCase();
+    const allowedExts = ["png", "jpg", "jpeg", "webp", "gif"];
+    if (!allowedTypes.includes(file.type) && !allowedExts.includes(ext)) {
+      setError(
+        `Unsupported logo format: ${ext || file.type || "unknown"}. ` +
+          `Upload PNG, JPG, WEBP, or GIF. (AI, PDF, SVG, EPS don't render in reports.)`
+      );
+      e.target.value = "";
+      setLogoFile(null);
+      return;
+    }
+    setError(null);
+    setLogoFile(file);
+  };
+
   const allRequiredFilled =
     companyName.trim().length > 1 &&
     contactName.trim().length > 1 &&
-    phone.trim().length >= 10;
+    phone.trim().length >= 10 &&
+    address.trim().length > 1 &&
+    cityStateZip.trim().length > 1 &&
+    logoFile !== null;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -68,6 +102,8 @@ export function OnboardingProfileClient({ userId, userEmail, next }: Props) {
           contact_name: contactName.trim(),
           contact_title: contactTitle.trim() || "Owner",
           phone: phone.trim(),
+          address: address.trim(),
+          city_state_zip: cityStateZip.trim(),
           website: website.trim() || null,
           logo_path: logoPath,
         }),
@@ -163,6 +199,34 @@ export function OnboardingProfileClient({ userId, userEmail, next }: Props) {
 
             <div>
               <label className="block text-sm font-semibold mb-1">
+                Business address <span className="text-[var(--red)]">*</span>
+              </label>
+              <input
+                type="text"
+                value={address}
+                onChange={(e) => setAddress(e.target.value)}
+                placeholder="108 Mound Builder Pl"
+                className="w-full bg-[var(--bg-glass)] border border-[var(--border-glass)] rounded-lg px-3 py-2 text-sm text-[var(--white)] outline-none focus:border-[var(--red)]"
+                required
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-semibold mb-1">
+                City, State ZIP <span className="text-[var(--red)]">*</span>
+              </label>
+              <input
+                type="text"
+                value={cityStateZip}
+                onChange={(e) => setCityStateZip(e.target.value)}
+                placeholder="Miamisburg, OH 45005"
+                className="w-full bg-[var(--bg-glass)] border border-[var(--border-glass)] rounded-lg px-3 py-2 text-sm text-[var(--white)] outline-none focus:border-[var(--red)]"
+                required
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-semibold mb-1">
                 Website
               </label>
               <input
@@ -176,18 +240,19 @@ export function OnboardingProfileClient({ userId, userEmail, next }: Props) {
 
             <div>
               <label className="block text-sm font-semibold mb-1">
-                Logo (optional)
+                Company logo <span className="text-[var(--red)]">*</span>
               </label>
               <input
                 ref={fileInputRef}
                 type="file"
-                accept="image/png,image/jpeg,image/webp,application/pdf,.png,.jpg,.jpeg,.webp,.pdf"
-                onChange={(e) => setLogoFile(e.target.files?.[0] || null)}
+                accept=".png,.jpg,.jpeg,.webp,.gif,image/png,image/jpeg,image/webp,image/gif"
+                onChange={handleLogoChange}
                 className="w-full text-sm text-[var(--gray-muted)] file:mr-3 file:py-2 file:px-3 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-white/10 file:text-[var(--white)] hover:file:bg-white/15"
+                required
               />
               <p className="mt-1 text-xs text-[var(--gray-dim)]">
-                PNG, JPG, or PDF. We&apos;ll convert as needed. Skip for now if
-                you don&apos;t have one handy — you can upload from settings later.
+                PNG, JPG, WEBP, or GIF — appears on every page of every report.
+                Even a phone photo of your truck wrap or yard sign works.
               </p>
             </div>
 

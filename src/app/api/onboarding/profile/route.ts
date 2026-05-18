@@ -7,8 +7,10 @@ interface ProfilePayload {
   contact_name: string;
   contact_title?: string | null;
   phone: string;
+  address: string;
+  city_state_zip: string;
   website?: string | null;
-  logo_path?: string | null;
+  logo_path: string;
 }
 
 // POST /api/onboarding/profile
@@ -28,11 +30,16 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
-  // Server-side validation — never trust the client.
+  // Server-side validation — never trust the client. Mirrors CompanyProfileGate
+  // (used by /dashboard/new-claim) so the instant funnel and the dashboard
+  // funnel enforce the same required set. Logo is required so the first PDF
+  // ships branded — see Storm Nation 2026-05-17 incident.
   const company_name = (body.company_name || "").trim();
   const contact_name = (body.contact_name || "").trim();
   const contact_title = (body.contact_title || "Owner").trim() || "Owner";
   const phone = (body.phone || "").trim();
+  const address = (body.address || "").trim();
+  const city_state_zip = (body.city_state_zip || "").trim();
   const website = body.website?.trim() || null;
   const logo_path = body.logo_path?.trim() || null;
 
@@ -44,6 +51,15 @@ export async function POST(request: Request) {
   }
   if (phone.replace(/\D/g, "").length < 10) {
     return NextResponse.json({ error: "Phone number is required" }, { status: 400 });
+  }
+  if (address.length < 2) {
+    return NextResponse.json({ error: "Business address is required" }, { status: 400 });
+  }
+  if (city_state_zip.length < 2) {
+    return NextResponse.json({ error: "City, State ZIP is required" }, { status: 400 });
+  }
+  if (!logo_path) {
+    return NextResponse.json({ error: "Logo is required" }, { status: 400 });
   }
 
   // Upsert — there may already be a row from invite/referral flow with
@@ -59,10 +75,12 @@ export async function POST(request: Request) {
     contact_name,
     contact_title,
     phone,
+    address,
+    city_state_zip,
     website,
+    logo_path,
     email: user.email,
     user_role: "contractor" as const,
-    ...(logo_path ? { logo_path } : {}),
   };
 
   if (existing && existing.length > 0) {

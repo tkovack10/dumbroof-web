@@ -64,19 +64,45 @@ export async function updateSession(request: NextRequest) {
   // claim is created so the processor brands PDFs correctly on the first
   // run (rather than baking in the "Your Roofing Company" placeholder and
   // requiring a reprocess later).
+  const isInstantContinue = request.nextUrl.pathname === "/instant/continue";
   const requiresProfile =
-    request.nextUrl.pathname.startsWith("/dashboard") ||
-    request.nextUrl.pathname === "/instant/continue";
+    request.nextUrl.pathname.startsWith("/dashboard") || isInstantContinue;
   if (user && requiresProfile) {
     try {
+      // /instant/continue is the post-signup handoff that's about to create
+      // the user's FIRST claim — we want the full required set populated so
+      // PDF 1 ships fully branded. /dashboard/* uses the looser company_name
+      // check (existing users with partial profiles shouldn't get locked out
+      // of their existing claims). The /dashboard/new-claim submit form has
+      // its own CompanyProfileGate modal that enforces the strict set at
+      // claim-submit time.
+      const select = isInstantContinue
+        ? "company_name, company_id, contact_name, phone, address, city_state_zip, logo_path"
+        : "company_name, company_id";
       const { data: profile } = await supabase
         .from("company_profiles")
-        .select("company_name, company_id")
+        .select(select)
         .eq("user_id", user.id)
-        .maybeSingle();
+        .maybeSingle<{
+          company_name?: string | null;
+          company_id?: string | null;
+          contact_name?: string | null;
+          phone?: string | null;
+          address?: string | null;
+          city_state_zip?: string | null;
+          logo_path?: string | null;
+        }>();
       const hasName = !!(profile?.company_name && profile.company_name.trim().length > 1);
       const isInvitedTeamMember = !!profile?.company_id;
-      if (!hasName && !isInvitedTeamMember) {
+      const profileComplete = isInstantContinue
+        ? hasName &&
+          !!(profile?.contact_name && profile.contact_name.trim().length > 1) &&
+          !!(profile?.phone && profile.phone.replace(/\D/g, "").length >= 10) &&
+          !!(profile?.address && profile.address.trim().length > 1) &&
+          !!(profile?.city_state_zip && profile.city_state_zip.trim().length > 1) &&
+          !!profile?.logo_path
+        : hasName;
+      if (!profileComplete && !isInvitedTeamMember) {
         const url = request.nextUrl.clone();
         url.pathname = "/onboarding/profile";
         url.search = `?next=${encodeURIComponent(request.nextUrl.pathname + request.nextUrl.search)}`;
