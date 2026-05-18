@@ -270,6 +270,22 @@ export async function GET(req: Request) {
     claims: filtered,
     counts,
     reps: buildRepRollup(repMap, scoped),
+    ...(wantDiag
+      ? {
+          _diag: {
+            user_id: user.id,
+            company_id: companyId,
+            team_count: teamUserIds.length,
+            team_first: teamUserIds[0] ?? null,
+            rep_filter: repFilter,
+            claims_query_returned: claims.length,
+            claims_after_scope: scoped.length,
+            claims_after_filter: filtered.length,
+            claims_err: claimsErr?.message ?? null,
+            profile_err: profileErr?.message ?? null,
+          },
+        }
+      : {}),
   });
 }
 
