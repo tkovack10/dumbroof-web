@@ -21,7 +21,7 @@ export function RichardLauncher({ userId, scope = "user", initiallyOpen = false 
     return (
       <button
         onClick={() => setOpen(true)}
-        className="fixed bottom-5 right-5 z-50 flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white pl-2 pr-4 py-2 rounded-full shadow-lg shadow-indigo-500/30 transition-colors"
+        className="fixed bottom-5 left-5 z-50 flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white pl-2 pr-4 py-2 rounded-full shadow-lg shadow-indigo-500/30 transition-colors"
         aria-label={`Open ${label}`}
       >
         <RichardIcon size={28} />
@@ -33,7 +33,7 @@ export function RichardLauncher({ userId, scope = "user", initiallyOpen = false 
   // AdminBrainChat owns its own header (title + Reset). To avoid a duplicate
   // header bar, the launcher renders a small floating × overlay instead.
   return (
-    <div className="fixed bottom-5 right-5 z-50 w-[380px] max-w-[calc(100vw-2.5rem)] shadow-2xl shadow-black/50">
+    <div className="fixed bottom-5 left-5 z-50 w-[380px] max-w-[calc(100vw-2.5rem)] shadow-2xl shadow-black/50">
       <button
         onClick={() => setOpen(false)}
         className="absolute -top-2 -right-2 z-10 w-7 h-7 rounded-full bg-[rgb(15,18,35)] border border-white/15 text-white/60 hover:text-white hover:border-white/40 text-sm flex items-center justify-center shadow-md transition-colors"

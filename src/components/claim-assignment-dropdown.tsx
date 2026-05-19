@@ -180,7 +180,7 @@ export function ClaimAssignmentDropdown({ claimId }: { claimId: string }) {
   return (
     <div
       ref={containerRef}
-      className="fixed bottom-80 right-4 sm:bottom-60 sm:right-6 z-30"
+      className="fixed bottom-[22rem] right-4 sm:bottom-72 sm:right-6 z-30"
     >
       <button
         type="button"

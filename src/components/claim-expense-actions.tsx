@@ -75,7 +75,7 @@ export function ClaimExpenseActions({ claimId }: { claimId: string }) {
 
   return (
     <>
-      <div className="fixed bottom-64 right-4 sm:bottom-44 sm:right-6 z-30">
+      <div className="fixed bottom-72 right-4 sm:bottom-52 sm:right-6 z-30">
         <button
           type="button"
           onClick={() => setModalOpen(true)}
