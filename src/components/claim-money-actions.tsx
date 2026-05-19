@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { CheckUploadModal } from "@/components/check-upload-modal";
 import { CommissionRequestModal } from "@/components/commission-request-modal";
 import { createClient } from "@/lib/supabase/client";
-import { PUBLIC_DOMAINS } from "@/lib/team-lookup";
+import { PUBLIC_DOMAINS } from "@/lib/public-domains";
 
 /**
  * Phase 1 — bounded add-on to the claim detail page.

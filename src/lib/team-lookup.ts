@@ -1,15 +1,10 @@
 import { supabaseAdmin } from "@/lib/supabase/admin";
-
-/**
- * Public email domains — users with these domains are treated as solo,
- * not as members of a "company" (so e.g. two unrelated gmail.com users
- * never see each other's claims).
- */
-export const PUBLIC_DOMAINS: Set<string> = new Set([
-  "gmail.com", "yahoo.com", "hotmail.com", "outlook.com", "aol.com",
-  "icloud.com", "mail.com", "protonmail.com", "zoho.com", "yandex.com",
-  "live.com", "msn.com", "comcast.net", "verizon.net", "att.net",
-]);
+import { PUBLIC_DOMAINS } from "@/lib/public-domains";
+// Re-export so server-side callers that already grab PUBLIC_DOMAINS from
+// team-lookup keep working. Client components should import directly from
+// `@/lib/public-domains` to avoid dragging supabaseAdmin into the browser
+// bundle (would throw "supabaseKey is required" — service role is server-only).
+export { PUBLIC_DOMAINS };
 
 export interface TeamMember {
   id: string;

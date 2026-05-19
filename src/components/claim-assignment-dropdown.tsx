@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { PUBLIC_DOMAINS } from "@/lib/team-lookup";
+import { PUBLIC_DOMAINS } from "@/lib/public-domains";
 
 interface TeamMember {
   id: string;

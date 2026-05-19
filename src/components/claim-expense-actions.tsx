@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { ExpenseUploadModal } from "@/components/expense-upload-modal";
-import { PUBLIC_DOMAINS } from "@/lib/team-lookup";
+import { PUBLIC_DOMAINS } from "@/lib/public-domains";
 
 /**
  * Phase 3 — bounded expense capture button for claim detail.
