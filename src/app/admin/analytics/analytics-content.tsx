@@ -26,6 +26,49 @@ interface LiveData {
   };
 }
 
+interface InsightsData {
+  funnel_30d: {
+    signups: number;
+    with_profile: number;
+    profile_complete: number;
+    with_claim: number;
+    paid: number;
+  } | null;
+  attribution_30d: Array<{
+    utm_content: string;
+    utm_campaign: string;
+    signups: number;
+    with_claim: number;
+    paid: number;
+  }>;
+  quality_breakdown: Array<{
+    email_quality: string;
+    industry_match: string;
+    profiles: number;
+    with_claim: number;
+  }>;
+  cohort_retention: Array<{
+    week_start: string;
+    signups: number;
+    returned_wk1: number;
+    returned_wk2: number;
+    returned_wk3plus: number;
+  }>;
+  whoops_funnel_30d: {
+    whoops_attributed_signups: number;
+    with_claim: number;
+    paid: number;
+  } | null;
+  daily_signups_30d: Array<{ day: string; signups: number }>;
+  quality_timeline_30d: Array<{
+    day: string;
+    gold: number;
+    biz_other: number;
+    consumer_roofer: number;
+    consumer_other: number;
+  }>;
+}
+
 const PLAN_LABELS: Record<string, string> = {
   starter: "Starter (Free)",
   sales_rep: "Sales Rep",
@@ -46,6 +89,7 @@ function timeAgo(ts: string): string {
 
 export function LiveAnalyticsContent() {
   const [data, setData] = useState<LiveData | null>(null);
+  const [insights, setInsights] = useState<InsightsData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [lastRefresh, setLastRefresh] = useState<Date | null>(null);
   const [prevData, setPrevData] = useState<LiveData | null>(null);
@@ -65,10 +109,25 @@ export function LiveAnalyticsContent() {
     }
   }, [data]);
 
+  const fetchInsights = useCallback(async () => {
+    try {
+      const res = await fetch("/api/admin/analytics/insights");
+      if (!res.ok) return;
+      setInsights(await res.json());
+    } catch {
+      // non-fatal — insights are supplementary
+    }
+  }, []);
+
   useEffect(() => {
     fetchData();
-    const interval = setInterval(fetchData, 30000);
-    return () => clearInterval(interval);
+    fetchInsights();
+    const liveInterval = setInterval(fetchData, 30000);
+    const insightsInterval = setInterval(fetchInsights, 5 * 60 * 1000);
+    return () => {
+      clearInterval(liveInterval);
+      clearInterval(insightsInterval);
+    };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const changed = (curr: number, prev: number | undefined) => {
@@ -245,6 +304,200 @@ export function LiveAnalyticsContent() {
           ))}
         </div>
       </div>
+
+      {/* 30-day Funnel */}
+      {insights?.funnel_30d && (
+        <div className="glass-card p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-sm font-bold text-[var(--white)]">30-Day Acquisition Funnel</h2>
+            <span className="text-[10px] text-[var(--gray-dim)]">From auth.users + company_profiles + claims + subscriptions</span>
+          </div>
+          {(() => {
+            const f = insights.funnel_30d;
+            const stages = [
+              { label: "Signups", value: f.signups, prev: f.signups },
+              { label: "Built profile", value: f.with_profile, prev: f.signups },
+              { label: "Completed profile", value: f.profile_complete, prev: f.with_profile },
+              { label: "Created a claim", value: f.with_claim, prev: f.profile_complete },
+              { label: "Active subscription", value: f.paid, prev: f.with_claim },
+            ];
+            return (
+              <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
+                {stages.map((s, i) => {
+                  const pct = s.prev > 0 ? Math.round((s.value / s.prev) * 100) : 0;
+                  const dropPct = s.prev > 0 ? Math.round(((s.prev - s.value) / s.prev) * 100) : 0;
+                  const overall = f.signups > 0 ? Math.round((s.value / f.signups) * 100) : 0;
+                  return (
+                    <div key={s.label} className="rounded-xl bg-white/[0.03] border border-white/10 p-4">
+                      <p className="text-[10px] uppercase tracking-wider text-[var(--gray-muted)] mb-1">Step {i + 1}</p>
+                      <p className="text-3xl font-bold text-[var(--white)]">{s.value}</p>
+                      <p className="text-xs text-[var(--gray-muted)] mt-1">{s.label}</p>
+                      {i > 0 && (
+                        <p className="text-[10px] text-[var(--gray-dim)] mt-2">
+                          {pct}% of prev · <span className={dropPct > 50 ? "text-red-400" : "text-amber-400"}>−{dropPct}% drop</span>
+                        </p>
+                      )}
+                      <p className="text-[10px] text-[var(--cyan)] mt-1">{overall}% of signups</p>
+                    </div>
+                  );
+                })}
+              </div>
+            );
+          })()}
+        </div>
+      )}
+
+      {/* Ad attribution + Whoops-specific funnel side-by-side */}
+      {(insights?.attribution_30d?.length || insights?.whoops_funnel_30d) && (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2 glass-card p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-sm font-bold text-[var(--white)]">Ad Attribution (30d)</h2>
+              <span className="text-[10px] text-[var(--gray-dim)]">By utm_content · Supabase-attributed only</span>
+            </div>
+            <div className="overflow-x-auto -mx-2">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="text-left text-[10px] uppercase tracking-wider text-[var(--gray-muted)]">
+                    <th className="px-2 py-2 font-semibold">Ad / Content</th>
+                    <th className="px-2 py-2 font-semibold text-right">Signups</th>
+                    <th className="px-2 py-2 font-semibold text-right">With Claim</th>
+                    <th className="px-2 py-2 font-semibold text-right">Paid</th>
+                    <th className="px-2 py-2 font-semibold text-right">Sign→Claim</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(insights.attribution_30d ?? []).map((row, i) => {
+                    const sToC = row.signups > 0 ? Math.round((row.with_claim / row.signups) * 100) : 0;
+                    return (
+                      <tr key={i} className="border-t border-white/[0.04]">
+                        <td className="px-2 py-2 text-[var(--white)] truncate max-w-[280px]" title={row.utm_content}>
+                          {row.utm_content}
+                          <span className="block text-[10px] text-[var(--gray-dim)] truncate">{row.utm_campaign}</span>
+                        </td>
+                        <td className="px-2 py-2 text-right text-[var(--white)] font-mono">{row.signups}</td>
+                        <td className="px-2 py-2 text-right text-[var(--white)] font-mono">{row.with_claim}</td>
+                        <td className="px-2 py-2 text-right text-[var(--white)] font-mono">{row.paid}</td>
+                        <td className={`px-2 py-2 text-right font-mono ${sToC >= 30 ? "text-green-400" : sToC >= 10 ? "text-amber-400" : "text-red-400"}`}>
+                          {sToC}%
+                        </td>
+                      </tr>
+                    );
+                  })}
+                  {(insights.attribution_30d ?? []).length === 0 && (
+                    <tr>
+                      <td colSpan={5} className="px-2 py-6 text-center text-[var(--gray-dim)] text-[11px]">
+                        No UTM-attributed signups yet in this window. (UTM capture went live 2026-05-15.)
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {insights?.whoops_funnel_30d && (
+            <div className="glass-card p-6">
+              <h2 className="text-sm font-bold text-[var(--white)] mb-3">Whoops Ad Funnel (30d)</h2>
+              <p className="text-[10px] text-[var(--gray-dim)] mb-4">Where the $900/day is going</p>
+              <div className="space-y-3">
+                {[
+                  { label: "Attributed signups", value: insights.whoops_funnel_30d.whoops_attributed_signups, base: insights.whoops_funnel_30d.whoops_attributed_signups },
+                  { label: "Created claim", value: insights.whoops_funnel_30d.with_claim, base: insights.whoops_funnel_30d.whoops_attributed_signups },
+                  { label: "Paid subscription", value: insights.whoops_funnel_30d.paid, base: insights.whoops_funnel_30d.whoops_attributed_signups },
+                ].map((s) => {
+                  const pct = s.base > 0 ? Math.round((s.value / s.base) * 100) : 0;
+                  return (
+                    <div key={s.label}>
+                      <div className="flex items-baseline justify-between">
+                        <span className="text-xs text-[var(--gray)]">{s.label}</span>
+                        <span className="text-sm font-bold text-[var(--white)]">{s.value} <span className="text-[10px] text-[var(--gray-dim)]">({pct}%)</span></span>
+                      </div>
+                      <div className="mt-1 h-1.5 rounded-full bg-white/[0.05] overflow-hidden">
+                        <div className="h-full bg-gradient-to-r from-[var(--cyan)] to-[var(--purple)]" style={{ width: `${pct}%` }} />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Quality breakdown + Cohort retention side-by-side */}
+      {(insights?.quality_breakdown?.length || insights?.cohort_retention?.length) && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {insights?.quality_breakdown?.length ? (
+            <div className="glass-card p-6">
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="text-sm font-bold text-[var(--white)]">Signup Quality (60d)</h2>
+                <span className="text-[10px] text-[var(--gray-dim)]">Email type × industry match</span>
+              </div>
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="text-left text-[10px] uppercase tracking-wider text-[var(--gray-muted)]">
+                    <th className="px-2 py-2 font-semibold">Email</th>
+                    <th className="px-2 py-2 font-semibold">Industry</th>
+                    <th className="px-2 py-2 font-semibold text-right">Profiles</th>
+                    <th className="px-2 py-2 font-semibold text-right">With Claim</th>
+                    <th className="px-2 py-2 font-semibold text-right">Activation</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {insights.quality_breakdown.map((row, i) => {
+                    const isGold = row.email_quality === "business" && row.industry_match === "roofing_storm";
+                    const activation = row.profiles > 0 ? Math.round((row.with_claim / row.profiles) * 100) : 0;
+                    return (
+                      <tr key={i} className={`border-t border-white/[0.04] ${isGold ? "bg-amber-500/[0.05]" : ""}`}>
+                        <td className="px-2 py-2 text-[var(--white)]">{row.email_quality === "business" ? "🏢 Business" : row.email_quality === "consumer" ? "📧 Consumer" : row.email_quality}</td>
+                        <td className="px-2 py-2 text-[var(--white)]">{row.industry_match === "roofing_storm" ? "🎯 Roofer" : row.industry_match}</td>
+                        <td className="px-2 py-2 text-right text-[var(--white)] font-mono">{row.profiles}</td>
+                        <td className="px-2 py-2 text-right text-[var(--white)] font-mono">{row.with_claim}</td>
+                        <td className={`px-2 py-2 text-right font-mono ${activation >= 30 ? "text-green-400" : activation >= 10 ? "text-amber-400" : "text-red-400"}`}>{activation}%</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          ) : null}
+
+          {insights?.cohort_retention?.length ? (
+            <div className="glass-card p-6">
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="text-sm font-bold text-[var(--white)]">Cohort Retention (8wk)</h2>
+                <span className="text-[10px] text-[var(--gray-dim)]">% returned = created claim in window</span>
+              </div>
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="text-left text-[10px] uppercase tracking-wider text-[var(--gray-muted)]">
+                    <th className="px-2 py-2 font-semibold">Signup Week</th>
+                    <th className="px-2 py-2 font-semibold text-right">Cohort</th>
+                    <th className="px-2 py-2 font-semibold text-right">Wk1</th>
+                    <th className="px-2 py-2 font-semibold text-right">Wk2</th>
+                    <th className="px-2 py-2 font-semibold text-right">Wk3+</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {insights.cohort_retention.map((row, i) => {
+                    const pct = (n: number) => row.signups > 0 ? Math.round((n / row.signups) * 100) : 0;
+                    return (
+                      <tr key={i} className="border-t border-white/[0.04]">
+                        <td className="px-2 py-2 text-[var(--white)] font-mono">{row.week_start.slice(5)}</td>
+                        <td className="px-2 py-2 text-right text-[var(--white)] font-mono">{row.signups}</td>
+                        <td className="px-2 py-2 text-right font-mono text-[var(--cyan)]">{pct(row.returned_wk1)}%</td>
+                        <td className="px-2 py-2 text-right font-mono text-[var(--purple)]">{pct(row.returned_wk2)}%</td>
+                        <td className="px-2 py-2 text-right font-mono text-[var(--pink)]">{pct(row.returned_wk3plus)}%</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          ) : null}
+        </div>
+      )}
 
       {/* External Dashboards */}
       <div className="glass-card p-6">

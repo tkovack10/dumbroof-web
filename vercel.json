@@ -52,6 +52,18 @@
     {
       "path": "/api/cron/enrich-incomplete-profiles",
       "schedule": "0 18 * * *"
+    },
+    {
+      "path": "/api/cron/nurture-sequence",
+      "schedule": "0 14 * * *"
+    },
+    {
+      "path": "/api/cron/gsc-sync",
+      "schedule": "0 8 * * *"
+    },
+    {
+      "path": "/api/cron/aeo-monitor",
+      "schedule": "0 12 * * *"
     }
   ]
 }
