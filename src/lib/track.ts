@@ -13,16 +13,36 @@ declare global {
 }
 
 /**
+ * GA4 ecommerce-standard event names. GA4 auto-recognizes these (no manual
+ * Key Event toggle required) and they populate the Generate Leads / Drive
+ * Sales / Purchase Journey reports out of the box. Our internal custom
+ * events (e.g. signup_succeeded) describe internal funnel steps; the mapped
+ * GA4-standard name is fired alongside so Google's prebuilt reports light up.
+ *
+ * GA4's recommended event reference:
+ * https://support.google.com/analytics/answer/9267735
+ */
+const GA4_STANDARD_MIRROR: Record<string, { name: string; params?: Record<string, unknown> }> = {
+  signup_succeeded: { name: "sign_up", params: { method: "email" } },
+  oauth_started: { name: "login", params: { method: "google" } },
+  hero_cta_clicked: { name: "select_promotion" },
+  pricing_page_viewed: { name: "view_item_list", params: { item_list_name: "pricing_tiers" } },
+  new_claim_form_started: { name: "begin_checkout" },
+  new_claim_form_submitted: { name: "purchase", params: { transaction_id: "claim_created" } },
+};
+
+/**
  * Fire a funnel event to BOTH Vercel Analytics AND GA4 simultaneously.
  *
  * Vercel Analytics → developer-facing dashboard, custom events for funnel
  * GA4 → marketing-facing, conversions feed back to Meta/Google Ads via CAPI
  *
- * Use this everywhere instead of `track()` directly.
+ * In addition to firing the named custom event, we also mirror it to a GA4
+ * ecommerce-standard name when applicable (sign_up, login, purchase, etc.)
+ * so GA4's prebuilt reports (Generate Leads, Purchase Journey) populate
+ * automatically without needing a UI Key Event toggle on every property.
  *
- * Anchor: see USARM-Claims-Platform funnel investigation 2026-04-06.
- * GA4 currently has 0 conversion events configured — adding these is critical
- * for Meta ads to optimize for the right action instead of Landing Page Views.
+ * Use this everywhere instead of `track()` directly.
  */
 export function trackBoth(event: string, properties?: EventProperties): void {
   // Vercel Analytics
@@ -36,6 +56,10 @@ export function trackBoth(event: string, properties?: EventProperties): void {
   if (typeof window !== "undefined" && typeof window.gtag === "function") {
     try {
       window.gtag("event", event, properties || {});
+      const mirror = GA4_STANDARD_MIRROR[event];
+      if (mirror) {
+        window.gtag("event", mirror.name, { ...(mirror.params || {}), ...(properties || {}) });
+      }
     } catch {
       // Non-fatal
     }

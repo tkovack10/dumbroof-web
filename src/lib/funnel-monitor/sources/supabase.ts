@@ -7,15 +7,16 @@ import type { SupabaseSection, SignupRow, ClaimRow, Anomaly } from "../types";
  *
  * IMPORTANT: never query `.schema("auth").from("users")` here — Supabase's
  * PostgREST gateway only exposes the `public` and `graphql_public` schemas
- * (PGRST106). Use `supabaseAdmin.auth.admin.listUsers()` instead, which hits
- * `/auth/v1/admin/users` and works with the service-role key. See E171.
+ * (PGRST106). And don't use `supabaseAdmin.auth.admin.listUsers()` — that
+ * endpoint returns intermittent 500 "Database error finding users" on this
+ * project (see E171, also broke enrich-incomplete-profiles cron). Use the
+ * `list_platform_users_full` RPC (SECURITY DEFINER) which selects directly
+ * from auth.users via the postgres role.
  */
 
 /**
- * List every user in auth via the admin API, paginating until we've drained
- * the result set. perPage caps at 1000. At platform scale (~100 users) this
- * is one page; logs a warning past 800 so we know to add a created_at filter
- * before we outgrow simple full-list pagination.
+ * Drain every auth user via the list_platform_users_full RPC. One query,
+ * no pagination, returns id + email + created_at + metadata blobs.
  */
 async function listAllAuthUsers(): Promise<
   Array<{
@@ -26,63 +27,27 @@ async function listAllAuthUsers(): Promise<
     raw_app_meta_data?: Record<string, unknown>;
   }>
 > {
-  const all: Array<{
+  const { data, error } = await supabaseAdmin.rpc("list_platform_users_full");
+  if (error) {
+    console.error("[funnel-monitor] list_platform_users_full RPC failed:", error);
+    return [];
+  }
+  type RpcRow = {
     id: string;
-    email: string;
+    email: string | null;
     created_at: string;
-    raw_user_meta_data?: Record<string, unknown>;
-    raw_app_meta_data?: Record<string, unknown>;
-  }> = [];
-  let page = 1;
-  // perPage > 50 returns "Database error finding users" (500) on this
-  // account — Supabase auth admin API quirk. Stay at 50 and paginate.
-  const perPage = 50;
-  // Safety cap: 60 pages × 50 = 3000 users. Past that we should switch to
-  // a filtered query path (e.g. the gotrue admin API doesn't support
-  // created_at filtering yet, so the alternative is exposing auth schema).
-  // Track consecutive empty pages — only stop when we've actually run out of
-  // users (vs hitting a corrupt-row error). Some pages reliably 500 on this
-  // account ("Database error finding users") even when neighboring pages
-  // succeed — likely a corrupt user row. Skip past errors, don't bail.
-  let consecutiveEmptyOrErrored = 0;
-  for (let i = 0; i < 60; i++) {
-    const { data, error } = await supabaseAdmin.auth.admin.listUsers({ page, perPage });
-    if (error) {
-      console.warn(
-        `[funnel-monitor] auth.admin.listUsers error (page ${page}, perPage ${perPage}): ${error.message} — skipping page`
-      );
-      consecutiveEmptyOrErrored += 1;
-      // 3 consecutive failures = we've genuinely walked off the end
-      if (consecutiveEmptyOrErrored >= 3) break;
-      page += 1;
-      continue;
-    }
-    const users = data?.users || [];
-    if (users.length === 0) {
-      consecutiveEmptyOrErrored += 1;
-      if (consecutiveEmptyOrErrored >= 3) break;
-      page += 1;
-      continue;
-    }
-    consecutiveEmptyOrErrored = 0;
-    for (const u of users) {
-      all.push({
-        id: u.id,
-        email: u.email || "unknown",
-        created_at: u.created_at,
-        raw_user_meta_data: (u.user_metadata || {}) as Record<string, unknown>,
-        raw_app_meta_data: (u.app_metadata || {}) as Record<string, unknown>,
-      });
-    }
-    if (users.length < perPage) break;
-    page += 1;
-  }
-  if (all.length >= 2500) {
-    console.warn(
-      `[funnel-monitor] listAllAuthUsers returned ${all.length} users — approaching pagination ceiling (3000), switch to a filtered query`
-    );
-  }
-  return all;
+    raw_user_meta_data: Record<string, unknown> | null;
+    raw_app_meta_data: Record<string, unknown> | null;
+  };
+  return ((data as RpcRow[] | null) || [])
+    .filter((u) => !!u.email)
+    .map((u) => ({
+      id: u.id,
+      email: u.email as string,
+      created_at: u.created_at,
+      raw_user_meta_data: (u.raw_user_meta_data || {}) as Record<string, unknown>,
+      raw_app_meta_data: (u.raw_app_meta_data || {}) as Record<string, unknown>,
+    }));
 }
 
 export async function gatherSupabase(

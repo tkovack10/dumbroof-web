@@ -51,37 +51,21 @@ type WindowMetrics = {
 let _authUsersCache: Array<{ created_at: string }> | null = null;
 
 /**
- * Drain auth.users via the admin API. Can't query `auth.users` directly via
- * PostgREST (only `public` + `graphql_public` are exposed — see E171 +
- * /lib/funnel-monitor/sources/supabase.ts). At ~125 users today this is one
- * RPC call per page × ~3 pages = ~600ms, well under the maxDuration.
+ * Drain auth.users via the list_platform_users RPC. Can't query `auth.users`
+ * directly via PostgREST (only `public` + `graphql_public` exposed — E171).
+ * The Supabase auth admin API (`listUsers`) returns intermittent 500s on this
+ * project, so we use the SECURITY DEFINER RPC instead.
  */
 async function listAllAuthUserCreatedAt(): Promise<Array<{ created_at: string }>> {
   if (_authUsersCache) return _authUsersCache;
-  const all: Array<{ created_at: string }> = [];
-  let page = 1;
-  const perPage = 50; // >50 returns 500 "Database error finding users" on this account
-  let consecutiveEmpty = 0;
-  for (let i = 0; i < 60; i++) {
-    const { data, error } = await supabaseAdmin.auth.admin.listUsers({ page, perPage });
-    if (error) {
-      consecutiveEmpty += 1;
-      if (consecutiveEmpty >= 3) break;
-      page += 1;
-      continue;
-    }
-    const users = data?.users || [];
-    if (users.length === 0) {
-      consecutiveEmpty += 1;
-      if (consecutiveEmpty >= 3) break;
-      page += 1;
-      continue;
-    }
-    consecutiveEmpty = 0;
-    for (const u of users) all.push({ created_at: u.created_at });
-    if (users.length < perPage) break;
-    page += 1;
+  const { data, error } = await supabaseAdmin.rpc("list_platform_users");
+  if (error) {
+    console.error("[daily-funnel-summary] list_platform_users RPC failed:", error);
+    _authUsersCache = [];
+    return [];
   }
+  type RpcRow = { id: string; email: string | null; created_at: string };
+  const all = ((data as RpcRow[] | null) || []).map((u) => ({ created_at: u.created_at }));
   _authUsersCache = all;
   return all;
 }

@@ -377,9 +377,17 @@ async function sendDailyDigest(
 
   // Look up the synthetic recipient row in auth.users for tom@dumbroof.ai.
   // We need a real user_id for the upgrade_email_sends FK + dedupe.
-  const { data: tomUser } = await supabaseAdmin.auth.admin
-    .listUsers({ page: 1, perPage: 100 });
-  const tomRecord = tomUser?.users?.find((u) => u.email === INTERNAL_DIGEST_RECIPIENT);
+  // Uses list_platform_users RPC — auth.admin.listUsers returns intermittent
+  // 500s on this project (see E171, enrich-incomplete-profiles cron).
+  const { data: usersData, error: usersErr } = await supabaseAdmin.rpc("list_platform_users");
+  if (usersErr) {
+    console.warn("[UPGRADE] daily digest: list_platform_users RPC failed:", usersErr);
+    return;
+  }
+  type RpcRow = { id: string; email: string | null };
+  const tomRecord = ((usersData as RpcRow[] | null) || []).find(
+    (u) => u.email === INTERNAL_DIGEST_RECIPIENT
+  );
   if (!tomRecord) {
     console.warn("[UPGRADE] daily digest: no auth.users row for", INTERNAL_DIGEST_RECIPIENT);
     return;
