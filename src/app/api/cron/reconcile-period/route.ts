@@ -192,10 +192,12 @@ async function handle(req: NextRequest): Promise<NextResponse> {
   });
 }
 
+import { withHeartbeat } from "@/lib/cron-heartbeat";
+
 export async function GET(req: NextRequest) {
-  return handle(req);
+  return withHeartbeat("reconcile-period", 1440, req, handle);
 }
 
 export async function POST(req: NextRequest) {
-  return handle(req);
+  return withHeartbeat("reconcile-period", 1440, req, handle);
 }

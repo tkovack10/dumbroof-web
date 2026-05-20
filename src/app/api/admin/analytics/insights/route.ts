@@ -52,6 +52,8 @@ export async function GET() {
     whoopsFunnel,
     dailySignups30d,
     qualityTimeline,
+    nurtureReplies,
+    cronHealth,
   ] = await Promise.all([
     // 30-day funnel by stage
     safeSql(`
@@ -167,6 +169,36 @@ export async function GET() {
       GROUP BY 1
       ORDER BY 1 ASC
     `),
+    // Recent nurture replies — last 30d, top 30, with matched touch + opt-out state.
+    safeSql(`
+      SELECT
+        nr.id, nr.from_email, nr.subject, nr.matched_touch, nr.opted_out,
+        LEFT(COALESCE(nr.body_excerpt, ''), 240) AS body_excerpt,
+        to_char(nr.created_at AT TIME ZONE 'America/New_York', 'YYYY-MM-DD HH24:MI') AS created_et,
+        nr.user_id IS NOT NULL AS user_matched
+      FROM public.nurture_replies nr
+      WHERE nr.created_at >= NOW() - INTERVAL '30 days'
+      ORDER BY nr.created_at DESC
+      LIMIT 30
+    `),
+    // Cron heartbeats with computed staleness — every monitored cron's last run.
+    safeSql(`
+      SELECT
+        cron_name,
+        to_char(last_ran_at AT TIME ZONE 'America/New_York', 'YYYY-MM-DD HH24:MI') AS last_ran_et,
+        last_status, last_duration_ms, last_summary,
+        expected_interval_minutes, consecutive_failures,
+        ROUND(EXTRACT(EPOCH FROM (NOW() - last_ran_at)) / 60.0)::int AS minutes_since_last_run,
+        CASE
+          WHEN EXTRACT(EPOCH FROM (NOW() - last_ran_at)) / 60.0 > expected_interval_minutes * 2 THEN 'stale'
+          WHEN consecutive_failures >= 2 THEN 'failing'
+          WHEN last_status = 'error' THEN 'last_errored'
+          WHEN last_status = 'skipped' THEN 'skipped'
+          ELSE 'healthy'
+        END AS health
+      FROM public.cron_heartbeats
+      ORDER BY last_ran_at DESC
+    `),
     // Daily quality breakdown for 30-day signup mix sparkline
     safeSql(`
       WITH days AS (SELECT generate_series(date_trunc('day', NOW() - INTERVAL '30 days'), date_trunc('day', NOW()), INTERVAL '1 day') AS day)
@@ -194,6 +226,8 @@ export async function GET() {
       whoops_funnel_30d: whoopsFunnel[0] || null,
       daily_signups_30d: dailySignups30d,
       quality_timeline_30d: qualityTimeline,
+      nurture_replies: nurtureReplies,
+      cron_health: cronHealth,
     },
     { headers: { "Cache-Control": "private, max-age=300, stale-while-revalidate=600" } }
   );

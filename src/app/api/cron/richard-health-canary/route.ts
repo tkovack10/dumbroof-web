@@ -22,6 +22,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
+import { recordHeartbeat } from "@/lib/cron-heartbeat";
 
 export const maxDuration = 60;
 export const dynamic = "force-dynamic";
@@ -104,6 +105,7 @@ export async function GET(req: NextRequest) {
   if (auth !== `Bearer ${process.env.CRON_SECRET}`) {
     return new NextResponse("Unauthorized", { status: 401 });
   }
+  const canaryStartedAt = Date.now();
 
   try {
     const result = await runCanary();
@@ -128,8 +130,22 @@ export async function GET(req: NextRequest) {
       }
     }
 
+    await recordHeartbeat(
+      "richard-health-canary",
+      15, // every 15 min
+      "ok",
+      `baseline_total=${result.baseline.total} current_total=${result.current.total} alert=${result.alert}`,
+      Date.now() - canaryStartedAt,
+    );
     return NextResponse.json(result);
   } catch (e) {
+    await recordHeartbeat(
+      "richard-health-canary",
+      15,
+      "error",
+      `threw: ${e instanceof Error ? e.message : String(e)}`,
+      Date.now() - canaryStartedAt,
+    );
     console.error("[health-canary] cron failed:", e);
     return NextResponse.json({ error: String(e) }, { status: 500 });
   }

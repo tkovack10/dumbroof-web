@@ -67,6 +67,27 @@ interface InsightsData {
     consumer_roofer: number;
     consumer_other: number;
   }>;
+  nurture_replies: Array<{
+    id: string;
+    from_email: string;
+    subject: string | null;
+    matched_touch: string | null;
+    opted_out: boolean;
+    body_excerpt: string;
+    created_et: string;
+    user_matched: boolean;
+  }>;
+  cron_health: Array<{
+    cron_name: string;
+    last_ran_et: string;
+    last_status: string;
+    last_duration_ms: number | null;
+    last_summary: string | null;
+    expected_interval_minutes: number;
+    consecutive_failures: number;
+    minutes_since_last_run: number;
+    health: "healthy" | "stale" | "failing" | "last_errored" | "skipped";
+  }>;
 }
 
 const PLAN_LABELS: Record<string, string> = {
@@ -496,6 +517,116 @@ export function LiveAnalyticsContent() {
               </table>
             </div>
           ) : null}
+        </div>
+      )}
+
+      {/* Nurture replies + Cron health side-by-side */}
+      {(insights?.nurture_replies?.length || insights?.cron_health?.length) && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Nurture replies feed — high-intent inbound */}
+          <div className="glass-card p-6">
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-sm font-bold text-[var(--white)]">Recent Nurture Replies</h2>
+              <span className="text-[10px] text-[var(--gray-dim)]">High-intent inbound · auto opt-out</span>
+            </div>
+            {insights?.nurture_replies?.length ? (
+              <div className="space-y-2 max-h-[420px] overflow-y-auto pr-2 -mr-2">
+                {insights.nurture_replies.map((r) => (
+                  <div key={r.id} className="rounded-lg bg-white/[0.03] border border-white/[0.06] p-3 text-xs">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-[var(--white)] font-medium truncate" title={r.from_email}>
+                        {r.from_email}
+                      </span>
+                      <span className="text-[10px] text-[var(--gray-dim)] whitespace-nowrap ml-2">{r.created_et}</span>
+                    </div>
+                    {r.subject && (
+                      <p className="text-[var(--gray)] truncate mb-1" title={r.subject}>{r.subject}</p>
+                    )}
+                    {r.body_excerpt && (
+                      <p className="text-[10px] text-[var(--gray-muted)] line-clamp-2">{r.body_excerpt}</p>
+                    )}
+                    <div className="flex items-center gap-2 mt-2 text-[10px]">
+                      {r.matched_touch && (
+                        <span className="px-2 py-0.5 rounded-full bg-[var(--purple)]/10 text-[var(--purple)] border border-[var(--purple)]/20">
+                          {r.matched_touch}
+                        </span>
+                      )}
+                      {r.opted_out ? (
+                        <span className="px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20">opted out</span>
+                      ) : !r.user_matched ? (
+                        <span className="px-2 py-0.5 rounded-full bg-red-500/10 text-red-400 border border-red-500/20">no user match</span>
+                      ) : null}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-8">
+                <p className="text-xs text-[var(--gray-dim)]">No replies yet.</p>
+                <p className="text-[10px] text-[var(--gray-muted)] mt-2">Wire NURTURE_INBOUND_SECRET + forwarder<br/>(see /api/webhooks/nurture-reply header docs)</p>
+              </div>
+            )}
+          </div>
+
+          {/* Cron health */}
+          <div className="glass-card p-6">
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-sm font-bold text-[var(--white)]">Cron Health</h2>
+              <span className="text-[10px] text-[var(--gray-dim)]">Self-reported heartbeats</span>
+            </div>
+            {insights?.cron_health?.length ? (
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="text-left text-[10px] uppercase tracking-wider text-[var(--gray-muted)]">
+                    <th className="px-2 py-2 font-semibold">Cron</th>
+                    <th className="px-2 py-2 font-semibold">Last Run</th>
+                    <th className="px-2 py-2 font-semibold">Stale</th>
+                    <th className="px-2 py-2 font-semibold">Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {insights.cron_health.map((c) => {
+                    const color =
+                      c.health === "healthy" ? "text-green-400" :
+                      c.health === "skipped" ? "text-[var(--gray-muted)]" :
+                      c.health === "last_errored" ? "text-amber-400" :
+                      "text-red-400";
+                    const dot =
+                      c.health === "healthy" ? "bg-green-400" :
+                      c.health === "skipped" ? "bg-gray-400" :
+                      c.health === "last_errored" ? "bg-amber-400" :
+                      "bg-red-400";
+                    const staleLabel = c.minutes_since_last_run < 60
+                      ? `${c.minutes_since_last_run}m`
+                      : c.minutes_since_last_run < 1440
+                      ? `${Math.round(c.minutes_since_last_run / 60)}h`
+                      : `${Math.round(c.minutes_since_last_run / 1440)}d`;
+                    return (
+                      <tr key={c.cron_name} className="border-t border-white/[0.04]" title={c.last_summary || ""}>
+                        <td className="px-2 py-2">
+                          <div className="flex items-center gap-2">
+                            <span className={`inline-block w-2 h-2 rounded-full ${dot}`}></span>
+                            <span className="text-[var(--white)] font-mono text-[11px]">{c.cron_name}</span>
+                          </div>
+                        </td>
+                        <td className="px-2 py-2 text-[10px] text-[var(--gray-dim)] font-mono whitespace-nowrap">{c.last_ran_et}</td>
+                        <td className={`px-2 py-2 font-mono text-[11px] ${color}`}>{staleLabel}</td>
+                        <td className={`px-2 py-2 text-[11px] ${color}`}>
+                          {c.health}
+                          {c.consecutive_failures > 0 && <span className="text-[10px] text-red-400 ml-1">×{c.consecutive_failures}</span>}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            ) : (
+              <div className="text-center py-8">
+                <p className="text-xs text-[var(--gray-dim)]">No heartbeats recorded yet.</p>
+                <p className="text-[10px] text-[var(--gray-muted)] mt-2">Crons report on each run. Wait for the next scheduled fire.</p>
+              </div>
+            )}
+          </div>
         </div>
       )}
 

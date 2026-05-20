@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { getResend } from "@/lib/resend";
+import { withHeartbeat } from "@/lib/cron-heartbeat";
 
 export const maxDuration = 300;
 
@@ -510,11 +511,11 @@ async function sendInternalSummary(result: RunResult): Promise<void> {
 }
 
 export async function GET(req: NextRequest) {
-  return run(req);
+  return withHeartbeat("enrich-incomplete-profiles", 1440, req, run);
 }
 
 export async function POST(req: NextRequest) {
-  return run(req);
+  return withHeartbeat("enrich-incomplete-profiles", 1440, req, run);
 }
 
 async function run(req: NextRequest) {

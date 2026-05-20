@@ -491,5 +491,11 @@ async function sendDailyDigest(
   }
 }
 
-export async function GET(req: NextRequest) { return handle(req); }
-export async function POST(req: NextRequest) { return handle(req); }
+import { withHeartbeat } from "@/lib/cron-heartbeat";
+
+export async function GET(req: NextRequest) {
+  return withHeartbeat("upgrade-emails", 1440, req, handle);
+}
+export async function POST(req: NextRequest) {
+  return withHeartbeat("upgrade-emails", 1440, req, handle);
+}

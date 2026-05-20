@@ -255,5 +255,11 @@ async function handle(req: NextRequest): Promise<NextResponse> {
   }
 }
 
-export const GET = handle;
-export const POST = handle;
+import { withHeartbeat } from "@/lib/cron-heartbeat";
+
+export async function GET(req: NextRequest) {
+  return withHeartbeat("daily-funnel-summary", 1440, req, handle);
+}
+export async function POST(req: NextRequest) {
+  return withHeartbeat("daily-funnel-summary", 1440, req, handle);
+}

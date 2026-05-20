@@ -1,3 +1,5 @@
+import type { NextRequest, NextResponse } from "next/server";
+import { NextResponse as NR } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 
 /**
@@ -51,4 +53,59 @@ export async function recordHeartbeat(
     // Heartbeat failures must not break the calling cron.
     console.warn(`[cron-heartbeat] write failed for ${name}:`, err);
   }
+}
+
+/**
+ * Wrapper for cron route handlers. Inspects the handler's NextResponse
+ * status + body to derive the heartbeat status automatically:
+ *   - HTTP 401 → no heartbeat (not a real run, just rejected auth)
+ *   - HTTP 5xx → error
+ *   - body.skipped === true → skipped
+ *   - otherwise → ok
+ *
+ * Crons usage:
+ *   export async function GET(req: NextRequest) {
+ *     return withHeartbeat("my-cron", 1440, req, handle);
+ *   }
+ */
+export async function withHeartbeat(
+  name: string,
+  expectedIntervalMinutes: number,
+  req: NextRequest,
+  handler: (req: NextRequest) => Promise<NextResponse>,
+): Promise<NextResponse> {
+  const startedAt = Date.now();
+  let res: NextResponse;
+  let status: "ok" | "error" | "skipped" = "ok";
+  let summary = "";
+  try {
+    res = await handler(req);
+    if (res.status === 401) {
+      // Auth rejection — not a real run, don't heartbeat.
+      return res;
+    }
+    if (res.status >= 500) {
+      status = "error";
+      summary = `HTTP ${res.status}`;
+    } else if (res.status >= 400) {
+      // 4xx is unusual but not a cron-health concern — record but mark error.
+      status = "error";
+      summary = `HTTP ${res.status}`;
+    } else {
+      try {
+        const cloned = res.clone();
+        const body = (await cloned.json()) as Record<string, unknown>;
+        if (body.skipped === true) status = "skipped";
+        summary = JSON.stringify(body).slice(0, 250);
+      } catch {
+        summary = `HTTP ${res.status}`;
+      }
+    }
+  } catch (err) {
+    status = "error";
+    summary = `threw: ${err instanceof Error ? err.message : String(err)}`.slice(0, 250);
+    res = NR.json({ error: String(err) }, { status: 500 });
+  }
+  await recordHeartbeat(name, expectedIntervalMinutes, status, summary, Date.now() - startedAt);
+  return res;
 }

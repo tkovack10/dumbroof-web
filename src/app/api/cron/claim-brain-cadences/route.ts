@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { getResend } from "@/lib/resend";
+import { recordHeartbeat } from "@/lib/cron-heartbeat";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
@@ -32,6 +33,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  const cadenceStartedAt = Date.now();
   const nowIso = new Date().toISOString();
 
   const { data: due, error } = await supabaseAdmin
@@ -42,11 +44,13 @@ export async function GET(req: NextRequest) {
     .limit(50);
 
   if (error) {
+    await recordHeartbeat("claim-brain-cadences", 60, "error", `due query: ${error.message}`, Date.now() - cadenceStartedAt);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
   const rows = due || [];
   if (rows.length === 0) {
+    await recordHeartbeat("claim-brain-cadences", 60, "ok", "no rows due", Date.now() - cadenceStartedAt);
     return NextResponse.json({ ok: true, processed: 0 });
   }
 
@@ -168,5 +172,13 @@ export async function GET(req: NextRequest) {
     }
   }
 
+  const elapsedMs = Date.now() - cadenceStartedAt;
+  await recordHeartbeat(
+    "claim-brain-cadences",
+    60, // hourly
+    results.failed > 0 && results.sent === 0 ? "error" : "ok",
+    `processed=${rows.length} sent=${results.sent} failed=${results.failed}`,
+    elapsedMs,
+  );
   return NextResponse.json({ ok: true, processed: rows.length, ...results });
 }

@@ -163,5 +163,11 @@ async function handle(req: NextRequest): Promise<NextResponse> {
   return NextResponse.json({ ok: true, results });
 }
 
-export async function GET(req: NextRequest) { return handle(req); }
-export async function POST(req: NextRequest) { return handle(req); }
+import { withHeartbeat } from "@/lib/cron-heartbeat";
+
+export async function GET(req: NextRequest) {
+  return withHeartbeat("reactivation-emails", 1440, req, handle);
+}
+export async function POST(req: NextRequest) {
+  return withHeartbeat("reactivation-emails", 1440, req, handle);
+}
