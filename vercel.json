@@ -64,6 +64,10 @@
     {
       "path": "/api/cron/aeo-monitor",
       "schedule": "0 12 * * *"
+    },
+    {
+      "path": "/api/cron/cron-health-canary",
+      "schedule": "*/15 * * * *"
     }
   ]
 }

@@ -15,8 +15,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { isGscConfigured, searchAnalytics } from "@/lib/gsc/client";
+import { recordHeartbeat } from "@/lib/cron-heartbeat";
 
 export const maxDuration = 60;
+const HEARTBEAT_NAME = "gsc-sync";
+const EXPECTED_INTERVAL = 1440; // daily
 
 function authorize(req: NextRequest): boolean {
   const secret = process.env.CRON_SECRET?.trim();
@@ -42,9 +45,11 @@ async function run(req: NextRequest) {
   if (!authorize(req)) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
+  const startedAt = Date.now();
 
   if (!isGscConfigured()) {
     console.warn("[gsc-sync] GOOGLE_SERVICE_ACCOUNT_JSON not configured — skipping run");
+    await recordHeartbeat(HEARTBEAT_NAME, EXPECTED_INTERVAL, "skipped", "GOOGLE_SERVICE_ACCOUNT_JSON not set", Date.now() - startedAt);
     return NextResponse.json({ skipped: true, reason: "GOOGLE_SERVICE_ACCOUNT_JSON not set" });
   }
 
@@ -72,6 +77,7 @@ async function run(req: NextRequest) {
     });
   } catch (err) {
     console.error("[gsc-sync] GSC API failed:", err);
+    await recordHeartbeat(HEARTBEAT_NAME, EXPECTED_INTERVAL, "error", `GSC API failed: ${err instanceof Error ? err.message : String(err)}`, Date.now() - startedAt);
     return NextResponse.json(
       { ok: false, error: err instanceof Error ? err.message : String(err) },
       { status: 502 }
@@ -79,6 +85,7 @@ async function run(req: NextRequest) {
   }
 
   if (rows.length === 0) {
+    await recordHeartbeat(HEARTBEAT_NAME, EXPECTED_INTERVAL, "ok", `target=${targetDate} rows=0`, Date.now() - startedAt);
     return NextResponse.json({ ok: true, target_date: targetDate, rows: 0 });
   }
 
@@ -102,6 +109,7 @@ async function run(req: NextRequest) {
       .upsert(chunk, { onConflict: "snapshot_date,query,page" });
     if (error) {
       console.error("[gsc-sync] upsert failed:", error);
+      await recordHeartbeat(HEARTBEAT_NAME, EXPECTED_INTERVAL, "error", `upsert failed at row ${written}: ${error.message}`, Date.now() - startedAt);
       return NextResponse.json(
         { ok: false, error: error.message, written },
         { status: 500 }
@@ -110,6 +118,7 @@ async function run(req: NextRequest) {
     written += chunk.length;
   }
 
+  await recordHeartbeat(HEARTBEAT_NAME, EXPECTED_INTERVAL, "ok", `target=${targetDate} fetched=${rows.length} written=${written}`, Date.now() - startedAt);
   return NextResponse.json({
     ok: true,
     target_date: targetDate,

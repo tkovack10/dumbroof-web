@@ -16,8 +16,11 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
+import { recordHeartbeat } from "@/lib/cron-heartbeat";
 
 export const maxDuration = 120;
+const HEARTBEAT_NAME = "aeo-monitor";
+const EXPECTED_INTERVAL = 1440; // daily
 
 function authorize(req: NextRequest): boolean {
   const secret = process.env.CRON_SECRET?.trim();
@@ -195,9 +198,11 @@ async function run(req: NextRequest) {
   if (!authorize(req)) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
+  const startedAt = Date.now();
 
   if (!process.env.ANTHROPIC_API_KEY) {
     console.warn("[aeo-monitor] ANTHROPIC_API_KEY not configured — skipping run");
+    await recordHeartbeat(HEARTBEAT_NAME, EXPECTED_INTERVAL, "skipped", "ANTHROPIC_API_KEY not set", Date.now() - startedAt);
     return NextResponse.json({ skipped: true, reason: "ANTHROPIC_API_KEY not set" });
   }
 
@@ -230,6 +235,7 @@ async function run(req: NextRequest) {
     const { error } = await supabaseAdmin.from("aeo_check_results").insert(insertRows);
     if (error) {
       console.error("[aeo-monitor] insert failed:", error);
+      await recordHeartbeat(HEARTBEAT_NAME, EXPECTED_INTERVAL, "error", `insert failed: ${error.message}`, Date.now() - startedAt);
       return NextResponse.json(
         { ok: false, error: error.message, results_count: results.length },
         { status: 500 }
@@ -238,6 +244,14 @@ async function run(req: NextRequest) {
   }
 
   const citedCount = results.filter((r) => r.dumbroof_cited).length;
+  const status = results.length === 0 && errors.length > 0 ? "error" : "ok";
+  await recordHeartbeat(
+    HEARTBEAT_NAME,
+    EXPECTED_INTERVAL,
+    status,
+    `queries=${TARGET_QUERIES.length} succeeded=${results.length} cited=${citedCount} errors=${errors.length}`,
+    Date.now() - startedAt,
+  );
   return NextResponse.json({
     ok: true,
     check_date: checkDate,

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { getResend } from "@/lib/resend";
+import { recordHeartbeat } from "@/lib/cron-heartbeat";
 import {
   TOUCH_SPECS,
   deriveFirstName,
@@ -341,9 +342,18 @@ async function handle(req: NextRequest): Promise<NextResponse> {
     }
   }
 
+  const elapsedMs = Date.now() - startedAt;
+  await recordHeartbeat(
+    "nurture-sequence",
+    1440, // daily
+    totalErrors > 0 && totalSent === 0 ? "error" : "ok",
+    `sent=${totalSent}, errors=${totalErrors}, candidates=${candidates.length}`,
+    elapsedMs,
+  );
+
   return NextResponse.json({
     ok: true,
-    elapsed_ms: Date.now() - startedAt,
+    elapsed_ms: elapsedMs,
     total_sent: totalSent,
     total_errors: totalErrors,
     touches: results,
