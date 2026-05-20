@@ -102,11 +102,16 @@ async function findRowlessUsers(targetUserIds?: string[], lookbackDays = 60): Pr
   }
   type RpcRow = { id: string; email: string | null; created_at: string | null };
   const candidates: Array<{ id: string; email: string }> = [];
+  const hasTargets = !!(targetUserIds && targetUserIds.length > 0);
   for (const u of (data as RpcRow[] | null) || []) {
     if (!u.email) continue;
-    const created = u.created_at ? Date.parse(u.created_at) : 0;
-    if (created < since) continue;
-    if (targetUserIds && !targetUserIds.includes(u.id)) continue;
+    if (hasTargets) {
+      // Explicit targets bypass the lookback window — admin can force-process old users.
+      if (!targetUserIds!.includes(u.id)) continue;
+    } else {
+      const created = u.created_at ? Date.parse(u.created_at) : 0;
+      if (created < since) continue;
+    }
     candidates.push({ id: u.id, email: u.email });
   }
 
@@ -517,10 +522,33 @@ async function run(req: NextRequest) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 
-  // Admin can target specific user_ids via ?user_ids=a,b,c (skips the 30-day filter)
+  // Admin can target specific users via ?user_ids=a,b,c or ?emails=a@x.com,b@y.com
+  // (both bypass the 30/60-day lookback windows). Emails are resolved via the
+  // list_platform_users RPC and combined with any explicit user_ids.
   const url = new URL(req.url);
   const userIdsParam = url.searchParams.get("user_ids");
-  const targetUserIds = userIdsParam ? userIdsParam.split(",").map((s) => s.trim()).filter(Boolean) : undefined;
+  const emailsParam = url.searchParams.get("emails");
+  let targetUserIds: string[] | undefined;
+  if (userIdsParam || emailsParam) {
+    const ids = new Set<string>(
+      (userIdsParam || "").split(",").map((s) => s.trim()).filter(Boolean)
+    );
+    if (emailsParam) {
+      const wantedEmails = new Set(
+        emailsParam.split(",").map((s) => s.trim().toLowerCase()).filter(Boolean)
+      );
+      const { data, error } = await supabaseAdmin.rpc("list_platform_users");
+      if (error) {
+        console.error("[enrich-cron] email-resolve RPC failed:", error);
+      } else {
+        type Row = { id: string; email: string | null };
+        for (const u of (data as Row[] | null) || []) {
+          if (u.email && wantedEmails.has(u.email.toLowerCase())) ids.add(u.id);
+        }
+      }
+    }
+    targetUserIds = Array.from(ids);
+  }
 
   const [incomplete, rowless] = await Promise.all([
     findIncompleteProfiles(targetUserIds),
