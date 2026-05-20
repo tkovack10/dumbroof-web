@@ -45,7 +45,7 @@ export const FB_VARIANTS: Record<FbVariant, VariantConfig> = {
 
   // Match: "Try DumbRoof Free / Whoops — we're about to break the roofing industry"
   whoops: {
-    badge: "Try DumbRoof Free • No Card",
+    badge: "$6.9M+ in supplements written for roofers like you.",
     headlineLead: "Whoops —",
     headlineEmphasis: "we're about to break the roofing industry.",
     subhead:

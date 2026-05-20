@@ -42,16 +42,38 @@ export function FbLanding({ variant, stats, source }: FbLandingProps) {
             {cfg.subhead}
           </p>
 
+          {/* Low-commitment exit for skeptics — captures the ~75% who'd otherwise
+              bounce, lets them see a real deliverable BEFORE we ask for an email.
+              Positioned between subhead and video so it's the first interactive
+              element above the fold. */}
+          <div className="mb-5">
+            <a
+              href="/sample/forensic-report-sample.pdf"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 text-sm text-[var(--cyan)] hover:text-white border border-[var(--cyan)]/30 hover:border-[var(--cyan)]/60 rounded-full px-4 py-2 transition-colors"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+              See a real supplement letter &rarr;
+            </a>
+          </div>
+
           {/* Hero video — autoplay muted loop. Browser policy requires muted for autoplay.
               File: 791KB. Source matches Whoops ad creative. 16:9 crop on mobile to keep
-              form above the fold; full square on sm+ where vertical room is available. */}
-          <div className="mb-5 rounded-xl overflow-hidden border border-white/10 bg-black/40 max-w-sm mx-auto">
+              form above the fold; full square on sm+ where vertical room is available.
+              Poster: neon-logo PNG so iOS Low Power Mode (autoplay suppressed) shows the
+              brand instead of a black rectangle. bg-[var(--navy-light)] on the wrapper
+              handles letterboxing color when the poster aspect doesn't match. */}
+          <div className="mb-5 rounded-xl overflow-hidden border border-white/10 bg-[var(--navy-light)] max-w-sm mx-auto">
             <video
               autoPlay
               muted
               playsInline
               loop
               preload="metadata"
+              poster="/logo-neon-dark.png"
               className="w-full block aspect-video sm:aspect-square object-cover"
               aria-hidden="true"
             >

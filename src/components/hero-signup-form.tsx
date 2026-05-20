@@ -147,7 +147,7 @@ export function HeroSignupForm({ source = "desktop_hero" }: { source?: string } 
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="Enter your work email"
+              placeholder="you@yourroofingco.com"
               className="flex-1 px-5 py-4 rounded-xl bg-white/10 border border-white/20 text-white placeholder-white/40 text-base focus:outline-none focus:border-white/50 focus:bg-white/[0.15] transition-colors"
               autoComplete="email"
               required
