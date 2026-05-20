@@ -2,10 +2,13 @@ import { readFileSync } from "fs";
 import { join } from "path";
 import { NextRequest, NextResponse } from "next/server";
 import { getResend } from "@/lib/resend";
+import { supabaseAdmin } from "@/lib/supabase/admin";
 import { sendCapiEvent, CapiEventName } from "@/lib/meta-conversions-api";
 import { getUtmFromRequest } from "@/lib/utm";
+import { day_0_welcome, deriveFirstName } from "@/lib/nurture/templates";
 
 const EMAIL_FROM_NOREPLY = "DumbRoof <noreply@dumbroof.ai>";
+const EMAIL_FROM_TOM = "Tom Kovack <tom@dumbroof.ai>";
 
 const TEAM_EMAILS = [
   "tkovack@usaroofmasters.com",
@@ -113,6 +116,102 @@ async function sendWelcome(email: string): Promise<void> {
   }
 }
 
+/**
+ * Send the day-0 nurture touch from Tom's personal address — instantly on
+ * signup, not 12-72h later via the cron. Records nurture_sent_at.day_0_welcome
+ * in company_profiles.settings so the daily nurture cron skips this touch
+ * for this user (idempotent dedupe).
+ *
+ * Distinct from the transactional sendWelcome above — the noreply welcome is
+ * the formal account-confirmation with the sample PDF; this is the personal
+ * "what to do in the next 5 minutes" follow-up. Different sender, different
+ * voice, different purpose. Both fire in parallel.
+ */
+async function sendInstantNurtureWelcome(email: string): Promise<void> {
+  try {
+    // Find the user_id for this email via the list_platform_users RPC
+    // (the broken auth.admin.listUsers replacement — see E171).
+    const { data: users, error: usersErr } = await supabaseAdmin.rpc("list_platform_users");
+    if (usersErr) {
+      console.warn("[notify-signup] list_platform_users failed:", usersErr.message);
+      return;
+    }
+    type RpcRow = { id: string; email: string | null };
+    const user = ((users as RpcRow[] | null) || []).find(
+      (u) => (u.email || "").toLowerCase() === email.toLowerCase()
+    );
+    if (!user) {
+      console.warn("[notify-signup] day_0 nurture: no user row for", email);
+      return;
+    }
+
+    // Pull existing profile for personalization + idempotent dedupe.
+    const { data: profile } = await supabaseAdmin
+      .from("company_profiles")
+      .select("user_id, contact_name, company_name, settings, email")
+      .eq("user_id", user.id)
+      .maybeSingle();
+
+    type Settings = {
+      nurture_sent_at?: Record<string, string>;
+      nurture_opted_out?: boolean;
+    };
+    const settings: Settings = (profile?.settings as Settings | null) || {};
+    if (settings.nurture_opted_out) return;
+    if (settings.nurture_sent_at?.day_0_welcome) return; // already fired (e.g. cron beat us)
+
+    const firstName = deriveFirstName({ contact_name: profile?.contact_name, email });
+    const companyName = (profile?.company_name || "").trim();
+    const { subject, html } = day_0_welcome({
+      first_name: firstName,
+      company_name: companyName,
+      email,
+    });
+
+    const resend = getResend();
+    const { error: sendErr } = await resend.emails.send({
+      from: EMAIL_FROM_TOM,
+      to: [email],
+      replyTo: "tom@dumbroof.ai",
+      subject,
+      html,
+      tags: [
+        { name: "type", value: "nurture" },
+        { name: "touch", value: "day_0_welcome" },
+        { name: "trigger", value: "instant_on_signup" },
+      ],
+    });
+    if (sendErr) {
+      console.error("[notify-signup] day_0 nurture send failed:", sendErr.message);
+      return;
+    }
+
+    // Record sent timestamp so the daily nurture cron won't re-fire this touch.
+    const newSettings: Settings = {
+      ...settings,
+      nurture_sent_at: {
+        ...(settings.nurture_sent_at || {}),
+        day_0_welcome: new Date().toISOString(),
+      },
+    };
+    if (profile) {
+      const { error } = await supabaseAdmin
+        .from("company_profiles")
+        .update({ settings: newSettings })
+        .eq("user_id", user.id);
+      if (error) console.error("[notify-signup] day_0 settings update failed:", error.message);
+    } else {
+      // No profile row yet — insert a stub so the dedupe survives.
+      const { error } = await supabaseAdmin
+        .from("company_profiles")
+        .insert({ user_id: user.id, email, settings: newSettings });
+      if (error) console.error("[notify-signup] day_0 settings stub insert failed:", error.message);
+    }
+  } catch (err) {
+    console.error("[notify-signup] sendInstantNurtureWelcome threw:", err);
+  }
+}
+
 export async function POST(req: NextRequest) {
   const { email, source, eventId } = await req.json();
   if (!email) {
@@ -128,9 +227,16 @@ export async function POST(req: NextRequest) {
   const fbpMatch = cookieHeader.match(/(?:^|; )_fbp=([^;]*)/);
   const fbcMatch = cookieHeader.match(/(?:^|; )_fbc=([^;]*)/);
 
-  // Send team notification, welcome email, AND CAPI CompleteRegistration in parallel.
+  // Send team notification, transactional welcome, instant day-0 nurture,
+  // AND CAPI CompleteRegistration in parallel.
+  //
   // CAPI CompleteRegistration is critical — browser pixel fires this event but
   // iOS 14+ blocks it for 25-40% of users. Server-side ensures Meta sees every signup.
+  //
+  // Day-0 nurture is fired here (not via the daily cron) so the personal
+  // tom@dumbroof.ai touch lands in the same minute as the transactional
+  // noreply@ welcome. The cron's day_0 window (12-72h) becomes a backstop
+  // for any signup where this in-line send failed.
   const resend = getResend();
   const results = await Promise.allSettled([
     resend.emails.send({
@@ -145,6 +251,7 @@ export async function POST(req: NextRequest) {
         <p><a href="https://www.dumbroof.ai/dashboard/admin" style="background-color:#2563eb;color:white;padding:10px 24px;border-radius:8px;text-decoration:none;font-weight:600;display:inline-block;">View Admin Dashboard</a></p>`,
     }),
     sendWelcome(email),
+    sendInstantNurtureWelcome(email),
     // CAPI CompleteRegistration — iOS 14+ can't block server-side events.
     // `eventId` (when provided by the client-side pixel call) makes Meta
     // dedupe the browser + server fires into one canonical event. Without
