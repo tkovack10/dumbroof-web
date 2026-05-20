@@ -26,6 +26,8 @@ interface IncompleteProfile {
   website: string | null;
   logo_path: string | null;
   settings: Record<string, unknown> | null;
+  /** True when no company_profiles row existed and we need to INSERT instead of UPDATE. */
+  needs_insert?: boolean;
 }
 
 interface Extracted {
@@ -39,8 +41,9 @@ interface Extracted {
 }
 
 interface RunResult {
-  enriched: Array<{ email: string; fields: string[]; logo: boolean }>;
+  enriched: Array<{ email: string; fields: string[]; logo: boolean; created_row: boolean }>;
   outreach_sent: string[];
+  page_ready_sent: string[];
   skipped: Array<{ email: string; reason: string }>;
   errors: Array<{ email: string; error: string }>;
 }
@@ -80,6 +83,64 @@ async function findIncompleteProfiles(targetUserIds?: string[]): Promise<Incompl
     }
   }
   return rows.filter((r) => r.email);
+}
+
+/**
+ * Find auth.users with no `company_profiles` row at all. These never made it past signup;
+ * their dashboard shows "No company profile". We want to white-glove build the row for them.
+ */
+async function findRowlessUsers(targetUserIds?: string[], lookbackDays = 60): Promise<IncompleteProfile[]> {
+  // Page through auth.users (admin API doesn't filter by created_at server-side; we filter client-side).
+  const since = Date.now() - lookbackDays * 24 * 60 * 60 * 1000;
+  const candidates: Array<{ id: string; email: string }> = [];
+  const perPage = 1000;
+  let page = 1;
+  // Cap pages defensively to avoid runaway loops on a misconfigured project.
+  for (; page <= 10; page++) {
+    const { data, error } = await supabaseAdmin.auth.admin.listUsers({ page, perPage });
+    if (error) {
+      console.error("[enrich-cron] listUsers page", page, "error:", error);
+      break;
+    }
+    const users = data?.users || [];
+    if (users.length === 0) break;
+    for (const u of users) {
+      if (!u.email) continue;
+      const created = u.created_at ? Date.parse(u.created_at) : 0;
+      if (created < since) continue;
+      if (targetUserIds && !targetUserIds.includes(u.id)) continue;
+      candidates.push({ id: u.id, email: u.email });
+    }
+    if (users.length < perPage) break;
+  }
+
+  if (candidates.length === 0) return [];
+
+  // Pull existing company_profiles for these user_ids in one query.
+  const ids = candidates.map((c) => c.id);
+  const { data: existing } = await supabaseAdmin
+    .from("company_profiles")
+    .select("user_id")
+    .in("user_id", ids);
+  const haveRow = new Set((existing || []).map((r) => (r as { user_id: string }).user_id));
+
+  const rowless = candidates
+    .filter((c) => !haveRow.has(c.id))
+    .slice(0, 50)
+    .map<IncompleteProfile>((c) => ({
+      user_id: c.id,
+      email: c.email,
+      company_name: null,
+      contact_name: null,
+      address: null,
+      city_state_zip: null,
+      phone: null,
+      website: null,
+      logo_path: null,
+      settings: null,
+      needs_insert: true,
+    }));
+  return rowless;
 }
 
 async function fetchWebsiteHtml(domain: string): Promise<{ html: string; finalUrl: string } | null> {
@@ -202,6 +263,51 @@ function isValidUrl(s: string | null | undefined): boolean {
   }
 }
 
+async function sendPageReadyEmail(profile: IncompleteProfile, website: string | null): Promise<boolean> {
+  try {
+    const firstName = (profile.contact_name || profile.email.split("@")[0] || "there")
+      .split(/\s+/)[0]
+      .replace(/[^a-zA-Z]/g, "")
+      || "there";
+    const websitePhrase = website ? ` from ${website.replace(/^https?:\/\/(www\.)?/, "")}` : "";
+    const subject = "Your DumbRoof company page is ready";
+    const html = `<div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;max-width:560px;color:#1a1a2e;line-height:1.55;">
+  <p>Hey ${firstName},</p>
+
+  <p>Tom here from DumbRoof. I noticed you signed up but hadn't built out your company profile yet, so my team went ahead and did the white-glove version for you &mdash; we pulled your logo, address, and phone${websitePhrase} and set up your company page so any claim you process from here on out comes out fully branded.</p>
+
+  <p><a href="https://www.dumbroof.ai/dashboard/settings" style="display:inline-block;background:#0d2137;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:600;">Review my page &rarr;</a></p>
+
+  <p>Take 30 seconds to fix anything that's off.</p>
+
+  <p>While I have you &mdash; want a 15-min demo so I can show you how to run your first claim? Or if you've already got a scope you're fighting, send it to <a href="mailto:claims@dumbroof.ai">claims@dumbroof.ai</a> and I'll personally walk it through with you.</p>
+
+  <p>Just reply to this email. I read every reply.</p>
+
+  <p>&mdash; Tom<br>CEO, DumbRoof<br>267-679-1504</p>
+</div>`;
+
+    const { error } = await getResend().emails.send({
+      from: "Tom Kovack <tom@dumbroof.ai>",
+      to: [profile.email],
+      replyTo: "tom@dumbroof.ai",
+      subject,
+      html,
+    });
+    if (error) {
+      console.error("[enrich-cron] page-ready send failed:", error);
+      return false;
+    }
+
+    const newSettings = { ...(profile.settings || {}), profile_ready_email_sent_at: new Date().toISOString() };
+    await supabaseAdmin.from("company_profiles").update({ settings: newSettings }).eq("user_id", profile.user_id);
+    return true;
+  } catch (err) {
+    console.error("[enrich-cron] sendPageReadyEmail error:", err);
+    return false;
+  }
+}
+
 async function sendOutreachEmail(profile: IncompleteProfile): Promise<boolean> {
   try {
     const firstName = (profile.contact_name || profile.email.split("@")[0] || "there")
@@ -267,6 +373,18 @@ async function enrichOne(profile: IncompleteProfile, result: RunResult): Promise
       result.skipped.push({ email: profile.email, reason: "outreach already sent" });
       return;
     }
+    // For rowless users we must INSERT a stub row first so sendOutreachEmail's UPDATE of
+    // settings.profile_outreach_sent_at lands somewhere.
+    if (profile.needs_insert) {
+      const { error: insErr } = await supabaseAdmin.from("company_profiles").insert({
+        user_id: profile.user_id,
+        email: profile.email,
+      });
+      if (insErr) {
+        result.errors.push({ email: profile.email, error: `stub insert failed: ${insErr.message}` });
+        return;
+      }
+    }
     const ok = await sendOutreachEmail(profile);
     if (ok) result.outreach_sent.push(profile.email);
     else result.errors.push({ email: profile.email, error: "outreach send failed" });
@@ -328,34 +446,61 @@ async function enrichOne(profile: IncompleteProfile, result: RunResult): Promise
     return;
   }
 
-  const { error: updErr } = await supabaseAdmin
-    .from("company_profiles")
-    .update(updates)
-    .eq("user_id", profile.user_id);
+  let dbErr: { message: string } | null = null;
+  if (profile.needs_insert) {
+    const { error } = await supabaseAdmin
+      .from("company_profiles")
+      .insert({ user_id: profile.user_id, email: profile.email, ...updates });
+    dbErr = error;
+  } else {
+    const { error } = await supabaseAdmin
+      .from("company_profiles")
+      .update(updates)
+      .eq("user_id", profile.user_id);
+    dbErr = error;
+  }
 
-  if (updErr) {
-    result.errors.push({ email: profile.email, error: updErr.message });
+  if (dbErr) {
+    result.errors.push({ email: profile.email, error: dbErr.message });
     return;
   }
 
-  result.enriched.push({ email: profile.email, fields: filled, logo: logoFilled });
+  result.enriched.push({
+    email: profile.email,
+    fields: filled,
+    logo: logoFilled,
+    created_row: !!profile.needs_insert,
+  });
+
+  // Page-ready outreach: only for newly-created rows (white-glove signups) and only once.
+  if (profile.needs_insert) {
+    const ok = await sendPageReadyEmail(profile, updates.website || null);
+    if (ok) result.page_ready_sent.push(profile.email);
+    else result.errors.push({ email: profile.email, error: "page-ready send failed" });
+  }
 }
 
 async function sendInternalSummary(result: RunResult): Promise<void> {
-  if (result.enriched.length === 0 && result.outreach_sent.length === 0 && result.errors.length === 0) return;
+  if (
+    result.enriched.length === 0 &&
+    result.outreach_sent.length === 0 &&
+    result.page_ready_sent.length === 0 &&
+    result.errors.length === 0
+  ) return;
   try {
     const rows = (label: string, items: unknown[]) => `<h3>${label} (${items.length})</h3><pre style="background:#f4f4f4;padding:12px;border-radius:6px;font-size:12px;overflow:auto;">${JSON.stringify(items, null, 2)}</pre>`;
     const html = `<div style="font-family:-apple-system,sans-serif;max-width:720px;">
   <h2>Profile enrichment run — ${new Date().toISOString().split("T")[0]}</h2>
   ${rows("✅ Enriched", result.enriched)}
-  ${rows("📨 Outreach sent", result.outreach_sent)}
+  ${rows("🎁 Page-ready emails sent", result.page_ready_sent)}
+  ${rows("📨 Outreach sent (self-serve)", result.outreach_sent)}
   ${rows("⏭️ Skipped", result.skipped)}
   ${rows("❌ Errors", result.errors)}
 </div>`;
     await getResend().emails.send({
       from: "DumbRoof System <tom@dumbroof.ai>",
       to: ["tom@dumbroof.ai"],
-      subject: `Profile enrichment: ${result.enriched.length} enriched, ${result.outreach_sent.length} outreach`,
+      subject: `Profile enrichment: ${result.enriched.length} enriched, ${result.page_ready_sent.length} page-ready, ${result.outreach_sent.length} self-serve`,
       html,
     });
   } catch (err) {
@@ -381,9 +526,21 @@ async function run(req: NextRequest) {
   const userIdsParam = url.searchParams.get("user_ids");
   const targetUserIds = userIdsParam ? userIdsParam.split(",").map((s) => s.trim()).filter(Boolean) : undefined;
 
-  const profiles = await findIncompleteProfiles(targetUserIds);
+  const [incomplete, rowless] = await Promise.all([
+    findIncompleteProfiles(targetUserIds),
+    findRowlessUsers(targetUserIds),
+  ]);
+  // Deduplicate by user_id in case the same user somehow appears in both buckets
+  // (e.g., a row was created between the two queries by a concurrent signup).
+  const seen = new Set<string>();
+  const profiles: IncompleteProfile[] = [];
+  for (const p of [...incomplete, ...rowless]) {
+    if (seen.has(p.user_id)) continue;
+    seen.add(p.user_id);
+    profiles.push(p);
+  }
 
-  const result: RunResult = { enriched: [], outreach_sent: [], skipped: [], errors: [] };
+  const result: RunResult = { enriched: [], outreach_sent: [], page_ready_sent: [], skipped: [], errors: [] };
 
   for (const profile of profiles) {
     try {
@@ -399,6 +556,7 @@ async function run(req: NextRequest) {
     processed: profiles.length,
     enriched: result.enriched.length,
     outreach_sent: result.outreach_sent.length,
+    page_ready_sent: result.page_ready_sent.length,
     skipped: result.skipped.length,
     errors: result.errors.length,
     detail: result,
