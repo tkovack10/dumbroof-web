@@ -88,30 +88,26 @@ async function findIncompleteProfiles(targetUserIds?: string[]): Promise<Incompl
 /**
  * Find auth.users with no `company_profiles` row at all. These never made it past signup;
  * their dashboard shows "No company profile". We want to white-glove build the row for them.
+ *
+ * Uses the `list_platform_users` RPC (SECURITY DEFINER) instead of
+ * `supabase.auth.admin.listUsers()` — the auth admin endpoint returns 500s
+ * on this project (see src/lib/team-lookup.ts and src/app/api/admin/users/route.ts).
  */
 async function findRowlessUsers(targetUserIds?: string[], lookbackDays = 60): Promise<IncompleteProfile[]> {
-  // Page through auth.users (admin API doesn't filter by created_at server-side; we filter client-side).
   const since = Date.now() - lookbackDays * 24 * 60 * 60 * 1000;
+  const { data, error } = await supabaseAdmin.rpc("list_platform_users");
+  if (error) {
+    console.error("[enrich-cron] list_platform_users RPC failed:", error);
+    return [];
+  }
+  type RpcRow = { id: string; email: string | null; created_at: string | null };
   const candidates: Array<{ id: string; email: string }> = [];
-  const perPage = 1000;
-  let page = 1;
-  // Cap pages defensively to avoid runaway loops on a misconfigured project.
-  for (; page <= 10; page++) {
-    const { data, error } = await supabaseAdmin.auth.admin.listUsers({ page, perPage });
-    if (error) {
-      console.error("[enrich-cron] listUsers page", page, "error:", error);
-      break;
-    }
-    const users = data?.users || [];
-    if (users.length === 0) break;
-    for (const u of users) {
-      if (!u.email) continue;
-      const created = u.created_at ? Date.parse(u.created_at) : 0;
-      if (created < since) continue;
-      if (targetUserIds && !targetUserIds.includes(u.id)) continue;
-      candidates.push({ id: u.id, email: u.email });
-    }
-    if (users.length < perPage) break;
+  for (const u of (data as RpcRow[] | null) || []) {
+    if (!u.email) continue;
+    const created = u.created_at ? Date.parse(u.created_at) : 0;
+    if (created < since) continue;
+    if (targetUserIds && !targetUserIds.includes(u.id)) continue;
+    candidates.push({ id: u.id, email: u.email });
   }
 
   if (candidates.length === 0) return [];
