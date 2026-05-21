@@ -481,6 +481,34 @@ def _load_pricing(price_list: str = "nybi26") -> dict:
 PRICING = _load_pricing()  # Default NYBI26
 _PRICING_CACHE = {"nybi26": PRICING}
 
+# Telemetry: every short_key that fell through to a hardcoded fallback,
+# bucketed by market_code. Logged once per (market, key) per session to
+# avoid noise. The list of misses is queryable via _PRICING_FALLBACK_LOG.
+_PRICING_FALLBACK_LOG: dict[tuple[str, str], int] = {}
+
+
+def _priced(pricing: dict, key: str, fallback: float) -> float:
+    """Look up `key` in `pricing`; if missing, return `fallback` and log once.
+
+    Replaces direct `pricing.get(key, fallback)` calls in build_line_items
+    so we get visibility into which line items rely on the NY-baseline
+    hardcoded defaults (the root cause of E251 — TX claims pricing 3-tab
+    install at $312.92 from MIBC fallback instead of TXHO's $249.75).
+
+    Fallback values remain the canonical NYBI26 baseline. Loud telemetry
+    rather than silent overpricing.
+    """
+    val = pricing.get(key)
+    if val is not None:
+        return val
+    market = pricing.get("_market_code", "?")
+    bucket = (market, key)
+    count = _PRICING_FALLBACK_LOG.get(bucket, 0)
+    _PRICING_FALLBACK_LOG[bucket] = count + 1
+    if count == 0:  # log only the first time per (market, key) to keep stderr clean
+        print(f"[PRICING FALLBACK] market={market} key={key} → ${fallback} (hardcoded NY baseline; this market lacks the matching short_key)")
+    return fallback
+
 # Canonical state → price list display label (shown in PDF estimate header).
 # Actual price overlay comes from XactRegistry.resolve_market() + all-markets.json,
 # which now covers 108 markets across NY/NJ/PA/MD/DE/OH/MI/IL/MN/TX as of 2026-04-17.
@@ -4765,83 +4793,83 @@ def build_line_items(measurements: dict, photo_analysis: dict, state: str, user_
     # Pricing loaded from backend/pricing/nybi26.json — PRICING.get(key, fallback)
     if material == "slate":
         # Combined R&R for slate (remove + install as single line per USARM standard)
-        slate_rr_price = PRICING.get("slate_remove", 325.00) + PRICING.get("slate_install", 1850.00)
+        slate_rr_price = _priced(PRICING, "slate_remove", 325.00) + _priced(PRICING, "slate_install", 1850.00)
         items.append({"category": "ROOFING", "description": "R&R Natural slate roofing - high grade", "qty": area_sq, "unit": "SQ", "unit_price": slate_rr_price})
-        items.append({"category": "ROOFING", "description": "Underlayment - felt 30# (deck area not covered by I&W)", "qty": felt_sq, "unit": "SQ", "unit_price": PRICING.get("slate_underlayment", 22.00)})
-        items.append({"category": "ROOFING", "description": "Copper nails & hooks for slate", "qty": area_sq, "unit": "SQ", "unit_price": PRICING.get("slate_nails_hooks", 45.00)})
-        items.append({"category": "ROOFING", "description": "Slate roofing - additional labor (specialist)", "qty": area_sq, "unit": "SQ", "unit_price": PRICING.get("slate_specialist_labor", 350.00)})
+        items.append({"category": "ROOFING", "description": "Underlayment - felt 30# (deck area not covered by I&W)", "qty": felt_sq, "unit": "SQ", "unit_price": _priced(PRICING, "slate_underlayment", 22.00)})
+        items.append({"category": "ROOFING", "description": "Copper nails & hooks for slate", "qty": area_sq, "unit": "SQ", "unit_price": _priced(PRICING, "slate_nails_hooks", 45.00)})
+        items.append({"category": "ROOFING", "description": "Slate roofing - additional labor (specialist)", "qty": area_sq, "unit": "SQ", "unit_price": _priced(PRICING, "slate_specialist_labor", 350.00)})
         # Scaffold/staging — required for slate work (heavy material, steep pitches)
-        items.append({"category": "ROOFING", "description": "Scaffold/staging setup & removal", "qty": 1, "unit": "EA", "unit_price": PRICING.get("scaffold_staging", 1405.00)})
+        items.append({"category": "ROOFING", "description": "Scaffold/staging setup & removal", "qty": 1, "unit": "EA", "unit_price": _priced(PRICING, "scaffold_staging", 1405.00)})
     elif material == "tile":
-        items.append({"category": "ROOFING", "description": "Remove concrete/clay tile roofing", "qty": area_sq, "unit": "SQ", "unit_price": PRICING.get("tile_remove", 200.00)})
-        items.append({"category": "ROOFING", "description": "Concrete/clay tile roofing", "qty": install_sq, "unit": "SQ", "unit_price": PRICING.get("tile_install", 900.00)})
-        items.append({"category": "ROOFING", "description": "Underlayment - felt 30# (deck area not covered by I&W)", "qty": felt_sq, "unit": "SQ", "unit_price": PRICING.get("tile_underlayment", 22.00)})
+        items.append({"category": "ROOFING", "description": "Remove concrete/clay tile roofing", "qty": area_sq, "unit": "SQ", "unit_price": _priced(PRICING, "tile_remove", 200.00)})
+        items.append({"category": "ROOFING", "description": "Concrete/clay tile roofing", "qty": install_sq, "unit": "SQ", "unit_price": _priced(PRICING, "tile_install", 900.00)})
+        items.append({"category": "ROOFING", "description": "Underlayment - felt 30# (deck area not covered by I&W)", "qty": felt_sq, "unit": "SQ", "unit_price": _priced(PRICING, "tile_underlayment", 22.00)})
     elif material == "flat":
-        items.append({"category": "ROOFING", "description": "Remove modified bitumen/flat roofing", "qty": area_sq, "unit": "SQ", "unit_price": PRICING.get("flat_remove", 95.00)})
-        items.append({"category": "ROOFING", "description": "Modified bitumen roofing - 2 ply torch applied", "qty": install_sq, "unit": "SQ", "unit_price": PRICING.get("flat_install", 425.00)})
-        items.append({"category": "ROOFING", "description": "Underlayment - base sheet (flat roof)", "qty": area_sq, "unit": "SQ", "unit_price": PRICING.get("flat_underlayment", 38.00)})
+        items.append({"category": "ROOFING", "description": "Remove modified bitumen/flat roofing", "qty": area_sq, "unit": "SQ", "unit_price": _priced(PRICING, "flat_remove", 95.00)})
+        items.append({"category": "ROOFING", "description": "Modified bitumen roofing - 2 ply torch applied", "qty": install_sq, "unit": "SQ", "unit_price": _priced(PRICING, "flat_install", 425.00)})
+        items.append({"category": "ROOFING", "description": "Underlayment - base sheet (flat roof)", "qty": area_sq, "unit": "SQ", "unit_price": _priced(PRICING, "flat_underlayment", 38.00)})
     elif material == "metal_standing_seam":
-        items.append({"category": "ROOFING", "description": "Remove metal roofing - standing seam", "qty": area_sq, "unit": "SQ", "unit_price": PRICING.get("metal_remove", 150.00)})
-        items.append({"category": "ROOFING", "description": "Metal roofing - standing seam", "qty": install_sq, "unit": "SQ", "unit_price": PRICING.get("metal_install", 850.00)})
-        items.append({"category": "ROOFING", "description": "Underlayment - felt 15# (deck area not covered by I&W)", "qty": felt_sq, "unit": "SQ", "unit_price": PRICING.get("metal_underlayment", 32.00)})
+        items.append({"category": "ROOFING", "description": "Remove metal roofing - standing seam", "qty": area_sq, "unit": "SQ", "unit_price": _priced(PRICING, "metal_remove", 150.00)})
+        items.append({"category": "ROOFING", "description": "Metal roofing - standing seam", "qty": install_sq, "unit": "SQ", "unit_price": _priced(PRICING, "metal_install", 850.00)})
+        items.append({"category": "ROOFING", "description": "Underlayment - felt 15# (deck area not covered by I&W)", "qty": felt_sq, "unit": "SQ", "unit_price": _priced(PRICING, "metal_underlayment", 32.00)})
     elif material == "laminated_premium":
-        items.append({"category": "ROOFING", "description": "Remove laminated comp shingle roofing", "qty": area_sq, "unit": "SQ", "unit_price": PRICING.get("laminated_remove", 74.00)})
-        items.append({"category": "ROOFING", "description": "Laminated - High grd - comp. shingle rfg. - w/out felt", "qty": install_sq, "unit": "SQ", "unit_price": PRICING.get("laminated_high_install", 383.17)})
-        items.append({"category": "ROOFING", "description": "Underlayment - felt 15# (deck area not covered by I&W)", "qty": felt_sq, "unit": "SQ", "unit_price": PRICING.get("laminated_underlayment", 32.00)})
+        items.append({"category": "ROOFING", "description": "Remove laminated comp shingle roofing", "qty": area_sq, "unit": "SQ", "unit_price": _priced(PRICING, "laminated_remove", 74.00)})
+        items.append({"category": "ROOFING", "description": "Laminated - High grd - comp. shingle rfg. - w/out felt", "qty": install_sq, "unit": "SQ", "unit_price": _priced(PRICING, "laminated_high_install", 383.17)})
+        items.append({"category": "ROOFING", "description": "Underlayment - felt 15# (deck area not covered by I&W)", "qty": felt_sq, "unit": "SQ", "unit_price": _priced(PRICING, "laminated_underlayment", 32.00)})
     elif material == "laminated":
-        items.append({"category": "ROOFING", "description": "Remove laminated comp shingle roofing", "qty": area_sq, "unit": "SQ", "unit_price": PRICING.get("laminated_remove", 74.00)})
-        items.append({"category": "ROOFING", "description": "Laminated comp shingle roofing - w/out felt", "qty": install_sq, "unit": "SQ", "unit_price": PRICING.get("laminated_install", 320.00)})
-        items.append({"category": "ROOFING", "description": "Underlayment - felt 15# (deck area not covered by I&W)", "qty": felt_sq, "unit": "SQ", "unit_price": PRICING.get("laminated_underlayment", 32.00)})
+        items.append({"category": "ROOFING", "description": "Remove laminated comp shingle roofing", "qty": area_sq, "unit": "SQ", "unit_price": _priced(PRICING, "laminated_remove", 74.00)})
+        items.append({"category": "ROOFING", "description": "Laminated comp shingle roofing - w/out felt", "qty": install_sq, "unit": "SQ", "unit_price": _priced(PRICING, "laminated_install", 320.00)})
+        items.append({"category": "ROOFING", "description": "Underlayment - felt 15# (deck area not covered by I&W)", "qty": felt_sq, "unit": "SQ", "unit_price": _priced(PRICING, "laminated_underlayment", 32.00)})
     else:  # 3tab
-        items.append({"category": "ROOFING", "description": "Remove 3-tab 25yr comp shingle roofing", "qty": area_sq, "unit": "SQ", "unit_price": PRICING.get("3tab_remove", 73.14)})
-        items.append({"category": "ROOFING", "description": "3-tab 25yr comp shingle roofing - w/out felt", "qty": install_sq, "unit": "SQ", "unit_price": PRICING.get("3tab_install", 312.92)})
-        items.append({"category": "ROOFING", "description": "Underlayment - felt 15# (deck area not covered by I&W)", "qty": felt_sq, "unit": "SQ", "unit_price": PRICING.get("3tab_underlayment", 32.00)})
+        items.append({"category": "ROOFING", "description": "Remove 3-tab 25yr comp shingle roofing", "qty": area_sq, "unit": "SQ", "unit_price": _priced(PRICING, "3tab_remove", 73.14)})
+        items.append({"category": "ROOFING", "description": "3-tab 25yr comp shingle roofing - w/out felt", "qty": install_sq, "unit": "SQ", "unit_price": _priced(PRICING, "3tab_install", 312.92)})
+        items.append({"category": "ROOFING", "description": "Underlayment - felt 15# (deck area not covered by I&W)", "qty": felt_sq, "unit": "SQ", "unit_price": _priced(PRICING, "3tab_underlayment", 32.00)})
 
     # ===================== ICE & WATER BARRIER =====================
     if iw_sf > 0:
-        items.append({"category": "ROOFING", "description": "Ice & water barrier (2 courses eaves + 1 course valleys)", "qty": round(iw_sf), "unit": "SF", "unit_price": PRICING.get("ice_water", 2.24)})
+        items.append({"category": "ROOFING", "description": "Ice & water barrier (2 courses eaves + 1 course valleys)", "qty": round(iw_sf), "unit": "SF", "unit_price": _priced(PRICING, "ice_water", 2.24)})
 
     # ===================== DRIP EDGE =====================
     drip = meas.get("drip_edge", 0) or round((eave + rake) * 1.05, 2)  # 5% waste factor
     if drip > 0:
         if material in ("copper", "slate") and "copper" in notes_lower:
-            items.append({"category": "ROOFING", "description": "R&R Drip edge - copper", "qty": drip, "unit": "LF", "unit_price": PRICING.get("drip_edge_copper", 18.50)})
+            items.append({"category": "ROOFING", "description": "R&R Drip edge - copper", "qty": drip, "unit": "LF", "unit_price": _priced(PRICING, "drip_edge_copper", 18.50)})
         else:
-            items.append({"category": "ROOFING", "description": "R&R Drip edge - aluminum", "qty": drip, "unit": "LF", "unit_price": PRICING.get("drip_edge_aluminum", 4.25)})
+            items.append({"category": "ROOFING", "description": "R&R Drip edge - aluminum", "qty": drip, "unit": "LF", "unit_price": _priced(PRICING, "drip_edge_aluminum", 4.25)})
 
     # ===================== STARTER STRIP (comp shingle — eaves + rakes) =====================
     starter_lf = eave + rake
     if material in ("laminated", "3tab") and starter_lf > 0:
-        items.append({"category": "ROOFING", "description": "R&R Starter strip - asphalt shingle", "qty": starter_lf, "unit": "LF", "unit_price": PRICING.get("starter_strip", 3.50)})
+        items.append({"category": "ROOFING", "description": "R&R Starter strip - asphalt shingle", "qty": starter_lf, "unit": "LF", "unit_price": _priced(PRICING, "starter_strip", 3.50)})
 
     # ===================== RIDGE CAP (ridges + hips) =====================
     ridge_hip_lf = ridge + hip
     if ridge_hip_lf > 0:
         if material == "slate":
-            items.append({"category": "ROOFING", "description": "R&R Ridge cap - slate", "qty": ridge_hip_lf, "unit": "LF", "unit_price": PRICING.get("slate_ridge_cap", 38.00)})
+            items.append({"category": "ROOFING", "description": "R&R Ridge cap - slate", "qty": ridge_hip_lf, "unit": "LF", "unit_price": _priced(PRICING, "slate_ridge_cap", 38.00)})
         elif material == "tile":
-            items.append({"category": "ROOFING", "description": "R&R Ridge cap - tile", "qty": ridge_hip_lf, "unit": "LF", "unit_price": PRICING.get("tile_ridge_cap", 28.00)})
+            items.append({"category": "ROOFING", "description": "R&R Ridge cap - tile", "qty": ridge_hip_lf, "unit": "LF", "unit_price": _priced(PRICING, "tile_ridge_cap", 28.00)})
         elif material == "metal_standing_seam":
-            items.append({"category": "ROOFING", "description": "R&R Ridge cap - metal", "qty": ridge_hip_lf, "unit": "LF", "unit_price": PRICING.get("metal_ridge_cap", 22.00)})
+            items.append({"category": "ROOFING", "description": "R&R Ridge cap - metal", "qty": ridge_hip_lf, "unit": "LF", "unit_price": _priced(PRICING, "metal_ridge_cap", 22.00)})
         else:
             # Canonical Xactimate description — non-canonical names like "R&R Ridge cap - 3 tab"
             # fuzzy-matched to "R&R Gable cornice return - 3 tab" ($132.90/EA) and overlaid that
             # price during registry enrichment.
             desc = "R&R Hip / Ridge cap - Standard profile - composition shingles"
-            items.append({"category": "ROOFING", "description": desc, "qty": ridge_hip_lf, "unit": "LF", "unit_price": PRICING.get("laminated_ridge_cap", 7.49)})
+            items.append({"category": "ROOFING", "description": desc, "qty": ridge_hip_lf, "unit": "LF", "unit_price": _priced(PRICING, "laminated_ridge_cap", 7.49)})
 
     # ===================== RIDGE VENT (ridges only — shingle-over style) =====================
     if ridge > 0 and material not in ("slate", "tile"):
-        items.append({"category": "ROOFING", "description": "R&R Ridge vent - shingle over", "qty": ridge, "unit": "LF", "unit_price": PRICING.get("ridge_vent", 8.50)})
+        items.append({"category": "ROOFING", "description": "R&R Ridge vent - shingle over", "qty": ridge, "unit": "LF", "unit_price": _priced(PRICING, "ridge_vent", 8.50)})
 
     # ===================== COPPER VALLEY FLASHING (slate/tile — valleys require copper) =====================
     if valley > 0 and material in ("slate", "tile"):
-        items.append({"category": "ROOFING", "description": "R&R Valley flashing - copper", "qty": valley, "unit": "LF", "unit_price": PRICING.get("copper_valley_flashing", 32.00)})
+        items.append({"category": "ROOFING", "description": "R&R Valley flashing - copper", "qty": valley, "unit": "LF", "unit_price": _priced(PRICING, "copper_valley_flashing", 32.00)})
 
     # ===================== SKYLIGHT FLASHING =====================
     skylights = penetrations.get("skylights", 0)
     if skylights > 0:
-        items.append({"category": "ROOFING", "description": "R&R Skylight flashing kit", "qty": skylights, "unit": "EA", "unit_price": PRICING.get("skylight_flashing", 275.00)})
+        items.append({"category": "ROOFING", "description": "R&R Skylight flashing kit", "qty": skylights, "unit": "EA", "unit_price": _priced(PRICING, "skylight_flashing", 275.00)})
 
     # ===================== FLASHING =====================
     step = meas.get("step_flashing", 0)
@@ -4852,33 +4880,33 @@ def build_line_items(measurements: dict, photo_analysis: dict, state: str, user_
     if step > 0:
         step_with_waste = round(step * 1.05, 2)  # 5% waste factor
         if is_copper_flashing:
-            items.append({"category": "ROOFING", "description": "R&R Step flashing - copper", "qty": step_with_waste, "unit": "LF", "unit_price": PRICING.get("step_flashing_copper", 22.00)})
+            items.append({"category": "ROOFING", "description": "R&R Step flashing - copper", "qty": step_with_waste, "unit": "LF", "unit_price": _priced(PRICING, "step_flashing_copper", 22.00)})
         else:
-            items.append({"category": "ROOFING", "description": "R&R Step flashing", "qty": step_with_waste, "unit": "LF", "unit_price": PRICING.get("step_flashing", 8.00)})
+            items.append({"category": "ROOFING", "description": "R&R Step flashing", "qty": step_with_waste, "unit": "LF", "unit_price": _priced(PRICING, "step_flashing", 8.00)})
 
     if flashing > 0:
         if is_copper_flashing:
-            items.append({"category": "ROOFING", "description": "R&R Counter/apron flashing - copper", "qty": flashing, "unit": "LF", "unit_price": PRICING.get("counter_flashing_copper", 28.00)})
+            items.append({"category": "ROOFING", "description": "R&R Counter/apron flashing - copper", "qty": flashing, "unit": "LF", "unit_price": _priced(PRICING, "counter_flashing_copper", 28.00)})
         else:
-            items.append({"category": "ROOFING", "description": "R&R Counter/apron flashing", "qty": flashing, "unit": "LF", "unit_price": PRICING.get("counter_flashing", 9.50)})
+            items.append({"category": "ROOFING", "description": "R&R Counter/apron flashing", "qty": flashing, "unit": "LF", "unit_price": _priced(PRICING, "counter_flashing", 9.50)})
 
     # ===================== CHIMNEY FLASHING =====================
     # Per-EA pricing per chimney (matches real Xactimate: average 32"x36" = $643.86/EA)
     chimneys = penetrations.get("chimneys", 0)
     if chimneys > 0:
         if is_copper_flashing:
-            items.append({"category": "ROOFING", "description": "R&R Chimney flashing - average (32\" x 36\") - copper", "qty": chimneys, "unit": "EA", "unit_price": PRICING.get("chimney_flashing_copper_ea", 840.00)})
+            items.append({"category": "ROOFING", "description": "R&R Chimney flashing - average (32\" x 36\") - copper", "qty": chimneys, "unit": "EA", "unit_price": _priced(PRICING, "chimney_flashing_copper_ea", 840.00)})
         else:
-            items.append({"category": "ROOFING", "description": "R&R Chimney flashing - average (32\" x 36\")", "qty": chimneys, "unit": "EA", "unit_price": PRICING.get("chimney_flashing_ea", 643.86)})
+            items.append({"category": "ROOFING", "description": "R&R Chimney flashing - average (32\" x 36\")", "qty": chimneys, "unit": "EA", "unit_price": _priced(PRICING, "chimney_flashing_ea", 643.86)})
 
     # ===================== PENETRATIONS =====================
     pipes = penetrations.get("pipes", 0)
     if pipes > 0:
-        items.append({"category": "ROOFING", "description": "Pipe boot/jack", "qty": pipes, "unit": "EA", "unit_price": PRICING.get("pipe_boot", 68.00)})
+        items.append({"category": "ROOFING", "description": "Pipe boot/jack", "qty": pipes, "unit": "EA", "unit_price": _priced(PRICING, "pipe_boot", 68.00)})
 
     vents = penetrations.get("vents", 0)
     if vents > 0:
-        items.append({"category": "ROOFING", "description": "R&R Exhaust vent", "qty": vents, "unit": "EA", "unit_price": PRICING.get("exhaust_vent", 125.00)})
+        items.append({"category": "ROOFING", "description": "R&R Exhaust vent", "qty": vents, "unit": "EA", "unit_price": _priced(PRICING, "exhaust_vent", 125.00)})
 
     # ===================== STEEP CHARGES =====================
     # Per-facet steep charges from EagleView pitches — separate REMOVE + INSTALL lines.
@@ -4919,30 +4947,30 @@ def build_line_items(measurements: dict, photo_analysis: dict, state: str, user_
 
     if steep_7_9_sf > 0:
         steep_sq = round(steep_7_9_sf / 100, 2)
-        items.append({"category": "ROOFING", "description": "Remove - Additional charge for steep roof 7/12-9/12", "qty": steep_sq, "unit": "SQ", "unit_price": PRICING.get("steep_remove_7_9", 18.00)})
-        items.append({"category": "ROOFING", "description": "Additional charge for steep roof 7/12-9/12", "qty": steep_sq, "unit": "SQ", "unit_price": PRICING.get("steep_install_7_9", 64.07)})
+        items.append({"category": "ROOFING", "description": "Remove - Additional charge for steep roof 7/12-9/12", "qty": steep_sq, "unit": "SQ", "unit_price": _priced(PRICING, "steep_remove_7_9", 18.00)})
+        items.append({"category": "ROOFING", "description": "Additional charge for steep roof 7/12-9/12", "qty": steep_sq, "unit": "SQ", "unit_price": _priced(PRICING, "steep_install_7_9", 64.07)})
 
     if steep_10_12_sf > 0:
         steep_sq = round(steep_10_12_sf / 100, 2)
-        items.append({"category": "ROOFING", "description": "Remove - Additional charge for steep roof 10/12-12/12", "qty": steep_sq, "unit": "SQ", "unit_price": PRICING.get("steep_remove_10_12", 28.29)})
-        items.append({"category": "ROOFING", "description": "Additional charge for steep roof 10/12-12/12", "qty": steep_sq, "unit": "SQ", "unit_price": PRICING.get("steep_install_10_12", 100.73)})
+        items.append({"category": "ROOFING", "description": "Remove - Additional charge for steep roof 10/12-12/12", "qty": steep_sq, "unit": "SQ", "unit_price": _priced(PRICING, "steep_remove_10_12", 28.29)})
+        items.append({"category": "ROOFING", "description": "Additional charge for steep roof 10/12-12/12", "qty": steep_sq, "unit": "SQ", "unit_price": _priced(PRICING, "steep_install_10_12", 100.73)})
 
     if steep_gt12_sf > 0:
         steep_sq = round(steep_gt12_sf / 100, 2)
-        items.append({"category": "ROOFING", "description": "Remove - Additional charge for steep roof >12/12", "qty": steep_sq, "unit": "SQ", "unit_price": PRICING.get("steep_remove_gt12", 36.24)})
-        items.append({"category": "ROOFING", "description": "Additional charge for steep roof >12/12", "qty": steep_sq, "unit": "SQ", "unit_price": PRICING.get("steep_install_gt12", 131.43)})
+        items.append({"category": "ROOFING", "description": "Remove - Additional charge for steep roof >12/12", "qty": steep_sq, "unit": "SQ", "unit_price": _priced(PRICING, "steep_remove_gt12", 36.24)})
+        items.append({"category": "ROOFING", "description": "Additional charge for steep roof >12/12", "qty": steep_sq, "unit": "SQ", "unit_price": _priced(PRICING, "steep_install_gt12", 131.43)})
 
     # ===================== HIGH ROOF CHARGE =====================
     # Only when property is 2+ stories. Separate REMOVE + INSTALL lines on full roof area.
     stories = measurements.get("stories", 1)
     if stories >= 2:
-        items.append({"category": "ROOFING", "description": "Remove - Additional charge for high roof (2+ stories)", "qty": area_sq, "unit": "SQ", "unit_price": PRICING.get("high_roof_remove", 7.31)})
-        items.append({"category": "ROOFING", "description": "Additional charge for high roof (2+ stories)", "qty": area_sq, "unit": "SQ", "unit_price": PRICING.get("high_roof_install", 30.44)})
+        items.append({"category": "ROOFING", "description": "Remove - Additional charge for high roof (2+ stories)", "qty": area_sq, "unit": "SQ", "unit_price": _priced(PRICING, "high_roof_remove", 7.31)})
+        items.append({"category": "ROOFING", "description": "Additional charge for high roof (2+ stories)", "qty": area_sq, "unit": "SQ", "unit_price": _priced(PRICING, "high_roof_install", 30.44)})
 
     # ===================== ROOFING LABOR & EQUIPMENT =====================
     # 8 roofer hours on every roofing estimate (industry standard)
-    items.append({"category": "ROOFING", "description": "Roofer - per hour (labor minimum)", "qty": 8, "unit": "HR", "unit_price": PRICING.get("roofer_per_hour", 194.00)})
-    items.append({"category": "ROOFING", "description": "Equipment operator", "qty": 1, "unit": "EA", "unit_price": PRICING.get("equipment_operator", 450.00)})
+    items.append({"category": "ROOFING", "description": "Roofer - per hour (labor minimum)", "qty": 8, "unit": "HR", "unit_price": _priced(PRICING, "roofer_per_hour", 194.00)})
+    items.append({"category": "ROOFING", "description": "Equipment operator", "qty": 1, "unit": "EA", "unit_price": _priced(PRICING, "equipment_operator", 450.00)})
 
     # ===================== GABLE CORNICE RETURNS =====================
     # REMOVED from auto-generation — not all homes have gable cornice returns.
@@ -4953,9 +4981,9 @@ def build_line_items(measurements: dict, photo_analysis: dict, state: str, user_
     # Slate/tile debris is significantly heavier — smaller loads, higher price per load
     if material in ("slate", "tile"):
         dumpster_loads = max(2, round(area_sq / 15))  # More loads for heavy material
-        items.append({"category": "DEBRIS", "description": "Dumpster load - heavy roofing debris (slate/tile)", "qty": dumpster_loads, "unit": "EA", "unit_price": PRICING.get("dumpster_heavy", 950.00)})
+        items.append({"category": "DEBRIS", "description": "Dumpster load - heavy roofing debris (slate/tile)", "qty": dumpster_loads, "unit": "EA", "unit_price": _priced(PRICING, "dumpster_heavy", 950.00)})
     else:
-        items.append({"category": "DEBRIS", "description": "Dumpster load - roofing debris", "qty": 1, "unit": "EA", "unit_price": PRICING.get("dumpster", 850.00)})
+        items.append({"category": "DEBRIS", "description": "Dumpster load - roofing debris", "qty": 1, "unit": "EA", "unit_price": _priced(PRICING, "dumpster", 850.00)})
 
     # ===================== COPPER COMPONENTS (from user notes) =====================
     if "copper" in notes_lower:
@@ -4963,14 +4991,14 @@ def build_line_items(measurements: dict, photo_analysis: dict, state: str, user_
         if "half round" in notes_lower or ("copper" in notes_lower and "gutter" in notes_lower):
             gutter_lf = round(eave * 1.6) if eave > 0 else 0
             if gutter_lf > 0:
-                items.append({"category": "GUTTERS", "description": "R&R Copper half round gutter & downspout", "qty": gutter_lf, "unit": "LF", "unit_price": PRICING.get("gutter_copper_half_round", 55.00)})
+                items.append({"category": "GUTTERS", "description": "R&R Copper half round gutter & downspout", "qty": gutter_lf, "unit": "LF", "unit_price": _priced(PRICING, "gutter_copper_half_round", 55.00)})
 
         # Flat panel copper (lower slopes)
         if "flat panel copper" in notes_lower or "flat seam copper" in notes_lower:
             # Estimate lower slope area as ~20% of total roof area if not specified
             copper_sf = round(area_sf * 0.20)
             if copper_sf > 0:
-                items.append({"category": "ROOFING", "description": "R&R Flat seam copper roofing", "qty": copper_sf, "unit": "SF", "unit_price": PRICING.get("flat_seam_copper", 28.00)})
+                items.append({"category": "ROOFING", "description": "R&R Flat seam copper roofing", "qty": copper_sf, "unit": "SF", "unit_price": _priced(PRICING, "flat_seam_copper", 28.00)})
 
     # ===================== GUTTERS (opt-in via estimate_request only) =====================
     # Two opt-in shapes:
@@ -5035,14 +5063,14 @@ def build_line_items(measurements: dict, photo_analysis: dict, state: str, user_
             # entries to prevent fuzzy mis-match (e.g. "R&R Vinyl siding" used to fuzzy-match
             # "R&R Siding - vinyl - insulated" at $11.47 instead of standard $7.55).
             siding_prices = {
-                "aluminum": ("R&R Siding - .024 metal (aluminum/steel)", PRICING.get("siding_aluminum_024", 12.47)),
-                "vinyl": ("R&R Siding - vinyl", PRICING.get("siding_vinyl", 7.55)),
-                "vinyl_high": ("R&R Siding - vinyl - high grade", PRICING.get("siding_vinyl_high", 7.83)),
-                "vinyl_premium": ("R&R Siding - vinyl - specialty grade", PRICING.get("siding_vinyl_premium", 8.21)),
-                "vinyl_insulated": ("R&R Siding - vinyl - insulated", PRICING.get("siding_vinyl_insulated", 11.45)),
-                "cedar": ("R&R Cedar shingle siding", PRICING.get("siding_cedar_shingle", 18.13)),
-                "fiber_cement": ("R&R Siding - fiber cement", PRICING.get("siding_vinyl_insulated", 11.45)),
-                "metal": ("R&R Siding - .019 metal (aluminum/steel)", PRICING.get("siding_metal_019", 12.20)),
+                "aluminum": ("R&R Siding - .024 metal (aluminum/steel)", _priced(PRICING, "siding_aluminum_024", 12.47)),
+                "vinyl": ("R&R Siding - vinyl", _priced(PRICING, "siding_vinyl", 7.55)),
+                "vinyl_high": ("R&R Siding - vinyl - high grade", _priced(PRICING, "siding_vinyl_high", 7.83)),
+                "vinyl_premium": ("R&R Siding - vinyl - specialty grade", _priced(PRICING, "siding_vinyl_premium", 8.21)),
+                "vinyl_insulated": ("R&R Siding - vinyl - insulated", _priced(PRICING, "siding_vinyl_insulated", 11.45)),
+                "cedar": ("R&R Cedar shingle siding", _priced(PRICING, "siding_cedar_shingle", 18.13)),
+                "fiber_cement": ("R&R Siding - fiber cement", _priced(PRICING, "siding_vinyl_insulated", 11.45)),
+                "metal": ("R&R Siding - .019 metal (aluminum/steel)", _priced(PRICING, "siding_metal_019", 12.20)),
             }
             desc, price = siding_prices.get(siding_mat, siding_prices["aluminum"])
             items.append({"category": "SIDING", "description": desc, "qty": wall_area, "unit": "SF", "unit_price": price})
@@ -5051,20 +5079,20 @@ def build_line_items(measurements: dict, photo_analysis: dict, state: str, user_
             # This is the key argument: house wrap must wrap continuously around outside
             # corners — cannot terminate at a corner joint. Forces full replacement.
             _code_prefix = _STATE_CODE_PREFIX.get(state, "IRC")
-            items.append({"category": "SIDING", "description": f"House wrap / Tyvek (code-required per {_code_prefix} R703.2)", "qty": wall_area, "unit": "SF", "unit_price": PRICING.get("house_wrap", 0.64)})
+            items.append({"category": "SIDING", "description": f"House wrap / Tyvek (code-required per {_code_prefix} R703.2)", "qty": wall_area, "unit": "SF", "unit_price": _priced(PRICING, "house_wrap", 0.64)})
 
             # Fanfold insulation (under siding, standard on re-side jobs)
-            items.append({"category": "SIDING", "description": "Fanfold insulation board", "qty": wall_area, "unit": "SF", "unit_price": PRICING.get("fanfold_insulation", 1.23)})
+            items.append({"category": "SIDING", "description": "Fanfold insulation board", "qty": wall_area, "unit": "SF", "unit_price": _priced(PRICING, "fanfold_insulation", 1.23)})
 
             # Siding labor minimum
-            items.append({"category": "SIDING", "description": "Siding labor minimum", "qty": 1, "unit": "EA", "unit_price": PRICING.get("siding_labor_min", 519.46)})
+            items.append({"category": "SIDING", "description": "Siding labor minimum", "qty": 1, "unit": "EA", "unit_price": _priced(PRICING, "siding_labor_min", 519.46)})
 
             # Scaffolding
-            items.append({"category": "SIDING", "description": "Scaffolding - per week", "qty": 1, "unit": "WK", "unit_price": PRICING.get("scaffolding_week", 1405.00)})
+            items.append({"category": "SIDING", "description": "Scaffolding - per week", "qty": 1, "unit": "WK", "unit_price": _priced(PRICING, "scaffolding_week", 1405.00)})
 
             # Siding debris dumpster (separate from roofing dumpster)
             siding_dumpster_loads = max(1, round(wall_area / 2000))
-            items.append({"category": "DEBRIS", "description": "Dumpster load - siding debris", "qty": siding_dumpster_loads, "unit": "EA", "unit_price": PRICING.get("dumpster", 850.00)})
+            items.append({"category": "DEBRIS", "description": "Dumpster load - siding debris", "qty": siding_dumpster_loads, "unit": "EA", "unit_price": _priced(PRICING, "dumpster", 850.00)})
         else:
             print(f"[LINE ITEMS] Siding trade detected but no wall measurements — skipping siding line items")
 
@@ -5087,7 +5115,7 @@ def build_line_items(measurements: dict, photo_analysis: dict, state: str, user_
             print(f"[LINE ITEMS] Estimated {window_count} windows from {_ww_wall_area} SF wall area")
 
         if window_count > 0:
-            items.append({"category": "SIDING", "description": "R&R Wrap wood window frame & trim with aluminum sheet", "qty": window_count, "unit": "EA", "unit_price": PRICING.get("window_wrap_standard", 398.11)})
+            items.append({"category": "SIDING", "description": "R&R Wrap wood window frame & trim with aluminum sheet", "qty": window_count, "unit": "EA", "unit_price": _priced(PRICING, "window_wrap_standard", 398.11)})
 
     # ===================== DOOR WRAPS =====================
     if _siding_requested:
@@ -5104,12 +5132,12 @@ def build_line_items(measurements: dict, photo_analysis: dict, state: str, user_
         if door_count > 0:
             # Standard door perimeter ~17 LF
             door_lf = door_count * 17
-            items.append({"category": "SIDING", "description": "R&R Door frame wrap - aluminum coil stock", "qty": door_lf, "unit": "LF", "unit_price": PRICING.get("door_wrap_aluminum_lf", 27.51)})
+            items.append({"category": "SIDING", "description": "R&R Door frame wrap - aluminum coil stock", "qty": door_lf, "unit": "LF", "unit_price": _priced(PRICING, "door_wrap_aluminum_lf", 27.51)})
 
         if garage_door_count > 0:
             # Garage door perimeter ~34 LF (wider opening)
             garage_lf = garage_door_count * 34
-            items.append({"category": "SIDING", "description": "R&R Garage door wrap - aluminum coil stock", "qty": garage_lf, "unit": "LF", "unit_price": PRICING.get("garage_door_wrap_lf", 24.55)})
+            items.append({"category": "SIDING", "description": "R&R Garage door wrap - aluminum coil stock", "qty": garage_lf, "unit": "LF", "unit_price": _priced(PRICING, "garage_door_wrap_lf", 24.55)})
 
     # ===================== TRADE-SCOPE FILTER =====================
     # When estimate_request explicitly opts OUT of roofing (e.g., siding-only claim),

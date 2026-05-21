@@ -328,50 +328,13 @@ _DISCRIMINATIVE_QUALIFIERS = frozenset({
     "30yr", "25yr", "40yr", "50yr",
 })
 
-# French → internal-code patterns (Quebec Xactimate Desktop exports — TX, MN, 5×MI markets)
-# Mirrors tools/import-pdf-pricelists.py:31-95 in the Operations repo.
-# Each tuple: (compiled French regex, list of internal codes that share this price).
-_FR_PATTERNS = [
-    (re.compile(r"enlever lamin.*bardeaux.*asphalte.*sans feutre", re.I), ["RFG SHTG"]),
-    (re.compile(r"^lamin.*bardeaux.*asphalte.*sans feutre", re.I),        ["RFG LAMI"]),
-    (re.compile(r"e&r ar.tier.*fa.ti.re.*profil standard.*bardeaux", re.I), ["RFG RDGC"]),
-    (re.compile(r"rang de d.part.*universal", re.I),                        ["RFG STRT"]),
-    (re.compile(r"papier de toiture.*30 lb", re.I),                         ["RFG FELT30"]),
-    (re.compile(r"barri.re de glace et l.eau$", re.I),                      ["RFG I&W"]),
-    (re.compile(r"^e&r rebord$", re.I),                                     ["RFG DRPE", "RFG DRIP"]),
-    (re.compile(r"solin mural.*escalier", re.I),                            ["RFG STPF_R", "RFG STPF"]),
-    (re.compile(r"e&r solin.*l.ve.tubes", re.I),                            ["RFG JKFL"]),
-    (re.compile(r"e&r solin de chemin.e.*moyen mod.le.*32.*36", re.I),      ["RFG CHFL"]),
-]
-
-# High-grade variants that share the standard regex but route to different prices
-_FR_DISQUALIFIERS = re.compile(
-    r"qualit.\s+sup.rieure|qualit.\s+premium|haute\s+qualit.|qualit.\s+haute",
-    re.I,
-)
-
-
-def _match_french_codes(raw_desc):
-    """Return list of internal codes matching a French allItems description, or [] if none.
-
-    Skips premium/high-grade variants — those map to registry codes outside the
-    22-code pipeline (e.g., RFG 400S) and would falsely overwrite standard-grade prices.
-    """
-    if not raw_desc:
-        return []
-    if _FR_DISQUALIFIERS.search(raw_desc):
-        return []
-    for pat, codes in _FR_PATTERNS:
-        if pat.search(raw_desc):
-            return codes
-    return []
-
-
-_FR_MARKERS = re.compile(r"\b(enlever|bardeaux|asphalte|feutre|cheneau|rebord|solin|chemin.e|gouttière)\b", re.I)
-
-
-def _looks_french(raw_desc):
-    return bool(raw_desc and _FR_MARKERS.search(raw_desc))
+# 2026-05-21: All-markets.json was translated French→English in place (see
+# pricing/_fr_to_en_xactimate.json for the dictionary). The runtime French
+# translator was removed because it only covered 10 of ~93 lines and silently
+# dropped the rest into hardcoded NY-baseline fallbacks (E251). If Alfonso
+# ever exports a new batch in French again, run the same translation script
+# offline before merging the price list — do NOT re-introduce runtime regex
+# translation.
 
 
 def _reset_all_markets_cache():
@@ -382,28 +345,6 @@ def _reset_all_markets_cache():
     get_market_prices.cache_clear()
 
 
-# INTERNAL_TO_XACT keys → English canonical descriptions used in registry baseline.
-# When a French description matches an internal code, we look up that code's canonical
-# English desc here so French markets index into the same (cleaned, action) keyspace.
-# R&R items are stored as action="r&r" (matches _infer_action output for English R&R).
-_FR_INTERNAL_TO_DESC = {
-    "RFG SHTG":   ("Remove Laminated - comp. shingle rfg. - w/out felt", "remove"),
-    "RFG LAMI":   ("Laminated - comp. shingle rfg. - w/out felt", "install"),
-    "RFG RDGC":   ("R&R Hip / Ridge cap - Standard profile - composition shingles", "r&r"),
-    "RFG STRT":   ("Asphalt starter - universal starter course", "install"),
-    "RFG FELT30": ("Roofing felt - 30 lb.", "install"),
-    "RFG I&W":    ("Ice & water barrier", "install"),
-    "RFG DRPE":   ("R&R Drip edge", "r&r"),  # French E&R Rebord covers both Remove+Install
-    "RFG DRIP":   ("R&R Drip edge", "r&r"),
-    "RFG STPF_R": ("R&R Step flashing", "r&r"),
-    "RFG STPF":   ("R&R Step flashing", "r&r"),
-    "RFG JKFL":   ("R&R Flashing - pipe jack", "r&r"),
-    "RFG CHFL":   ('R&R Chimney flashing - average (32" x 36")', "r&r"),
-    "SFG GUTW":   ("R&R Gutter / downspout - aluminum - up to 5\"", "r&r"),
-    "SFG DNSW":   ("R&R Gutter / downspout - aluminum - up to 5\"", "r&r"),
-}
-
-
 @functools.lru_cache(maxsize=32)
 def get_market_prices(market_code):
     """Return per-market price lookup keyed by (cleaned_description, action).
@@ -412,9 +353,8 @@ def get_market_prices(market_code):
     Reads pricing/all-markets.json markets[market_code].allItems, infers action
     from each raw description, and builds a dict for O(1) price lookup.
 
-    For French markets (TX/MN/5xMI Quebec exports) where descriptions are in
-    French, also indexes via _match_french_codes() so callers using English
-    canonical descriptions resolve to the same keyspace.
+    All descriptions in all-markets.json are in English (Apr26 French batch
+    was translated in place on 2026-05-21; see pricing/_fr_to_en_xactimate.json).
 
     Returns {} if market_code is unknown or has no allItems.
 
@@ -440,23 +380,16 @@ def get_market_prices(market_code):
         if not raw or price is None:
             continue
 
-        # Path 1: English description path
         english_action = XactRegistry._infer_action(raw)
         cleaned = _clean_desc(raw)
-        out[(cleaned, english_action)] = price
+        # setdefault (NOT assignment) so the first entry wins. _clean_desc
+        # strips grade qualifiers ("High grade", "Premium grade"), which
+        # collapses standard + high-grade variants of the same line to the
+        # same key. Standard appears first in allItems, so first-write-wins
+        # gives us the standard price (the right answer for the typical
+        # claim — high-grade claims need an explicit upgrade flag).
+        out.setdefault((cleaned, english_action), price)
         out.setdefault((cleaned, None), price)
-
-        # Path 2: French description → resolve to English canonical via internal codes
-        fr_codes = _match_french_codes(raw)
-        for code in fr_codes:
-            mapping = _FR_INTERNAL_TO_DESC.get(code)
-            if not mapping:
-                continue
-            eng_desc, eng_action = mapping
-            eng_cleaned = _clean_desc(eng_desc)
-            # Don't overwrite an existing English match with French (English wins)
-            out.setdefault((eng_cleaned, eng_action), price)
-            out.setdefault((eng_cleaned, None), price)
 
     return out
 
@@ -568,7 +501,6 @@ class XactRegistry:
           0. Restore baseline prices (so switching markets is deterministic).
           1. 22-code pipeline overlay: internal code → (xact_code, action) → item.
           2. Full-catalog allItems overlay: (cleaned_desc, inferred_action) → item.
-             French markets route through _match_french_codes() for direct internal-code lookup.
 
         Returns count of unique registry items priced.
         """
@@ -604,28 +536,12 @@ class XactRegistry:
 
         # Pass 2: full-catalog allItems overlay
         all_items = market.get("allItems", [])
-        fr_misses = 0
         for ai in all_items:
             price = ai.get("price")
             raw_desc = ai.get("description")
             if price is None or not raw_desc:
                 continue
 
-            # French markets: route through internal-code lookup
-            fr_codes = _match_french_codes(raw_desc)
-            if fr_codes:
-                for internal_code in fr_codes:
-                    mapping = INTERNAL_TO_XACT.get(internal_code)
-                    if not mapping:
-                        continue
-                    xact_code, reg_action = mapping
-                    registry_item = self._by_code.get((xact_code, reg_action))
-                    if registry_item:
-                        registry_item["unit_price"] = price
-                        priced_ids.add(id(registry_item))
-                continue
-
-            # English: action-aware description match
             action = self._infer_action(raw_desc)
             cleaned = _clean_desc(raw_desc)
 
@@ -638,12 +554,6 @@ class XactRegistry:
             if registry_item:
                 registry_item["unit_price"] = price
                 priced_ids.add(id(registry_item))
-            elif _looks_french(raw_desc):
-                fr_misses += 1
-
-        if fr_misses:
-            logger.debug("Market %s: %d French allItems with no _FR_PATTERNS match",
-                        market_code, fr_misses)
 
         self._market_code = market_code
         self._market_name = market.get("name", market_code)
