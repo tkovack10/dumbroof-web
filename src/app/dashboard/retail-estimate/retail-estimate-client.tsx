@@ -69,6 +69,7 @@ export function RetailEstimateClient() {
   const [markupPct, setMarkupPct] = useState(0); // % markup (+) or discount (–)
   const [loading, setLoading] = useState(true);
   const [estimateId, setEstimateId] = useState<string | null>(null);
+  const [loadedExisting, setLoadedExisting] = useState(false);
   const [saving, setSaving] = useState(false);
   const [sending, setSending] = useState(false);
   const [statusMsg, setStatusMsg] = useState<{ kind: "ok" | "err"; text: string } | null>(null);
@@ -76,14 +77,53 @@ export function RetailEstimateClient() {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
-    fetch("/api/retail-templates")
-      .then((r) => r.json())
-      .then((d) => {
-        setTemplates(d.templates || []);
-        if (d.templates?.[0]) setSelectedId(d.templates[0]._meta.template_id);
+    // Detect ?id= in the URL to load an existing estimate into the builder.
+    const params = new URLSearchParams(window.location.search);
+    const existingId = params.get("id");
+
+    async function init() {
+      try {
+        const [tplRes, estRes] = await Promise.all([
+          fetch("/api/retail-templates").then((r) => r.json()),
+          existingId
+            ? fetch(`/api/retail-estimates/${existingId}`).then((r) => r.json())
+            : Promise.resolve(null),
+        ]);
+        const tpls: RetailTemplate[] = tplRes.templates || [];
+        setTemplates(tpls);
+
+        if (estRes?.estimate) {
+          const e = estRes.estimate as {
+            id: string;
+            template_id: string;
+            customer_name: string | null;
+            customer_email: string | null;
+            customer_address: string | null;
+            measurements: Partial<Measurements>;
+            addon_qtys: Record<string, number>;
+            markup_pct: number;
+            notes: string | null;
+          };
+          setEstimateId(e.id);
+          setSelectedId(e.template_id);
+          setCustomerName(e.customer_name || "");
+          setCustomerEmail(e.customer_email || "");
+          setCustomerAddress(e.customer_address || "");
+          setMeasurements((m) => ({ ...m, ...e.measurements }));
+          setAddonQtys(e.addon_qtys || {});
+          setMarkupPct(Number(e.markup_pct) || 0);
+          setNotes(e.notes || "");
+          setLoadedExisting(true);
+        } else if (tpls[0]) {
+          setSelectedId(tpls[0]._meta.template_id);
+        }
+      } catch {
+        // non-fatal — just don't pre-populate
+      } finally {
         setLoading(false);
-      })
-      .catch(() => setLoading(false));
+      }
+    }
+    init();
   }, []);
 
   const selected = useMemo(
@@ -258,19 +298,31 @@ export function RetailEstimateClient() {
   return (
     <div className="p-6 sm:p-8 space-y-6 max-w-7xl mx-auto">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-[var(--white)]">Retail Estimate Builder</h1>
+          <h1 className="text-2xl font-bold text-[var(--white)]">
+            {loadedExisting ? "Edit Estimate" : "Retail Estimate Builder"}
+          </h1>
           <p className="text-xs text-[var(--gray-muted)] mt-1">
-            Cash jobs · $700/SQ all-in pricing · {templates.length} manufacturer systems
+            {loadedExisting
+              ? `Editing saved estimate · changes don't auto-save — hit Update to commit`
+              : `Cash jobs · $700/SQ all-in pricing · ${templates.length} manufacturer systems`}
           </p>
         </div>
-        <Link
-          href="/dashboard"
-          className="text-xs text-[var(--gray-muted)] hover:text-[var(--white)]"
-        >
-          ← Back to Dashboard
-        </Link>
+        <div className="flex items-center gap-2">
+          <Link
+            href="/dashboard/retail-estimates"
+            className="text-xs text-[var(--gray-muted)] hover:text-[var(--white)] px-3 py-2"
+          >
+            ← All Estimates
+          </Link>
+          <Link
+            href="/dashboard"
+            className="text-xs text-[var(--gray-muted)] hover:text-[var(--white)] px-3 py-2"
+          >
+            Dashboard
+          </Link>
+        </div>
       </div>
 
       {/* Template Picker */}
