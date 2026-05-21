@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { AddressAutocomplete } from "@/components/address-autocomplete";
 import { evaluateFormula } from "@/lib/retail/evaluator";
 import type {
   RetailTemplate,
@@ -397,11 +398,10 @@ export function RetailEstimateClient() {
                   <label className="block text-[10px] uppercase tracking-wider text-[var(--gray-muted)] mb-1">
                     Property Address
                   </label>
-                  <input
-                    type="text"
+                  <AddressAutocomplete
                     value={customerAddress}
-                    onChange={(e) => setCustomerAddress(e.target.value)}
-                    placeholder="123 Main St, City, ST 12345"
+                    onChange={setCustomerAddress}
+                    placeholder="Start typing the property address..."
                     className="w-full px-3 py-2 text-sm rounded-lg bg-white/[0.03] border border-white/10 text-[var(--white)] placeholder:text-[var(--gray-dim)] focus:outline-none focus:border-[var(--cyan)]"
                   />
                 </div>
@@ -412,26 +412,28 @@ export function RetailEstimateClient() {
             <div className="glass-card p-6">
               <div className="flex items-center justify-between mb-3">
                 <h2 className="text-sm font-bold text-[var(--white)]">Measurements</h2>
-                <div className="flex items-center gap-2">
+                {/* Label wraps the file input so the label itself is the click
+                    target — bulletproof across browsers vs. the .click()-on-
+                    hidden-input pattern which can fail under some extension /
+                    permission combos. */}
+                <label
+                  className={`text-xs px-3 py-1.5 rounded-lg bg-[var(--cyan)]/[0.08] border border-[var(--cyan)]/30 text-[var(--cyan)] hover:bg-[var(--cyan)]/[0.15] inline-flex items-center gap-2 ${
+                    parsing ? "opacity-50 cursor-wait" : "cursor-pointer"
+                  }`}
+                >
+                  {parsing ? "Parsing…" : "📄 Upload EagleView / HOVER PDF"}
                   <input
                     ref={fileInputRef}
                     type="file"
                     accept="application/pdf,.pdf"
-                    className="hidden"
+                    disabled={parsing}
+                    className="sr-only"
                     onChange={(e) => {
                       const f = e.target.files?.[0];
                       if (f) handleParseMeasurementsFile(f);
                     }}
                   />
-                  <button
-                    type="button"
-                    disabled={parsing}
-                    onClick={() => fileInputRef.current?.click()}
-                    className="text-xs px-3 py-1.5 rounded-lg bg-[var(--cyan)]/[0.08] border border-[var(--cyan)]/30 text-[var(--cyan)] hover:bg-[var(--cyan)]/[0.15] disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {parsing ? "Parsing…" : "📄 Upload EagleView / HOVER PDF"}
-                  </button>
-                </div>
+                </label>
               </div>
               <p className="text-[10px] text-[var(--gray-muted)] mb-4">
                 Upload an aerial-measurement report PDF and we&apos;ll auto-fill these fields, or type manually.
