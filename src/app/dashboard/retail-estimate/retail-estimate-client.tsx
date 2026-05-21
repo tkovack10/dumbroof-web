@@ -271,6 +271,68 @@ export function RetailEstimateClient() {
     router.push(`/dashboard/retail-estimate/${id}/print`);
   }
 
+  async function handleSendSignature() {
+    if (!customerEmail) {
+      setStatusMsg({ kind: "err", text: "Customer email required to send for signature" });
+      return;
+    }
+    const id = estimateId || (await handleSave());
+    if (!id) return;
+    setSending(true);
+    setStatusMsg(null);
+    try {
+      const res = await fetch(`/api/retail-estimates/${id}/send-signature`, { method: "POST" });
+      const data = await res.json();
+      if (!res.ok) {
+        setStatusMsg({ kind: "err", text: data.error || "Send failed" });
+        return;
+      }
+      setStatusMsg({
+        kind: "ok",
+        text: `Signing link sent to ${customerEmail}. They'll get an email with a one-click sign button.`,
+      });
+    } catch (err) {
+      setStatusMsg({ kind: "err", text: String(err) });
+    } finally {
+      setSending(false);
+    }
+  }
+
+  async function handleStripeInvoice() {
+    if (!customerEmail) {
+      setStatusMsg({ kind: "err", text: "Customer email required to invoice" });
+      return;
+    }
+    const id = estimateId || (await handleSave());
+    if (!id) return;
+    setSending(true);
+    setStatusMsg(null);
+    try {
+      const res = await fetch(`/api/retail-estimates/${id}/stripe-invoice`, { method: "POST" });
+      const data = await res.json();
+      if (!res.ok) {
+        if (data.needs_stripe_onboarding) {
+          setStatusMsg({
+            kind: "err",
+            text: "Connect Stripe first in Dashboard → Settings → Payments to invoice customers.",
+          });
+        } else {
+          setStatusMsg({ kind: "err", text: data.error || "Invoice failed" });
+        }
+        return;
+      }
+      setStatusMsg({
+        kind: "ok",
+        text: `Stripe invoice sent. Customer will receive a payment link.`,
+      });
+      if (data.hosted_invoice_url) window.open(data.hosted_invoice_url, "_blank");
+    } catch (err) {
+      setStatusMsg({ kind: "err", text: String(err) });
+    } finally {
+      setSending(false);
+    }
+  }
+
   function updateMeasurement<K extends keyof Measurements>(key: K, value: number) {
     setMeasurements((m) => ({ ...m, [key]: value }));
   }
@@ -626,7 +688,7 @@ export function RetailEstimateClient() {
               </div>
 
               {/* Save / Email / Print buttons */}
-              <div className="grid grid-cols-3 gap-2 mb-4">
+              <div className="grid grid-cols-3 gap-2 mb-2">
                 <button
                   type="button"
                   onClick={handleSave}
@@ -651,6 +713,28 @@ export function RetailEstimateClient() {
                   className="text-xs font-semibold px-3 py-2.5 rounded-lg bg-gradient-to-r from-[var(--pink)] via-[var(--purple)] to-[var(--blue)] text-white hover:shadow-[var(--shadow-glow-pink)] disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   🖨️ Print PDF
+                </button>
+              </div>
+
+              {/* Send for Signature + Stripe Invoice buttons */}
+              <div className="grid grid-cols-2 gap-2 mb-4">
+                <button
+                  type="button"
+                  onClick={handleSendSignature}
+                  disabled={saving || sending || !customerEmail}
+                  className="text-xs font-semibold px-3 py-2.5 rounded-lg bg-green-500/[0.10] border border-green-500/30 text-green-400 hover:bg-green-500/[0.20] disabled:opacity-50 disabled:cursor-not-allowed"
+                  title={!customerEmail ? "Customer email required" : "Email a one-click signing link to the customer"}
+                >
+                  {sending ? "Sending…" : "✍️ Send for Signature"}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleStripeInvoice}
+                  disabled={saving || sending || !customerEmail}
+                  className="text-xs font-semibold px-3 py-2.5 rounded-lg bg-[var(--purple)]/[0.10] border border-[var(--purple)]/30 text-[var(--purple)] hover:bg-[var(--purple)]/[0.20] disabled:opacity-50 disabled:cursor-not-allowed"
+                  title={!customerEmail ? "Customer email required" : "Create a Stripe invoice on your Connect account and email to customer"}
+                >
+                  {sending ? "Sending…" : "💳 Send Stripe Invoice"}
                 </button>
               </div>
 

@@ -94,16 +94,37 @@ export async function POST(req: NextRequest) {
   return NextResponse.json({ estimate: data });
 }
 
-/** GET /api/retail-estimates — list user's estimates, newest first. */
-export async function GET() {
+/** GET /api/retail-estimates — list user's estimates, newest first.
+ *  Supports ?limit= and ?offset= for paginated reads. Default 50/0. Max 200.
+ *  Returns { estimates, total, has_more } so the UI can render "load more". */
+export async function GET(req: NextRequest) {
   const auth = await requireAuth();
   if (isAuthError(auth)) return auth.response;
-  const { data, error } = await supabaseAdmin
+
+  const url = new URL(req.url);
+  const limit = Math.min(Math.max(parseInt(url.searchParams.get("limit") || "50", 10) || 50, 1), 200);
+  const offset = Math.max(parseInt(url.searchParams.get("offset") || "0", 10) || 0, 0);
+  const status = url.searchParams.get("status");
+
+  let q = supabaseAdmin
     .from("retail_estimates")
-    .select("id, template_id, customer_name, customer_email, total_amount, status, created_at, sent_at")
+    .select(
+      "id, template_id, customer_name, customer_email, total_amount, status, created_at, sent_at, signed_at, stripe_invoice_url, stripe_invoice_status",
+      { count: "exact" },
+    )
     .eq("user_id", auth.user.id)
     .order("created_at", { ascending: false })
-    .limit(100);
+    .range(offset, offset + limit - 1);
+
+  if (status && status !== "all") {
+    q = q.eq("status", status);
+  }
+
+  const { data, error, count } = await q;
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json({ estimates: data || [] });
+  return NextResponse.json({
+    estimates: data || [],
+    total: count ?? 0,
+    has_more: offset + (data?.length || 0) < (count ?? 0),
+  });
 }
