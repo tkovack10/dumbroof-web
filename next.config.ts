@@ -7,6 +7,11 @@ const nextConfig: NextConfig = {
   // explicitly include them in the cron's bundle.
   outputFileTracingIncludes: {
     "/api/cron/richard-trainer": ["./backend/richard_prompts/**/*.md"],
+    // Retail estimate templates live in backend/pricing/retail_templates/.
+    // The /api/retail-templates route reads them via fs.readFileSync, so
+    // Next.js needs an explicit trace include to bundle them into the
+    // serverless function. Scoped to this one route — nothing else.
+    "/api/retail-templates": ["./backend/pricing/retail_templates/**/*.json"],
   },
   images: {
     formats: ["image/avif", "image/webp"],
