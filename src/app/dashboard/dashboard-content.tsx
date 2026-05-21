@@ -623,7 +623,7 @@ export function DashboardContent({ user }: { user: User }) {
               {activeTab === "claims" ? "Upload documents and generate claim packages." : "Diagnose leaks and generate repair documents."}
             </p>
           </div>
-          <div className="grid grid-cols-2 md:flex md:items-center gap-2">
+          <div className="grid grid-cols-2 md:flex md:flex-wrap md:items-center md:justify-end gap-2">
             {canInvite && (
               <button
                 onClick={() => setInviteOpen(true)}
