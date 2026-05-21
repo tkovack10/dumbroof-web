@@ -651,19 +651,6 @@ export function DashboardContent({ user }: { user: User }) {
             >
               + New Claim
             </a>
-            <a
-              href="/dashboard/retail-estimate"
-              className="bg-white/[0.05] border border-[var(--cyan)]/30 hover:border-[var(--cyan)] hover:bg-[var(--cyan)]/[0.08] text-[var(--cyan)] px-4 py-2.5 md:py-3 rounded-xl font-semibold transition-colors text-sm whitespace-nowrap text-center"
-            >
-              + Retail Estimate
-            </a>
-            <a
-              href="/dashboard/retail-estimates"
-              className="bg-white/[0.03] border border-white/10 hover:border-white/30 hover:bg-white/[0.06] text-[var(--gray)] hover:text-[var(--white)] px-4 py-2.5 md:py-3 rounded-xl font-semibold transition-colors text-sm whitespace-nowrap text-center"
-              title="View all saved retail estimates"
-            >
-              All Retail Estimates
-            </a>
           </div>
         </div>
 
