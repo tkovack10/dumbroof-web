@@ -71,6 +71,8 @@ export function RetailEstimateClient() {
   const [saving, setSaving] = useState(false);
   const [sending, setSending] = useState(false);
   const [sentMarker, setSentMarker] = useState(false);
+  const [signLinking, setSignLinking] = useState(false);
+  const [signLink, setSignLink] = useState<string | null>(null);
   const [statusMsg, setStatusMsg] = useState<{ kind: "ok" | "err"; text: string } | null>(null);
   const [markupPct, setMarkupPct] = useState(0);
   const [status, setStatus] = useState<string>("draft");
@@ -171,6 +173,38 @@ export function RetailEstimateClient() {
 
   function updateAddonQty(code: string, qty: number) {
     setAddonQtys((prev) => ({ ...prev, [code]: Math.max(0, qty) }));
+  }
+
+  async function handleGetSignLink() {
+    let idForSign = estimateId;
+    if (!idForSign) {
+      idForSign = await handleSave();
+      if (!idForSign) return;
+    }
+    setSignLinking(true);
+    setStatusMsg(null);
+    try {
+      const res = await fetch(`/api/retail-estimates/${idForSign}/sign-token`, {
+        method: "POST",
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setStatusMsg({ kind: "err", text: data.error || "Could not issue sign link" });
+        return;
+      }
+      const url = data.url as string;
+      setSignLink(url);
+      try {
+        await navigator.clipboard.writeText(url);
+        setStatusMsg({ kind: "ok", text: "Sign link copied to clipboard" });
+      } catch {
+        setStatusMsg({ kind: "ok", text: "Sign link ready (clipboard blocked — copy manually below)" });
+      }
+    } catch (err) {
+      setStatusMsg({ kind: "err", text: String(err) });
+    } finally {
+      setSignLinking(false);
+    }
   }
 
   async function handleSendEmail() {
@@ -694,6 +728,28 @@ export function RetailEstimateClient() {
                       : "Email to Customer"}
                 </button>
 
+                <button
+                  type="button"
+                  onClick={handleGetSignLink}
+                  disabled={signLinking || saving || sending}
+                  className="w-full text-sm font-semibold px-4 py-3 rounded-lg bg-purple-500/[0.10] border border-purple-500/40 hover:bg-purple-500/[0.18] hover:border-purple-500 text-purple-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {signLinking ? "Issuing…" : signLink ? "Get New Sign Link" : "Get Signature Link"}
+                </button>
+
+                {signLink && (
+                  <div className="text-[10px] bg-purple-500/[0.06] border border-purple-500/30 rounded-lg p-2">
+                    <p className="text-purple-200 mb-1 font-semibold">Send this URL to the customer:</p>
+                    <input
+                      type="text"
+                      readOnly
+                      value={signLink}
+                      onClick={(e) => (e.target as HTMLInputElement).select()}
+                      className="w-full px-2 py-1 text-[10px] rounded bg-black/40 border border-white/10 text-purple-100 font-mono"
+                    />
+                  </div>
+                )}
+
                 {sentMarker && (
                   <p className="text-[10px] text-[var(--cyan)]/80 text-center">
                     Sent · status updated to <strong>Sent</strong>
@@ -712,7 +768,7 @@ export function RetailEstimateClient() {
                   </div>
                 )}
                 <p className="text-[10px] text-[var(--gray-dim)] pt-1">
-                  Sign / Stripe Invoice / PDF attachment ship in next phases.
+                  Stripe Invoice / PDF attachment ship in next phases.
                 </p>
               </div>
             </div>
