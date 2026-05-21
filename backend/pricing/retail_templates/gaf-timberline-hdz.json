@@ -1,0 +1,191 @@
+{
+  "_meta": {
+    "template_id": "retail-gaf-timberline-hdz",
+    "template_name": "GAF Timberline HDZ — Retail System",
+    "manufacturer": "GAF",
+    "product_line": "Timberline HDZ",
+    "legacy_aliases": ["Timberline HD"],
+    "legacy_note": "Timberline HD was rebranded to Timberline HDZ in 2020 with the addition of LayerLock™ Technology and the StainGuard Plus™ algae warranty. HDZ is the current production line — HD is no longer manufactured. Pricing here applies to HDZ; substitute HD only if pulling existing stock.",
+    "shingle_class": "laminate_architectural",
+    "wind_warranty_mph": 130,
+    "wind_warranty_with_layerlock_mph": 999,
+    "algae_resistance": "StainGuard Plus (25-yr)",
+    "system_warranty": {
+      "name": "GAF Golden Pledge Limited Warranty",
+      "term": "Lifetime / 50-yr non-prorated workmanship",
+      "requirements": "Installed by GAF Master Elite Contractor + at least 3 qualifying GAF accessories (one starter, one hip & ridge, one underlayment, plus optional ridge vent or ice & water)",
+      "transferable": true,
+      "transfer_window_years": 50,
+      "tier_below": "System Plus Limited Warranty (50-yr non-prorated) — same accessory requirements, doesn't require Master Elite status"
+    },
+    "base_price_per_sq_usd": 700.00,
+    "base_price_includes": "Timberline HDZ shingles installed (material + labor). Excludes tear-off, underlayment, ice & water, drip edge, starter, ridge cap, ventilation, flashing, decking. Add those line items separately.",
+    "currency": "USD",
+    "as_of_date": "2026-05-20",
+    "notes": "All non-shingle line items use industry-typical retail unit prices. Override per-market or per-contractor as needed. Quantity formulas reference variables surfaced by the measurement parser (EagleView/HOVER/etc.): roof_area_sq, eave_lf, valley_lf, ridge_lf, hip_lf, rake_lf, pipe_count, etc."
+  },
+
+  "items": [
+    {
+      "line": 1,
+      "category": "tear_off",
+      "code": "RFG_TO_COMP",
+      "description": "Tear off existing composition shingles — single layer, dump fees included",
+      "unit": "SQ",
+      "unit_price": 85.00,
+      "quantity_formula": "roof_area_sq",
+      "notes": "Add 100% per additional layer."
+    },
+    {
+      "line": 2,
+      "category": "decking",
+      "code": "RFG_DECK_REPL",
+      "description": "Sheathing replacement — 1/2\" CDX plywood, per 4x8 sheet (32 SF)",
+      "unit": "EA",
+      "unit_price": 110.00,
+      "quantity_formula": "bad_decking_sheets",
+      "notes": "Allowance — actual qty determined on tear-off. Bill T&M or per-sheet."
+    },
+    {
+      "line": 3,
+      "category": "underlayment",
+      "code": "GAF_TIGERPAW",
+      "description": "GAF Tiger Paw Roof Deck Protection — premium synthetic underlayment, installed",
+      "unit": "SQ",
+      "unit_price": 38.00,
+      "quantity_formula": "roof_area_sq",
+      "notes": "Required for Golden Pledge / System Plus warranty. Substitute: GAF FeltBuster High-Traction ($28/SQ) for a budget tier, or Deck-Armor ($45/SQ) for premium breathable."
+    },
+    {
+      "line": 4,
+      "category": "ice_water_shield",
+      "code": "GAF_WEATHERWATCH",
+      "description": "GAF WeatherWatch Mineral-Surface Leak Barrier — installed at eaves, valleys, around penetrations",
+      "unit": "SQ",
+      "unit_price": 310.00,
+      "quantity_formula": "((eave_lf * 6) + (valley_lf * 3)) / 100",
+      "notes": "Quantity formula derives SF coverage from eave + valley LF (6 ft up from eave, 3 ft each side of valley), converted to squares. Match local code minimums. Substitute: GAF StormGuard Film-Surfaced ($290/SQ) for higher-temp roofs or under tile."
+    },
+    {
+      "line": 5,
+      "category": "drip_edge",
+      "code": "RFG_DRIPEDGE",
+      "description": "Drip edge — aluminum, baked enamel finish, color-matched. Installed at eaves and rakes.",
+      "unit": "LF",
+      "unit_price": 4.75,
+      "quantity_formula": "eave_lf + rake_lf",
+      "notes": "Code-required in most jurisdictions per IRC R905.2.8.5. GAF accepts any code-compliant drip edge for warranty."
+    },
+    {
+      "line": 6,
+      "category": "starter",
+      "code": "GAF_PROSTART",
+      "description": "GAF Pro-Start Eave/Rake Starter Strip Shingles — installed at eaves and rakes",
+      "unit": "LF",
+      "unit_price": 3.25,
+      "quantity_formula": "eave_lf + rake_lf",
+      "notes": "Required for Golden Pledge / System Plus warranty. Eliminates need to cut field shingles."
+    },
+    {
+      "line": 7,
+      "category": "shingles",
+      "code": "GAF_TIMBERLINE_HDZ",
+      "description": "GAF Timberline HDZ laminate shingles with LayerLock Technology — installed (material + labor). Lifetime warranty, WindProven (no max wind speed), StainGuard Plus algae protection.",
+      "unit": "SQ",
+      "unit_price": 700.00,
+      "quantity_formula": "roof_area_sq * 1.10",
+      "notes": "Base retail price per Tom directive. 10% waste factor included. Color: customer's choice from current GAF palette (Charcoal, Pewter Gray, Weathered Wood, Barkwood, Slate, Hickory, etc.). LayerLock requires nailing within the StrikeZone for the 999 mph wind-warranty tier."
+    },
+    {
+      "line": 8,
+      "category": "hip_ridge",
+      "code": "GAF_SEALARIDGE",
+      "description": "GAF Seal-A-Ridge Hip & Ridge Shingles — color-matched to field shingle",
+      "unit": "LF",
+      "unit_price": 9.00,
+      "quantity_formula": "ridge_lf + hip_lf",
+      "notes": "Required for Golden Pledge / System Plus warranty. Premium upgrades: TimberTex ($14/LF), Z Ridge ($17/LF, premium thick profile), or Ridglass ($16/LF, glass-reinforced)."
+    },
+    {
+      "line": 9,
+      "category": "ventilation",
+      "code": "GAF_COBRA",
+      "description": "GAF Cobra Ridge Vent — installed continuously along main ridge. Snow-country baffled.",
+      "unit": "LF",
+      "unit_price": 12.50,
+      "quantity_formula": "ridge_lf_vented",
+      "notes": "Recommended for warranty optimization but not required. Substitute: Cobra Snow Country ($14.50/LF) for high-snow regions or Cobra RidgeRunner ($11/LF) standard."
+    },
+    {
+      "line": 10,
+      "category": "flashing_pipe",
+      "code": "RFG_PIPE_BOOT_STD",
+      "description": "Pipe boot — neoprene, retrofit/new, lead-free, color-matched cap. Standard 1-1/2\" to 3\" pipe.",
+      "unit": "EA",
+      "unit_price": 65.00,
+      "quantity_formula": "pipe_count_standard",
+      "notes": "Upgrade to lead pipe flashing ($125/EA) for >25 yr life expectation."
+    },
+    {
+      "line": 11,
+      "category": "flashing_step",
+      "code": "RFG_STEP_FLASH",
+      "description": "Step flashing — new aluminum, installed at wall-to-roof intersections",
+      "unit": "LF",
+      "unit_price": 6.75,
+      "quantity_formula": "step_flash_lf",
+      "notes": "Code requires new step flashing — cannot reuse per IRC R905.2.8.3."
+    },
+    {
+      "line": 12,
+      "category": "flashing_counter",
+      "code": "RFG_COUNTER_FLASH",
+      "description": "Counter flashing — surface-mount or reglet, masonry chimney/parapet sealing",
+      "unit": "LF",
+      "unit_price": 18.50,
+      "quantity_formula": "counter_flash_lf",
+      "notes": "Chimney flashing kit (4-side reglet, cricket excluded): bill separately at $450/EA."
+    },
+    {
+      "line": 13,
+      "category": "labor_workmanship",
+      "code": "RFG_WARRANTY_LABOR",
+      "description": "Contractor workmanship warranty — 10-year non-prorated (or 50-yr if Golden Pledge eligible) coverage on labor and installation defects",
+      "unit": "LS",
+      "unit_price": 0.00,
+      "quantity_formula": "1",
+      "notes": "Included with system install. If contractor is GAF Master Elite, Golden Pledge upgrades workmanship coverage to 50 years non-prorated."
+    },
+    {
+      "line": 14,
+      "category": "permit",
+      "code": "RFG_PERMIT",
+      "description": "Building permit and inspection fees",
+      "unit": "LS",
+      "unit_price": 350.00,
+      "quantity_formula": "1",
+      "notes": "Varies by jurisdiction. Adjust to actual municipal fee."
+    },
+    {
+      "line": 15,
+      "category": "cleanup",
+      "code": "RFG_DUMPSTER",
+      "description": "Dumpster rental + final cleanup (magnetic nail sweep)",
+      "unit": "LS",
+      "unit_price": 0.00,
+      "quantity_formula": "1",
+      "notes": "Cost rolled into tear-off line item. Itemized here for customer-facing transparency."
+    }
+  ],
+
+  "warranty_disclosure": "To activate the GAF Golden Pledge Limited Warranty, the installing contractor MUST be GAF Master Elite Certified (top 2% of GAF contractors) AND install at least 3 qualifying GAF accessories from the list: Tiger Paw, FeltBuster, or Deck-Armor (underlayment) · WeatherWatch or StormGuard (ice & water) · Pro-Start (starter) · Seal-A-Ridge, TimberTex, Ridglass, or Z Ridge (hip & ridge) · Cobra (ridge vent). If the contractor is not Master Elite but installs the same accessory mix, the System Plus Limited Warranty applies (50-yr non-prorated, transferable once).",
+
+  "suggested_substitutions": {
+    "underlayment_budget": "GAF FeltBuster High-Traction ($28/SQ) — meets warranty req",
+    "underlayment_premium": "GAF Deck-Armor Premium Breathable ($45/SQ) — best dry-in",
+    "ice_water_budget": "GAF StormGuard Film-Surfaced ($290/SQ) — meets warranty req, higher-temp tolerant",
+    "ice_water_premium": "GAF WeatherWatch Mineral-Surface ($310/SQ) — premium granulated",
+    "hip_ridge_premium": "GAF TimberTex ($14/LF) — premium thick profile, dimensional appearance",
+    "hip_ridge_top_tier": "GAF Z Ridge ($17/LF) — top-tier thick laminate ridge cap"
+  }
+}
