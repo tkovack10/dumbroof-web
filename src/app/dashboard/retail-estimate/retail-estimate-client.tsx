@@ -72,6 +72,8 @@ export function RetailEstimateClient() {
   const [sending, setSending] = useState(false);
   const [sentMarker, setSentMarker] = useState(false);
   const [statusMsg, setStatusMsg] = useState<{ kind: "ok" | "err"; text: string } | null>(null);
+  const [markupPct, setMarkupPct] = useState(0);
+  const [status, setStatus] = useState<string>("draft");
 
   useEffect(() => {
     // Detect ?id= in the URL to load an existing estimate into the builder.
@@ -107,6 +109,8 @@ export function RetailEstimateClient() {
           setCustomerEmail(e.customer_email || "");
           setMeasurements((m) => ({ ...m, ...e.measurements }));
           setAddonQtys(e.addon_qtys || {});
+          setMarkupPct(Number((e as unknown as { markup_pct?: number }).markup_pct ?? 0));
+          setStatus(e.status || "draft");
           setLoadedExisting(true);
           if (e.status === "sent") setSentMarker(true);
         } else if (tpls[0]) {
@@ -157,7 +161,9 @@ export function RetailEstimateClient() {
     [selectedAddonRows],
   );
 
-  const grandTotal = baseTotal + addonsTotal;
+  const subtotal = baseTotal + addonsTotal;
+  const markupAmount = (subtotal * markupPct) / 100;
+  const grandTotal = subtotal + markupAmount;
 
   function updateMeasurement<K extends keyof Measurements>(key: K, value: number) {
     setMeasurements((m) => ({ ...m, [key]: value }));
@@ -197,6 +203,7 @@ export function RetailEstimateClient() {
         return;
       }
       setSentMarker(true);
+      setStatus("sent");
       setStatusMsg({ kind: "ok", text: `Sent to ${customerEmail}` });
     } catch (err) {
       setStatusMsg({ kind: "err", text: String(err) });
@@ -226,8 +233,11 @@ export function RetailEstimateClient() {
           addon_qtys: addonQtys,
           base_amount: baseTotal,
           addons_amount: addonsTotal,
-          subtotal_amount: baseTotal + addonsTotal,
+          subtotal_amount: subtotal,
+          markup_pct: markupPct,
+          markup_amount: markupAmount,
           total_amount: grandTotal,
+          status,
         }),
       });
       const data = await res.json();
@@ -521,11 +531,91 @@ export function RetailEstimateClient() {
                 ))}
               </div>
 
+              <div className="mb-4 pb-4 border-b border-white/10">
+                <div className="flex justify-between items-baseline text-xs mb-2">
+                  <span className="text-[var(--gray-muted)]">Subtotal</span>
+                  <span className="font-mono text-[var(--white)]">{fmtUsd(subtotal)}</span>
+                </div>
+
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-[10px] uppercase tracking-wider text-[var(--gray-muted)]">
+                    {markupPct >= 0 ? "Markup" : "Discount"}
+                  </label>
+                  <span
+                    className={`text-xs font-mono font-semibold ${
+                      markupPct > 0
+                        ? "text-amber-400"
+                        : markupPct < 0
+                          ? "text-red-400"
+                          : "text-[var(--gray-muted)]"
+                    }`}
+                  >
+                    {markupPct > 0 ? "+" : ""}
+                    {markupPct.toFixed(0)}%
+                  </span>
+                </div>
+                <input
+                  type="range"
+                  min={-25}
+                  max={25}
+                  step={1}
+                  value={markupPct}
+                  onChange={(e) => setMarkupPct(Number(e.target.value))}
+                  className="w-full accent-[var(--cyan)]"
+                />
+                <div className="flex justify-between text-[9px] text-[var(--gray-dim)] mt-0.5">
+                  <span>-25%</span>
+                  <button
+                    type="button"
+                    onClick={() => setMarkupPct(0)}
+                    className="hover:text-[var(--white)] underline"
+                  >
+                    reset
+                  </button>
+                  <span>+25%</span>
+                </div>
+                {markupPct !== 0 && (
+                  <div className="flex justify-between items-baseline text-xs mt-2">
+                    <span className="text-[var(--gray-muted)]">
+                      {markupPct > 0 ? "Markup amount" : "Discount amount"}
+                    </span>
+                    <span
+                      className={`font-mono ${
+                        markupPct > 0 ? "text-amber-400" : "text-red-400"
+                      }`}
+                    >
+                      {markupPct > 0 ? "+" : ""}
+                      {fmtUsd(markupAmount)}
+                    </span>
+                  </div>
+                )}
+              </div>
+
               <div className="flex justify-between items-baseline mb-4">
                 <span className="text-sm font-bold text-[var(--white)]">Total</span>
                 <span className="text-2xl font-bold text-[var(--cyan)] font-mono">
                   {fmtUsd(grandTotal)}
                 </span>
+              </div>
+
+              <div className="mb-4 pb-4 border-b border-white/10">
+                <label className="block text-[10px] uppercase tracking-wider text-[var(--gray-muted)] mb-2">
+                  Status
+                </label>
+                <select
+                  value={status}
+                  onChange={(e) => setStatus(e.target.value)}
+                  className="w-full px-3 py-2 text-xs rounded-lg bg-white/[0.03] border border-white/10 text-[var(--white)] focus:outline-none focus:border-[var(--cyan)]"
+                >
+                  <option value="draft">Draft</option>
+                  <option value="sent">Sent</option>
+                  <option value="accepted">Accepted</option>
+                  <option value="declined">Declined</option>
+                  <option value="expired">Expired</option>
+                </select>
+                <p className="text-[10px] text-[var(--gray-dim)] mt-1">
+                  Auto-set to <strong>Sent</strong> when you email. Update on customer reply.
+                </p>
               </div>
 
               {(customerName || customerAddress) && (

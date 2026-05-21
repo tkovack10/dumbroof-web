@@ -15,16 +15,38 @@ interface SaveBody {
   base_amount: number;
   addons_amount: number;
   subtotal_amount: number;
+  markup_pct?: number;
+  markup_amount?: number;
   total_amount: number;
+  status?: string;
   notes?: string;
+}
+
+const ALLOWED_STATUSES = new Set([
+  "draft",
+  "sent",
+  "viewed",
+  "accepted",
+  "declined",
+  "expired",
+  "signed",
+  "paid",
+]);
+
+function clampMarkup(n: unknown): number {
+  const v = Number(n || 0);
+  if (!Number.isFinite(v)) return 0;
+  return Math.max(-50, Math.min(50, v));
 }
 
 /**
  * POST /api/retail-estimates — save a new estimate (or update via ?id=).
  *
- * Phase 2 of retail re-add: write path only. No email, no PDF, no signature.
- * Persistence layer (retail_estimates table) was created in earlier work and
- * is still in place; this just wires the API.
+ * Phase 2 added persistence; Phase 4 layered on markup_pct/markup_amount +
+ * user-driven status transitions. Status writes pass through an allow-list
+ * so we don't accept arbitrary strings from the client. 'sent' is normally
+ * set by the email send endpoint, but the user can manually override it on
+ * the builder dropdown for replies they processed by hand.
  */
 export async function POST(req: NextRequest) {
   const auth = await requireAuth();
@@ -44,6 +66,11 @@ export async function POST(req: NextRequest) {
   const url = new URL(req.url);
   const id = url.searchParams.get("id");
 
+  const markupPct = clampMarkup(body.markup_pct);
+  const markupAmount = Number(body.markup_amount ?? 0);
+  const status =
+    body.status && ALLOWED_STATUSES.has(body.status) ? body.status : undefined;
+
   if (id) {
     const { data, error } = await supabaseAdmin
       .from("retail_estimates")
@@ -58,8 +85,11 @@ export async function POST(req: NextRequest) {
         base_amount: body.base_amount,
         addons_amount: body.addons_amount,
         subtotal_amount: body.subtotal_amount,
+        markup_pct: markupPct,
+        markup_amount: markupAmount,
         total_amount: body.total_amount,
         notes: body.notes ?? null,
+        ...(status ? { status } : {}),
         updated_at: new Date().toISOString(),
       })
       .eq("id", id)
@@ -84,9 +114,11 @@ export async function POST(req: NextRequest) {
       base_amount: body.base_amount,
       addons_amount: body.addons_amount,
       subtotal_amount: body.subtotal_amount,
+      markup_pct: markupPct,
+      markup_amount: markupAmount,
       total_amount: body.total_amount,
       notes: body.notes ?? null,
-      status: "draft",
+      status: status || "draft",
     })
     .select()
     .single();
@@ -102,14 +134,19 @@ export async function GET(req: NextRequest) {
   const url = new URL(req.url);
   const limit = Math.min(Math.max(parseInt(url.searchParams.get("limit") || "50", 10) || 50, 1), 200);
   const offset = Math.max(parseInt(url.searchParams.get("offset") || "0", 10) || 0, 0);
+  const statusFilter = url.searchParams.get("status");
 
-  const { data, error, count } = await supabaseAdmin
+  let query = supabaseAdmin
     .from("retail_estimates")
     .select(
-      "id, template_id, customer_name, customer_email, total_amount, status, created_at, sent_at",
+      "id, template_id, customer_name, customer_email, total_amount, markup_pct, status, created_at, sent_at",
       { count: "exact" },
     )
-    .eq("user_id", auth.user.id)
+    .eq("user_id", auth.user.id);
+  if (statusFilter && ALLOWED_STATUSES.has(statusFilter)) {
+    query = query.eq("status", statusFilter);
+  }
+  const { data, error, count } = await query
     .order("created_at", { ascending: false })
     .range(offset, offset + limit - 1);
 

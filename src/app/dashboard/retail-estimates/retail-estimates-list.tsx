@@ -10,12 +10,94 @@ interface EstimateRow {
   customer_name: string | null;
   customer_email: string | null;
   total_amount: number;
+  markup_pct: number | null;
   status: string;
   created_at: string;
   sent_at: string | null;
 }
 
 const PAGE_SIZE = 50;
+
+type StatusFilter =
+  | "all"
+  | "draft"
+  | "sent"
+  | "accepted"
+  | "declined"
+  | "expired"
+  | "signed"
+  | "paid";
+
+const STATUS_FILTERS: Array<{ value: StatusFilter; label: string }> = [
+  { value: "all", label: "All" },
+  { value: "draft", label: "Draft" },
+  { value: "sent", label: "Sent" },
+  { value: "accepted", label: "Accepted" },
+  { value: "declined", label: "Declined" },
+  { value: "signed", label: "Signed" },
+  { value: "paid", label: "Paid" },
+];
+
+interface StatusStyle {
+  text: string;
+  bg: string;
+  border: string;
+  label: string;
+}
+
+function statusStyle(s: string): StatusStyle {
+  switch (s) {
+    case "sent":
+      return {
+        text: "text-[var(--cyan)]",
+        bg: "bg-[var(--cyan)]/[0.10]",
+        border: "border-[var(--cyan)]/30",
+        label: "Sent",
+      };
+    case "accepted":
+      return {
+        text: "text-green-300",
+        bg: "bg-green-500/[0.10]",
+        border: "border-green-500/30",
+        label: "Accepted",
+      };
+    case "declined":
+      return {
+        text: "text-red-300",
+        bg: "bg-red-500/[0.10]",
+        border: "border-red-500/30",
+        label: "Declined",
+      };
+    case "expired":
+      return {
+        text: "text-[var(--gray-muted)]",
+        bg: "bg-white/[0.04]",
+        border: "border-white/10",
+        label: "Expired",
+      };
+    case "signed":
+      return {
+        text: "text-purple-300",
+        bg: "bg-purple-500/[0.10]",
+        border: "border-purple-500/30",
+        label: "Signed",
+      };
+    case "paid":
+      return {
+        text: "text-emerald-300",
+        bg: "bg-emerald-500/[0.10]",
+        border: "border-emerald-500/30",
+        label: "Paid",
+      };
+    default:
+      return {
+        text: "text-amber-400",
+        bg: "bg-amber-500/[0.10]",
+        border: "border-amber-500/30",
+        label: "Draft",
+      };
+  }
+}
 
 function fmtUsd(n: number): string {
   return n.toLocaleString("en-US", {
@@ -57,13 +139,15 @@ export function RetailEstimatesList() {
   const [deleting, setDeleting] = useState<string | null>(null);
   const [total, setTotal] = useState(0);
   const [hasMore, setHasMore] = useState(false);
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
 
-  const load = useCallback(async (offset = 0, append = false) => {
+  const load = useCallback(async (offset = 0, append = false, filter: StatusFilter = "all") => {
     if (append) setLoadingMore(true);
     try {
       const url = new URL("/api/retail-estimates", window.location.origin);
       url.searchParams.set("limit", String(PAGE_SIZE));
       url.searchParams.set("offset", String(offset));
+      if (filter !== "all") url.searchParams.set("status", filter);
       const res = await fetch(url.toString());
       const data = await res.json();
       if (!res.ok) {
@@ -84,8 +168,8 @@ export function RetailEstimatesList() {
 
   useEffect(() => {
     setLoading(true);
-    load(0, false);
-  }, [load]);
+    load(0, false, statusFilter);
+  }, [load, statusFilter]);
 
   const filtered = useMemo(() => {
     return rows.filter((r) => {
@@ -103,8 +187,10 @@ export function RetailEstimatesList() {
     const totalCount = rows.length;
     const draft = rows.filter((r) => r.status === "draft").length;
     const sent = rows.filter((r) => r.status === "sent").length;
+    const accepted = rows.filter((r) => r.status === "accepted").length;
+    const closed = rows.filter((r) => r.status === "signed" || r.status === "paid").length;
     const totalValue = rows.reduce((acc, r) => acc + Number(r.total_amount || 0), 0);
-    return { total: totalCount, draft, sent, totalValue };
+    return { total: totalCount, draft, sent, accepted, closed, totalValue };
   }, [rows]);
 
   async function handleDelete(id: string) {
@@ -148,7 +234,7 @@ export function RetailEstimatesList() {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
         <div className="glass-card p-4">
           <p className="text-[10px] uppercase tracking-wider text-[var(--gray-muted)]">Total</p>
           <p className="text-3xl font-bold text-[var(--white)]">{stats.total}</p>
@@ -162,12 +248,32 @@ export function RetailEstimatesList() {
           <p className="text-3xl font-bold text-[var(--cyan)]">{stats.sent}</p>
         </div>
         <div className="glass-card p-4">
+          <p className="text-[10px] uppercase tracking-wider text-[var(--gray-muted)]">Accepted</p>
+          <p className="text-3xl font-bold text-green-300">{stats.accepted}</p>
+        </div>
+        <div className="glass-card p-4">
           <p className="text-[10px] uppercase tracking-wider text-[var(--gray-muted)]">Total Value</p>
           <p className="text-3xl font-bold text-[var(--white)] font-mono">{fmtUsd(stats.totalValue)}</p>
         </div>
       </div>
 
-      <div className="glass-card p-4">
+      <div className="glass-card p-4 space-y-3">
+        <div className="flex flex-wrap gap-2">
+          {STATUS_FILTERS.map((f) => (
+            <button
+              key={f.value}
+              type="button"
+              onClick={() => setStatusFilter(f.value)}
+              className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${
+                statusFilter === f.value
+                  ? "bg-[var(--cyan)]/[0.15] border-[var(--cyan)] text-[var(--cyan)]"
+                  : "bg-white/[0.03] border-white/10 text-[var(--gray)] hover:text-[var(--white)] hover:border-white/30"
+              }`}
+            >
+              {f.label}
+            </button>
+          ))}
+        </div>
         <input
           type="text"
           value={search}
@@ -223,15 +329,17 @@ export function RetailEstimatesList() {
                   </td>
                   <td className="px-4 py-3 text-[var(--gray)]">{templateLabel(r.template_id)}</td>
                   <td className="px-4 py-3">
-                    {r.status === "sent" ? (
-                      <span className="px-2 py-0.5 rounded-full bg-[var(--cyan)]/[0.10] text-[var(--cyan)] border border-[var(--cyan)]/30 text-[10px]">
-                        Sent {r.sent_at ? `· ${timeAgo(r.sent_at)}` : ""}
-                      </span>
-                    ) : (
-                      <span className="px-2 py-0.5 rounded-full bg-amber-500/[0.10] text-amber-400 border border-amber-500/30 text-[10px]">
-                        Draft
-                      </span>
-                    )}
+                    {(() => {
+                      const st = statusStyle(r.status);
+                      return (
+                        <span
+                          className={`px-2 py-0.5 rounded-full ${st.bg} ${st.text} border ${st.border} text-[10px]`}
+                        >
+                          {st.label}
+                          {r.status === "sent" && r.sent_at ? ` · ${timeAgo(r.sent_at)}` : ""}
+                        </span>
+                      );
+                    })()}
                   </td>
                   <td className="px-4 py-3 text-right text-[var(--white)] font-mono">
                     {fmtUsd(Number(r.total_amount))}
@@ -261,7 +369,7 @@ export function RetailEstimatesList() {
             <button
               type="button"
               disabled={loadingMore}
-              onClick={() => load(rows.length, true)}
+              onClick={() => load(rows.length, true, statusFilter)}
               className="text-xs px-4 py-2 rounded-lg bg-white/[0.05] border border-white/10 text-[var(--gray)] hover:bg-white/[0.10] disabled:opacity-50"
             >
               {loadingMore ? "Loading…" : `Load more (${total - rows.length} remaining)`}
