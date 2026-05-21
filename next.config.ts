@@ -7,11 +7,11 @@ const nextConfig: NextConfig = {
   // explicitly include them in the cron's bundle.
   outputFileTracingIncludes: {
     "/api/cron/richard-trainer": ["./backend/richard_prompts/**/*.md"],
-    // Retail estimate templates live in backend/pricing/retail_templates/.
-    // The /api/retail-templates route reads them via fs.readFileSync, so
-    // Next.js needs an explicit trace include to bundle them into the
-    // serverless function. Scoped to this one route — nothing else.
-    "/api/retail-templates": ["./backend/pricing/retail_templates/**/*.json"],
+    // TEMP REMOVED 2026-05-21 for diagnosis: trace include for retail
+    // templates suspected of poisoning all dynamic function bundles in the
+    // dd18a7c build. /api/retail-templates will return empty templates while
+    // this is removed (fs.readFileSync can't find the JSON files). If the
+    // /  hang clears with this removed, root cause confirmed.
   },
   images: {
     formats: ["image/avif", "image/webp"],
