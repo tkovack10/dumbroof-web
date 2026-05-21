@@ -64,10 +64,13 @@ export function RetailEstimateClient() {
   const [addonQtys, setAddonQtys] = useState<Record<string, number>>({});
   const [customerName, setCustomerName] = useState("");
   const [customerAddress, setCustomerAddress] = useState("");
+  const [customerEmail, setCustomerEmail] = useState("");
   const [loading, setLoading] = useState(true);
   const [estimateId, setEstimateId] = useState<string | null>(null);
   const [loadedExisting, setLoadedExisting] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [sending, setSending] = useState(false);
+  const [sentMarker, setSentMarker] = useState(false);
   const [statusMsg, setStatusMsg] = useState<{ kind: "ok" | "err"; text: string } | null>(null);
 
   useEffect(() => {
@@ -92,16 +95,20 @@ export function RetailEstimateClient() {
             template_id: string;
             customer_name: string | null;
             customer_address: string | null;
+            customer_email: string | null;
             measurements: Partial<Measurements>;
             addon_qtys: Record<string, number>;
+            status?: string;
           };
           setEstimateId(e.id);
           setSelectedId(e.template_id);
           setCustomerName(e.customer_name || "");
           setCustomerAddress(e.customer_address || "");
+          setCustomerEmail(e.customer_email || "");
           setMeasurements((m) => ({ ...m, ...e.measurements }));
           setAddonQtys(e.addon_qtys || {});
           setLoadedExisting(true);
+          if (e.status === "sent") setSentMarker(true);
         } else if (tpls[0]) {
           setSelectedId(tpls[0]._meta.template_id);
         }
@@ -160,6 +167,44 @@ export function RetailEstimateClient() {
     setAddonQtys((prev) => ({ ...prev, [code]: Math.max(0, qty) }));
   }
 
+  async function handleSendEmail() {
+    if (!customerEmail.trim()) {
+      setStatusMsg({ kind: "err", text: "Customer email required to send" });
+      return;
+    }
+    // Auto-save before sending so the email reflects the latest state.
+    let idToSend = estimateId;
+    if (!idToSend) {
+      idToSend = await handleSave();
+      if (!idToSend) return;
+    } else {
+      await handleSave();
+    }
+    if (!idToSend) return;
+
+    if (!confirm(`Send estimate to ${customerEmail}?`)) return;
+    setSending(true);
+    setStatusMsg(null);
+    try {
+      const res = await fetch(`/api/retail-estimates/${idToSend}/send`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ to_email: customerEmail }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setStatusMsg({ kind: "err", text: data.error || "Send failed" });
+        return;
+      }
+      setSentMarker(true);
+      setStatusMsg({ kind: "ok", text: `Sent to ${customerEmail}` });
+    } catch (err) {
+      setStatusMsg({ kind: "err", text: String(err) });
+    } finally {
+      setSending(false);
+    }
+  }
+
   async function handleSave(): Promise<string | null> {
     if (!selected) return null;
     setSaving(true);
@@ -175,6 +220,7 @@ export function RetailEstimateClient() {
           template_id: selected._meta.template_id,
           template_snapshot: selected,
           customer_name: customerName,
+          customer_email: customerEmail,
           customer_address: customerAddress,
           measurements,
           addon_qtys: addonQtys,
@@ -317,6 +363,21 @@ export function RetailEstimateClient() {
                     value={customerAddress}
                     onChange={(e) => setCustomerAddress(e.target.value)}
                     placeholder="123 Main St, City, ST 12345"
+                    className="w-full px-3 py-2 text-sm rounded-lg bg-white/[0.03] border border-white/10 text-[var(--white)] placeholder:text-[var(--gray-dim)] focus:outline-none focus:border-[var(--cyan)]"
+                  />
+                </div>
+                <div className="sm:col-span-2">
+                  <label className="block text-[10px] uppercase tracking-wider text-[var(--gray-muted)] mb-1">
+                    Customer Email{" "}
+                    <span className="text-[var(--gray-dim)] normal-case tracking-normal">
+                      — required to email the estimate
+                    </span>
+                  </label>
+                  <input
+                    type="email"
+                    value={customerEmail}
+                    onChange={(e) => setCustomerEmail(e.target.value)}
+                    placeholder="customer@example.com"
                     className="w-full px-3 py-2 text-sm rounded-lg bg-white/[0.03] border border-white/10 text-[var(--white)] placeholder:text-[var(--gray-dim)] focus:outline-none focus:border-[var(--cyan)]"
                   />
                 </div>
@@ -519,18 +580,39 @@ export function RetailEstimateClient() {
                 </p>
               </details>
 
-              <div className="mt-4 pt-4 border-t border-white/[0.04]">
+              <div className="mt-4 pt-4 border-t border-white/[0.04] space-y-2">
                 <button
                   type="button"
                   onClick={handleSave}
-                  disabled={saving}
+                  disabled={saving || sending}
                   className="w-full text-sm font-semibold px-4 py-3 rounded-lg bg-gradient-to-r from-[var(--pink)] via-[var(--purple)] to-[var(--blue)] hover:shadow-[var(--shadow-glow-pink)] text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {saving ? "Saving…" : estimateId ? "Update Estimate" : "Save Estimate"}
                 </button>
+
+                <button
+                  type="button"
+                  onClick={handleSendEmail}
+                  disabled={sending || saving || !customerEmail.trim()}
+                  className="w-full text-sm font-semibold px-4 py-3 rounded-lg bg-[var(--cyan)]/[0.10] border border-[var(--cyan)]/40 hover:bg-[var(--cyan)]/[0.18] hover:border-[var(--cyan)] text-[var(--cyan)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  title={!customerEmail.trim() ? "Enter customer email above to enable" : ""}
+                >
+                  {sending
+                    ? "Sending…"
+                    : sentMarker
+                      ? "Re-send to Customer"
+                      : "Email to Customer"}
+                </button>
+
+                {sentMarker && (
+                  <p className="text-[10px] text-[var(--cyan)]/80 text-center">
+                    Sent · status updated to <strong>Sent</strong>
+                  </p>
+                )}
+
                 {statusMsg && (
                   <div
-                    className={`mt-3 text-[11px] px-3 py-2 rounded-lg border ${
+                    className={`text-[11px] px-3 py-2 rounded-lg border ${
                       statusMsg.kind === "ok"
                         ? "bg-green-500/[0.08] border-green-500/30 text-green-300"
                         : "bg-red-500/[0.08] border-red-500/30 text-red-300"
@@ -539,8 +621,8 @@ export function RetailEstimateClient() {
                     {statusMsg.text}
                   </div>
                 )}
-                <p className="text-[10px] text-[var(--gray-dim)] mt-3">
-                  Email / Print / Sign / Stripe Invoice ship in next phases.
+                <p className="text-[10px] text-[var(--gray-dim)] pt-1">
+                  Sign / Stripe Invoice / PDF attachment ship in next phases.
                 </p>
               </div>
             </div>
