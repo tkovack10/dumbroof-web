@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { evaluateFormula } from "@/lib/retail/evaluator";
 import type {
   RetailTemplate,
@@ -56,6 +57,7 @@ function fmtUsd(n: number): string {
 }
 
 export function RetailEstimateClient() {
+  const router = useRouter();
   const [templates, setTemplates] = useState<RetailTemplate[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [measurements, setMeasurements] = useState<Measurements>(DEFAULT_MEASUREMENTS);
@@ -63,16 +65,53 @@ export function RetailEstimateClient() {
   const [customerName, setCustomerName] = useState("");
   const [customerAddress, setCustomerAddress] = useState("");
   const [loading, setLoading] = useState(true);
+  const [estimateId, setEstimateId] = useState<string | null>(null);
+  const [loadedExisting, setLoadedExisting] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [statusMsg, setStatusMsg] = useState<{ kind: "ok" | "err"; text: string } | null>(null);
 
   useEffect(() => {
-    fetch("/api/retail-templates")
-      .then((r) => r.json())
-      .then((d) => {
-        setTemplates(d.templates || []);
-        if (d.templates?.[0]) setSelectedId(d.templates[0]._meta.template_id);
+    // Detect ?id= in the URL to load an existing estimate into the builder.
+    const params = new URLSearchParams(window.location.search);
+    const existingId = params.get("id");
+
+    async function init() {
+      try {
+        const [tplRes, estRes] = await Promise.all([
+          fetch("/api/retail-templates").then((r) => r.json()),
+          existingId
+            ? fetch(`/api/retail-estimates/${existingId}`).then((r) => r.json())
+            : Promise.resolve(null),
+        ]);
+        const tpls: RetailTemplate[] = tplRes.templates || [];
+        setTemplates(tpls);
+
+        if (estRes?.estimate) {
+          const e = estRes.estimate as {
+            id: string;
+            template_id: string;
+            customer_name: string | null;
+            customer_address: string | null;
+            measurements: Partial<Measurements>;
+            addon_qtys: Record<string, number>;
+          };
+          setEstimateId(e.id);
+          setSelectedId(e.template_id);
+          setCustomerName(e.customer_name || "");
+          setCustomerAddress(e.customer_address || "");
+          setMeasurements((m) => ({ ...m, ...e.measurements }));
+          setAddonQtys(e.addon_qtys || {});
+          setLoadedExisting(true);
+        } else if (tpls[0]) {
+          setSelectedId(tpls[0]._meta.template_id);
+        }
+      } catch {
+        // non-fatal — just don't pre-populate
+      } finally {
         setLoading(false);
-      })
-      .catch(() => setLoading(false));
+      }
+    }
+    init();
   }, []);
 
   const selected = useMemo(
@@ -121,6 +160,55 @@ export function RetailEstimateClient() {
     setAddonQtys((prev) => ({ ...prev, [code]: Math.max(0, qty) }));
   }
 
+  async function handleSave(): Promise<string | null> {
+    if (!selected) return null;
+    setSaving(true);
+    setStatusMsg(null);
+    try {
+      const url = estimateId
+        ? `/api/retail-estimates?id=${encodeURIComponent(estimateId)}`
+        : "/api/retail-estimates";
+      const res = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          template_id: selected._meta.template_id,
+          template_snapshot: selected,
+          customer_name: customerName,
+          customer_address: customerAddress,
+          measurements,
+          addon_qtys: addonQtys,
+          base_amount: baseTotal,
+          addons_amount: addonsTotal,
+          subtotal_amount: baseTotal + addonsTotal,
+          total_amount: grandTotal,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setStatusMsg({ kind: "err", text: data.error || "Save failed" });
+        return null;
+      }
+      const newId = data.estimate?.id as string | undefined;
+      if (newId) {
+        setEstimateId(newId);
+        // Update URL without reloading so the ?id= param sticks for refresh.
+        if (!estimateId) {
+          const next = new URL(window.location.href);
+          next.searchParams.set("id", newId);
+          router.replace(`${next.pathname}?${next.searchParams.toString()}`);
+        }
+      }
+      setStatusMsg({ kind: "ok", text: estimateId ? "Estimate updated" : "Estimate saved" });
+      return newId || null;
+    } catch (err) {
+      setStatusMsg({ kind: "err", text: String(err) });
+      return null;
+    } finally {
+      setSaving(false);
+    }
+  }
+
   if (loading) {
     return <div className="p-8 text-[var(--gray-muted)] text-sm">Loading retail templates…</div>;
   }
@@ -140,17 +228,29 @@ export function RetailEstimateClient() {
     <div className="p-6 sm:p-8 space-y-6 max-w-7xl mx-auto">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-[var(--white)]">Retail Estimate Builder</h1>
+          <h1 className="text-2xl font-bold text-[var(--white)]">
+            {loadedExisting ? "Edit Estimate" : "Retail Estimate Builder"}
+          </h1>
           <p className="text-xs text-[var(--gray-muted)] mt-1">
-            Cash jobs · $700/SQ all-in pricing · {templates.length} manufacturer systems · read-only preview
+            {loadedExisting
+              ? `Editing saved estimate · changes don't auto-save — hit Update to commit`
+              : `Cash jobs · $700/SQ all-in pricing · ${templates.length} manufacturer systems`}
           </p>
         </div>
-        <Link
-          href="/dashboard"
-          className="text-xs text-[var(--gray-muted)] hover:text-[var(--white)] px-3 py-2"
-        >
-          ← Back to Dashboard
-        </Link>
+        <div className="flex items-center gap-2">
+          <Link
+            href="/dashboard/retail-estimates"
+            className="text-xs text-[var(--gray-muted)] hover:text-[var(--white)] px-3 py-2"
+          >
+            ← All Estimates
+          </Link>
+          <Link
+            href="/dashboard"
+            className="text-xs text-[var(--gray-muted)] hover:text-[var(--white)] px-3 py-2"
+          >
+            Dashboard
+          </Link>
+        </div>
       </div>
 
       {/* Template Picker */}
@@ -419,9 +519,30 @@ export function RetailEstimateClient() {
                 </p>
               </details>
 
-              <p className="text-[10px] text-[var(--gray-dim)] mt-4 pt-4 border-t border-white/[0.04]">
-                Read-only preview. Save / Email / Print buttons ship in the next phase.
-              </p>
+              <div className="mt-4 pt-4 border-t border-white/[0.04]">
+                <button
+                  type="button"
+                  onClick={handleSave}
+                  disabled={saving}
+                  className="w-full text-sm font-semibold px-4 py-3 rounded-lg bg-gradient-to-r from-[var(--pink)] via-[var(--purple)] to-[var(--blue)] hover:shadow-[var(--shadow-glow-pink)] text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {saving ? "Saving…" : estimateId ? "Update Estimate" : "Save Estimate"}
+                </button>
+                {statusMsg && (
+                  <div
+                    className={`mt-3 text-[11px] px-3 py-2 rounded-lg border ${
+                      statusMsg.kind === "ok"
+                        ? "bg-green-500/[0.08] border-green-500/30 text-green-300"
+                        : "bg-red-500/[0.08] border-red-500/30 text-red-300"
+                    }`}
+                  >
+                    {statusMsg.text}
+                  </div>
+                )}
+                <p className="text-[10px] text-[var(--gray-dim)] mt-3">
+                  Email / Print / Sign / Stripe Invoice ship in next phases.
+                </p>
+              </div>
             </div>
           </div>
         </div>
