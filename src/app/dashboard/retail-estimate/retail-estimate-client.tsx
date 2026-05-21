@@ -474,31 +474,48 @@ export function RetailEstimateClient() {
             <div className="glass-card p-6">
               <div className="flex items-center justify-between mb-3">
                 <h2 className="text-sm font-bold text-[var(--white)]">Measurements</h2>
-                {/* Label wraps the file input so the label itself is the click
-                    target — bulletproof across browsers vs. the .click()-on-
-                    hidden-input pattern which can fail under some extension /
-                    permission combos. */}
+                {/* File-input-as-overlay pattern: the <input> is absolutely
+                    positioned on top of the label, full size, opacity 0. The
+                    user's click lands DIRECTLY on the native file input, which
+                    is the only fully-reliable cross-browser way to open the OS
+                    file picker. No JS .click() shim, no separate button. */}
                 <label
-                  className={`text-xs px-3 py-1.5 rounded-lg bg-[var(--cyan)]/[0.08] border border-[var(--cyan)]/30 text-[var(--cyan)] hover:bg-[var(--cyan)]/[0.15] inline-flex items-center gap-2 ${
+                  htmlFor="measurement-pdf-upload"
+                  className={`relative overflow-hidden text-xs px-3 py-1.5 rounded-lg bg-[var(--cyan)]/[0.08] border border-[var(--cyan)]/30 text-[var(--cyan)] hover:bg-[var(--cyan)]/[0.15] inline-flex items-center gap-2 select-none ${
                     parsing ? "opacity-50 cursor-wait" : "cursor-pointer"
                   }`}
                 >
-                  {parsing ? "Parsing…" : "📄 Upload EagleView / HOVER PDF"}
+                  <span>{parsing ? "Parsing…" : "📄 Upload Measurements (PDF)"}</span>
                   <input
                     ref={fileInputRef}
+                    id="measurement-pdf-upload"
                     type="file"
                     accept="application/pdf,.pdf"
                     disabled={parsing}
-                    className="sr-only"
+                    style={{
+                      position: "absolute",
+                      inset: 0,
+                      width: "100%",
+                      height: "100%",
+                      opacity: 0,
+                      cursor: parsing ? "wait" : "pointer",
+                      fontSize: 0,
+                    }}
                     onChange={(e) => {
                       const f = e.target.files?.[0];
-                      if (f) handleParseMeasurementsFile(f);
+                      // Reset the value immediately so picking the same file
+                      // twice in a row still fires onChange.
+                      e.target.value = "";
+                      if (f) {
+                        console.log("[retail-estimate] file selected:", f.name, f.size);
+                        handleParseMeasurementsFile(f);
+                      }
                     }}
                   />
                 </label>
               </div>
               <p className="text-[10px] text-[var(--gray-muted)] mb-4">
-                Upload an aerial-measurement report PDF and we&apos;ll auto-fill these fields, or type manually.
+                Upload a measurement report PDF (EagleView, HOVER, GAF QuickMeasure, etc.) and we&apos;ll auto-fill these fields, or type manually.
               </p>
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
                 {(Object.keys(MEASUREMENT_LABELS) as Array<keyof Measurements>).map((key) => (
