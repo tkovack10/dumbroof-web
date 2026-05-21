@@ -443,9 +443,33 @@ def build_compliance_report(config: dict) -> str:
 
 
 def has_measurements(config: dict) -> bool:
-    """Check if the config has enough measurement data for the compliance report."""
-    m = config.get("measurements", {})
+    """Check if the config has enough measurement data for the compliance report.
+
+    Looks at the top-level ``measurements`` dict (populated when an EagleView /
+    HOVER file is uploaded) AND the ``structures[].roof_area_sq`` /
+    ``roof_area_sf`` fields (populated when measurements are inferred from
+    carrier-scope extraction with no measurement file).
+
+    E252 (2026-05-21): Marion IN 603 E 26th St shipped 5 PDFs instead of 6
+    because measurements lived on structures[0] only — top-level
+    `measurements` had every key at 0 (only drip_edge was set). The structures
+    fallback below recovers area for that path.
+    """
+    m = config.get("measurements", {}) or {}
     eave = m.get("eave", 0) or 0
     rake = m.get("rake", 0) or 0
     area = m.get("total_area", 0) or m.get("area_sq", 0) or 0
+
+    if not area:
+        for s in (config.get("structures") or []):
+            if not isinstance(s, dict):
+                continue
+            area = (
+                s.get("roof_area_sq", 0)
+                or (s.get("roof_area_sf", 0) or 0) / 100.0
+                or 0
+            )
+            if area:
+                break
+
     return eave > 0 or rake > 0 or area > 0
