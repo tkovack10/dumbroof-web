@@ -82,7 +82,7 @@ export function SignForm({
     setSubmitting(true);
     setError(null);
     try {
-      const res = await fetch(`/api/sign/${token}/submit`, {
+      const res = await fetch(`/api/sign/retail/${token}/submit`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name: name.trim() }),

@@ -4,7 +4,7 @@ import { supabaseAdmin } from "@/lib/supabase/admin";
 export const dynamic = "force-dynamic";
 
 /**
- * POST /api/sign/[token]/submit — public endpoint, no auth.
+ * POST /api/sign/retail/[token]/submit — public endpoint, no auth.
  *
  * The token IS the auth — anyone with the URL can sign as the customer it
  * was sent to. Single-use is enforced: if signed_at is already set, returns

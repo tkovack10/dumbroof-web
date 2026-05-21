@@ -51,7 +51,11 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     process.env.NEXT_PUBLIC_APP_URL ||
     req.headers.get("origin") ||
     "https://www.dumbroof.ai";
-  const url = `${origin.replace(/\/$/, "")}/sign/${token}`;
+  // Path is /sign/retail/[token] — namespaced under a static "retail" segment
+  // so it doesn't conflict with the pre-existing /sign/[id] AOB route.
+  // Both can't share /sign/[*] at the same dynamic depth (Next.js E2353:
+  // "different slug names for the same dynamic path 'id' !== 'token'").
+  const url = `${origin.replace(/\/$/, "")}/sign/retail/${token}`;
 
   return NextResponse.json({ url, token });
 }
