@@ -1,0 +1,105 @@
+{
+  "_meta": {
+    "template_id": "retail-atlas-stormmaster-shake",
+    "template_name": "Atlas StormMaster Shake — Retail System",
+    "manufacturer": "Atlas Roofing",
+    "product_line": "StormMaster Shake",
+    "shingle_class": "laminate_architectural_impact_resistant",
+    "impact_resistance": "Class 4 (UL 2218)",
+    "wind_warranty_mph": 130,
+    "algae_resistance": "3M Scotchgard Protector (Lifetime against streaking)",
+    "system_warranty": {
+      "name": "Atlas Signature Select Roofing System Warranty",
+      "term": "Lifetime / 15-yr workmanship",
+      "requirements": "Atlas Pro Plus contractor + complete Atlas system: synthetic underlayment, WeatherMaster ice & water, ProCut starter, Pro Cut hip & ridge",
+      "transferable": true,
+      "transfer_window_years": 10
+    },
+    "documents": [
+      {
+        "label": "StormMaster Shake Data Sheet (Atlas Roofing)",
+        "type": "spec_sheet",
+        "url": "https://www.atlasroofing.com/img/Literature/StormMaster-Shake-Data-Sheet.pdf"
+      },
+      {
+        "label": "StormMaster Hip & Ridge Data Sheet (Atlas)",
+        "type": "spec_sheet_hipridge",
+        "url": "https://www.atlasroofing.com/img/Literature/StormMaster-Hip-Ridge-Data-Sheet.pdf"
+      },
+      {
+        "label": "StormMaster Shake Guide Specifications (BuildSite)",
+        "type": "guide_spec",
+        "url": "https://www.buildsite.com/pdf/atlasroofing/StormMaster-Shake-Guide-Specifications-2028579.pdf"
+      },
+      {
+        "label": "StormMaster Shake Product Page (Atlas)",
+        "type": "product_page",
+        "url": "https://www.atlasroofing.com/products/roof-shingles/stormmaster-shake-shingles"
+      }
+    ],
+    "pricing_model": "all_in_per_sq",
+    "base_price_per_sq_usd": 700.00,
+    "base_price_includes_waste": true,
+    "insurance_discount_note": "Class 4 impact-resistant shingles typically qualify the homeowner for an annual insurance premium discount (5–35% depending on carrier and state). Worth highlighting in the customer quote.",
+    "base_includes": [
+      "Tear-off (1 layer composition shingles)",
+      "Synthetic underlayment (Atlas Summit 60 Pro)",
+      "Ice & water shield (Atlas WeatherMaster MB-Plus or MB-LT)",
+      "Drip edge (eaves + rakes)",
+      "Starter strip (Atlas Pro Cut HD Starter)",
+      "StormMaster Shake Class 4 impact-resistant shingles (material + labor)",
+      "Hip & ridge cap (Atlas StormMaster Hip & Ridge)",
+      "Continuous ridge vent (Atlas X-25 or similar)",
+      "Standard pipe boots (1.5–3\" pipes)",
+      "Step flashing at wall-to-roof intersections",
+      "Counter flashing (chimneys, parapets, sidewalls)",
+      "Dumpster rental + magnetic nail sweep cleanup",
+      "Building permit + inspection fees",
+      "Atlas Signature Select system warranty",
+      "10-year contractor workmanship warranty",
+      "All material waste (~10% factor included)"
+    ],
+    "base_excludes": [
+      "Roof decking replacement — billed separately at $110/sheet (allowance)",
+      "Additional tear-off layers",
+      "Skylight flashing kits",
+      "Chimney cricket fabrication",
+      "Lead pipe flashing upgrade",
+      "Specialty siding repair",
+      "Soffit / fascia repair",
+      "Gutters / gutter guards"
+    ],
+    "currency": "USD",
+    "as_of_date": "2026-05-20"
+  },
+
+  "items": [
+    { "line": 1, "category": "tear_off", "code": "RFG_TO_COMP", "description": "Tear off existing composition shingles (1 layer) — dump fees included", "unit": "SQ", "unit_price": 0.00, "quantity_formula": "roof_area_sq", "bundled_in_base": true },
+    { "line": 2, "category": "underlayment", "code": "ATLAS_SUMMIT60", "description": "Atlas Summit 60 Pro Synthetic Underlayment — full coverage", "unit": "SQ", "unit_price": 0.00, "quantity_formula": "roof_area_sq", "bundled_in_base": true },
+    { "line": 3, "category": "ice_water_shield", "code": "ATLAS_WEATHERMASTER", "description": "Atlas WeatherMaster Ice & Water Barrier — eaves, valleys, penetrations", "unit": "SQ", "unit_price": 0.00, "quantity_formula": "((eave_lf * 6) + (valley_lf * 3)) / 100", "bundled_in_base": true },
+    { "line": 4, "category": "drip_edge", "code": "RFG_DRIPEDGE", "description": "Aluminum drip edge, color-matched — eaves and rakes", "unit": "LF", "unit_price": 0.00, "quantity_formula": "eave_lf + rake_lf", "bundled_in_base": true },
+    { "line": 5, "category": "starter", "code": "ATLAS_PROCUT_STARTER", "description": "Atlas Pro Cut HD Starter Shingles — eaves and rakes", "unit": "LF", "unit_price": 0.00, "quantity_formula": "eave_lf + rake_lf", "bundled_in_base": true },
+    { "line": 6, "category": "shingles", "code": "ATLAS_STORMMASTER_SHAKE", "description": "Atlas StormMaster Shake Class 4 impact-resistant laminate shingles — installed. Lifetime warranty, 130 mph wind, 3M Scotchgard Lifetime algae. Includes waste.", "unit": "SQ", "unit_price": 700.00, "quantity_formula": "roof_area_sq", "bundled_in_base": false, "is_billing_line": true, "notes": "All-in billing line: $700/SQ × total roof area, waste included. Class 4 may qualify customer for insurance premium discount." },
+    { "line": 7, "category": "hip_ridge", "code": "ATLAS_STORMMASTER_HR", "description": "Atlas StormMaster Hip & Ridge Shingles — color-matched, Class 4 IR", "unit": "LF", "unit_price": 0.00, "quantity_formula": "ridge_lf + hip_lf", "bundled_in_base": true },
+    { "line": 8, "category": "ventilation", "code": "ATLAS_RIDGEVENT", "description": "Atlas X-25 Ridge Vent — continuous along main ridge", "unit": "LF", "unit_price": 0.00, "quantity_formula": "ridge_lf_vented", "bundled_in_base": true },
+    { "line": 9, "category": "flashing_pipe", "code": "RFG_PIPE_BOOT_STD", "description": "Neoprene pipe boots (standard 1.5–3\") — color-matched cap", "unit": "EA", "unit_price": 0.00, "quantity_formula": "pipe_count_standard", "bundled_in_base": true },
+    { "line": 10, "category": "flashing_step", "code": "RFG_STEP_FLASH", "description": "New aluminum step flashing at wall-to-roof intersections", "unit": "LF", "unit_price": 0.00, "quantity_formula": "step_flash_lf", "bundled_in_base": true },
+    { "line": 11, "category": "flashing_counter", "code": "RFG_COUNTER_FLASH", "description": "Counter flashing — surface-mount or reglet", "unit": "LF", "unit_price": 0.00, "quantity_formula": "counter_flash_lf", "bundled_in_base": true },
+    { "line": 12, "category": "permit", "code": "RFG_PERMIT", "description": "Building permit and inspection fees", "unit": "LS", "unit_price": 0.00, "quantity_formula": "1", "bundled_in_base": true },
+    { "line": 13, "category": "cleanup", "code": "RFG_DUMPSTER", "description": "Dumpster rental + magnetic nail sweep cleanup", "unit": "LS", "unit_price": 0.00, "quantity_formula": "1", "bundled_in_base": true },
+    { "line": 14, "category": "labor_workmanship", "code": "RFG_WARRANTY_LABOR", "description": "Contractor 10-year workmanship warranty (15-yr if Atlas Pro Plus Signature Select)", "unit": "LS", "unit_price": 0.00, "quantity_formula": "1", "bundled_in_base": true }
+  ],
+
+  "add_ons": [
+    { "code": "RFG_DECK_REPL", "description": "Sheathing replacement — 1/2\" CDX plywood, per 4x8 sheet (32 SF)", "unit": "EA", "unit_price": 110.00, "notes": "Allowance — actual qty determined on tear-off." },
+    { "code": "RFG_TO_LAYER_2", "description": "Tear off second (or additional) layer of composition shingles", "unit": "SQ", "unit_price": 85.00, "notes": "Add per layer beyond single layer included." },
+    { "code": "RFG_TO_CEDAR", "description": "Tear off cedar shake / shingle roof", "unit": "SQ", "unit_price": 125.00, "notes": "Substitutes for bundled comp tear-off." },
+    { "code": "ATLAS_STORMMASTER_SLATE_SWAP", "description": "Switch shingle line to Atlas StormMaster Slate (slate-look profile, same Class 4 IR)", "unit": "SQ", "unit_price": 25.00, "notes": "Additive — different aesthetic, same impact rating." },
+    { "code": "RFG_PIPE_LEAD", "description": "Lead pipe flashing UPGRADE in lieu of neoprene", "unit": "EA", "unit_price": 60.00, "notes": "Additive — high-longevity install." },
+    { "code": "RFG_CHIMNEY_KIT", "description": "Chimney flashing kit — 4-side reglet counter + step + apron", "unit": "EA", "unit_price": 450.00, "notes": "Full counter-flashing reset." },
+    { "code": "RFG_CHIMNEY_CRICKET", "description": "Chimney cricket fabrication", "unit": "EA", "unit_price": 650.00, "notes": "Code-required per IRC R1003.20 if chimney >30\" wide upslope." },
+    { "code": "RFG_SKYLIGHT_FLASH", "description": "Skylight curb flashing kit", "unit": "EA", "unit_price": 350.00, "notes": "Per skylight, unit replacement separate." }
+  ],
+
+  "warranty_disclosure": "To activate the Atlas Signature Select Roofing System Warranty, the installing contractor must be Atlas Pro Plus credentialed AND install the full Atlas system bundled in this price: Summit 60 Pro underlayment, WeatherMaster ice & water, Pro Cut Starter, StormMaster Shake shingles, StormMaster Hip & Ridge, and Atlas ventilation. Class 4 impact-resistant shingles may qualify the homeowner for an insurance premium discount of 5–35% depending on carrier and state — customer should call their carrier with the Class 4 certificate Atlas provides."
+}

@@ -1,0 +1,109 @@
+{
+  "_meta": {
+    "template_id": "retail-malarkey-vista",
+    "template_name": "Malarkey Vista — Retail System",
+    "manufacturer": "Malarkey Roofing Products",
+    "product_line": "Vista",
+    "shingle_class": "laminate_architectural_polymer_modified",
+    "polymer_technology": "NEX (Smog-Reducing, Rubberized Asphalt)",
+    "smog_reducing_granules": "3M Smog-Reducing Granules — one Vista roof removes the equivalent of two cars' annual NOx emissions",
+    "wind_warranty_mph": 110,
+    "wind_warranty_special_install_mph": 130,
+    "algae_resistance": "3M Scotchgard Protector (Lifetime against streaking)",
+    "system_warranty": {
+      "name": "Malarkey Platinum Pledge Roofing System Warranty",
+      "term": "Lifetime / 25-yr workmanship",
+      "requirements": "Malarkey Emerald Pro or Diamond contractor + complete Malarkey accessory system: underlayment (Right Start UDL or Arctic Seal), starter (EaveDefender or Smart Start), ridge vent (Right-Vent), hip & ridge (RidgeFlex or EZ-Ridge)",
+      "transferable": true,
+      "transfer_window_years": 10,
+      "tier_below": "Standard Vista Lifetime Limited Warranty — shingle only, no workmanship"
+    },
+    "documents": [
+      {
+        "label": "Vista Shingles Technical Data Sheet (Malarkey, 2026)",
+        "type": "spec_sheet",
+        "url": "https://www.malarkeyroofing.com/app/uploads/2026/01/vista-tech-data-sheet-malarkey.pdf"
+      },
+      {
+        "label": "Vista AR Technical Data Sheet (algae-resistant variant)",
+        "type": "spec_sheet_ar",
+        "url": "https://www.malarkeyroofing.com/app/uploads/2021/04/vista-ar-tech-data-sheet-malarkey.pdf"
+      },
+      {
+        "label": "Vista Cool Technical Data Sheet (solar reflective variant)",
+        "type": "spec_sheet_cool",
+        "url": "https://www.malarkeyroofing.com/app/uploads/2025/09/vista-cool-tech-data-sheet-malarkey.pdf"
+      },
+      {
+        "label": "Vista Product Page (Malarkey)",
+        "type": "product_page",
+        "url": "https://www.malarkeyroofing.com/products/shingles-overview/vista-shingles/"
+      }
+    ],
+    "pricing_model": "all_in_per_sq",
+    "base_price_per_sq_usd": 700.00,
+    "base_price_includes_waste": true,
+    "environmental_note": "Vista is a polymer-modified shingle with 3M Smog-Reducing Granules. Each Vista roof neutralizes NOx emissions equivalent to two passenger cars per year. Worth highlighting for eco-conscious homeowners.",
+    "base_includes": [
+      "Tear-off (1 layer composition shingles)",
+      "Synthetic underlayment (Malarkey Right Start UDL)",
+      "Ice & water shield (Malarkey Arctic Seal)",
+      "Drip edge (eaves + rakes)",
+      "Starter strip (Malarkey EaveDefender)",
+      "Vista NEX polymer-modified shingles with 3M Smog-Reducing Granules (material + labor)",
+      "Hip & ridge cap (Malarkey RidgeFlex or EZ-Ridge)",
+      "Continuous ridge vent (Malarkey Right-Vent)",
+      "Standard pipe boots (1.5–3\" pipes)",
+      "Step flashing at wall-to-roof intersections",
+      "Counter flashing (chimneys, parapets, sidewalls)",
+      "Dumpster rental + magnetic nail sweep cleanup",
+      "Building permit + inspection fees",
+      "Malarkey Platinum Pledge system warranty",
+      "10-year contractor workmanship warranty",
+      "All material waste (~10% factor included)"
+    ],
+    "base_excludes": [
+      "Roof decking replacement — billed separately at $110/sheet (allowance)",
+      "Additional tear-off layers",
+      "Skylight flashing kits",
+      "Chimney cricket fabrication",
+      "Lead pipe flashing upgrade",
+      "Specialty siding repair",
+      "Soffit / fascia repair",
+      "Gutters / gutter guards"
+    ],
+    "currency": "USD",
+    "as_of_date": "2026-05-20"
+  },
+
+  "items": [
+    { "line": 1, "category": "tear_off", "code": "RFG_TO_COMP", "description": "Tear off existing composition shingles (1 layer) — dump fees included", "unit": "SQ", "unit_price": 0.00, "quantity_formula": "roof_area_sq", "bundled_in_base": true },
+    { "line": 2, "category": "underlayment", "code": "MALARKEY_RIGHTSTART", "description": "Malarkey Right Start UDL Synthetic Underlayment — full coverage", "unit": "SQ", "unit_price": 0.00, "quantity_formula": "roof_area_sq", "bundled_in_base": true },
+    { "line": 3, "category": "ice_water_shield", "code": "MALARKEY_ARCTICSEAL", "description": "Malarkey Arctic Seal Self-Adhered Ice & Water Underlayment — eaves, valleys, penetrations", "unit": "SQ", "unit_price": 0.00, "quantity_formula": "((eave_lf * 6) + (valley_lf * 3)) / 100", "bundled_in_base": true },
+    { "line": 4, "category": "drip_edge", "code": "RFG_DRIPEDGE", "description": "Aluminum drip edge, color-matched — eaves and rakes", "unit": "LF", "unit_price": 0.00, "quantity_formula": "eave_lf + rake_lf", "bundled_in_base": true },
+    { "line": 5, "category": "starter", "code": "MALARKEY_EAVEDEFENDER", "description": "Malarkey EaveDefender Starter Shingles — eaves and rakes", "unit": "LF", "unit_price": 0.00, "quantity_formula": "eave_lf + rake_lf", "bundled_in_base": true },
+    { "line": 6, "category": "shingles", "code": "MALARKEY_VISTA", "description": "Malarkey Vista NEX polymer-modified laminate shingles with 3M Smog-Reducing Granules — installed. Lifetime warranty, 110/130 mph wind, Scotchgard algae. Includes waste.", "unit": "SQ", "unit_price": 700.00, "quantity_formula": "roof_area_sq", "bundled_in_base": false, "is_billing_line": true, "notes": "All-in billing line: $700/SQ × total roof area, waste included. NEX polymer + smog-reducing granules are differentiators worth surfacing in the quote." },
+    { "line": 7, "category": "hip_ridge", "code": "MALARKEY_RIDGEFLEX", "description": "Malarkey RidgeFlex Hip & Ridge Shingles — color-matched", "unit": "LF", "unit_price": 0.00, "quantity_formula": "ridge_lf + hip_lf", "bundled_in_base": true },
+    { "line": 8, "category": "ventilation", "code": "MALARKEY_RIGHTVENT", "description": "Malarkey Right-Vent Ridge Vent — continuous along main ridge", "unit": "LF", "unit_price": 0.00, "quantity_formula": "ridge_lf_vented", "bundled_in_base": true },
+    { "line": 9, "category": "flashing_pipe", "code": "RFG_PIPE_BOOT_STD", "description": "Neoprene pipe boots (standard 1.5–3\") — color-matched cap", "unit": "EA", "unit_price": 0.00, "quantity_formula": "pipe_count_standard", "bundled_in_base": true },
+    { "line": 10, "category": "flashing_step", "code": "RFG_STEP_FLASH", "description": "New aluminum step flashing at wall-to-roof intersections", "unit": "LF", "unit_price": 0.00, "quantity_formula": "step_flash_lf", "bundled_in_base": true },
+    { "line": 11, "category": "flashing_counter", "code": "RFG_COUNTER_FLASH", "description": "Counter flashing — surface-mount or reglet", "unit": "LF", "unit_price": 0.00, "quantity_formula": "counter_flash_lf", "bundled_in_base": true },
+    { "line": 12, "category": "permit", "code": "RFG_PERMIT", "description": "Building permit and inspection fees", "unit": "LS", "unit_price": 0.00, "quantity_formula": "1", "bundled_in_base": true },
+    { "line": 13, "category": "cleanup", "code": "RFG_DUMPSTER", "description": "Dumpster rental + magnetic nail sweep cleanup", "unit": "LS", "unit_price": 0.00, "quantity_formula": "1", "bundled_in_base": true },
+    { "line": 14, "category": "labor_workmanship", "code": "RFG_WARRANTY_LABOR", "description": "Contractor 10-year workmanship warranty (25-yr if Emerald Pro/Diamond Platinum Pledge)", "unit": "LS", "unit_price": 0.00, "quantity_formula": "1", "bundled_in_base": true }
+  ],
+
+  "add_ons": [
+    { "code": "RFG_DECK_REPL", "description": "Sheathing replacement — 1/2\" CDX plywood, per 4x8 sheet (32 SF)", "unit": "EA", "unit_price": 110.00, "notes": "Allowance — actual qty determined on tear-off." },
+    { "code": "RFG_TO_LAYER_2", "description": "Tear off second (or additional) layer of composition shingles", "unit": "SQ", "unit_price": 85.00, "notes": "Add per layer beyond single layer included." },
+    { "code": "RFG_TO_CEDAR", "description": "Tear off cedar shake / shingle roof", "unit": "SQ", "unit_price": 125.00, "notes": "Substitutes for bundled comp tear-off." },
+    { "code": "MALARKEY_VISTA_AR_SWAP", "description": "Switch shingle line to Vista AR (enhanced algae resistance, 25-yr StainGuard)", "unit": "SQ", "unit_price": 15.00, "notes": "Additive — recommended for humid / heavily-shaded roofs." },
+    { "code": "MALARKEY_VISTA_COOL_SWAP", "description": "Switch shingle line to Vista Cool (CRRC-rated solar reflective)", "unit": "SQ", "unit_price": 35.00, "notes": "Additive — qualifies for Title 24 (CA) and similar energy codes." },
+    { "code": "RFG_PIPE_LEAD", "description": "Lead pipe flashing UPGRADE in lieu of neoprene", "unit": "EA", "unit_price": 60.00, "notes": "Additive — high-longevity install." },
+    { "code": "RFG_CHIMNEY_KIT", "description": "Chimney flashing kit — 4-side reglet counter + step + apron", "unit": "EA", "unit_price": 450.00, "notes": "Full counter-flashing reset." },
+    { "code": "RFG_CHIMNEY_CRICKET", "description": "Chimney cricket fabrication", "unit": "EA", "unit_price": 650.00, "notes": "Code-required per IRC R1003.20 if chimney >30\" wide upslope." },
+    { "code": "RFG_SKYLIGHT_FLASH", "description": "Skylight curb flashing kit", "unit": "EA", "unit_price": 350.00, "notes": "Per skylight, unit replacement separate." }
+  ],
+
+  "warranty_disclosure": "To activate the Malarkey Platinum Pledge Roofing System Warranty, the installing contractor must be Malarkey Emerald Pro or Diamond credentialed AND install the full Malarkey system bundled in this price: Right Start UDL underlayment, Arctic Seal ice & water, EaveDefender starter, Vista shingles, RidgeFlex hip & ridge, and Right-Vent ridge vent. Each Vista roof's 3M Smog-Reducing Granules neutralize NOx emissions equivalent to two passenger cars annually — environmental selling point for the customer quote."
+}

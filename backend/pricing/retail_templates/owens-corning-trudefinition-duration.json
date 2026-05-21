@@ -14,172 +14,86 @@
       "transferable": true,
       "transfer_window_years": 50
     },
+    "documents": [
+      {
+        "label": "TruDefinition Duration — Shingles Data Sheet (Owens Corning)",
+        "type": "spec_sheet",
+        "url": "http://www.owenscorning.com/NetworkShare/Roofing/10014053-TruDefinition%C2%AE-Duration%C2%AE-Shingles-Data-Sheet.pdf"
+      },
+      {
+        "label": "TruDefinition Duration Designer Data Sheet",
+        "type": "spec_sheet_designer",
+        "url": "http://www.owenscorning.com/NetworkShare/Roofing/10013984-TruDefinition%C2%AE-Duration%C2%AE-Designer-Data-Sheet.pdf"
+      },
+      {
+        "label": "Owens Corning Roofing Documents Library",
+        "type": "manufacturer_docs",
+        "url": "https://www.owenscorning.com/en-us/roofing/documents"
+      }
+    ],
+    "pricing_model": "all_in_per_sq",
     "base_price_per_sq_usd": 700.00,
-    "base_price_includes": "TruDefinition Duration shingles installed (material + labor). Excludes tear-off, underlayment, ice & water, drip edge, starter, ridge cap, ventilation, flashing, decking. Add those line items separately.",
+    "base_price_includes_waste": true,
+    "base_includes": [
+      "Tear-off (1 layer composition shingles)",
+      "Synthetic underlayment (OC ProArmor)",
+      "Ice & water shield at eaves, valleys, and penetrations (OC WeatherLock Mat-G)",
+      "Drip edge (eaves + rakes)",
+      "Starter strip (OC Starter Strip Shingles)",
+      "TruDefinition Duration shingles (material + labor)",
+      "Hip & ridge cap (OC ProEdge)",
+      "Continuous ridge vent (OC VentSure)",
+      "Standard pipe boots (1.5–3\" pipes)",
+      "Step flashing at wall-to-roof intersections",
+      "Counter flashing (chimneys, parapets, sidewalls)",
+      "Dumpster rental + magnetic nail sweep cleanup",
+      "Building permit + inspection fees",
+      "Manufacturer system warranty (Platinum Protection)",
+      "10-year contractor workmanship warranty",
+      "All material waste (~10% factor included)"
+    ],
+    "base_excludes": [
+      "Roof decking replacement — billed separately at $110/sheet (allowance, determined on tear-off)",
+      "Additional tear-off layers (2nd+ comp layer, cedar shake removal)",
+      "Skylight flashing kits",
+      "Chimney cricket fabrication",
+      "Lead pipe flashing upgrade (in lieu of neoprene boots)",
+      "Specialty siding repair under step flashing",
+      "Soffit / fascia repair",
+      "Gutters / gutter guards"
+    ],
     "currency": "USD",
     "as_of_date": "2026-05-20",
-    "notes": "All non-shingle line items use industry-typical retail unit prices. Override per-market or per-contractor as needed. Quantity formulas reference variables surfaced by the measurement parser (EagleView/HOVER/etc.): roof_area_sq, eave_lf, valley_lf, ridge_lf, hip_lf, rake_lf, pipe_count, etc."
+    "notes": "All-in $700/SQ × roof_area_sq is the customer-facing price. Itemized lines below show what's INCLUDED in that bundle for transparency on the contract — each itemized line has unit_price=0 because it's bundled. Real $-amounts are in the add_ons section for situations that go beyond the base scope."
   },
 
   "items": [
-    {
-      "line": 1,
-      "category": "tear_off",
-      "code": "RFG_TO_COMP",
-      "description": "Tear off existing composition shingles — single layer, dump fees included",
-      "unit": "SQ",
-      "unit_price": 85.00,
-      "quantity_formula": "roof_area_sq",
-      "notes": "Add 100% per additional layer."
-    },
-    {
-      "line": 2,
-      "category": "decking",
-      "code": "RFG_DECK_REPL",
-      "description": "Sheathing replacement — 1/2\" CDX plywood, per 4x8 sheet (32 SF)",
-      "unit": "EA",
-      "unit_price": 110.00,
-      "quantity_formula": "bad_decking_sheets",
-      "notes": "Allowance — actual qty determined on tear-off. Bill T&M or per-sheet."
-    },
-    {
-      "line": 3,
-      "category": "underlayment",
-      "code": "OC_PROARMOR",
-      "description": "Owens Corning ProArmor Synthetic Underlayment — installed",
-      "unit": "SQ",
-      "unit_price": 35.00,
-      "quantity_formula": "roof_area_sq",
-      "notes": "Required for Platinum Protection warranty. Substitute: OC Deck Defense ($28/SQ) for a budget tier."
-    },
-    {
-      "line": 4,
-      "category": "ice_water_shield",
-      "code": "OC_WEATHERLOCK_G",
-      "description": "Owens Corning WeatherLock Mat-G Granulated Self-Sealing Ice & Water Barrier — installed at eaves, valleys, around penetrations",
-      "unit": "SQ",
-      "unit_price": 320.00,
-      "quantity_formula": "((eave_lf * 6) + (valley_lf * 3)) / 100",
-      "notes": "Quantity formula derives SF coverage from eave + valley LF (6 ft up from eave, 3 ft each side of valley), converted to squares. Match local code minimums."
-    },
-    {
-      "line": 5,
-      "category": "drip_edge",
-      "code": "RFG_DRIPEDGE",
-      "description": "Drip edge — aluminum, baked enamel finish, color-matched. Installed at eaves and rakes.",
-      "unit": "LF",
-      "unit_price": 4.75,
-      "quantity_formula": "eave_lf + rake_lf",
-      "notes": "Code-required in most jurisdictions per IRC R905.2.8.5."
-    },
-    {
-      "line": 6,
-      "category": "starter",
-      "code": "OC_STARTER",
-      "description": "Owens Corning Starter Strip Shingles — installed at eaves and rakes",
-      "unit": "LF",
-      "unit_price": 3.25,
-      "quantity_formula": "eave_lf + rake_lf",
-      "notes": "Required for Platinum Protection warranty. Pre-cut, factory sealant adhered."
-    },
-    {
-      "line": 7,
-      "category": "shingles",
-      "code": "OC_TRUDEFDUR",
-      "description": "Owens Corning TruDefinition Duration laminate shingles — installed (material + labor). Lifetime warranty, 130 mph wind, StreakGuard algae protection.",
-      "unit": "SQ",
-      "unit_price": 700.00,
-      "quantity_formula": "roof_area_sq * 1.10",
-      "notes": "Base retail price per Tom directive. 10% waste factor included. Color: customer's choice from current OC palette (Driftwood, Estate Gray, Onyx Black, etc.)."
-    },
-    {
-      "line": 8,
-      "category": "hip_ridge",
-      "code": "OC_PROEDGE",
-      "description": "Owens Corning ProEdge Hip & Ridge Shingles — color-matched to field shingle",
-      "unit": "LF",
-      "unit_price": 9.50,
-      "quantity_formula": "ridge_lf + hip_lf",
-      "notes": "Required for Platinum Protection warranty."
-    },
-    {
-      "line": 9,
-      "category": "ventilation",
-      "code": "OC_VENTSURE",
-      "description": "Owens Corning VentSure Strip Ridge Vent — installed continuously along main ridge",
-      "unit": "LF",
-      "unit_price": 12.50,
-      "quantity_formula": "ridge_lf_vented",
-      "notes": "Required for Platinum Protection warranty. Pairs with VentSure InFlow soffit intake (separate line item if needed)."
-    },
-    {
-      "line": 10,
-      "category": "flashing_pipe",
-      "code": "RFG_PIPE_BOOT_STD",
-      "description": "Pipe boot — neoprene, retrofit/new, lead-free, color-matched cap. Standard 1-1/2\" to 3\" pipe.",
-      "unit": "EA",
-      "unit_price": 65.00,
-      "quantity_formula": "pipe_count_standard",
-      "notes": "Upgrade to lead pipe flashing ($125/EA) for >25 yr life expectation."
-    },
-    {
-      "line": 11,
-      "category": "flashing_step",
-      "code": "RFG_STEP_FLASH",
-      "description": "Step flashing — new aluminum, installed at wall-to-roof intersections",
-      "unit": "LF",
-      "unit_price": 6.75,
-      "quantity_formula": "step_flash_lf",
-      "notes": "Code requires new step flashing — cannot reuse per IRC R905.2.8.3."
-    },
-    {
-      "line": 12,
-      "category": "flashing_counter",
-      "code": "RFG_COUNTER_FLASH",
-      "description": "Counter flashing — surface-mount or reglet, masonry chimney/parapet sealing",
-      "unit": "LF",
-      "unit_price": 18.50,
-      "quantity_formula": "counter_flash_lf",
-      "notes": "Chimney flashing kit (4-side reglet, cricket excluded): bill separately at $450/EA."
-    },
-    {
-      "line": 13,
-      "category": "labor_workmanship",
-      "code": "RFG_WARRANTY_LABOR",
-      "description": "Contractor workmanship warranty — 10-year non-prorated coverage on labor and installation defects",
-      "unit": "LS",
-      "unit_price": 0.00,
-      "quantity_formula": "1",
-      "notes": "Included with system install. Disclose on contract."
-    },
-    {
-      "line": 14,
-      "category": "permit",
-      "code": "RFG_PERMIT",
-      "description": "Building permit and inspection fees",
-      "unit": "LS",
-      "unit_price": 350.00,
-      "quantity_formula": "1",
-      "notes": "Varies by jurisdiction. Adjust to actual municipal fee."
-    },
-    {
-      "line": 15,
-      "category": "cleanup",
-      "code": "RFG_DUMPSTER",
-      "description": "Dumpster rental + final cleanup (magnetic nail sweep)",
-      "unit": "LS",
-      "unit_price": 0.00,
-      "quantity_formula": "1",
-      "notes": "Cost rolled into tear-off line item. Itemized here for customer-facing transparency."
-    }
+    { "line": 1, "category": "tear_off", "code": "RFG_TO_COMP", "description": "Tear off existing composition shingles (1 layer) — dump fees included", "unit": "SQ", "unit_price": 0.00, "quantity_formula": "roof_area_sq", "bundled_in_base": true },
+    { "line": 2, "category": "underlayment", "code": "OC_PROARMOR", "description": "Owens Corning ProArmor Synthetic Underlayment — full coverage", "unit": "SQ", "unit_price": 0.00, "quantity_formula": "roof_area_sq", "bundled_in_base": true },
+    { "line": 3, "category": "ice_water_shield", "code": "OC_WEATHERLOCK_G", "description": "Owens Corning WeatherLock Mat-G Granulated Ice & Water Barrier — eaves (6 ft up), valleys (3 ft each side), around penetrations", "unit": "SQ", "unit_price": 0.00, "quantity_formula": "((eave_lf * 6) + (valley_lf * 3)) / 100", "bundled_in_base": true },
+    { "line": 4, "category": "drip_edge", "code": "RFG_DRIPEDGE", "description": "Aluminum drip edge, color-matched — eaves and rakes", "unit": "LF", "unit_price": 0.00, "quantity_formula": "eave_lf + rake_lf", "bundled_in_base": true },
+    { "line": 5, "category": "starter", "code": "OC_STARTER", "description": "Owens Corning Starter Strip Shingles — eaves and rakes", "unit": "LF", "unit_price": 0.00, "quantity_formula": "eave_lf + rake_lf", "bundled_in_base": true },
+    { "line": 6, "category": "shingles", "code": "OC_TRUDEFDUR", "description": "Owens Corning TruDefinition Duration laminate shingles — installed. Lifetime warranty, 130 mph wind, StreakGuard algae protection. Includes waste.", "unit": "SQ", "unit_price": 700.00, "quantity_formula": "roof_area_sq", "bundled_in_base": false, "is_billing_line": true, "notes": "This is the all-in billing line: $700/SQ × total roof area, waste included." },
+    { "line": 7, "category": "hip_ridge", "code": "OC_PROEDGE", "description": "Owens Corning ProEdge Hip & Ridge Shingles — color-matched", "unit": "LF", "unit_price": 0.00, "quantity_formula": "ridge_lf + hip_lf", "bundled_in_base": true },
+    { "line": 8, "category": "ventilation", "code": "OC_VENTSURE", "description": "Owens Corning VentSure Strip Ridge Vent — continuous along main ridge", "unit": "LF", "unit_price": 0.00, "quantity_formula": "ridge_lf_vented", "bundled_in_base": true },
+    { "line": 9, "category": "flashing_pipe", "code": "RFG_PIPE_BOOT_STD", "description": "Neoprene pipe boots (standard 1.5–3\") — color-matched cap", "unit": "EA", "unit_price": 0.00, "quantity_formula": "pipe_count_standard", "bundled_in_base": true },
+    { "line": 10, "category": "flashing_step", "code": "RFG_STEP_FLASH", "description": "New aluminum step flashing at wall-to-roof intersections", "unit": "LF", "unit_price": 0.00, "quantity_formula": "step_flash_lf", "bundled_in_base": true },
+    { "line": 11, "category": "flashing_counter", "code": "RFG_COUNTER_FLASH", "description": "Counter flashing — surface-mount or reglet, masonry chimney/parapet", "unit": "LF", "unit_price": 0.00, "quantity_formula": "counter_flash_lf", "bundled_in_base": true },
+    { "line": 12, "category": "permit", "code": "RFG_PERMIT", "description": "Building permit and inspection fees", "unit": "LS", "unit_price": 0.00, "quantity_formula": "1", "bundled_in_base": true },
+    { "line": 13, "category": "cleanup", "code": "RFG_DUMPSTER", "description": "Dumpster rental + magnetic nail sweep cleanup", "unit": "LS", "unit_price": 0.00, "quantity_formula": "1", "bundled_in_base": true },
+    { "line": 14, "category": "labor_workmanship", "code": "RFG_WARRANTY_LABOR", "description": "Contractor 10-year workmanship warranty — labor + installation defects", "unit": "LS", "unit_price": 0.00, "quantity_formula": "1", "bundled_in_base": true }
   ],
 
-  "warranty_disclosure": "To activate the Owens Corning Platinum Protection Roofing System Limited Warranty, ALL of the following components must be installed: (1) TruDefinition Duration shingles, (2) Owens Corning Starter Strip Shingles, (3) ProEdge Hip & Ridge Shingles, (4) one Owens Corning underlayment (ProArmor, Deck Defense, or RhinoRoof), (5) one Owens Corning ventilation product (VentSure or equivalent). Substituting any non-OC component voids the system warranty — only the shingle limited warranty remains.",
+  "add_ons": [
+    { "code": "RFG_DECK_REPL", "description": "Sheathing replacement — 1/2\" CDX plywood, per 4x8 sheet (32 SF)", "unit": "EA", "unit_price": 110.00, "notes": "Allowance — actual qty determined on tear-off. Bill per-sheet." },
+    { "code": "RFG_TO_LAYER_2", "description": "Tear off second (or additional) layer of composition shingles", "unit": "SQ", "unit_price": 85.00, "notes": "Add per layer beyond the single layer included in the base price." },
+    { "code": "RFG_TO_CEDAR", "description": "Tear off cedar shake / shingle roof — significantly heavier than comp", "unit": "SQ", "unit_price": 125.00, "notes": "Use in place of the bundled comp tear-off when removing wood roofing." },
+    { "code": "OC_PROARMOR_UPGRADE", "description": "Upgrade underlayment to OC Deck Defense (budget alternative — credits back the difference)", "unit": "SQ", "unit_price": -7.00, "notes": "Credit. Substitutes Deck Defense for ProArmor while preserving Platinum Protection warranty." },
+    { "code": "RFG_PIPE_LEAD", "description": "Lead pipe flashing UPGRADE in lieu of neoprene boot — 25+ year life expectation", "unit": "EA", "unit_price": 60.00, "notes": "Additive — replaces neoprene boot for high-longevity installations." },
+    { "code": "RFG_CHIMNEY_KIT", "description": "Chimney flashing kit — 4-side reglet counter + step + apron, masonry chimney up to 4'×4'", "unit": "EA", "unit_price": 450.00, "notes": "Use when a brick/stone chimney needs full counter-flashing reset. Cricket is separate." },
+    { "code": "RFG_CHIMNEY_CRICKET", "description": "Chimney cricket fabrication — for chimneys wider than 30\" upslope side", "unit": "EA", "unit_price": 650.00, "notes": "Code-required per IRC R1003.20 when chimney exceeds 30\" wide on upslope side." },
+    { "code": "RFG_SKYLIGHT_FLASH", "description": "Skylight curb flashing kit — replace step + apron + head flashing around an existing skylight", "unit": "EA", "unit_price": 350.00, "notes": "Per skylight. Skylight unit replacement is separate." }
+  ],
 
-  "suggested_substitutions": {
-    "underlayment_budget": "OC Deck Defense ($28/SQ) — meets warranty req, lower premium",
-    "underlayment_premium": "OC ProArmor ($35/SQ) — premium walkability + visibility",
-    "ice_water_budget": "OC WeatherLock Self-Sealing Mat ($280/SQ smooth) — meets warranty req",
-    "ice_water_premium": "OC WeatherLock Mat-G ($320/SQ granulated) — better for exposed eaves"
-  }
+  "warranty_disclosure": "To activate the Owens Corning Platinum Protection Roofing System Limited Warranty, ALL of the following components are installed (all bundled in the $700/SQ base price): (1) TruDefinition Duration shingles, (2) Owens Corning Starter Strip Shingles, (3) ProEdge Hip & Ridge Shingles, (4) Owens Corning ProArmor underlayment, (5) Owens Corning VentSure ridge vent. Switching to non-OC components voids the system warranty — only the shingle limited warranty remains."
 }

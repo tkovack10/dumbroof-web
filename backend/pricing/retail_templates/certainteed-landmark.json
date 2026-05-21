@@ -1,0 +1,102 @@
+{
+  "_meta": {
+    "template_id": "retail-ct-landmark",
+    "template_name": "CertainTeed Landmark — Retail System",
+    "manufacturer": "CertainTeed",
+    "product_line": "Landmark",
+    "shingle_class": "laminate_architectural",
+    "wind_warranty_mph": 110,
+    "wind_warranty_with_starter_mph": 130,
+    "algae_resistance": "StreakFighter (10-yr)",
+    "system_warranty": {
+      "name": "CertainTeed SureStart PLUS Extended Warranty",
+      "term": "Lifetime / 25-yr workmanship (with Integrity Roof System)",
+      "requirements": "Installed by CertainTeed credentialed contractor + Integrity Roof System (full CertainTeed accessory bundle: WinterGuard, RoofRunner or DiamondDeck underlayment, SwiftStart starter, Shadow Ridge or Cedar Crest hip & ridge, Ridge Vent or similar)",
+      "transferable": true,
+      "transfer_window_years": 15,
+      "tier_below": "Standard Landmark Lifetime Limited Warranty — shingle only, no workmanship"
+    },
+    "documents": [
+      {
+        "label": "Landmark Shingles Technical Data Sheet (CertainTeed via BuildSite)",
+        "type": "spec_sheet",
+        "url": "https://www.buildsite.com/pdf/certainteed/Landmark-Shingles-Product-Data-2899919.pdf"
+      },
+      {
+        "label": "Landmark Premium Shingles Data Sheet",
+        "type": "spec_sheet_premium",
+        "url": "https://www.buildsite.com/pdf/certainteed/Landmark-Premium-Product-Data-2953262.pdf"
+      },
+      {
+        "label": "Landmark PRO Shingles Data Sheet",
+        "type": "spec_sheet_pro",
+        "url": "https://www.buildsite.com/pdf/certainteed/Landmark-PRO-Product-Data-2899921.pdf"
+      }
+    ],
+    "pricing_model": "all_in_per_sq",
+    "base_price_per_sq_usd": 700.00,
+    "base_price_includes_waste": true,
+    "base_includes": [
+      "Tear-off (1 layer composition shingles)",
+      "Synthetic underlayment (CertainTeed RoofRunner)",
+      "Ice & water shield at eaves, valleys, and penetrations (CertainTeed WinterGuard)",
+      "Drip edge (eaves + rakes)",
+      "Starter strip (CertainTeed SwiftStart)",
+      "Landmark laminate shingles (material + labor)",
+      "Hip & ridge cap (CertainTeed Shadow Ridge)",
+      "Continuous ridge vent (CertainTeed Ridge Vent)",
+      "Standard pipe boots (1.5–3\" pipes)",
+      "Step flashing at wall-to-roof intersections",
+      "Counter flashing (chimneys, parapets, sidewalls)",
+      "Dumpster rental + magnetic nail sweep cleanup",
+      "Building permit + inspection fees",
+      "Manufacturer SureStart PLUS warranty",
+      "10-year contractor workmanship warranty",
+      "All material waste (~10% factor included)"
+    ],
+    "base_excludes": [
+      "Roof decking replacement — billed separately at $110/sheet (allowance)",
+      "Additional tear-off layers",
+      "Skylight flashing kits",
+      "Chimney cricket fabrication",
+      "Lead pipe flashing upgrade",
+      "Specialty siding repair under step flashing",
+      "Soffit / fascia repair",
+      "Gutters / gutter guards"
+    ],
+    "currency": "USD",
+    "as_of_date": "2026-05-20"
+  },
+
+  "items": [
+    { "line": 1, "category": "tear_off", "code": "RFG_TO_COMP", "description": "Tear off existing composition shingles (1 layer) — dump fees included", "unit": "SQ", "unit_price": 0.00, "quantity_formula": "roof_area_sq", "bundled_in_base": true },
+    { "line": 2, "category": "underlayment", "code": "CT_ROOFRUNNER", "description": "CertainTeed RoofRunner Synthetic Underlayment — full coverage", "unit": "SQ", "unit_price": 0.00, "quantity_formula": "roof_area_sq", "bundled_in_base": true },
+    { "line": 3, "category": "ice_water_shield", "code": "CT_WINTERGUARD", "description": "CertainTeed WinterGuard Self-Adhering Waterproofing Shingle Underlayment — eaves, valleys, penetrations", "unit": "SQ", "unit_price": 0.00, "quantity_formula": "((eave_lf * 6) + (valley_lf * 3)) / 100", "bundled_in_base": true },
+    { "line": 4, "category": "drip_edge", "code": "RFG_DRIPEDGE", "description": "Aluminum drip edge, color-matched — eaves and rakes", "unit": "LF", "unit_price": 0.00, "quantity_formula": "eave_lf + rake_lf", "bundled_in_base": true },
+    { "line": 5, "category": "starter", "code": "CT_SWIFTSTART", "description": "CertainTeed SwiftStart Starter Shingles — eaves and rakes", "unit": "LF", "unit_price": 0.00, "quantity_formula": "eave_lf + rake_lf", "bundled_in_base": true },
+    { "line": 6, "category": "shingles", "code": "CT_LANDMARK", "description": "CertainTeed Landmark laminate shingles — installed. Lifetime warranty, 110 mph (130 with starter), StreakFighter algae. Includes waste.", "unit": "SQ", "unit_price": 700.00, "quantity_formula": "roof_area_sq", "bundled_in_base": false, "is_billing_line": true, "notes": "All-in billing line: $700/SQ × total roof area, waste included." },
+    { "line": 7, "category": "hip_ridge", "code": "CT_SHADOWRIDGE", "description": "CertainTeed Shadow Ridge Hip & Ridge Shingles — color-matched", "unit": "LF", "unit_price": 0.00, "quantity_formula": "ridge_lf + hip_lf", "bundled_in_base": true },
+    { "line": 8, "category": "ventilation", "code": "CT_RIDGEVENT", "description": "CertainTeed Ridge Vent — continuous along main ridge", "unit": "LF", "unit_price": 0.00, "quantity_formula": "ridge_lf_vented", "bundled_in_base": true },
+    { "line": 9, "category": "flashing_pipe", "code": "RFG_PIPE_BOOT_STD", "description": "Neoprene pipe boots (standard 1.5–3\") — color-matched cap", "unit": "EA", "unit_price": 0.00, "quantity_formula": "pipe_count_standard", "bundled_in_base": true },
+    { "line": 10, "category": "flashing_step", "code": "RFG_STEP_FLASH", "description": "New aluminum step flashing at wall-to-roof intersections", "unit": "LF", "unit_price": 0.00, "quantity_formula": "step_flash_lf", "bundled_in_base": true },
+    { "line": 11, "category": "flashing_counter", "code": "RFG_COUNTER_FLASH", "description": "Counter flashing — surface-mount or reglet", "unit": "LF", "unit_price": 0.00, "quantity_formula": "counter_flash_lf", "bundled_in_base": true },
+    { "line": 12, "category": "permit", "code": "RFG_PERMIT", "description": "Building permit and inspection fees", "unit": "LS", "unit_price": 0.00, "quantity_formula": "1", "bundled_in_base": true },
+    { "line": 13, "category": "cleanup", "code": "RFG_DUMPSTER", "description": "Dumpster rental + magnetic nail sweep cleanup", "unit": "LS", "unit_price": 0.00, "quantity_formula": "1", "bundled_in_base": true },
+    { "line": 14, "category": "labor_workmanship", "code": "RFG_WARRANTY_LABOR", "description": "Contractor 10-year workmanship warranty (25-yr if SureStart PLUS Integrity Roof System certified)", "unit": "LS", "unit_price": 0.00, "quantity_formula": "1", "bundled_in_base": true }
+  ],
+
+  "add_ons": [
+    { "code": "RFG_DECK_REPL", "description": "Sheathing replacement — 1/2\" CDX plywood, per 4x8 sheet (32 SF)", "unit": "EA", "unit_price": 110.00, "notes": "Allowance — actual qty determined on tear-off." },
+    { "code": "RFG_TO_LAYER_2", "description": "Tear off second (or additional) layer of composition shingles", "unit": "SQ", "unit_price": 85.00, "notes": "Add per layer beyond single layer included." },
+    { "code": "RFG_TO_CEDAR", "description": "Tear off cedar shake / shingle roof", "unit": "SQ", "unit_price": 125.00, "notes": "Substitutes for bundled comp tear-off." },
+    { "code": "CT_LANDMARK_PRO_UPGRADE", "description": "Upgrade shingle to Landmark PRO — 50 lb heavier per square, deeper shadow lines", "unit": "SQ", "unit_price": 75.00, "notes": "Additive over base Landmark. Same warranty tier." },
+    { "code": "CT_LANDMARK_PREMIUM_UPGRADE", "description": "Upgrade shingle to Landmark Premium — 300+ lb/SQ, premium aesthetic, NailTrak", "unit": "SQ", "unit_price": 130.00, "notes": "Additive. Highest tier in the Landmark family." },
+    { "code": "CT_HR_UPGRADE_CEDARCREST", "description": "Upgrade hip & ridge to Cedar Crest — premium thicker profile", "unit": "LF", "unit_price": 5.50, "notes": "Additive over base Shadow Ridge." },
+    { "code": "RFG_PIPE_LEAD", "description": "Lead pipe flashing UPGRADE in lieu of neoprene", "unit": "EA", "unit_price": 60.00, "notes": "Additive — high-longevity install." },
+    { "code": "RFG_CHIMNEY_KIT", "description": "Chimney flashing kit — 4-side reglet counter + step + apron", "unit": "EA", "unit_price": 450.00, "notes": "Full counter-flashing reset." },
+    { "code": "RFG_CHIMNEY_CRICKET", "description": "Chimney cricket fabrication", "unit": "EA", "unit_price": 650.00, "notes": "Code-required per IRC R1003.20 if chimney >30\" wide upslope." },
+    { "code": "RFG_SKYLIGHT_FLASH", "description": "Skylight curb flashing kit", "unit": "EA", "unit_price": 350.00, "notes": "Per skylight, unit replacement separate." }
+  ],
+
+  "warranty_disclosure": "To activate the CertainTeed SureStart PLUS Extended Warranty (with workmanship coverage), the installing contractor must be CertainTeed credentialed AND install the full Integrity Roof System bundled in this price: RoofRunner (or DiamondDeck) underlayment, WinterGuard ice & water, SwiftStart starter, Landmark shingles, Shadow Ridge hip & ridge, and Ridge Vent. Workmanship warranty term depends on contractor credential level."
+}
