@@ -2,8 +2,35 @@ import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { requireAuth, isAuthError } from "@/lib/api-auth";
 import { getResend } from "@/lib/resend";
+import { buildRetailEstimatePdfHtml } from "@/lib/retail/pdf-html";
 
 export const dynamic = "force-dynamic";
+export const maxDuration = 60;
+
+/**
+ * Render the estimate to PDF binary. Isolated import + try/catch so any
+ * failure (chromium download, memory, timeout) gracefully degrades to
+ * an HTML-only email — NEVER blocks the send.
+ */
+async function tryRenderPdf(
+  estimate: Parameters<typeof buildRetailEstimatePdfHtml>[0],
+  profile: Parameters<typeof buildRetailEstimatePdfHtml>[1],
+  logoDataUri: string | null,
+): Promise<Buffer | null> {
+  try {
+    // Dynamic import — keeps puppeteer-core out of the cold path when
+    // the renderer isn't actually used, and isolates failures here.
+    const { renderHtmlToPdf } = await import("@/lib/retail/pdf-renderer");
+    const html = buildRetailEstimatePdfHtml(estimate, profile, logoDataUri);
+    return await renderHtmlToPdf(html);
+  } catch (err) {
+    console.warn(
+      "[retail-estimate/email] PDF render failed — falling back to HTML-only:",
+      err instanceof Error ? err.message : String(err),
+    );
+    return null;
+  }
+}
 
 function fmtUsd(n: number): string {
   return n.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
@@ -95,8 +122,49 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const fromName = companyName.length <= 60 ? companyName : "DumbRoof";
   const fromAddress = `${fromName} <noreply@dumbroof.ai>`;
 
+  // Build logo data URI for the PDF (fetched once, embedded inline so
+  // puppeteer doesn't need network access).
+  let logoDataUri: string | null = null;
+  const logoPath = (profile as { logo_path?: string }).logo_path;
+  if (logoPath) {
+    try {
+      const { data } = await supabaseAdmin.storage
+        .from("claim-documents")
+        .download(logoPath);
+      if (data) {
+        const buf = Buffer.from(await data.arrayBuffer());
+        const mime = logoPath.endsWith(".png")
+          ? "image/png"
+          : logoPath.endsWith(".jpg") || logoPath.endsWith(".jpeg")
+          ? "image/jpeg"
+          : logoPath.endsWith(".svg")
+          ? "image/svg+xml"
+          : "image/png";
+        logoDataUri = `data:${mime};base64,${buf.toString("base64")}`;
+      }
+    } catch {
+      // Non-fatal — PDF will render without the logo
+    }
+  }
+
+  // Render PDF — gracefully falls back to null on any failure.
+  const pdfBuffer = await tryRenderPdf(
+    est as Parameters<typeof buildRetailEstimatePdfHtml>[0],
+    profile as Parameters<typeof buildRetailEstimatePdfHtml>[1],
+    logoDataUri,
+  );
+
   try {
     const resend = getResend();
+    const attachments = pdfBuffer
+      ? [
+          {
+            filename: `Estimate-${String(est.id).slice(0, 8).toUpperCase()}.pdf`,
+            content: pdfBuffer.toString("base64"),
+          },
+        ]
+      : undefined;
+
     const { error } = await resend.emails.send({
       from: fromAddress,
       to: [est.customer_email as string],
@@ -104,9 +172,11 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       bcc: ["claims@dumbroof.ai"],
       subject: `Your roof estimate — ${fmtUsd(Number(est.total_amount))}`,
       html,
+      attachments,
       tags: [
         { name: "type", value: "retail-estimate" },
         { name: "estimate_id", value: id },
+        { name: "pdf_attached", value: pdfBuffer ? "yes" : "no" },
       ],
     });
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
