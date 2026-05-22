@@ -423,7 +423,7 @@ export function DashboardContent({ user }: { user: User }) {
     { href: "/dashboard/repair-review", label: "Repair Review" },
     { href: "/dashboard/production", label: "Production" },
     { href: "/dashboard/reps", label: "Team / Reps" },
-    { href: "/dashboard/retail", label: "Retail Sales" },
+    { href: "/dashboard/retail-estimates", label: "Retail Estimates" },
     ...(isAdmin ? [{ href: "/dashboard/analytics", label: "Analytics" }] : []),
     { href: "/dashboard/settings", label: "Settings" },
   ];

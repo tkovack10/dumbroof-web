@@ -76,6 +76,8 @@ export function RetailEstimateClient() {
   const [statusMsg, setStatusMsg] = useState<{ kind: "ok" | "err"; text: string } | null>(null);
   const [markupPct, setMarkupPct] = useState(0);
   const [status, setStatus] = useState<string>("draft");
+  const [importing, setImporting] = useState(false);
+  const [importMeta, setImportMeta] = useState<{ vendor?: string; confidence?: string; filename?: string } | null>(null);
 
   useEffect(() => {
     // Detect ?id= in the URL to load an existing estimate into the builder.
@@ -169,6 +171,52 @@ export function RetailEstimateClient() {
 
   function updateMeasurement<K extends keyof Measurements>(key: K, value: number) {
     setMeasurements((m) => ({ ...m, [key]: value }));
+  }
+
+  async function handleImportMeasurements(file: File) {
+    setImporting(true);
+    setStatusMsg(null);
+    setImportMeta(null);
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      const res = await fetch("/api/retail-measurements/parse", {
+        method: "POST",
+        body: fd,
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setStatusMsg({ kind: "err", text: data.error || `Parser failed (${res.status})` });
+        return;
+      }
+      const m = data.measurements || {};
+      // Populate every field that came back (0 values still overwrite — user can edit)
+      const next: Partial<Measurements> = {};
+      for (const k of Object.keys(DEFAULT_MEASUREMENTS) as Array<keyof Measurements>) {
+        const raw = m[k];
+        if (raw !== undefined && raw !== null) {
+          const v = typeof raw === "number" ? raw : parseFloat(String(raw));
+          if (!Number.isNaN(v)) next[k] = v;
+        }
+      }
+      setMeasurements((prev) => ({ ...prev, ...next }));
+      const meta = m._meta || {};
+      setImportMeta({
+        vendor: meta.vendor || "unknown",
+        confidence: meta.confidence || "unknown",
+        filename: file.name,
+      });
+      const filled = Object.values(next).filter((v) => v && v > 0).length;
+      const total = Object.keys(DEFAULT_MEASUREMENTS).length;
+      setStatusMsg({
+        kind: meta.confidence === "low" ? "err" : "ok",
+        text: `Imported ${filled}/${total} fields from ${meta.vendor || "report"} (${meta.confidence || "?"} confidence). Review and edit before saving.`,
+      });
+    } catch (err) {
+      setStatusMsg({ kind: "err", text: `Import failed: ${String(err)}` });
+    } finally {
+      setImporting(false);
+    }
   }
 
   function updateAddonQty(code: string, qty: number) {
@@ -429,10 +477,52 @@ export function RetailEstimateClient() {
             </div>
 
             <div className="glass-card p-6">
-              <h2 className="text-sm font-bold text-[var(--white)] mb-3">Measurements</h2>
-              <p className="text-[10px] text-[var(--gray-muted)] mb-4">
-                Enter roof measurements manually. (Auto-import + Save coming in next phases.)
+              <div className="flex items-center justify-between gap-3 mb-3 flex-wrap">
+                <h2 className="text-sm font-bold text-[var(--white)]">Measurements</h2>
+                <label
+                  className={`relative inline-flex items-center gap-2 text-xs font-semibold px-3 py-1.5 rounded-lg border cursor-pointer transition-colors ${
+                    importing
+                      ? "bg-white/[0.04] border-white/10 text-[var(--gray-dim)] cursor-wait"
+                      : "bg-[var(--cyan)]/[0.10] border-[var(--cyan)]/40 hover:bg-[var(--cyan)]/[0.18] hover:border-[var(--cyan)] text-[var(--cyan)]"
+                  }`}
+                >
+                  {importing ? (
+                    <>
+                      <svg className="animate-spin w-3 h-3" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.4 0 0 5.4 0 12h4z" />
+                      </svg>
+                      Parsing PDF…
+                    </>
+                  ) : (
+                    <>
+                      <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
+                      </svg>
+                      Import Measurements (PDF)
+                    </>
+                  )}
+                  <input
+                    type="file"
+                    accept="application/pdf,.pdf"
+                    disabled={importing}
+                    onChange={(e) => {
+                      const f = e.target.files?.[0];
+                      e.target.value = "";
+                      if (f) handleImportMeasurements(f);
+                    }}
+                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-wait"
+                  />
+                </label>
+              </div>
+              <p className="text-[10px] text-[var(--gray-muted)] mb-3">
+                Upload an EagleView, HOVER, GAF QuickMeasure, or Roofr PDF — we&apos;ll auto-fill the 10 measurement fields below. Or enter manually.
               </p>
+              {importMeta && (
+                <div className="text-[10px] text-[var(--cyan)]/80 mb-3 px-3 py-2 rounded bg-[var(--cyan)]/[0.06] border border-[var(--cyan)]/20">
+                  Imported from <strong>{importMeta.filename}</strong> — vendor: <strong>{importMeta.vendor}</strong> · confidence: <strong>{importMeta.confidence}</strong>
+                </div>
+              )}
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
                 {(Object.keys(MEASUREMENT_LABELS) as Array<keyof Measurements>).map((key) => (
                   <div key={key}>

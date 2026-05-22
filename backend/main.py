@@ -85,6 +85,14 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+# Retail estimate router — physically isolated module, no shared code paths
+# with the claims/insurance pipeline. Mounted here so FastAPI sees /api/retail-*
+# routes, but the router itself imports only from retail_measurements.py.
+# Per Tom 2026-05-22: keep retail and insurance workflows fully separate.
+from retail_router import retail_router  # noqa: E402 — kept near app init for visibility
+
+app.include_router(retail_router)
+
 # ─── Two-tier approval gating (governance v2 Day 2-3b) ────────────────────
 # Tools that REQUIRE user approval before executing (preview card flow).
 # Everything NOT in this set executes immediately (auto-approve) — the
