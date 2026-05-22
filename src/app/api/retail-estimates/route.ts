@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { requireAuth, isAuthError } from "@/lib/api-auth";
+import { getCallerCompanyId } from "@/lib/company-scope";
 
 export const dynamic = "force-dynamic";
 
@@ -53,6 +54,14 @@ export async function POST(req: NextRequest) {
   if (isAuthError(auth)) return auth.response;
   const userId = auth.user.id;
 
+  const companyId = await getCallerCompanyId(userId);
+  if (!companyId) {
+    return NextResponse.json(
+      { error: "No company profile — retail estimates are company-scoped" },
+      { status: 403 },
+    );
+  }
+
   let body: SaveBody;
   try {
     body = (await req.json()) as SaveBody;
@@ -72,6 +81,7 @@ export async function POST(req: NextRequest) {
     body.status && ALLOWED_STATUSES.has(body.status) ? body.status : undefined;
 
   if (id) {
+    // Update: company-scoped — any teammate in the company can edit
     const { data, error } = await supabaseAdmin
       .from("retail_estimates")
       .update({
@@ -93,7 +103,7 @@ export async function POST(req: NextRequest) {
         updated_at: new Date().toISOString(),
       })
       .eq("id", id)
-      .eq("user_id", userId)
+      .eq("company_id", companyId)
       .select()
       .single();
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
@@ -103,7 +113,8 @@ export async function POST(req: NextRequest) {
   const { data, error } = await supabaseAdmin
     .from("retail_estimates")
     .insert({
-      user_id: userId,
+      user_id: userId, // audit: who created it
+      company_id: companyId, // visibility: every teammate in the company
       template_id: body.template_id,
       template_snapshot: body.template_snapshot ?? null,
       customer_name: body.customer_name ?? null,
@@ -126,10 +137,18 @@ export async function POST(req: NextRequest) {
   return NextResponse.json({ estimate: data });
 }
 
-/** GET /api/retail-estimates — paginated list of user's estimates. */
+/** GET /api/retail-estimates — paginated list of the company's estimates. */
 export async function GET(req: NextRequest) {
   const auth = await requireAuth();
   if (isAuthError(auth)) return auth.response;
+
+  const companyId = await getCallerCompanyId(auth.user.id);
+  if (!companyId) {
+    return NextResponse.json(
+      { error: "No company profile — retail estimates are company-scoped" },
+      { status: 403 },
+    );
+  }
 
   const url = new URL(req.url);
   const limit = Math.min(Math.max(parseInt(url.searchParams.get("limit") || "50", 10) || 50, 1), 200);
@@ -139,10 +158,10 @@ export async function GET(req: NextRequest) {
   let query = supabaseAdmin
     .from("retail_estimates")
     .select(
-      "id, template_id, customer_name, customer_email, customer_address, total_amount, markup_pct, status, created_at, sent_at",
+      "id, template_id, customer_name, customer_email, customer_address, total_amount, markup_pct, status, created_at, sent_at, user_id",
       { count: "exact" },
     )
-    .eq("user_id", auth.user.id);
+    .eq("company_id", companyId);
   if (statusFilter && ALLOWED_STATUSES.has(statusFilter)) {
     query = query.eq("status", statusFilter);
   }

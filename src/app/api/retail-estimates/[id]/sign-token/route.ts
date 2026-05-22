@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { requireAuth, isAuthError } from "@/lib/api-auth";
+import { getCallerCompanyId } from "@/lib/company-scope";
 
 export const dynamic = "force-dynamic";
 
@@ -23,11 +24,16 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   if (isAuthError(auth)) return auth.response;
   const { id } = await params;
 
+  const companyId = await getCallerCompanyId(auth.user.id);
+  if (!companyId) {
+    return NextResponse.json({ error: "No company profile" }, { status: 403 });
+  }
+
   const { data: est, error: estErr } = await supabaseAdmin
     .from("retail_estimates")
     .select("id, status, signed_at")
     .eq("id", id)
-    .eq("user_id", auth.user.id)
+    .eq("company_id", companyId)
     .maybeSingle();
   if (estErr) return NextResponse.json({ error: estErr.message }, { status: 500 });
   if (!est) return NextResponse.json({ error: "Not found" }, { status: 404 });
@@ -44,7 +50,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     .from("retail_estimates")
     .update({ sign_token: token, updated_at: new Date().toISOString() })
     .eq("id", id)
-    .eq("user_id", auth.user.id);
+    .eq("company_id", companyId);
   if (updErr) return NextResponse.json({ error: updErr.message }, { status: 500 });
 
   const origin =

@@ -4,6 +4,7 @@ import { requireAuth, isAuthError } from "@/lib/api-auth";
 import { getResend, EMAIL_FROM, EMAIL_REPLY_TO } from "@/lib/resend";
 import { renderRetailEstimateEmail } from "@/lib/retail/email-html";
 import type { RetailTemplate } from "@/lib/retail/templates-types";
+import { getCallerCompanyId } from "@/lib/company-scope";
 
 export const dynamic = "force-dynamic";
 
@@ -39,11 +40,16 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   if (isAuthError(auth)) return auth.response;
   const { id } = await params;
 
+  const companyId = await getCallerCompanyId(auth.user.id);
+  if (!companyId) {
+    return NextResponse.json({ error: "No company profile" }, { status: 403 });
+  }
+
   const { data: est, error: estErr } = await supabaseAdmin
     .from("retail_estimates")
     .select("*")
     .eq("id", id)
-    .eq("user_id", auth.user.id)
+    .eq("company_id", companyId)
     .maybeSingle();
   if (estErr) return NextResponse.json({ error: estErr.message }, { status: 500 });
   if (!est) return NextResponse.json({ error: "Not found" }, { status: 404 });
@@ -146,7 +152,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         updated_at: new Date().toISOString(),
       })
       .eq("id", id)
-      .eq("user_id", auth.user.id);
+      .eq("company_id", companyId);
 
     return NextResponse.json({ ok: true, message_id: result.data?.id });
   } catch (err) {
