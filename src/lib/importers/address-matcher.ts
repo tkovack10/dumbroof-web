@@ -160,5 +160,24 @@ export function matchAddress(
     return { status: "matched", claim: cands[0], note: "same-canonical" };
   }
 
+  // 5. Last-resort: when multiple candidates share the same house# + first
+  // street token but differ in city/state/zip formatting (or duplicate
+  // entries for the same property), pick the first. USARM had 4 distinct
+  // claim rows for "97 Moeller" — same homeowner, different address formats
+  // — and the strict matcher refused to pick. Empirically, when this
+  // happens the payment belongs to ALL of them (they're the same property);
+  // attaching to one is correct. Future cleanup: dedupe claim rows.
+  const firstTokens = new Set(
+    cands
+      .map(c => {
+        const k = addrKey(c.address);
+        return k ? k.split(" ")[1] : null;
+      })
+      .filter((t): t is string => t !== null)
+  );
+  if (firstTokens.size === 1) {
+    return { status: "matched", claim: cands[0], note: "same-house-street-token" };
+  }
+
   return { status: "ambiguous", candidates: cands };
 }
