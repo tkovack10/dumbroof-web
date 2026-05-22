@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback, useMemo } from "react";
+import Link from "next/link";
 import {
   ClaimFilterChips,
   type ClaimGridFilter,
@@ -82,6 +83,15 @@ export default function RepsPage() {
     <div className="p-6 lg:p-8 min-h-screen">
       <div className="max-w-7xl mx-auto">
         <div className="mb-5 pl-10 lg:pl-0">
+          <Link
+            href="/dashboard"
+            className="inline-flex items-center gap-1.5 text-xs text-[var(--gray-muted)] hover:text-white mb-3 transition-colors"
+          >
+            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+            </svg>
+            Back to Dashboard
+          </Link>
           <h1 className="text-2xl font-bold gradient-text">Team / Reps</h1>
           <p className="text-[var(--gray-muted)] mt-1 text-sm">
             Every claim, every rep, what&apos;s left to do.
