@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { requireAuth, isAuthError, canAccessClaim } from "@/lib/api-auth";
+import { getCallerCompanyId } from "@/lib/company-scope";
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000";
 
@@ -54,6 +55,11 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Not authorized" }, { status: 403 });
   }
 
+  const companyId = await getCallerCompanyId(userId);
+  if (!companyId) {
+    return NextResponse.json({ error: "No company profile" }, { status: 403 });
+  }
+
   // Call Railway backend to generate PDF
   try {
     const res = await fetch(`${BACKEND_URL}/api/coc/generate`, {
@@ -97,6 +103,7 @@ export async function POST(req: NextRequest) {
         .insert({
           claim_id,
           user_id: userId,
+          company_id: companyId,
           completion_date: completion_date || new Date().toISOString().split("T")[0],
           work_summary: work_summary || null,
           warranty_terms: warranty_terms || "10-year manufacturer warranty. 5-year workmanship.",
@@ -151,6 +158,11 @@ export async function PUT(req: NextRequest) {
     return NextResponse.json({ error: "Not authorized" }, { status: 403 });
   }
 
+  const companyId = await getCallerCompanyId(userId);
+  if (!companyId) {
+    return NextResponse.json({ error: "No company profile" }, { status: 403 });
+  }
+
   try {
     // Collect all attachment paths: COC PDF + completion photos
     const allAttachments = [pdf_path];
@@ -201,6 +213,7 @@ export async function PUT(req: NextRequest) {
         .insert({
           claim_id,
           user_id: userId,
+          company_id: companyId,
           pdf_path,
           [updateField]: true,
           sent_at: new Date().toISOString(),

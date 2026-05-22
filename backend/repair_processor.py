@@ -117,7 +117,9 @@ async def process_repair(repair_id: str):
     # Update status to processing
     sb.table("repairs").update({"status": "processing", "updated_at": datetime.now().isoformat()}).eq("id", repair_id).execute()
 
-    # Get company profile + custom pricing in parallel
+    # Get company profile + custom pricing in parallel.
+    # Pricing is per-company (shared across teammates); fall back to user_id
+    # for solo users without a company_id.
     company_profile = None
     custom_pricing = None
     try:
@@ -128,7 +130,13 @@ async def process_repair(repair_id: str):
     except Exception:
         pass
     try:
-        pricing_result = sb.table("repair_pricing").select("*").eq("user_id", repair["user_id"]).single().execute()
+        company_id = (company_profile or {}).get("company_id")
+        pricing_query = sb.table("repair_pricing").select("*")
+        if company_id:
+            pricing_query = pricing_query.eq("company_id", company_id)
+        else:
+            pricing_query = pricing_query.eq("user_id", repair["user_id"])
+        pricing_result = pricing_query.maybe_single().execute()
         if pricing_result.data:
             custom_pricing = pricing_result.data
             print(f"[REPAIR] Custom pricing loaded: diag=${custom_pricing.get('diagnostic_fee')}, labor=${custom_pricing.get('labor_rate_per_hour')}/hr")
@@ -1174,7 +1182,13 @@ If issues found, set decision to "add_checkpoint" and list issues.
         except Exception:
             pass
         try:
-            pricing_result = sb.table("repair_pricing").select("*").eq("user_id", repair["user_id"]).single().execute()
+            company_id = (company_profile or {}).get("company_id")
+            pricing_query = sb.table("repair_pricing").select("*")
+            if company_id:
+                pricing_query = pricing_query.eq("company_id", company_id)
+            else:
+                pricing_query = pricing_query.eq("user_id", repair["user_id"])
+            pricing_result = pricing_query.maybe_single().execute()
             if pricing_result.data:
                 custom_pricing = pricing_result.data
         except Exception:

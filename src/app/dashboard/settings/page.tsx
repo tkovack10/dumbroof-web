@@ -35,6 +35,7 @@ function SettingsPageContent() {
   const [loading, setLoading] = useState(true);
   const [currentUserId, setCurrentUserId] = useState<string>("");
   const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [currentCompanyId, setCurrentCompanyId] = useState<string | null>(null);
   // Org-level editing is gated to admins/owners when the user is part of a
   // company. Reps see a read-only "managed by admin" block instead and only
   // the personal fields below are editable. See /dashboard/admin/company.
@@ -255,10 +256,17 @@ function SettingsPageContent() {
       }
       setLoading(false);
 
-      // Load forwarders + repair pricing in parallel
+      // Load forwarders + repair pricing in parallel.
+      // Repair pricing is per-company (so teammates share rates); fall back to
+      // user_id for solo users without a company_id.
+      const callerCompanyId = (data?.company_id as string | null) || null;
+      setCurrentCompanyId(callerCompanyId);
+      const pricingQuery = callerCompanyId
+        ? supabase.from("repair_pricing").select("*").eq("company_id", callerCompanyId).maybeSingle()
+        : supabase.from("repair_pricing").select("*").eq("user_id", user.id).maybeSingle();
       const [fwdRes, pricingRes] = await Promise.all([
         fetch(`${BACKEND_URL}/api/forwarders?user_id=${user.id}`).catch(() => null),
-        supabase.from("repair_pricing").select("*").eq("user_id", user.id).single(),
+        pricingQuery,
       ]);
 
       if (fwdRes?.ok) {
@@ -1420,15 +1428,21 @@ function SettingsPageContent() {
                   setPricingSaved(false);
                   const { data: { user } } = await supabase.auth.getUser();
                   if (!user) return;
+                  // Per-company storage: every teammate in the same company shares
+                  // a single pricing row. Solo users (no company_id) fall back to
+                  // the legacy per-user row.
                   const payload = {
                     user_id: user.id,
+                    company_id: currentCompanyId,
                     diagnostic_fee: parseFloat(repairPricing.diagnostic_fee) || 250,
                     labor_rate_per_hour: parseFloat(repairPricing.labor_rate_per_hour) || 85,
                     markup_percent: (parseFloat(repairPricing.markup_percent) || 20) / 100,
                     minimum_job_charge: parseFloat(repairPricing.minimum_job_charge) || 450,
                     updated_at: new Date().toISOString(),
                   };
-                  await supabase.from("repair_pricing").upsert(payload, { onConflict: "user_id" });
+                  await supabase
+                    .from("repair_pricing")
+                    .upsert(payload, { onConflict: currentCompanyId ? "company_id" : "user_id" });
                   setPricingSaving(false);
                   setPricingSaved(true);
                   setTimeout(() => setPricingSaved(false), 3000);

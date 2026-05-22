@@ -535,6 +535,34 @@ def resolve_user_id(sb: Client, forwarder_email: str) -> tuple:
     return (None, None)
 
 
+# Per-process cache so we don't re-query company_profiles on every email.
+# Key: user_id (str). Value: company_id (str | None).
+_COMPANY_ID_CACHE: dict[str, str | None] = {}
+
+
+def resolve_company_id(sb: Client, user_id: str) -> str | None:
+    """Look up the company_id for a user_id (cached per-process).
+
+    Stamped onto carrier_correspondence + edit_requests inserts so the rows
+    are visible under company-scoped RLS.
+    """
+    if not user_id:
+        return None
+    if user_id in _COMPANY_ID_CACHE:
+        return _COMPANY_ID_CACHE[user_id]
+    company_id: str | None = None
+    try:
+        result = sb.table("company_profiles").select("company_id").eq(
+            "user_id", user_id
+        ).limit(1).execute()
+        if result.data and len(result.data) > 0:
+            company_id = result.data[0].get("company_id") or None
+    except Exception as e:
+        print(f"[GMAIL POLLER] resolve_company_id failed for {user_id}: {e}", flush=True)
+    _COMPANY_ID_CACHE[user_id] = company_id
+    return company_id
+
+
 # ===================================================================
 # EMAIL CLASSIFICATION — Carrier Correspondence vs Edit Request
 # ===================================================================
@@ -809,6 +837,7 @@ async def _poll_once(service, sb: Client, backend_url: str):
                 edit_record = {
                     "claim_id": match["claim_id"],
                     "user_id": user_id,
+                    "company_id": resolve_company_id(sb, user_id),
                     "from_email": parsed["from_email"],
                     "original_subject": subject_text,
                     "original_body": body_text,
@@ -917,6 +946,7 @@ async def _poll_once(service, sb: Client, backend_url: str):
             record = {
                 "claim_id": match["claim_id"],
                 "user_id": user_id,
+                "company_id": resolve_company_id(sb, user_id),
                 "message_id": parsed["message_id"],
                 "from_email": parsed["from_email"],
                 "original_from": parsed["original_from"] or parsed["from_email"],
@@ -1172,6 +1202,7 @@ async def _process_user_message(
     record = {
         "claim_id": matched_claim["id"],
         "user_id": user_id,
+        "company_id": resolve_company_id(sb, user_id),
         "message_id": parsed.get("message_id"),
         "from_email": parsed.get("from_email"),
         "original_from": parsed.get("from_email"),

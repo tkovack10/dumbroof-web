@@ -156,15 +156,19 @@ export async function POST(req: NextRequest) {
   // ---- Template-based flow ----
   if (template_id) {
     try {
-      // Load template
+      // Load template — gate on caller's company OR system template (admin client bypasses RLS,
+      // so we enforce the same rule manually).
       const { data: tplRows } = await supabaseAdmin
         .from("document_templates")
-        .select("id, name, pdf_storage_path, fields, page_count")
+        .select("id, name, pdf_storage_path, fields, page_count, company_id, is_system")
         .eq("id", template_id)
         .limit(1);
 
       const tpl = tplRows?.[0];
       if (!tpl) return NextResponse.json({ error: "Template not found" }, { status: 404 });
+      if (!tpl.is_system && tpl.company_id !== companyId) {
+        return NextResponse.json({ error: "Template not accessible" }, { status: 403 });
+      }
 
       // Download template PDF from storage
       const { data: pdfData } = await supabaseAdmin.storage

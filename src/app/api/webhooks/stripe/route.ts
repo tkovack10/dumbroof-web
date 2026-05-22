@@ -177,8 +177,18 @@ export async function POST(req: NextRequest) {
           console.log("One-time payment completed:", { userId, customerId, addOnId, amount: session.amount_total });
 
           if (addOnId === "haag_inspection") {
+            // Stamp company_id so the new inspection is visible to every
+            // teammate under company-scoped RLS (per the per-company audit).
+            const { data: buyerCompany } = await supabaseAdmin
+              .from("company_profiles")
+              .select("company_id")
+              .eq("user_id", userId)
+              .limit(1);
+            const buyerCompanyId = buyerCompany?.[0]?.company_id || null;
+
             await supabaseAdmin.from("inspections").insert({
               user_id: userId,
+              company_id: buyerCompanyId,
               payment_status: "paid",
               stripe_session_id: session.id,
               amount_paid: session.amount_total,

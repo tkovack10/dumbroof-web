@@ -1,16 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { requireAuth, isAuthError } from "@/lib/api-auth";
+import { getCallerCompanyId } from "@/lib/company-scope";
 
-/** GET — list templates (user's own + system templates) */
+/** GET — list templates (company's own + system templates) */
 export async function GET() {
   const auth = await requireAuth();
   if (isAuthError(auth)) return auth.response;
 
+  const companyId = await getCallerCompanyId(auth.user.id);
+  if (!companyId) {
+    return NextResponse.json({ error: "No company profile" }, { status: 403 });
+  }
+
   const { data, error } = await supabaseAdmin
     .from("document_templates")
     .select("id, name, document_type, description, page_count, fields, is_system, is_active, created_at")
-    .or(`user_id.eq.${auth.user.id},is_system.eq.true`)
+    .or(`company_id.eq.${companyId},is_system.eq.true`)
     .eq("is_active", true)
     .order("is_system", { ascending: false })
     .order("created_at", { ascending: false });
@@ -22,10 +28,15 @@ export async function GET() {
   return NextResponse.json({ templates: data || [] });
 }
 
-/** POST — create a new template */
+/** POST — create a new template (visible to every teammate in the company) */
 export async function POST(req: NextRequest) {
   const auth = await requireAuth();
   if (isAuthError(auth)) return auth.response;
+
+  const companyId = await getCallerCompanyId(auth.user.id);
+  if (!companyId) {
+    return NextResponse.json({ error: "No company profile" }, { status: 403 });
+  }
 
   const body = await req.json();
   const { name, document_type, description, pdf_storage_path, page_count, fields } = body;
@@ -38,6 +49,7 @@ export async function POST(req: NextRequest) {
     .from("document_templates")
     .insert({
       user_id: auth.user.id,
+      company_id: companyId,
       name,
       document_type: document_type || "aob",
       description: description || null,
