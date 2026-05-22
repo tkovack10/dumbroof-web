@@ -139,7 +139,7 @@ export async function GET(req: NextRequest) {
   let query = supabaseAdmin
     .from("retail_estimates")
     .select(
-      "id, template_id, customer_name, customer_email, total_amount, markup_pct, status, created_at, sent_at",
+      "id, template_id, customer_name, customer_email, customer_address, total_amount, markup_pct, status, created_at, sent_at",
       { count: "exact" },
     )
     .eq("user_id", auth.user.id);

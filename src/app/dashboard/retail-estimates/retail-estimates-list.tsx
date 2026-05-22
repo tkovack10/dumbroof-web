@@ -9,6 +9,7 @@ interface EstimateRow {
   template_id: string;
   customer_name: string | null;
   customer_email: string | null;
+  customer_address: string | null;
   total_amount: number;
   markup_pct: number | null;
   status: string;
@@ -178,6 +179,7 @@ export function RetailEstimatesList() {
       return (
         (r.customer_name || "").toLowerCase().includes(s) ||
         (r.customer_email || "").toLowerCase().includes(s) ||
+        (r.customer_address || "").toLowerCase().includes(s) ||
         r.template_id.toLowerCase().includes(s)
       );
     });
@@ -278,7 +280,7 @@ export function RetailEstimatesList() {
           type="text"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search by customer / email / product…"
+          placeholder="Search by address / customer / email / product…"
           className="w-full max-w-sm px-3 py-2 text-sm rounded-lg bg-white/[0.03] border border-white/10 text-[var(--white)] placeholder:text-[var(--gray-dim)] focus:outline-none focus:border-[var(--cyan)]"
         />
       </div>
@@ -306,7 +308,7 @@ export function RetailEstimatesList() {
           <table className="w-full text-xs">
             <thead>
               <tr className="text-left text-[10px] uppercase tracking-wider text-[var(--gray-muted)] border-b border-white/[0.06]">
-                <th className="px-4 py-3 font-semibold">Customer</th>
+                <th className="px-4 py-3 font-semibold">Property / Customer</th>
                 <th className="px-4 py-3 font-semibold">Product</th>
                 <th className="px-4 py-3 font-semibold">Status</th>
                 <th className="px-4 py-3 font-semibold text-right">Total</th>
@@ -322,7 +324,12 @@ export function RetailEstimatesList() {
                   className="border-t border-white/[0.04] hover:bg-white/[0.03] cursor-pointer transition-colors"
                 >
                   <td className="px-4 py-3">
-                    <p className="text-[var(--white)] font-medium">{r.customer_name || "(no name)"}</p>
+                    <p className="text-[var(--white)] font-medium truncate" title={r.customer_address || ""}>
+                      {r.customer_address || "(no address)"}
+                    </p>
+                    <p className="text-[11px] text-[var(--gray)] truncate">
+                      {r.customer_name || "(no name)"}
+                    </p>
                     {r.customer_email && (
                       <p className="text-[10px] text-[var(--gray-dim)] truncate">{r.customer_email}</p>
                     )}
