@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { requireAuth, isAuthError } from "@/lib/api-auth";
+import { getCallerCompanyId } from "@/lib/company-scope";
 
 export const dynamic = "force-dynamic";
 
@@ -29,17 +30,31 @@ interface CreateBody {
   homeowner_sequence_eligible?: boolean;
 }
 
-/** GET /api/company-docs — list the caller's company docs. */
+/**
+ * GET /api/company-docs — list every doc belonging to the caller's company.
+ *
+ * Company-scoped: any user in the same company can see docs uploaded by
+ * any other user in that company. user_id is kept on the row as
+ * "uploaded_by" audit metadata but is not used for access gating.
+ */
 export async function GET() {
   const auth = await requireAuth();
   if (isAuthError(auth)) return auth.response;
 
+  const companyId = await getCallerCompanyId(auth.user.id);
+  if (!companyId) {
+    return NextResponse.json(
+      { error: "No company profile — finish onboarding to use Company Docs" },
+      { status: 403 },
+    );
+  }
+
   const { data, error } = await supabaseAdmin
     .from("company_documents")
     .select(
-      "id, name, category, storage_path, file_size, mime_type, description, send_to, homeowner_sequence_eligible, display_order, created_at, updated_at",
+      "id, name, category, storage_path, file_size, mime_type, description, send_to, homeowner_sequence_eligible, display_order, created_at, updated_at, user_id",
     )
-    .eq("user_id", auth.user.id)
+    .eq("company_id", companyId)
     .order("display_order", { ascending: true })
     .order("created_at", { ascending: false });
 
@@ -50,14 +65,22 @@ export async function GET() {
 /**
  * POST /api/company-docs — register an already-uploaded doc.
  *
- * The actual file upload happens directly to Supabase Storage from the
- * browser via a signed upload URL (POST /api/company-docs/upload-url) so
- * we sidestep Vercel's 4.5 MB body limit on regular API routes. This route
- * just persists the metadata row pointing at the uploaded storage_path.
+ * Companion to /api/company-docs/upload-url which issues a signed upload
+ * URL the browser PUTs the file to. This route persists the metadata row
+ * pointing at the uploaded storage_path so the doc shows up in everyone's
+ * company list.
  */
 export async function POST(req: NextRequest) {
   const auth = await requireAuth();
   if (isAuthError(auth)) return auth.response;
+
+  const companyId = await getCallerCompanyId(auth.user.id);
+  if (!companyId) {
+    return NextResponse.json(
+      { error: "No company profile — finish onboarding to use Company Docs" },
+      { status: 403 },
+    );
+  }
 
   let body: CreateBody;
   try {
@@ -68,25 +91,26 @@ export async function POST(req: NextRequest) {
   if (!body.name || !body.storage_path) {
     return NextResponse.json({ error: "name and storage_path required" }, { status: 400 });
   }
+  // Defense in depth: the storage_path must start with the caller's company_id.
+  // Storage RLS already enforces this, but checking here gives a clean error.
+  if (!body.storage_path.startsWith(`${companyId}/`)) {
+    return NextResponse.json(
+      { error: "storage_path doesn't match caller's company scope" },
+      { status: 400 },
+    );
+  }
 
-  // Whitelist + cleanup
   const category =
     body.category && ALLOWED_CATEGORIES.has(body.category) ? body.category : "general";
   const sendTo = Array.isArray(body.send_to)
     ? body.send_to.filter((s) => ALLOWED_SEND_TO.has(s))
     : [];
 
-  const { data: profile } = await supabaseAdmin
-    .from("company_profiles")
-    .select("company_id")
-    .eq("user_id", auth.user.id)
-    .maybeSingle();
-
   const { data, error } = await supabaseAdmin
     .from("company_documents")
     .insert({
-      user_id: auth.user.id,
-      company_id: profile?.company_id || null,
+      user_id: auth.user.id, // uploaded_by audit
+      company_id: companyId,
       name: body.name.slice(0, 240),
       category,
       storage_path: body.storage_path,

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { requireAuth, isAuthError } from "@/lib/api-auth";
+import { getCallerCompanyId } from "@/lib/company-scope";
 
 export const dynamic = "force-dynamic";
 
@@ -18,22 +19,26 @@ const ALLOWED_CATEGORIES = new Set([
 ]);
 const ALLOWED_SEND_TO = new Set(["customer", "lead", "insurance", "homeowner"]);
 
-/** GET /api/company-docs/[id] — single doc + signed view URL. */
+/** GET /api/company-docs/[id] — single doc + signed view URL (company-scoped). */
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const auth = await requireAuth();
   if (isAuthError(auth)) return auth.response;
   const { id } = await params;
 
+  const companyId = await getCallerCompanyId(auth.user.id);
+  if (!companyId) {
+    return NextResponse.json({ error: "No company profile" }, { status: 403 });
+  }
+
   const { data, error } = await supabaseAdmin
     .from("company_documents")
     .select("*")
     .eq("id", id)
-    .eq("user_id", auth.user.id)
+    .eq("company_id", companyId)
     .maybeSingle();
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   if (!data) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  // Issue a 1-hour signed URL for viewing/sharing
   const { data: signed } = await supabaseAdmin.storage
     .from(BUCKET)
     .createSignedUrl(data.storage_path, 60 * 60);
@@ -41,11 +46,16 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   return NextResponse.json({ doc: data, signed_url: signed?.signedUrl || null });
 }
 
-/** PATCH /api/company-docs/[id] — update metadata (category, name, send_to, etc.). */
+/** PATCH /api/company-docs/[id] — any teammate in the company can edit metadata. */
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const auth = await requireAuth();
   if (isAuthError(auth)) return auth.response;
   const { id } = await params;
+
+  const companyId = await getCallerCompanyId(auth.user.id);
+  if (!companyId) {
+    return NextResponse.json({ error: "No company profile" }, { status: 403 });
+  }
 
   let body: Record<string, unknown> = {};
   try {
@@ -60,7 +70,9 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   if (typeof body.category === "string" && ALLOWED_CATEGORIES.has(body.category))
     patch.category = body.category;
   if (Array.isArray(body.send_to))
-    patch.send_to = body.send_to.filter((s): s is string => typeof s === "string" && ALLOWED_SEND_TO.has(s));
+    patch.send_to = body.send_to.filter(
+      (s): s is string => typeof s === "string" && ALLOWED_SEND_TO.has(s),
+    );
   if (typeof body.homeowner_sequence_eligible === "boolean")
     patch.homeowner_sequence_eligible = body.homeowner_sequence_eligible;
   if (typeof body.display_order === "number") patch.display_order = body.display_order;
@@ -73,30 +85,33 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     .from("company_documents")
     .update(patch)
     .eq("id", id)
-    .eq("user_id", auth.user.id)
+    .eq("company_id", companyId)
     .select()
     .single();
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ doc: data });
 }
 
-/** DELETE /api/company-docs/[id] — remove DB row + storage object. */
+/** DELETE /api/company-docs/[id] — any teammate in the company can delete. */
 export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const auth = await requireAuth();
   if (isAuthError(auth)) return auth.response;
   const { id } = await params;
 
+  const companyId = await getCallerCompanyId(auth.user.id);
+  if (!companyId) {
+    return NextResponse.json({ error: "No company profile" }, { status: 403 });
+  }
+
   const { data: existing, error: fetchErr } = await supabaseAdmin
     .from("company_documents")
     .select("storage_path")
     .eq("id", id)
-    .eq("user_id", auth.user.id)
+    .eq("company_id", companyId)
     .maybeSingle();
   if (fetchErr) return NextResponse.json({ error: fetchErr.message }, { status: 500 });
   if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  // Remove from storage first (best effort — even if storage delete fails the
-  // DB row goes away; the orphan blob can be reaped by a future cleanup job).
   if (existing.storage_path) {
     try {
       await supabaseAdmin.storage.from(BUCKET).remove([existing.storage_path]);
@@ -109,7 +124,7 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
     .from("company_documents")
     .delete()
     .eq("id", id)
-    .eq("user_id", auth.user.id);
+    .eq("company_id", companyId);
   if (delErr) return NextResponse.json({ error: delErr.message }, { status: 500 });
 
   return NextResponse.json({ ok: true });
