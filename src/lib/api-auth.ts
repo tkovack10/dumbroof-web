@@ -84,17 +84,34 @@ export async function canAccessClaim(userId: string, claimId: string): Promise<b
 }
 
 /**
- * Verify user owns the repair OR is an admin. Returns true if authorized.
+ * Verify the user can access this repair: owner, same company (per the
+ * 2026-05-22 per-company strategic call), or platform admin.
+ *
+ * Mirrors canAccessClaim() — company-scoped so teammates can review each
+ * other's repairs. company_id was backfilled on repairs in the same
+ * migration that added the column.
  */
 export async function canAccessRepair(userId: string, repairId: string): Promise<boolean> {
   const { data: repairRows } = await supabaseAdmin
     .from("repairs")
-    .select("user_id")
+    .select("user_id, company_id")
     .eq("id", repairId)
     .limit(1);
 
   const repair = repairRows?.[0] || null;
-  if (repair?.user_id === userId) return true;
+  if (!repair) return false;
+  if (repair.user_id === userId) return true;
+
+  // Team access — same company as the repair's company_id
+  if (repair.company_id) {
+    const { data: profileRows } = await supabaseAdmin
+      .from("company_profiles")
+      .select("company_id")
+      .eq("user_id", userId)
+      .limit(1);
+    const callerCompany = profileRows?.[0]?.company_id || null;
+    if (callerCompany && callerCompany === repair.company_id) return true;
+  }
 
   return isAdmin(userId);
 }

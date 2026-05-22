@@ -38,11 +38,22 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ signatures: data || [] });
   }
 
-  // Standalone: list user's standalone documents (no claim_id)
+  // Standalone: list the company's standalone documents (no claim_id).
+  // Company-scoped per 2026-05-22 strategic call — teammates can see each
+  // other's signature requests.
+  const { data: cpForList } = await supabaseAdmin
+    .from("company_profiles")
+    .select("company_id")
+    .eq("user_id", userId)
+    .limit(1);
+  const callerCompanyId = cpForList?.[0]?.company_id || null;
+  if (!callerCompanyId) {
+    return NextResponse.json({ signatures: [] });
+  }
   const { data, error } = await supabaseAdmin
     .from("aob_signatures")
     .select("*")
-    .eq("user_id", userId)
+    .eq("company_id", callerCompanyId)
     .is("claim_id", null)
     .order("created_at", { ascending: false })
     .limit(50);
@@ -96,14 +107,23 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  // Get company profile
+  // Get company profile (includes company_id for per-company scoping —
+  // every aob_signatures insert below stamps company_id so teammates
+  // can see/manage each other's signature requests).
   const { data: cpRows } = await supabaseAdmin
     .from("company_profiles")
-    .select("company_name, email, phone, address, city_state_zip, contact_name, contact_title, license_number")
+    .select("company_name, email, phone, address, city_state_zip, contact_name, contact_title, license_number, company_id")
     .eq("user_id", userId)
     .limit(1);
 
   const company = cpRows?.[0] || null;
+  const companyId = company?.company_id || null;
+  if (!companyId) {
+    return NextResponse.json(
+      { error: "No company profile — finish onboarding to send signatures" },
+      { status: 403 },
+    );
+  }
   const companyName = company?.company_name || "Your Contractor";
   const claimAddress = claim?.address || address || "";
 
@@ -114,6 +134,7 @@ export async function POST(req: NextRequest) {
       .insert({
         claim_id: claim_id || null,
         user_id: userId,
+        company_id: companyId,
         homeowner_name,
         homeowner_email,
         document_type: document_type || "aob",
@@ -205,6 +226,7 @@ export async function POST(req: NextRequest) {
         .insert({
           claim_id: claim_id || null,
           user_id: userId,
+          company_id: companyId,
           homeowner_name,
           homeowner_email,
           document_type: document_type || "aob",
@@ -299,6 +321,7 @@ export async function POST(req: NextRequest) {
       .insert({
         claim_id,
         user_id: userId,
+        company_id: companyId,
         homeowner_name,
         homeowner_email,
         document_type: document_type || "aob",

@@ -1,21 +1,29 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { requireAuth, isAuthError, canAccessRepair } from "@/lib/api-auth";
+import { getCallerCompanyId } from "@/lib/company-scope";
 
 export async function GET(req: NextRequest) {
   const auth = await requireAuth();
   if (isAuthError(auth)) return auth.response;
 
+  const companyId = await getCallerCompanyId(auth.user.id);
+  if (!companyId) {
+    return NextResponse.json({ error: "No company profile" }, { status: 403 });
+  }
+
   const { searchParams } = new URL(req.url);
   const offset = parseInt(searchParams.get("offset") || "0");
   const limit = parseInt(searchParams.get("limit") || "50");
 
-  // Fetch repairs (ready status only — those with completed diagnoses)
+  // Fetch repairs (ready status only — those with completed diagnoses).
+  // Company-scoped so teammates can see/review each other's repairs.
+  // diagnosis_feedback stays user-scoped — feedback is per-reviewer.
   const [repairsRes, feedbackRes] = await Promise.all([
     supabaseAdmin
       .from("repairs")
       .select("id, address, homeowner_name, repair_type, severity, total_price, file_path, photo_files, leak_description, created_at, status, output_files", { count: "exact" })
-      .eq("user_id", auth.user.id)
+      .eq("company_id", companyId)
       .eq("status", "ready")
       .order("created_at", { ascending: false })
       .range(offset, offset + limit - 1),

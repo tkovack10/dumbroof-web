@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { requireAuth, isAuthError, canAccessClaim } from "@/lib/api-auth";
+import { getCallerCompanyId } from "@/lib/company-scope";
 
 export async function GET(req: NextRequest) {
   const auth = await requireAuth();
@@ -52,11 +53,17 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Not authorized" }, { status: 403 });
   }
 
+  const companyId = await getCallerCompanyId(userId);
+  if (!companyId) {
+    return NextResponse.json({ error: "No company profile" }, { status: 403 });
+  }
+
   const { data, error } = await supabaseAdmin
     .from("install_supplements")
     .insert({
       claim_id,
-      user_id: userId,
+      user_id: userId,        // audit: who created it
+      company_id: companyId,  // visibility: every teammate in the company
       description,
       xactimate_code: xactimate_code || null,
       category: category || "ROOFING",
