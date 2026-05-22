@@ -111,6 +111,9 @@ export function DashboardContent({ user }: { user: User }) {
           "forensic_sent_to_carrier",
           "supplement_sent",
           "coc_sent",
+          // `check_received` lights up the $ icon. Emitted by /api/claim/[id]/upload-check
+          // for manual check uploads AND by /api/admin/import/commit for CSV imports.
+          "check_received",
         ]),
       supabase
         .from("homeowner_sequences")
@@ -150,6 +153,7 @@ export function DashboardContent({ user }: { user: User }) {
       else if (e.event_type === "forensic_sent_to_carrier") slot.forensic_to_carrier = true;
       else if (e.event_type === "supplement_sent") slot.supplement_sent = true;
       else if (e.event_type === "coc_sent") slot.coc_sent = true;
+      else if (e.event_type === "check_received") slot.payment_received = true;
     }
     for (const s of seqRes.data || []) {
       ensureComm(s.claim_id as string).engagement_active = true;

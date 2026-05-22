@@ -10,6 +10,7 @@ import {
 import { ScheduleClaimModal } from "@/components/schedule-claim-modal";
 import { AdminTabStrip } from "@/components/admin-tab-strip";
 import { RichardSuggestionBanner } from "@/components/richard-suggestion-banner";
+import { NeedsInstallList } from "@/components/needs-install-list";
 
 type View = "week" | "month";
 type ProductionTab = "unscheduled" | "calendar" | "crews";
@@ -53,6 +54,8 @@ export default function ProductionPage() {
   const [editing, setEditing] = useState<Schedule | null>(null);
   const [creatingAt, setCreatingAt] = useState<Date | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
+  const [prefillClaimId, setPrefillClaimId] = useState<string | null>(null);
+  const [needsInstallCount, setNeedsInstallCount] = useState<number>(0);
 
   // Window for fetching — pad by 7 days on each side
   const { from, to } = useMemo(() => {
@@ -179,7 +182,7 @@ export default function ProductionPage() {
         {/* Tabs — Phase 6 #5 */}
         <AdminTabStrip<ProductionTab>
           tabs={[
-            { key: "unscheduled", label: "Unscheduled", count: counts.needNotify },
+            { key: "unscheduled", label: "Unscheduled", count: needsInstallCount },
             { key: "calendar",    label: "Calendar",    count: counts.scheduled },
             { key: "crews",       label: "Crews",       count: crews.length },
           ]}
@@ -188,19 +191,16 @@ export default function ProductionPage() {
         />
 
         {tab === "unscheduled" && (
-          <div className="glass-card p-8 text-center mb-6">
-            <p className="text-base font-semibold text-white mb-2">
-              Per-trade unscheduled blocks land with Slice C
-            </p>
-            <p className="text-sm text-[var(--gray-muted)] max-w-lg mx-auto">
-              When a rep marks a claim &quot;Ready to Build,&quot; each trade
-              (roofing / siding / gutters) will appear here as its own block —
-              production drags each one onto the calendar independently.{" "}
-              <Link href="/dashboard/admin?filter=awaiting_production" className="text-[var(--cyan)] hover:underline">
-                See claims awaiting production →
-              </Link>
-            </p>
-          </div>
+          <NeedsInstallList
+            refreshKey={schedules.length /* refetch when a schedule lands */}
+            onScheduleClaim={(claim) => {
+              setEditing(null);
+              setCreatingAt(new Date());
+              setPrefillClaimId(claim.claim_id);
+              setModalOpen(true);
+            }}
+            onCountChange={setNeedsInstallCount}
+          />
         )}
 
         {tab === "crews" && (
@@ -328,11 +328,18 @@ export default function ProductionPage() {
 
       <ScheduleClaimModal
         open={modalOpen}
-        onClose={() => setModalOpen(false)}
+        onClose={() => {
+          setModalOpen(false);
+          setPrefillClaimId(null);
+        }}
         existing={editing}
         initialDate={creatingAt}
+        claimId={prefillClaimId ?? undefined}
         crews={crews}
-        onSaved={load}
+        onSaved={() => {
+          setPrefillClaimId(null);
+          load();
+        }}
       />
 
       <CrewsModal

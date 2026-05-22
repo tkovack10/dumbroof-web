@@ -132,6 +132,22 @@ export async function GET(req: Request) {
     return NextResponse.json({ claims: [], counts: emptyCounts(), reps: [] });
   }
 
+  // Pull a SEPARATE unlimited rollup of (user_id, assigned_user_id) so the
+  // rep table shows the TRUE per-rep claim count, not just what fits in the
+  // grid's display limit. Without this, /dashboard/reps showed 200 claims
+  // while /dashboard showed 314 — the count was being computed off the
+  // limit-truncated grid slice.
+  const { data: rollupRows } = await supabaseAdmin
+    .from("claims")
+    .select("user_id, assigned_user_id")
+    .in("user_id", teamUserIds);
+  const trueClaimCountByRep = new Map<string, number>();
+  for (const r of rollupRows || []) {
+    const rid = (r.assigned_user_id || r.user_id) as string;
+    if (!rid) continue;
+    trueClaimCountByRep.set(rid, (trueClaimCountByRep.get(rid) || 0) + 1);
+  }
+
   // Pull claims for the whole team (or just one rep if filter set). Filter
   // by team user_ids — works even when company_id is null on legacy rows.
   let claimsQuery = supabaseAdmin
@@ -161,7 +177,7 @@ export async function GET(req: Request) {
     return NextResponse.json({
       claims: [],
       counts: emptyCounts(),
-      reps: buildRepRollup(repMap, []),
+      reps: buildRepRollup(repMap, [], trueClaimCountByRep),
     });
   }
 
@@ -283,7 +299,7 @@ export async function GET(req: Request) {
     claims: filtered,
     counts,
     phase_counts,
-    reps: buildRepRollup(repMap, scoped),
+    reps: buildRepRollup(repMap, scoped, trueClaimCountByRep),
   });
 }
 
@@ -390,19 +406,32 @@ function applyFilter(claims: EnrichedClaim[], filter: Filter): EnrichedClaim[] {
   }
 }
 
-function buildRepRollup(repMap: Map<string, string>, claims: EnrichedClaim[]) {
+function buildRepRollup(
+  repMap: Map<string, string>,
+  claims: EnrichedClaim[],
+  trueClaimCountByRep?: Map<string, number>
+) {
   const byRep = new Map<
     string,
     { claim_count: number; checks_collected: number; all_lit: number }
   >();
+  // Seed every team rep with a zero bucket so reps with claims that fell
+  // outside the display limit still appear in the rollup with the true count.
+  if (trueClaimCountByRep) {
+    for (const [rid, n] of trueClaimCountByRep.entries()) {
+      byRep.set(rid, { claim_count: n, checks_collected: 0, all_lit: 0 });
+    }
+  }
   for (const c of claims) {
     if (!c.rep_user_id) continue;
     const bucket = byRep.get(c.rep_user_id) ?? {
-      claim_count: 0,
+      claim_count: trueClaimCountByRep ? 0 : 0,
       checks_collected: 0,
       all_lit: 0,
     };
-    bucket.claim_count++;
+    // claim_count is sourced from the unlimited rollup above when provided;
+    // only increment here if we don't have a true count (back-compat path).
+    if (!trueClaimCountByRep) bucket.claim_count++;
     if (c.checkpoints.check_received.done) bucket.checks_collected++;
     if (c.all_lit) bucket.all_lit++;
     byRep.set(c.rep_user_id, bucket);
