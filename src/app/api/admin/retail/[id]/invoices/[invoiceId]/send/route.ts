@@ -146,7 +146,7 @@ export async function POST(
           after_completion: {
             type: "redirect",
             redirect: {
-              url: `${process.env.NEXT_PUBLIC_APP_URL || "https://www.dumbroof.ai"}/dashboard/admin/retail?paid=${invoiceId}`,
+              url: `${process.env.NEXT_PUBLIC_APP_URL || "https://www.dumbroof.ai"}/dashboard/retail?paid=${invoiceId}`,
             },
           },
         },

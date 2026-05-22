@@ -10,6 +10,7 @@ import { useBillingQuota } from "@/hooks/use-billing-quota";
 import { LanguageToggle } from "@/lib/i18n";
 import { ClaimsMap } from "@/components/claims-map";
 import { RepairTabContent } from "./repair-tab-content";
+import { RetailEstimatesList } from "./retail-estimates/retail-estimates-list";
 import { Confetti } from "@/components/confetti";
 import { useCountUp } from "@/hooks/use-count-up";
 import { InviteTeammateModal } from "@/components/invite-teammate-modal";
@@ -22,7 +23,7 @@ import { reportModeLabel } from "@/lib/report-mode";
 
 type StatusFilter = "all" | "processing" | "ready" | "attention";
 type ViewMode = "table" | "map";
-type DashboardTab = "claims" | "repairs";
+type DashboardTab = "claims" | "repairs" | "retail-estimates";
 
 type ScopeFilter =
   | "any"
@@ -420,6 +421,9 @@ export function DashboardContent({ user }: { user: User }) {
     { href: "/dashboard/correspondence", label: "Correspondence", hasDraftDot: claims.some((c) => (c.pending_drafts || 0) > 0), hasEditDot: claims.some((c) => (c.pending_edits || 0) > 0) },
     { href: "/dashboard/photo-review", label: "Photo Review" },
     { href: "/dashboard/repair-review", label: "Repair Review" },
+    { href: "/dashboard/production", label: "Production" },
+    { href: "/dashboard/reps", label: "Team / Reps" },
+    { href: "/dashboard/retail", label: "Retail Sales" },
     ...(isAdmin ? [{ href: "/dashboard/analytics", label: "Analytics" }] : []),
     { href: "/dashboard/settings", label: "Settings" },
   ];
@@ -657,13 +661,6 @@ export function DashboardContent({ user }: { user: User }) {
             >
               + Retail Estimate
             </a>
-            <a
-              href="/dashboard/retail-estimates"
-              className="bg-white/[0.03] border border-white/10 hover:border-white/30 hover:bg-white/[0.06] text-[var(--gray)] hover:text-[var(--white)] px-4 py-2.5 md:py-3 rounded-xl font-semibold transition-colors text-sm whitespace-nowrap text-center"
-              title="View all saved retail estimates"
-            >
-              All Retail Estimates
-            </a>
           </div>
         </div>
 
@@ -726,7 +723,20 @@ export function DashboardContent({ user }: { user: User }) {
               </span>
             )}
           </button>
+          <button
+            onClick={() => setActiveTab("retail-estimates")}
+            className={`px-5 py-2.5 rounded-xl text-sm font-semibold transition-colors ${
+              activeTab === "retail-estimates"
+                ? "bg-gradient-to-r from-[var(--pink)] to-[var(--blue)] text-white"
+                : "bg-transparent text-[var(--gray)] border border-[var(--border-glass)] hover:bg-white/[0.04]"
+            }`}
+          >
+            Retail Estimates
+          </button>
         </div>
+
+        {/* === RETAIL ESTIMATES TAB === */}
+        {activeTab === "retail-estimates" && <RetailEstimatesList />}
 
         {/* === REPAIRS TAB === */}
         {activeTab === "repairs" && (

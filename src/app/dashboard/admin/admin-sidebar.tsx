@@ -35,7 +35,7 @@ const navItems = [
     ),
   },
   {
-    href: "/dashboard/admin/reps",
+    href: "/dashboard/reps",
     label: "Team / Reps",
     icon: (
       <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
@@ -44,7 +44,7 @@ const navItems = [
     ),
   },
   {
-    href: "/dashboard/admin/retail",
+    href: "/dashboard/retail",
     label: "Retail",
     icon: (
       <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
@@ -53,7 +53,7 @@ const navItems = [
     ),
   },
   {
-    href: "/dashboard/admin/production",
+    href: "/dashboard/production",
     label: "Production",
     icon: (
       <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>

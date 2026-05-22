@@ -368,7 +368,7 @@ async function productionSuggestion(
       sub: "That's a stretch — want to slide one of them to later in the week?",
       cta: {
         label: "Open the calendar →",
-        href: `/dashboard/admin/production`,
+        href: `/dashboard/production`,
       },
     };
   }
@@ -385,7 +385,7 @@ async function productionSuggestion(
       sub: "Quickest dopamine for homeowners — let them know they're on the books.",
       cta: {
         label: "Open the calendar →",
-        href: "/dashboard/admin/production",
+        href: "/dashboard/production",
       },
     };
   }
