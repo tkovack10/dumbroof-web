@@ -78,6 +78,8 @@ export function RetailEstimateClient() {
   const [status, setStatus] = useState<string>("draft");
   const [importing, setImporting] = useState(false);
   const [importMeta, setImportMeta] = useState<{ vendor?: string; confidence?: string; filename?: string } | null>(null);
+  const [invoicing, setInvoicing] = useState(false);
+  const [paymentLink, setPaymentLink] = useState<string | null>(null);
 
   useEffect(() => {
     // Detect ?id= in the URL to load an existing estimate into the builder.
@@ -221,6 +223,57 @@ export function RetailEstimateClient() {
 
   function updateAddonQty(code: string, qty: number) {
     setAddonQtys((prev) => ({ ...prev, [code]: Math.max(0, qty) }));
+  }
+
+  async function handleSendInvoice() {
+    if (!customerEmail.trim()) {
+      setStatusMsg({ kind: "err", text: "Customer email required to send the invoice" });
+      return;
+    }
+    let idForInvoice = estimateId;
+    if (!idForInvoice) {
+      idForInvoice = await handleSave();
+      if (!idForInvoice) return;
+    } else {
+      await handleSave();
+    }
+    if (!idForInvoice) return;
+
+    if (!confirm(`Create a Stripe invoice for ${customerEmail} for ${fmtUsd(grandTotal)}?`)) return;
+    setInvoicing(true);
+    setStatusMsg(null);
+    try {
+      const res = await fetch(`/api/retail-estimates/${idForInvoice}/invoice`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ to_email: customerEmail, send_email: true }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        // 400 with needs_connect: Stripe Connect not active
+        if (data.needs_connect) {
+          setStatusMsg({
+            kind: "err",
+            text: data.error || "Stripe Connect required — connect a payout account in Settings.",
+          });
+        } else {
+          setStatusMsg({ kind: "err", text: data.error || `Invoice failed (${res.status})` });
+        }
+        return;
+      }
+      setPaymentLink(data.payment_link_url || null);
+      setStatus("sent");
+      setStatusMsg({
+        kind: "ok",
+        text: data.already_created
+          ? `Invoice resent to ${customerEmail} (link already existed)`
+          : `Invoice sent to ${customerEmail}`,
+      });
+    } catch (err) {
+      setStatusMsg({ kind: "err", text: String(err) });
+    } finally {
+      setInvoicing(false);
+    }
   }
 
   async function handleGetSignLink() {
@@ -840,6 +893,39 @@ export function RetailEstimateClient() {
                   </div>
                 )}
 
+                <button
+                  type="button"
+                  onClick={handleSendInvoice}
+                  disabled={invoicing || saving || sending || signLinking || !customerEmail.trim() || grandTotal <= 0}
+                  className="w-full text-sm font-semibold px-4 py-3 rounded-lg bg-green-500/[0.10] border border-green-500/40 hover:bg-green-500/[0.18] hover:border-green-500 text-green-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  title={
+                    !customerEmail.trim()
+                      ? "Enter customer email above to enable"
+                      : grandTotal <= 0
+                        ? "Total must be greater than $0"
+                        : "Creates a Stripe payment link on your company's connected account and emails it"
+                  }
+                >
+                  {invoicing
+                    ? "Creating invoice…"
+                    : paymentLink
+                      ? "Re-send Invoice"
+                      : "Send Stripe Invoice"}
+                </button>
+
+                {paymentLink && (
+                  <div className="text-[10px] bg-green-500/[0.06] border border-green-500/30 rounded-lg p-2">
+                    <p className="text-green-200 mb-1 font-semibold">Payment link (also emailed to customer):</p>
+                    <input
+                      type="text"
+                      readOnly
+                      value={paymentLink}
+                      onClick={(e) => (e.target as HTMLInputElement).select()}
+                      className="w-full px-2 py-1 text-[10px] rounded bg-black/40 border border-white/10 text-green-100 font-mono"
+                    />
+                  </div>
+                )}
+
                 {sentMarker && (
                   <p className="text-[10px] text-[var(--cyan)]/80 text-center">
                     Sent · status updated to <strong>Sent</strong>
@@ -858,7 +944,8 @@ export function RetailEstimateClient() {
                   </div>
                 )}
                 <p className="text-[10px] text-[var(--gray-dim)] pt-1">
-                  Stripe Invoice / PDF attachment ship in next phases.
+                  PDF estimate auto-attaches on email + invoice sends.
+                  Stripe Connect must be active on the company account.
                 </p>
               </div>
             </div>
