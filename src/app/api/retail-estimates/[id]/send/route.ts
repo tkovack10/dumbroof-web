@@ -3,8 +3,19 @@ import { supabaseAdmin } from "@/lib/supabase/admin";
 import { requireAuth, isAuthError } from "@/lib/api-auth";
 import { getResend, EMAIL_FROM, EMAIL_REPLY_TO } from "@/lib/resend";
 import { renderRetailEstimateEmail } from "@/lib/retail/email-html";
+import { generateRetailEstimatePdf } from "@/lib/retail/pdf-generator";
 import type { RetailTemplate } from "@/lib/retail/templates-types";
 import { getCallerCompanyId } from "@/lib/company-scope";
+
+// Resend allows up to 40MB total payload. Our retail PDFs are a few KB
+// (text-only, no embedded images), so we're well under the cap.
+function bytesToBase64(bytes: Uint8Array): string {
+  let binary = "";
+  for (let i = 0; i < bytes.byteLength; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  return Buffer.from(binary, "binary").toString("base64");
+}
 
 export const dynamic = "force-dynamic";
 
@@ -126,9 +137,50 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     addonLineItems,
   });
 
+  // Phase 8: build a PDF proposal and attach it to the outbound email.
+  // pdf-lib is pure JS — zero native deps, zero chromium, zero shared code
+  // with the claims pipeline's Python/Chrome PDF generator on Railway.
+  let pdfBase64: string | null = null;
+  try {
+    const pdfBytes = await generateRetailEstimatePdf({
+      customerName: est.customer_name,
+      customerAddress: est.customer_address,
+      customerEmail: toEmail,
+      companyName,
+      companyPhone: profile?.phone || null,
+      companyEmail: profile?.email || null,
+      companyAddress: null,
+      companyLicense: null,
+      productName,
+      manufacturer,
+      manufacturerSeries,
+      warrantyDisclosure: warranty,
+      totalAmount: Number(est.total_amount || 0),
+      baseAmount: Number(est.base_amount || 0),
+      addonsAmount: Number(est.addons_amount || 0),
+      subtotalAmount: Number(est.subtotal_amount || 0),
+      markupPct: Number(est.markup_pct || 0),
+      markupAmount: Number(est.markup_amount || 0),
+      measurementsSummary,
+      addonLineItems,
+      estimateDate: est.created_at ? new Date(est.created_at) : new Date(),
+      paymentLinkUrl: (est as { stripe_invoice_url?: string | null }).stripe_invoice_url || null,
+      signLinkUrl: est.sign_token
+        ? `${process.env.NEXT_PUBLIC_APP_URL || "https://www.dumbroof.ai"}/sign/retail/${est.sign_token}`
+        : null,
+    });
+    pdfBase64 = bytesToBase64(pdfBytes);
+  } catch (err) {
+    // Graceful degrade — the email still goes out HTML-only if the PDF
+    // generator throws. This matches Tom's 2026-05-21 directive: never
+    // let a PDF gen failure block the email itself.
+    console.warn("[retail send] PDF generation failed, sending HTML-only:", err);
+  }
+
   const resend = getResend();
   const subject = `Roof estimate — ${productName}${est.customer_name ? ` for ${est.customer_name}` : ""}`;
   const fromName = `${companyName} via Dumb Roof <${EMAIL_FROM.match(/<([^>]+)>/)?.[1] || "hello@dumbroof.ai"}>`;
+  const pdfFilename = `${(est.customer_name || est.customer_address || "estimate").replace(/[^A-Za-z0-9 _-]/g, "")}.pdf`;
 
   try {
     const result = await resend.emails.send({
@@ -138,6 +190,16 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       subject,
       html,
       text,
+      ...(pdfBase64
+        ? {
+            attachments: [
+              {
+                filename: pdfFilename || "Retail-Estimate.pdf",
+                content: pdfBase64,
+              },
+            ],
+          }
+        : {}),
     });
     if (result.error) {
       return NextResponse.json({ error: result.error.message }, { status: 500 });

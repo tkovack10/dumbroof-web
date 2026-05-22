@@ -625,7 +625,11 @@ export function DashboardContent({ user }: { user: User }) {
           <div>
             <h1 className="text-2xl font-bold gradient-text">Dashboard</h1>
             <p className="text-[var(--gray-muted)] mt-1 text-sm">
-              {activeTab === "claims" ? "Upload documents and generate claim packages." : "Diagnose leaks and generate repair documents."}
+              {activeTab === "claims"
+                ? "Upload documents and generate claim packages."
+                : activeTab === "repairs"
+                  ? "Diagnose leaks and generate repair documents."
+                  : "Cash jobs — build, send, and sign retail estimates."}
             </p>
           </div>
           <div className="grid grid-cols-2 md:flex md:flex-wrap md:items-center md:justify-end gap-2">
@@ -737,7 +741,7 @@ export function DashboardContent({ user }: { user: User }) {
         </div>
 
         {/* === RETAIL ESTIMATES TAB === */}
-        {activeTab === "retail-estimates" && <RetailEstimatesList />}
+        {activeTab === "retail-estimates" && <RetailEstimatesList embedded />}
 
         {/* === REPAIRS TAB === */}
         {activeTab === "repairs" && (

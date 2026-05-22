@@ -130,7 +130,7 @@ function templateLabel(id: string): string {
     .join(" ");
 }
 
-export function RetailEstimatesList() {
+export function RetailEstimatesList({ embedded = false }: { embedded?: boolean } = {}) {
   const router = useRouter();
   const [rows, setRows] = useState<EstimateRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -212,29 +212,35 @@ export function RetailEstimatesList() {
   }
 
   return (
-    <div className="p-6 sm:p-8 space-y-6 max-w-7xl mx-auto">
-      <div className="flex items-center justify-between flex-wrap gap-3">
-        <div>
-          <h1 className="text-2xl font-bold text-[var(--white)]">Retail Estimates</h1>
-          <p className="text-xs text-[var(--gray-muted)] mt-1">
-            Saved cash-job estimates. Click any row to reopen the builder.
-          </p>
+    <div className={embedded ? "space-y-6" : "p-6 sm:p-8 space-y-6 max-w-7xl mx-auto"}>
+      {/* Header — only rendered when on the standalone /dashboard/retail-estimates
+          route. When embedded inside the dashboard tab, the parent already
+          provides the page title + the sidebar has Dashboard nav, so we
+          suppress this block to avoid duplication. */}
+      {!embedded && (
+        <div className="flex items-center justify-between flex-wrap gap-3">
+          <div>
+            <h1 className="text-2xl font-bold text-[var(--white)]">Retail Estimates</h1>
+            <p className="text-xs text-[var(--gray-muted)] mt-1">
+              Saved cash-job estimates. Click any row to reopen the builder.
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <Link
+              href="/dashboard"
+              className="text-xs text-[var(--gray-muted)] hover:text-[var(--white)] px-3 py-2"
+            >
+              ← Dashboard
+            </Link>
+            <Link
+              href="/dashboard/retail-estimate"
+              className="bg-gradient-to-r from-[var(--pink)] via-[var(--purple)] to-[var(--blue)] hover:shadow-[var(--shadow-glow-pink)] text-white px-4 py-2 rounded-xl font-semibold transition-colors text-sm whitespace-nowrap"
+            >
+              + New Retail Estimate
+            </Link>
+          </div>
         </div>
-        <div className="flex items-center gap-2">
-          <Link
-            href="/dashboard"
-            className="text-xs text-[var(--gray-muted)] hover:text-[var(--white)] px-3 py-2"
-          >
-            ← Dashboard
-          </Link>
-          <Link
-            href="/dashboard/retail-estimate"
-            className="bg-gradient-to-r from-[var(--pink)] via-[var(--purple)] to-[var(--blue)] hover:shadow-[var(--shadow-glow-pink)] text-white px-4 py-2 rounded-xl font-semibold transition-colors text-sm whitespace-nowrap"
-          >
-            + New Retail Estimate
-          </Link>
-        </div>
-      </div>
+      )}
 
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
         <div className="glass-card p-4">
