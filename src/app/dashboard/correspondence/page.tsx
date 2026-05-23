@@ -35,7 +35,7 @@ type FilterStatus = "all" | "unmatched" | "matched" | "response_drafted" | "resp
 export default function CorrespondencePage() {
   const supabase = createClient();
   const router = useRouter();
-  const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000";
+  const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "https://dumbroof-backend-production.up.railway.app";
 
   const [correspondence, setCorrespondence] = useState<CorrespondenceItem[]>([]);
   const [claims, setClaims] = useState<ClaimOption[]>([]);
@@ -71,19 +71,31 @@ export default function CorrespondencePage() {
     fetchAll();
   }, [fetchAll]);
 
+  const [matchError, setMatchError] = useState<string | null>(null);
+  const [matchSubmitting, setMatchSubmitting] = useState(false);
+
   const handleManualMatch = async (correspondenceId: string) => {
-    if (!selectedClaimId) return;
+    if (!selectedClaimId || matchSubmitting) return;
+    setMatchError(null);
+    setMatchSubmitting(true);
     try {
-      await fetch(`${BACKEND_URL}/api/correspondence/${correspondenceId}/match`, {
+      const res = await fetch(`${BACKEND_URL}/api/correspondence/${correspondenceId}/match`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ claim_id: selectedClaimId }),
       });
+      if (!res.ok) {
+        const body = await res.text().catch(() => "");
+        throw new Error(`HTTP ${res.status}: ${body.slice(0, 200) || res.statusText}`);
+      }
       setMatchingId(null);
       setSelectedClaimId("");
-      fetchAll();
+      await fetchAll();
     } catch (err) {
       console.error("Failed to match:", err);
+      setMatchError(err instanceof Error ? err.message : "Match failed — backend unreachable.");
+    } finally {
+      setMatchSubmitting(false);
     }
   };
 
@@ -255,26 +267,33 @@ export default function CorrespondencePage() {
 
                   {/* Manual matching UI */}
                   {isMatchingThis && (
-                    <div className="mt-3 pt-3 border-t border-white/[0.04] flex items-center gap-3">
-                      <select
-                        value={selectedClaimId}
-                        onChange={(e) => setSelectedClaimId(e.target.value)}
-                        className="flex-1 px-3 py-2 rounded-lg border border-[var(--border-glass)] text-sm focus:border-[var(--cyan)] focus:ring-1 focus:ring-[var(--cyan)] outline-none"
-                      >
-                        <option value="">Select a claim...</option>
-                        {claims.map((c) => (
-                          <option key={c.id} value={c.id}>
-                            {c.address} ({c.carrier})
-                          </option>
-                        ))}
-                      </select>
-                      <button
-                        onClick={() => handleManualMatch(item.id)}
-                        disabled={!selectedClaimId}
-                        className="bg-gradient-to-r from-[var(--pink)] via-[var(--purple)] to-[var(--blue)] hover:shadow-[var(--shadow-glow-pink)] disabled:opacity-50 text-white px-4 py-2 rounded-lg text-xs font-medium transition-colors"
-                      >
-                        Match
-                      </button>
+                    <div className="mt-3 pt-3 border-t border-white/[0.04]">
+                      <div className="flex items-center gap-3">
+                        <select
+                          value={selectedClaimId}
+                          onChange={(e) => setSelectedClaimId(e.target.value)}
+                          className="flex-1 px-3 py-2 rounded-lg border border-[var(--border-glass)] text-sm focus:border-[var(--cyan)] focus:ring-1 focus:ring-[var(--cyan)] outline-none"
+                        >
+                          <option value="">Select a claim...</option>
+                          {claims.map((c) => (
+                            <option key={c.id} value={c.id}>
+                              {c.address} ({c.carrier})
+                            </option>
+                          ))}
+                        </select>
+                        <button
+                          onClick={() => handleManualMatch(item.id)}
+                          disabled={!selectedClaimId || matchSubmitting}
+                          className="bg-gradient-to-r from-[var(--pink)] via-[var(--purple)] to-[var(--blue)] hover:shadow-[var(--shadow-glow-pink)] disabled:opacity-50 disabled:cursor-not-allowed text-white px-4 py-2 rounded-lg text-xs font-medium transition-colors"
+                        >
+                          {matchSubmitting ? "Matching…" : "Match"}
+                        </button>
+                      </div>
+                      {matchError && (
+                        <div className="mt-2 text-xs text-red-400 bg-red-500/10 border border-red-500/20 rounded px-2 py-1">
+                          {matchError}
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
