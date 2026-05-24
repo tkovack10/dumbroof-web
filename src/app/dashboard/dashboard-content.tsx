@@ -68,6 +68,7 @@ export function DashboardContent({ user }: { user: User }) {
   const [searchQuery, setSearchQuery] = useState("");
   const [showDetailStats, setShowDetailStats] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [hasCompanyProfile, setHasCompanyProfile] = useState(false);
   const [inviteOpen, setInviteOpen] = useState(false);
   // Deep-link target: /dashboard?invite=open auto-opens the modal so the
   // onboarding-checklist CTA (and any future link) lands users straight on
@@ -180,6 +181,7 @@ export function DashboardContent({ user }: { user: User }) {
           .eq("user_id", user.id)
           .limit(1);
         const prof = data?.[0];
+        if (prof?.company_id) setHasCompanyProfile(true);
         if (prof?.is_admin) setIsAdmin(true);
         if (prof?.referral_code) setReferralCode(prof.referral_code);
         const role = prof?.role || (prof?.is_admin ? "owner" : "member");
@@ -433,8 +435,10 @@ export function DashboardContent({ user }: { user: User }) {
     { href: "/dashboard/reps", label: "Team / Reps" },
     { href: "/dashboard/retail-estimates", label: "Retail Estimates" },
     { href: "/dashboard/company-docs", label: "Company Docs" },
-    { href: "/dashboard/email-templates", label: "Templates" },
-    { href: "/dashboard/marketing-assets", label: "Assets" },
+    ...(hasCompanyProfile ? [
+      { href: "/dashboard/email-templates", label: "Templates" },
+      { href: "/dashboard/marketing-assets", label: "Assets" },
+    ] : []),
     ...(isAdmin ? [{ href: "/dashboard/analytics", label: "Analytics" }] : []),
     { href: "/dashboard/settings", label: "Settings" },
   ];

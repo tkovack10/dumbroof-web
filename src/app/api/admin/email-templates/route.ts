@@ -70,13 +70,18 @@ export async function POST(request: Request) {
 
   let seed: Record<string, unknown> = {};
   if (body.clone_from) {
+    // Only allow cloning a global template OR one already owned by this company.
+    // Without this scope check an admin could clone any other company's private
+    // template and exfiltrate the body. See code review f7ee75c finding #1.
     const { data: src } = await supabaseAdmin
       .from("email_templates")
-      .select("slug, subject, body_html, body_text, default_attachments, trigger_type, trigger_offset_days, trigger_event")
+      .select("slug, subject, body_html, body_text, default_attachments, trigger_type, trigger_offset_days, trigger_event, company_id")
       .eq("id", body.clone_from as string)
+      .or(`company_id.is.null,company_id.eq.${g.companyId}`)
       .maybeSingle();
-    if (!src) return NextResponse.json({ error: "clone_from template not found" }, { status: 404 });
-    seed = src;
+    if (!src) return NextResponse.json({ error: "clone_from template not found or not accessible" }, { status: 404 });
+    delete (src as Record<string, unknown>).company_id; // never carry source company_id into the new row
+    seed = src as Record<string, unknown>;
   }
 
   const row: Record<string, unknown> = {
@@ -94,11 +99,35 @@ export async function POST(request: Request) {
 
   if (!row.slug) return NextResponse.json({ error: "slug required" }, { status: 400 });
 
+  // If an override for this (slug, company_id) already exists, update it
+  // instead of insert-failing on UNIQUE(slug, company_id). Recovers from the
+  // case where admin clicks the global row again after already creating an
+  // override (commit f7ee75c code review finding #4).
+  const { data: existing } = await supabaseAdmin
+    .from("email_templates")
+    .select("id")
+    .eq("slug", row.slug)
+    .eq("company_id", g.companyId)
+    .maybeSingle();
+
+  if (existing) {
+    const { id: _omitId, company_id: _omitCid, ...patch } = row;
+    void _omitId; void _omitCid;
+    const { data, error } = await supabaseAdmin
+      .from("email_templates")
+      .update({ ...patch, updated_at: new Date().toISOString() })
+      .eq("id", existing.id)
+      .select("*")
+      .single();
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ template: { ...data, is_global: false }, upserted: "updated" });
+  }
+
   const { data, error } = await supabaseAdmin
     .from("email_templates")
     .insert(row)
     .select("*")
     .single();
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json({ template: { ...data, is_global: false } });
+  return NextResponse.json({ template: { ...data, is_global: false }, upserted: "inserted" });
 }

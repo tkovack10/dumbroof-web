@@ -25,7 +25,13 @@ async function writeGate() {
   return g;
 }
 
-/** GET /api/admin/marketing-assets — list, scoped to caller's company. */
+/**
+ * GET /api/admin/marketing-assets — list visible assets.
+ * Returns: global rows (company_id IS NULL, manufacturer-seeded sample books)
+ * + this company's private rows. Other companies' private assets are NOT
+ * visible. Marks `is_global` so the UI can render mutation controls only on
+ * company-owned rows.
+ */
 export async function GET() {
   const g = await readGate();
   if ("error" in g) return g.error;
@@ -33,11 +39,11 @@ export async function GET() {
   const { data, error } = await supabaseAdmin
     .from("marketing_assets")
     .select("*")
+    .or(`company_id.is.null,company_id.eq.${g.companyId}`)
     .order("sort_order", { ascending: true, nullsFirst: false })
     .order("created_at", { ascending: false });
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-  // Generate short-lived signed URLs for preview thumbnails (5 min)
   const rows = await Promise.all((data || []).map(async (r) => {
     let preview_url: string | null = null;
     if (r.file_path) {
@@ -46,7 +52,7 @@ export async function GET() {
         .createSignedUrl(r.file_path, 300);
       preview_url = signed?.signedUrl ?? null;
     }
-    return { ...r, preview_url };
+    return { ...r, preview_url, is_global: r.company_id === null };
   }));
   return NextResponse.json({ assets: rows, caller_is_admin: g.isAdmin });
 }
@@ -68,13 +74,22 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "slug, title, file_path required" }, { status: 400 });
   }
 
+  // The sign-upload route writes files under `{company_id}/...`. Reject any
+  // POST whose file_path doesn't match — prevents an admin from registering
+  // an asset row that claims to point at another company's storage path.
+  const filePath = String(body.file_path);
+  if (!filePath.startsWith(`${g.companyId}/`)) {
+    return NextResponse.json({ error: "file_path must be inside this company's folder" }, { status: 400 });
+  }
+
   const row = {
+    company_id: g.companyId,
     slug: body.slug,
     title: body.title,
     description: body.description ?? null,
     category: body.category ?? null,
     manufacturer: body.manufacturer ?? null,
-    file_path: body.file_path,
+    file_path: filePath,
     file_size_bytes: body.file_size_bytes ?? null,
     mime_type: body.mime_type ?? null,
     sort_order: body.sort_order ?? null,
@@ -83,5 +98,5 @@ export async function POST(request: Request) {
   const { data, error } = await supabaseAdmin
     .from("marketing_assets").insert(row).select("*").single();
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json({ asset: data });
+  return NextResponse.json({ asset: { ...data, is_global: false } });
 }

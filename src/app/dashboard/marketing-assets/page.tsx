@@ -16,6 +16,8 @@ type Asset = {
   sort_order: number | null;
   created_at: string;
   preview_url: string | null;
+  is_global: boolean;
+  company_id: string | null;
 };
 
 function fmtBytes(n: number | null): string {
@@ -195,16 +197,16 @@ export default function MarketingAssetsPage() {
               )}
               <input
                 value={a.title}
-                readOnly={!isAdmin}
+                readOnly={!isAdmin || a.is_global}
                 onChange={e => setAssets(prev => prev.map(x => x.id === a.id ? { ...x, title: e.target.value } : x))}
-                onBlur={e => { if (isAdmin && e.target.value !== a.title) updateField(a.id, { title: e.target.value }); }}
+                onBlur={e => { if (isAdmin && !a.is_global && e.target.value !== a.title) updateField(a.id, { title: e.target.value }); }}
                 className="bg-transparent border-0 text-sm font-semibold mb-1 focus:outline-none focus:bg-white/[0.06] rounded px-1 read-only:focus:bg-transparent"
               />
               <input
                 value={a.slug}
-                readOnly={!isAdmin}
+                readOnly={!isAdmin || a.is_global}
                 onChange={e => setAssets(prev => prev.map(x => x.id === a.id ? { ...x, slug: e.target.value } : x))}
-                onBlur={e => { if (isAdmin && e.target.value !== a.slug) updateField(a.id, { slug: e.target.value }); }}
+                onBlur={e => { if (isAdmin && !a.is_global && e.target.value !== a.slug) updateField(a.id, { slug: e.target.value }); }}
                 className="bg-transparent border-0 text-xs text-[var(--gray-dim)] font-mono mb-2 focus:outline-none focus:bg-white/[0.06] rounded px-1 read-only:focus:bg-transparent"
               />
               <div className="flex items-center justify-between text-xs text-[var(--gray-muted)] mt-auto pt-2 border-t border-white/[0.04]">
@@ -213,8 +215,11 @@ export default function MarketingAssetsPage() {
                   {a.preview_url && (
                     <a href={a.preview_url} target="_blank" rel="noopener noreferrer" className="text-[var(--cyan)] hover:underline">View</a>
                   )}
-                  {isAdmin && (
+                  {isAdmin && !a.is_global && (
                     <button onClick={() => archive(a.id)} className="text-red-400 hover:underline">Archive</button>
+                  )}
+                  {a.is_global && (
+                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-400">global</span>
                   )}
                 </div>
               </div>
