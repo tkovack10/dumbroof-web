@@ -31,6 +31,7 @@ function slugify(s: string): string {
 
 export default function MarketingAssetsPage() {
   const [assets, setAssets] = useState<Asset[]>([]);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -42,6 +43,7 @@ export default function MarketingAssetsPage() {
     if (!r.ok) { setError(`Load failed: HTTP ${r.status}`); setLoading(false); return; }
     const j = await r.json();
     setAssets(j.assets || []);
+    setIsAdmin(!!j.caller_is_admin);
     setLoading(false);
   }, []);
 
@@ -134,7 +136,7 @@ export default function MarketingAssetsPage() {
           <p className="text-sm text-[var(--gray-dim)] mt-1">PDFs and images you attach to homeowner engagement emails.</p>
         </div>
         <div className="flex gap-2">
-          <a href="/dashboard/admin/email-templates" className="px-3 py-2 rounded-lg border border-[var(--border-glass)] text-sm hover:bg-white/[0.06]">Templates →</a>
+          <a href="/dashboard/email-templates" className="px-3 py-2 rounded-lg border border-[var(--border-glass)] text-sm hover:bg-white/[0.06]">Templates →</a>
           <a href="/dashboard" className="px-3 py-2 rounded-lg border border-[var(--border-glass)] text-sm hover:bg-white/[0.06]">Dashboard</a>
         </div>
       </div>
@@ -145,31 +147,37 @@ export default function MarketingAssetsPage() {
         </div>
       )}
 
-      <div
-        onDragOver={e => { e.preventDefault(); }}
-        onDrop={e => { e.preventDefault(); handleUpload(e.dataTransfer.files); }}
-        className="mb-8 p-8 rounded-xl border-2 border-dashed border-[var(--border-glass)] hover:border-[var(--cyan)] transition-colors text-center"
-      >
-        <p className="mb-3 text-[var(--gray-dim)]">
-          {uploading ? "Uploading…" : "Drag files here, or"}
-        </p>
-        <button
-          onClick={() => fileRef.current?.click()}
-          disabled={uploading}
-          className="bg-gradient-to-r from-[var(--pink)] via-[var(--purple)] to-[var(--blue)] hover:shadow-[var(--shadow-glow-pink)] disabled:opacity-50 text-white px-4 py-2 rounded-lg text-sm font-medium"
+      {isAdmin ? (
+        <div
+          onDragOver={e => { e.preventDefault(); }}
+          onDrop={e => { e.preventDefault(); handleUpload(e.dataTransfer.files); }}
+          className="mb-8 p-8 rounded-xl border-2 border-dashed border-[var(--border-glass)] hover:border-[var(--cyan)] transition-colors text-center"
         >
-          Choose Files
-        </button>
-        <input
-          ref={fileRef}
-          type="file"
-          multiple
-          accept=".pdf,image/*"
-          className="hidden"
-          onChange={e => handleUpload(e.target.files)}
-        />
-        <p className="mt-2 text-xs text-[var(--gray-muted)]">PDFs, images. Uploaded direct to Supabase storage (no Vercel size limit).</p>
-      </div>
+          <p className="mb-3 text-[var(--gray-dim)]">
+            {uploading ? "Uploading…" : "Drag files here, or"}
+          </p>
+          <button
+            onClick={() => fileRef.current?.click()}
+            disabled={uploading}
+            className="bg-gradient-to-r from-[var(--pink)] via-[var(--purple)] to-[var(--blue)] hover:shadow-[var(--shadow-glow-pink)] disabled:opacity-50 text-white px-4 py-2 rounded-lg text-sm font-medium"
+          >
+            Choose Files
+          </button>
+          <input
+            ref={fileRef}
+            type="file"
+            multiple
+            accept=".pdf,image/*"
+            className="hidden"
+            onChange={e => handleUpload(e.target.files)}
+          />
+          <p className="mt-2 text-xs text-[var(--gray-muted)]">PDFs, images. Uploaded direct to Supabase storage (no Vercel size limit).</p>
+        </div>
+      ) : (
+        <div className="mb-8 p-4 rounded-xl border border-[var(--border-glass)] bg-white/[0.02] text-sm text-[var(--gray-dim)]">
+          Browse the library below. Only admins can upload new assets.
+        </div>
+      )}
 
       {active.length === 0 ? (
         <div className="p-8 text-center text-[var(--gray-dim)] border border-dashed border-[var(--border-glass)] rounded-xl">
@@ -187,15 +195,17 @@ export default function MarketingAssetsPage() {
               )}
               <input
                 value={a.title}
+                readOnly={!isAdmin}
                 onChange={e => setAssets(prev => prev.map(x => x.id === a.id ? { ...x, title: e.target.value } : x))}
-                onBlur={e => { if (e.target.value !== a.title) updateField(a.id, { title: e.target.value }); }}
-                className="bg-transparent border-0 text-sm font-semibold mb-1 focus:outline-none focus:bg-white/[0.06] rounded px-1"
+                onBlur={e => { if (isAdmin && e.target.value !== a.title) updateField(a.id, { title: e.target.value }); }}
+                className="bg-transparent border-0 text-sm font-semibold mb-1 focus:outline-none focus:bg-white/[0.06] rounded px-1 read-only:focus:bg-transparent"
               />
               <input
                 value={a.slug}
+                readOnly={!isAdmin}
                 onChange={e => setAssets(prev => prev.map(x => x.id === a.id ? { ...x, slug: e.target.value } : x))}
-                onBlur={e => { if (e.target.value !== a.slug) updateField(a.id, { slug: e.target.value }); }}
-                className="bg-transparent border-0 text-xs text-[var(--gray-dim)] font-mono mb-2 focus:outline-none focus:bg-white/[0.06] rounded px-1"
+                onBlur={e => { if (isAdmin && e.target.value !== a.slug) updateField(a.id, { slug: e.target.value }); }}
+                className="bg-transparent border-0 text-xs text-[var(--gray-dim)] font-mono mb-2 focus:outline-none focus:bg-white/[0.06] rounded px-1 read-only:focus:bg-transparent"
               />
               <div className="flex items-center justify-between text-xs text-[var(--gray-muted)] mt-auto pt-2 border-t border-white/[0.04]">
                 <span>{fmtBytes(a.file_size_bytes)} · {a.mime_type || "—"}</span>
@@ -203,7 +213,9 @@ export default function MarketingAssetsPage() {
                   {a.preview_url && (
                     <a href={a.preview_url} target="_blank" rel="noopener noreferrer" className="text-[var(--cyan)] hover:underline">View</a>
                   )}
-                  <button onClick={() => archive(a.id)} className="text-red-400 hover:underline">Archive</button>
+                  {isAdmin && (
+                    <button onClick={() => archive(a.id)} className="text-red-400 hover:underline">Archive</button>
+                  )}
                 </div>
               </div>
             </div>
@@ -211,7 +223,7 @@ export default function MarketingAssetsPage() {
         </div>
       )}
 
-      {archived.length > 0 && (
+      {isAdmin && archived.length > 0 && (
         <details className="mt-8">
           <summary className="cursor-pointer text-sm text-[var(--gray-dim)]">{archived.length} archived</summary>
           <div className="mt-3 space-y-1 text-sm">

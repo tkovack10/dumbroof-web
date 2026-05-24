@@ -4,7 +4,8 @@ import { supabaseAdmin } from "@/lib/supabase/admin";
 
 export const runtime = "nodejs";
 
-async function gate() {
+/** Read gate — any signed-in user with a company_profile (reps see templates too). */
+async function readGate() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { error: NextResponse.json({ error: "Not authenticated" }, { status: 401 }) };
@@ -13,10 +14,18 @@ async function gate() {
     .select("is_admin, company_id")
     .eq("user_id", user.id)
     .maybeSingle();
-  if (!profile?.is_admin || !profile.company_id) {
-    return { error: NextResponse.json({ error: "Not authorized" }, { status: 403 }) };
+  if (!profile?.company_id) {
+    return { error: NextResponse.json({ error: "No company profile" }, { status: 403 }) };
   }
-  return { user, companyId: profile.company_id };
+  return { user, companyId: profile.company_id, isAdmin: !!profile.is_admin };
+}
+
+/** Write gate — must be admin of the company. */
+async function writeGate() {
+  const g = await readGate();
+  if ("error" in g) return g;
+  if (!g.isAdmin) return { error: NextResponse.json({ error: "Admin only" }, { status: 403 }) };
+  return g;
 }
 
 /**
@@ -27,7 +36,7 @@ async function gate() {
  * Marks `is_global` so the UI can distinguish.
  */
 export async function GET() {
-  const g = await gate();
+  const g = await readGate();
   if ("error" in g) return g.error;
 
   const { data, error } = await supabaseAdmin
@@ -40,7 +49,7 @@ export async function GET() {
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
   const rows = (data || []).map(r => ({ ...r, is_global: r.company_id === null }));
-  return NextResponse.json({ templates: rows });
+  return NextResponse.json({ templates: rows, caller_is_admin: g.isAdmin });
 }
 
 /**
@@ -53,7 +62,7 @@ export async function GET() {
  * Always creates with company_id = caller's company.
  */
 export async function POST(request: Request) {
-  const g = await gate();
+  const g = await writeGate();
   if ("error" in g) return g.error;
 
   let body: Record<string, unknown>;

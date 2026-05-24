@@ -433,6 +433,8 @@ export function DashboardContent({ user }: { user: User }) {
     { href: "/dashboard/reps", label: "Team / Reps" },
     { href: "/dashboard/retail-estimates", label: "Retail Estimates" },
     { href: "/dashboard/company-docs", label: "Company Docs" },
+    { href: "/dashboard/email-templates", label: "Templates" },
+    { href: "/dashboard/marketing-assets", label: "Assets" },
     ...(isAdmin ? [{ href: "/dashboard/analytics", label: "Analytics" }] : []),
     { href: "/dashboard/settings", label: "Settings" },
   ];

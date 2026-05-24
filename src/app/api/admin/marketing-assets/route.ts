@@ -4,21 +4,30 @@ import { supabaseAdmin } from "@/lib/supabase/admin";
 
 export const runtime = "nodejs";
 
-async function gate() {
+/** Read gate — any signed-in user with a company_profile (reps see assets too). */
+async function readGate() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { error: NextResponse.json({ error: "Not authenticated" }, { status: 401 }) };
   const { data: profile } = await supabaseAdmin
     .from("company_profiles").select("is_admin, company_id").eq("user_id", user.id).maybeSingle();
-  if (!profile?.is_admin || !profile.company_id) {
-    return { error: NextResponse.json({ error: "Not authorized" }, { status: 403 }) };
+  if (!profile?.company_id) {
+    return { error: NextResponse.json({ error: "No company profile" }, { status: 403 }) };
   }
-  return { user, companyId: profile.company_id };
+  return { user, companyId: profile.company_id, isAdmin: !!profile.is_admin };
+}
+
+/** Write gate — must be admin. */
+async function writeGate() {
+  const g = await readGate();
+  if ("error" in g) return g;
+  if (!g.isAdmin) return { error: NextResponse.json({ error: "Admin only" }, { status: 403 }) };
+  return g;
 }
 
 /** GET /api/admin/marketing-assets — list, scoped to caller's company. */
 export async function GET() {
-  const g = await gate();
+  const g = await readGate();
   if ("error" in g) return g.error;
 
   const { data, error } = await supabaseAdmin
@@ -39,7 +48,7 @@ export async function GET() {
     }
     return { ...r, preview_url };
   }));
-  return NextResponse.json({ assets: rows });
+  return NextResponse.json({ assets: rows, caller_is_admin: g.isAdmin });
 }
 
 /**
@@ -49,7 +58,7 @@ export async function GET() {
  *         file_size_bytes?, mime_type?, sort_order?, active? }
  */
 export async function POST(request: Request) {
-  const g = await gate();
+  const g = await writeGate();
   if ("error" in g) return g.error;
 
   let body: Record<string, unknown>;

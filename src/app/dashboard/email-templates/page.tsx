@@ -28,6 +28,7 @@ type Asset = {
 export default function EmailTemplatesPage() {
   const [templates, setTemplates] = useState<Template[]>([]);
   const [assets, setAssets] = useState<Asset[]>([]);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -46,6 +47,7 @@ export default function EmailTemplatesPage() {
     const aJ = await aR.json();
     setTemplates(tJ.templates || []);
     setAssets((aJ.assets || []).filter((x: Asset) => x.active));
+    setIsAdmin(!!tJ.caller_is_admin);
     setLoading(false);
   }, []);
 
@@ -152,7 +154,7 @@ export default function EmailTemplatesPage() {
           </p>
         </div>
         <div className="flex gap-2">
-          <a href="/dashboard/admin/marketing-assets" className="px-3 py-2 rounded-lg border border-[var(--border-glass)] text-sm hover:bg-white/[0.06]">Assets →</a>
+          <a href="/dashboard/marketing-assets" className="px-3 py-2 rounded-lg border border-[var(--border-glass)] text-sm hover:bg-white/[0.06]">Assets →</a>
           <a href="/dashboard" className="px-3 py-2 rounded-lg border border-[var(--border-glass)] text-sm hover:bg-white/[0.06]">Dashboard</a>
         </div>
       </div>
@@ -202,15 +204,18 @@ export default function EmailTemplatesPage() {
                 <div>
                   <h2 className="text-lg font-bold">{selected.slug}</h2>
                   <p className="text-xs text-[var(--gray-dim)] mt-1">
-                    {selected.is_global
-                      ? "Editing a global template — saving will create a company-specific override."
-                      : "Editing your company override."}
+                    {!isAdmin
+                      ? "Read-only preview — only company admins can edit templates."
+                      : selected.is_global
+                        ? "Editing a global template — saving will create a company-specific override."
+                        : "Editing your company override."}
                   </p>
                 </div>
-                <label className="flex items-center gap-2 text-sm cursor-pointer">
+                <label className="flex items-center gap-2 text-sm">
                   <input
                     type="checkbox"
                     checked={!!draft.active}
+                    disabled={!isAdmin}
                     onChange={e => setDraft({ ...draft, active: e.target.checked })}
                   />
                   Active
@@ -223,7 +228,8 @@ export default function EmailTemplatesPage() {
                   <input
                     value={draft.slug || ""}
                     onChange={e => setDraft({ ...draft, slug: e.target.value })}
-                    className="mt-1 w-full px-2 py-1.5 rounded bg-white/[0.06] border border-[var(--border-glass)] focus:border-[var(--cyan)] outline-none font-mono text-xs"
+                    className="mt-1 w-full px-2 py-1.5 rounded bg-white/[0.06] border border-[var(--border-glass)] focus:border-[var(--cyan)] outline-none font-mono text-xs disabled:opacity-60 disabled:cursor-not-allowed"
+                    disabled={!isAdmin}
                   />
                 </label>
                 <label className="text-xs">
@@ -231,8 +237,9 @@ export default function EmailTemplatesPage() {
                   <input
                     type="number"
                     value={draft.trigger_offset_days ?? ""}
+                    disabled={!isAdmin}
                     onChange={e => setDraft({ ...draft, trigger_offset_days: e.target.value === "" ? null : Number(e.target.value) })}
-                    className="mt-1 w-full px-2 py-1.5 rounded bg-white/[0.06] border border-[var(--border-glass)] focus:border-[var(--cyan)] outline-none"
+                    className="mt-1 w-full px-2 py-1.5 rounded bg-white/[0.06] border border-[var(--border-glass)] focus:border-[var(--cyan)] outline-none disabled:opacity-60 disabled:cursor-not-allowed"
                   />
                 </label>
               </div>
@@ -241,8 +248,9 @@ export default function EmailTemplatesPage() {
                 <span className="text-[var(--gray-dim)]">Subject (supports {`{{homeowner_name}} {{address}} {{carrier}} {{claim_number}}`})</span>
                 <input
                   value={draft.subject || ""}
+                  disabled={!isAdmin}
                   onChange={e => setDraft({ ...draft, subject: e.target.value })}
-                  className="mt-1 w-full px-3 py-2 rounded bg-white/[0.06] border border-[var(--border-glass)] focus:border-[var(--cyan)] outline-none text-sm"
+                  className="mt-1 w-full px-3 py-2 rounded bg-white/[0.06] border border-[var(--border-glass)] focus:border-[var(--cyan)] outline-none text-sm disabled:opacity-60 disabled:cursor-not-allowed"
                 />
               </label>
 
@@ -250,9 +258,10 @@ export default function EmailTemplatesPage() {
                 <span className="text-[var(--gray-dim)]">Body (plain text)</span>
                 <textarea
                   value={draft.body_text || ""}
+                  disabled={!isAdmin}
                   onChange={e => setDraft({ ...draft, body_text: e.target.value })}
                   rows={14}
-                  className="mt-1 w-full px-3 py-2 rounded bg-white/[0.06] border border-[var(--border-glass)] focus:border-[var(--cyan)] outline-none text-sm font-mono leading-relaxed"
+                  className="mt-1 w-full px-3 py-2 rounded bg-white/[0.06] border border-[var(--border-glass)] focus:border-[var(--cyan)] outline-none text-sm font-mono leading-relaxed disabled:opacity-60 disabled:cursor-not-allowed"
                 />
               </label>
 
@@ -262,17 +271,18 @@ export default function EmailTemplatesPage() {
                 </p>
                 {assets.length === 0 ? (
                   <div className="p-3 rounded border border-dashed border-[var(--border-glass)] text-xs text-[var(--gray-muted)]">
-                    No assets yet — <a href="/dashboard/admin/marketing-assets" className="text-[var(--cyan)] underline">upload some</a>.
+                    No assets yet — <a href="/dashboard/marketing-assets" className="text-[var(--cyan)] underline">upload some</a>.
                   </div>
                 ) : (
                   <div className="grid grid-cols-2 lg:grid-cols-3 gap-2 max-h-64 overflow-y-auto p-2 rounded border border-[var(--border-glass)] bg-white/[0.02]">
                     {assets.map(a => {
                       const checked = (draft.default_attachments || []).includes(a.id);
                       return (
-                        <label key={a.id} className={`flex items-start gap-2 p-2 rounded cursor-pointer text-xs ${checked ? "bg-[var(--cyan)]/10 ring-1 ring-[var(--cyan)]" : "hover:bg-white/[0.04]"}`}>
+                        <label key={a.id} className={`flex items-start gap-2 p-2 rounded text-xs ${isAdmin ? "cursor-pointer" : "opacity-70"} ${checked ? "bg-[var(--cyan)]/10 ring-1 ring-[var(--cyan)]" : isAdmin ? "hover:bg-white/[0.04]" : ""}`}>
                           <input
                             type="checkbox"
                             checked={checked}
+                            disabled={!isAdmin}
                             onChange={() => toggleAttachment(a.id)}
                             className="mt-0.5"
                           />
@@ -287,20 +297,26 @@ export default function EmailTemplatesPage() {
                 )}
               </div>
 
-              <div className="flex items-center gap-3">
-                <button
-                  onClick={save}
-                  disabled={saving}
-                  className="bg-gradient-to-r from-[var(--pink)] via-[var(--purple)] to-[var(--blue)] hover:shadow-[var(--shadow-glow-pink)] disabled:opacity-50 text-white px-4 py-2 rounded-lg text-sm font-medium"
-                >
-                  {saving ? "Saving…" : selected.is_global ? "Save (creates company override)" : "Save"}
-                </button>
-                {!selected.is_global && (
-                  <button onClick={deleteOverride} className="px-3 py-2 rounded-lg border border-red-500/20 text-red-400 text-sm hover:bg-red-500/10">
-                    Delete override (revert to global)
+              {isAdmin ? (
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={save}
+                    disabled={saving}
+                    className="bg-gradient-to-r from-[var(--pink)] via-[var(--purple)] to-[var(--blue)] hover:shadow-[var(--shadow-glow-pink)] disabled:opacity-50 text-white px-4 py-2 rounded-lg text-sm font-medium"
+                  >
+                    {saving ? "Saving…" : selected.is_global ? "Save (creates company override)" : "Save"}
                   </button>
-                )}
-              </div>
+                  {!selected.is_global && (
+                    <button onClick={deleteOverride} className="px-3 py-2 rounded-lg border border-red-500/20 text-red-400 text-sm hover:bg-red-500/10">
+                      Delete override (revert to global)
+                    </button>
+                  )}
+                </div>
+              ) : (
+                <p className="text-xs text-[var(--gray-muted)]">
+                  To send this template to a homeowner, open a claim and use the Engagement card&apos;s Quick Send buttons.
+                </p>
+              )}
             </>
           )}
         </div>
