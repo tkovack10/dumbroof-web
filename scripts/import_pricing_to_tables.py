@@ -53,18 +53,25 @@ def _category(cleaned: str) -> str:
                                    "ice & water", "underlayment", "roof", "vent")): return "ROOFING"
     return "GENERAL"
 
-def _slug(cleaned: str) -> str:
+def _slug(cleaned: str, action: str = "") -> str:
     s = re.sub(r"[^a-z0-9]+", "_", cleaned.lower()).strip("_")
-    return ("gen_" + s)[:60]
+    base = ("gen_" + s)[:52]
+    act = re.sub(r"[^a-z0-9]+", "", (action or "").lower())
+    return f"{base}_{act}" if act else base
 
 def build():
     am = json.load(open(ALL_MARKETS))
     markets = am.get("markets", {})
 
-    # cleaned(canonical_desc) -> short_key  (the canonical mapping)
+    # (cleaned_canonical_desc, action) -> short_key. MUST include action: _clean_desc
+    # strips the Remove/Install/R&R prefix, so "Remove Wood shakes..." and "Wood
+    # shakes..." (install) clean identically and would collapse to ONE short_key,
+    # mislabeling the remove price as install and dropping the install price. This
+    # mirrors get_market_prices' (cleaned, action) keying — the processor path we
+    # must match for Ship 2 parity.
     canon = {}
     for desc, key in _DESC_TO_PRICING_KEY.items():
-        canon[_clean_desc(desc)] = key
+        canon[(_clean_desc(desc), XactRegistry._infer_action(desc))] = key
 
     catalog = {}            # short_key -> {description, unit, category, is_national_rate}
     prices = []             # (market_id, short_key, unit_price)
@@ -83,11 +90,12 @@ def build():
             cleaned = _clean_desc(desc)
             if not cleaned:
                 continue
-            key = canon.get(cleaned)
+            action = XactRegistry._infer_action(desc)
+            key = canon.get((cleaned, action))
             if key:
                 canonical_hits += 1
             else:
-                key = _slug(cleaned)
+                key = _slug(cleaned, action)  # action in slug keeps remove/install distinct
                 generated += 1
             catalog.setdefault(key, {
                 "short_key": key,
