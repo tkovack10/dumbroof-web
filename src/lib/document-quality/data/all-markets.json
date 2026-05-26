@@ -51844,10 +51844,10 @@
         {
           "description": "R&R Gutter guard / screen - High grade",
           "unit": "LF",
-          "price": 22.3,
-          "_original_price": 246.99,
-          "_patched_2026_05_24": true,
-          "_patch_source": "NY-live × 0.988"
+          "price": 24.6,
+          "_verisk_sourced_2026_05_26": true,
+          "_source_pdf": "ALS_TESTING_PRICE_FINAL_MNMN8X_02MAY26.pdf",
+          "_source_item_num": "60"
         },
         {
           "description": "Remove Slate roof - High grade - height 12\" to 24\" - red",
@@ -51902,58 +51902,58 @@
         {
           "description": "R&R Gutter / downspout - aluminum - up to 5\"",
           "unit": "LF",
-          "price": 11.99,
-          "_original_price": 40.86,
-          "_patched_2026_05_24": true,
-          "_patch_source": "NYBI8X_MAR26 × 0.987"
+          "price": 13.63,
+          "_verisk_sourced_2026_05_26": true,
+          "_source_pdf": "ALS_TESTING_PRICE_FINAL_MNMN8X_02MAY26.pdf",
+          "_source_item_num": "63"
         },
         {
           "description": "R&R Gutter / downspout - aluminum - 6\"",
           "unit": "LF",
-          "price": 16.43,
-          "_original_price": 44.81,
-          "_patched_2026_05_24": true,
-          "_patch_source": "NYBI8X_MAR26 × 0.987"
+          "price": 17.93,
+          "_verisk_sourced_2026_05_26": true,
+          "_source_pdf": "ALS_TESTING_PRICE_FINAL_MNMN8X_02MAY26.pdf",
+          "_source_item_num": "64"
         },
         {
           "description": "R&R Gutter / downspout - half-round - aluminum - 6\"",
           "unit": "LF",
-          "price": 20.76,
-          "_original_price": 8.08,
-          "_patched_2026_05_24": true,
-          "_patch_source": "NY-live × 0.988"
+          "price": 20.98,
+          "_verisk_sourced_2026_05_26": true,
+          "_source_pdf": "ALS_TESTING_PRICE_FINAL_MNMN8X_02MAY26.pdf",
+          "_source_item_num": "65"
         },
         {
           "description": "R&R Gutter / downspout - half-round - aluminum - up to 5\"",
           "unit": "LF",
-          "price": 16.95,
-          "_original_price": 12.51,
-          "_patched_2026_05_24": true,
-          "_patch_source": "NY-live × 0.988"
+          "price": 18.38,
+          "_verisk_sourced_2026_05_26": true,
+          "_source_pdf": "ALS_TESTING_PRICE_FINAL_MNMN8X_02MAY26.pdf",
+          "_source_item_num": "66"
         },
         {
           "description": "R&R Gutter / downspout - copper - up to 5\"",
           "unit": "LF",
-          "price": 33.07,
-          "_original_price": 10.19,
-          "_patched_2026_05_24": true,
-          "_patch_source": "NYBI8X_MAR26 × 0.987"
+          "price": 35.2,
+          "_verisk_sourced_2026_05_26": true,
+          "_source_pdf": "ALS_TESTING_PRICE_FINAL_MNMN8X_02MAY26.pdf",
+          "_source_item_num": "67"
         },
         {
           "description": "R&R Gutter / downspout - copper - 6\"",
           "unit": "LF",
-          "price": 38.67,
-          "_original_price": 1.37,
-          "_patched_2026_05_24": true,
-          "_patch_source": "NYBI8X_MAR26 × 0.987"
+          "price": 40.94,
+          "_verisk_sourced_2026_05_26": true,
+          "_source_pdf": "ALS_TESTING_PRICE_FINAL_MNMN8X_02MAY26.pdf",
+          "_source_item_num": "68"
         },
         {
           "description": "R&R Gutter / downspout - half-round - copper - 6\"",
           "unit": "LF",
-          "price": 46.2,
-          "_original_price": 14.44,
-          "_patched_2026_05_24": true,
-          "_patch_source": "NY-live × 0.988"
+          "price": 44.91,
+          "_verisk_sourced_2026_05_26": true,
+          "_source_pdf": "ALS_TESTING_PRICE_FINAL_MNMN8X_02MAY26.pdf",
+          "_source_item_num": "69"
         },
         {
           "description": "Heat cables - Detach & Reset",
@@ -52088,7 +52088,10 @@
         {
           "description": "Minimum labor charge - gutter",
           "unit": "EA",
-          "price": 253.13
+          "price": 586.43,
+          "_verisk_sourced_2026_05_26": true,
+          "_source_pdf": "ALS_TESTING_PRICE_FINAL_MNMN8X_02MAY26.pdf",
+          "_source_item_num": "61"
         }
       ]
     },
@@ -55672,10 +55675,10 @@
         {
           "description": "R&R Gutter guard / screen - High grade",
           "unit": "LF",
-          "price": 19.15,
-          "_original_price": 211.39,
-          "_patched_2026_05_24": true,
-          "_patch_source": "NY-live × 0.848"
+          "price": 17.09,
+          "_verisk_sourced_2026_05_26": true,
+          "_source_pdf": "ALS_TESTING_PRICE_FINAL_TXAU8X_02MAY26.pdf",
+          "_source_item_num": "60"
         },
         {
           "description": "Remove Slate roof - High grade - height 12\" to 24\" - red",
@@ -55730,58 +55733,58 @@
         {
           "description": "R&R Gutter / downspout - aluminum - up to 5\"",
           "unit": "LF",
-          "price": 10.3,
-          "_original_price": 35.63,
-          "_patched_2026_05_24": true,
-          "_patch_source": "NYBI8X_MAR26 × 0.848"
+          "price": 9.88,
+          "_verisk_sourced_2026_05_26": true,
+          "_source_pdf": "ALS_TESTING_PRICE_FINAL_TXAU8X_02MAY26.pdf",
+          "_source_item_num": "63"
         },
         {
           "description": "R&R Gutter / downspout - aluminum - 6\"",
           "unit": "LF",
-          "price": 14.12,
-          "_original_price": 38.31,
-          "_patched_2026_05_24": true,
-          "_patch_source": "NYBI8X_MAR26 × 0.848"
+          "price": 14.46,
+          "_verisk_sourced_2026_05_26": true,
+          "_source_pdf": "ALS_TESTING_PRICE_FINAL_TXAU8X_02MAY26.pdf",
+          "_source_item_num": "64"
         },
         {
           "description": "R&R Gutter / downspout - half-round - aluminum - 6\"",
           "unit": "LF",
-          "price": 17.82,
-          "_original_price": 5.17,
-          "_patched_2026_05_24": true,
-          "_patch_source": "NY-live × 0.848"
+          "price": 17.65,
+          "_verisk_sourced_2026_05_26": true,
+          "_source_pdf": "ALS_TESTING_PRICE_FINAL_TXAU8X_02MAY26.pdf",
+          "_source_item_num": "65"
         },
         {
           "description": "R&R Gutter / downspout - half-round - aluminum - up to 5\"",
           "unit": "LF",
-          "price": 14.56,
-          "_original_price": 9.31,
-          "_patched_2026_05_24": true,
-          "_patch_source": "NY-live × 0.848"
+          "price": 15.04,
+          "_verisk_sourced_2026_05_26": true,
+          "_source_pdf": "ALS_TESTING_PRICE_FINAL_TXAU8X_02MAY26.pdf",
+          "_source_item_num": "66"
         },
         {
           "description": "R&R Gutter / downspout - copper - up to 5\"",
           "unit": "LF",
-          "price": 28.42,
-          "_original_price": 7.47,
-          "_patched_2026_05_24": true,
-          "_patch_source": "NYBI8X_MAR26 × 0.848"
+          "price": 29.93,
+          "_verisk_sourced_2026_05_26": true,
+          "_source_pdf": "ALS_TESTING_PRICE_FINAL_TXAU8X_02MAY26.pdf",
+          "_source_item_num": "67"
         },
         {
           "description": "R&R Gutter / downspout - copper - 6\"",
           "unit": "LF",
-          "price": 33.23,
-          "_original_price": 1.04,
-          "_patched_2026_05_24": true,
-          "_patch_source": "NYBI8X_MAR26 × 0.848"
+          "price": 35.67,
+          "_verisk_sourced_2026_05_26": true,
+          "_source_pdf": "ALS_TESTING_PRICE_FINAL_TXAU8X_02MAY26.pdf",
+          "_source_item_num": "68"
         },
         {
           "description": "R&R Gutter / downspout - half-round - copper - 6\"",
           "unit": "LF",
-          "price": 39.67,
-          "_original_price": 11.45,
-          "_patched_2026_05_24": true,
-          "_patch_source": "NY-live × 0.848"
+          "price": 38.36,
+          "_verisk_sourced_2026_05_26": true,
+          "_source_pdf": "ALS_TESTING_PRICE_FINAL_TXAU8X_02MAY26.pdf",
+          "_source_item_num": "69"
         },
         {
           "description": "Heat cables - Detach & Reset",
@@ -55916,7 +55919,10 @@
         {
           "description": "Minimum labor charge - gutter",
           "unit": "EA",
-          "price": 232.79
+          "price": 375.89,
+          "_verisk_sourced_2026_05_26": true,
+          "_source_pdf": "ALS_TESTING_PRICE_FINAL_TXAU8X_02MAY26.pdf",
+          "_source_item_num": "61"
         }
       ]
     },
@@ -59500,10 +59506,10 @@
         {
           "description": "R&R Gutter guard / screen - High grade",
           "unit": "LF",
-          "price": 18.53,
-          "_original_price": 183.97,
-          "_patched_2026_05_24": true,
-          "_patch_source": "NY-live × 0.821"
+          "price": 16.91,
+          "_verisk_sourced_2026_05_26": true,
+          "_source_pdf": "ALS_TESTING_PRICE_FINAL_DRAFT_Dallas_may26.pdf",
+          "_source_item_num": "60"
         },
         {
           "description": "Remove Slate roof - High grade - height 12\" to 24\" - red",
@@ -59558,58 +59564,58 @@
         {
           "description": "R&R Gutter / downspout - aluminum - up to 5\"",
           "unit": "LF",
-          "price": 9.97,
-          "_original_price": 35.51,
-          "_patched_2026_05_24": true,
-          "_patch_source": "NYBI8X_MAR26 × 0.821"
+          "price": 9.81,
+          "_verisk_sourced_2026_05_26": true,
+          "_source_pdf": "ALS_TESTING_PRICE_FINAL_DRAFT_Dallas_may26.pdf",
+          "_source_item_num": "63"
         },
         {
           "description": "R&R Gutter / downspout - aluminum - 6\"",
           "unit": "LF",
-          "price": 13.66,
-          "_original_price": 38.17,
-          "_patched_2026_05_24": true,
-          "_patch_source": "NYBI8X_MAR26 × 0.821"
+          "price": 14.38,
+          "_verisk_sourced_2026_05_26": true,
+          "_source_pdf": "ALS_TESTING_PRICE_FINAL_DRAFT_Dallas_may26.pdf",
+          "_source_item_num": "64"
         },
         {
           "description": "R&R Gutter / downspout - half-round - aluminum - 6\"",
           "unit": "LF",
-          "price": 17.25,
-          "_original_price": 5.11,
-          "_patched_2026_05_24": true,
-          "_patch_source": "NY-live × 0.821"
+          "price": 17.57,
+          "_verisk_sourced_2026_05_26": true,
+          "_source_pdf": "ALS_TESTING_PRICE_FINAL_DRAFT_Dallas_may26.pdf",
+          "_source_item_num": "65"
         },
         {
           "description": "R&R Gutter / downspout - half-round - aluminum - up to 5\"",
           "unit": "LF",
-          "price": 14.09,
-          "_original_price": 9.27,
-          "_patched_2026_05_24": true,
-          "_patch_source": "NY-live × 0.821"
+          "price": 14.97,
+          "_verisk_sourced_2026_05_26": true,
+          "_source_pdf": "ALS_TESTING_PRICE_FINAL_DRAFT_Dallas_may26.pdf",
+          "_source_item_num": "66"
         },
         {
           "description": "R&R Gutter / downspout - copper - up to 5\"",
           "unit": "LF",
-          "price": 27.5,
-          "_original_price": 7.57,
-          "_patched_2026_05_24": true,
-          "_patch_source": "NYBI8X_MAR26 × 0.821"
+          "price": 29.81,
+          "_verisk_sourced_2026_05_26": true,
+          "_source_pdf": "ALS_TESTING_PRICE_FINAL_DRAFT_Dallas_may26.pdf",
+          "_source_item_num": "67"
         },
         {
           "description": "R&R Gutter / downspout - copper - 6\"",
           "unit": "LF",
-          "price": 32.16,
-          "_original_price": 1.07,
-          "_patched_2026_05_24": true,
-          "_patch_source": "NYBI8X_MAR26 × 0.821"
+          "price": 35.55,
+          "_verisk_sourced_2026_05_26": true,
+          "_source_pdf": "ALS_TESTING_PRICE_FINAL_DRAFT_Dallas_may26.pdf",
+          "_source_item_num": "68"
         },
         {
           "description": "R&R Gutter / downspout - half-round - copper - 6\"",
           "unit": "LF",
-          "price": 38.4,
-          "_original_price": 11.41,
-          "_patched_2026_05_24": true,
-          "_patch_source": "NY-live × 0.821"
+          "price": 38.21,
+          "_verisk_sourced_2026_05_26": true,
+          "_source_pdf": "ALS_TESTING_PRICE_FINAL_DRAFT_Dallas_may26.pdf",
+          "_source_item_num": "69"
         },
         {
           "description": "Heat cables - Detach & Reset",
@@ -59744,7 +59750,10 @@
         {
           "description": "Minimum labor charge - gutter",
           "unit": "EA",
-          "price": 237.53
+          "price": 370.78,
+          "_verisk_sourced_2026_05_26": true,
+          "_source_pdf": "ALS_TESTING_PRICE_FINAL_DRAFT_Dallas_may26.pdf",
+          "_source_item_num": "61"
         }
       ]
     },
@@ -60776,10 +60785,10 @@
         {
           "description": "R&R Gutter guard / screen - High grade",
           "unit": "LF",
-          "price": 16.57,
-          "_original_price": 180.1,
-          "_patched_2026_05_24": true,
-          "_patch_source": "NY-live × 0.734"
+          "price": 15.61,
+          "_verisk_sourced_2026_05_26": true,
+          "_source_pdf": "ALS_TESTING_PRICE_FINAL_TXGA8X_02MAY26.pdf",
+          "_source_item_num": "60"
         },
         {
           "description": "Remove Slate roof - High grade - height 12\" to 24\" - red",
@@ -60834,58 +60843,58 @@
         {
           "description": "R&R Gutter / downspout - aluminum - up to 5\"",
           "unit": "LF",
-          "price": 8.87,
-          "_original_price": 34.58,
-          "_patched_2026_05_24": true,
-          "_patch_source": "NYBI8X_MAR26 × 0.730"
+          "price": 9.29,
+          "_verisk_sourced_2026_05_26": true,
+          "_source_pdf": "ALS_TESTING_PRICE_FINAL_TXGA8X_02MAY26.pdf",
+          "_source_item_num": "63"
         },
         {
           "description": "R&R Gutter / downspout - aluminum - 6\"",
           "unit": "LF",
-          "price": 12.15,
-          "_original_price": 37.0,
-          "_patched_2026_05_24": true,
-          "_patch_source": "NYBI8X_MAR26 × 0.730"
+          "price": 13.83,
+          "_verisk_sourced_2026_05_26": true,
+          "_source_pdf": "ALS_TESTING_PRICE_FINAL_TXGA8X_02MAY26.pdf",
+          "_source_item_num": "64"
         },
         {
           "description": "R&R Gutter / downspout - half-round - aluminum - 6\"",
           "unit": "LF",
-          "price": 15.42,
-          "_original_price": 4.59,
-          "_patched_2026_05_24": true,
-          "_patch_source": "NY-live × 0.734"
+          "price": 17.04,
+          "_verisk_sourced_2026_05_26": true,
+          "_source_pdf": "ALS_TESTING_PRICE_FINAL_TXGA8X_02MAY26.pdf",
+          "_source_item_num": "65"
         },
         {
           "description": "R&R Gutter / downspout - half-round - aluminum - up to 5\"",
           "unit": "LF",
-          "price": 12.6,
-          "_original_price": 8.72,
-          "_patched_2026_05_24": true,
-          "_patch_source": "NY-live × 0.734"
+          "price": 14.44,
+          "_verisk_sourced_2026_05_26": true,
+          "_source_pdf": "ALS_TESTING_PRICE_FINAL_TXGA8X_02MAY26.pdf",
+          "_source_item_num": "66"
         },
         {
           "description": "R&R Gutter / downspout - copper - up to 5\"",
           "unit": "LF",
-          "price": 24.46,
-          "_original_price": 6.95,
-          "_patched_2026_05_24": true,
-          "_patch_source": "NYBI8X_MAR26 × 0.730"
+          "price": 28.89,
+          "_verisk_sourced_2026_05_26": true,
+          "_source_pdf": "ALS_TESTING_PRICE_FINAL_TXGA8X_02MAY26.pdf",
+          "_source_item_num": "67"
         },
         {
           "description": "R&R Gutter / downspout - copper - 6\"",
           "unit": "LF",
-          "price": 28.6,
-          "_original_price": 0.99,
-          "_patched_2026_05_24": true,
-          "_patch_source": "NYBI8X_MAR26 × 0.730"
+          "price": 34.63,
+          "_verisk_sourced_2026_05_26": true,
+          "_source_pdf": "ALS_TESTING_PRICE_FINAL_TXGA8X_02MAY26.pdf",
+          "_source_item_num": "68"
         },
         {
           "description": "R&R Gutter / downspout - half-round - copper - 6\"",
           "unit": "LF",
-          "price": 34.32,
-          "_original_price": 11.01,
-          "_patched_2026_05_24": true,
-          "_patch_source": "NY-live × 0.734"
+          "price": 37.06,
+          "_verisk_sourced_2026_05_26": true,
+          "_source_pdf": "ALS_TESTING_PRICE_FINAL_TXGA8X_02MAY26.pdf",
+          "_source_item_num": "69"
         },
         {
           "description": "Heat cables - Detach & Reset",
@@ -61020,7 +61029,10 @@
         {
           "description": "Minimum labor charge - gutter",
           "unit": "EA",
-          "price": 233.33
+          "price": 332.92,
+          "_verisk_sourced_2026_05_26": true,
+          "_source_pdf": "ALS_TESTING_PRICE_FINAL_TXGA8X_02MAY26.pdf",
+          "_source_item_num": "61"
         }
       ]
     },
@@ -61414,10 +61426,10 @@
         {
           "description": "R&R Gutter guard / screen - High grade",
           "unit": "LF",
-          "price": 17.38,
-          "_original_price": 195.07,
-          "_patched_2026_05_24": true,
-          "_patch_source": "NY-live × 0.770"
+          "price": 15.35,
+          "_verisk_sourced_2026_05_26": true,
+          "_source_pdf": "ALS_TESTING_PRICE_FINAL_houston_may26.pdf",
+          "_source_item_num": "60"
         },
         {
           "description": "Remove Slate roof - High grade - height 12\" to 24\" - red",
@@ -61472,58 +61484,58 @@
         {
           "description": "R&R Gutter / downspout - aluminum - up to 5\"",
           "unit": "LF",
-          "price": 9.33,
-          "_original_price": 34.41,
-          "_patched_2026_05_24": true,
-          "_patch_source": "NYBI8X_MAR26 × 0.768"
+          "price": 9.22,
+          "_verisk_sourced_2026_05_26": true,
+          "_source_pdf": "ALS_TESTING_PRICE_FINAL_houston_may26.pdf",
+          "_source_item_num": "63"
         },
         {
           "description": "R&R Gutter / downspout - aluminum - 6\"",
           "unit": "LF",
-          "price": 12.79,
-          "_original_price": 36.77,
-          "_patched_2026_05_24": true,
-          "_patch_source": "NYBI8X_MAR26 × 0.768"
+          "price": 13.75,
+          "_verisk_sourced_2026_05_26": true,
+          "_source_pdf": "ALS_TESTING_PRICE_FINAL_houston_may26.pdf",
+          "_source_item_num": "64"
         },
         {
           "description": "R&R Gutter / downspout - half-round - aluminum - 6\"",
           "unit": "LF",
-          "price": 16.18,
-          "_original_price": 4.45,
-          "_patched_2026_05_24": true,
-          "_patch_source": "NY-live × 0.770"
+          "price": 16.96,
+          "_verisk_sourced_2026_05_26": true,
+          "_source_pdf": "ALS_TESTING_PRICE_FINAL_houston_may26.pdf",
+          "_source_item_num": "65"
         },
         {
           "description": "R&R Gutter / downspout - half-round - aluminum - up to 5\"",
           "unit": "LF",
-          "price": 13.21,
-          "_original_price": 8.62,
-          "_patched_2026_05_24": true,
-          "_patch_source": "NY-live × 0.770"
+          "price": 14.36,
+          "_verisk_sourced_2026_05_26": true,
+          "_source_pdf": "ALS_TESTING_PRICE_FINAL_houston_may26.pdf",
+          "_source_item_num": "66"
         },
         {
           "description": "R&R Gutter / downspout - copper - up to 5\"",
           "unit": "LF",
-          "price": 25.73,
-          "_original_price": 6.88,
-          "_patched_2026_05_24": true,
-          "_patch_source": "NYBI8X_MAR26 × 0.768"
+          "price": 28.72,
+          "_verisk_sourced_2026_05_26": true,
+          "_source_pdf": "ALS_TESTING_PRICE_FINAL_houston_may26.pdf",
+          "_source_item_num": "67"
         },
         {
           "description": "R&R Gutter / downspout - copper - 6\"",
           "unit": "LF",
-          "price": 30.1,
-          "_original_price": 1.0,
-          "_patched_2026_05_24": true,
-          "_patch_source": "NYBI8X_MAR26 × 0.768"
+          "price": 34.46,
+          "_verisk_sourced_2026_05_26": true,
+          "_source_pdf": "ALS_TESTING_PRICE_FINAL_houston_may26.pdf",
+          "_source_item_num": "68"
         },
         {
           "description": "R&R Gutter / downspout - half-round - copper - 6\"",
           "unit": "LF",
-          "price": 36.01,
-          "_original_price": 10.97,
-          "_patched_2026_05_24": true,
-          "_patch_source": "NY-live × 0.770"
+          "price": 36.83,
+          "_verisk_sourced_2026_05_26": true,
+          "_source_pdf": "ALS_TESTING_PRICE_FINAL_houston_may26.pdf",
+          "_source_item_num": "69"
         },
         {
           "description": "Heat cables - Detach & Reset",
@@ -61658,7 +61670,10 @@
         {
           "description": "Minimum labor charge - gutter",
           "unit": "EA",
-          "price": 235.01
+          "price": 323.45,
+          "_verisk_sourced_2026_05_26": true,
+          "_source_pdf": "ALS_TESTING_PRICE_FINAL_houston_may26.pdf",
+          "_source_item_num": "61"
         }
       ]
     },
@@ -64604,10 +64619,10 @@
         {
           "description": "R&R Gutter guard / screen - High grade",
           "unit": "LF",
-          "price": 17.06,
-          "_original_price": 195.58,
-          "_patched_2026_05_24": true,
-          "_patch_source": "NY-live × 0.756"
+          "price": 15.81,
+          "_verisk_sourced_2026_05_26": true,
+          "_source_pdf": "ALS_TESTING_PRICE_FINAL_TXSA8X_02MAY26.pdf",
+          "_source_item_num": "60"
         },
         {
           "description": "Remove Slate roof - High grade - height 12\" to 24\" - red",
@@ -64662,58 +64677,58 @@
         {
           "description": "R&R Gutter / downspout - aluminum - up to 5\"",
           "unit": "LF",
-          "price": 9.17,
-          "_original_price": 34.72,
-          "_patched_2026_05_24": true,
-          "_patch_source": "NYBI8X_MAR26 × 0.755"
+          "price": 9.33,
+          "_verisk_sourced_2026_05_26": true,
+          "_source_pdf": "ALS_TESTING_PRICE_FINAL_TXSA8X_02MAY26.pdf",
+          "_source_item_num": "63"
         },
         {
           "description": "R&R Gutter / downspout - aluminum - 6\"",
           "unit": "LF",
-          "price": 12.57,
-          "_original_price": 37.18,
-          "_patched_2026_05_24": true,
-          "_patch_source": "NYBI8X_MAR26 × 0.755"
+          "price": 13.87,
+          "_verisk_sourced_2026_05_26": true,
+          "_source_pdf": "ALS_TESTING_PRICE_FINAL_TXSA8X_02MAY26.pdf",
+          "_source_item_num": "64"
         },
         {
           "description": "R&R Gutter / downspout - half-round - aluminum - 6\"",
           "unit": "LF",
-          "price": 15.88,
-          "_original_price": 4.7,
-          "_patched_2026_05_24": true,
-          "_patch_source": "NY-live × 0.756"
+          "price": 17.07,
+          "_verisk_sourced_2026_05_26": true,
+          "_source_pdf": "ALS_TESTING_PRICE_FINAL_TXSA8X_02MAY26.pdf",
+          "_source_item_num": "65"
         },
         {
           "description": "R&R Gutter / downspout - half-round - aluminum - up to 5\"",
           "unit": "LF",
-          "price": 12.97,
-          "_original_price": 8.8,
-          "_patched_2026_05_24": true,
-          "_patch_source": "NY-live × 0.756"
+          "price": 14.47,
+          "_verisk_sourced_2026_05_26": true,
+          "_source_pdf": "ALS_TESTING_PRICE_FINAL_TXSA8X_02MAY26.pdf",
+          "_source_item_num": "66"
         },
         {
           "description": "R&R Gutter / downspout - copper - up to 5\"",
           "unit": "LF",
-          "price": 25.3,
-          "_original_price": 7.02,
-          "_patched_2026_05_24": true,
-          "_patch_source": "NYBI8X_MAR26 × 0.755"
+          "price": 29.02,
+          "_verisk_sourced_2026_05_26": true,
+          "_source_pdf": "ALS_TESTING_PRICE_FINAL_TXSA8X_02MAY26.pdf",
+          "_source_item_num": "67"
         },
         {
           "description": "R&R Gutter / downspout - copper - 6\"",
           "unit": "LF",
-          "price": 29.59,
-          "_original_price": 0.98,
-          "_patched_2026_05_24": true,
-          "_patch_source": "NYBI8X_MAR26 × 0.755"
+          "price": 34.76,
+          "_verisk_sourced_2026_05_26": true,
+          "_source_pdf": "ALS_TESTING_PRICE_FINAL_TXSA8X_02MAY26.pdf",
+          "_source_item_num": "68"
         },
         {
           "description": "R&R Gutter / downspout - half-round - copper - 6\"",
           "unit": "LF",
-          "price": 35.34,
-          "_original_price": 11.04,
-          "_patched_2026_05_24": true,
-          "_patch_source": "NY-live × 0.756"
+          "price": 37.23,
+          "_verisk_sourced_2026_05_26": true,
+          "_source_pdf": "ALS_TESTING_PRICE_FINAL_TXSA8X_02MAY26.pdf",
+          "_source_item_num": "69"
         },
         {
           "description": "Heat cables - Detach & Reset",
@@ -64848,7 +64863,10 @@
         {
           "description": "Minimum labor charge - gutter",
           "unit": "EA",
-          "price": 219.16
+          "price": 341.38,
+          "_verisk_sourced_2026_05_26": true,
+          "_source_pdf": "ALS_TESTING_PRICE_FINAL_TXSA8X_02MAY26.pdf",
+          "_source_item_num": "61"
         }
       ]
     },
@@ -66518,10 +66536,10 @@
         {
           "description": "R&R Gutter guard / screen - High grade",
           "unit": "LF",
-          "price": 17.43,
-          "_original_price": 183.37,
-          "_patched_2026_05_24": true,
-          "_patch_source": "NY-live × 0.772"
+          "price": 15.84,
+          "_verisk_sourced_2026_05_26": true,
+          "_source_pdf": "ALS_TESTING_PRICE_FINAL_TXTW8X_02MAY26.pdf",
+          "_source_item_num": "60"
         },
         {
           "description": "Remove Slate roof - High grade - height 12\" to 24\" - red",
@@ -66576,58 +66594,58 @@
         {
           "description": "R&R Gutter / downspout - aluminum - up to 5\"",
           "unit": "LF",
-          "price": 9.36,
-          "_original_price": 34.77,
-          "_patched_2026_05_24": true,
-          "_patch_source": "NYBI8X_MAR26 × 0.770"
+          "price": 9.42,
+          "_verisk_sourced_2026_05_26": true,
+          "_source_pdf": "ALS_TESTING_PRICE_FINAL_TXTW8X_02MAY26.pdf",
+          "_source_item_num": "63"
         },
         {
           "description": "R&R Gutter / downspout - aluminum - 6\"",
           "unit": "LF",
-          "price": 12.82,
-          "_original_price": 37.22,
-          "_patched_2026_05_24": true,
-          "_patch_source": "NYBI8X_MAR26 × 0.770"
+          "price": 13.96,
+          "_verisk_sourced_2026_05_26": true,
+          "_source_pdf": "ALS_TESTING_PRICE_FINAL_TXTW8X_02MAY26.pdf",
+          "_source_item_num": "64"
         },
         {
           "description": "R&R Gutter / downspout - half-round - aluminum - 6\"",
           "unit": "LF",
-          "price": 16.22,
-          "_original_price": 4.66,
-          "_patched_2026_05_24": true,
-          "_patch_source": "NY-live × 0.772"
+          "price": 17.17,
+          "_verisk_sourced_2026_05_26": true,
+          "_source_pdf": "ALS_TESTING_PRICE_FINAL_TXTW8X_02MAY26.pdf",
+          "_source_item_num": "65"
         },
         {
           "description": "R&R Gutter / downspout - half-round - aluminum - up to 5\"",
           "unit": "LF",
-          "price": 13.25,
-          "_original_price": 8.83,
-          "_patched_2026_05_24": true,
-          "_patch_source": "NY-live × 0.772"
+          "price": 14.57,
+          "_verisk_sourced_2026_05_26": true,
+          "_source_pdf": "ALS_TESTING_PRICE_FINAL_TXTW8X_02MAY26.pdf",
+          "_source_item_num": "66"
         },
         {
           "description": "R&R Gutter / downspout - copper - up to 5\"",
           "unit": "LF",
-          "price": 25.81,
-          "_original_price": 7.04,
-          "_patched_2026_05_24": true,
-          "_patch_source": "NYBI8X_MAR26 × 0.770"
+          "price": 29.07,
+          "_verisk_sourced_2026_05_26": true,
+          "_source_pdf": "ALS_TESTING_PRICE_FINAL_TXTW8X_02MAY26.pdf",
+          "_source_item_num": "67"
         },
         {
           "description": "R&R Gutter / downspout - copper - 6\"",
           "unit": "LF",
-          "price": 30.19,
-          "_original_price": 1.02,
-          "_patched_2026_05_24": true,
-          "_patch_source": "NYBI8X_MAR26 × 0.770"
+          "price": 34.81,
+          "_verisk_sourced_2026_05_26": true,
+          "_source_pdf": "ALS_TESTING_PRICE_FINAL_TXTW8X_02MAY26.pdf",
+          "_source_item_num": "68"
         },
         {
           "description": "R&R Gutter / downspout - half-round - copper - 6\"",
           "unit": "LF",
-          "price": 36.11,
-          "_original_price": 11.11,
-          "_patched_2026_05_24": true,
-          "_patch_source": "NY-live × 0.772"
+          "price": 37.27,
+          "_verisk_sourced_2026_05_26": true,
+          "_source_pdf": "ALS_TESTING_PRICE_FINAL_TXTW8X_02MAY26.pdf",
+          "_source_item_num": "69"
         },
         {
           "description": "Heat cables - Detach & Reset",
@@ -66762,7 +66780,10 @@
         {
           "description": "Minimum labor charge - gutter",
           "unit": "EA",
-          "price": 222.03
+          "price": 337.9,
+          "_verisk_sourced_2026_05_26": true,
+          "_source_pdf": "ALS_TESTING_PRICE_FINAL_TXTW8X_02MAY26.pdf",
+          "_source_item_num": "61"
         }
       ]
     },
