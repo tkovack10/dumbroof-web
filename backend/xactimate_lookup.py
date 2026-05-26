@@ -559,8 +559,11 @@ class XactRegistry:
         self._market_name = market.get("name", market_code)
         return len(priced_ids)
 
+    # CONVENTION: returns a bare market-code string by default (4 callers rely on
+    # this — do NOT "consistency-refactor" them). Pass return_reason=True ONLY when
+    # you need the (code, reason) tuple to detect unresolvable fallbacks.
     @staticmethod
-    def resolve_market(state, zip_code=None, city=None):
+    def resolve_market(state, zip_code=None, city=None, return_reason=False):
         """Resolve state/zip/city to the best market code in all-markets.json.
 
         Resolution order (highest precedence first):
@@ -577,19 +580,36 @@ class XactRegistry:
              "Dallas-Fort Worth Texas").
           4. DEFAULT_MARKETS[state] fallback.
 
-        Returns market code string. For states not in DEFAULT_MARKETS, returns
-        the default NY market with a warning (pricing will be approximate).
+        Returns market code string (backward-compatible default).
+
+        When return_reason=True, returns (market_code, reason) where reason ∈
+        {"alias", "zip_prefix", "fuzzy_city", "state_default",
+         "cross_state_override", "nearest_state", "unresolvable_no_state",
+         "unresolvable_no_mapping"}. The two "unresolvable_*" reasons mean we
+        fell back to NY because the location could NOT be priced — callers MUST
+        treat these as a hard block (qa_review_pending) and never ship NY-priced
+        output silently (the E202/E210 class). A deliberate geographic substitute
+        ("nearest_state") is a successful resolution, not an unresolvable one.
 
         Accepts either a 2-letter state code or a full state name; address
         parsers upstream are inconsistent about which they return.
         """
+        code, reason = XactRegistry._resolve_market_with_reason(state, zip_code, city)
+        return (code, reason) if return_reason else code
+
+    # Reasons that mean "we could not price this location" → caller must block.
+    UNRESOLVABLE_REASONS = frozenset({"unresolvable_no_state", "unresolvable_no_mapping"})
+
+    @staticmethod
+    def _resolve_market_with_reason(state, zip_code=None, city=None):
+        """Core resolver — returns (market_code, reason). See resolve_market."""
         state_upper = _normalize_state(state)
         if not state_upper:
             logger.error(
                 "[PRICING] No state provided for market resolution — falling back to "
                 "NY pricing. This is a data-capture bug: state must be set on every claim."
             )
-            return DEFAULT_MARKETS["NY"]
+            return DEFAULT_MARKETS["NY"], "unresolvable_no_state"
 
         default = DEFAULT_MARKETS.get(state_upper)
         if not default:
@@ -609,14 +629,14 @@ class XactRegistry:
                             "CROSS_STATE_ZIP_OVERRIDE (geographically nearest priced market).",
                             state_upper, zip_clean_o, override,
                         )
-                        return override
+                        return override, "cross_state_override"
 
             # No override — substitute the nearest priced state's default.
             # Geographic proximity is a much better proxy for labor/material
-            # rates than alphabetical accident. Still recurse through
-            # resolve_market so city/zip routing inside the substitute state
-            # still applies (e.g. an Iowa claim near the MN border still
-            # resolves to Minneapolis if a closer market were ever added).
+            # rates than alphabetical accident. Still recurse through the core
+            # resolver so city/zip routing inside the substitute state still
+            # applies (e.g. an Iowa claim near the MN border still resolves to
+            # Minneapolis if a closer market were ever added).
             substitute_state = NEAREST_PRICED_STATE.get(state_upper)
             if substitute_state and substitute_state in DEFAULT_MARKETS:
                 logger.warning(
@@ -624,16 +644,17 @@ class XactRegistry:
                     "Add a %s market to all-markets.json + DEFAULT_MARKETS to use native pricing.",
                     state_upper, substitute_state, state_upper,
                 )
-                return XactRegistry.resolve_market(substitute_state, zip_code, city)
+                code, _ = XactRegistry._resolve_market_with_reason(substitute_state, zip_code, city)
+                return code, "nearest_state"
             logger.error(
                 "[PRICING] State %s has no nearest-priced-state mapping. "
                 "Falling back to NY. Add %s to NEAREST_PRICED_STATE in xactimate_lookup.py.",
                 state_upper, state_upper,
             )
-            return DEFAULT_MARKETS["NY"]
+            return DEFAULT_MARKETS["NY"], "unresolvable_no_mapping"
 
         if not city and not zip_code:
-            return default
+            return default, "state_default"
 
         markets_dict = _get_all_markets().get("markets", {})
 
@@ -648,7 +669,7 @@ class XactRegistry:
                 aliased = aliases[alias_key]
                 if aliased in markets_dict:
                     logger.debug("Market resolved via alias: %s → %s", alias_key, aliased)
-                    return aliased
+                    return aliased, "alias"
 
         # 2. ZIP prefix table — fast, works even when city name is missing or garbled.
         #    Safety: the zip prefix must resolve to a market in the claim's state,
@@ -661,7 +682,7 @@ class XactRegistry:
                 mapped = zip_map.get(prefix)
                 if mapped and mapped in markets_dict and mapped.startswith(state_upper):
                     logger.debug("Market resolved via ZIP prefix: %s → %s", prefix, mapped)
-                    return mapped
+                    return mapped, "zip_prefix"
 
         # 3. Fuzzy city match against market names (e.g. "Dallas" in "Dallas-Fort Worth Texas")
         if city:
@@ -672,12 +693,12 @@ class XactRegistry:
                         continue
                     mname = mdata.get("name", "").lower()
                     if city_lower in mname or mname.split(",")[0].strip() in city_lower:
-                        return code
+                        return code, "fuzzy_city"
             except (KeyError, AttributeError) as e:
                 logger.debug("City matching failed for %s: %s", city, e)
 
         # 4. State default
-        return default
+        return default, "state_default"
 
     # ------------------------------------------------------------------
     # 1. Price Lookup
