@@ -2583,9 +2583,15 @@ def _resolve_and_overlay_prices(config):
     """Wire claim_config → market-specific Xactimate prices via XactRegistry.
 
     Resolution order:
-      1. config["financials"]["price_list"] if present (e.g., "PAPH8X_MAR26").
-      2. XactRegistry.resolve_market(state, zip, city) using property fields.
-      3. Fail-fast if neither — DO NOT silently default to NY.
+      1. config["financials"]["market_code"] — the authoritative metro resolved
+         once in processor.process_claim (e.g., "TXHO8X_APR26"). NEVER read
+         price_list as the resolver: it is a derived DISPLAY label (e.g.
+         "TXHO26") that is not a real market key and silently downgrades to the
+         state default (Houston→Dallas — the E202/E210 bug class).
+      2. Legacy fallback: financials.price_list ONLY if it is itself a real
+         market key (old claims stored the real code there before market_code).
+      3. XactRegistry.resolve_market(state, zip, city) using property fields.
+      4. Fail-fast if none — DO NOT silently default to NY.
 
     Mutation policy on config["line_items"]:
       - If unit_price is missing/null/0: fill from registry (description lookup).
@@ -2596,8 +2602,18 @@ def _resolve_and_overlay_prices(config):
 
     fin = config.get("financials", {}) or {}
     prop = config.get("property", {}) or {}
-    market_code = fin.get("price_list")
     available_markets = _get_all_markets().get("markets", {})
+    # market_code is the SINGLE SOURCE OF TRUTH for pricing (set once in
+    # processor.process_claim). Read it directly — do NOT use price_list, which is
+    # a derived display label, not a resolver (see docstring).
+    market_code = fin.get("market_code")
+    if not market_code:
+        # Legacy claims (pre-market_code) stored the real market code in
+        # price_list. Honor it only when it is an actual market key — never the
+        # modern derived label like "TXHO26".
+        legacy = fin.get("price_list")
+        if legacy and legacy in available_markets:
+            market_code = legacy
 
     def _upgrade_or_fallback(stale_code, prop_dict):
         if stale_code and stale_code in available_markets:
@@ -2617,7 +2633,7 @@ def _resolve_and_overlay_prices(config):
         if not state:
             raise ValueError(
                 "Cannot resolve Xactimate market: claim_config has no "
-                "financials.price_list and no property.state."
+                "financials.market_code and no property.state."
             )
         market_code = XactRegistry.resolve_market(
             state=state,
@@ -2692,12 +2708,26 @@ def build_xactimate_estimate(config):
     print(f"Building X Style Build Scope... [role: {lang['role']}]")
 
     # Resolve market and overlay prices BEFORE rendering.
-    # If neither price_list nor state is set, log + continue with config-baked prices.
+    # If neither market_code nor state is set, log + continue with config-baked prices.
+    _pricing_meta = {}
     try:
-        _resolve_and_overlay_prices(config)
+        _pricing_meta = _resolve_and_overlay_prices(config) or {}
     except ValueError as e:
         print(f"  [pricing] WARNING: {e}")
         print(f"  [pricing] continuing with config-baked prices (legacy mode)")
+
+    # Ship 0.4 — market provenance shown on the estimate so a reader can tell
+    # exactly which market priced it (no more silent Houston-as-Dallas).
+    from xactimate_lookup import _get_all_markets as _gam
+    _price_list_version = _gam().get("priceListVersion", "")
+    _prov_market_code = _pricing_meta.get("market_code") or config.get("financials", {}).get("market_code", "")
+    _prov_market_name = _pricing_meta.get("market_name") or ""
+    if _prov_market_code:
+        _provenance = f"Priced from {_prov_market_name or _prov_market_code} ({_prov_market_code})"
+        if _price_list_version:
+            _provenance += f" — Xactimate {_price_list_version}"
+    else:
+        _provenance = ""
 
     logo_b64 = get_logo_b64(config)
     prop = config["property"]
@@ -2838,7 +2868,7 @@ body {{ margin: 0; padding: 0; }}
     <tr><td><strong>Property Owner</strong></td><td>{ins['name']}</td></tr>
     <tr><td><strong>Carrier / Claim</strong></td><td>{carrier['name']} — {carrier['claim_number']}</td></tr>
     <tr><td><strong>Policy</strong></td><td>{carrier.get('policy_number','')}</td></tr>
-    <tr><td><strong>Price List</strong></td><td>{financials.get('price_list', '')}</td></tr>
+    <tr><td><strong>Price List</strong></td><td>{financials.get('price_list', '')}{f" &mdash; {_prov_market_name} ({_prov_market_code})" if _prov_market_name else ""}</td></tr>
     <tr><td><strong>Date of Loss</strong></td><td>{dates['date_of_loss']}</td></tr>
     <tr><td><strong>Scope</strong></td><td>{trades_str}</td></tr>
     <tr><td><strong>EagleView Report</strong></td><td>#{measurements.get('eagleview_report_number', '')}</td></tr>
@@ -2879,7 +2909,7 @@ body {{ margin: 0; padding: 0; }}
 </div>
 
 <div class="highlight-box">
-<strong>PRICING NOTE:</strong> All line items priced per Xactimate — {financials.get('price_list', '')} pricing region. Quantities from EagleView Report #{measurements.get('eagleview_report_number', '')}. Final scope may be adjusted based on conditions discovered during tear-off and installation.
+<strong>PRICING NOTE:</strong> {_provenance + ". " if _provenance else ""}All line items priced per Xactimate — {financials.get('price_list', '')} pricing region. Quantities from EagleView Report #{measurements.get('eagleview_report_number', '')}. Final scope may be adjusted based on conditions discovered during tear-off and installation.
 </div>
 
 {_build_integrity_stamp(config)}

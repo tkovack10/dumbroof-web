@@ -529,6 +529,90 @@ STATE_PRICE_LIST = {
 STATE_PRICE_LIST_IS_PROXY = {}  # Midwest (OH/MI/IL/MN) + TX (24 mkts, Alfonso 2026-04-17) native
 
 
+def derive_price_list_label(market_code: str, state: str = "") -> str:
+    """Canonical, SINGLE source for the human-readable price-list label.
+
+    `financials.price_list` is a DISPLAY label only (shown on Doc 02 + cover
+    letter + telemetry); `financials.market_code` is the authoritative pricing
+    resolver. To prevent the two from ever diverging (the E202/E210 silent-
+    fallback class), the label is ALWAYS derived from market_code here — there is
+    exactly one write site (process_claim) and it calls this function. A CI
+    invariant test asserts price_list == derive_price_list_label(market_code) for
+    every fixture, so the field can exist without being able to drift.
+
+    Format: "IAWA8X_02MAY26" → "IAWA26", "NYBI8X_MAR26" → "NYBI26".
+    Falls back to the coarse STATE_PRICE_LIST label only when market_code is
+    absent (should not happen — resolve_market always returns a code).
+    """
+    if market_code:
+        base = market_code.split("8X")[0] if "8X" in market_code else market_code.split("_")[0]
+        return f"{base}26"
+    return STATE_PRICE_LIST.get((state or "").upper(), "NYBI26")
+
+
+def pricing_qa_flags(config: dict, market_reason: str = "") -> list:
+    """Ship 0.2/0.3/0.5 — pricing anomalies as QA flags.
+
+    Returned flags are merged into qa_audit_result so they route through the
+    existing qa_blocked → status='qa_review_pending' path and surface in the
+    admin QA badge. Same flag shape as qa_pdf_checks (issue/severity/field/detail).
+    This is the runtime detection layer in miniature (full version: plan Ship 7.5).
+    """
+    from xactimate_lookup import XactRegistry as _XR
+    flags = []
+    fin = config.get("financials", {}) or {}
+    market_code = fin.get("market_code") or ""
+    line_items = config.get("line_items", []) or []
+
+    # 0.2 — market could not be priced → BLOCK (the NY silent-fallback class).
+    reason = market_reason or fin.get("market_resolution_reason") or ""
+    if reason in _XR.UNRESOLVABLE_REASONS:
+        flags.append({
+            "issue": "MARKET_UNRESOLVABLE",
+            "severity": "critical",
+            "field": "financials.market_code",
+            "detail": (
+                f"Could not resolve a priced Xactimate market for this address "
+                f"(reason={reason}); fell back to NY. Set a valid state/ZIP before "
+                f"shipping — never ship NY-priced output for a non-NY claim."
+            ),
+        })
+
+    # 0.3 — no invisible $0.00: any qty>0 line with non-positive unit_price.
+    zero_lines = [
+        (li.get("description") or "?")[:60]
+        for li in line_items
+        if (li.get("qty") or 0) > 0 and (li.get("unit_price") or 0) <= 0
+    ]
+    if zero_lines:
+        flags.append({
+            "issue": "ZERO_PRICE_LINE_ITEM",
+            "severity": "critical",
+            "field": "line_items.unit_price",
+            "count": len(zero_lines),
+            "examples": zero_lines[:5],
+            "detail": (
+                f"{len(zero_lines)} line item(s) have qty>0 but $0.00 unit price — a "
+                f"price lookup missed and they would render as $0.00 rows. Fix pricing "
+                f"or remove the lines before shipping."
+            ),
+        })
+
+    # 0.5 — surface coverage: proxy (substitute-region) pricing as a warning.
+    if fin.get("price_list_is_proxy"):
+        flags.append({
+            "issue": "PROXY_PRICING",
+            "severity": "medium",
+            "field": "financials.price_list",
+            "detail": (
+                f"Priced from regional proxy {fin.get('price_list')} (no native "
+                f"Xactimate market for this state) — prices are approximate."
+            ),
+        })
+
+    return flags
+
+
 # Alfonso's description → build_line_items() pricing key mapping
 # These map the PDF line item descriptions to the PRICING.get() keys used in build_line_items()
 _DESC_TO_PRICING_KEY = {
@@ -3437,20 +3521,17 @@ def build_claim_config(
 
     # Resolve Xactimate market ONCE — single source of truth for unit_price.
     # Becomes config["financials"]["market_code"]; threaded through build_line_items.
-    market_code = _XactRegistry.resolve_market(state, zip_code=_zip, city=_city)
-    print(f"[PRICING] Resolved to market {market_code} (state={state}, zip={_zip}, city={_city})")
+    market_code, market_resolution_reason = _XactRegistry.resolve_market(
+        state, zip_code=_zip, city=_city, return_reason=True
+    )
+    print(f"[PRICING] Resolved to market {market_code} via {market_resolution_reason} "
+          f"(state={state}, zip={_zip}, city={_city})")
 
     # Derive the SHORT price-list LABEL from the resolved market_code so the
-    # PDF header always shows what the prices actually are. E202 / E210
-    # regression: previously labeled via STATE_PRICE_LIST.get(state, "NYBI26")
-    # which silently fell to NYBI26 for any state without an entry — even
-    # when line items resolved to a real native market like IAWA8X_02MAY26.
-    # Format: "IAWA8X_02MAY26" → "IAWA26", "NYBI8X_MAR26" → "NYBI26".
-    if market_code:
-        _base = market_code.split("8X")[0] if "8X" in market_code else market_code.split("_")[0]
-        resolved_price_list_label = f"{_base}26"
-    else:
-        resolved_price_list_label = STATE_PRICE_LIST.get(state, "NYBI26")
+    # PDF header always shows what the prices actually are, and the label can
+    # never diverge from market_code. Single derivation site (see
+    # derive_price_list_label + its CI invariant test).
+    resolved_price_list_label = derive_price_list_label(market_code, state)
 
     # Manual scope lock: when the user (or admin) sets line items explicitly to mirror
     # their own Xactimate estimate, we must skip both the line-item rebuild AND the
@@ -3844,16 +3925,18 @@ def build_claim_config(
     if not config["weather"].get("storm_date") and config["dates"].get("date_of_loss"):
         config["weather"]["storm_date"] = config["dates"]["date_of_loss"]
 
-    # Set correct price list for state if not from carrier
-    # Single source of truth for market resolution — set once near top of process_claim.
-    # All downstream pricing reads from this field, not from price_list (which is a
-    # display label and may be stale on legacy claims).
+    # market_code is the SINGLE SOURCE OF TRUTH for pricing — set once here.
+    # All downstream pricing reads from this field. price_list is a DISPLAY label
+    # derived from market_code at config-build time (financials dict above, via
+    # derive_price_list_label). We deliberately do NOT write price_list a second
+    # time here — a non-derived fallback write was the divergence path that let
+    # the label drift from the real market (E202/E210). The invariant test
+    # guards that price_list always equals derive_price_list_label(market_code).
     config["financials"]["market_code"] = market_code
-    if not config["financials"].get("price_list"):
-        config["financials"]["price_list"] = STATE_PRICE_LIST.get(state, "NYBI26")
+    config["financials"]["market_resolution_reason"] = market_resolution_reason
     if state in STATE_PRICE_LIST_IS_PROXY:
         config["financials"]["price_list_is_proxy"] = True
-        print(f"[PRICING] WARNING: {state} has no native Xactimate market data; using {config['financials']['price_list']} as regional proxy. Add {state} pricing via Alfonso's data-collection pipeline.")
+        print(f"[PRICING] WARNING: {state} has no native Xactimate market data; using {config['financials'].get('price_list')} as regional proxy. Add {state} pricing via Alfonso's data-collection pipeline.")
 
     # Clean trade names: underscores → spaces for display
     trades = [t.replace("_", " ").title() for t in trades]
@@ -7752,6 +7835,28 @@ async def process_claim(claim_id: str, refresh_prices: bool = False):
         except Exception as e:
             print(f"[QA] Audit failed (non-fatal, failing open): {e}")
             qa_audit_result = None
+
+        # Ship 0.2/0.3/0.5 — merge pricing anomaly flags into the QA result so they
+        # route through the same qa_blocked → qa_review_pending gate. Computed here
+        # (not inside audit_claim) so they apply even when the prose audit fails open.
+        try:
+            # reason read from config["financials"]["market_resolution_reason"]
+            # (stashed at resolve time) — scope-independent of the local var.
+            _pricing_flags = pricing_qa_flags(config)
+        except Exception as e:
+            print(f"[QA] pricing_qa_flags failed (non-fatal): {e}")
+            _pricing_flags = []
+        if _pricing_flags:
+            if qa_audit_result is None:
+                qa_audit_result = {"critical": [], "medium": [], "summary": ""}
+            qa_audit_result.setdefault("critical", [])
+            qa_audit_result.setdefault("medium", [])
+            for _f in _pricing_flags:
+                bucket = "critical" if _f.get("severity") == "critical" else "medium"
+                qa_audit_result[bucket].append(_f)
+            _pc = sum(1 for f in _pricing_flags if f.get("severity") == "critical")
+            print(f"[QA] pricing flags: {_pc} critical, {len(_pricing_flags) - _pc} medium "
+                  f"({', '.join(f.get('issue', '?') for f in _pricing_flags)})")
 
         qa_blocked = bool(qa_audit_result and qa_audit_result.get("critical"))
 

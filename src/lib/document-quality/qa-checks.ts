@@ -469,7 +469,14 @@ function checkLineItemPrices(claim: ClaimRow): CheckResult {
   const fin = (cfgObj.financials as Record<string, unknown>) || {};
   const rawLineItems = (cfgObj.line_items as unknown[]) || [];
   const lineItems = rawLineItems as LineItem[];
-  const marketCode = (fin.market_code as string) || (fin.price_list as string) || null;
+  // market_code is authoritative (set once in processor.process_claim). price_list
+  // is a derived DISPLAY label, not a resolver — honor it only as a legacy fallback
+  // when it is itself a real market key (mirrors _resolve_and_overlay_prices).
+  const legacyPriceList =
+    typeof fin.price_list === "string" && marketExists(fin.price_list)
+      ? (fin.price_list as string)
+      : null;
+  const marketCode = (fin.market_code as string) || legacyPriceList || null;
 
   if (!marketCode) {
     return {
