@@ -94183,18 +94183,20 @@
           "_verisk_sourced_2026_05_26": true
         },
         {
-          "description": "R&R Chimney flashing - large (32\" x",
+          "description": "R&R Chimney flashing - large (32\" x 60\")",
           "unit": "EA",
           "price": 517.54,
           "_source_item_num": "12",
-          "_verisk_sourced_2026_05_26": true
+          "_verisk_sourced_2026_05_26": true,
+          "_orig_desc": "R&R Chimney flashing - large (32\" x"
         },
         {
-          "description": "R&R Chimney flashing - small (24\" x",
+          "description": "R&R Chimney flashing - small (24\" x 24\")",
           "unit": "EA",
           "price": 291.87,
           "_source_item_num": "13",
-          "_verisk_sourced_2026_05_26": true
+          "_verisk_sourced_2026_05_26": true,
+          "_orig_desc": "R&R Chimney flashing - small (24\" x"
         },
         {
           "description": "R&R Chimney flashing - average (32\" x 36\")",
@@ -94512,18 +94514,20 @@
           "_verisk_sourced_2026_05_26": true
         },
         {
-          "description": "R&R Gutter guard / screen - High grade",
+          "description": "R&R Gutter guard/screen - High grade",
           "unit": "LF",
           "price": 13.44,
           "_source_item_num": "60",
-          "_verisk_sourced_2026_05_26": true
+          "_verisk_sourced_2026_05_26": true,
+          "_orig_desc": "R&R Gutter guard / screen - High grade"
         },
         {
-          "description": "Minimum labor charge - gutter",
+          "description": "Gutter labor minimum",
           "unit": "EA",
           "price": 272.74,
           "_source_item_num": "61",
-          "_verisk_sourced_2026_05_26": true
+          "_verisk_sourced_2026_05_26": true,
+          "_orig_desc": "Minimum labor charge - gutter"
         },
         {
           "description": "Slate roofing - 12\" to 18\" tall",
@@ -94547,18 +94551,20 @@
           "_verisk_sourced_2026_05_26": true
         },
         {
-          "description": "R&R Gutter / downspout - half-round - aluminum - 6\"",
+          "description": "R&R Gutter / downspout - half round - aluminum - 6\"",
           "unit": "LF",
           "price": 16.11,
           "_source_item_num": "65",
-          "_verisk_sourced_2026_05_26": true
+          "_verisk_sourced_2026_05_26": true,
+          "_orig_desc": "R&R Gutter / downspout - half-round - aluminum - 6\""
         },
         {
-          "description": "R&R Gutter / downspout - half-round - aluminum - up to 5\"",
+          "description": "R&R Gutter / downspout - half round - aluminum - up to 5\"",
           "unit": "LF",
           "price": 13.51,
           "_source_item_num": "66",
-          "_verisk_sourced_2026_05_26": true
+          "_verisk_sourced_2026_05_26": true,
+          "_orig_desc": "R&R Gutter / downspout - half-round - aluminum - up to 5\""
         },
         {
           "description": "R&R Gutter / downspout - copper - up to 5\"",
@@ -94575,11 +94581,12 @@
           "_verisk_sourced_2026_05_26": true
         },
         {
-          "description": "R&R Gutter / downspout - half-round - copper - 6\"",
+          "description": "R&R Gutter / downspout - half round - copper - 6\"",
           "unit": "LF",
           "price": 35.16,
           "_source_item_num": "69",
-          "_verisk_sourced_2026_05_26": true
+          "_verisk_sourced_2026_05_26": true,
+          "_orig_desc": "R&R Gutter / downspout - half-round - copper - 6\""
         },
         {
           "description": "De-icing cable - Detach & reset",
@@ -94603,11 +94610,12 @@
           "_verisk_sourced_2026_05_26": true
         },
         {
-          "description": "R&R Fanfold foam insulation board",
+          "description": "R&R Fanfold foam insulation board - 3/8\"",
           "unit": "SF",
           "price": 0.89,
           "_source_item_num": "74",
-          "_verisk_sourced_2026_05_26": true
+          "_verisk_sourced_2026_05_26": true,
+          "_orig_desc": "R&R Fanfold foam insulation board"
         },
         {
           "description": "R&R Siding - .024\" metal (aluminum/steel) - High grade",
@@ -94778,11 +94786,12 @@
           "_verisk_sourced_2026_05_26": true
         },
         {
-          "description": "R&R Skylight - double dome venting, 12.6",
+          "description": "R&R Skylight - double dome venting, 12.6 - 15.5 sf",
           "unit": "EA",
           "price": 1047.07,
           "_source_item_num": "100",
-          "_verisk_sourced_2026_05_26": true
+          "_verisk_sourced_2026_05_26": true,
+          "_orig_desc": "R&R Skylight - double dome venting, 12.6"
         },
         {
           "description": "R&R Shutters - aluminum - Large",
@@ -94792,11 +94801,12 @@
           "_verisk_sourced_2026_05_26": true
         },
         {
-          "description": "R&R Shutters - simulated wood (polystyrene) - Large Labor Minimums Applied DEPREC.",
+          "description": "R&R Shutters - simulated wood (polystyrene) - Large",
           "unit": "EA",
           "price": 172.66,
           "_source_item_num": "102",
-          "_verisk_sourced_2026_05_26": true
+          "_verisk_sourced_2026_05_26": true,
+          "_orig_desc": "R&R Shutters - simulated wood (polystyrene) - Large Labor Minimums Applied DEPREC."
         },
         {
           "description": "Framing labor minimum",
@@ -95017,18 +95027,20 @@
           "_verisk_sourced_2026_05_26": true
         },
         {
-          "description": "R&R Chimney flashing - large (32\" x",
+          "description": "R&R Chimney flashing - large (32\" x 60\")",
           "unit": "EA",
           "price": 927.33,
           "_source_item_num": "12",
-          "_verisk_sourced_2026_05_26": true
+          "_verisk_sourced_2026_05_26": true,
+          "_orig_desc": "R&R Chimney flashing - large (32\" x"
         },
         {
-          "description": "R&R Chimney flashing - small (24\" x",
+          "description": "R&R Chimney flashing - small (24\" x 24\")",
           "unit": "EA",
           "price": 559.55,
           "_source_item_num": "13",
-          "_verisk_sourced_2026_05_26": true
+          "_verisk_sourced_2026_05_26": true,
+          "_orig_desc": "R&R Chimney flashing - small (24\" x"
         },
         {
           "description": "R&R Chimney flashing - average (32\" x 36\")",
@@ -95346,18 +95358,20 @@
           "_verisk_sourced_2026_05_26": true
         },
         {
-          "description": "R&R Gutter guard / screen - High grade",
+          "description": "R&R Gutter guard/screen - High grade",
           "unit": "LF",
           "price": 21.97,
           "_source_item_num": "60",
-          "_verisk_sourced_2026_05_26": true
+          "_verisk_sourced_2026_05_26": true,
+          "_orig_desc": "R&R Gutter guard / screen - High grade"
         },
         {
-          "description": "Minimum labor charge - gutter",
+          "description": "Gutter labor minimum",
           "unit": "EA",
           "price": 513.97,
           "_source_item_num": "61",
-          "_verisk_sourced_2026_05_26": true
+          "_verisk_sourced_2026_05_26": true,
+          "_orig_desc": "Minimum labor charge - gutter"
         },
         {
           "description": "Slate roofing - 12\" to 18\" tall",
@@ -95381,18 +95395,20 @@
           "_verisk_sourced_2026_05_26": true
         },
         {
-          "description": "R&R Gutter / downspout - half-round - aluminum - 6\"",
+          "description": "R&R Gutter / downspout - half round - aluminum - 6\"",
           "unit": "LF",
           "price": 20.49,
           "_source_item_num": "65",
-          "_verisk_sourced_2026_05_26": true
+          "_verisk_sourced_2026_05_26": true,
+          "_orig_desc": "R&R Gutter / downspout - half-round - aluminum - 6\""
         },
         {
-          "description": "R&R Gutter / downspout - half-round - aluminum - up to 5\"",
+          "description": "R&R Gutter / downspout - half round - aluminum - up to 5\"",
           "unit": "LF",
           "price": 17.09,
           "_source_item_num": "66",
-          "_verisk_sourced_2026_05_26": true
+          "_verisk_sourced_2026_05_26": true,
+          "_orig_desc": "R&R Gutter / downspout - half-round - aluminum - up to 5\""
         },
         {
           "description": "R&R Gutter / downspout - copper - up to 5\"",
@@ -95409,11 +95425,12 @@
           "_verisk_sourced_2026_05_26": true
         },
         {
-          "description": "R&R Gutter / downspout - half-round - copper - 6\"",
+          "description": "R&R Gutter / downspout - half round - copper - 6\"",
           "unit": "LF",
           "price": 42.63,
           "_source_item_num": "69",
-          "_verisk_sourced_2026_05_26": true
+          "_verisk_sourced_2026_05_26": true,
+          "_orig_desc": "R&R Gutter / downspout - half-round - copper - 6\""
         },
         {
           "description": "De-icing cable - Detach & reset",
@@ -95437,11 +95454,12 @@
           "_verisk_sourced_2026_05_26": true
         },
         {
-          "description": "R&R Fanfold foam insulation board",
+          "description": "R&R Fanfold foam insulation board - 3/8\"",
           "unit": "SF",
           "price": 1.28,
           "_source_item_num": "74",
-          "_verisk_sourced_2026_05_26": true
+          "_verisk_sourced_2026_05_26": true,
+          "_orig_desc": "R&R Fanfold foam insulation board"
         },
         {
           "description": "R&R Siding - .024\" metal (aluminum/steel) - High grade",
@@ -95612,11 +95630,12 @@
           "_verisk_sourced_2026_05_26": true
         },
         {
-          "description": "R&R Skylight - double dome venting, 12.6",
+          "description": "R&R Skylight - double dome venting, 12.6 - 15.5 sf",
           "unit": "EA",
           "price": 1091.91,
           "_source_item_num": "100",
-          "_verisk_sourced_2026_05_26": true
+          "_verisk_sourced_2026_05_26": true,
+          "_orig_desc": "R&R Skylight - double dome venting, 12.6"
         },
         {
           "description": "R&R Shutters - aluminum - Large",
@@ -95626,11 +95645,12 @@
           "_verisk_sourced_2026_05_26": true
         },
         {
-          "description": "R&R Shutters - simulated wood (polystyrene) - Large Labor Minimums Applied DEPREC.",
+          "description": "R&R Shutters - simulated wood (polystyrene) - Large",
           "unit": "EA",
           "price": 252.65,
           "_source_item_num": "102",
-          "_verisk_sourced_2026_05_26": true
+          "_verisk_sourced_2026_05_26": true,
+          "_orig_desc": "R&R Shutters - simulated wood (polystyrene) - Large Labor Minimums Applied DEPREC."
         },
         {
           "description": "Framing labor minimum",
@@ -95851,18 +95871,20 @@
           "_verisk_sourced_2026_05_26": true
         },
         {
-          "description": "R&R Chimney flashing - large (32\" x",
+          "description": "R&R Chimney flashing - large (32\" x 60\")",
           "unit": "EA",
           "price": 1055.09,
           "_source_item_num": "12",
-          "_verisk_sourced_2026_05_26": true
+          "_verisk_sourced_2026_05_26": true,
+          "_orig_desc": "R&R Chimney flashing - large (32\" x"
         },
         {
-          "description": "R&R Chimney flashing - small (24\" x",
+          "description": "R&R Chimney flashing - small (24\" x 24\")",
           "unit": "EA",
           "price": 643.12,
           "_source_item_num": "13",
-          "_verisk_sourced_2026_05_26": true
+          "_verisk_sourced_2026_05_26": true,
+          "_orig_desc": "R&R Chimney flashing - small (24\" x"
         },
         {
           "description": "R&R Chimney flashing - average (32\" x 36\")",
@@ -96180,18 +96202,20 @@
           "_verisk_sourced_2026_05_26": true
         },
         {
-          "description": "R&R Gutter guard / screen - High grade",
+          "description": "R&R Gutter guard/screen - High grade",
           "unit": "LF",
           "price": 12.02,
           "_source_item_num": "60",
-          "_verisk_sourced_2026_05_26": true
+          "_verisk_sourced_2026_05_26": true,
+          "_orig_desc": "R&R Gutter guard / screen - High grade"
         },
         {
-          "description": "Minimum labor charge - gutter",
+          "description": "Gutter labor minimum",
           "unit": "EA",
           "price": 225.19,
           "_source_item_num": "61",
-          "_verisk_sourced_2026_05_26": true
+          "_verisk_sourced_2026_05_26": true,
+          "_orig_desc": "Minimum labor charge - gutter"
         },
         {
           "description": "Slate roofing - 12\" to 18\" tall",
@@ -96215,18 +96239,20 @@
           "_verisk_sourced_2026_05_26": true
         },
         {
-          "description": "R&R Gutter / downspout - half-round - aluminum - 6\"",
+          "description": "R&R Gutter / downspout - half round - aluminum - 6\"",
           "unit": "LF",
           "price": 15.63,
           "_source_item_num": "65",
-          "_verisk_sourced_2026_05_26": true
+          "_verisk_sourced_2026_05_26": true,
+          "_orig_desc": "R&R Gutter / downspout - half-round - aluminum - 6\""
         },
         {
-          "description": "R&R Gutter / downspout - half-round - aluminum - up to 5\"",
+          "description": "R&R Gutter / downspout - half round - aluminum - up to 5\"",
           "unit": "LF",
           "price": 13.03,
           "_source_item_num": "66",
-          "_verisk_sourced_2026_05_26": true
+          "_verisk_sourced_2026_05_26": true,
+          "_orig_desc": "R&R Gutter / downspout - half-round - aluminum - up to 5\""
         },
         {
           "description": "R&R Gutter / downspout - copper - up to 5\"",
@@ -96243,11 +96269,12 @@
           "_verisk_sourced_2026_05_26": true
         },
         {
-          "description": "R&R Gutter / downspout - half-round - copper - 6\"",
+          "description": "R&R Gutter / downspout - half round - copper - 6\"",
           "unit": "LF",
           "price": 33.92,
           "_source_item_num": "69",
-          "_verisk_sourced_2026_05_26": true
+          "_verisk_sourced_2026_05_26": true,
+          "_orig_desc": "R&R Gutter / downspout - half-round - copper - 6\""
         },
         {
           "description": "De-icing cable - Detach & reset",
@@ -96271,11 +96298,12 @@
           "_verisk_sourced_2026_05_26": true
         },
         {
-          "description": "R&R Fanfold foam insulation board",
+          "description": "R&R Fanfold foam insulation board - 3/8\"",
           "unit": "SF",
           "price": 0.91,
           "_source_item_num": "74",
-          "_verisk_sourced_2026_05_26": true
+          "_verisk_sourced_2026_05_26": true,
+          "_orig_desc": "R&R Fanfold foam insulation board"
         },
         {
           "description": "R&R Siding - .024\" metal (aluminum/steel) - High grade",
@@ -96446,11 +96474,12 @@
           "_verisk_sourced_2026_05_26": true
         },
         {
-          "description": "R&R Skylight - double dome venting, 12.6",
+          "description": "R&R Skylight - double dome venting, 12.6 - 15.5 sf",
           "unit": "EA",
           "price": 1102.28,
           "_source_item_num": "100",
-          "_verisk_sourced_2026_05_26": true
+          "_verisk_sourced_2026_05_26": true,
+          "_orig_desc": "R&R Skylight - double dome venting, 12.6"
         },
         {
           "description": "R&R Shutters - aluminum - Large",
@@ -96460,11 +96489,12 @@
           "_verisk_sourced_2026_05_26": true
         },
         {
-          "description": "R&R Shutters - simulated wood (polystyrene) - Large Labor Minimums Applied DEPREC.",
+          "description": "R&R Shutters - simulated wood (polystyrene) - Large",
           "unit": "EA",
           "price": 159.76,
           "_source_item_num": "102",
-          "_verisk_sourced_2026_05_26": true
+          "_verisk_sourced_2026_05_26": true,
+          "_orig_desc": "R&R Shutters - simulated wood (polystyrene) - Large Labor Minimums Applied DEPREC."
         },
         {
           "description": "Framing labor minimum",
@@ -96685,18 +96715,20 @@
           "_verisk_sourced_2026_05_26": true
         },
         {
-          "description": "R&R Chimney flashing - large (32\" x",
+          "description": "R&R Chimney flashing - large (32\" x 60\")",
           "unit": "EA",
           "price": 714.2,
           "_source_item_num": "12",
-          "_verisk_sourced_2026_05_26": true
+          "_verisk_sourced_2026_05_26": true,
+          "_orig_desc": "R&R Chimney flashing - large (32\" x"
         },
         {
-          "description": "R&R Chimney flashing - small (24\" x",
+          "description": "R&R Chimney flashing - small (24\" x 24\")",
           "unit": "EA",
           "price": 419.91,
           "_source_item_num": "13",
-          "_verisk_sourced_2026_05_26": true
+          "_verisk_sourced_2026_05_26": true,
+          "_orig_desc": "R&R Chimney flashing - small (24\" x"
         },
         {
           "description": "R&R Chimney flashing - average (32\" x 36\")",
@@ -97014,18 +97046,20 @@
           "_verisk_sourced_2026_05_26": true
         },
         {
-          "description": "R&R Gutter guard / screen - High grade",
+          "description": "R&R Gutter guard/screen - High grade",
           "unit": "LF",
           "price": 16.82,
           "_source_item_num": "60",
-          "_verisk_sourced_2026_05_26": true
+          "_verisk_sourced_2026_05_26": true,
+          "_orig_desc": "R&R Gutter guard / screen - High grade"
         },
         {
-          "description": "Minimum labor charge - gutter",
+          "description": "Gutter labor minimum",
           "unit": "EA",
           "price": 374.65,
           "_source_item_num": "61",
-          "_verisk_sourced_2026_05_26": true
+          "_verisk_sourced_2026_05_26": true,
+          "_orig_desc": "Minimum labor charge - gutter"
         },
         {
           "description": "Slate roofing - 12\" to 18\" tall",
@@ -97049,18 +97083,20 @@
           "_verisk_sourced_2026_05_26": true
         },
         {
-          "description": "R&R Gutter / downspout - half-round - aluminum - 6\"",
+          "description": "R&R Gutter / downspout - half round - aluminum - 6\"",
           "unit": "LF",
           "price": 17.68,
           "_source_item_num": "65",
-          "_verisk_sourced_2026_05_26": true
+          "_verisk_sourced_2026_05_26": true,
+          "_orig_desc": "R&R Gutter / downspout - half-round - aluminum - 6\""
         },
         {
-          "description": "R&R Gutter / downspout - half-round - aluminum - up to 5\"",
+          "description": "R&R Gutter / downspout - half round - aluminum - up to 5\"",
           "unit": "LF",
           "price": 15.08,
           "_source_item_num": "66",
-          "_verisk_sourced_2026_05_26": true
+          "_verisk_sourced_2026_05_26": true,
+          "_orig_desc": "R&R Gutter / downspout - half-round - aluminum - up to 5\""
         },
         {
           "description": "R&R Gutter / downspout - copper - up to 5\"",
@@ -97077,11 +97113,12 @@
           "_verisk_sourced_2026_05_26": true
         },
         {
-          "description": "R&R Gutter / downspout - half-round - copper - 6\"",
+          "description": "R&R Gutter / downspout - half round - copper - 6\"",
           "unit": "LF",
           "price": 38.37,
           "_source_item_num": "69",
-          "_verisk_sourced_2026_05_26": true
+          "_verisk_sourced_2026_05_26": true,
+          "_orig_desc": "R&R Gutter / downspout - half-round - copper - 6\""
         },
         {
           "description": "De-icing cable - Detach & reset",
@@ -97105,11 +97142,12 @@
           "_verisk_sourced_2026_05_26": true
         },
         {
-          "description": "R&R Fanfold foam insulation board",
+          "description": "R&R Fanfold foam insulation board - 3/8\"",
           "unit": "SF",
           "price": 1.05,
           "_source_item_num": "74",
-          "_verisk_sourced_2026_05_26": true
+          "_verisk_sourced_2026_05_26": true,
+          "_orig_desc": "R&R Fanfold foam insulation board"
         },
         {
           "description": "R&R Siding - .024\" metal (aluminum/steel) - High grade",
@@ -97280,11 +97318,12 @@
           "_verisk_sourced_2026_05_26": true
         },
         {
-          "description": "R&R Skylight - double dome venting, 12.6",
+          "description": "R&R Skylight - double dome venting, 12.6 - 15.5 sf",
           "unit": "EA",
           "price": 1143.08,
           "_source_item_num": "100",
-          "_verisk_sourced_2026_05_26": true
+          "_verisk_sourced_2026_05_26": true,
+          "_orig_desc": "R&R Skylight - double dome venting, 12.6"
         },
         {
           "description": "R&R Shutters - aluminum - Large",
@@ -97294,11 +97333,12 @@
           "_verisk_sourced_2026_05_26": true
         },
         {
-          "description": "R&R Shutters - simulated wood (polystyrene) - Large Labor Minimums Applied DEPREC.",
+          "description": "R&R Shutters - simulated wood (polystyrene) - Large",
           "unit": "EA",
           "price": 207.23,
           "_source_item_num": "102",
-          "_verisk_sourced_2026_05_26": true
+          "_verisk_sourced_2026_05_26": true,
+          "_orig_desc": "R&R Shutters - simulated wood (polystyrene) - Large Labor Minimums Applied DEPREC."
         },
         {
           "description": "Framing labor minimum",
@@ -97519,18 +97559,20 @@
           "_verisk_sourced_2026_05_26": true
         },
         {
-          "description": "R&R Chimney flashing - large (32\" x",
+          "description": "R&R Chimney flashing - large (32\" x 60\")",
           "unit": "EA",
           "price": 598.25,
           "_source_item_num": "12",
-          "_verisk_sourced_2026_05_26": true
+          "_verisk_sourced_2026_05_26": true,
+          "_orig_desc": "R&R Chimney flashing - large (32\" x"
         },
         {
-          "description": "R&R Chimney flashing - small (24\" x",
+          "description": "R&R Chimney flashing - small (24\" x 24\")",
           "unit": "EA",
           "price": 344.44,
           "_source_item_num": "13",
-          "_verisk_sourced_2026_05_26": true
+          "_verisk_sourced_2026_05_26": true,
+          "_orig_desc": "R&R Chimney flashing - small (24\" x"
         },
         {
           "description": "R&R Chimney flashing - average (32\" x 36\")",
@@ -97848,18 +97890,20 @@
           "_verisk_sourced_2026_05_26": true
         },
         {
-          "description": "R&R Gutter guard / screen - High grade",
+          "description": "R&R Gutter guard/screen - High grade",
           "unit": "LF",
           "price": 22.62,
           "_source_item_num": "60",
-          "_verisk_sourced_2026_05_26": true
+          "_verisk_sourced_2026_05_26": true,
+          "_orig_desc": "R&R Gutter guard / screen - High grade"
         },
         {
-          "description": "Minimum labor charge - gutter",
+          "description": "Gutter labor minimum",
           "unit": "EA",
           "price": 521.08,
           "_source_item_num": "61",
-          "_verisk_sourced_2026_05_26": true
+          "_verisk_sourced_2026_05_26": true,
+          "_orig_desc": "Minimum labor charge - gutter"
         },
         {
           "description": "Slate roofing - 12\" to 18\" tall",
@@ -97883,18 +97927,20 @@
           "_verisk_sourced_2026_05_26": true
         },
         {
-          "description": "R&R Gutter / downspout - half-round - aluminum - 6\"",
+          "description": "R&R Gutter / downspout - half round - aluminum - 6\"",
           "unit": "LF",
           "price": 20.85,
           "_source_item_num": "65",
-          "_verisk_sourced_2026_05_26": true
+          "_verisk_sourced_2026_05_26": true,
+          "_orig_desc": "R&R Gutter / downspout - half-round - aluminum - 6\""
         },
         {
-          "description": "R&R Gutter / downspout - half-round - aluminum - up to 5\"",
+          "description": "R&R Gutter / downspout - half round - aluminum - up to 5\"",
           "unit": "LF",
           "price": 17.11,
           "_source_item_num": "66",
-          "_verisk_sourced_2026_05_26": true
+          "_verisk_sourced_2026_05_26": true,
+          "_orig_desc": "R&R Gutter / downspout - half-round - aluminum - up to 5\""
         },
         {
           "description": "R&R Gutter / downspout - copper - up to 5\"",
@@ -97911,11 +97957,12 @@
           "_verisk_sourced_2026_05_26": true
         },
         {
-          "description": "R&R Gutter / downspout - half-round - copper - 6\"",
+          "description": "R&R Gutter / downspout - half round - copper - 6\"",
           "unit": "LF",
           "price": 42.77,
           "_source_item_num": "69",
-          "_verisk_sourced_2026_05_26": true
+          "_verisk_sourced_2026_05_26": true,
+          "_orig_desc": "R&R Gutter / downspout - half-round - copper - 6\""
         },
         {
           "description": "De-icing cable - Detach & reset",
@@ -97939,11 +97986,12 @@
           "_verisk_sourced_2026_05_26": true
         },
         {
-          "description": "R&R Fanfold foam insulation board",
+          "description": "R&R Fanfold foam insulation board - 3/8\"",
           "unit": "SF",
           "price": 1.23,
           "_source_item_num": "74",
-          "_verisk_sourced_2026_05_26": true
+          "_verisk_sourced_2026_05_26": true,
+          "_orig_desc": "R&R Fanfold foam insulation board"
         },
         {
           "description": "R&R Siding - .024\" metal (aluminum/steel) - High grade",
@@ -98114,11 +98162,12 @@
           "_verisk_sourced_2026_05_26": true
         },
         {
-          "description": "R&R Skylight - double dome venting, 12.6",
+          "description": "R&R Skylight - double dome venting, 12.6 - 15.5 sf",
           "unit": "EA",
           "price": 1067.97,
           "_source_item_num": "100",
-          "_verisk_sourced_2026_05_26": true
+          "_verisk_sourced_2026_05_26": true,
+          "_orig_desc": "R&R Skylight - double dome venting, 12.6"
         },
         {
           "description": "R&R Shutters - aluminum - Large",
@@ -98128,11 +98177,12 @@
           "_verisk_sourced_2026_05_26": true
         },
         {
-          "description": "R&R Shutters - simulated wood (polystyrene) - Large Labor Minimums Applied DEPREC.",
+          "description": "R&R Shutters - simulated wood (polystyrene) - Large",
           "unit": "EA",
           "price": 253.97,
           "_source_item_num": "102",
-          "_verisk_sourced_2026_05_26": true
+          "_verisk_sourced_2026_05_26": true,
+          "_orig_desc": "R&R Shutters - simulated wood (polystyrene) - Large Labor Minimums Applied DEPREC."
         },
         {
           "description": "Framing labor minimum",
@@ -98353,18 +98403,20 @@
           "_verisk_sourced_2026_05_26": true
         },
         {
-          "description": "R&R Chimney flashing - large (32\" x",
+          "description": "R&R Chimney flashing - large (32\" x 60\")",
           "unit": "EA",
           "price": 648.41,
           "_source_item_num": "12",
-          "_verisk_sourced_2026_05_26": true
+          "_verisk_sourced_2026_05_26": true,
+          "_orig_desc": "R&R Chimney flashing - large (32\" x"
         },
         {
-          "description": "R&R Chimney flashing - small (24\" x",
+          "description": "R&R Chimney flashing - small (24\" x 24\")",
           "unit": "EA",
           "price": 377.17,
           "_source_item_num": "13",
-          "_verisk_sourced_2026_05_26": true
+          "_verisk_sourced_2026_05_26": true,
+          "_orig_desc": "R&R Chimney flashing - small (24\" x"
         },
         {
           "description": "R&R Chimney flashing - average (32\" x 36\")",
@@ -98682,18 +98734,20 @@
           "_verisk_sourced_2026_05_26": true
         },
         {
-          "description": "R&R Gutter guard / screen - High grade",
+          "description": "R&R Gutter guard/screen - High grade",
           "unit": "LF",
           "price": 14.3,
           "_source_item_num": "60",
-          "_verisk_sourced_2026_05_26": true
+          "_verisk_sourced_2026_05_26": true,
+          "_orig_desc": "R&R Gutter guard / screen - High grade"
         },
         {
-          "description": "Minimum labor charge - gutter",
+          "description": "Gutter labor minimum",
           "unit": "EA",
           "price": 296.6,
           "_source_item_num": "61",
-          "_verisk_sourced_2026_05_26": true
+          "_verisk_sourced_2026_05_26": true,
+          "_orig_desc": "Minimum labor charge - gutter"
         },
         {
           "description": "Slate roofing - 12\" to 18\" tall",
@@ -98717,18 +98771,20 @@
           "_verisk_sourced_2026_05_26": true
         },
         {
-          "description": "R&R Gutter / downspout - half-round - aluminum - 6\"",
+          "description": "R&R Gutter / downspout - half round - aluminum - 6\"",
           "unit": "LF",
           "price": 16.51,
           "_source_item_num": "65",
-          "_verisk_sourced_2026_05_26": true
+          "_verisk_sourced_2026_05_26": true,
+          "_orig_desc": "R&R Gutter / downspout - half-round - aluminum - 6\""
         },
         {
-          "description": "R&R Gutter / downspout - half-round - aluminum - up to 5\"",
+          "description": "R&R Gutter / downspout - half round - aluminum - up to 5\"",
           "unit": "LF",
           "price": 13.91,
           "_source_item_num": "66",
-          "_verisk_sourced_2026_05_26": true
+          "_verisk_sourced_2026_05_26": true,
+          "_orig_desc": "R&R Gutter / downspout - half-round - aluminum - up to 5\""
         },
         {
           "description": "R&R Gutter / downspout - copper - up to 5\"",
@@ -98745,11 +98801,12 @@
           "_verisk_sourced_2026_05_26": true
         },
         {
-          "description": "R&R Gutter / downspout - half-round - copper - 6\"",
+          "description": "R&R Gutter / downspout - half round - copper - 6\"",
           "unit": "LF",
           "price": 35.95,
           "_source_item_num": "69",
-          "_verisk_sourced_2026_05_26": true
+          "_verisk_sourced_2026_05_26": true,
+          "_orig_desc": "R&R Gutter / downspout - half-round - copper - 6\""
         },
         {
           "description": "De-icing cable - Detach & reset",
@@ -98773,11 +98830,12 @@
           "_verisk_sourced_2026_05_26": true
         },
         {
-          "description": "R&R Fanfold foam insulation board",
+          "description": "R&R Fanfold foam insulation board - 3/8\"",
           "unit": "SF",
           "price": 0.95,
           "_source_item_num": "74",
-          "_verisk_sourced_2026_05_26": true
+          "_verisk_sourced_2026_05_26": true,
+          "_orig_desc": "R&R Fanfold foam insulation board"
         },
         {
           "description": "R&R Siding - .024\" metal (aluminum/steel) - High grade",
@@ -98948,11 +99006,12 @@
           "_verisk_sourced_2026_05_26": true
         },
         {
-          "description": "R&R Skylight - double dome venting, 12.6",
+          "description": "R&R Skylight - double dome venting, 12.6 - 15.5 sf",
           "unit": "EA",
           "price": 1073.13,
           "_source_item_num": "100",
-          "_verisk_sourced_2026_05_26": true
+          "_verisk_sourced_2026_05_26": true,
+          "_orig_desc": "R&R Skylight - double dome venting, 12.6"
         },
         {
           "description": "R&R Shutters - aluminum - Large",
@@ -98962,11 +99021,12 @@
           "_verisk_sourced_2026_05_26": true
         },
         {
-          "description": "R&R Shutters - simulated wood (polystyrene) - Large Labor Minimums Applied DEPREC.",
+          "description": "R&R Shutters - simulated wood (polystyrene) - Large",
           "unit": "EA",
           "price": 180.99,
           "_source_item_num": "102",
-          "_verisk_sourced_2026_05_26": true
+          "_verisk_sourced_2026_05_26": true,
+          "_orig_desc": "R&R Shutters - simulated wood (polystyrene) - Large Labor Minimums Applied DEPREC."
         },
         {
           "description": "Framing labor minimum",
@@ -99187,18 +99247,20 @@
           "_verisk_sourced_2026_05_26": true
         },
         {
-          "description": "R&R Chimney flashing - large (32\" x",
+          "description": "R&R Chimney flashing - large (32\" x 60\")",
           "unit": "EA",
           "price": 804.46,
           "_source_item_num": "12",
-          "_verisk_sourced_2026_05_26": true
+          "_verisk_sourced_2026_05_26": true,
+          "_orig_desc": "R&R Chimney flashing - large (32\" x"
         },
         {
-          "description": "R&R Chimney flashing - small (24\" x",
+          "description": "R&R Chimney flashing - small (24\" x 24\")",
           "unit": "EA",
           "price": 479.95,
           "_source_item_num": "13",
-          "_verisk_sourced_2026_05_26": true
+          "_verisk_sourced_2026_05_26": true,
+          "_orig_desc": "R&R Chimney flashing - small (24\" x"
         },
         {
           "description": "R&R Chimney flashing - average (32\" x 36\")",
@@ -99516,18 +99578,20 @@
           "_verisk_sourced_2026_05_26": true
         },
         {
-          "description": "R&R Gutter guard / screen - High grade",
+          "description": "R&R Gutter guard/screen - High grade",
           "unit": "LF",
           "price": 18.4,
           "_source_item_num": "60",
-          "_verisk_sourced_2026_05_26": true
+          "_verisk_sourced_2026_05_26": true,
+          "_orig_desc": "R&R Gutter guard / screen - High grade"
         },
         {
-          "description": "Minimum labor charge - gutter",
+          "description": "Gutter labor minimum",
           "unit": "EA",
           "price": 397.09,
           "_source_item_num": "61",
-          "_verisk_sourced_2026_05_26": true
+          "_verisk_sourced_2026_05_26": true,
+          "_orig_desc": "Minimum labor charge - gutter"
         },
         {
           "description": "Slate roofing - 12\" to 18\" tall",
@@ -99551,18 +99615,20 @@
           "_verisk_sourced_2026_05_26": true
         },
         {
-          "description": "R&R Gutter / downspout - half-round - aluminum - 6\"",
+          "description": "R&R Gutter / downspout - half round - aluminum - 6\"",
           "unit": "LF",
           "price": 18.17,
           "_source_item_num": "65",
-          "_verisk_sourced_2026_05_26": true
+          "_verisk_sourced_2026_05_26": true,
+          "_orig_desc": "R&R Gutter / downspout - half-round - aluminum - 6\""
         },
         {
-          "description": "R&R Gutter / downspout - half-round - aluminum - up to 5\"",
+          "description": "R&R Gutter / downspout - half round - aluminum - up to 5\"",
           "unit": "LF",
           "price": 15.4,
           "_source_item_num": "66",
-          "_verisk_sourced_2026_05_26": true
+          "_verisk_sourced_2026_05_26": true,
+          "_orig_desc": "R&R Gutter / downspout - half-round - aluminum - up to 5\""
         },
         {
           "description": "R&R Gutter / downspout - copper - up to 5\"",
@@ -99579,11 +99645,12 @@
           "_verisk_sourced_2026_05_26": true
         },
         {
-          "description": "R&R Gutter / downspout - half-round - copper - 6\"",
+          "description": "R&R Gutter / downspout - half round - copper - 6\"",
           "unit": "LF",
           "price": 39.05,
           "_source_item_num": "69",
-          "_verisk_sourced_2026_05_26": true
+          "_verisk_sourced_2026_05_26": true,
+          "_orig_desc": "R&R Gutter / downspout - half-round - copper - 6\""
         },
         {
           "description": "De-icing cable - Detach & reset",
@@ -99607,11 +99674,12 @@
           "_verisk_sourced_2026_05_26": true
         },
         {
-          "description": "R&R Fanfold foam insulation board",
+          "description": "R&R Fanfold foam insulation board - 3/8\"",
           "unit": "SF",
           "price": 1.12,
           "_source_item_num": "74",
-          "_verisk_sourced_2026_05_26": true
+          "_verisk_sourced_2026_05_26": true,
+          "_orig_desc": "R&R Fanfold foam insulation board"
         },
         {
           "description": "R&R Siding - .024\" metal (aluminum/steel) - High grade",
@@ -99782,11 +99850,12 @@
           "_verisk_sourced_2026_05_26": true
         },
         {
-          "description": "R&R Skylight - double dome venting, 12.6",
+          "description": "R&R Skylight - double dome venting, 12.6 - 15.5 sf",
           "unit": "EA",
           "price": 1131.77,
           "_source_item_num": "100",
-          "_verisk_sourced_2026_05_26": true
+          "_verisk_sourced_2026_05_26": true,
+          "_orig_desc": "R&R Skylight - double dome venting, 12.6"
         },
         {
           "description": "R&R Shutters - aluminum - Large",
@@ -99796,11 +99865,12 @@
           "_verisk_sourced_2026_05_26": true
         },
         {
-          "description": "R&R Shutters - simulated wood (polystyrene) - Large Labor Minimums Applied DEPREC.",
+          "description": "R&R Shutters - simulated wood (polystyrene) - Large",
           "unit": "EA",
           "price": 214.47,
           "_source_item_num": "102",
-          "_verisk_sourced_2026_05_26": true
+          "_verisk_sourced_2026_05_26": true,
+          "_orig_desc": "R&R Shutters - simulated wood (polystyrene) - Large Labor Minimums Applied DEPREC."
         },
         {
           "description": "Framing labor minimum",
@@ -100021,18 +100091,20 @@
           "_verisk_sourced_2026_05_26": true
         },
         {
-          "description": "R&R Chimney flashing - large (32\" x",
+          "description": "R&R Chimney flashing - large (32\" x 60\")",
           "unit": "EA",
           "price": 561.7,
           "_source_item_num": "12",
-          "_verisk_sourced_2026_05_26": true
+          "_verisk_sourced_2026_05_26": true,
+          "_orig_desc": "R&R Chimney flashing - large (32\" x"
         },
         {
-          "description": "R&R Chimney flashing - small (24\" x",
+          "description": "R&R Chimney flashing - small (24\" x 24\")",
           "unit": "EA",
           "price": 320.17,
           "_source_item_num": "13",
-          "_verisk_sourced_2026_05_26": true
+          "_verisk_sourced_2026_05_26": true,
+          "_orig_desc": "R&R Chimney flashing - small (24\" x"
         },
         {
           "description": "R&R Chimney flashing - average (32\" x 36\")",
@@ -100350,18 +100422,20 @@
           "_verisk_sourced_2026_05_26": true
         },
         {
-          "description": "R&R Gutter guard / screen - High grade",
+          "description": "R&R Gutter guard/screen - High grade",
           "unit": "LF",
           "price": 12.83,
           "_source_item_num": "60",
-          "_verisk_sourced_2026_05_26": true
+          "_verisk_sourced_2026_05_26": true,
+          "_orig_desc": "R&R Gutter guard / screen - High grade"
         },
         {
-          "description": "Minimum labor charge - gutter",
+          "description": "Gutter labor minimum",
           "unit": "EA",
           "price": 254.06,
           "_source_item_num": "61",
-          "_verisk_sourced_2026_05_26": true
+          "_verisk_sourced_2026_05_26": true,
+          "_orig_desc": "Minimum labor charge - gutter"
         },
         {
           "description": "Slate roofing - 12\" to 18\" tall",
@@ -100385,18 +100459,20 @@
           "_verisk_sourced_2026_05_26": true
         },
         {
-          "description": "R&R Gutter / downspout - half-round - aluminum - 6\"",
+          "description": "R&R Gutter / downspout - half round - aluminum - 6\"",
           "unit": "LF",
           "price": 15.89,
           "_source_item_num": "65",
-          "_verisk_sourced_2026_05_26": true
+          "_verisk_sourced_2026_05_26": true,
+          "_orig_desc": "R&R Gutter / downspout - half-round - aluminum - 6\""
         },
         {
-          "description": "R&R Gutter / downspout - half-round - aluminum - up to 5\"",
+          "description": "R&R Gutter / downspout - half round - aluminum - up to 5\"",
           "unit": "LF",
           "price": 13.29,
           "_source_item_num": "66",
-          "_verisk_sourced_2026_05_26": true
+          "_verisk_sourced_2026_05_26": true,
+          "_orig_desc": "R&R Gutter / downspout - half-round - aluminum - up to 5\""
         },
         {
           "description": "R&R Gutter / downspout - copper - up to 5\"",
@@ -100413,11 +100489,12 @@
           "_verisk_sourced_2026_05_26": true
         },
         {
-          "description": "R&R Gutter / downspout - half-round - copper - 6\"",
+          "description": "R&R Gutter / downspout - half round - copper - 6\"",
           "unit": "LF",
           "price": 38.06,
           "_source_item_num": "69",
-          "_verisk_sourced_2026_05_26": true
+          "_verisk_sourced_2026_05_26": true,
+          "_orig_desc": "R&R Gutter / downspout - half-round - copper - 6\""
         },
         {
           "description": "De-icing cable - Detach & reset",
@@ -100441,11 +100518,12 @@
           "_verisk_sourced_2026_05_26": true
         },
         {
-          "description": "R&R Fanfold foam insulation board",
+          "description": "R&R Fanfold foam insulation board - 3/8\"",
           "unit": "SF",
           "price": 0.89,
           "_source_item_num": "74",
-          "_verisk_sourced_2026_05_26": true
+          "_verisk_sourced_2026_05_26": true,
+          "_orig_desc": "R&R Fanfold foam insulation board"
         },
         {
           "description": "R&R Siding - .024\" metal (aluminum/steel) - High grade",
@@ -100616,11 +100694,12 @@
           "_verisk_sourced_2026_05_26": true
         },
         {
-          "description": "R&R Skylight - double dome venting, 12.6",
+          "description": "R&R Skylight - double dome venting, 12.6 - 15.5 sf",
           "unit": "EA",
           "price": 1063.97,
           "_source_item_num": "100",
-          "_verisk_sourced_2026_05_26": true
+          "_verisk_sourced_2026_05_26": true,
+          "_orig_desc": "R&R Skylight - double dome venting, 12.6"
         },
         {
           "description": "R&R Shutters - aluminum - Large",
@@ -100630,11 +100709,12 @@
           "_verisk_sourced_2026_05_26": true
         },
         {
-          "description": "R&R Shutters - simulated wood (polystyrene) - Large Labor Minimums Applied DEPREC.",
+          "description": "R&R Shutters - simulated wood (polystyrene) - Large",
           "unit": "EA",
           "price": 167.2,
           "_source_item_num": "102",
-          "_verisk_sourced_2026_05_26": true
+          "_verisk_sourced_2026_05_26": true,
+          "_orig_desc": "R&R Shutters - simulated wood (polystyrene) - Large Labor Minimums Applied DEPREC."
         },
         {
           "description": "Framing labor minimum",
@@ -100855,18 +100935,20 @@
           "_verisk_sourced_2026_05_26": true
         },
         {
-          "description": "R&R Chimney flashing - large (32\" x",
+          "description": "R&R Chimney flashing - large (32\" x 60\")",
           "unit": "EA",
           "price": 602.42,
           "_source_item_num": "12",
-          "_verisk_sourced_2026_05_26": true
+          "_verisk_sourced_2026_05_26": true,
+          "_orig_desc": "R&R Chimney flashing - large (32\" x"
         },
         {
-          "description": "R&R Chimney flashing - small (24\" x",
+          "description": "R&R Chimney flashing - small (24\" x 24\")",
           "unit": "EA",
           "price": 346.47,
           "_source_item_num": "13",
-          "_verisk_sourced_2026_05_26": true
+          "_verisk_sourced_2026_05_26": true,
+          "_orig_desc": "R&R Chimney flashing - small (24\" x"
         },
         {
           "description": "R&R Chimney flashing - average (32\" x 36\")",
@@ -101184,18 +101266,20 @@
           "_verisk_sourced_2026_05_26": true
         },
         {
-          "description": "R&R Gutter guard / screen - High grade",
+          "description": "R&R Gutter guard/screen - High grade",
           "unit": "LF",
           "price": 13.8,
           "_source_item_num": "60",
-          "_verisk_sourced_2026_05_26": true
+          "_verisk_sourced_2026_05_26": true,
+          "_orig_desc": "R&R Gutter guard / screen - High grade"
         },
         {
-          "description": "Minimum labor charge - gutter",
+          "description": "Gutter labor minimum",
           "unit": "EA",
           "price": 270.75,
           "_source_item_num": "61",
-          "_verisk_sourced_2026_05_26": true
+          "_verisk_sourced_2026_05_26": true,
+          "_orig_desc": "Minimum labor charge - gutter"
         },
         {
           "description": "Slate roofing - 12\" to 18\" tall",
@@ -101219,18 +101303,20 @@
           "_verisk_sourced_2026_05_26": true
         },
         {
-          "description": "R&R Gutter / downspout - half-round - aluminum - 6\"",
+          "description": "R&R Gutter / downspout - half round - aluminum - 6\"",
           "unit": "LF",
           "price": 16.23,
           "_source_item_num": "65",
-          "_verisk_sourced_2026_05_26": true
+          "_verisk_sourced_2026_05_26": true,
+          "_orig_desc": "R&R Gutter / downspout - half-round - aluminum - 6\""
         },
         {
-          "description": "R&R Gutter / downspout - half-round - aluminum - up to 5\"",
+          "description": "R&R Gutter / downspout - half round - aluminum - up to 5\"",
           "unit": "LF",
           "price": 13.63,
           "_source_item_num": "66",
-          "_verisk_sourced_2026_05_26": true
+          "_verisk_sourced_2026_05_26": true,
+          "_orig_desc": "R&R Gutter / downspout - half-round - aluminum - up to 5\""
         },
         {
           "description": "R&R Gutter / downspout - copper - up to 5\"",
@@ -101247,11 +101333,12 @@
           "_verisk_sourced_2026_05_26": true
         },
         {
-          "description": "R&R Gutter / downspout - half-round - copper - 6\"",
+          "description": "R&R Gutter / downspout - half round - copper - 6\"",
           "unit": "LF",
           "price": 35.3,
           "_source_item_num": "69",
-          "_verisk_sourced_2026_05_26": true
+          "_verisk_sourced_2026_05_26": true,
+          "_orig_desc": "R&R Gutter / downspout - half-round - copper - 6\""
         },
         {
           "description": "De-icing cable - Detach & reset",
@@ -101275,11 +101362,12 @@
           "_verisk_sourced_2026_05_26": true
         },
         {
-          "description": "R&R Fanfold foam insulation board",
+          "description": "R&R Fanfold foam insulation board - 3/8\"",
           "unit": "SF",
           "price": 0.93,
           "_source_item_num": "74",
-          "_verisk_sourced_2026_05_26": true
+          "_verisk_sourced_2026_05_26": true,
+          "_orig_desc": "R&R Fanfold foam insulation board"
         },
         {
           "description": "R&R Siding - .024\" metal (aluminum/steel) - High grade",
@@ -101450,11 +101538,12 @@
           "_verisk_sourced_2026_05_26": true
         },
         {
-          "description": "R&R Skylight - double dome venting, 12.6",
+          "description": "R&R Skylight - double dome venting, 12.6 - 15.5 sf",
           "unit": "EA",
           "price": 1072.05,
           "_source_item_num": "100",
-          "_verisk_sourced_2026_05_26": true
+          "_verisk_sourced_2026_05_26": true,
+          "_orig_desc": "R&R Skylight - double dome venting, 12.6"
         },
         {
           "description": "R&R Shutters - aluminum - Large",
@@ -101464,11 +101553,12 @@
           "_verisk_sourced_2026_05_26": true
         },
         {
-          "description": "R&R Shutters - simulated wood (polystyrene) - Large Labor Minimums Applied DEPREC.",
+          "description": "R&R Shutters - simulated wood (polystyrene) - Large",
           "unit": "EA",
           "price": 173.77,
           "_source_item_num": "102",
-          "_verisk_sourced_2026_05_26": true
+          "_verisk_sourced_2026_05_26": true,
+          "_orig_desc": "R&R Shutters - simulated wood (polystyrene) - Large Labor Minimums Applied DEPREC."
         },
         {
           "description": "Framing labor minimum",
@@ -101689,18 +101779,20 @@
           "_verisk_sourced_2026_05_26": true
         },
         {
-          "description": "R&R Chimney flashing - large (32\" x",
+          "description": "R&R Chimney flashing - large (32\" x 60\")",
           "unit": "EA",
           "price": 786.58,
           "_source_item_num": "12",
-          "_verisk_sourced_2026_05_26": true
+          "_verisk_sourced_2026_05_26": true,
+          "_orig_desc": "R&R Chimney flashing - large (32\" x"
         },
         {
-          "description": "R&R Chimney flashing - small (24\" x",
+          "description": "R&R Chimney flashing - small (24\" x 24\")",
           "unit": "EA",
           "price": 467.65,
           "_source_item_num": "13",
-          "_verisk_sourced_2026_05_26": true
+          "_verisk_sourced_2026_05_26": true,
+          "_orig_desc": "R&R Chimney flashing - small (24\" x"
         },
         {
           "description": "R&R Chimney flashing - average (32\" x 36\")",
@@ -102018,18 +102110,20 @@
           "_verisk_sourced_2026_05_26": true
         },
         {
-          "description": "R&R Gutter guard / screen - High grade",
+          "description": "R&R Gutter guard/screen - High grade",
           "unit": "LF",
           "price": 14.96,
           "_source_item_num": "60",
-          "_verisk_sourced_2026_05_26": true
+          "_verisk_sourced_2026_05_26": true,
+          "_orig_desc": "R&R Gutter guard / screen - High grade"
         },
         {
-          "description": "Minimum labor charge - gutter",
+          "description": "Gutter labor minimum",
           "unit": "EA",
           "price": 313.49,
           "_source_item_num": "61",
-          "_verisk_sourced_2026_05_26": true
+          "_verisk_sourced_2026_05_26": true,
+          "_orig_desc": "Minimum labor charge - gutter"
         },
         {
           "description": "Slate roofing - 12\" to 18\" tall",
@@ -102053,18 +102147,20 @@
           "_verisk_sourced_2026_05_26": true
         },
         {
-          "description": "R&R Gutter / downspout - half-round - aluminum - 6\"",
+          "description": "R&R Gutter / downspout - half round - aluminum - 6\"",
           "unit": "LF",
           "price": 16.8,
           "_source_item_num": "65",
-          "_verisk_sourced_2026_05_26": true
+          "_verisk_sourced_2026_05_26": true,
+          "_orig_desc": "R&R Gutter / downspout - half-round - aluminum - 6\""
         },
         {
-          "description": "R&R Gutter / downspout - half-round - aluminum - up to 5\"",
+          "description": "R&R Gutter / downspout - half round - aluminum - up to 5\"",
           "unit": "LF",
           "price": 14.39,
           "_source_item_num": "66",
-          "_verisk_sourced_2026_05_26": true
+          "_verisk_sourced_2026_05_26": true,
+          "_orig_desc": "R&R Gutter / downspout - half-round - aluminum - up to 5\""
         },
         {
           "description": "R&R Gutter / downspout - copper - up to 5\"",
@@ -102081,11 +102177,12 @@
           "_verisk_sourced_2026_05_26": true
         },
         {
-          "description": "R&R Gutter / downspout - half-round - copper - 6\"",
+          "description": "R&R Gutter / downspout - half round - copper - 6\"",
           "unit": "LF",
           "price": 36.51,
           "_source_item_num": "69",
-          "_verisk_sourced_2026_05_26": true
+          "_verisk_sourced_2026_05_26": true,
+          "_orig_desc": "R&R Gutter / downspout - half-round - copper - 6\""
         },
         {
           "description": "De-icing cable - Detach & reset",
@@ -102109,11 +102206,12 @@
           "_verisk_sourced_2026_05_26": true
         },
         {
-          "description": "R&R Fanfold foam insulation board",
+          "description": "R&R Fanfold foam insulation board - 3/8\"",
           "unit": "SF",
           "price": 0.97,
           "_source_item_num": "74",
-          "_verisk_sourced_2026_05_26": true
+          "_verisk_sourced_2026_05_26": true,
+          "_orig_desc": "R&R Fanfold foam insulation board"
         },
         {
           "description": "R&R Siding - .024\" metal (aluminum/steel) - High grade",
@@ -102284,11 +102382,12 @@
           "_verisk_sourced_2026_05_26": true
         },
         {
-          "description": "R&R Skylight - double dome venting, 12.6",
+          "description": "R&R Skylight - double dome venting, 12.6 - 15.5 sf",
           "unit": "EA",
           "price": 1066.34,
           "_source_item_num": "100",
-          "_verisk_sourced_2026_05_26": true
+          "_verisk_sourced_2026_05_26": true,
+          "_orig_desc": "R&R Skylight - double dome venting, 12.6"
         },
         {
           "description": "R&R Shutters - aluminum - Large",
@@ -102298,11 +102397,12 @@
           "_verisk_sourced_2026_05_26": true
         },
         {
-          "description": "R&R Shutters - simulated wood (polystyrene) - Large Labor Minimums Applied DEPREC.",
+          "description": "R&R Shutters - simulated wood (polystyrene) - Large",
           "unit": "EA",
           "price": 187.11,
           "_source_item_num": "102",
-          "_verisk_sourced_2026_05_26": true
+          "_verisk_sourced_2026_05_26": true,
+          "_orig_desc": "R&R Shutters - simulated wood (polystyrene) - Large Labor Minimums Applied DEPREC."
         },
         {
           "description": "Framing labor minimum",
@@ -102523,18 +102623,20 @@
           "_verisk_sourced_2026_05_26": true
         },
         {
-          "description": "R&R Chimney flashing - large (32\" x",
+          "description": "R&R Chimney flashing - large (32\" x 60\")",
           "unit": "EA",
           "price": 847.5,
           "_source_item_num": "12",
-          "_verisk_sourced_2026_05_26": true
+          "_verisk_sourced_2026_05_26": true,
+          "_orig_desc": "R&R Chimney flashing - large (32\" x"
         },
         {
-          "description": "R&R Chimney flashing - small (24\" x",
+          "description": "R&R Chimney flashing - small (24\" x 24\")",
           "unit": "EA",
           "price": 507.19,
           "_source_item_num": "13",
-          "_verisk_sourced_2026_05_26": true
+          "_verisk_sourced_2026_05_26": true,
+          "_orig_desc": "R&R Chimney flashing - small (24\" x"
         },
         {
           "description": "R&R Chimney flashing - average (32\" x 36\")",
@@ -102852,18 +102954,20 @@
           "_verisk_sourced_2026_05_26": true
         },
         {
-          "description": "R&R Gutter guard / screen - High grade",
+          "description": "R&R Gutter guard/screen - High grade",
           "unit": "LF",
           "price": 16.01,
           "_source_item_num": "60",
-          "_verisk_sourced_2026_05_26": true
+          "_verisk_sourced_2026_05_26": true,
+          "_orig_desc": "R&R Gutter guard / screen - High grade"
         },
         {
-          "description": "Minimum labor charge - gutter",
+          "description": "Gutter labor minimum",
           "unit": "EA",
           "price": 327.81,
           "_source_item_num": "61",
-          "_verisk_sourced_2026_05_26": true
+          "_verisk_sourced_2026_05_26": true,
+          "_orig_desc": "Minimum labor charge - gutter"
         },
         {
           "description": "Slate roofing - 12\" to 18\" tall",
@@ -102887,18 +102991,20 @@
           "_verisk_sourced_2026_05_26": true
         },
         {
-          "description": "R&R Gutter / downspout - half-round - aluminum - 6\"",
+          "description": "R&R Gutter / downspout - half round - aluminum - 6\"",
           "unit": "LF",
           "price": 17.16,
           "_source_item_num": "65",
-          "_verisk_sourced_2026_05_26": true
+          "_verisk_sourced_2026_05_26": true,
+          "_orig_desc": "R&R Gutter / downspout - half-round - aluminum - 6\""
         },
         {
-          "description": "R&R Gutter / downspout - half-round - aluminum - up to 5\"",
+          "description": "R&R Gutter / downspout - half round - aluminum - up to 5\"",
           "unit": "LF",
           "price": 14.56,
           "_source_item_num": "66",
-          "_verisk_sourced_2026_05_26": true
+          "_verisk_sourced_2026_05_26": true,
+          "_orig_desc": "R&R Gutter / downspout - half-round - aluminum - up to 5\""
         },
         {
           "description": "R&R Gutter / downspout - copper - up to 5\"",
@@ -102915,11 +103021,12 @@
           "_verisk_sourced_2026_05_26": true
         },
         {
-          "description": "R&R Gutter / downspout - half-round - copper - 6\"",
+          "description": "R&R Gutter / downspout - half round - copper - 6\"",
           "unit": "LF",
           "price": 41.07,
           "_source_item_num": "69",
-          "_verisk_sourced_2026_05_26": true
+          "_verisk_sourced_2026_05_26": true,
+          "_orig_desc": "R&R Gutter / downspout - half-round - copper - 6\""
         },
         {
           "description": "De-icing cable - Detach & reset",
@@ -102943,11 +103050,12 @@
           "_verisk_sourced_2026_05_26": true
         },
         {
-          "description": "R&R Fanfold foam insulation board",
+          "description": "R&R Fanfold foam insulation board - 3/8\"",
           "unit": "SF",
           "price": 1.04,
           "_source_item_num": "74",
-          "_verisk_sourced_2026_05_26": true
+          "_verisk_sourced_2026_05_26": true,
+          "_orig_desc": "R&R Fanfold foam insulation board"
         },
         {
           "description": "R&R Siding - .024\" metal (aluminum/steel) - High grade",
@@ -103118,11 +103226,12 @@
           "_verisk_sourced_2026_05_26": true
         },
         {
-          "description": "R&R Skylight - double dome venting, 12.6",
+          "description": "R&R Skylight - double dome venting, 12.6 - 15.5 sf",
           "unit": "EA",
           "price": 1118.37,
           "_source_item_num": "100",
-          "_verisk_sourced_2026_05_26": true
+          "_verisk_sourced_2026_05_26": true,
+          "_orig_desc": "R&R Skylight - double dome venting, 12.6"
         },
         {
           "description": "R&R Shutters - aluminum - Large",
@@ -103132,11 +103241,12 @@
           "_verisk_sourced_2026_05_26": true
         },
         {
-          "description": "R&R Shutters - simulated wood (polystyrene) - Large Labor Minimums Applied DEPREC.",
+          "description": "R&R Shutters - simulated wood (polystyrene) - Large",
           "unit": "EA",
           "price": 193.34,
           "_source_item_num": "102",
-          "_verisk_sourced_2026_05_26": true
+          "_verisk_sourced_2026_05_26": true,
+          "_orig_desc": "R&R Shutters - simulated wood (polystyrene) - Large Labor Minimums Applied DEPREC."
         },
         {
           "description": "Framing labor minimum",
@@ -103357,18 +103467,20 @@
           "_verisk_sourced_2026_05_26": true
         },
         {
-          "description": "R&R Chimney flashing - large (32\" x",
+          "description": "R&R Chimney flashing - large (32\" x 60\")",
           "unit": "EA",
           "price": 705.82,
           "_source_item_num": "12",
-          "_verisk_sourced_2026_05_26": true
+          "_verisk_sourced_2026_05_26": true,
+          "_orig_desc": "R&R Chimney flashing - large (32\" x"
         },
         {
-          "description": "R&R Chimney flashing - small (24\" x",
+          "description": "R&R Chimney flashing - small (24\" x 24\")",
           "unit": "EA",
           "price": 414.9,
           "_source_item_num": "13",
-          "_verisk_sourced_2026_05_26": true
+          "_verisk_sourced_2026_05_26": true,
+          "_orig_desc": "R&R Chimney flashing - small (24\" x"
         },
         {
           "description": "R&R Chimney flashing - average (32\" x 36\")",
@@ -103686,18 +103798,20 @@
           "_verisk_sourced_2026_05_26": true
         },
         {
-          "description": "R&R Gutter guard / screen - High grade",
+          "description": "R&R Gutter guard/screen - High grade",
           "unit": "LF",
           "price": 22.69,
           "_source_item_num": "60",
-          "_verisk_sourced_2026_05_26": true
+          "_verisk_sourced_2026_05_26": true,
+          "_orig_desc": "R&R Gutter guard / screen - High grade"
         },
         {
-          "description": "Minimum labor charge - gutter",
+          "description": "Gutter labor minimum",
           "unit": "EA",
           "price": 523.06,
           "_source_item_num": "61",
-          "_verisk_sourced_2026_05_26": true
+          "_verisk_sourced_2026_05_26": true,
+          "_orig_desc": "Minimum labor charge - gutter"
         },
         {
           "description": "Slate roofing - 12\" to 18\" tall",
@@ -103721,18 +103835,20 @@
           "_verisk_sourced_2026_05_26": true
         },
         {
-          "description": "R&R Gutter / downspout - half-round - aluminum - 6\"",
+          "description": "R&R Gutter / downspout - half round - aluminum - 6\"",
           "unit": "LF",
           "price": 19.85,
           "_source_item_num": "65",
-          "_verisk_sourced_2026_05_26": true
+          "_verisk_sourced_2026_05_26": true,
+          "_orig_desc": "R&R Gutter / downspout - half-round - aluminum - 6\""
         },
         {
-          "description": "R&R Gutter / downspout - half-round - aluminum - up to 5\"",
+          "description": "R&R Gutter / downspout - half round - aluminum - up to 5\"",
           "unit": "LF",
           "price": 17.15,
           "_source_item_num": "66",
-          "_verisk_sourced_2026_05_26": true
+          "_verisk_sourced_2026_05_26": true,
+          "_orig_desc": "R&R Gutter / downspout - half-round - aluminum - up to 5\""
         },
         {
           "description": "R&R Gutter / downspout - copper - up to 5\"",
@@ -103749,11 +103865,12 @@
           "_verisk_sourced_2026_05_26": true
         },
         {
-          "description": "R&R Gutter / downspout - half-round - copper - 6\"",
+          "description": "R&R Gutter / downspout - half round - copper - 6\"",
           "unit": "LF",
           "price": 42.84,
           "_source_item_num": "69",
-          "_verisk_sourced_2026_05_26": true
+          "_verisk_sourced_2026_05_26": true,
+          "_orig_desc": "R&R Gutter / downspout - half-round - copper - 6\""
         },
         {
           "description": "De-icing cable - Detach & reset",
@@ -103777,11 +103894,12 @@
           "_verisk_sourced_2026_05_26": true
         },
         {
-          "description": "R&R Fanfold foam insulation board",
+          "description": "R&R Fanfold foam insulation board - 3/8\"",
           "unit": "SF",
           "price": 1.22,
           "_source_item_num": "74",
-          "_verisk_sourced_2026_05_26": true
+          "_verisk_sourced_2026_05_26": true,
+          "_orig_desc": "R&R Fanfold foam insulation board"
         },
         {
           "description": "R&R Siding - .024\" metal (aluminum/steel) - High grade",
@@ -103952,11 +104070,12 @@
           "_verisk_sourced_2026_05_26": true
         },
         {
-          "description": "R&R Skylight - double dome venting, 12.6",
+          "description": "R&R Skylight - double dome venting, 12.6 - 15.5 sf",
           "unit": "EA",
           "price": 1078.76,
           "_source_item_num": "100",
-          "_verisk_sourced_2026_05_26": true
+          "_verisk_sourced_2026_05_26": true,
+          "_orig_desc": "R&R Skylight - double dome venting, 12.6"
         },
         {
           "description": "R&R Shutters - aluminum - Large",
@@ -103966,11 +104085,12 @@
           "_verisk_sourced_2026_05_26": true
         },
         {
-          "description": "R&R Shutters - simulated wood (polystyrene) - Large Labor Minimums Applied DEPREC.",
+          "description": "R&R Shutters - simulated wood (polystyrene) - Large",
           "unit": "EA",
           "price": 254.62,
           "_source_item_num": "102",
-          "_verisk_sourced_2026_05_26": true
+          "_verisk_sourced_2026_05_26": true,
+          "_orig_desc": "R&R Shutters - simulated wood (polystyrene) - Large Labor Minimums Applied DEPREC."
         },
         {
           "description": "Framing labor minimum",
@@ -104191,18 +104311,20 @@
           "_verisk_sourced_2026_05_26": true
         },
         {
-          "description": "R&R Chimney flashing - large (32\" x",
+          "description": "R&R Chimney flashing - large (32\" x 60\")",
           "unit": "EA",
           "price": 723.63,
           "_source_item_num": "12",
-          "_verisk_sourced_2026_05_26": true
+          "_verisk_sourced_2026_05_26": true,
+          "_orig_desc": "R&R Chimney flashing - large (32\" x"
         },
         {
-          "description": "R&R Chimney flashing - small (24\" x",
+          "description": "R&R Chimney flashing - small (24\" x 24\")",
           "unit": "EA",
           "price": 426.23,
           "_source_item_num": "13",
-          "_verisk_sourced_2026_05_26": true
+          "_verisk_sourced_2026_05_26": true,
+          "_orig_desc": "R&R Chimney flashing - small (24\" x"
         },
         {
           "description": "R&R Chimney flashing - average (32\" x 36\")",
@@ -104520,18 +104642,20 @@
           "_verisk_sourced_2026_05_26": true
         },
         {
-          "description": "R&R Gutter guard / screen - High grade",
+          "description": "R&R Gutter guard/screen - High grade",
           "unit": "LF",
           "price": 18.72,
           "_source_item_num": "60",
-          "_verisk_sourced_2026_05_26": true
+          "_verisk_sourced_2026_05_26": true,
+          "_orig_desc": "R&R Gutter guard / screen - High grade"
         },
         {
-          "description": "Minimum labor charge - gutter",
+          "description": "Gutter labor minimum",
           "unit": "EA",
           "price": 406.1,
           "_source_item_num": "61",
-          "_verisk_sourced_2026_05_26": true
+          "_verisk_sourced_2026_05_26": true,
+          "_orig_desc": "Minimum labor charge - gutter"
         },
         {
           "description": "Slate roofing - 12\" to 18\" tall",
@@ -104555,18 +104679,20 @@
           "_verisk_sourced_2026_05_26": true
         },
         {
-          "description": "R&R Gutter / downspout - half-round - aluminum - 6\"",
+          "description": "R&R Gutter / downspout - half round - aluminum - 6\"",
           "unit": "LF",
           "price": 18.36,
           "_source_item_num": "65",
-          "_verisk_sourced_2026_05_26": true
+          "_verisk_sourced_2026_05_26": true,
+          "_orig_desc": "R&R Gutter / downspout - half-round - aluminum - 6\""
         },
         {
-          "description": "R&R Gutter / downspout - half-round - aluminum - up to 5\"",
+          "description": "R&R Gutter / downspout - half round - aluminum - up to 5\"",
           "unit": "LF",
           "price": 15.53,
           "_source_item_num": "66",
-          "_verisk_sourced_2026_05_26": true
+          "_verisk_sourced_2026_05_26": true,
+          "_orig_desc": "R&R Gutter / downspout - half-round - aluminum - up to 5\""
         },
         {
           "description": "R&R Gutter / downspout - copper - up to 5\"",
@@ -104583,11 +104709,12 @@
           "_verisk_sourced_2026_05_26": true
         },
         {
-          "description": "R&R Gutter / downspout - half-round - copper - 6\"",
+          "description": "R&R Gutter / downspout - half round - copper - 6\"",
           "unit": "LF",
           "price": 39.34,
           "_source_item_num": "69",
-          "_verisk_sourced_2026_05_26": true
+          "_verisk_sourced_2026_05_26": true,
+          "_orig_desc": "R&R Gutter / downspout - half-round - copper - 6\""
         },
         {
           "description": "De-icing cable - Detach & reset",
@@ -104611,11 +104738,12 @@
           "_verisk_sourced_2026_05_26": true
         },
         {
-          "description": "R&R Fanfold foam insulation board",
+          "description": "R&R Fanfold foam insulation board - 3/8\"",
           "unit": "SF",
           "price": 1.11,
           "_source_item_num": "74",
-          "_verisk_sourced_2026_05_26": true
+          "_verisk_sourced_2026_05_26": true,
+          "_orig_desc": "R&R Fanfold foam insulation board"
         },
         {
           "description": "R&R Siding - .024\" metal (aluminum/steel) - High grade",
@@ -104786,11 +104914,12 @@
           "_verisk_sourced_2026_05_26": true
         },
         {
-          "description": "R&R Skylight - double dome venting, 12.6",
+          "description": "R&R Skylight - double dome venting, 12.6 - 15.5 sf",
           "unit": "EA",
           "price": 1083.67,
           "_source_item_num": "100",
-          "_verisk_sourced_2026_05_26": true
+          "_verisk_sourced_2026_05_26": true,
+          "_orig_desc": "R&R Skylight - double dome venting, 12.6"
         },
         {
           "description": "R&R Shutters - aluminum - Large",
@@ -104800,11 +104929,12 @@
           "_verisk_sourced_2026_05_26": true
         },
         {
-          "description": "R&R Shutters - simulated wood (polystyrene) - Large Labor Minimums Applied DEPREC.",
+          "description": "R&R Shutters - simulated wood (polystyrene) - Large",
           "unit": "EA",
           "price": 217.51,
           "_source_item_num": "102",
-          "_verisk_sourced_2026_05_26": true
+          "_verisk_sourced_2026_05_26": true,
+          "_orig_desc": "R&R Shutters - simulated wood (polystyrene) - Large Labor Minimums Applied DEPREC."
         },
         {
           "description": "Framing labor minimum",
@@ -105025,18 +105155,20 @@
           "_verisk_sourced_2026_05_26": true
         },
         {
-          "description": "R&R Chimney flashing - large (32\" x",
+          "description": "R&R Chimney flashing - large (32\" x 60\")",
           "unit": "EA",
           "price": 742.38,
           "_source_item_num": "12",
-          "_verisk_sourced_2026_05_26": true
+          "_verisk_sourced_2026_05_26": true,
+          "_orig_desc": "R&R Chimney flashing - large (32\" x"
         },
         {
-          "description": "R&R Chimney flashing - small (24\" x",
+          "description": "R&R Chimney flashing - small (24\" x 24\")",
           "unit": "EA",
           "price": 437.24,
           "_source_item_num": "13",
-          "_verisk_sourced_2026_05_26": true
+          "_verisk_sourced_2026_05_26": true,
+          "_orig_desc": "R&R Chimney flashing - small (24\" x"
         },
         {
           "description": "R&R Chimney flashing - average (32\" x 36\")",
@@ -105354,18 +105486,20 @@
           "_verisk_sourced_2026_05_26": true
         },
         {
-          "description": "R&R Gutter guard / screen - High grade",
+          "description": "R&R Gutter guard/screen - High grade",
           "unit": "LF",
           "price": 30.07,
           "_source_item_num": "60",
-          "_verisk_sourced_2026_05_26": true
+          "_verisk_sourced_2026_05_26": true,
+          "_orig_desc": "R&R Gutter guard / screen - High grade"
         },
         {
-          "description": "Minimum labor charge - gutter",
+          "description": "Gutter labor minimum",
           "unit": "EA",
           "price": 726.68,
           "_source_item_num": "61",
-          "_verisk_sourced_2026_05_26": true
+          "_verisk_sourced_2026_05_26": true,
+          "_orig_desc": "Minimum labor charge - gutter"
         },
         {
           "description": "Slate roofing - 12\" to 18\" tall",
@@ -105389,18 +105523,20 @@
           "_verisk_sourced_2026_05_26": true
         },
         {
-          "description": "R&R Gutter / downspout - half-round - aluminum - 6\"",
+          "description": "R&R Gutter / downspout - half round - aluminum - 6\"",
           "unit": "LF",
           "price": 25.49,
           "_source_item_num": "65",
-          "_verisk_sourced_2026_05_26": true
+          "_verisk_sourced_2026_05_26": true,
+          "_orig_desc": "R&R Gutter / downspout - half-round - aluminum - 6\""
         },
         {
-          "description": "R&R Gutter / downspout - half-round - aluminum - up to 5\"",
+          "description": "R&R Gutter / downspout - half round - aluminum - up to 5\"",
           "unit": "LF",
           "price": 20.28,
           "_source_item_num": "66",
-          "_verisk_sourced_2026_05_26": true
+          "_verisk_sourced_2026_05_26": true,
+          "_orig_desc": "R&R Gutter / downspout - half-round - aluminum - up to 5\""
         },
         {
           "description": "R&R Gutter / downspout - copper - up to 5\"",
@@ -105417,11 +105553,12 @@
           "_verisk_sourced_2026_05_26": true
         },
         {
-          "description": "R&R Gutter / downspout - half-round - copper - 6\"",
+          "description": "R&R Gutter / downspout - half round - copper - 6\"",
           "unit": "LF",
           "price": 49.25,
           "_source_item_num": "69",
-          "_verisk_sourced_2026_05_26": true
+          "_verisk_sourced_2026_05_26": true,
+          "_orig_desc": "R&R Gutter / downspout - half-round - copper - 6\""
         },
         {
           "description": "De-icing cable - Detach & reset",
@@ -105445,11 +105582,12 @@
           "_verisk_sourced_2026_05_26": true
         },
         {
-          "description": "R&R Fanfold foam insulation board",
+          "description": "R&R Fanfold foam insulation board - 3/8\"",
           "unit": "SF",
           "price": 1.57,
           "_source_item_num": "74",
-          "_verisk_sourced_2026_05_26": true
+          "_verisk_sourced_2026_05_26": true,
+          "_orig_desc": "R&R Fanfold foam insulation board"
         },
         {
           "description": "R&R Siding - .024\" metal (aluminum/steel) - High grade",
@@ -105620,11 +105758,12 @@
           "_verisk_sourced_2026_05_26": true
         },
         {
-          "description": "R&R Skylight - double dome venting, 12.6",
+          "description": "R&R Skylight - double dome venting, 12.6 - 15.5 sf",
           "unit": "EA",
           "price": 1159.18,
           "_source_item_num": "100",
-          "_verisk_sourced_2026_05_26": true
+          "_verisk_sourced_2026_05_26": true,
+          "_orig_desc": "R&R Skylight - double dome venting, 12.6"
         },
         {
           "description": "R&R Shutters - aluminum - Large",
@@ -105634,11 +105773,12 @@
           "_verisk_sourced_2026_05_26": true
         },
         {
-          "description": "R&R Shutters - simulated wood (polystyrene) - Large Labor Minimums Applied DEPREC.",
+          "description": "R&R Shutters - simulated wood (polystyrene) - Large",
           "unit": "EA",
           "price": 323.67,
           "_source_item_num": "102",
-          "_verisk_sourced_2026_05_26": true
+          "_verisk_sourced_2026_05_26": true,
+          "_orig_desc": "R&R Shutters - simulated wood (polystyrene) - Large Labor Minimums Applied DEPREC."
         },
         {
           "description": "Framing labor minimum",
@@ -105859,18 +105999,20 @@
           "_verisk_sourced_2026_05_26": true
         },
         {
-          "description": "R&R Chimney flashing - large (32\" x",
+          "description": "R&R Chimney flashing - large (32\" x 60\")",
           "unit": "EA",
           "price": 652.76,
           "_source_item_num": "12",
-          "_verisk_sourced_2026_05_26": true
+          "_verisk_sourced_2026_05_26": true,
+          "_orig_desc": "R&R Chimney flashing - large (32\" x"
         },
         {
-          "description": "R&R Chimney flashing - small (24\" x",
+          "description": "R&R Chimney flashing - small (24\" x 24\")",
           "unit": "EA",
           "price": 379.32,
           "_source_item_num": "13",
-          "_verisk_sourced_2026_05_26": true
+          "_verisk_sourced_2026_05_26": true,
+          "_orig_desc": "R&R Chimney flashing - small (24\" x"
         },
         {
           "description": "R&R Chimney flashing - average (32\" x 36\")",
@@ -106188,18 +106330,20 @@
           "_verisk_sourced_2026_05_26": true
         },
         {
-          "description": "R&R Gutter guard / screen - High grade",
+          "description": "R&R Gutter guard/screen - High grade",
           "unit": "LF",
           "price": 15.47,
           "_source_item_num": "60",
-          "_verisk_sourced_2026_05_26": true
+          "_verisk_sourced_2026_05_26": true,
+          "_orig_desc": "R&R Gutter guard / screen - High grade"
         },
         {
-          "description": "Minimum labor charge - gutter",
+          "description": "Gutter labor minimum",
           "unit": "EA",
           "price": 309.74,
           "_source_item_num": "61",
-          "_verisk_sourced_2026_05_26": true
+          "_verisk_sourced_2026_05_26": true,
+          "_orig_desc": "Minimum labor charge - gutter"
         },
         {
           "description": "Slate roofing - 12\" to 18\" tall",
@@ -106223,18 +106367,20 @@
           "_verisk_sourced_2026_05_26": true
         },
         {
-          "description": "R&R Gutter / downspout - half-round - aluminum - 6\"",
+          "description": "R&R Gutter / downspout - half round - aluminum - 6\"",
           "unit": "LF",
           "price": 16.85,
           "_source_item_num": "65",
-          "_verisk_sourced_2026_05_26": true
+          "_verisk_sourced_2026_05_26": true,
+          "_orig_desc": "R&R Gutter / downspout - half-round - aluminum - 6\""
         },
         {
-          "description": "R&R Gutter / downspout - half-round - aluminum - up to 5\"",
+          "description": "R&R Gutter / downspout - half round - aluminum - up to 5\"",
           "unit": "LF",
           "price": 14.25,
           "_source_item_num": "66",
-          "_verisk_sourced_2026_05_26": true
+          "_verisk_sourced_2026_05_26": true,
+          "_orig_desc": "R&R Gutter / downspout - half-round - aluminum - up to 5\""
         },
         {
           "description": "R&R Gutter / downspout - copper - up to 5\"",
@@ -106251,11 +106397,12 @@
           "_verisk_sourced_2026_05_26": true
         },
         {
-          "description": "R&R Gutter / downspout - half-round - copper - 6\"",
+          "description": "R&R Gutter / downspout - half round - copper - 6\"",
           "unit": "LF",
           "price": 36.5,
           "_source_item_num": "69",
-          "_verisk_sourced_2026_05_26": true
+          "_verisk_sourced_2026_05_26": true,
+          "_orig_desc": "R&R Gutter / downspout - half-round - copper - 6\""
         },
         {
           "description": "De-icing cable - Detach & reset",
@@ -106279,11 +106426,12 @@
           "_verisk_sourced_2026_05_26": true
         },
         {
-          "description": "R&R Fanfold foam insulation board",
+          "description": "R&R Fanfold foam insulation board - 3/8\"",
           "unit": "SF",
           "price": 1.01,
           "_source_item_num": "74",
-          "_verisk_sourced_2026_05_26": true
+          "_verisk_sourced_2026_05_26": true,
+          "_orig_desc": "R&R Fanfold foam insulation board"
         },
         {
           "description": "R&R Siding - .024\" metal (aluminum/steel) - High grade",
@@ -106454,11 +106602,12 @@
           "_verisk_sourced_2026_05_26": true
         },
         {
-          "description": "R&R Skylight - double dome venting, 12.6",
+          "description": "R&R Skylight - double dome venting, 12.6 - 15.5 sf",
           "unit": "EA",
           "price": 1096.45,
           "_source_item_num": "100",
-          "_verisk_sourced_2026_05_26": true
+          "_verisk_sourced_2026_05_26": true,
+          "_orig_desc": "R&R Skylight - double dome venting, 12.6"
         },
         {
           "description": "R&R Shutters - aluminum - Large",
@@ -106468,11 +106617,12 @@
           "_verisk_sourced_2026_05_26": true
         },
         {
-          "description": "R&R Shutters - simulated wood (polystyrene) - Large Labor Minimums Applied DEPREC.",
+          "description": "R&R Shutters - simulated wood (polystyrene) - Large",
           "unit": "EA",
           "price": 187.32,
           "_source_item_num": "102",
-          "_verisk_sourced_2026_05_26": true
+          "_verisk_sourced_2026_05_26": true,
+          "_orig_desc": "R&R Shutters - simulated wood (polystyrene) - Large Labor Minimums Applied DEPREC."
         },
         {
           "description": "Framing labor minimum",
