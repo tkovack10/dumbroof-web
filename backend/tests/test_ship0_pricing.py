@@ -79,7 +79,7 @@ def _resolve(financials, prop=None):
              "unit_price": 0, "qty": 30}
         ],
     }
-    return gen._resolve_and_overlay_prices(cfg)["market_code"]
+    return gen._resolve_market_provenance(cfg)["market_code"]
 
 
 def test_houston_modern_claim_not_dallas():

@@ -2579,38 +2579,35 @@ def canonical_sort_key(item_name):
 # DOCUMENT 2: XACTIMATE-STYLE ESTIMATE
 # ===================================================================
 
-def _resolve_and_overlay_prices(config):
-    """Wire claim_config → market-specific Xactimate prices via XactRegistry.
+def _resolve_market_provenance(config):
+    """Resolve the Xactimate market for Doc 02's provenance footer ONLY.
 
+    Ship 3: this function NO LONGER prices anything. Per the B.7 Single-Snapshot
+    Scope Principle, build_line_items (processor) is the SOLE owner of unit_price —
+    it freezes the relational price (get_prices_for_market keyed by short_key) onto
+    every line. The generator TRUSTS those frozen prices and never re-resolves or
+    re-prices. The old fuzzy `lookup_price(desc)` overlay (refresh + fill) silently
+    DISAGREED with the frozen relational price — e.g. it re-priced standard shingle
+    to the high-grade rate ($269.32→$306.46) — so it was deleted. Price decisions
+    live in get_prices_for_market; scope decisions in build_line_items; the generator
+    only renders.
+
+    Returns {market_code, market_name} for the "Priced from ..." footer.
     Resolution order:
-      1. config["financials"]["market_code"] — the authoritative metro resolved
-         once in processor.process_claim (e.g., "TXHO8X_APR26"). NEVER read
-         price_list as the resolver: it is a derived DISPLAY label (e.g.
-         "TXHO26") that is not a real market key and silently downgrades to the
-         state default (Houston→Dallas — the E202/E210 bug class).
-      2. Legacy fallback: financials.price_list ONLY if it is itself a real
-         market key (old claims stored the real code there before market_code).
-      3. XactRegistry.resolve_market(state, zip, city) using property fields.
-      4. Fail-fast if none — DO NOT silently default to NY.
-
-    Mutation policy on config["line_items"]:
-      - If unit_price is missing/null/0: fill from registry (description lookup).
-      - If unit_price is a positive number: leave alone (curated value preserved).
-      - If config["_refresh_prices"] is True: overwrite all unit_prices regardless.
+      1. financials.market_code — authoritative metro set once in process_claim.
+         NEVER read price_list as the resolver: it is a derived DISPLAY label that
+         silently downgrades to the state default (Houston→Dallas, E202/E210 class).
+      2. Legacy financials.price_list ONLY if it is itself a real market key.
+      3. XactRegistry.resolve_market(state, zip, city) from property fields.
+      4. Fail-fast (raise) if none — DO NOT silently default to NY.
     """
     from xactimate_lookup import XactRegistry, DEFAULT_MARKETS, _get_all_markets
 
     fin = config.get("financials", {}) or {}
     prop = config.get("property", {}) or {}
     available_markets = _get_all_markets().get("markets", {})
-    # market_code is the SINGLE SOURCE OF TRUTH for pricing (set once in
-    # processor.process_claim). Read it directly — do NOT use price_list, which is
-    # a derived display label, not a resolver (see docstring).
     market_code = fin.get("market_code")
     if not market_code:
-        # Legacy claims (pre-market_code) stored the real market code in
-        # price_list. Honor it only when it is an actual market key — never the
-        # modern derived label like "TXHO26".
         legacy = fin.get("price_list")
         if legacy and legacy in available_markets:
             market_code = legacy
@@ -2652,54 +2649,10 @@ def _resolve_and_overlay_prices(config):
         print(f"  [pricing] {market_code} not in all-markets.json — using {upgraded} ({how})")
         market_code = upgraded
 
-    reg = XactRegistry()
-    n_priced = reg.load_market_prices(market_code=market_code)
-    print(f"  [pricing] market={market_code} ({reg._market_name}), overlaid {n_priced} registry items")
-
-    refresh_all = bool(config.get("_refresh_prices"))
-    line_items = config.get("line_items", []) or []
-    filled = refreshed = skipped = 0
-    missed = []
-
-    for li in line_items:
-        existing = li.get("unit_price")
-        has_curated = isinstance(existing, (int, float)) and existing > 0
-        if has_curated and not refresh_all:
-            skipped += 1
-            continue
-
-        desc = li.get("description") or ""
-        action = li.get("action")
-        looked_up = reg.lookup_price(desc, action=action)
-        if looked_up and looked_up.get("unit_price"):
-            new_price = looked_up["unit_price"]
-            if has_curated:
-                refreshed += 1
-            else:
-                filled += 1
-            li["unit_price"] = new_price
-            for k in ("xact_code", "unit", "category", "trade", "irc_code"):
-                if not li.get(k) and looked_up.get(k):
-                    li[k] = looked_up[k]
-        else:
-            missed.append(desc[:60])
-
-    print(f"  [pricing] line_items: filled={filled} refreshed={refreshed} kept={skipped} missed={len(missed)}")
-    if missed:
-        for m in missed[:5]:
-            print(f"    miss: {m}")
-        if len(missed) > 5:
-            print(f"    ...and {len(missed)-5} more")
-
-    return {
-        "market_code": market_code,
-        "market_name": reg._market_name,
-        "overlaid": n_priced,
-        "filled": filled,
-        "refreshed": refreshed,
-        "kept": skipped,
-        "missed": len(missed),
-    }
+    market_name = (available_markets.get(market_code) or {}).get("name", "")
+    print(f"  [pricing] Doc 02 reads FROZEN relational prices (no overlay); "
+          f"provenance market={market_code} ({market_name})")
+    return {"market_code": market_code, "market_name": market_name}
 
 
 def build_xactimate_estimate(config):
@@ -2707,14 +2660,17 @@ def build_xactimate_estimate(config):
     lang = get_language(config)
     print(f"Building X Style Build Scope... [role: {lang['role']}]")
 
-    # Resolve market and overlay prices BEFORE rendering.
-    # If neither market_code nor state is set, log + continue with config-baked prices.
+    # Ship 3: resolve the market for the provenance FOOTER only. Prices are already
+    # frozen on the line_items by build_line_items (relational, by short_key) — the
+    # generator does NOT overlay/re-price (deleted: the fuzzy lookup_price refresh
+    # that re-priced standard shingle to the high-grade rate).
+    # If neither market_code nor state is set, log + continue with the frozen prices.
     _pricing_meta = {}
     try:
-        _pricing_meta = _resolve_and_overlay_prices(config) or {}
+        _pricing_meta = _resolve_market_provenance(config) or {}
     except ValueError as e:
         print(f"  [pricing] WARNING: {e}")
-        print(f"  [pricing] continuing with config-baked prices (legacy mode)")
+        print(f"  [pricing] continuing with frozen line-item prices (no provenance footer)")
 
     # Ship 0.4 — market provenance shown on the estimate so a reader can tell
     # exactly which market priced it (no more silent Houston-as-Dallas).
