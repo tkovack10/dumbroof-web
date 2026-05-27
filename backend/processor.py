@@ -5328,6 +5328,15 @@ def build_line_items(measurements: dict, photo_analysis: dict, state: str, user_
         ]
         print(f"[SCOPE] roofing not requested — stripped {before - len(items)} roofing items", flush=True)
 
+    # B.4 (Single-Snapshot Scope): freeze pricing PROVENANCE onto each line row, alongside
+    # the already-frozen unit_price. _priced_market = the market this claim was priced from,
+    # so downstream PDFs/audits read the frozen source and never re-resolve, and Ship 7.5's
+    # check_market_consistency can flag any line whose source != the claim's market. (Single
+    # market per claim today, so uniform; finer national/fallback attribution is a Ship 7.5 add.)
+    _pm = PRICING.get("_market_code") or market_code or ""
+    for _it in items:
+        _it.setdefault("_priced_market", _pm)
+
     return _sort_line_items(items)
 
 
