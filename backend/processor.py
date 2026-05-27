@@ -610,6 +610,47 @@ def pricing_qa_flags(config: dict, market_reason: str = "") -> list:
             ),
         })
 
+    # Steep-roof completeness — "make sure steep charges are included when applicable."
+    # Mirrors build_line_items' steep logic (processor.py STEEP block): a roof facet at
+    # pitch >=7/12 (or a steep predominant pitch when no per-facet data) warrants a
+    # steep surcharge. If the scope warrants steep but no steep line item is present,
+    # flag it — catches the historical-miss class (facet `pitches` populated AFTER the
+    # line items were generated → no steep emitted; the audit's 1 genuine miss) and any
+    # future regression. Steep omission is under-billing, so MEDIUM (review), not a hard
+    # block. Only fires when pitch data EXISTS (no pitch data → can't determine → no
+    # false flag; that's a separate EagleView-extraction gap).
+    def _rise(p):
+        try:
+            return int(str(p).split("/")[0])
+        except (ValueError, IndexError, AttributeError, TypeError):
+            return None
+    steep_expected = False
+    for s in (config.get("structures") or []):
+        facets = s.get("pitches") or []
+        if facets:
+            for f in facets:
+                r = _rise(f.get("pitch"))
+                if r is not None and r >= 7 and (f.get("area_sf") or 0) > 0:
+                    steep_expected = True
+                    break
+        else:  # build_line_items falls back to predominant pitch when no facet data
+            r = _rise(s.get("predominant_pitch"))
+            if r is not None and r >= 7:
+                steep_expected = True
+        if steep_expected:
+            break
+    if steep_expected and not any("steep roof" in (li.get("description") or "").lower() for li in line_items):
+        flags.append({
+            "issue": "STEEP_ROOF_MISSING",
+            "severity": "medium",
+            "field": "line_items",
+            "detail": (
+                "Roof has a facet at pitch >=7/12 but no 'Additional charge for steep "
+                "roof' line item — steep surcharge likely under-applied (under-billing). "
+                "Reprocess to regenerate line items from current pitch data."
+            ),
+        })
+
     return flags
 
 
