@@ -134,6 +134,34 @@ def test_pricing_qa_flags_block_zero_price():
     assert zero and zero[0]["severity"] == "critical" and zero[0]["count"] == 1
 
 
+def _steep_flagged(cfg):
+    return any(f["issue"] == "STEEP_ROOF_MISSING" for f in processor.pricing_qa_flags(cfg))
+
+def test_steep_missing_flagged_when_facet_steep_but_no_item():
+    # The audit's genuine-miss shape: steep facets present, no steep line item.
+    cfg = {"financials": {"market_code": "TXHO8X_APR26", "market_resolution_reason": "zip_prefix"},
+           "structures": [{"pitches": [{"pitch": "9/12", "area_sf": 1013}, {"pitch": "16/12", "area_sf": 51}]}],
+           "line_items": [{"description": "Laminated comp shingle roofing - w/out felt", "qty": 30, "unit_price": 294.73}]}
+    assert _steep_flagged(cfg)
+
+def test_steep_not_flagged_when_present():
+    cfg = {"financials": {"market_code": "TXHO8X_APR26", "market_resolution_reason": "zip_prefix"},
+           "structures": [{"pitches": [{"pitch": "9/12", "area_sf": 1013}]}],
+           "line_items": [{"description": "Additional charge for steep roof 7/12-9/12", "qty": 10.13, "unit_price": 64.07}]}
+    assert not _steep_flagged(cfg)
+
+def test_steep_not_flagged_low_pitch_or_no_pitch_data():
+    low = {"financials": {"market_code": "TXHO8X_APR26"}, "structures": [{"pitches": [{"pitch": "5/12", "area_sf": 2000}]}], "line_items": []}
+    gap = {"financials": {"market_code": "TXHO8X_APR26"}, "structures": [], "line_items": []}  # data gap, not a steep miss
+    assert not _steep_flagged(low) and not _steep_flagged(gap)
+
+def test_steep_flagged_via_predominant_fallback():
+    cfg = {"financials": {"market_code": "TXHO8X_APR26"},
+           "structures": [{"predominant_pitch": "8/12"}],  # no per-facet pitches -> predominant fallback
+           "line_items": [{"description": "Shingles", "qty": 20, "unit_price": 294}]}
+    assert _steep_flagged(cfg)
+
+
 def test_pricing_qa_flags_clean_claim_no_flags():
     cfg = {"financials": {"market_code": "TXHO8X_APR26", "market_resolution_reason": "zip_prefix"},
            "line_items": [{"description": "Shingles", "qty": 30, "unit_price": 294.73}]}
