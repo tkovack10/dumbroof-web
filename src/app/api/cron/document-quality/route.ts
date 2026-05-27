@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { getResend, EMAIL_FROM, EMAIL_REPLY_TO } from "@/lib/resend";
 import { gradeClaim, type ClaimRow } from "@/lib/document-quality/qa-checks";
+import { fetchMarketPriceIndex } from "@/lib/document-quality/relational-prices";
 import { renderReportHtml } from "@/lib/document-quality/render-html";
 import type { DocumentQualityReport, ClaimQuality } from "@/lib/document-quality/types";
 
@@ -85,8 +86,22 @@ async function runDocumentQualityReview(): Promise<{
 
   const claimRows = (claims || []) as unknown as ClaimRow[];
 
+  // Build the canonical relational price index ONCE for every market in this
+  // window (Ship 5). The price audit reads this instead of a JS re-implementation
+  // of all-markets.json — same source as the backend's get_prices_for_market.
+  const marketCodes = claimRows
+    .map((c) => {
+      const cfg = c.claim_config as Record<string, unknown> | null;
+      const fin = (cfg?.financials as Record<string, unknown>) || {};
+      return [fin.market_code, fin.price_list].filter(
+        (v): v is string => typeof v === "string" && v.length > 0,
+      );
+    })
+    .flat();
+  const priceIndex = await fetchMarketPriceIndex(supabaseAdmin, marketCodes);
+
   // Run QA checks against each claim
-  const claimGrades: ClaimQuality[] = claimRows.map(gradeClaim);
+  const claimGrades: ClaimQuality[] = claimRows.map((c) => gradeClaim(c, priceIndex));
 
   // Sort worst-first so F+C show up at the top of the email
   claimGrades.sort((a, b) => {

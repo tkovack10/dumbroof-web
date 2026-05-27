@@ -1,5 +1,5 @@
 import type { CheckResult, Grade, ClaimQuality } from "./types";
-import { expectedPrice, marketExists, getMarketName } from "./market-prices";
+import type { MarketPriceIndex } from "./relational-prices";
 
 /**
  * QA check pipeline for the daily document quality cron.
@@ -454,7 +454,7 @@ type LineItem = {
   action?: string | null;
 };
 
-function checkLineItemPrices(claim: ClaimRow): CheckResult {
+function checkLineItemPrices(claim: ClaimRow, prices: MarketPriceIndex): CheckResult {
   const cfg = claim.claim_config;
   if (!cfg || typeof cfg !== "object") {
     return {
@@ -471,9 +471,9 @@ function checkLineItemPrices(claim: ClaimRow): CheckResult {
   const lineItems = rawLineItems as LineItem[];
   // market_code is authoritative (set once in processor.process_claim). price_list
   // is a derived DISPLAY label, not a resolver — honor it only as a legacy fallback
-  // when it is itself a real market key (mirrors _resolve_and_overlay_prices).
+  // when it is itself a real market key (mirrors get_prices_for_market's market_id).
   const legacyPriceList =
-    typeof fin.price_list === "string" && marketExists(fin.price_list)
+    typeof fin.price_list === "string" && prices.marketExists(fin.price_list)
       ? (fin.price_list as string)
       : null;
   const marketCode = (fin.market_code as string) || legacyPriceList || null;
@@ -483,15 +483,15 @@ function checkLineItemPrices(claim: ClaimRow): CheckResult {
       name: "price_audit",
       passed: false,
       severity: "critical",
-      message: "no market_code on claim — every line_item priced from NY baseline (claim materially wrong)",
+      message: "no market_code on claim — backend cannot resolve a relational market (claim materially wrong)",
     };
   }
-  if (!marketExists(marketCode)) {
+  if (!prices.marketExists(marketCode)) {
     return {
       name: "price_audit",
       passed: false,
       severity: "critical",
-      message: `market_code '${marketCode}' not in all-markets.json — falls back to NY baseline`,
+      message: `market_code '${marketCode}' has no priced active items in the relational pricing tables (pricing_market_prices/pricing_national_prices)`,
     };
   }
   if (lineItems.length === 0) {
@@ -523,18 +523,25 @@ function checkLineItemPrices(claim: ClaimRow): CheckResult {
     }
 
     const action = (li.action as "remove" | "install" | "r&r" | null) || null;
-    const expected = expectedPrice(marketCode, desc, action);
+    const expected = prices.expectedPrice(marketCode, desc, action);
 
     if (expected == null) {
       unmappedCount++;
       continue;
     }
 
-    // 5% tolerance — accepts O&P / sales tax / minor re-overlay drift
-    const deviation = Math.abs(price - expected) / Math.max(expected, 0.01);
-    if (deviation > 0.05) {
+    // Ship 5: exact match after rounding to cents. There is now a single frozen
+    // relational price source (get_prices_for_market) — the line_item's unit_price
+    // is overlaid directly from it, so any divergence is a real defect, not drift.
+    // The old 5% tolerance band silently passed wrong-but-close markets
+    // (e.g. Houston priced as Dallas). unit_price is the pre-O&P, pre-tax base
+    // rate, so it must equal the market rate to the cent.
+    const expectedCents = Math.round(expected * 100);
+    const priceCents = Math.round(price * 100);
+    if (priceCents !== expectedCents) {
       mismatchCount++;
       if (sampleMismatches.length < 3) {
+        const deviation = Math.abs(price - expected) / Math.max(expected, 0.01);
         sampleMismatches.push(
           `"${desc.slice(0, 38)}" $${price.toFixed(2)} vs market $${expected.toFixed(2)} (${(deviation * 100).toFixed(0)}% off)`,
         );
@@ -564,7 +571,7 @@ function checkLineItemPrices(claim: ClaimRow): CheckResult {
   }
 
   const total = lineItems.length;
-  const market = getMarketName(marketCode) || marketCode;
+  const market = prices.getMarketName(marketCode) || marketCode;
 
   // Verdict
   if (mismatchCount === 0 && zeroCount === 0 && riCollisions === 0) {
@@ -578,7 +585,7 @@ function checkLineItemPrices(claim: ClaimRow): CheckResult {
 
   const issues: string[] = [];
   if (mismatchCount >= 3) issues.push(`${mismatchCount} prices off-market`);
-  else if (mismatchCount > 0) issues.push(`${mismatchCount} prices drift >5% from ${market}`);
+  else if (mismatchCount > 0) issues.push(`${mismatchCount} prices != ${market} relational rate`);
   if (zeroCount > 0) issues.push(`${zeroCount} items at $0`);
   if (riCollisions > 0) issues.push(`${riCollisions} R/I collisions (Remove == Install price)`);
 
@@ -599,7 +606,8 @@ function checkLineItemPrices(claim: ClaimRow): CheckResult {
  * Pipeline + grading
  * ------------------------------------------------------------------------- */
 
-const ALL_CHECKS = [
+// Checks that read only the claim row (no external data source).
+const CLAIM_CHECKS = [
   checkContractorRcv,
   checkRcvVsRoofArea,
   checkOandP,
@@ -611,7 +619,6 @@ const ALL_CHECKS = [
   checkRoofSectionsBug,
   checkEstimateRequest,
   checkDamageScore,
-  checkLineItemPrices,
 ];
 
 /**
@@ -621,9 +628,16 @@ const ALL_CHECKS = [
  *   B — passed but 1-2 warnings (no criticals)
  *   C — 1 critical fail OR 3+ warnings
  *   F — 2+ critical fails
+ *
+ * `prices` is the frozen relational price index for this cron window, built once
+ * by fetchMarketPriceIndex() and shared across every claim — see the cron route.
+ * The price audit reads it instead of the deleted all-markets.json copy.
  */
-export function gradeClaim(claim: ClaimRow): ClaimQuality {
-  const checks = ALL_CHECKS.map((fn) => fn(claim));
+export function gradeClaim(claim: ClaimRow, prices: MarketPriceIndex): ClaimQuality {
+  const checks = [
+    ...CLAIM_CHECKS.map((fn) => fn(claim)),
+    checkLineItemPrices(claim, prices),
+  ];
 
   let critFailed = 0;
   let warnFailed = 0;
