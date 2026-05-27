@@ -209,5 +209,35 @@ class PdfWiringTests(unittest.TestCase):
                              f"refresh={refresh}: blank price was fuzzy-filled — overlay leaked back in")
 
 
+class DumpsterScalingTests(unittest.TestCase):
+    """Ship 17 #3: roofing-debris dumpster qty must scale with roof size (~22 SQ/load),
+    not the old flat qty=1 that under-scoped haul on large roofs. qty is deterministic
+    (area-driven), independent of market price."""
+
+    def _dumpster_qty(self, area_sq):
+        from processor import build_line_items
+        meas = {"measurements": {"eave": 100, "ridge": 40, "valley": 10, "rake": 30, "hip": 0},
+                "structures": [{"roof_area_sq": area_sq, "roof_area_sf": area_sq * 100,
+                                "facets": 6, "predominant_pitch": "6/12"}]}
+        items = build_line_items(meas, {}, "TX", estimate_request={"roofing": True},
+                                 market_code="TXHO8X_APR26")
+        loads = [it["qty"] for it in items
+                 if it.get("category") == "DEBRIS" and "roofing debris" in it.get("description", "").lower()]
+        self.assertEqual(len(loads), 1, "expected exactly one roofing-debris dumpster line")
+        return loads[0]
+
+    def test_small_roof_one_load(self):
+        self.assertEqual(self._dumpster_qty(18), 1)   # ceil(18/22)=1
+
+    def test_exact_capacity_one_load(self):
+        self.assertEqual(self._dumpster_qty(22), 1)   # ceil(22/22)=1
+
+    def test_large_roof_scales_up(self):
+        self.assertEqual(self._dumpster_qty(40), 2)   # ceil(40/22)=2  (was flat 1 — the bug)
+
+    def test_very_large_roof(self):
+        self.assertEqual(self._dumpster_qty(50), 3)   # ceil(50/22)=3
+
+
 if __name__ == "__main__":
     unittest.main()
