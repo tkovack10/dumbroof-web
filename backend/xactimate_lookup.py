@@ -84,6 +84,20 @@ DEFAULT_MARKETS = {
     "OK": "OKOC8X_02MAY26", # Oklahoma City — largest OK metro (Alfonso 2026-05-05, 6 markets)
     "AZ": "AZPH8X_02MAY26", # Phoenix — largest AZ metro (Alfonso 2026-05-14, 6 markets)
     "SC": "SCCH8X_02MAY26", # Charleston — coastal SC anchor (Alfonso 2026-05-14, 10 markets)
+    # 9 new-state defaults added 2026-05-27 (Commit 3 added these markets to
+    # all-markets.json + ZIP routing, but DEFAULT_MARKETS was not updated.
+    # Without these, a claim from these states without a matching ZIP prefix
+    # falls through to NEAREST_PRICED_STATE substitution — even though native
+    # pricing exists. Caught during NEAREST_PRICED_STATE algorithm audit.
+    "AR": "ARJO8X_02MAY26",  # Jonesboro — single AR market
+    "CO": "CODE8X_02MAY26",  # Denver — single CO market
+    "FL": "FLMI8X_02MAY26",  # Miami — single FL market
+    "GA": "GAAT8X_02MAY26",  # Atlanta — single GA market
+    "IN": "INFW8X_02MAY26",  # Fort Wayne — single IN market
+    "KY": "KYLX8X_02MAY26",  # Lexington — single KY market
+    "MO": "MOSP8X_02MAY26",  # Springfield — single MO market
+    "NC": "NCRA8X_02MAY26",  # Raleigh — single NC market
+    "ND": "NDFA8X_02MAY26",  # Fargo — single ND market
 }
 
 # Cross-state zip-prefix overrides for unpriced states. When a claim's state
@@ -117,29 +131,93 @@ CROSS_STATE_ZIP_OVERRIDE = {
     # work but no priced metro is dramatically closer than the existing default.
 }
 
-# Nearest priced state for every unpriced US state/territory. When a claim comes
-# in from a state we haven't onboarded, resolve_market substitutes the nearest
-# priced state's default market rather than silently dropping to NY pricing.
-# Mappings are by state-centroid → priced-state-centroid distance, biased toward
-# population/metro centers when ties are close.
+# State centroid coordinates (lat, lon) for haversine distance computation.
+# Source: US Census Bureau geographic centroids (population-weighted where
+# meaningful). Stable public-domain data. Used by _nearest_priced_state() to
+# substitute the geographically closest priced state when a claim's state has
+# no native pricing — replaces the hand-maintained NEAREST_PRICED_STATE dict
+# which had accumulated geographic absurdities (FL→MD when GA/AL/SC closer;
+# AL/GA→OH when SC/TX closer; etc.) caught during Shell B's audit 2026-05-27.
+_STATE_CENTROIDS = {
+    "AL": (32.7794, -86.8287), "AK": (64.0685, -152.2782), "AZ": (34.2744, -111.6602),
+    "AR": (34.8938, -92.4426), "CA": (36.7783, -119.4179), "CO": (38.9972, -105.5478),
+    "CT": (41.5978, -72.7556), "DE": (38.9896, -75.5050), "DC": (38.9072, -77.0369),
+    "FL": (27.6648, -81.5158), "GA": (32.6415, -83.4426), "HI": (20.7984, -156.3319),
+    "ID": (44.0682, -114.7420), "IL": (40.0417, -89.1965), "IN": (39.8942, -86.2816),
+    "IA": (42.0751, -93.4960), "KS": (38.4937, -98.3804), "KY": (37.5347, -85.3021),
+    "LA": (31.0689, -91.9968), "ME": (45.3695, -69.2428), "MD": (39.0550, -76.7909),
+    "MA": (42.2596, -71.8083), "MI": (44.3467, -85.4102), "MN": (46.2807, -94.3053),
+    "MS": (32.7416, -89.6787), "MO": (38.3566, -92.4580), "MT": (47.0527, -109.6333),
+    "NE": (41.5378, -99.7951), "NV": (39.3289, -116.6312), "NH": (43.6805, -71.5818),
+    "NJ": (40.1907, -74.6728), "NM": (34.4071, -106.1126), "NY": (42.9538, -75.5268),
+    "NC": (35.5557, -79.3877), "ND": (47.4501, -100.4659), "OH": (40.2862, -82.7937),
+    "OK": (35.5889, -97.4943), "OR": (43.9336, -120.5583), "PA": (40.8781, -77.7996),
+    "RI": (41.6772, -71.5101), "SC": (33.9169, -80.8964), "SD": (44.4443, -100.2263),
+    "TN": (35.8580, -86.3505), "TX": (31.4757, -99.3312), "UT": (39.3055, -111.6703),
+    "VT": (44.0688, -72.6658), "VA": (37.5215, -78.8537), "WA": (47.3826, -120.4472),
+    "WV": (38.6409, -80.6227), "WI": (44.6243, -89.9941), "WY": (42.9957, -107.5512),
+    # Territories — distance to CONUS still meaningful for fallback ranking
+    "PR": (18.2208, -66.5901), "VI": (18.3358, -64.8963), "GU": (13.4443, 144.7937),
+    "MP": (17.3308, 145.3846), "AS": (-14.2710, -170.1322),
+}
+
+
+def _haversine_miles(p1, p2):
+    """Great-circle distance in miles between two (lat, lon) points (degrees)."""
+    import math
+    lat1, lon1 = p1
+    lat2, lon2 = p2
+    R = 3958.7613  # Earth radius in miles
+    phi1, phi2 = math.radians(lat1), math.radians(lat2)
+    dphi = math.radians(lat2 - lat1)
+    dlambda = math.radians(lon2 - lon1)
+    a = math.sin(dphi / 2) ** 2 + math.cos(phi1) * math.cos(phi2) * math.sin(dlambda / 2) ** 2
+    return 2 * R * math.asin(math.sqrt(a))
+
+
+def _nearest_priced_state(unpriced_state, priced_states):
+    """Return the geographically closest state in `priced_states` to `unpriced_state`.
+
+    `priced_states` is an iterable of 2-letter state codes (typically
+    DEFAULT_MARKETS.keys()). Distance is state-centroid haversine — replaces
+    the hardcoded NEAREST_PRICED_STATE dict which had accumulated geographic
+    absurdities as new states got priced (FL→MD, AL/GA→OH, etc.).
+
+    Returns None if `unpriced_state` is missing from _STATE_CENTROIDS (caller
+    should fall back to NY default with an error log, same behavior as before).
+
+    Recomputed on every call — automatically correct whenever DEFAULT_MARKETS
+    changes. No drift possible between data and routing.
+    """
+    src = _STATE_CENTROIDS.get((unpriced_state or "").upper())
+    if not src:
+        return None
+    best_state = None
+    best_dist = float("inf")
+    for ps in priced_states:
+        c = _STATE_CENTROIDS.get((ps or "").upper())
+        if not c:
+            continue
+        d = _haversine_miles(src, c)
+        if d < best_dist:
+            best_state = ps
+            best_dist = d
+    return best_state
+
+
+# DEPRECATED — retained for backward compatibility ONLY. The hand-maintained
+# dict had geographic absurdities by 2026-05-27 (FL→MD when GA/AL/SC were
+# obviously closer; AL/GA→OH when SC/TX were closer). Cause: every new priced
+# state requires manual NEAREST_PRICED_STATE updates — and they were missed.
+#
+# resolve_market now uses _nearest_priced_state(state, DEFAULT_MARKETS.keys())
+# which computes the answer dynamically from _STATE_CENTROIDS. This dict is
+# kept ONLY so external imports don't break; do not rely on it for routing.
+# Slated for deletion once any external readers are updated.
 NEAREST_PRICED_STATE = {
-    # Northeast → NY
-    "ME": "NY", "NH": "NY", "VT": "NY", "MA": "NY", "RI": "NY", "CT": "NY",
-    # Mid-Atlantic / Southeast → MD (SC removed 2026-05-14 — Alfonso added 10 SC markets)
-    "VA": "MD", "DC": "MD", "NC": "MD", "FL": "MD",
-    # Appalachia / Ohio Valley → OH
-    "WV": "OH", "KY": "OH", "TN": "OH", "IN": "OH", "AL": "OH", "GA": "OH",
-    # Upper Midwest → IL
-    "WI": "IL", "MO": "IL",
-    # Plains / Northwest → MN (Iowa was here until 2026-05-05 when Alfonso added IA pricing)
-    "NE": "MN", "ND": "MN", "SD": "MN", "MT": "MN",
-    "ID": "MN", "WA": "MN", "OR": "MN", "AK": "MN",
-    # South / Mountain / West → TX (KS/OK left here 2026-05-05; AZ removed 2026-05-14)
-    "MS": "TX", "AR": "TX", "LA": "TX",
-    "NM": "TX", "CO": "TX", "UT": "TX", "NV": "TX",
-    "WY": "TX", "CA": "TX", "HI": "TX",
-    # Territories → nearest CONUS port
-    "PR": "MD", "VI": "MD", "GU": "TX", "MP": "TX", "AS": "TX",
+    state: _nearest_priced_state(state, set(DEFAULT_MARKETS.keys()))
+    for state in _STATE_CENTROIDS
+    if state not in DEFAULT_MARKETS
 }
 
 # Full state name → 2-letter code. Upstream address parsers are inconsistent
@@ -637,7 +715,9 @@ class XactRegistry:
             # resolver so city/zip routing inside the substitute state still
             # applies (e.g. an Iowa claim near the MN border still resolves to
             # Minneapolis if a closer market were ever added).
-            substitute_state = NEAREST_PRICED_STATE.get(state_upper)
+            # Computed dynamically against DEFAULT_MARKETS every call — no
+            # NEAREST_PRICED_STATE drift possible when a new state is priced.
+            substitute_state = _nearest_priced_state(state_upper, DEFAULT_MARKETS.keys())
             if substitute_state and substitute_state in DEFAULT_MARKETS:
                 logger.warning(
                     "[PRICING] No price list for %s — substituting %s (nearest priced state). "
