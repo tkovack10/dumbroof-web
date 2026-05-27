@@ -157,7 +157,6 @@ export default function NewClaimPage() {
   const canSubmit =
     propertyAddress.trim() !== "" &&
     (photoFiles.length > 0 || crmPhotoCount > 0) &&
-    roofMaterial !== "" &&
     (quota === null || quota.mode !== "blocked");
 
   const scanForStorms = async () => {
@@ -1289,7 +1288,6 @@ export default function NewClaimPage() {
                 Roof Material
               </label>
               <select
-                required
                 value={roofMaterial}
                 onChange={(e) => setRoofMaterial(e.target.value)}
                 className="w-full px-4 py-3 rounded-lg border border-[var(--border-glass)] focus:border-[var(--cyan)] focus:ring-1 focus:ring-[var(--cyan)] outline-none transition-colors text-sm"
@@ -1524,9 +1522,7 @@ export default function NewClaimPage() {
               Still need:{" "}
               {[
                 !propertyAddress.trim() && "property address",
-                measurementFiles.length === 0 && "measurements",
                 photoFiles.length === 0 && crmPhotoCount === 0 && "inspection photos",
-                !roofMaterial && "roof material",
               ]
                 .filter(Boolean)
                 .join(", ")}
