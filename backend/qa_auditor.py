@@ -61,6 +61,30 @@ def _build_ground_truth(config: dict, claim: dict) -> dict:
             seen.add(t)
             trades.append(t)
 
+    # NOAA weather ground truth — without this the FABRICATED WEATHER check fires
+    # on EVERY hail/wind statement, because the prose claims hail but the ground
+    # truth it's handed has no weather facts. Read the SAME source the
+    # deterministic check uses (config["weather"]["noaa"], populated in
+    # processor.py during NOAA enrichment), falling back to the persisted rich
+    # blob on the claim row (claims.weather_data: max_hail_inches / max_wind_mph
+    # / events / event_count). Detection-superset principle: the prose auditor
+    # must see the weather evidence the report generator saw.
+    noaa = (weather.get("noaa") or {})
+    if not noaa:
+        noaa = (claim.get("weather_data") or {}) if isinstance(claim, dict) else {}
+    try:
+        noaa_max_hail = float(noaa.get("max_hail_inches") or 0)
+    except (TypeError, ValueError):
+        noaa_max_hail = 0.0
+    try:
+        noaa_max_wind = float(noaa.get("max_wind_mph") or 0)
+    except (TypeError, ValueError):
+        noaa_max_wind = 0.0
+    try:
+        noaa_event_count = int(noaa.get("event_count") or 0)
+    except (TypeError, ValueError):
+        noaa_event_count = 0
+
     return {
         "canonical_address": canonical_address,
         "canonical_date_of_loss": canonical_dol,
@@ -73,6 +97,12 @@ def _build_ground_truth(config: dict, claim: dict) -> dict:
         "trades": trades,
         "inspection_date": _format_date_human(dates.get("inspection_date", "")),
         "report_date": _format_date_human(dates.get("report_date", "")),
+        "storm_date": _format_date_human(weather.get("storm_date", "")),
+        "noaa_event_count": noaa_event_count,
+        "noaa_max_hail_inches": noaa_max_hail,
+        "noaa_max_wind_mph": noaa_max_wind,
+        "noaa_confirmed_hail": noaa_max_hail > 0,
+        "noaa_confirmed_wind": noaa_max_wind > 0,
     }
 
 
@@ -114,7 +144,7 @@ CRITICAL issues (block delivery — customer cannot see this report):
 4. HOMEOWNER NAME MISMATCH — any homeowner/insured name in the prose that differs from `canonical_homeowner`.
 5. UPPA VIOLATION (ONLY when `user_role == "contractor"`) — use of "on behalf of," "demand," "appeal," "we represent," citations to "11 NYCRR", "§ 2601", or other advocacy/regulatory language. Contractors document and recommend — they do not advocate. PAs and attorneys are exempt.
 6. MULTIPLE-PROPERTIES LANGUAGE — the prose treats one claim as "two properties" or "multiple properties" when in fact the claim is a SINGLE property (multi-structure is fine — main dwelling + garage = ONE property).
-7. FABRICATED WEATHER EVENT — invented storm event, hail size, or wind speed that is not supported by ground truth.
+7. FABRICATED WEATHER EVENT — a storm event, hail size, or wind speed asserted in the prose that the ground-truth NOAA data does NOT support. The NOAA fields are authoritative storm evidence: a hail claim IS supported when `noaa_confirmed_hail` is true (or `noaa_max_hail_inches` > 0); a wind claim IS supported when `noaa_confirmed_wind` is true (or `noaa_max_wind_mph` > 0); `noaa_event_count` is how many corroborating storm events NOAA found near the property. Do NOT flag hail language when `noaa_confirmed_hail` is true, and do NOT flag wind language when `noaa_confirmed_wind` is true — that is corroborated, not fabricated. ONLY flag when the prose asserts a SPECIFIC magnitude that materially exceeds the NOAA maximum (e.g. prose says "3-inch hail" but `noaa_max_hail_inches` is 1.0), or asserts hail/wind when the corresponding `noaa_confirmed_*` is false AND `noaa_event_count` is 0. Qualitative descriptions consistent with confirmed events (e.g. "broad-field hail event", "hail strike signatures") are NOT fabrications when hail is confirmed.
 
 MEDIUM issues (log but do not block):
 - AI ARTIFACTS — phrases like "As an AI", "I'd be happy to", "I cannot provide", "I'll do my best".
