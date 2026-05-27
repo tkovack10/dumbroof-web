@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { getResend, EMAIL_FROM, EMAIL_REPLY_TO } from "@/lib/resend";
 import { gradeClaim, type ClaimRow } from "@/lib/document-quality/qa-checks";
+import { fetchMarketPricesMap } from "@/lib/document-quality/relational-prices";
 import { renderReportHtml } from "@/lib/document-quality/render-html";
 import type { DocumentQualityReport, ClaimQuality } from "@/lib/document-quality/types";
 
@@ -85,8 +86,21 @@ async function runDocumentQualityReview(): Promise<{
 
   const claimRows = (claims || []) as unknown as ClaimRow[];
 
-  // Run QA checks against each claim
-  const claimGrades: ClaimQuality[] = claimRows.map(gradeClaim);
+  // Ship 5: prefetch per-market prices from the relational catalog upfront,
+  // then pass into gradeClaim synchronously. Replaces the TS re-implementation
+  // (deleted market-prices.ts) that read from a stale JSON copy. Single source
+  // of truth — same shape backend's pricing_db.get_prices_for_market returns.
+  const marketCodes = claimRows
+    .map((c) => {
+      const cfg = (c as unknown as { claim_config?: { financials?: { market_code?: string } } })
+        .claim_config?.financials?.market_code;
+      return cfg || "";
+    })
+    .filter(Boolean);
+  const marketPricesMap = await fetchMarketPricesMap(supabaseAdmin, marketCodes);
+
+  // Run QA checks against each claim (now synchronous, prefetched prices)
+  const claimGrades: ClaimQuality[] = claimRows.map((c) => gradeClaim(c, marketPricesMap));
 
   // Sort worst-first so F+C show up at the top of the email
   claimGrades.sort((a, b) => {
