@@ -161,6 +161,52 @@ def test_steep_flagged_via_predominant_fallback():
            "line_items": [{"description": "Shingles", "qty": 20, "unit_price": 294}]}
     assert _steep_flagged(cfg)
 
+def test_steep_flagged_via_roof_facets_superset_fallback():
+    # OH-2187b03f shape: structures empty AND roof_facets populated (AI extraction).
+    # Detection MUST fire even though builder doesn't see the data — that's the point.
+    # See feedback_detection_superset_principle.md.
+    cfg = {"financials": {"market_code": "OHDT8X_APR26"},
+           "structures": [],
+           "roof_facets": {"roof_facets": [
+               {"pitch": "1/12", "area_pct": 34.8, "facet_id": "F9"},
+               {"pitch": "9/12", "area_pct": 10.1, "facet_id": "F11"},
+               {"pitch": "16/12", "area_pct": 1.0, "facet_id": "F3"},
+           ]},
+           "line_items": [{"description": "Laminated comp shingle", "qty": 25, "unit_price": 269}]}
+    flags = processor.pricing_qa_flags(cfg)
+    steep = [f for f in flags if f["issue"] == "STEEP_ROOF_MISSING"]
+    assert steep, "STEEP_ROOF_MISSING must fire when only roof_facets has the steep pitch"
+    # Detail payload includes the evidence so reviewer doesn't re-investigate
+    assert "9/12" in steep[0]["detail"] and "F11" in steep[0]["detail"]
+    assert "16/12" in steep[0]["detail"]
+    # Evidence sourced from roof_facets gets the Ship-15 note
+    assert "roof_facets only" in steep[0]["detail"] or "Ship 15" in steep[0]["detail"]
+    # Structured evidence available for programmatic consumers (badges, UI cards)
+    assert any(src == "roof_facets" for src, _, _ in steep[0]["steep_evidence"])
+
+def test_steep_not_flagged_when_roof_facets_all_low_pitch():
+    # Negative: roof_facets present but all <7/12 → no flag
+    cfg = {"financials": {"market_code": "OHDT8X_APR26"},
+           "structures": [],
+           "roof_facets": {"roof_facets": [
+               {"pitch": "4/12", "area_pct": 80.0, "facet_id": "F1"},
+               {"pitch": "6/12", "area_pct": 20.0, "facet_id": "F2"},
+           ]},
+           "line_items": []}
+    assert not _steep_flagged(cfg)
+
+def test_steep_not_flagged_when_roof_facets_synthesized_skeleton():
+    # Negative: synthesized 4-cardinal skeleton (no real pitch data) shouldn't flag
+    # even if it has a "steep" placeholder (defensive — skeletons don't carry pitch).
+    cfg = {"financials": {"market_code": "OHDT8X_APR26"},
+           "structures": [],
+           "roof_facets": {"roof_facets": [
+               {"pitch": None, "area_pct": 25.0, "facet_id": "N", "cardinal": "N"},
+               {"pitch": None, "area_pct": 25.0, "facet_id": "S", "cardinal": "S"},
+           ], "_synthesized": True},
+           "line_items": []}
+    assert not _steep_flagged(cfg)
+
 
 def test_pricing_qa_flags_clean_claim_no_flags():
     cfg = {"financials": {"market_code": "TXHO8X_APR26", "market_resolution_reason": "zip_prefix"},

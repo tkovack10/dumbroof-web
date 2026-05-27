@@ -625,6 +625,7 @@ def pricing_qa_flags(config: dict, market_reason: str = "") -> list:
         except (ValueError, IndexError, AttributeError, TypeError):
             return None
     steep_expected = False
+    steep_evidence = []  # [(source, pitch, qty_indicator)] — for the detail payload
     for s in (config.get("structures") or []):
         facets = s.get("pitches") or []
         if facets:
@@ -632,23 +633,45 @@ def pricing_qa_flags(config: dict, market_reason: str = "") -> list:
                 r = _rise(f.get("pitch"))
                 if r is not None and r >= 7 and (f.get("area_sf") or 0) > 0:
                     steep_expected = True
-                    break
+                    steep_evidence.append(("structures.pitches", f.get("pitch"), f"{f.get('area_sf')} SF"))
         else:  # build_line_items falls back to predominant pitch when no facet data
             r = _rise(s.get("predominant_pitch"))
             if r is not None and r >= 7:
                 steep_expected = True
-        if steep_expected:
-            break
+                steep_evidence.append(("structures.predominant_pitch", s.get("predominant_pitch"), "full area"))
+    # SUPERSET FALLBACK — when structures.pitches is empty, AI roof_facet extraction may
+    # have populated config["roof_facets"]["roof_facets"][] (separate top-level column,
+    # attached at processor.py post-extract). build_line_items currently doesn't read this
+    # (Ship 15 backlog). Detection MUST read it so the flag fires on the OH-2187b03f-class
+    # case where pitch data exists but in the wrong shape for the builder.
+    # Principle: detection reads SUPERSET of prevention inputs.
+    # See [[feedback-detection-superset-principle]].
+    if not steep_expected:
+        rf_payload = config.get("roof_facets") or {}
+        rf_list = (rf_payload.get("roof_facets") if isinstance(rf_payload, dict) else None) or []
+        for f in rf_list:
+            r = _rise(f.get("pitch"))
+            if r is not None and r >= 7 and (f.get("area_pct") or 0) > 0:
+                steep_expected = True
+                steep_evidence.append(("roof_facets", f.get("pitch"), f"{f.get('area_pct')}% of roof, facet {f.get('facet_id', '?')}"))
     if steep_expected and not any("steep roof" in (li.get("description") or "").lower() for li in line_items):
+        evidence_str = "; ".join(f"{p} @ {q} (via {src})" for src, p, q in steep_evidence[:6]) or "pitch data present"
+        rf_only = all(src == "roof_facets" for src, _, _ in steep_evidence) and steep_evidence
+        builder_note = (
+            " Evidence is from roof_facets only — builder did not see this data. "
+            "Ship 15 will fix the data-flow join; meanwhile add the steep supplement "
+            "manually via QA review."
+        ) if rf_only else " Reprocess to regenerate line items from current pitch data."
         flags.append({
             "issue": "STEEP_ROOF_MISSING",
             "severity": "medium",
             "field": "line_items",
             "detail": (
-                "Roof has a facet at pitch >=7/12 but no 'Additional charge for steep "
-                "roof' line item — steep surcharge likely under-applied (under-billing). "
-                "Reprocess to regenerate line items from current pitch data."
+                f"Roof has steep pitch data but no 'Additional charge for steep roof' "
+                f"line item — steep surcharge likely under-applied (under-billing). "
+                f"Evidence: {evidence_str}.{builder_note}"
             ),
+            "steep_evidence": steep_evidence,
         })
 
     return flags
