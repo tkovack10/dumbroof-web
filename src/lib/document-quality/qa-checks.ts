@@ -1,5 +1,5 @@
 import type { CheckResult, Grade, ClaimQuality } from "./types";
-import { expectedPrice, marketExists, getMarketName } from "./market-prices";
+import { resolveShortKey, type MarketPricesMap } from "./relational-prices";
 
 /**
  * QA check pipeline for the daily document quality cron.
@@ -452,9 +452,13 @@ type LineItem = {
   qty?: number;
   unit?: string;
   action?: string | null;
+  // Ship 2 (B.4 snapshot) + Ship 3 (short_key stamp). Optional because
+  // pre-Ship-2/3 legacy line_items in older claim_configs lack them.
+  short_key?: string;
+  _priced_market?: string;
 };
 
-function checkLineItemPrices(claim: ClaimRow): CheckResult {
+function checkLineItemPrices(claim: ClaimRow, marketPricesMap?: MarketPricesMap): CheckResult {
   const cfg = claim.claim_config;
   if (!cfg || typeof cfg !== "object") {
     return {
@@ -472,8 +476,13 @@ function checkLineItemPrices(claim: ClaimRow): CheckResult {
   // market_code is authoritative (set once in processor.process_claim). price_list
   // is a derived DISPLAY label, not a resolver — honor it only as a legacy fallback
   // when it is itself a real market key (mirrors _resolve_and_overlay_prices).
+  // Ship 5: market existence is now confirmed by presence in the prefetched
+  // marketPricesMap (populated from `pricing_markets` rows). Empty map for a
+  // market_code means the market is not in the active relational catalog.
+  const knownMarket = (code: string) =>
+    Boolean(marketPricesMap && marketPricesMap[code] && Object.keys(marketPricesMap[code]).length > 0);
   const legacyPriceList =
-    typeof fin.price_list === "string" && marketExists(fin.price_list)
+    typeof fin.price_list === "string" && knownMarket(fin.price_list as string)
       ? (fin.price_list as string)
       : null;
   const marketCode = (fin.market_code as string) || legacyPriceList || null;
@@ -486,12 +495,23 @@ function checkLineItemPrices(claim: ClaimRow): CheckResult {
       message: "no market_code on claim — every line_item priced from NY baseline (claim materially wrong)",
     };
   }
-  if (!marketExists(marketCode)) {
+  if (!marketPricesMap) {
+    // Caller didn't prefetch — pre-Ship-5 callers (no marketPricesMap arg).
+    // Skip rather than fail; the cron always prefetches now.
+    return {
+      name: "price_audit",
+      passed: true,
+      severity: "info",
+      message: "price_audit skipped (marketPricesMap not prefetched by caller)",
+    };
+  }
+  const marketPrices = marketPricesMap[marketCode] ?? {};
+  if (Object.keys(marketPrices).length === 0) {
     return {
       name: "price_audit",
       passed: false,
       severity: "critical",
-      message: `market_code '${marketCode}' not in all-markets.json — falls back to NY baseline`,
+      message: `market_code '${marketCode}' not in pricing_markets (active) — falls back to NY baseline`,
     };
   }
   if (lineItems.length === 0) {
@@ -507,9 +527,10 @@ function checkLineItemPrices(claim: ClaimRow): CheckResult {
   let mismatchCount = 0;
   let matchedCount = 0;
   let unmappedCount = 0;
+  let provenanceMismatchCount = 0;
   const sampleMismatches: string[] = [];
 
-  // R/I collision detection: track (cleaned_desc → set of unit_prices)
+  // R/I collision detection: track (stripped_desc → set of unit_prices)
   const riGroups = new Map<string, Set<number>>();
 
   for (const li of lineItems) {
@@ -522,21 +543,35 @@ function checkLineItemPrices(claim: ClaimRow): CheckResult {
       continue;
     }
 
-    const action = (li.action as "remove" | "install" | "r&r" | null) || null;
-    const expected = expectedPrice(marketCode, desc, action);
+    // Ship 2 + Ship 3 → every NEW line_item carries _priced_market + short_key.
+    // Defense-in-depth (Ship 7.5): if the line was priced from a different
+    // market than the claim resolved to, the provenance is drifting.
+    if (li._priced_market && li._priced_market !== marketCode && li._priced_market !== "national") {
+      provenanceMismatchCount++;
+    }
 
-    if (expected == null) {
+    const shortKey = resolveShortKey(li);
+    if (!shortKey) {
+      unmappedCount++;
+      continue;
+    }
+    const expected = marketPrices[shortKey];
+    if (expected == null || expected === 0) {
       unmappedCount++;
       continue;
     }
 
-    // 5% tolerance — accepts O&P / sales tax / minor re-overlay drift
-    const deviation = Math.abs(price - expected) / Math.max(expected, 0.01);
-    if (deviation > 0.05) {
+    // Ship 5 tightened: exact match after cents-rounding (was 5% tolerance).
+    // Ship 2 + Ship 3 made the pipeline deterministic at the cent — there's
+    // no longer any legitimate fuzziness to absorb. Drift means a real defect.
+    const priceCents = Math.round(price * 100);
+    const expectedCents = Math.round(expected * 100);
+    if (priceCents !== expectedCents) {
       mismatchCount++;
       if (sampleMismatches.length < 3) {
+        const driftPct = Math.abs(price - expected) / Math.max(expected, 0.01) * 100;
         sampleMismatches.push(
-          `"${desc.slice(0, 38)}" $${price.toFixed(2)} vs market $${expected.toFixed(2)} (${(deviation * 100).toFixed(0)}% off)`,
+          `"${desc.slice(0, 38)}" $${price.toFixed(2)} vs market $${expected.toFixed(2)} (${driftPct.toFixed(1)}% off)`,
         );
       }
     } else {
@@ -564,10 +599,17 @@ function checkLineItemPrices(claim: ClaimRow): CheckResult {
   }
 
   const total = lineItems.length;
-  const market = getMarketName(marketCode) || marketCode;
+  // Market display name resolved by caller (marketNameMap) — fall back to
+  // the market_code itself if not provided. Same shape as marketPricesMap.
+  const market = marketCode;
 
   // Verdict
-  if (mismatchCount === 0 && zeroCount === 0 && riCollisions === 0) {
+  if (
+    mismatchCount === 0 &&
+    zeroCount === 0 &&
+    riCollisions === 0 &&
+    provenanceMismatchCount === 0
+  ) {
     return {
       name: "price_audit",
       passed: true,
@@ -578,12 +620,15 @@ function checkLineItemPrices(claim: ClaimRow): CheckResult {
 
   const issues: string[] = [];
   if (mismatchCount >= 3) issues.push(`${mismatchCount} prices off-market`);
-  else if (mismatchCount > 0) issues.push(`${mismatchCount} prices drift >5% from ${market}`);
+  else if (mismatchCount > 0) issues.push(`${mismatchCount} prices off-market vs ${market} (exact-match-after-rounding)`);
   if (zeroCount > 0) issues.push(`${zeroCount} items at $0`);
   if (riCollisions > 0) issues.push(`${riCollisions} R/I collisions (Remove == Install price)`);
+  if (provenanceMismatchCount > 0) issues.push(`${provenanceMismatchCount} line items with mismatched _priced_market provenance`);
 
   const severity: "critical" | "warning" =
-    mismatchCount >= 3 || zeroCount >= 3 || riCollisions >= 2 ? "critical" : "warning";
+    mismatchCount >= 3 || zeroCount >= 3 || riCollisions >= 2 || provenanceMismatchCount >= 3
+      ? "critical"
+      : "warning";
 
   const sampleStr = sampleMismatches.length > 0 ? ` — e.g. ${sampleMismatches.join("; ")}` : "";
 
@@ -599,7 +644,8 @@ function checkLineItemPrices(claim: ClaimRow): CheckResult {
  * Pipeline + grading
  * ------------------------------------------------------------------------- */
 
-const ALL_CHECKS = [
+// Checks that take only a ClaimRow (the simple shape — most checks).
+const SIMPLE_CHECKS: Array<(c: ClaimRow) => CheckResult> = [
   checkContractorRcv,
   checkRcvVsRoofArea,
   checkOandP,
@@ -611,7 +657,6 @@ const ALL_CHECKS = [
   checkRoofSectionsBug,
   checkEstimateRequest,
   checkDamageScore,
-  checkLineItemPrices,
 ];
 
 /**
@@ -621,9 +666,15 @@ const ALL_CHECKS = [
  *   B — passed but 1-2 warnings (no criticals)
  *   C — 1 critical fail OR 3+ warnings
  *   F — 2+ critical fails
+ *
+ * `marketPricesMap` is the prefetched per-market price snapshot (Ship 5). The
+ * cron passes it in after a single async batch fetch covering all claims in
+ * the run. Callers without market prices (legacy / tests) can omit it; the
+ * price audit becomes a no-op rather than a hard fail in that case.
  */
-export function gradeClaim(claim: ClaimRow): ClaimQuality {
-  const checks = ALL_CHECKS.map((fn) => fn(claim));
+export function gradeClaim(claim: ClaimRow, marketPricesMap?: MarketPricesMap): ClaimQuality {
+  const checks = SIMPLE_CHECKS.map((fn) => fn(claim));
+  checks.push(checkLineItemPrices(claim, marketPricesMap));
 
   let critFailed = 0;
   let warnFailed = 0;
