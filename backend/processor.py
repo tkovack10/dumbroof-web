@@ -481,6 +481,11 @@ def _load_pricing(price_list: str = "nybi26") -> dict:
 PRICING = _load_pricing()  # Default NYBI26
 _PRICING_CACHE = {"nybi26": PRICING}
 
+# Ship 2: keys deferred to Ship 16 — kept on the all-markets (current) path during the
+# relational cutover so their prices don't change. Slate is internally inconsistent
+# (all-markets $1780/$198.75 vs legacy $1850/$325) and rarely claimed. Remove in Ship 16.
+_SHIP2_DEFERRED_KEYS = {"slate_install", "slate_remove"}
+
 # Telemetry: every short_key that fell through to a hardcoded fallback,
 # bucketed by market_code. Logged once per (market, key) per session to
 # avoid noise. The list of misses is queryable via _PRICING_FALLBACK_LOG.
@@ -826,24 +831,50 @@ def get_pricing_for_state(state: str, zip_code: str = "", city: str = "", market
         market_code = _XactRegistry.resolve_market(state, zip_code=zip_code, city=city)
 
     from xactimate_lookup import _get_all_markets, get_market_prices, _clean_desc, XactRegistry
-    market_prices = get_market_prices(market_code)
     market_meta = _get_all_markets().get("markets", {}).get(market_code, {})
 
-    # Build short_key → price by inverting _DESC_TO_PRICING_KEY against market_prices
-    pricing = {}
-    for canonical_desc, short_key in _DESC_TO_PRICING_KEY.items():
-        action = XactRegistry._infer_action(canonical_desc)
-        cleaned = _clean_desc(canonical_desc)
-        # Try (cleaned, action), then (cleaned, None), then nothing
-        price = market_prices.get((cleaned, action))
-        if price is None:
-            price = market_prices.get((cleaned, None))
-        if price is not None:
-            pricing[short_key] = price
+    def _allmarkets_inversion():
+        """OLD JSON path: short_key → price by inverting _DESC_TO_PRICING_KEY against
+        all-markets.json. Retained as the SAFETY FALLBACK if the relational DB is
+        unavailable, and as the source for Ship-2-deferred keys (slate)."""
+        mp = get_market_prices(market_code)
+        out = {}
+        for canonical_desc, short_key in _DESC_TO_PRICING_KEY.items():
+            action = XactRegistry._infer_action(canonical_desc)
+            cleaned = _clean_desc(canonical_desc)
+            price = mp.get((cleaned, action))
+            if price is None:
+                price = mp.get((cleaned, None))
+            if price is not None:
+                out[short_key] = price
+        return out
+
+    # Ship 2: price from the relational catalog (the canonical query), keyed by short_key
+    # — COALESCE(market_price, national_price) for active items. This replaces all-markets.json
+    # + _DESC_TO_PRICING_KEY inversion as the source. On DB error get_prices_for_market returns
+    # {}, and we fall back to the JSON path so a transient Supabase blip never breaks a build.
+    from pricing_db import get_prices_for_market
+    rel = get_prices_for_market(market_code)
+    if rel:
+        pricing = dict(rel)
+        _price_source = "relational"
+        # DEFERRED to Ship 16: slate is internally inconsistent (all-markets $1780/$198.75 vs
+        # legacy $1850/$325) and rarely claimed. Keep it on the CURRENT all-markets path to
+        # preserve prices exactly until Ship 16 reconciles. Remove this carve-out in Ship 16.
+        inv = _allmarkets_inversion()
+        for k in _SHIP2_DEFERRED_KEYS:
+            if k in inv:
+                pricing[k] = inv[k]
+            else:
+                pricing.pop(k, None)  # not in all-markets → fall through to legacy/hardcoded
+    else:
+        pricing = _allmarkets_inversion()
+        _price_source = "json-fallback (relational unavailable)"
 
     # Metadata
     pricing["_market_code"] = market_code
     pricing["_market_name"] = market_meta.get("name", "")
+    pricing["_price_source"] = _price_source
     pricing["_meta"] = True
 
     # Legacy per-state JSON fallback only for short_keys NOT in market data.
@@ -857,8 +888,7 @@ def get_pricing_for_state(state: str, zip_code: str = "", city: str = "", market
                 pricing[k] = v
 
     mapped = sum(1 for k in pricing if not k.startswith("_"))
-    from_market = sum(1 for desc, short in _DESC_TO_PRICING_KEY.items() if short in pricing)
-    print(f"[PRICING] {market_code} ({market_meta.get('name', '')}): {mapped} keys total ({from_market} from market, rest from legacy fallback)")
+    print(f"[PRICING] {market_code} ({market_meta.get('name', '')}): {mapped} keys via {pricing.get('_price_source','?')} + legacy fallback")
 
     _PRICING_CACHE[cache_key] = pricing
     return pricing
@@ -5320,6 +5350,15 @@ def build_line_items(measurements: dict, photo_analysis: dict, state: str, user_
             )
         ]
         print(f"[SCOPE] roofing not requested — stripped {before - len(items)} roofing items", flush=True)
+
+    # B.4 (Single-Snapshot Scope): freeze pricing PROVENANCE onto each line row, alongside
+    # the already-frozen unit_price. _priced_market = the market this claim was priced from,
+    # so downstream PDFs/audits read the frozen source and never re-resolve, and Ship 7.5's
+    # check_market_consistency can flag any line whose source != the claim's market. (Single
+    # market per claim today, so uniform; finer national/fallback attribution is a Ship 7.5 add.)
+    _pm = PRICING.get("_market_code") or market_code or ""
+    for _it in items:
+        _it.setdefault("_priced_market", _pm)
 
     return _sort_line_items(items)
 

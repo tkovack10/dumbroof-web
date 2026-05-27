@@ -35,6 +35,18 @@ NATIONAL_ITEMS = [
     ("siding_labor_min",       "Siding labor minimum",                          "EA", "SIDING"),
 ]
 
+# PA (papi26) labor runs ~3% below the nybi26 national seed. Modeled as PA
+# market_price OVERRIDES on these national-rate items — COALESCE(market_price,
+# national_price) makes the override win for PA while the other 14 states keep
+# the national rate. Parity-exact (PA stays at its papi26 value). is_national_rate
+# stays true: the flag means "default behavior," NOT "no per-market overrides."
+# (Surfaced by the Ship 2 parity harness; Tom 2026-05-27 chose overrides over a
+# +3% canonicalization to avoid a customer-facing PA price change.)
+PA_OVERRIDES = {
+    "roofer_per_hour": 188.0, "equipment_operator": 435.0, "dumpster": 825.0,
+    "dumpster_heavy": 925.0, "slate_specialist_labor": 335.0, "siding_labor_min": 505.0,
+}
+
 def _load_env():
     env = {}
     p = os.path.join(BACKEND, ".env")
@@ -92,7 +104,17 @@ def main():
          for sk, _, _, _, price in rows if sk in ids],
         on_conflict="line_item_id",
     ).execute()
-    print(f"\nCOMMIT: upserted {len(rows)} catalog items (is_national_rate) + national_prices rows")
+
+    # PA market overrides (papi26) — parity-exact for the 12 PA markets.
+    pa_markets = [m["market_id"] for m in
+                  sb.table("pricing_markets").select("market_id").eq("state", "PA").execute().data]
+    pa_rows = [{"market_id": mid, "line_item_id": ids[sk], "unit_price": price,
+                "source_batch": SOURCE_BATCH, "source_note": "papi26 PA override"}
+               for mid in pa_markets for sk, price in PA_OVERRIDES.items() if sk in ids]
+    if pa_rows:
+        sb.table("pricing_market_prices").upsert(pa_rows, on_conflict="market_id,line_item_id").execute()
+    print(f"\nCOMMIT: {len(rows)} national items + national_prices, "
+          f"+ {len(pa_rows)} PA market overrides ({len(pa_markets)} PA markets x {len(PA_OVERRIDES)} items)")
 
 if __name__ == "__main__":
     main()
