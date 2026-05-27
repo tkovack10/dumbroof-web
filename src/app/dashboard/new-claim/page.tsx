@@ -334,6 +334,13 @@ export default function NewClaimPage() {
         slug,
         phase,
         status: "uploaded",
+        // Photos-only (no measurements) → forensic_only, so the processor produces
+        // ONLY the Forensic Causation Report and does NOT fabricate an Xactimate
+        // build scope from default quantities. With no measurements there is no
+        // real area to scope from, so a "full" estimate is meaningless (~$3k of
+        // defaults). The processor auto-upgrades forensic_only → full if a
+        // measurement file is later uploaded + reprocessed (processor.py ~5980).
+        report_mode: measurementFiles.length > 0 ? "full" : "forensic_only",
         file_path: claimPath,
         measurement_files: uploadedNames.measurements,
         photo_files: uploadedNames.photos,
