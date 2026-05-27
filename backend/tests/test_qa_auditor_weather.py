@@ -17,7 +17,65 @@ import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from qa_auditor import _build_ground_truth  # noqa: E402
+from qa_auditor import (  # noqa: E402
+    _build_ground_truth,
+    _gate_fabricated_weather_severity,
+    _max_hail_inches_in_text,
+    _max_wind_mph_in_text,
+)
+
+
+def _fw(found="", quote="", expected=""):
+    return {"issue": "FABRICATED_WEATHER_EVENT", "found": found, "quote": quote, "expected": expected}
+
+
+def test_magnitude_parsers():
+    assert _max_hail_inches_in_text('three-inch hail stones') == 3.0
+    assert _max_hail_inches_in_text('hail up to 1.75 inches') == 1.75
+    assert _max_hail_inches_in_text('2" impact marks and 1.5 inch dents') == 2.0
+    assert _max_hail_inches_in_text('no measurable hail') is None
+    assert _max_wind_mph_in_text('gusts to 120 mph') == 120.0
+    assert _max_wind_mph_in_text('high winds') is None
+
+
+def test_gate_keeps_genuine_contradiction():
+    """Prose 3in hail vs confirmed NOAA 1.0in max → stays CRITICAL."""
+    gt = {"noaa_confirmed_hail": True, "noaa_max_hail_inches": 1.0, "noaa_max_wind_mph": 0}
+    res = {"critical": [_fw(found="three-inch hail", quote="three-inch hail drove through the mat")], "medium": []}
+    out = _gate_fabricated_weather_severity(res, gt)
+    assert len(out["critical"]) == 1
+    assert out["critical"][0]["issue"] == "FABRICATED_WEATHER_EVENT"
+
+
+def test_gate_downgrades_within_max():
+    """Prose 1.75in hail vs confirmed NOAA 2.0in max → NOT a contradiction → medium."""
+    gt = {"noaa_confirmed_hail": True, "noaa_max_hail_inches": 2.0, "noaa_max_wind_mph": 60}
+    res = {"critical": [_fw(found="1.75 inches", quote="hail stones up to 1.75 inches")], "medium": []}
+    out = _gate_fabricated_weather_severity(res, gt)
+    assert out["critical"] == []
+    assert out["passed"] is True
+    assert any(m["issue"] == "WEATHER_CLAIM_UNCORROBORATED" for m in out["medium"])
+
+
+def test_gate_downgrades_absence():
+    """Hail claim with empty NOAA (absence) → medium, never critical."""
+    gt = {"noaa_confirmed_hail": False, "noaa_max_hail_inches": 0.0, "noaa_max_wind_mph": 0.0}
+    res = {"critical": [_fw(found="combined hail and wind event")], "medium": []}
+    out = _gate_fabricated_weather_severity(res, gt)
+    assert out["critical"] == []
+    assert out["recommendation"] == "ship"
+
+
+def test_gate_preserves_nonweather_criticals():
+    """A real ADDRESS_MISMATCH critical is never touched by the weather gate."""
+    gt = {"noaa_confirmed_hail": False, "noaa_max_hail_inches": 0.0}
+    res = {"critical": [
+        {"issue": "ADDRESS_MISMATCH", "found": "10 Elm", "expected": "8 Elm"},
+        _fw(found="hail event"),
+    ], "medium": []}
+    out = _gate_fabricated_weather_severity(res, gt)
+    assert [c["issue"] for c in out["critical"]] == ["ADDRESS_MISMATCH"]
+    assert out["passed"] is False  # address mismatch still blocks
 
 
 def test_noaa_facts_from_config_weather_noaa():
