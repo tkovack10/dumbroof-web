@@ -3690,9 +3690,10 @@ def build_claim_config(
                                                       roof_sections=claim.get("roof_sections"),
                                                       zip_code=_zip, city=_city, market_code=market_code)
 
-    # Enrich line items with Xactimate codes, IRC citations, supplement arguments, AND correct prices
-    # Pass the resolved market_code so the registry overlay uses Dayton for zip 45337,
-    # not Cleveland (the OH state-default fallback). Skipped when scope is manually locked.
+    # Enrich line items with Xactimate codes, IRC citations, supplement arguments (METADATA ONLY).
+    # Ship 3: this loop no longer touches unit_price — build_line_items froze the relational price.
+    # Pass the resolved market_code so registry metadata reflects the right metro. Skipped when
+    # scope is manually locked.
     registry = None
     try:
         if _manual_scope_locked:
@@ -3700,12 +3701,11 @@ def build_claim_config(
         else:
             registry = _get_registry(state, city=_city, zip_code=_zip, market_code=market_code)
             enriched_count = 0
-            price_corrected = 0
             for li in line_items:
                 # Pass the RAW description so lookup_price can infer action ("Remove ..." → "remove").
                 # If we pre-cleaned, the action prefix was stripped and lookup_price would default
-                # to "install" — silently returning the Install variant for Remove items, which
-                # then poisoned the price override at the bottom of this loop.
+                # to "install" — silently returning the Install variant for Remove items, attaching
+                # the wrong-variant metadata (code/irc/supplement) to the line.
                 raw_desc = li.get("description", "")
                 reg_item = registry.lookup_price(raw_desc)
                 if reg_item:
@@ -3720,17 +3720,18 @@ def build_claim_config(
                         li["irc_code"] = reg_item.get("irc_code", "")
                         li["trade"] = li.get("trade") or reg_item.get("trade", "")
                         enriched_count += 1
-                        # Override price from registry if registry price is higher (maximize legitimate estimate)
-                        reg_price = reg_item.get("unit_price", 0)
-                        current_price = li.get("unit_price", 0)
-                        if reg_price > 0 and reg_price > current_price * 1.05:  # >5% higher = use registry price
-                            li["unit_price"] = reg_price
-                            price_corrected += 1
+                        # Ship 3: NO price override. build_line_items already froze the
+                        # correct relational unit_price; re-pricing from the FUZZY registry
+                        # silently upgraded standard items to higher-grade rates (e.g. standard
+                        # shingle → $306.46 high-grade vs the correct $269.32). That mixed a
+                        # PRICE heuristic into the metadata layer — a B.7 violation (scope/price
+                        # category error). Enrich attaches Xactimate metadata ONLY; price stays
+                        # the frozen relational value. "Maximize" is a SCOPE concern → Ships 14/15/17.
                 else:
                     li.setdefault("code", "")
                     li.setdefault("supplement_argument", "")
                     li.setdefault("irc_code", "")
-            print(f"[XACT ENRICH] {enriched_count}/{len(line_items)} items enriched, {price_corrected} prices corrected from registry")
+            print(f"[XACT ENRICH] {enriched_count}/{len(line_items)} items enriched (metadata only; prices stay frozen relational — Ship 3)")
     except Exception as e:
         print(f"[XACT ENRICH] Failed (non-fatal, line items retain original format): {e}")
 
