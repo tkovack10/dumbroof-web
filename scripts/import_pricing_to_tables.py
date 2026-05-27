@@ -152,13 +152,18 @@ def commit(catalog, prices, market_rows):
     key_to_id = {r["short_key"]: r["line_item_id"] for r in rows}
     print(f"  upserted {len(catalog)} catalog items; {len(key_to_id)} ids resolved")
 
-    # 2. markets (upsert by market_id)
+    # 2. markets (upsert by market_id). Deliberately OMIT `status` — VALIDATION owns
+    # market status (validate_market_prices), not the JSON `pending` flag. On update,
+    # omitting status preserves the existing (validation-set) status so a re-import
+    # never re-pends a market the firewall already cleared. On insert, status uses the
+    # column DEFAULT 'active' and the firewall pends it only if genuinely corrupt.
+    # (The JSON `pending` flag is still computed for the dry-run report, just not written.)
     sb.table("pricing_markets").upsert(
-        [{"market_id": mc, "name": nm, "state": st, "status": stt, "source_batch": SOURCE_BATCH}
+        [{"market_id": mc, "name": nm, "state": st, "source_batch": SOURCE_BATCH}
          for (mc, nm, st, stt) in market_rows],
         on_conflict="market_id",
     ).execute()
-    print(f"  upserted {len(market_rows)} markets")
+    print(f"  upserted {len(market_rows)} markets (status preserved — validation-owned)")
 
     # 3. market prices (batch upsert). Dedupe (market_id, line_item_id) first —
     # multiple source descriptions can collapse to the same short_key within a

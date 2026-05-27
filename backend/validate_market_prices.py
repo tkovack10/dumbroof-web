@@ -52,9 +52,9 @@ def _fetch():
     # markets + their status
     markets = {m["market_id"]: m for m in sb.table("pricing_markets")
                .select("market_id,name,status").execute().data}
-    # catalog: line_item_id -> (short_key, is_mandatory)
+    # catalog: line_item_id -> (short_key, is_mandatory, status)
     cat = {r["line_item_id"]: r for r in sb.table("pricing_line_items")
-           .select("line_item_id,short_key,is_mandatory").execute().data}
+           .select("line_item_id,short_key,is_mandatory,status").execute().data}
     # prices (paginate — >1000 rows)
     prices = []
     start = 0
@@ -80,6 +80,12 @@ def validate():
     for p in prices:
         c = cat.get(p["line_item_id"])
         if not c:
+            continue
+        # Only ACTIVE catalog items are watched. inactive/draft items (e.g. unused
+        # specialty roofing USARM never claims against) are kept for historical reads
+        # but the firewall ignores them — and they never get priced onto a claim, so a
+        # corrupt value can't ship. See the inactive-item refactor + lifecycle below.
+        if c.get("status") != "active":
             continue
         sk = c["short_key"]; price = float(p["unit_price"]); mid = p["market_id"]
         by_market[mid][sk] = price

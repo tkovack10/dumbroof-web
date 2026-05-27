@@ -36,7 +36,12 @@ CREATE TABLE IF NOT EXISTS pricing_line_items (
     -- resolved values live on the frozen line_item row in claims.claim_config.
     code_basis          text[],                          -- e.g. {'IRC R905.1.1','TX WPI-8 §3.2'}
     code_citation_text  text,
-    status              text NOT NULL DEFAULT 'active' CHECK (status IN ('active','deprecated')),
+    -- Lifecycle: draft (in catalog, prices not yet validated, firewall ignores) ->
+    -- active (production, firewall watches) -> inactive (unused — e.g. specialty
+    -- roofing USARM never claims; kept for historical reads, firewall ignores, never
+    -- priced onto a claim so a corrupt value can't ship). Add a new item later:
+    -- insert as 'draft' -> populate market_prices -> validate -> flip to 'active'.
+    status              text NOT NULL DEFAULT 'active' CHECK (status IN ('active','draft','inactive','deprecated')),
     created_at          timestamptz NOT NULL DEFAULT now(),
     updated_at          timestamptz NOT NULL DEFAULT now()
 );
