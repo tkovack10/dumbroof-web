@@ -679,6 +679,49 @@ def pricing_qa_flags(config: dict, market_reason: str = "") -> list:
             "steep_evidence": steep_evidence,
         })
 
+    # Market-consistency check — uses the B.4 `_priced_market` field that Ship 2
+    # snapshots onto every line. If a line was priced from a market that doesn't
+    # match the claim's market_code (and isn't the 'national' rate either), it's
+    # an attribution drift / data-provenance issue worth surfacing.
+    #
+    # Today: single market per claim → all _priced_market values should equal
+    # claim.financials.market_code. The 'national' carve-out is forward-looking
+    # for when national-rate items (labor, equipment, debris) get distinct
+    # provenance per [[project-pricing-relational-rebuild]] Ship 2 docstring.
+    # Backward-compat: lines without `_priced_market` (pre-Ship-2) are ignored
+    # — they don't have provenance yet, can't check what isn't recorded.
+    # Severity: MEDIUM (under-billing / provenance ambiguity); never blocks ship.
+    # Principle: detection reads SUPERSET of prevention inputs ([[feedback-detection-superset-principle]]).
+    claim_market = (config.get("financials") or {}).get("market_code") or ""
+    if claim_market:
+        mismatched = []
+        for li in (config.get("line_items") or []):
+            pm = li.get("_priced_market")
+            if not pm:
+                continue  # legacy line, no provenance to check
+            if pm == claim_market or pm == "national":
+                continue  # consistent
+            mismatched.append({
+                "description": (li.get("description") or "")[:80],
+                "priced_market": pm,
+                "expected_market": claim_market,
+                "unit_price": li.get("unit_price"),
+            })
+        if mismatched:
+            flags.append({
+                "issue": "MARKET_PROVENANCE_MISMATCH",
+                "severity": "medium",
+                "field": "line_items",
+                "detail": (
+                    f"{len(mismatched)} line item(s) priced from a market other than "
+                    f"the claim's {claim_market} (and not 'national'). This suggests "
+                    f"either an attribution drift (a snapshot left over from a market "
+                    f"switch) or a mixed-source pricing path. Review the listed lines."
+                ),
+                "mismatches": mismatched[:10],  # cap payload size; full list available via re-query
+                "total_mismatched": len(mismatched),
+            })
+
     return flags
 
 

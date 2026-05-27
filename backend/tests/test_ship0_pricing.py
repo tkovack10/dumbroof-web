@@ -208,6 +208,62 @@ def test_steep_not_flagged_when_roof_facets_synthesized_skeleton():
     assert not _steep_flagged(cfg)
 
 
+# === MARKET_PROVENANCE_MISMATCH (Ship 7.5 — Track 3) ===
+
+def _market_provenance_flagged(cfg):
+    return any(f["issue"] == "MARKET_PROVENANCE_MISMATCH" for f in processor.pricing_qa_flags(cfg))
+
+def test_market_provenance_clean_when_all_lines_match_claim_market():
+    cfg = {"financials": {"market_code": "TXHO8X_APR26", "market_resolution_reason": "zip_prefix"},
+           "line_items": [
+               {"description": "Laminated", "qty": 25, "unit_price": 294, "_priced_market": "TXHO8X_APR26"},
+               {"description": "Drip edge", "qty": 100, "unit_price": 3.42, "_priced_market": "TXHO8X_APR26"},
+           ]}
+    assert not _market_provenance_flagged(cfg)
+
+def test_market_provenance_clean_when_national_lines_present():
+    # National-rate items (labor, equipment, debris) carry _priced_market='national' — should NOT flag
+    cfg = {"financials": {"market_code": "TXHO8X_APR26", "market_resolution_reason": "zip_prefix"},
+           "line_items": [
+               {"description": "Laminated", "qty": 25, "unit_price": 294, "_priced_market": "TXHO8X_APR26"},
+               {"description": "Roofer labor", "qty": 8, "unit_price": 194, "_priced_market": "national"},
+               {"description": "Dumpster", "qty": 1, "unit_price": 850, "_priced_market": "national"},
+           ]}
+    assert not _market_provenance_flagged(cfg)
+
+def test_market_provenance_flags_when_priced_market_differs():
+    # Drift case: line priced from DFW but claim resolved to Houston — attribution mismatch
+    cfg = {"financials": {"market_code": "TXHO8X_APR26", "market_resolution_reason": "zip_prefix"},
+           "line_items": [
+               {"description": "Laminated", "qty": 25, "unit_price": 294, "_priced_market": "TXHO8X_APR26"},
+               {"description": "Gutter aluminum", "qty": 120, "unit_price": 9.81, "_priced_market": "TXDF8X_APR26"},
+           ]}
+    flags = processor.pricing_qa_flags(cfg)
+    mp = [f for f in flags if f["issue"] == "MARKET_PROVENANCE_MISMATCH"]
+    assert mp, "MARKET_PROVENANCE_MISMATCH must fire when a line's _priced_market differs from claim market"
+    assert mp[0]["total_mismatched"] == 1
+    assert mp[0]["mismatches"][0]["priced_market"] == "TXDF8X_APR26"
+    assert mp[0]["mismatches"][0]["expected_market"] == "TXHO8X_APR26"
+
+def test_market_provenance_no_flag_for_legacy_pre_ship2_lines():
+    # Backward-compat: lines without _priced_market (pre-Ship-2 line_items) must NOT flag
+    cfg = {"financials": {"market_code": "TXHO8X_APR26", "market_resolution_reason": "zip_prefix"},
+           "line_items": [
+               {"description": "Laminated", "qty": 25, "unit_price": 294},  # no _priced_market
+               {"description": "Drip edge", "qty": 100, "unit_price": 3.42},
+           ]}
+    assert not _market_provenance_flagged(cfg)
+
+def test_market_provenance_no_flag_when_claim_has_no_market_code():
+    # If the claim itself has no market_code (broken state, separate check fires for that),
+    # we can't compute consistency — must not also flag MARKET_PROVENANCE_MISMATCH
+    cfg = {"financials": {"market_resolution_reason": "unresolvable"},
+           "line_items": [
+               {"description": "Laminated", "qty": 25, "unit_price": 294, "_priced_market": "TXHO8X_APR26"},
+           ]}
+    assert not _market_provenance_flagged(cfg)
+
+
 def test_pricing_qa_flags_clean_claim_no_flags():
     cfg = {"financials": {"market_code": "TXHO8X_APR26", "market_resolution_reason": "zip_prefix"},
            "line_items": [{"description": "Shingles", "qty": 30, "unit_price": 294.73}]}
