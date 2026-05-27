@@ -689,27 +689,35 @@ class XactRegistry:
             )
             return DEFAULT_MARKETS["NY"], "unresolvable_no_state"
 
+        # CROSS_STATE_ZIP_OVERRIDE runs FIRST — before the DEFAULT_MARKETS branch.
+        # Caught 2026-05-27 cross-state watch-list reprocess audit: when a state
+        # becomes priced (e.g. MO got MOSP via Commit 3 + PR #25 DEFAULT_MARKETS
+        # addition), its CROSS_STATE_ZIP_OVERRIDE entries were silently bypassed
+        # because the override check only ran inside the unpriced-state branch.
+        # Result: St Louis MO 63xxx routed to Springfield MO (3 hrs west)
+        # instead of East St Louis IL (literally across the river). Same for
+        # Kansas City MO 64xxx → Kansas City KS metro.
+        #
+        # The override represents HAND-CURATED GEOGRAPHIC INTELLIGENCE for
+        # specific cross-state metros. State-default routing is for the rest
+        # of the state; the override is the carve-out. Check it first regardless
+        # of whether the origin state is priced.
+        markets_dict_local = _get_all_markets().get("markets", {})
+        if zip_code:
+            zip_clean_o = "".join(c for c in str(zip_code) if c.isdigit())[:5]
+            if len(zip_clean_o) >= 3:
+                override = CROSS_STATE_ZIP_OVERRIDE.get((state_upper, zip_clean_o[:3]))
+                if override and override in markets_dict_local:
+                    logger.info(
+                        "[PRICING] Routing %s zip %s to %s via CROSS_STATE_ZIP_OVERRIDE "
+                        "(hand-curated cross-state metro — overrides state default).",
+                        state_upper, zip_clean_o, override,
+                    )
+                    return override, "cross_state_override"
+
         default = DEFAULT_MARKETS.get(state_upper)
         if not default:
-            # No Xactimate pricing for this state. Before falling back to the
-            # nearest priced state's default, check for a zip-prefix override
-            # that routes specific metros directly to a geographically-correct
-            # market in a neighboring priced state. This prevents bugs like
-            # MO 63xxx (St Louis) silently going to Chicago via IL default.
-            markets_dict_local = _get_all_markets().get("markets", {})
-            if zip_code:
-                zip_clean_o = "".join(c for c in str(zip_code) if c.isdigit())[:5]
-                if len(zip_clean_o) >= 3:
-                    override = CROSS_STATE_ZIP_OVERRIDE.get((state_upper, zip_clean_o[:3]))
-                    if override and override in markets_dict_local:
-                        logger.info(
-                            "[PRICING] No price list for %s; routing zip %s to %s via "
-                            "CROSS_STATE_ZIP_OVERRIDE (geographically nearest priced market).",
-                            state_upper, zip_clean_o, override,
-                        )
-                        return override, "cross_state_override"
-
-            # No override — substitute the nearest priced state's default.
+            # No Xactimate pricing for this state, and no zip-prefix override either.
             # Geographic proximity is a much better proxy for labor/material
             # rates than alphabetical accident. Still recurse through the core
             # resolver so city/zip routing inside the substitute state still

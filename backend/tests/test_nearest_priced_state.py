@@ -168,3 +168,36 @@ def test_pre_audit_known_absurdities_now_fixed():
     ms_dist = _haversine_miles(_STATE_CENTROIDS["MS"], _STATE_CENTROIDS[ms_pick])
     tx_dist = _haversine_miles(_STATE_CENTROIDS["MS"], _STATE_CENTROIDS["TX"])
     assert ms_dist <= tx_dist, f"MS should not be farther than its previous TX mapping (got {ms_pick} at {ms_dist:.0f}mi vs TX at {tx_dist:.0f}mi)"
+
+
+# === CROSS_STATE_ZIP_OVERRIDE hoist (2026-05-27 regression) ===
+# Bug: when PR #25 added MO to DEFAULT_MARKETS, the MO CROSS_STATE_ZIP_OVERRIDE
+# entries (St Louis → ILES, KC → KSKC) silently stopped firing — the override
+# check only ran in the "no price list for state" branch which was no longer
+# reached for MO. Fix: hoist the override check above the DEFAULT_MARKETS branch.
+
+from xactimate_lookup import XactRegistry
+
+def test_cross_state_override_still_fires_for_st_louis_mo():
+    """St Louis MO 63xxx routes to East St Louis IL — across-the-river, same metro.
+    Must NOT route to MOSP8X (Springfield MO, 3 hrs west) even though MO is now priced."""
+    code, reason = XactRegistry.resolve_market("MO", zip_code="63111", city="Saint Louis", return_reason=True)
+    assert code == "ILES8X_APR26", f"St Louis MO should route to ILES (East St Louis), got {code}"
+    assert reason == "cross_state_override", f"reason should be cross_state_override, got {reason}"
+
+def test_cross_state_override_still_fires_for_kc_mo():
+    """Kansas City MO 64xxx routes to Kansas City KS — same metro across state line."""
+    code, reason = XactRegistry.resolve_market("MO", zip_code="64150", city="Riverside", return_reason=True)
+    assert code == "KSKC8X_02MAY26", f"Riverside MO (KC metro) should route to KSKC, got {code}"
+    assert reason == "cross_state_override", f"reason should be cross_state_override, got {reason}"
+
+def test_state_default_still_wins_when_no_override_matches():
+    """MO ZIP with no override entry → MOSP state default (not stuck in override path)."""
+    code, _ = XactRegistry.resolve_market("MO", zip_code="65802", city="Springfield", return_reason=True)
+    assert code == "MOSP8X_02MAY26", f"Springfield MO should use MO state default, got {code}"
+
+def test_override_does_not_misfire_on_unmatched_priced_state_zip():
+    """TX claim with TX zip → state default, no override (no TX entries in CROSS_STATE_ZIP_OVERRIDE)."""
+    code, reason = XactRegistry.resolve_market("TX", zip_code="77002", city="Houston", return_reason=True)
+    assert code.startswith("TXHO"), f"Houston should route to TXHO*, got {code}"
+    assert reason != "cross_state_override", f"TX should not trigger cross_state_override"
