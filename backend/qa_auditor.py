@@ -12,6 +12,7 @@ See subagent definition: ~/.claude/agents/qa-auditor.md
 from __future__ import annotations
 
 import json
+import re
 from datetime import datetime
 from typing import Optional
 
@@ -191,6 +192,100 @@ Return ONLY valid JSON matching this exact schema:
 `passed` is true iff `critical` is empty. `recommendation` is "ship" if passed, "hold" if critical has 1-2 issues, "reprocess" if critical has 3+ issues."""
 
 
+_WORD_NUM = {
+    "one": 1.0, "two": 2.0, "three": 3.0, "four": 4.0, "five": 5.0, "six": 6.0,
+    "seven": 7.0, "eight": 8.0, "nine": 9.0, "ten": 11.0,
+}
+
+
+def _max_hail_inches_in_text(text: str):
+    """Largest hail size (inches) mentioned in free text, or None."""
+    t = (text or "").lower()
+    sizes: list[float] = []
+    for m in re.finditer(r'(\d+(?:\.\d+)?)\s*[-]?\s*(?:inch|inches|in\b|")', t):
+        try:
+            sizes.append(float(m.group(1)))
+        except ValueError:
+            pass
+    for word, val in _WORD_NUM.items():
+        if re.search(rf'\b{word}[\s-]+inch', t):
+            sizes.append(val)
+    return max(sizes) if sizes else None
+
+
+def _max_wind_mph_in_text(text: str):
+    """Largest wind speed (mph) mentioned in free text, or None."""
+    t = (text or "").lower()
+    speeds: list[float] = []
+    for m in re.finditer(r'(\d+(?:\.\d+)?)\s*[-]?\s*(?:mph|mile)', t):
+        try:
+            speeds.append(float(m.group(1)))
+        except ValueError:
+            pass
+    return max(speeds) if speeds else None
+
+
+def _gate_fabricated_weather_severity(result: dict, ground_truth: dict) -> dict:
+    """Deterministically enforce Tom's posture for FABRICATED_WEATHER_EVENT.
+
+    The LLM cannot reliably make the numeric call (it flagged a report's 1.75"
+    hail against a 2.0" NOAA max as fabrication, and treats mere ABSENCE of NOAA
+    data as contradiction). Per the 2026-05-27 decision: a weather flag stays
+    CRITICAL only when the prose asserts a peril magnitude that EXCEEDS confirmed
+    NOAA data. Confirmed-but-within-max, absence-of-corroboration, and
+    non-magnitude (trade/material/findings) mentions are downgraded to a MEDIUM
+    for human review — never a release block. Absence is covered separately by
+    the deterministic NOAA_NO_HAIL/WIND_CORROBORATION medium.
+    """
+    confirmed_hail = bool(ground_truth.get("noaa_confirmed_hail"))
+    confirmed_wind = bool(ground_truth.get("noaa_confirmed_wind"))
+    try:
+        noaa_hail = float(ground_truth.get("noaa_max_hail_inches") or 0)
+    except (TypeError, ValueError):
+        noaa_hail = 0.0
+    try:
+        noaa_wind = float(ground_truth.get("noaa_max_wind_mph") or 0)
+    except (TypeError, ValueError):
+        noaa_wind = 0.0
+    HAIL_MARGIN = 0.5   # inches the prose must exceed the NOAA max by
+    WIND_RATIO = 1.25   # prose wind must exceed NOAA max by 25%
+
+    kept: list[dict] = []
+    downgraded: list[dict] = []
+    for c in (result.get("critical") or []):
+        if c.get("issue") != "FABRICATED_WEATHER_EVENT":
+            kept.append(c)
+            continue
+        blob = " ".join(str(c.get(k, "")) for k in ("found", "expected", "quote"))
+        prose_hail = _max_hail_inches_in_text(blob)
+        prose_wind = _max_wind_mph_in_text(blob)
+        is_contradiction = (
+            (confirmed_hail and prose_hail is not None and prose_hail > noaa_hail + HAIL_MARGIN)
+            or (confirmed_wind and prose_wind is not None and prose_wind > noaa_wind * WIND_RATIO)
+        )
+        if is_contradiction:
+            kept.append(c)
+        else:
+            d = dict(c)
+            d["issue"] = "WEATHER_CLAIM_UNCORROBORATED"
+            d["severity"] = "medium"
+            d["detail"] = (
+                "Downgraded from critical: weather language is not a magnitude "
+                "contradiction of confirmed NOAA data (absence of corroboration or a "
+                "magnitude within the NOAA maximum is not fabrication). Human review only."
+            )
+            downgraded.append(d)
+
+    if downgraded:
+        result["critical"] = kept
+        result["medium"] = (result.get("medium") or []) + downgraded
+        result["passed"] = len(kept) == 0
+        result["recommendation"] = (
+            "ship" if not kept else ("hold" if len(kept) <= 2 else "reprocess")
+        )
+    return result
+
+
 def _parse_audit_response(raw: str) -> dict:
     """Best-effort JSON extraction from Claude's response."""
     if not raw:
@@ -290,6 +385,7 @@ def audit_forensic_prose(
         return _fail_safe_result(f"api error: {str(e)[:200]}")
 
     result = _parse_audit_response(raw)
+    result = _gate_fabricated_weather_severity(result, ground_truth)
     result["ground_truth"] = ground_truth
     result["audited_at"] = datetime.utcnow().isoformat() + "Z"
     return result
