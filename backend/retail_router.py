@@ -35,15 +35,34 @@ def _get_anthropic_client() -> anthropic.Anthropic:
     return anthropic.Anthropic(api_key=api_key)
 
 
+def _get_supabase_client():
+    """Build a service-role Supabase client from env for PASSIVE cost-telemetry only
+    (Ship 0.5 — retail vision spend → processing_logs, claim_id=NULL). Self-contained
+    like _get_anthropic_client (no processor.py import). Returns None if creds are
+    absent so the parse still succeeds without telemetry — logging is best-effort,
+    never a hard dependency of the retail route."""
+    url = os.environ.get("SUPABASE_URL")
+    key = os.environ.get("SUPABASE_SERVICE_KEY") or os.environ.get("SUPABASE_SERVICE_ROLE_KEY")
+    if not (url and key):
+        return None
+    try:
+        from supabase import create_client
+        return create_client(url, key)
+    except Exception:
+        logger.warning("retail_measurements: Supabase client unavailable — telemetry skipped", exc_info=True)
+        return None
+
+
 @retail_router.post("/parse")
 async def parse_retail_measurements(file: UploadFile = File(...)) -> dict:
     """POST /api/retail-measurements/parse — accepts a PDF upload (EagleView,
     HOVER, GAF QuickMeasure, Roofr, etc.) and returns the 10-field retail
     measurement schema (roof_area_sq, eave_lf, ..., counter_flash_lf).
 
-    No claim_id, no Supabase writes — this is a one-shot parse the retail
-    builder client uses to pre-populate its form. The client then lets the
-    user review/edit before clicking Save Estimate.
+    No claim_id and no claim-table writes — this is a one-shot parse the retail
+    builder client uses to pre-populate its form. The only Supabase write is a
+    PASSIVE cost-telemetry log to processing_logs (claim_id=NULL, Ship 0.5) so
+    retail vision spend is visible; it's best-effort and never blocks the parse.
     """
     if file.content_type and file.content_type not in _ALLOWED_CONTENT_TYPES:
         raise HTTPException(
@@ -68,7 +87,7 @@ async def parse_retail_measurements(file: UploadFile = File(...)) -> dict:
 
     try:
         client = _get_anthropic_client()
-        result = extract_retail_measurements(client, tmp_path)
+        result = extract_retail_measurements(client, tmp_path, sb=_get_supabase_client())
     except anthropic.APIStatusError as e:
         logger.exception("retail_measurements parse: Anthropic API error")
         raise HTTPException(status_code=502, detail=f"Anthropic upstream: {e}")

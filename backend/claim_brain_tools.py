@@ -2298,8 +2298,15 @@ async def _handle_classify_uploaded_file(sb: Client, claim_id: str, tool_input: 
     primary_model = os.environ.get("CLAIM_BRAIN_VISION_MODEL", "claude-opus-4-6")
     fallback_model = "claude-sonnet-4-6"
 
+    # Telemetry: route the vision call through call_claude_logged so its tokens/cost/latency
+    # land in processing_logs (Ship 0.5 — this site previously hit client.messages.create
+    # directly = invisible vision spend). sb + claim_id are in scope here.
+    from telemetry import call_claude_logged
+
     def _call_vision(model_name: str):
-        return client.messages.create(
+        return call_claude_logged(
+            client, sb, claim_id,
+            step_name="classify_uploaded_file",
             model=model_name,
             max_tokens=512,
             messages=[{
