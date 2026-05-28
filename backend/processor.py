@@ -5204,7 +5204,12 @@ def build_line_items(measurements: dict, photo_analysis: dict, state: str, user_
         dumpster_loads = max(2, round(area_sq / 15))  # More loads for heavy material
         items.append({"category": "DEBRIS", "description": "Dumpster load - heavy roofing debris (slate/tile)", "qty": dumpster_loads, "unit": "EA", "unit_price": _priced(PRICING, "dumpster_heavy", 950.00)})
     else:
-        items.append({"category": "DEBRIS", "description": "Dumpster load - roofing debris", "qty": 1, "unit": "EA", "unit_price": _priced(PRICING, "dumpster", 850.00)})
+        # Scale dumpster loads with roof size (~22 SQ haul capacity per load). Was a flat
+        # qty=1 regardless of size — a 40-SQ roof needs 2-3 loads, so the old default
+        # under-scoped debris haul (Ship 17 #3). ceil(area_sq/22) via integer arithmetic
+        # (math isn't imported at module scope here); min 1 load.
+        dumpster_loads = max(1, int(-(-area_sq // 22)))
+        items.append({"category": "DEBRIS", "description": "Dumpster load - roofing debris", "qty": dumpster_loads, "unit": "EA", "unit_price": _priced(PRICING, "dumpster", 850.00)})
 
     # ===================== COPPER COMPONENTS (from user notes) =====================
     if "copper" in notes_lower:
