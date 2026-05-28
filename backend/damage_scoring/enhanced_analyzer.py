@@ -18,7 +18,7 @@ from damage_scoring.prompts import (
     DOCUMENTATION_QUALITY_PROMPT,
 )
 
-MODEL = "claude-opus-4-6"
+from model_config import MODEL  # unified model knob (see model_config.py)
 MAX_TOKENS = 4096
 
 

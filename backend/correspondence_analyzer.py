@@ -19,10 +19,11 @@ import anthropic
 from supabase import Client
 
 from telemetry import call_claude_logged, _estimate_cost
+from model_config import MODEL  # unified model knob (see model_config.py)
 
-# Models
-EXTRACTION_MODEL = "claude-opus-4-6"  # Carrier position analysis
-DRAFTING_MODEL = "claude-opus-4-6"       # Socratic response drafting
+# Models (unified — every surface runs one model)
+EXTRACTION_MODEL = MODEL  # Carrier position analysis
+DRAFTING_MODEL = MODEL    # Socratic response drafting
 
 
 def get_claude_client() -> anthropic.Anthropic:

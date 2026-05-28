@@ -9,6 +9,8 @@ Parallel to processor.py (claims) — separate pipeline, separate table.
 
 from __future__ import annotations
 
+from model_config import MODEL  # unified model knob (see model_config.py)
+
 import os
 import json
 import base64
@@ -298,7 +300,7 @@ CRITICAL OUTPUT CONSTRAINT: Your ENTIRE JSON response MUST be under 5000 tokens.
                 response = call_claude_logged(
                     claude, sb, repair_id,
                     step_name="repair_diagnosis",
-                    model="claude-opus-4-6",
+                    model=MODEL,
                     max_tokens=32768,
                     system=system_prompt,
                     messages=[{"role": "user", "content": user_content}],
@@ -321,7 +323,7 @@ CRITICAL OUTPUT CONSTRAINT: Your ENTIRE JSON response MUST be under 5000 tokens.
                     response = call_claude_logged(
                         claude, sb, repair_id,
                         step_name="repair_diagnosis_retry",
-                        model="claude-opus-4-6",
+                        model=MODEL,
                         max_tokens=8192,
                         system=system_prompt,
                         messages=retry_msgs,
@@ -340,7 +342,7 @@ CRITICAL OUTPUT CONSTRAINT: Your ENTIRE JSON response MUST be under 5000 tokens.
                 batch_response = call_claude_logged(
                     claude, sb, repair_id,
                     step_name=f"repair_photo_batch_{batch_num}",
-                    model="claude-opus-4-6",
+                    model=MODEL,
                     max_tokens=2048,
                     system=system_prompt,
                     messages=[{"role": "user", "content": batch_content}],
@@ -380,7 +382,7 @@ Return JSON: {{"diagnosis":{{"primary_code":"CODE","family":"family_name","leak_
             resp1 = call_claude_logged(
                 claude, sb, repair_id,
                 step_name="repair_synthesis_diagnosis",
-                model="claude-opus-4-6", max_tokens=4096,
+                model=MODEL, max_tokens=4096,
                 system=synthesis_system,
                 messages=[{"role": "user", "content": diag_prompt}],
             )
@@ -410,7 +412,7 @@ Return JSON: {{"repair":{{"summary":"1 sentence","steps":[{{"step":1,"category":
             resp2 = call_claude_logged(
                 claude, sb, repair_id,
                 step_name="repair_synthesis_plan",
-                model="claude-opus-4-6", max_tokens=8192,
+                model=MODEL, max_tokens=8192,
                 system=synthesis_system,
                 messages=[{"role": "user", "content": repair_prompt}],
             )
@@ -735,7 +737,7 @@ async def process_checkpoint(checkpoint_id: str):
         response = call_claude_logged(
             claude, sb, repair_id,
             step_name=f"checkpoint_{cp_num}_analysis",
-            model="claude-opus-4-6",
+            model=MODEL,
             max_tokens=8192,
             system="You are DumbRoof Repair AI analyzing checkpoint photos. Return ONLY valid JSON, no markdown fencing.",
             messages=[{"role": "user", "content": content}],
@@ -1126,7 +1128,7 @@ If issues found, set decision to "add_checkpoint" and list issues.
         response = call_claude_logged(
             claude, sb, repair_id,
             step_name=f"completion_verification",
-            model="claude-opus-4-6",
+            model=MODEL,
             max_tokens=4096,
             system="You are DumbRoof Repair AI verifying completion. Return ONLY valid JSON.",
             messages=[{"role": "user", "content": content}],

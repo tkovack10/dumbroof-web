@@ -203,7 +203,8 @@ function ValuationMethodCard({ name, low, high, basis, color }: {
 }
 
 export function MADashboardContent(p: Props) {
-  const opusShare = p.last30dCost > 0 ? ((p.costByModel["claude-opus-4-6"] || 0) / p.last30dCost * 100) : 0;
+  const opusCost = (p.costByModel["claude-opus-4-8"] || 0) + (p.costByModel["claude-opus-4-7"] || 0) + (p.costByModel["claude-opus-4-6"] || 0);
+  const opusShare = p.last30dCost > 0 ? (opusCost / p.last30dCost * 100) : 0;
   const sonnetShare = p.last30dCost > 0 ? ((p.costByModel["claude-sonnet-4-6"] || 0) / p.last30dCost * 100) : 0;
   const photoCost = p.costByStep["analyze_photos"] || 0;
   const measurementCost = p.costByStep["extract_measurements"] || 0;
@@ -351,11 +352,11 @@ export function MADashboardContent(p: Props) {
         <Panel title="Cost by Model" badge={`Opus dominant (${opusShare.toFixed(0)}%)`} badgeColor="purple">
           <div className="bg-slate-50 rounded-lg p-4 border border-slate-200 mb-3">
             <div className="flex justify-between items-baseline mb-1">
-              <span className="text-[13px] font-bold text-slate-900">Claude Opus 4.6</span>
-              <span className="text-lg font-extrabold text-violet-700">{fmtMoney(p.costByModel["claude-opus-4-6"] || 0, 2)}</span>
+              <span className="text-[13px] font-bold text-slate-900">Claude Opus (4.8 unified)</span>
+              <span className="text-lg font-extrabold text-violet-700">{fmtMoney(opusCost, 2)}</span>
             </div>
-            <div className="text-xs text-slate-600">{opusShare.toFixed(1)}% of total spend · governance v2 default model (forensic, photo, synthesis)</div>
-            <div className="text-[11px] text-slate-500 mt-1">$15/M input · $75/M output</div>
+            <div className="text-xs text-slate-600">{opusShare.toFixed(1)}% of total spend · unified product model (vision, reasoning, extraction) · incl. 4.6/4.7 history</div>
+            <div className="text-[11px] text-slate-500 mt-1">$5/M input · $25/M output</div>
           </div>
           <div className="bg-slate-50 rounded-lg p-4 border border-slate-200">
             <div className="flex justify-between items-baseline mb-1">

@@ -9,6 +9,8 @@ Plan: ~/.claude/plans/proud-wiggling-hearth.md Phase 2b
 
 from __future__ import annotations
 
+from model_config import MODEL  # unified model knob (see model_config.py)
+
 import json
 from typing import Optional
 
@@ -45,13 +47,13 @@ def analyze_carrier_scope(
             response = call_claude_fn(
                 claude_client,
                 _step_name="carrier_analyst",
-                model="claude-opus-4-6",
+                model=MODEL,
                 max_tokens=2048,
                 messages=[{"role": "user", "content": prompt}],
             )
         else:
             response = claude_client.messages.create(
-                model="claude-opus-4-6",
+                model=MODEL,
                 max_tokens=2048,
                 messages=[{"role": "user", "content": prompt}],
             )

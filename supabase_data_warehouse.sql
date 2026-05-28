@@ -214,7 +214,7 @@ CREATE TABLE IF NOT EXISTS processing_logs (
     id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
     claim_id uuid REFERENCES claims(id) ON DELETE CASCADE,
     step_name text NOT NULL,                -- extract_measurements | analyze_photos | extract_carrier_scope | extract_weather | build_config | synthesize_summary | synthesize_conclusion | diff_scopes | photo_integrity | weather_corroboration
-    model text,                             -- claude-sonnet-4-6, claude-opus-4-6, etc.
+    model text,                             -- claude-opus-4-8 (unified default), claude-sonnet-4-6, claude-opus-4-6, etc.
     prompt_tokens integer DEFAULT 0,
     completion_tokens integer DEFAULT 0,
     total_cost numeric DEFAULT 0,           -- Estimated cost in USD

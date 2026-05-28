@@ -17,6 +17,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { recordHeartbeat } from "@/lib/cron-heartbeat";
+import { DUMBROOF_MODEL } from "@/lib/model";
 
 export const maxDuration = 120;
 const HEARTBEAT_NAME = "aeo-monitor";
@@ -132,7 +133,7 @@ async function runAnthropicWebSearch(query: string): Promise<SourceResult | null
   // search and produces a synthesized answer; we then scan the final
   // text block for citations.
   const body = {
-    model: "claude-sonnet-4-6",
+    model: DUMBROOF_MODEL,
     max_tokens: 1500,
     messages: [
       {

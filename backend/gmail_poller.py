@@ -24,6 +24,8 @@ Setup:
 
 from __future__ import annotations
 
+from model_config import MODEL  # unified model knob (see model_config.py)
+
 import os
 import re
 import json
@@ -659,7 +661,7 @@ mapping each filename to its type. Use exact filenames from the Attachments list
         response = call_claude_logged(
             client, sb, claim_id,
             step_name="gmail_edit_request_analysis",
-            model="claude-opus-4-6",
+            model=MODEL,
             max_tokens=500,
             messages=[{"role": "user", "content": prompt}],
         )

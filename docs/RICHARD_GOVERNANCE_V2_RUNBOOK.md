@@ -20,7 +20,7 @@ Set the env var in Vercel/Railway → restart workers (or wait for env propagati
 
 | Symptom | Env var | What it does |
 |---------|---------|--------------|
-| Opus 4.7 producing weird output | `RICHARD_MODEL=claude-opus-4-6` | Revert Day 1 model bump |
+| Opus 4.8 producing weird output | `RICHARD_MODEL=claude-opus-4-7` | Revert just Richard to prior Opus (unified default is 4-8) |
 | Tool calls running away | `RICHARD_MAX_TOOL_ROUNDS=10` | Revert Day 1 round cap |
 | Tool calls running away | `RICHARD_MAX_TOTAL_TOOL_CALLS=20` | Revert Day 1 total cap |
 | Reprocess firing too often | `RICHARD_REPROCESS_RATE_LIMIT_SECONDS=86400` | Effectively block reprocess |
