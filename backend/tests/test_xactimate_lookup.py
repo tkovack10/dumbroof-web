@@ -440,5 +440,44 @@ class GutterGuardTests(unittest.TestCase):
         self.assertIsNone(self._guard("property has leaf guards", gutters=False))
 
 
+class GableCorniceReturnTests(unittest.TestCase):
+    """Ship 17: gable cornice RETURNS notes-gated (replacement-associated, INITIAL scope).
+    'N cornice returns' -> N EA; bare 'cornice return(s)' -> default 2. Only when roofing scoped.
+    Key by grade: laminated -> cornice_laminated_high, else cornice_3tab."""
+
+    def _cornice(self, notes, material="laminated", er=None):
+        from processor import build_line_items
+        meas = {"measurements": {"eave": 120, "ridge": 40, "valley": 0, "rake": 30, "hip": 0},
+                "structures": [{"roof_area_sq": 25, "roof_area_sf": 2500, "facets": 6, "predominant_pitch": "6/12"}]}
+        er = er if er is not None else {"roofing": True, "roof_material": material}
+        items = build_line_items(meas, {}, "TX", user_notes=notes, estimate_request=er,
+                                 market_code="TXHO8X_APR26")
+        c = [it for it in items if "cornice return" in it.get("description", "").lower()]
+        return c[0] if c else None
+
+    def test_count_from_notes(self):
+        c = self._cornice("3 gable cornice returns to replace")
+        self.assertIsNotNone(c)
+        self.assertEqual(c["qty"], 3)
+        self.assertEqual(c["unit"], "EA")
+        self.assertEqual(c.get("scope_timing"), "initial")
+
+    def test_default_two_when_no_count(self):
+        self.assertEqual(self._cornice("home has gable cornice returns")["qty"], 2)
+
+    def test_laminated_uses_laminated_key(self):
+        self.assertIn("laminated", self._cornice("2 cornice returns", material="laminated")["description"].lower())
+
+    def test_3tab_uses_3tab_key(self):
+        # _detect_roof_material keys on "3-tab"/"three-tab" (processor.py:3278), not bare "3tab"
+        self.assertIn("3 tab", self._cornice("2 cornice returns; roof is 3-tab shingle", material="3tab")["description"].lower())
+
+    def test_none_without_cornice_mention(self):
+        self.assertIsNone(self._cornice("hail damage to roof"))
+
+    def test_none_when_roofing_not_scoped(self):
+        self.assertIsNone(self._cornice("3 cornice returns", er={"siding": True, "siding_type": "vinyl"}))
+
+
 if __name__ == "__main__":
     unittest.main()
