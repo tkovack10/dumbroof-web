@@ -5390,6 +5390,17 @@ def build_line_items(measurements: dict, photo_analysis: dict, state: str, user_
         items.append({"category": "GUTTERS", "description": "R&R Gutter guard/screen - High grade",
                       "qty": round(eave), "unit": "LF", "unit_price": _priced(PRICING, "gutter_guard", 17.03)})
 
+    # ===================== DOWNSPOUT EXTENSIONS / SPLASH BLOCKS (gutter add-on, Ship 17 Tier B #16) =====================
+    # When gutters are scoped, each downspout gets an extension/splash block to carry roof runoff
+    # away from the foundation — standard on a complete gutter R&R. DETECTION: gutters scoped (same
+    # opt-in gate as the gutter line above). MEASUREMENT-DRIVEN, no vision: qty = downspout count
+    # derived from the gutter run (eave LF) at the industry spacing of ~1 downspout per 35 LF, min 2
+    # (every home has at least two). INITIAL timing — knowable pre-work, so it stays in Doc 02
+    # (untagged → initial per _is_initial_scope; consistent with the gutter line it pairs with).
+    if _gutters_requested and eave > 0:
+        downspout_count = max(2, round(eave / 35))
+        items.append({"category": "GUTTERS", "description": "Downspout extension - aluminum", "qty": downspout_count, "unit": "EA", "unit_price": _priced(PRICING, "downspout_extension", 22.00)})
+
     # ===================== SIDING (opt-in via estimate_request only) =====================
     # ALWAYS includes house wrap when siding is scoped (R703.2 — continuous
     # weather-resistant exterior wall envelope required per IRC-based code).
@@ -5563,6 +5574,7 @@ _LINE_ITEM_SORT_KEYS = [
     ("copper half round", 22),
     ("dumpster", 23),
     ("seamless aluminum gutter", 24), ("gutter", 24),
+    ("downspout", 24),  # downspout extensions group with gutters (Ship 17 Tier B)
     ("siding", 25), ("aluminum siding", 25), ("vinyl siding", 25),
     ("cedar", 25), ("fiber cement", 25), ("metal siding", 25),
     ("house wrap", 26), ("tyvek", 26),
