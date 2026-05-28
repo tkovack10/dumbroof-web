@@ -4991,6 +4991,29 @@ def build_line_items(measurements: dict, photo_analysis: dict, state: str, user_
         meas = {**meas, **est}
     notes_lower = (user_notes or "").lower()
 
+    # ===================== ROOFING-SCOPED GATE (canonical, computed once) =====================
+    # Single source of truth for "is roofing in scope for this claim." Read by BOTH the
+    # GENERAL CONDITIONS emit below (cleanup/mask/permit fire only when roofing is scoped) AND
+    # the TRADE-SCOPE FILTER near the end (which strips ROOFING lines if roofing is NOT requested).
+    # Computing it once — instead of re-deriving at each site — keeps the emit gate and the strip
+    # filter from drifting apart (detection-superset principle). Tom 2026-05-14: 69 Theron could
+    # not be made siding-only because the builder always emitted roofing regardless of the trade
+    # toggle. The trades list in process_claim is canonical; we mirror its logic here.
+    _est_req_local = estimate_request or {}
+    _roof_type = _est_req_local.get("roof_type")
+    _roofing_requested = bool(
+        _est_req_local.get("roof_material")
+        or (_roof_type and _roof_type not in ("na", "none"))
+        # estimate_request exists but names NO trade → legacy roofing-default. Only suppress
+        # roofing when the request explicitly picks another trade and omits roofing.
+        or not (
+            _est_req_local.get("siding")
+            or _est_req_local.get("siding_type")
+            or _est_req_local.get("gutters")
+            or _est_req_local.get("gutter_type")
+        )
+    )
+
     items = []
 
     # ===================== ICE & WATER BARRIER (calculate first — needed for underlayment) =====================
@@ -5246,6 +5269,34 @@ def build_line_items(measurements: dict, photo_analysis: dict, state: str, user_
         dumpster_loads = max(1, int(-(-area_sq // 22)))
         items.append({"category": "DEBRIS", "description": "Dumpster load - roofing debris", "qty": dumpster_loads, "unit": "EA", "unit_price": _priced(PRICING, "dumpster", 850.00)})
 
+    # ===================== GENERAL CONDITIONS (roofing-scoped) =====================
+    # Three Xactimate-typical general-conditions lines that nearly every roofing job carries
+    # but the builder previously omitted (Ship 17 Tier A — the "maximize SCOPE" backlog). All
+    # three are INITIAL-estimate items: known pre-work, so they belong in Doc 02 at claim
+    # creation (NOT install supplements). They fire ONLY when roofing is scoped — riding the
+    # canonical _roofing_requested gate computed up top — so a siding-only claim never sees them.
+    # Prices resolve from the relational catalog via _priced(); the fallbacks below are the
+    # seed-script baselines (scripts/seed_general_conditions_items.py).
+    if _roofing_requested:
+        # General clean-up — DETECTION: roofing_scoped. qty scales with roof AREA (magnetic nail
+        # sweep, ground debris pickup, tarp cleanup all grow with the footprint). Exact roof area,
+        # no waste factor (cleanup tracks the physical roof, not installed material).
+        if area_sq > 0:
+            items.append({"category": "GENERAL", "description": "General clean-up", "qty": area_sq, "unit": "SQ", "unit_price": _priced(PRICING, "general_cleanup", 12.00)})
+
+        # Mask & protect — DETECTION: roofing_scoped. qty scales with the building PERIMETER
+        # (eave + rake = roof drip-line perimeter ≈ ground footprint to protect: landscaping,
+        # exterior walls, A/C condensers, windows below the work area).
+        perimeter_lf = round(eave + rake)
+        if perimeter_lf > 0:
+            items.append({"category": "GENERAL", "description": "Mask and protect - landscaping, exterior walls & A/C units (perimeter)", "qty": perimeter_lf, "unit": "LF", "unit_price": _priced(PRICING, "mask_protect", 2.50)})
+
+        # Building permit — DETECTION: roofing_scoped. Flat qty=1. JURISDICTION-AWARE pricing lives
+        # in the catalog, not here: the permit row is market-priced (is_national_rate=False), so a
+        # per-market price in pricing_market_prices overrides the $250 national baseline once real
+        # municipal fees are seeded. Builder stays dumb — single-source pricing per Ship 3.
+        items.append({"category": "GENERAL", "description": "Residential building permit - roofing", "qty": 1, "unit": "EA", "unit_price": _priced(PRICING, "permit", 250.00)})
+
     # ===================== COPPER COMPONENTS (from user notes) =====================
     if "copper" in notes_lower:
         # Copper half round gutters
@@ -5404,25 +5455,8 @@ def build_line_items(measurements: dict, photo_analysis: dict, state: str, user_
     # When estimate_request explicitly opts OUT of roofing (e.g., siding-only claim),
     # strip every ROOFING line item plus the roofing-debris dumpster. Backward
     # compatible: an absent/empty estimate_request still produces a full roofing
-    # scope (legacy default). Tom 2026-05-14 — 69 Theron could not be made
-    # siding-only because the builder always emitted roofing items regardless
-    # of the trade toggle. The trades list in process_claim is the canonical
-    # source of truth; we mirror its logic here.
-    _est_req_local = estimate_request or {}
-    _roof_type = _est_req_local.get("roof_type")
-    _roofing_requested = bool(
-        _est_req_local.get("roof_material")
-        or (_roof_type and _roof_type not in ("na", "none"))
-        # If estimate_request exists but mentions NO trade at all → assume legacy
-        # roofing-default. Only suppress roofing when the request explicitly
-        # picks another trade and omits roofing.
-        or not (
-            _est_req_local.get("siding")
-            or _est_req_local.get("siding_type")
-            or _est_req_local.get("gutters")
-            or _est_req_local.get("gutter_type")
-        )
-    )
+    # scope (legacy default). roofing_scoped (_roofing_requested) is computed ONCE near
+    # the top of this function — see the ROOFING-SCOPED GATE comment there.
     if not _roofing_requested:
         before = len(items)
         items = [
@@ -5486,6 +5520,10 @@ _LINE_ITEM_SORT_KEYS = [
     ("garage door wrap", 30),
     ("siding labor", 31),
     ("scaffold", 32),
+    # General conditions (Ship 17 Tier A) — grouped at the end of the estimate.
+    ("clean-up", 33),
+    ("mask and protect", 34),
+    ("building permit", 35),
 ]
 
 
