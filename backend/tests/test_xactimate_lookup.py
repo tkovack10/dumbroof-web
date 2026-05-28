@@ -409,5 +409,36 @@ class ScopeComparisonTimingTests(unittest.TestCase):
         self.assertNotIn("R&R Sheathing - plywood - 1/2\" CDX", descs)
 
 
+class GutterGuardTests(unittest.TestCase):
+    """Ship 17 #10: gutter guard/screen. When gutters are scoped AND notes indicate existing
+    guards, R&R them with the gutters (replacement-associated, INITIAL scope). qty = eave LF
+    (the gutter run — guards don't go on downspouts, so NOT the gutter line's eave×1.6)."""
+
+    def _guard(self, notes, gutters=True):
+        from processor import build_line_items
+        meas = {"measurements": {"eave": 120, "ridge": 40, "valley": 0, "rake": 30, "hip": 0},
+                "structures": [{"roof_area_sq": 25, "roof_area_sf": 2500, "facets": 6, "predominant_pitch": "6/12"}]}
+        er = {"roofing": True, "roof_material": "laminated"}
+        if gutters:
+            er["gutters"] = True
+        items = build_line_items(meas, {}, "TX", user_notes=notes, estimate_request=er,
+                                 market_code="TXHO8X_APR26")
+        g = [it for it in items if "gutter guard" in it.get("description", "").lower()]
+        return g[0] if g else None
+
+    def test_emits_when_gutters_scoped_and_guards_noted(self):
+        g = self._guard("existing gutter guards on the home")
+        self.assertIsNotNone(g, "should emit gutter guard when gutters scoped + guards noted")
+        self.assertEqual(g["qty"], 120)                 # round(eave), NOT eave×1.6
+        self.assertEqual(g["unit"], "LF")
+        self.assertEqual(g.get("scope_timing", "initial"), "initial")   # initial scope
+
+    def test_none_when_no_guard_mention(self):
+        self.assertIsNone(self._guard("hail damage to roof and gutters"))
+
+    def test_none_when_gutters_not_scoped(self):
+        self.assertIsNone(self._guard("property has leaf guards", gutters=False))
+
+
 if __name__ == "__main__":
     unittest.main()
