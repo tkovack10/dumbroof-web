@@ -277,5 +277,43 @@ class ValleyMetalTests(unittest.TestCase):
                          "slate should not get plain valley metal")
 
 
+class AdditionalLayerTests(unittest.TestCase):
+    """Ship 17 #10: notes-gated multi-layer tear-off. When user_notes state a 2nd+ existing
+    shingle layer, emit `Add. layer of comp. shingles, remove & disp.` (qty = area_sq × extra
+    layers). Notes-gated → no false positives; NOT a double-count (base remove = top layer)."""
+
+    AREA_SQ = 25
+
+    def _layer_lines(self, notes):
+        from processor import build_line_items
+        meas = {"measurements": {"eave": 120, "ridge": 40, "valley": 0, "rake": 30, "hip": 0},
+                "structures": [{"roof_area_sq": self.AREA_SQ, "roof_area_sf": self.AREA_SQ * 100,
+                                "facets": 6, "predominant_pitch": "6/12"}]}
+        items = build_line_items(meas, {}, "TX", user_notes=notes,
+                                 estimate_request={"roofing": True, "roof_material": "laminated"},
+                                 market_code="TXHO8X_APR26")
+        return [it for it in items if "add. layer" in it.get("description", "").lower()]
+
+    def test_two_layers_emits_one_extra(self):
+        lines = self._layer_lines("Existing roof has 2 layers, tear off both")
+        self.assertEqual(len(lines), 1)
+        self.assertEqual(lines[0]["qty"], self.AREA_SQ)   # 1 extra layer = 1× roof area
+        self.assertEqual(lines[0]["unit"], "SQ")
+
+    def test_layover_phrase_emits_one_extra(self):
+        self.assertEqual(len(self._layer_lines("this is a layover roof")), 1)
+
+    def test_three_layers_two_extra(self):
+        lines = self._layer_lines("3 layers of shingles up there")
+        self.assertEqual(lines[0]["qty"], self.AREA_SQ * 2)   # 2 extra layers
+
+    def test_no_mention_no_line(self):
+        self.assertEqual(self._layer_lines("hail damage to north slope"), [])
+
+    def test_ice_water_layers_not_false_positive(self):
+        # "2 layers of ice and water" must NOT trigger an additional shingle-layer tear-off
+        self.assertEqual(self._layer_lines("install 2 layers of ice and water at eaves"), [])
+
+
 if __name__ == "__main__":
     unittest.main()

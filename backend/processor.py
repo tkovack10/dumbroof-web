@@ -4921,6 +4921,7 @@ def build_line_items(measurements: dict, photo_analysis: dict, state: str, user_
 
     # USER NOTES → SCOPE BRIDGE: Parse explicit component counts from user notes
     # e.g., "7 skylights", "2 chimneys", "3 pipe boots"
+    _additional_layers = 0  # Ship 17 #10: extra existing shingle layers to tear off (notes-gated)
     if user_notes:
         import re
         _NOTES_COMPONENT_PATTERNS = {
@@ -4941,6 +4942,19 @@ def build_line_items(measurements: dict, photo_analysis: dict, state: str, user_
                 if count > current:
                     penetrations[comp_key] = count
                     print(f"[NOTES BRIDGE] {comp_key}: user_notes={count} (was {current}) → using user-specified count")
+        # Ship 17 #10 — multi-layer tear-off. When notes state a 2nd+ existing shingle
+        # layer, the layer(s) beneath the top one are additional remove-&-dispose. Notes-
+        # gated → no false positives. "N layers" → N-1 extra (guarded against I&W/felt
+        # "layers"); phrases like "layover"/"double layer" → 1 extra.
+        _lm = re.search(r'(\d+)\s*layers?\b', notes_lower)
+        _layers_underlayment = bool(re.search(r'layers?\s+(?:of\s+)?(?:ice|water|felt|underlayment|synthetic)', notes_lower))
+        if _lm and int(_lm.group(1)) >= 2 and not _layers_underlayment:
+            _additional_layers = int(_lm.group(1)) - 1
+        elif any(p in notes_lower for p in ("double layer", "layover", "second layer",
+                                            "2nd layer", "multiple layer", "two layer")):
+            _additional_layers = 1
+        if _additional_layers:
+            print(f"[NOTES BRIDGE] {_additional_layers} additional shingle layer(s) to tear off")
 
     material = _detect_roof_material(photo_analysis, user_notes, estimate_request=estimate_request)
 
@@ -5045,6 +5059,18 @@ def build_line_items(measurements: dict, photo_analysis: dict, state: str, user_
         items.append({"category": "ROOFING", "description": "Remove 3-tab 25yr comp shingle roofing", "qty": area_sq, "unit": "SQ", "unit_price": _priced(PRICING, "3tab_remove", 73.14)})
         items.append({"category": "ROOFING", "description": "3-tab 25yr comp shingle roofing - w/out felt", "qty": install_sq, "unit": "SQ", "unit_price": _priced(PRICING, "3tab_install", 312.92)})
         items.append({"category": "ROOFING", "description": "Underlayment - felt 15# (deck area not covered by I&W)", "qty": felt_sq, "unit": "SQ", "unit_price": _priced(PRICING, "3tab_underlayment", 32.00)})
+
+    # ===================== ADDITIONAL LAYER TEAR-OFF (Ship 17 #10) =====================
+    # Extra existing shingle layer(s) beneath the top one = additional remove & dispose,
+    # OVER AND ABOVE the base "Remove ... shingle" line (which removes layer 1). NOT a
+    # double-count: base remove = top layer; this = the layer(s) underneath. Notes-gated
+    # (only fires on an explicit multi-layer mention) so no false positives. Comp shingle
+    # only (laminated/3tab); each extra layer is a full roof-area tear-off.
+    if _additional_layers > 0 and material in ("laminated", "3tab") and area_sq > 0:
+        items.append({"category": "ROOFING",
+                      "description": "Add. layer of comp. shingles, remove & disp. - Laminated",
+                      "qty": round(area_sq * _additional_layers, 2), "unit": "SQ",
+                      "unit_price": _priced(PRICING, "additional_layer_remove", 47.95)})
 
     # ===================== ICE & WATER BARRIER =====================
     if iw_sf > 0:
