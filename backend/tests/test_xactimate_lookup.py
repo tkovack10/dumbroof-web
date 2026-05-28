@@ -388,5 +388,26 @@ class ProcessorFinancialsTimingTests(unittest.TestCase):
         self.assertNotAlmostEqual(fin["line_total"], expected_initial + round(224 * 2.86, 2), places=2)
 
 
+class ScopeComparisonTimingTests(unittest.TestCase):
+    """Ship 17 check #2: the USARM side fed to the scope comparison (processor.py:3814
+    _engine.run(usarm_items=...)) must be INITIAL-only. Install-supplement items (decking) are
+    filed separately — including them vs the carrier's pre-work scope would create a spurious
+    'carrier missed X' variance. This guards the call-site filter expression."""
+
+    def test_install_supplement_excluded_from_scope_comparison_input(self):
+        from processor import _is_initial_scope
+        line_items = [
+            {"description": "Laminated comp shingle roofing - w/out felt", "scope_timing": "initial"},
+            {"description": "R&R Sheathing - plywood - 1/2\" CDX", "scope_timing": "install_supplement"},
+            {"description": "R&R Drip edge - aluminum"},  # untagged -> initial
+        ]
+        usarm_items = [li for li in line_items if _is_initial_scope(li)]  # == processor.py:3814
+        descs = [li["description"] for li in usarm_items]
+        self.assertEqual(len(usarm_items), 2)
+        self.assertIn("Laminated comp shingle roofing - w/out felt", descs)
+        self.assertIn("R&R Drip edge - aluminum", descs)
+        self.assertNotIn("R&R Sheathing - plywood - 1/2\" CDX", descs)
+
+
 if __name__ == "__main__":
     unittest.main()

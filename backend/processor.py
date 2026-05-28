@@ -3811,7 +3811,11 @@ def build_claim_config(
             scope_comparison_matched, _rules_result = _engine.run(
                 registry=registry,
                 carrier_items=carrier_data["carrier_line_items"],
-                usarm_items=line_items,
+                # Ship 17 check #2: compare the INITIAL USARM estimate vs the carrier's scope.
+                # Install-supplement items (decking allowance etc.) are discovered during work
+                # and filed separately — including them here would create a spurious "carrier
+                # missed X" variance against the carrier's pre-work scope. Initial-only.
+                usarm_items=[li for li in line_items if _is_initial_scope(li)],
                 measurements=scope_meas,
                 state=state,
                 config_hints={"shingle_type": shingle_type}
