@@ -16,6 +16,9 @@ Every invocation is recorded to public.claim_brain_audit.
 """
 
 from __future__ import annotations
+
+from model_config import MODEL  # unified model knob (see model_config.py)
+
 import os
 import json
 import time
@@ -2295,8 +2298,8 @@ async def _handle_classify_uploaded_file(sb: Client, claim_id: str, tool_input: 
 
     # Matches the model used elsewhere in this backend (processor, carrier_analyst,
     # repair_processor, main.py chat) so billing/quota behave predictably.
-    primary_model = os.environ.get("CLAIM_BRAIN_VISION_MODEL", "claude-opus-4-6")
-    fallback_model = "claude-sonnet-4-6"
+    primary_model = os.environ.get("CLAIM_BRAIN_VISION_MODEL", MODEL)
+    fallback_model = os.environ.get("CLAIM_BRAIN_VISION_FALLBACK_MODEL", MODEL)
 
     # Telemetry: route the vision call through call_claude_logged so its tokens/cost/latency
     # land in processing_logs (Ship 0.5 — this site previously hit client.messages.create

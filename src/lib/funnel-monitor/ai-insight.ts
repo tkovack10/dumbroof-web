@@ -1,4 +1,5 @@
 import type { FunnelReport } from "./types";
+import { DUMBROOF_MODEL } from "@/lib/model";
 
 /**
  * Funnel Monitor — AI insight generator.
@@ -7,7 +8,7 @@ import type { FunnelReport } from "./types";
  * 2-3 sentences of plain-English insight + 1-3 prioritized recommendations
  * on top of the structured report. Returns null if ANTHROPIC_API_KEY is missing.
  *
- * Model: Claude Sonnet 4.6 (the production-grade reasoning model as of 2026).
+ * Model: unified DUMBROOF_MODEL (see src/lib/model.ts).
  */
 export async function generateAiInsight(report: FunnelReport): Promise<string | null> {
   const apiKey = process.env.ANTHROPIC_API_KEY?.trim();
@@ -76,7 +77,7 @@ Format:
         "content-type": "application/json",
       },
       body: JSON.stringify({
-        model: "claude-sonnet-4-6",
+        model: DUMBROOF_MODEL,
         max_tokens: 500,
         system: systemPrompt,
         messages: [

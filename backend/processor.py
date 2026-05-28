@@ -7,6 +7,8 @@ build a claim config, generate PDFs, and upload results.
 
 from __future__ import annotations
 
+from model_config import MODEL  # unified model knob (see model_config.py)
+
 import os
 import re
 import json
@@ -1343,7 +1345,7 @@ def extract_measurements(client: anthropic.Anthropic, pdf_path: str) -> dict:
 
     response = _call_claude_with_retry(client,
         _step_name="extract_measurements",
-        model="claude-opus-4-6",
+        model=MODEL,
         max_tokens=4096,
         messages=[{
             "role": "user",
@@ -1438,7 +1440,7 @@ If this report includes wall/siding measurements (EagleView Walls report or simi
         print("[WARN] Measurement extraction returned no roof area — retrying with explicit prompt...")
         retry_response = _call_claude_with_retry(client,
             _step_name="extract_measurements_retry",
-            model="claude-opus-4-6",
+            model=MODEL,
             max_tokens=4096,
             messages=[{
                 "role": "user",
@@ -1641,7 +1643,7 @@ If the report is a Property Owner Report (images only, no overhead diagram), ret
     try:
         response = _call_claude_with_retry(client,
             _step_name="extract_roof_facets",
-            model="claude-opus-4-6",
+            model=MODEL,
             max_tokens=4096,
             messages=[{
                 "role": "user",
@@ -1973,7 +1975,7 @@ MATERIAL DISAMBIGUATION (avoid these common mis-IDs):
         response = _call_claude_with_retry(client,
             _step_name="analyze_photos",
             _metadata={"batch": batch_num, "total_batches": total_batches, "photos_in_batch": len(batch)},
-            model="claude-opus-4-6",
+            model=MODEL,
             max_tokens=4096,
             messages=[{"role": "user", "content": content}]
         )
@@ -2144,7 +2146,7 @@ Be VERY conservative — chalk marks and test square notations are NEVER fraud. 
     response = _call_claude_with_retry(client,
         _step_name="photo_integrity",
         _metadata={"photo_count": len(sample_paths)},
-        model="claude-opus-4-6",
+        model=MODEL,
         max_tokens=2048,
         messages=[{"role": "user", "content": content}]
     )
@@ -2513,7 +2515,7 @@ Extract every line item. Use 0 for values not found."""
 
     response = _call_claude_with_retry(client,
         _step_name="extract_carrier_scope",
-        model="claude-opus-4-6",
+        model=MODEL,
         max_tokens=16384,
         messages=[{
             "role": "user",
@@ -2533,7 +2535,7 @@ Extract every line item. Use 0 for values not found."""
         try:
             continuation = _call_claude_with_retry(client,
                 _step_name="extract_carrier_scope_continue",
-                model="claude-opus-4-6",
+                model=MODEL,
                 max_tokens=16384,
                 messages=[
                     {"role": "user", "content": [*file_blocks, {"type": "text", "text": extraction_prompt}]},
@@ -2668,7 +2670,7 @@ For each change, identify which USARM argument most likely convinced the carrier
 
             response = _call_claude_with_retry(client,
                 _step_name="diff_scopes",
-                model="claude-opus-4-6",
+                model=MODEL,
                 max_tokens=2048,
                 messages=[{"role": "user", "content": prompt}]
             )
@@ -2816,7 +2818,7 @@ Use empty strings for values not found."""
 
     response = _call_claude_with_retry(client,
         _step_name="extract_weather",
-        model="claude-opus-4-6",
+        model=MODEL,
         max_tokens=2048,
         messages=[{"role": "user", "content": content}]
     )
@@ -3157,7 +3159,7 @@ Return ONLY a JSON array of paragraph strings: ["paragraph 1...", "paragraph 2..
 
     response = _call_claude_with_retry(client,
         _step_name="synthesize_summary",
-        model="claude-opus-4-6",
+        model=MODEL,
         max_tokens=2048,
         messages=[{"role": "user", "content": prompt}]
     )
@@ -3243,7 +3245,7 @@ Return ONLY a JSON array of paragraph strings: ["paragraph 1...", "paragraph 2..
 
     response = _call_claude_with_retry(client,
         _step_name="synthesize_conclusion",
-        model="claude-opus-4-6",
+        model=MODEL,
         max_tokens=2048,
         messages=[{"role": "user", "content": prompt}]
     )

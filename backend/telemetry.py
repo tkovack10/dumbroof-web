@@ -17,6 +17,8 @@ import anthropic
 
 # Cost per 1M tokens (as of March 2026 — verified against anthropic.com/pricing)
 MODEL_COSTS = {
+    "claude-opus-4-8":   {"input": 5.00, "output": 25.00},  # unified product default (2026-05-28)
+    "claude-opus-4-7":   {"input": 5.00, "output": 25.00},
     "claude-opus-4-6":   {"input": 5.00, "output": 25.00},
     "claude-sonnet-4-6": {"input": 3.00,  "output": 15.00},
     "claude-haiku-4-5-20251001": {"input": 1.00, "output": 5.00},
@@ -103,7 +105,7 @@ def call_claude_logged(
     Anthropic capacity events can last 10-30+ min, so individual claims
     may still fail, but the vast majority of transient blips are absorbed.
     """
-    model = kwargs.get("model", "claude-opus-4-6")
+    model = kwargs.get("model", "claude-opus-4-8")
     start_ms = time.time() * 1000
     last_error: Optional[str] = None
 

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { getResend } from "@/lib/resend";
 import { withHeartbeat } from "@/lib/cron-heartbeat";
+import { DUMBROOF_MODEL } from "@/lib/model";
 
 export const maxDuration = 300;
 
@@ -203,7 +204,7 @@ Return JSON only.`;
       headers: { "x-api-key": apiKey, "anthropic-version": "2023-06-01", "content-type": "application/json" },
       signal: controller.signal,
       body: JSON.stringify({
-        model: "claude-sonnet-4-6",
+        model: DUMBROOF_MODEL,
         max_tokens: 800,
         system,
         messages: [{ role: "user", content: userMsg }],

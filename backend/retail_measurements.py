@@ -15,6 +15,8 @@ Public surface:
 
 from __future__ import annotations
 
+from model_config import MODEL  # unified model knob (see model_config.py)
+
 import base64
 import json
 import logging
@@ -80,7 +82,7 @@ def _call_claude(client: anthropic.Anthropic, pdf_b64: str, prompt: str, max_ret
     usage / tests) the module keeps its self-contained direct path + local retry, so it stays
     importable and testable in full isolation."""
     kwargs = dict(
-        model="claude-opus-4-6",
+        model=MODEL,
         max_tokens=2048,
         messages=[
             {

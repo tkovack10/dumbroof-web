@@ -26,6 +26,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
+from model_config import MODEL  # unified model knob (see model_config.py)
 from processor import process_claim, get_supabase_client, initial_line_total
 from repair_processor import process_repair, process_checkpoint, process_completion
 from brand_isolation import is_personal_domain
@@ -73,11 +74,11 @@ async def lifespan(app: FastAPI):
     user_gmail_task.cancel()
 
 
-# Richard model — overridable via env for fast rollback. Default is the
-# latest Opus, bumped 2026-05-03 from claude-opus-4-6 → claude-opus-4-7
-# (governance v2 Day 1). If 4-7 ever regresses, set RICHARD_MODEL=
-# claude-opus-4-6 in Vercel/Railway env to revert in ~30s without redeploy.
-RICHARD_MODEL = os.environ.get("RICHARD_MODEL", "claude-opus-4-7")
+# Richard model — overridable via env for fast rollback. Defaults to the
+# unified product model (DUMBROOF_MODEL → claude-opus-4-8 as of 2026-05-28).
+# If a release regresses, set RICHARD_MODEL=claude-opus-4-7 (or -4-6) in the
+# Railway/Vercel env to revert just Richard in ~30s without a redeploy.
+RICHARD_MODEL = os.environ.get("RICHARD_MODEL", MODEL)
 
 app = FastAPI(
     title="Dumb Roof Processing API",
@@ -2215,7 +2216,7 @@ async def claim_brain_chat(
                     "role": "assistant",
                     "content": full_response[:10000],
                     "tool_calls": tool_calls_json,
-                    "model": "claude-sonnet-4-20250514",
+                    "model": RICHARD_MODEL,
                     "tokens_in": int(prompt_tokens * 1.3) if prompt_tokens else None,
                     "tokens_out": int(completion_tokens * 1.3) if completion_tokens else None,
                 }).execute()

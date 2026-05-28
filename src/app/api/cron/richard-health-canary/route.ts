@@ -9,7 +9,7 @@
  *
  * Manual rollback per governance v2 feature (no code change needed):
  *
- *   RICHARD_MODEL=claude-opus-4-6                   → revert Day 1 model bump
+ *   RICHARD_MODEL=claude-opus-4-7                   → revert to prior Opus (unified default is 4-8)
  *   RICHARD_MAX_TOOL_ROUNDS=10                      → revert Day 1 cap raise
  *   RICHARD_MAX_TOTAL_TOOL_CALLS=20                 → revert Day 1 cap raise
  *   RICHARD_REPROCESS_RATE_LIMIT_SECONDS=999999     → effectively disable reprocess
@@ -120,7 +120,7 @@ export async function GET(req: NextRequest) {
           target_type: "operations",
           target_path: "deployment/env",
           summary: `Richard error rate elevated: ${(result.current.errorRate * 100).toFixed(1)}% (baseline ${(result.baseline.errorRate * 100).toFixed(1)}%, delta +${(result.delta * 100).toFixed(1)}pp)`,
-          rationale: `Last ${CURRENT_WINDOW_MINUTES}min: ${result.current.errors}/${result.current.total} assistant messages with error tool_actions vs ${BASELINE_DAYS}d baseline ${result.baseline.errors}/${result.baseline.total}. Consider rolling back governance v2 features via env: RICHARD_MODEL=claude-opus-4-6 (revert model), RICHARD_MAX_TOOL_ROUNDS=10 (revert caps), RICHARD_DISABLE_PREFLIGHT=true (bypass middleware).`,
+          rationale: `Last ${CURRENT_WINDOW_MINUTES}min: ${result.current.errors}/${result.current.total} assistant messages with error tool_actions vs ${BASELINE_DAYS}d baseline ${result.baseline.errors}/${result.baseline.total}. Consider rolling back governance v2 features via env: RICHARD_MODEL=claude-opus-4-7 (revert model), RICHARD_MAX_TOOL_ROUNDS=10 (revert caps), RICHARD_DISABLE_PREFLIGHT=true (bypass middleware).`,
           proposed_diff: "(operational alert — no code diff)",
           evidence: result,
           status: "urgent",

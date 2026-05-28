@@ -187,7 +187,7 @@ Total: 8-10 Claude calls, ~3-4 minutes, ~70K tokens, ~$0.35/claim
 ### 4.2 Measurement Extraction
 
 **Input:** EagleView/HOVER PDF (base64-encoded)
-**Model:** claude-sonnet-4-6, 4096 max tokens
+**Model:** claude-opus-4-8 (unified — see model_config.py), 4096 max tokens
 
 **Output:**
 ```json
@@ -210,7 +210,7 @@ Total: 8-10 Claude calls, ~3-4 minutes, ~70K tokens, ~$0.35/claim
 ### 4.3 Photo Analysis
 
 **Input:** Photos in batches of 5 (base64-encoded)
-**Model:** claude-sonnet-4-6, 4096 max tokens per batch
+**Model:** claude-opus-4-8 (unified — see model_config.py), 4096 max tokens per batch
 
 **Output per batch (merged across all batches):**
 ```json

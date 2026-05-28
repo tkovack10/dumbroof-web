@@ -1,11 +1,12 @@
 import { NextRequest } from "next/server";
 import { SAMPLE_RICHARD_CONTEXT } from "@/lib/sample-claim-data";
+import { DUMBROOF_MODEL } from "@/lib/model";
 
 /**
  * POST /api/sample/brain/chat
  *
  * Public, rate-limited streaming chat endpoint for the demo Richard in
- * /sample/dashboard. Pipes directly to Claude Sonnet 4.6 (raw fetch, no
+ * /sample/dashboard. Pipes directly to Claude via the unified DUMBROOF_MODEL (raw fetch, no
  * SDK) with a pre-loaded sample claim context. Streams SSE.
  *
  * Rate limit: 5 messages per IP per hour, tracked in-memory. This cap
@@ -19,7 +20,7 @@ import { SAMPLE_RICHARD_CONTEXT } from "@/lib/sample-claim-data";
  */
 
 const ANTHROPIC_URL = "https://api.anthropic.com/v1/messages";
-const MODEL = "claude-sonnet-4-6";
+const MODEL = DUMBROOF_MODEL;  // unified model knob (see src/lib/model.ts)
 const MAX_TOKENS = 1024;
 const RATE_LIMIT_MAX = 5;
 const RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000; // 1 hour

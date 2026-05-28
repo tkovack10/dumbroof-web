@@ -11,6 +11,8 @@ See subagent definition: ~/.claude/agents/qa-auditor.md
 
 from __future__ import annotations
 
+from model_config import MODEL  # unified model knob (see model_config.py)
+
 import json
 import re
 from datetime import datetime
@@ -370,13 +372,13 @@ def audit_forensic_prose(
             response = call_claude_fn(
                 claude,
                 _step_name="qa_auditor",
-                model="claude-opus-4-6",
+                model=MODEL,
                 max_tokens=2048,
                 messages=[{"role": "user", "content": prompt}],
             )
         else:
             response = claude.messages.create(
-                model="claude-opus-4-6",
+                model=MODEL,
                 max_tokens=2048,
                 messages=[{"role": "user", "content": prompt}],
             )

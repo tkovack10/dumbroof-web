@@ -10,6 +10,7 @@
  */
 
 import { supabaseAdmin } from "@/lib/supabase/admin";
+import { DUMBROOF_MODEL } from "@/lib/model";
 
 export type AgentName =
   | "damage_detective"
@@ -35,7 +36,7 @@ export interface AgentRecommendation {
 }
 
 const ANTHROPIC_URL = "https://api.anthropic.com/v1/messages";
-const DEFAULT_MODEL = "claude-opus-4-6";
+const DEFAULT_MODEL = DUMBROOF_MODEL;  // unified model knob (see src/lib/model.ts)
 
 /**
  * Call the Anthropic Messages API via fetch (no SDK). Matches the pattern
