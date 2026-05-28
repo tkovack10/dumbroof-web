@@ -1382,12 +1382,33 @@ async def execute_tool(
     return result
 
 
+def _install_supplement_items(claim_data: dict) -> list[dict]:
+    """Itemize install-supplement scope for the supplement cover: line_items tagged
+    scope_timing=="install_supplement" (decking allowance, hidden-damage discoveries, ...) ->
+    [{description, amount}]. Single source of truth — config.line_items filtered by tag, NOT a
+    separate field. These were EXCLUDED from the initial Doc 02 estimate (_is_initial_scope) and
+    surface here. Ship 17 install-supplement timing model (see project_install_supplement_flow)."""
+    cfg = claim_data.get("claim_config") if isinstance(claim_data, dict) else None
+    line_items = (cfg or {}).get("line_items") or []
+    items = []
+    for li in line_items:
+        if (li.get("scope_timing") or "initial") == "install_supplement":
+            amount = round((li.get("qty") or 0) * (li.get("unit_price") or 0), 2)
+            items.append({"description": li.get("description", ""), "amount": amount})
+    return items
+
+
 async def _handle_supplement_email(sb, claim_id, user_id, claim_data, company_profile, tool_input):
     """Generate supplement email draft + cover letter PDF for approval."""
     from claim_brain_pdfs import generate_supplement_cover_pdf
 
+    # Source itemized install-supplement scope from the frozen line_items (decking allowance
+    # etc.) tagged scope_timing="install_supplement" — excluded from the initial Doc 02 estimate,
+    # they surface on the supplement cover. (Ship 17 install-supplement consumer wiring.)
+    supplement_items = _install_supplement_items(claim_data)
+
     # Generate supplement cover letter PDF
-    pdf_bytes = generate_supplement_cover_pdf(claim_data, company_profile)
+    pdf_bytes = generate_supplement_cover_pdf(claim_data, company_profile, supplement_items or None)
 
     # Upload to Supabase storage
     file_path = f"{claim_data.get('file_path', claim_id)}/brain/supplement_cover_{datetime.now().strftime('%Y%m%d_%H%M')}.pdf"
