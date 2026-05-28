@@ -4926,6 +4926,7 @@ def build_line_items(measurements: dict, photo_analysis: dict, state: str, user_
     # USER NOTES → SCOPE BRIDGE: Parse explicit component counts from user notes
     # e.g., "7 skylights", "2 chimneys", "3 pipe boots"
     _additional_layers = 0  # Ship 17 #10: extra existing shingle layers to tear off (notes-gated)
+    _cornice_returns = 0    # Ship 17: gable cornice returns count (notes-gated, replacement-associated)
     if user_notes:
         import re
         _NOTES_COMPONENT_PATTERNS = {
@@ -4959,6 +4960,14 @@ def build_line_items(measurements: dict, photo_analysis: dict, state: str, user_
             _additional_layers = 1
         if _additional_layers:
             print(f"[NOTES BRIDGE] {_additional_layers} additional shingle layer(s) to tear off")
+        # Ship 17 — gable cornice RETURNS (notes-gated backstop; replacement-associated — when the
+        # roof is replaced the returns are too). "N cornice returns" -> N; a bare "cornice return(s)"
+        # mention -> default 2 (a gabled house typically has at least two). Vision-presence
+        # auto-detect (every reroof, not just notes-mentioned) = Ship 18.
+        if "cornice return" in notes_lower:
+            _crm = re.search(r'(\d+)\s*(?:gable\s+)?(?:cornice\s+)?returns?', notes_lower)
+            _cornice_returns = int(_crm.group(1)) if _crm else 2
+            print(f"[NOTES BRIDGE] {_cornice_returns} gable cornice return(s)")
 
     material = _detect_roof_material(photo_analysis, user_notes, estimate_request=estimate_request)
 
@@ -5270,10 +5279,19 @@ def build_line_items(measurements: dict, photo_analysis: dict, state: str, user_
     items.append({"category": "ROOFING", "description": "Roofer - per hour (labor minimum)", "qty": 8, "unit": "HR", "unit_price": _priced(PRICING, "roofer_per_hour", 194.00)})
     items.append({"category": "ROOFING", "description": "Equipment operator", "qty": 1, "unit": "EA", "unit_price": _priced(PRICING, "equipment_operator", 450.00)})
 
-    # ===================== GABLE CORNICE RETURNS =====================
-    # REMOVED from auto-generation — not all homes have gable cornice returns.
-    # Available as a supplement option if the user confirms they exist on the property.
-    # Pricing retained in PRICING dict for supplement builder use.
+    # ===================== GABLE CORNICE RETURNS (Ship 17 — notes-gated backstop) =====================
+    # Auto-generation was removed (not all homes have returns). Now emitted when NOTES confirm they
+    # exist — replacement-associated (a reroof replaces the returns — Tom). Notes-gated → no false
+    # positives; INITIAL scope (visible pre-work, appears in Doc 02). Key by grade for consistency
+    # with the shingle line: laminated → cornice_laminated_high, else cornice_3tab (both EA, 160/160
+    # priced). Vision-presence auto-detect (catches EVERY reroof) = Ship 18; strips (rake×story) deferred.
+    if _cornice_returns > 0 and material in ("laminated", "3tab"):
+        if material == "laminated":
+            _crk, _crd, _crfb = "cornice_laminated_high", "R&R Gable cornice return - laminated - 2 stories or greater", 137.09
+        else:
+            _crk, _crd, _crfb = "cornice_3tab", "R&R Gable cornice return - 3 tab", 112.54
+        items.append({"category": "ROOFING", "description": _crd, "qty": _cornice_returns, "unit": "EA",
+                      "unit_price": _priced(PRICING, _crk, _crfb), "scope_timing": "initial"})
 
     # ===================== DEBRIS =====================
     # Slate/tile debris is significantly heavier — smaller loads, higher price per load
