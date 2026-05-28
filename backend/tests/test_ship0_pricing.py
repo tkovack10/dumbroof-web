@@ -278,6 +278,59 @@ def test_pricing_qa_flags_proxy_warning():
     assert any(f["issue"] == "PROXY_PRICING" and f["severity"] == "medium" for f in flags)
 
 
+# ── Ship 17 Tier A — general-conditions emission (cleanup / mask / permit) ──
+# These three INITIAL-estimate items fire ONLY when roofing is scoped. qty is
+# deterministic (area / perimeter / flat 1) and independent of market price, so
+# the assertions hold with or without live Supabase pricing.
+def _build(estimate_request, area_sq=30, eave=100, rake=30):
+    from processor import build_line_items
+    meas = {"measurements": {"eave": eave, "ridge": 40, "valley": 10, "rake": rake, "hip": 0},
+            "structures": [{"roof_area_sq": area_sq, "roof_area_sf": area_sq * 100,
+                            "facets": 6, "predominant_pitch": "6/12"}]}
+    return build_line_items(meas, {}, "TX", estimate_request=estimate_request,
+                            market_code="TXHO8X_APR26")
+
+def _find(items, needle):
+    hits = [i for i in items if needle in i["description"].lower()]
+    return hits
+
+def test_general_conditions_emitted_when_roofing_scoped():
+    items = _build({"roofing": True}, area_sq=30, eave=100, rake=30)
+
+    cleanup = _find(items, "general clean-up")
+    assert len(cleanup) == 1, "expected exactly one general clean-up line"
+    assert cleanup[0]["qty"] == 30, "clean-up qty must equal roof area (SQ)"
+    assert cleanup[0]["unit"] == "SQ" and cleanup[0]["category"] == "GENERAL"
+
+    mask = _find(items, "mask and protect")
+    assert len(mask) == 1, "expected exactly one mask-and-protect line"
+    assert mask[0]["qty"] == 130, "mask qty must equal perimeter (eave 100 + rake 30)"
+    assert mask[0]["unit"] == "LF" and mask[0]["category"] == "GENERAL"
+
+    permit = _find(items, "building permit")
+    assert len(permit) == 1, "expected exactly one building-permit line"
+    assert permit[0]["qty"] == 1, "permit is a flat qty=1"
+    assert permit[0]["unit"] == "EA" and permit[0]["category"] == "GENERAL"
+
+def test_general_conditions_suppressed_when_siding_only():
+    # Siding-only claim must NOT carry roofing general-conditions lines.
+    items = _build({"siding": True})
+    assert not _find(items, "general clean-up")
+    assert not _find(items, "mask and protect")
+    assert not _find(items, "building permit")
+
+def test_cleanup_scales_with_area_and_mask_with_perimeter():
+    small = _build({"roofing": True}, area_sq=20, eave=80, rake=20)
+    big = _build({"roofing": True}, area_sq=60, eave=200, rake=60)
+    assert _find(small, "general clean-up")[0]["qty"] == 20
+    assert _find(big, "general clean-up")[0]["qty"] == 60      # area-driven
+    assert _find(small, "mask and protect")[0]["qty"] == 100   # 80 + 20
+    assert _find(big, "mask and protect")[0]["qty"] == 260     # 200 + 60
+    # permit stays flat regardless of size
+    assert _find(small, "building permit")[0]["qty"] == 1
+    assert _find(big, "building permit")[0]["qty"] == 1
+
+
 if __name__ == "__main__":
     tests = [v for k, v in sorted(globals().items()) if k.startswith("test_") and callable(v)]
     failed = 0
