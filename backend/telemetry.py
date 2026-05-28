@@ -323,6 +323,9 @@ def write_line_items(sb, claim_id: str, items: list, source: str = "usarm",
             "price_list": price_list,
             "region": region,
             "structure": item.get("structure"),
+            # Persist scope_timing so DB-side recomputes (contractor_rcv) can filter
+            # install-supplement rows. Untagged → 'initial' (same default as _is_initial_scope).
+            "scope_timing": item.get("scope_timing") or "initial",
         }
         # New XactRegistry fields for compound learning
         supp_arg = item.get("supplement_argument", "")

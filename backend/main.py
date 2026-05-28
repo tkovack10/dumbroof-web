@@ -26,7 +26,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
-from processor import process_claim, get_supabase_client
+from processor import process_claim, get_supabase_client, initial_line_total
 from repair_processor import process_repair, process_checkpoint, process_completion
 from brand_isolation import is_personal_domain
 from analytics import (
@@ -3273,17 +3273,15 @@ def _recompute_and_write_contractor_rcv(sb, claim_id: str, excluded_ids: Optiona
             excluded_raw = claim.get("excluded_line_items") or []
             excluded_ids = set(excluded_raw) if isinstance(excluded_raw, list) else set()
 
-        items_res = sb.table("line_items").select("id, qty, unit_price, total").eq("claim_id", claim_id).execute()
+        # SELECT scope_timing so the sum can exclude install-supplement rows. contractor_rcv is
+        # the INITIAL estimate; install_supplement items (decking allowance etc.) are filed
+        # separately and must NOT inflate it. initial_line_total applies the canonical
+        # _is_initial_scope filter — same predicate as compute_financials + the Doc 02 render,
+        # now at the DB-recompute layer (closes the PR #44 in-memory-only gap).
+        items_res = sb.table("line_items").select("id, qty, unit_price, total, scope_timing").eq("claim_id", claim_id).execute()
         items = items_res.data or []
 
-        line_total = 0.0
-        for item in items:
-            if item.get("id") in excluded_ids:
-                continue
-            t = item.get("total")
-            if t is None:
-                t = float(item.get("qty") or 0) * float(item.get("unit_price") or 0)
-            line_total += float(t or 0)
+        line_total = initial_line_total(items, excluded_ids)
 
         tax_rate = float(claim.get("tax_rate") or 0)
         op_enabled = bool(claim.get("o_and_p_enabled"))

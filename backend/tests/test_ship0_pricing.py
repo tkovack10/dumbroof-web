@@ -331,6 +331,35 @@ def test_cleanup_scales_with_area_and_mask_with_perimeter():
     assert _find(big, "building permit")[0]["qty"] == 1
 
 
+# ── Ship 17 install-supplement DB persistence (PR B) — initial_line_total ──
+# The DB-side contractor_rcv recompute (main._recompute_and_write_contractor_rcv) sums
+# initial_line_total over DB-shaped rows. install_supplement rows must NOT inflate it —
+# this is the regression PR #44 only patched in-memory (the DB path read rows untagged).
+from processor import initial_line_total  # noqa: E402
+
+_DB_ROWS = [
+    {"id": "a", "qty": 25, "unit_price": 300.0, "total": 7500.0, "scope_timing": "initial"},
+    {"id": "b", "qty": 10, "unit_price": 5.0,   "total": 50.0},                                # untagged → initial
+    {"id": "c", "qty": 56, "unit_price": 2.86,  "total": 160.16, "scope_timing": "install_supplement"},  # decking allowance
+]
+
+def test_initial_line_total_excludes_install_supplement():
+    # initial (7500) + untagged (50) = 7550; decking (160.16) excluded.
+    assert initial_line_total(_DB_ROWS) == 7550.0
+
+def test_install_supplement_row_adds_nothing_to_contractor_rcv_base():
+    # The core regression: adding an install_supplement row must not change the initial total.
+    without = [r for r in _DB_ROWS if r["id"] != "c"]
+    assert initial_line_total(_DB_ROWS) == initial_line_total(without)
+
+def test_initial_line_total_honors_excluded_ids_and_qty_fallback():
+    rows = [
+        {"id": "a", "qty": 25, "unit_price": 300.0, "scope_timing": "initial"},  # no total → qty*price = 7500
+        {"id": "x", "qty": 99, "unit_price": 99.0,  "total": 9801.0, "scope_timing": "initial"},  # excluded
+    ]
+    assert initial_line_total(rows, excluded_ids={"x"}) == 7500.0  # fallback math + exclusion
+
+
 if __name__ == "__main__":
     tests = [v for k, v in sorted(globals().items()) if k.startswith("test_") and callable(v)]
     failed = 0
