@@ -55,6 +55,11 @@ export function ScopeComparison({ claimId, carrierName, refreshKey }: Props) {
   if (loading) return null;
   if (error || !data) return null;
 
+  // NOTE (Ship 17 install-supplement): every `usarm_amount` sum below (FinancialSummary
+  // totalUsarm, missing-items total) is already INITIAL-only — the comparison rows are built
+  // server-side from `[li for li in line_items if _is_initial_scope(li)]` (processor.py, PR #45),
+  // so install_supplement rows (decking allowance etc.) never enter these rows. No client filter
+  // needed here; the contractor side stays consistent with contractor_rcv + the Doc 02 estimate.
   const { comparison_rows: rows, financials: fin, summary } = data;
 
   const roofingRows = rows.filter((r) => (r.trade || "").toLowerCase() === "roofing" || (r.category || "").toUpperCase() === "ROOFING");

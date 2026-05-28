@@ -13,6 +13,7 @@ interface LineItem {
   xactimate_code: string;
   trade: string;
   source: string;
+  scope_timing?: "initial" | "install_supplement";
 }
 
 interface Photo {
@@ -91,9 +92,12 @@ export function EstimateView({ claimId, refreshKey }: Props) {
 
   if (loading || items.length === 0) return null;
 
-  // Group items by category
+  // Group items by category. This is the INITIAL contractor estimate (Doc 02-equivalent):
+  // install_supplement rows (decking allowance etc.) are filed separately in the supplement,
+  // so they're excluded from BOTH the displayed lines and the total here. Untagged → initial.
   const grouped = items
     .filter((i) => i.source === "usarm" || i.source === "user_added")
+    .filter((i) => (i.scope_timing ?? "initial") === "initial")
     .sort((a, b) => (SECTION_ORDER[a.category?.toUpperCase()] ?? 99) - (SECTION_ORDER[b.category?.toUpperCase()] ?? 99));
 
   const lineTotal = grouped.reduce((s, i) => s + i.qty * i.unit_price, 0);

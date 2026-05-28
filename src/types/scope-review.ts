@@ -11,6 +11,8 @@ export interface LineItemForReview {
   trade: string | null;
   source: string;
   feedback_status: "approved" | "corrected" | "removed" | null;
+  // Ship 17 install-supplement timing. Untagged/absent → treated as 'initial'.
+  scope_timing?: "initial" | "install_supplement";
 }
 
 export interface LineItemFeedback {
