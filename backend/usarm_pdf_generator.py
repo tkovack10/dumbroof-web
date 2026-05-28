@@ -248,9 +248,22 @@ def fmt_money(val):
     return f"${val:,.2f}"
 
 
+def _is_initial_scope(item):
+    """True if a line item belongs to the INITIAL estimate (Doc 02). Items tagged for a
+    later timing — scope_timing='install_supplement' (discovered during work, e.g. the
+    decking allowance) — are excluded from the initial estimate + its financials and surface
+    in the supplement instead. Untagged items default to 'initial' (no refactor needed).
+    Ship 17 install-supplement timing model — see project_install_supplement_flow."""
+    return (item.get("scope_timing") or "initial") == "initial"
+
+
 def compute_financials(config):
-    """Compute all financial totals from line_items + tax_rate."""
-    items = config.get("line_items", [])
+    """Compute INITIAL-estimate financial totals from line_items + tax_rate.
+
+    Only scope_timing=='initial' items count toward the initial estimate; install-supplement
+    items (decking allowance etc.) are filed separately and excluded here (Ship 17 timing model).
+    """
+    items = [it for it in config.get("line_items", []) if _is_initial_scope(it)]
     line_total = sum(round(it["qty"] * it["unit_price"], 2) for it in items)
     tax_rate = config.get("financials", {}).get("tax_rate", 0.08)
     tax = round(line_total * tax_rate, 2)
@@ -2695,8 +2708,9 @@ def build_xactimate_estimate(config):
     scope = config.get("scope", {})
     measurements = config.get("measurements", {})
     items = config.get("line_items", [])
-    # Filter out zero-quantity line items (from failed measurement extraction)
-    items = [item for item in items if item.get("qty", 0) > 0]
+    # Filter out zero-quantity lines + install-supplement items (Doc 02 = INITIAL estimate
+    # only; scope_timing='install_supplement' items surface in the supplement, not here).
+    items = [item for item in items if item.get("qty", 0) > 0 and _is_initial_scope(item)]
 
     fin = compute_financials(config)
 

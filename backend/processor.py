@@ -5095,6 +5095,21 @@ def build_line_items(measurements: dict, photo_analysis: dict, state: str, user_
                       "qty": round(area_sq * _additional_layers, 2), "unit": "SQ",
                       "unit_price": _priced(PRICING, "additional_layer_remove", 47.95)})
 
+    # ===================== DECKING ALLOWANCE (Ship 17 #7 — INSTALL SUPPLEMENT) =====================
+    # Rotted/damaged roof decking is discovered AT tear-off, not knowable pre-work — so this is an
+    # INSTALL-SUPPLEMENT allowance (scope_timing="install_supplement"), the FIRST item to use the
+    # timing tag. Filed pre-emptively at the industry ratio (~1 sheet / 4 SQ), then supplemented
+    # with actual footage post-tear-off. EXCLUDED from the initial Doc 02 estimate + its financials
+    # (_is_initial_scope) and surfaces in the supplement instead. Priced per SF (sheathing_plywood,
+    # 160/160 markets ~$2.76/SF); 1 sheet (4'x8') = 32 SF. See project_install_supplement_flow.
+    if area_sq > 0:
+        _decking_sheets = max(1, int(-(-area_sq // 4)))   # ceil(area_sq / 4) sheets
+        items.append({"category": "ROOFING",
+                      "description": "R&R Sheathing - plywood - 1/2\" CDX",
+                      "qty": _decking_sheets * 32, "unit": "SF",
+                      "unit_price": _priced(PRICING, "sheathing_plywood", 2.76),
+                      "scope_timing": "install_supplement"})
+
     # ===================== ICE & WATER BARRIER =====================
     if iw_sf > 0:
         items.append({"category": "ROOFING", "description": "Ice & water barrier (2 courses eaves + 1 course valleys)", "qty": round(iw_sf), "unit": "SF", "unit_price": _priced(PRICING, "ice_water", 2.24)})

@@ -315,5 +315,53 @@ class AdditionalLayerTests(unittest.TestCase):
         self.assertEqual(self._layer_lines("install 2 layers of ice and water at eaves"), [])
 
 
+class InstallSupplementTests(unittest.TestCase):
+    """Ship 17 #7 + install-supplement timing model. Decking allowance emits tagged
+    scope_timing='install_supplement', priced per SF (1 sheet/4 SQ × 32 SF), and is EXCLUDED
+    from the initial Doc 02 estimate + its financials (surfaces in the supplement instead)."""
+
+    def _build(self, area_sq=25):
+        from processor import build_line_items
+        meas = {"measurements": {"eave": 120, "ridge": 40, "valley": 0, "rake": 30, "hip": 0},
+                "structures": [{"roof_area_sq": area_sq, "roof_area_sf": area_sq * 100,
+                                "facets": 6, "predominant_pitch": "6/12"}]}
+        return build_line_items(meas, {}, "TX",
+                                estimate_request={"roofing": True, "roof_material": "laminated"},
+                                market_code="TXHO8X_APR26")
+
+    def _deck(self, items):
+        d = [it for it in items if "sheathing" in it.get("description", "").lower()]
+        return d[0] if d else None
+
+    def test_decking_emitted_tagged_install_supplement(self):
+        d = self._deck(self._build(25))
+        self.assertIsNotNone(d, "decking allowance should emit on a reroof")
+        self.assertEqual(d["scope_timing"], "install_supplement")
+        self.assertEqual(d["unit"], "SF")
+        self.assertEqual(d["qty"], 7 * 32)   # ceil(25/4)=7 sheets × 32 SF/sheet = 224 SF
+
+    def test_no_decking_when_zero_area(self):
+        self.assertIsNone(self._deck(self._build(0)))
+
+    def test_is_initial_scope_helper(self):
+        from usarm_pdf_generator import _is_initial_scope
+        self.assertTrue(_is_initial_scope({"description": "shingles"}))          # untagged → initial
+        self.assertTrue(_is_initial_scope({"scope_timing": "initial"}))
+        self.assertFalse(_is_initial_scope({"scope_timing": "install_supplement"}))
+
+    def test_decking_excluded_from_initial_financials(self):
+        from usarm_pdf_generator import compute_financials
+        items = self._build(25)
+        d = self._deck(items)
+        deck_ext = round(d["qty"] * d["unit_price"], 2)
+        self.assertGreater(deck_ext, 0, "decking should carry real $ (sanity)")
+        config = {"line_items": items, "financials": {"tax_rate": 0.0},
+                  "scope": {"trades": ["roofing"]}, "carrier": {}}
+        fin = compute_financials(config)
+        all_ext = round(sum(round(it["qty"] * it["unit_price"], 2) for it in items), 2)
+        # The ONLY thing excluded from the initial line_total is the install-supplement decking
+        self.assertAlmostEqual(all_ext - fin["line_total"], deck_ext, places=2)
+
+
 if __name__ == "__main__":
     unittest.main()
