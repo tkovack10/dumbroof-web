@@ -5083,9 +5083,18 @@ def build_line_items(measurements: dict, photo_analysis: dict, state: str, user_
     if ridge > 0 and material not in ("slate", "tile"):
         items.append({"category": "ROOFING", "description": "R&R Ridge vent - shingle over", "qty": ridge, "unit": "LF", "unit_price": _priced(PRICING, "ridge_vent", 8.50)})
 
-    # ===================== COPPER VALLEY FLASHING (slate/tile — valleys require copper) =====================
+    # ===================== VALLEY METAL =====================
+    # Slate/tile valleys require copper (standard practice). Comp-shingle (laminated/3tab)
+    # open valleys get valley metal — REPLACEMENT-ASSOCIATED (Ship 17 #6): replacing the
+    # roof replaces the open-valley metal, so it belongs in scope whenever valleys exist.
+    # `valley_metal` (plain "R&R Valley metal") is priced in all 160 markets (avg ~$7.73/LF);
+    # W-profile (valley_metal_w) is only in 120 → use plain to avoid a fallback coverage gap.
+    # Carrier note: assumes an open (not closed-cut) valley — the code-preferred, defensible
+    # install for storm reroofs. Other materials (metal/flat/roll) handle valleys differently.
     if valley > 0 and material in ("slate", "tile"):
         items.append({"category": "ROOFING", "description": "R&R Valley flashing - copper", "qty": valley, "unit": "LF", "unit_price": _priced(PRICING, "copper_valley_flashing", 32.00)})
+    elif valley > 0 and material in ("laminated", "3tab"):
+        items.append({"category": "ROOFING", "description": "R&R Valley metal", "qty": valley, "unit": "LF", "unit_price": _priced(PRICING, "valley_metal", 9.50)})
 
     # ===================== SKYLIGHT FLASHING =====================
     skylights = penetrations.get("skylights", 0)
