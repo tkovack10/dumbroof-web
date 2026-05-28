@@ -239,5 +239,43 @@ class DumpsterScalingTests(unittest.TestCase):
         self.assertEqual(self._dumpster_qty(50), 3)   # ceil(50/22)=3
 
 
+class ValleyMetalTests(unittest.TestCase):
+    """Ship 17 #6: comp-shingle (laminated/3tab) open valleys must get `R&R Valley metal`
+    (replacement-associated). Previously only slate/tile got copper valley; comp-shingle
+    valleys emitted nothing. qty = valley LF; key `valley_metal` (priced 160/160)."""
+
+    def _items(self, material_notes, valley_lf, est_req):
+        from processor import build_line_items
+        meas = {"measurements": {"eave": 120, "ridge": 40, "valley": valley_lf, "rake": 30, "hip": 0},
+                "structures": [{"roof_area_sq": 25, "roof_area_sf": 2500, "facets": 6,
+                                "predominant_pitch": "6/12", "shingle_type": material_notes}]}
+        return build_line_items(meas, {}, "TX", user_notes=material_notes,
+                                estimate_request=est_req, market_code="TXHO8X_APR26")
+
+    def _has(self, items, needle):
+        return [it for it in items if needle.lower() in it.get("description", "").lower()]
+
+    def test_comp_shingle_valley_emits_valley_metal(self):
+        items = self._items("laminated", 30, {"roof_material": "laminated"})
+        vm = self._has(items, "R&R Valley metal")
+        self.assertEqual(len(vm), 1, "comp-shingle open valley should emit R&R Valley metal")
+        self.assertEqual(vm[0]["qty"], 30)
+        self.assertEqual(vm[0]["unit"], "LF")
+        self.assertFalse(self._has(items, "Valley flashing - copper"),
+                         "comp shingle should NOT get copper valley")
+
+    def test_no_valley_no_line(self):
+        items = self._items("laminated", 0, {"roof_material": "laminated"})
+        self.assertFalse(self._has(items, "Valley metal"),
+                         "valley=0 should emit no valley line")
+
+    def test_slate_still_copper_not_metal(self):
+        items = self._items("slate", 30, {"roof_material": "slate"})
+        self.assertTrue(self._has(items, "Valley flashing - copper"),
+                        "slate valley should still be copper")
+        self.assertFalse([it for it in items if it.get("description") == "R&R Valley metal"],
+                         "slate should not get plain valley metal")
+
+
 if __name__ == "__main__":
     unittest.main()
