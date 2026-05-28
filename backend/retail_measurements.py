@@ -69,34 +69,47 @@ def _parse_json_response(text: str) -> dict:
         return {}
 
 
-def _call_claude(client: anthropic.Anthropic, pdf_b64: str, prompt: str, max_retries: int = 3) -> str:
+def _call_claude(client: anthropic.Anthropic, pdf_b64: str, prompt: str, max_retries: int = 3, sb=None) -> str:
     """Call Claude with the retail-measurement prompt and return the raw text.
-    Lightweight retry on transient errors (overload, rate limit, network).
-    Deliberately NOT using the claims pipeline's _call_claude_with_retry —
-    no shared telemetry or behavior."""
+
+    Ship 0.5: when `sb` is provided, route through telemetry.call_claude_logged so the retail
+    vision spend is recorded in processing_logs (step_name="retail_measurements"). claim_id is
+    NULL — retail is a standalone pre-claim tool, so the log records the cost-generating EVENT,
+    not a claim (processing_logs.claim_id is nullable; see DECISIONS). Telemetry is the ONLY
+    shared dependency — no other claims-pipeline behavior is imported. Without `sb` (standalone
+    usage / tests) the module keeps its self-contained direct path + local retry, so it stays
+    importable and testable in full isolation."""
+    kwargs = dict(
+        model="claude-opus-4-6",
+        max_tokens=2048,
+        messages=[
+            {
+                "role": "user",
+                "content": [
+                    {
+                        "type": "document",
+                        "source": {
+                            "type": "base64",
+                            "media_type": "application/pdf",
+                            "data": pdf_b64,
+                        },
+                    },
+                    {"type": "text", "text": prompt},
+                ],
+            }
+        ],
+    )
+
+    if sb is not None:
+        from telemetry import call_claude_logged
+        response = call_claude_logged(client, sb, None, step_name="retail_measurements", **kwargs)
+        return response.content[0].text if response.content else ""
+
+    # Standalone / test path — unchanged, self-contained retry (no telemetry).
     last_err: Exception | None = None
     for attempt in range(1, max_retries + 1):
         try:
-            response = client.messages.create(
-                model="claude-opus-4-6",
-                max_tokens=2048,
-                messages=[
-                    {
-                        "role": "user",
-                        "content": [
-                            {
-                                "type": "document",
-                                "source": {
-                                    "type": "base64",
-                                    "media_type": "application/pdf",
-                                    "data": pdf_b64,
-                                },
-                            },
-                            {"type": "text", "text": prompt},
-                        ],
-                    }
-                ],
-            )
+            response = client.messages.create(**kwargs)
             return response.content[0].text if response.content else ""
         except (anthropic.APIStatusError, anthropic.APIConnectionError) as e:
             last_err = e
@@ -153,16 +166,20 @@ Rules:
 """
 
 
-def extract_retail_measurements(client: anthropic.Anthropic, pdf_path: str | Path) -> dict:
+def extract_retail_measurements(client: anthropic.Anthropic, pdf_path: str | Path, sb=None) -> dict:
     """Parse a roof-measurement PDF into the retail builder's flat 10-field schema.
 
     Returns a dict with the 10 RETAIL_FIELDS keys (all numeric) plus a "_meta"
     object with vendor/confidence/etc. Missing fields default to 0.
 
     Raises if Claude is unreachable after retries.
+
+    `sb` (optional): a Supabase client. When supplied (the live router passes one), the vision
+    call is logged to processing_logs for cost visibility (Ship 0.5, claim_id=NULL). Omit it for
+    standalone/test use — the parse runs identically without telemetry.
     """
     pdf_b64 = _file_to_base64(pdf_path)
-    raw_text = _call_claude(client, pdf_b64, _PROMPT)
+    raw_text = _call_claude(client, pdf_b64, _PROMPT, sb=sb)
     parsed = _parse_json_response(raw_text)
 
     out: dict = {}
