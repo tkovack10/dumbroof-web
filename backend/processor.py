@@ -9138,11 +9138,24 @@ PLATFORM_DIR = os.path.expanduser("~/USARM-Claims-Platform")
 SYNC_SCRIPT = os.path.join(PLATFORM_DIR, "sync_dashboard.py")
 
 
+def _is_initial_scope(item: dict) -> bool:
+    """True if a line item belongs to the INITIAL estimate. Items tagged for a later timing
+    (scope_timing='install_supplement' — decking allowance etc.) are filed separately and
+    excluded from the initial estimate, contractor_rcv, variance, and the scope comparison.
+    Untagged → initial (no refactor). Ship 17 install-supplement timing model."""
+    return (item.get("scope_timing") or "initial") == "initial"
+
+
 def compute_financials(config: dict) -> dict:
-    """Calculate financial totals from line items."""
+    """Calculate INITIAL-estimate financial totals from line items.
+
+    Only scope_timing=='initial' items count — install-supplement items (decking allowance)
+    are filed separately, so contractor_rcv/variance stay consistent with the Doc 02 estimate
+    (which uses the generator's matching initial-only compute_financials).
+    """
     line_total = sum(
         item.get("qty", 0) * item.get("unit_price", 0)
-        for item in config.get("line_items", [])
+        for item in config.get("line_items", []) if _is_initial_scope(item)
     )
     tax_rate = config.get("financials", {}).get("tax_rate", 0.08)
     tax = line_total * tax_rate

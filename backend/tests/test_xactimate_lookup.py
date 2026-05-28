@@ -363,5 +363,30 @@ class InstallSupplementTests(unittest.TestCase):
         self.assertAlmostEqual(all_ext - fin["line_total"], deck_ext, places=2)
 
 
+class ProcessorFinancialsTimingTests(unittest.TestCase):
+    """Ship 17 check #3: processor.compute_financials (the contractor_rcv/variance source) must
+    exclude install-supplement items from the initial total — consistent with Doc 02. PR #42
+    fixed the generator's compute_financials but missed this one (live ~$640 inflation per reroof)."""
+
+    def test_is_initial_scope_predicate(self):
+        from processor import _is_initial_scope
+        self.assertTrue(_is_initial_scope({}))                                   # untagged → initial
+        self.assertTrue(_is_initial_scope({"scope_timing": "initial"}))
+        self.assertFalse(_is_initial_scope({"scope_timing": "install_supplement"}))
+
+    def test_processor_compute_financials_excludes_install_supplement(self):
+        import processor
+        config = {"line_items": [
+            {"description": "shingle", "qty": 25, "unit_price": 300, "scope_timing": "initial"},
+            {"description": "decking", "qty": 224, "unit_price": 2.86, "scope_timing": "install_supplement"},
+            {"description": "drip", "qty": 100, "unit_price": 4.25},             # untagged → initial
+        ], "financials": {"tax_rate": 0.0}, "scope": {}, "carrier": {}}
+        fin = processor.compute_financials(config)
+        expected_initial = round(25 * 300 + 100 * 4.25, 2)   # shingle + drip, NOT decking
+        self.assertAlmostEqual(fin["line_total"], expected_initial, places=2)
+        # contractor total (used for contractor_rcv) must not include the decking allowance
+        self.assertNotAlmostEqual(fin["line_total"], expected_initial + round(224 * 2.86, 2), places=2)
+
+
 if __name__ == "__main__":
     unittest.main()
