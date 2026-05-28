@@ -9183,6 +9183,30 @@ def _is_initial_scope(item: dict) -> bool:
     return (item.get("scope_timing") or "initial") == "initial"
 
 
+def initial_line_total(items: list, excluded_ids: set = None) -> float:
+    """Sum the INITIAL-scope, non-excluded line-item extensions — the base for contractor_rcv.
+
+    Operates on DB-shaped rows ({id, qty, unit_price, total, scope_timing}): prefers a stored
+    `total`, else qty*unit_price. install_supplement rows are filed separately and must NOT
+    inflate the initial estimate, so they're excluded via the canonical _is_initial_scope
+    predicate (same filter as compute_financials + the Doc 02 render — no drift). Pulled out of
+    main._recompute_and_write_contractor_rcv so the DB-recompute path filters scope_timing at the
+    query+sum layer, not just in-memory (the PR #44 gap), and so it's unit-testable without the
+    FastAPI app."""
+    excluded_ids = excluded_ids or set()
+    total = 0.0
+    for item in items:
+        if item.get("id") in excluded_ids:
+            continue
+        if not _is_initial_scope(item):
+            continue
+        t = item.get("total")
+        if t is None:
+            t = float(item.get("qty") or 0) * float(item.get("unit_price") or 0)
+        total += float(t or 0)
+    return total
+
+
 def compute_financials(config: dict) -> dict:
     """Calculate INITIAL-estimate financial totals from line items.
 
