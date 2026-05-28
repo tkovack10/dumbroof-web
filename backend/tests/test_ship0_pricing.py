@@ -360,6 +360,36 @@ def test_initial_line_total_honors_excluded_ids_and_qty_fallback():
     assert initial_line_total(rows, excluded_ids={"x"}) == 7500.0  # fallback math + exclusion
 
 
+# ── Ship 17 Tier B — downspout-extension emission (gutter add-on) ──
+# Fires only when gutters are scoped. qty = downspout count = max(2, round(eave/35)),
+# deterministic (measurement-driven), independent of market price.
+def test_downspout_extension_emitted_when_gutters_scoped():
+    items = _build({"gutters": True}, eave=140, rake=30)
+    ds = _find(items, "downspout extension")
+    assert len(ds) == 1, "expected exactly one downspout-extension line"
+    assert ds[0]["qty"] == 4, "qty must be round(140/35)=4 downspouts"
+    assert ds[0]["unit"] == "EA" and ds[0]["category"] == "GUTTERS"
+    # INITIAL timing — stays in Doc 02 (untagged → initial), never tagged install_supplement
+    assert ds[0].get("scope_timing", "initial") == "initial"
+
+def test_downspout_extension_suppressed_when_gutters_not_scoped():
+    # Roofing-only claim opts out of gutters → no downspout line.
+    items = _build({"roofing": True}, eave=140)
+    assert not _find(items, "downspout extension")
+
+def test_downspout_extension_count_floor_and_scaling():
+    small = _build({"gutters": True}, eave=20)    # round(20/35)=1 → floored to 2
+    big = _build({"gutters": True}, eave=350)      # round(350/35)=10
+    assert _find(small, "downspout extension")[0]["qty"] == 2, "min 2 downspouts per home"
+    assert _find(big, "downspout extension")[0]["qty"] == 10  # scales with gutter run
+
+def test_downspout_extension_emitted_on_siding_plus_gutters():
+    # Gutters scoped alongside siding (no roofing) → still emits.
+    items = _build({"siding": True, "gutters": True}, eave=105)
+    ds = _find(items, "downspout extension")
+    assert len(ds) == 1 and ds[0]["qty"] == 3  # round(105/35)=3
+
+
 if __name__ == "__main__":
     tests = [v for k, v in sorted(globals().items()) if k.startswith("test_") and callable(v)]
     failed = 0
