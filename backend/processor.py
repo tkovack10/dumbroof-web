@@ -5357,6 +5357,21 @@ def build_line_items(measurements: dict, photo_analysis: dict, state: str, user_
             )
             items.append({"category": "GUTTERS", "description": desc, "qty": gutter_lf, "unit": "LF", "unit_price": PRICING.get(price_key, default_price)})
 
+    # ===================== GUTTER GUARD / SCREEN (Ship 17 #10 — initial, replacement-associated) =====================
+    # When gutters are scoped AND the property HAS existing gutter guards (per notes), the guards
+    # are R&R'd along with the gutters (replacement-associated: the homeowner had them, so the
+    # replacement includes them). Notes-gated presence signal -> no false positives. INITIAL scope
+    # (visible pre-work; scope_timing defaults to "initial"). qty = eave LF — the horizontal gutter
+    # RUN; guards do NOT go on downspouts, so this is eave, not the gutter line's eave×1.6.
+    # gutter_guard priced 120/160 markets — the 40 French-batch markets fall to the hardcoded
+    # fallback (Ship-1.2.5 follow-up: seed gutter_guard prices for those 40).
+    _has_gutter_guards = any(
+        t in notes_lower for t in ("gutter guard", "gutter screen", "leaf guard", "leaf filter", "gutter cover", "gutter helmet")
+    )
+    if _gutters_requested and eave > 0 and _has_gutter_guards:
+        items.append({"category": "GUTTERS", "description": "R&R Gutter guard/screen - High grade",
+                      "qty": round(eave), "unit": "LF", "unit_price": _priced(PRICING, "gutter_guard", 17.03)})
+
     # ===================== SIDING (opt-in via estimate_request only) =====================
     # ALWAYS includes house wrap when siding is scoped (R703.2 — continuous
     # weather-resistant exterior wall envelope required per IRC-based code).
