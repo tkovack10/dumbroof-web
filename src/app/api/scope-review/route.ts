@@ -19,12 +19,16 @@ async function recalculateContractorRcv(claimId: string): Promise<number> {
 
   const { data: allItems } = await supabaseAdmin
     .from("line_items")
-    .select("id, qty, unit_price")
+    .select("id, qty, unit_price, scope_timing")
     .eq("claim_id", claimId)
     .in("source", ["usarm", "user_added"]);
 
+  // contractor_rcv is the INITIAL estimate — install_supplement rows (decking allowance etc.)
+  // are filed separately and must NOT inflate it. Untagged → 'initial' (mirrors
+  // processor._is_initial_scope / PR B; pre-migration rows backfilled to 'initial').
   const lineTotal = (allItems || [])
     .filter((i) => !excludedIds.has(i.id))
+    .filter((i) => ((i.scope_timing as string) ?? "initial") === "initial")
     .reduce((sum, i) => sum + i.qty * i.unit_price, 0);
 
   const tax = lineTotal * taxRate;
@@ -58,7 +62,7 @@ export async function GET(req: NextRequest) {
   // Get USARM line items (not carrier items)
   const { data: items, error: itemsErr } = await supabaseAdmin
     .from("line_items")
-    .select("id, claim_id, category, description, qty, unit, unit_price, xactimate_code, trade, source")
+    .select("id, claim_id, category, description, qty, unit, unit_price, xactimate_code, trade, source, scope_timing")
     .eq("claim_id", claimId)
     .in("source", ["usarm", "user_added"])
     .order("category", { ascending: true })

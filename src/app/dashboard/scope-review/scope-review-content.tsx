@@ -208,17 +208,22 @@ export function ScopeReviewContent({ claimId: claimIdProp, embedded = false, onA
     });
   };
 
+  // INITIAL contractor estimate review surface: install_supplement rows (decking allowance etc.)
+  // are filed separately in the supplement, so they're excluded from the grouped display and ALL
+  // totals here — keeps the review grid + liveTotal consistent with contractor_rcv. Untagged → initial.
+  const initialItems = items.filter((i) => (i.scope_timing ?? "initial") === "initial");
+
   // Group items by category
   const grouped = new Map<string, LineItemForReview[]>();
-  for (const item of items) {
+  for (const item of initialItems) {
     const cat = item.category || "GENERAL";
     if (!grouped.has(cat)) grouped.set(cat, []);
     grouped.get(cat)!.push(item);
   }
 
-  const activeItems = items.filter((i) => i.feedback_status !== "removed");
+  const activeItems = initialItems.filter((i) => i.feedback_status !== "removed");
   const liveTotal = activeItems.reduce((sum, i) => sum + i.qty * i.unit_price, 0);
-  const reviewedCount = items.filter((i) => i.feedback_status !== null).length;
+  const reviewedCount = initialItems.filter((i) => i.feedback_status !== null).length;
 
   const OuterTag = embedded ? "div" : "main";
   const outerClass = embedded ? "" : "min-h-screen bg-white/[0.04]";
