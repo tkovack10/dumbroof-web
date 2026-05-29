@@ -142,6 +142,20 @@ export async function POST(request: Request) {
               </tr>
             </table>
 
+            <!-- 2nd CTA (#7 repeat-usage loop): nudge the next claim. The
+                 completion email is opened ~100% of the time, so it's the single
+                 best place to start the next job. -->
+            <table cellpadding="0" cellspacing="0" style="margin:0 0 4px;">
+              <tr>
+                <td style="background:#0d2137;border-radius:6px;">
+                  <a href="${dashboardUrl}/new-claim" target="_blank"
+                     style="display:inline-block;padding:12px 28px;color:#ffffff;text-decoration:none;font-weight:600;font-size:15px;">
+                    Start your next claim &rarr;
+                  </a>
+                </td>
+              </tr>
+            </table>
+
             <p style="color:#6b7280;font-size:13px;margin:24px 0 0;">
               Questions? Reply to this email or contact us at
               <a href="mailto:hello@dumbroof.ai" style="color:#2563eb;">hello@dumbroof.ai</a>
