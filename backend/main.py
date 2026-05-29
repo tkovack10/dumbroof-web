@@ -3678,7 +3678,7 @@ async def admin_brain_chat(body: AdminChatMessage, authorization: Optional[str] 
         from richard_middleware import prepare_brain_request
         brain_req = await prepare_brain_request(
             sb=sb,
-            user_id=resolved_user_id,
+            user_id=user_id,
             claim_id=None,  # admin/setup chats are not bound to a claim
             scope=scope,  # 'user' or 'company'
             user_message=body.message or "",
