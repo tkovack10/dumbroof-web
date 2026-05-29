@@ -3461,8 +3461,8 @@ class AdminChatMessage(BaseModel):
     user_id: str
     locale: str | None = "en"
     scope: str | None = "user"  # "user" (settings) | "company" (portfolio, owner/admin) | "onboarding" (brand-new user, no claim yet)
-    slug: str | None = None  # onboarding only: the session id where the user's first-claim files are staged
-    uploaded_files: dict | None = None  # onboarding only: {"photos": n, "scope": n, "measurements": n} counts from the upload box
+    slug: str | None = None  # onboarding + dashboard: the upload-session id where the user's staged files live
+    uploaded_files: dict | None = None  # onboarding + dashboard: {"photos": n, "scope": n, "measurements": n} counts from the upload box
 
 
 def _user_company_role(sb, user_id: str) -> tuple[str | None, str | None]:
@@ -3628,6 +3628,74 @@ ONBOARDING_TOOL_NAMES = {
 }
 
 
+# Tools the DASHBOARD Richard (scope="dashboard") can call — the always-present
+# floating assistant on a RETURNING user's dashboard. Its headline new power vs the
+# setup assistant: START A NEW CLAIM from files the user drops in the chat upload
+# box, using the SAME proven recipe onboarding uses (files stage under
+# {user_id}/{slug}/{folder}/ via /api/onboarding/upload; create_claim_from_minimal_input
+# DISCOVERS them by listing the slug prefix and inserts the claim). Plus read-only
+# portfolio orientation. NO per-claim tools (claim_id-bound — open the claim for
+# that). The quota gate is unchanged (fires in processor.process_claim when the
+# poller picks up the status='uploaded' row). See project_richard_onboarding_activation
+# ("Richard IS DumbRoof" — create+modify everywhere in-dashboard).
+DASHBOARD_TOOL_NAMES = {
+    "create_claim_from_minimal_input",
+    "list_company_claims",
+    "get_company_portfolio_summary",
+}
+
+
+def _build_dashboard_brain_prompt(company_profile: dict, slug: Optional[str], uploaded_files: Optional[dict]) -> str:
+    """System prompt for scope='dashboard' — the floating Richard on a RETURNING
+    user's dashboard. Headline job: start a NEW claim from files the user drops in
+    the chat upload box (same slug-staging recipe as onboarding, so the proven,
+    idempotent create_claim_from_minimal_input path is reused verbatim). Also gives
+    portfolio orientation (list_company_claims / get_company_portfolio_summary). It
+    does NOT open a single claim's photos/scope/line-items — for that the user opens
+    the claim and uses the per-claim Richard. See project_richard_onboarding_activation."""
+    from datetime import datetime
+    company_name = company_profile.get("company_name") or "your company"
+    contact = company_profile.get("contact_name") or ""
+    first_name = contact.split(" ")[0] if contact else ""
+    uf = uploaded_files or {}
+    def _n(k):
+        try:
+            return int(uf.get(k, 0) or 0)
+        except Exception:
+            return 0
+    photos_n, scope_n, meas_n = _n("photos"), _n("scope"), _n("measurements")
+    uploaded_line = (
+        f"{photos_n} inspection photo(s), {scope_n} carrier-scope doc(s), {meas_n} measurement doc(s)"
+        if (photos_n or scope_n or meas_n) else "nothing yet"
+    )
+    return f"""You are Richard, the DumbRoof claims expert, riding along on {company_name}'s dashboard. {('You are talking to ' + first_name + '. ') if first_name else ''}You help a busy roofer get things done fast, in plain language.
+
+Current date/time: {datetime.now().strftime('%Y-%m-%d %H:%M')}
+
+## THIS SESSION
+- Upload session id (slug): {slug or '(missing — tell the user to refresh the page)'}
+- Attached so far (via the upload box in this chat): {uploaded_line}
+
+## WHAT YOU CAN DO HERE
+1. **Start a new claim — your headline job.** The user drops inspection PHOTOS and/or the carrier's SCOPE/estimate into the upload box in this chat (you see the counts above). Gather just enough, then create it:
+   - **Property address** (required).
+   - **What they have.** "Got roof photos? Drop them in and I'll build a forensic damage report. Or upload the carrier's estimate/scope and I'll build an instant supplement."
+   - **Insurance carrier** — ask once, optional.
+   - **Date of loss** (storm date, YYYY-MM-DD) — important for photo claims (drives the storm/weather section); ask but don't block on it.
+   As soon as you have (a) an address AND (b) at least photos OR a carrier scope showing in the counts above, call **create_claim_from_minimal_input(slug, address, carrier, date_of_loss)** with the session slug above. It auto-detects the report type from what they attached and starts building immediately. Don't wait for everything — momentum matters. If they ONLY have a measurement report (no photos, no scope), tell them you need photos or a carrier scope to start.
+2. **Portfolio orientation.** Use **get_company_portfolio_summary()** for topline numbers and **list_company_claims(filter)** to find claims by status / carrier / variance.
+
+## AFTER YOU CREATE
+Tell them the report is building (about a minute) and what it'll contain, and that they can open it to watch it come together. Their company branding is already on file — don't ask for it.
+
+## RULES
+- One question at a time. Short messages. No walls of text.
+- Never invent an address, a file path, or a detail — if you don't have it, ask.
+- You do NOT open or edit a single existing claim here (no per-claim photos/line-items/emails). If they want to work a specific claim, tell them to open it and use the Richard inside that claim.
+- Never block claim creation on branding.
+"""
+
+
 def _build_onboarding_brain_prompt(company_profile: dict, slug: Optional[str], uploaded_files: Optional[dict]) -> str:
     """System prompt for scope='onboarding' — a brand-new user who has NOT made a
     claim yet. Richard's one job: get them to a finished first report in THIS
@@ -3702,7 +3770,7 @@ async def admin_brain_chat(body: AdminChatMessage, authorization: Optional[str] 
         raise HTTPException(status_code=400, detail="user_id required")
 
     scope = (body.scope or "user").lower()
-    if scope not in ("user", "company", "onboarding"):
+    if scope not in ("user", "company", "onboarding", "dashboard"):
         scope = "user"
 
     # Role gate: scope=company requires owner or admin role
@@ -3730,6 +3798,8 @@ async def admin_brain_chat(body: AdminChatMessage, authorization: Optional[str] 
         system_prompt = _build_admin_brain_company_prompt(company_profile, integrations, summary.get("data") or {})
     elif scope == "onboarding":
         system_prompt = _build_onboarding_brain_prompt(company_profile, body.slug, body.uploaded_files)
+    elif scope == "dashboard":
+        system_prompt = _build_dashboard_brain_prompt(company_profile, body.slug, body.uploaded_files)
     else:
         system_prompt = _build_admin_brain_prompt(company_profile, integrations)
 
@@ -3737,11 +3807,12 @@ async def admin_brain_chat(body: AdminChatMessage, authorization: Optional[str] 
     # - Auto-detect Spanish even when no UI locale was set
     # - For setup scope ('user'), catch per-claim questions and redirect
     #   (Zach 2026-04-28 incident: setup Richard tried to answer claim Qs)
-    # Onboarding scope is EXEMPT from the per-claim-question redirect — its whole
-    # job is to CREATE the user's first claim, so "claim questions" are the happy
-    # path, not something to redirect away. (The redirect exists to stop SETUP
-    # Richard from answering per-claim Qs — Zach 2026-04-28 incident.)
-    if scope == "onboarding":
+    # Onboarding + dashboard scopes are EXEMPT from the per-claim-question redirect
+    # — their job INCLUDES creating claims (onboarding = the user's first; dashboard
+    # = any new claim from chat), so "claim questions" are the happy path, not
+    # something to redirect away. (The redirect exists to stop SETUP Richard from
+    # answering per-claim Qs — Zach 2026-04-28 incident.)
+    if scope in ("onboarding", "dashboard"):
         setup_redirect_message = None
         effective_lang = body.locale if body.locale in ("es", "en") else "en"
         if effective_lang == "es":
@@ -3804,11 +3875,15 @@ async def admin_brain_chat(body: AdminChatMessage, authorization: Optional[str] 
             # error — that's correct, the model shouldn't call claim tools here.
             sentinel_claim_id = "admin"
 
-            # Allow-list filter: admin/setup Richard only sees onboarding +
-            # portfolio tools. Per-claim tools (claim_id-bound) are intentionally
-            # hidden — they'd silently return 0 rows against the "admin" sentinel
-            # or error out, leading to the Zach 2026-04-28 confusion.
-            _allow = ONBOARDING_TOOL_NAMES if scope == "onboarding" else ADMIN_SETUP_TOOL_NAMES
+            # Allow-list filter: admin/setup Richard only sees setup + portfolio
+            # tools. Per-claim tools (claim_id-bound) are intentionally hidden —
+            # they'd silently return 0 rows against the "admin" sentinel or error
+            # out, leading to the Zach 2026-04-28 confusion. Onboarding gets the
+            # create-first-claim set; the dashboard adds create + portfolio reads.
+            _allow = {
+                "onboarding": ONBOARDING_TOOL_NAMES,
+                "dashboard": DASHBOARD_TOOL_NAMES,
+            }.get(scope, ADMIN_SETUP_TOOL_NAMES)
             setup_tools = [t for t in CLAIM_BRAIN_TOOLS if t["name"] in _allow]
 
             for _round in range(max_tool_rounds):
@@ -4157,7 +4232,7 @@ async def reset_admin_brain(body: dict):
     if not user_id:
         raise HTTPException(status_code=400, detail="user_id required")
     scope = (body.get("scope") or "user").lower()
-    if scope not in ("user", "company"):
+    if scope not in ("user", "company", "dashboard"):
         scope = "user"
     # Clear persistent chat history (user/company scope) from Supabase
     try:

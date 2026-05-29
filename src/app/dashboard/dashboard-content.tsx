@@ -1379,7 +1379,7 @@ export function DashboardContent({ user }: { user: User }) {
           </>
         )}
       </div>
-      <RichardLauncher userId={user.id} scope="user" />
+      <RichardLauncher userId={user.id} scope="dashboard" />
       <PhoneNagModal userId={user.id} />
     </main>
   );
