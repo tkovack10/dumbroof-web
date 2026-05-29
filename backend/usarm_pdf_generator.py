@@ -71,6 +71,41 @@ def b64_img(config, filename):
     return f"data:{mime};base64,{data}"
 
 
+# ===================================================================
+# WS-2 — CANONICAL ROOF-MATERIAL ENUM (read, never re-sniff)
+# ===================================================================
+# The processor resolves the material ONCE and persists it as
+# config['roof_material_enum'] and structures[i]['roof_material_enum'].
+# Values: 3tab | laminate | slate | tile | metal | other.
+#
+# Every forensic/spec/wind/repairability consumer below READS the enum
+# via material_enum(). When the enum is ABSENT (old/legacy configs, the
+# WS-0 golden-corpus fixtures, or a config rendered without going through
+# build_claim_config), material_enum() returns None and each consumer
+# falls back to the EXACT substring logic it used before — producing
+# byte-identical output. New configs get the enum during processing.
+
+VALID_MATERIAL_ENUM = {"3tab", "laminate", "slate", "tile", "metal", "other"}
+
+
+def material_enum(config, struct=None):
+    """Return the canonical roof-material enum, or None if absent.
+
+    Prefers a per-structure value, then the claim-wide value. Returns None
+    (NOT 'other') when no enum is present, so callers can distinguish
+    "resolved as other/unclassifiable" from "no enum → use legacy fallback".
+    """
+    if struct is not None:
+        val = struct.get("roof_material_enum")
+        if val in VALID_MATERIAL_ENUM:
+            return val
+    if isinstance(config, dict):
+        val = config.get("roof_material_enum")
+        if val in VALID_MATERIAL_ENUM:
+            return val
+    return None
+
+
 # Magic-byte signatures for raster image formats Chrome can render in <img>.
 # Adobe Illustrator (.ai), PDF, EPS, SVG and other vector/document formats
 # are explicitly rejected — they download fine but render as broken images
@@ -951,6 +986,19 @@ def _build_causation_criteria(config):
     user_notes = config.get("user_notes", "").lower()
     combined = f"{shingle_type} {user_notes}"
 
+    # WS-2: when the canonical enum is present, branch on it directly.
+    # 3tab/laminate/other all map to the asphalt-composition default below.
+    _enum = material_enum(config, structures[0] if structures else None)
+    if _enum == "slate":
+        combined = "slate"
+    elif _enum == "tile":
+        combined = "tile"
+    elif _enum == "metal":
+        combined = "metal roof"
+    elif _enum in ("3tab", "laminate", "other"):
+        combined = ""  # force the asphalt-composition default branch
+    # _enum is None (legacy/absent) → leave `combined` as the substring blend.
+
     if "slate" in combined:
         return '''<p>Per HAAG Engineering criteria and the NRCA Slate Roofing Manual, hail and wind damage to natural slate roofing is identified by:</p>
 <ul>
@@ -1012,10 +1060,16 @@ def _build_repairability_section(config):
     structures = config.get("structures", [{}])
     shingle_type_raw = structures[0].get("shingle_type", "") if structures else ""
     shingle_type = shingle_type_raw.lower()
+    _enum = material_enum(config, structures[0] if structures else None)
 
     # Skip for non-shingle roofs unless repairability data explicitly provided
     if not repairability:
-        non_shingle = any(kw in shingle_type for kw in ["slate", "tile", "metal", "standing seam", "epdm", "tpo", "pvc"])
+        if _enum is not None:
+            # Canonical: only 3tab/laminate are asphalt shingles; everything
+            # else (slate/tile/metal/other-incl-flat) is non-shingle.
+            non_shingle = _enum not in ("3tab", "laminate")
+        else:
+            non_shingle = any(kw in shingle_type for kw in ["slate", "tile", "metal", "standing seam", "epdm", "tpo", "pvc"])
         if non_shingle:
             return "", False
 
@@ -1029,14 +1083,18 @@ def _build_repairability_section(config):
         measured_exposure = product_intel.get("exposure_inches")
 
     # Determine shingle category
-    is_three_tab = "3-tab" in shingle_type or "three-tab" in shingle_type or "three tab" in shingle_type
-    is_laminate = "architectural" in shingle_type or "laminate" in shingle_type or "dimensional" in shingle_type
-    if not is_three_tab and not is_laminate:
-        pa_type = photo_analysis.get("shingle_type", "")
-        if pa_type == "three_tab":
-            is_three_tab = True
-        elif pa_type in ("architectural", "laminate"):
-            is_laminate = True
+    if _enum is not None:
+        is_three_tab = _enum == "3tab"
+        is_laminate = _enum == "laminate"
+    else:
+        is_three_tab = "3-tab" in shingle_type or "three-tab" in shingle_type or "three tab" in shingle_type
+        is_laminate = "architectural" in shingle_type or "laminate" in shingle_type or "dimensional" in shingle_type
+        if not is_three_tab and not is_laminate:
+            pa_type = photo_analysis.get("shingle_type", "")
+            if pa_type == "three_tab":
+                is_three_tab = True
+            elif pa_type in ("architectural", "laminate"):
+                is_laminate = True
 
     # If we still can't determine type and have no exposure data, skip
     if not measured_exposure and not is_three_tab and not is_laminate and not repairability:
@@ -1369,10 +1427,33 @@ def _build_wind_amplification_chart(config):
 
     # Map roof material to ASTM wind rating (mph)
     roof_material = (estimate_req.get("roof_material", "") or "").lower()
-    if "3-tab" in roof_material:
+    structures = config.get("structures", [{}])
+    _enum = material_enum(config, structures[0] if structures else None)
+    # "premium"/"impact" is a sub-grade the enum intentionally does NOT carry
+    # (premium laminate is still 'laminate'); preserve that upgraded rating by
+    # checking the raw request string independently of material family.
+    _premium = "premium" in roof_material or "impact" in roof_material
+    if _enum is not None:
+        if _enum == "3tab":
+            shingle_rating = 60
+            rating_label = "ASTM D3161 Class A (60 mph)"
+        elif _enum == "metal":
+            shingle_rating = 140
+            rating_label = "FM rated (est. 140 mph)"
+        elif _enum in ("slate", "tile"):
+            shingle_rating = 125
+            rating_label = "Wind-resistant (est. 125 mph)"
+        elif _premium:
+            shingle_rating = 130
+            rating_label = "ASTM D7158 Class H (130 mph)"
+        else:
+            # laminate / other → standard architectural/laminate shingle
+            shingle_rating = 110
+            rating_label = "ASTM D7158 Class G (110 mph)"
+    elif "3-tab" in roof_material:
         shingle_rating = 60
         rating_label = "ASTM D3161 Class A (60 mph)"
-    elif "premium" in roof_material or "impact" in roof_material:
+    elif _premium:
         shingle_rating = 130
         rating_label = "ASTM D7158 Class H (130 mph)"
     elif "metal" in roof_material or "standing seam" in roof_material:
@@ -2272,14 +2353,21 @@ def _estimate_roof_age(config):
     min_ages = []     # candidate minimum ages from each evidence source
 
     # Determine shingle category
-    is_three_tab = any(kw in shingle_type for kw in ["3-tab", "three-tab", "three tab"])
-    is_laminate = any(kw in shingle_type for kw in ["architectural", "laminate", "dimensional"])
-    if not is_three_tab and not is_laminate:
-        pa_type = photo_analysis.get("shingle_type", "")
-        if pa_type == "three_tab":
-            is_three_tab = True
-        elif pa_type in ("architectural", "laminate"):
-            is_laminate = True
+    _enum = material_enum(config, struct or None)
+    if _enum is not None:
+        # slate/tile/metal/other leave BOTH False, preserving the raw-label
+        # "Shingle Type" data-point path below for non-shingle materials.
+        is_three_tab = _enum == "3tab"
+        is_laminate = _enum == "laminate"
+    else:
+        is_three_tab = any(kw in shingle_type for kw in ["3-tab", "three-tab", "three tab"])
+        is_laminate = any(kw in shingle_type for kw in ["architectural", "laminate", "dimensional"])
+        if not is_three_tab and not is_laminate:
+            pa_type = photo_analysis.get("shingle_type", "")
+            if pa_type == "three_tab":
+                is_three_tab = True
+            elif pa_type in ("architectural", "laminate"):
+                is_laminate = True
 
     type_label = "three-tab" if is_three_tab else "laminate/architectural" if is_laminate else "asphalt composition"
 

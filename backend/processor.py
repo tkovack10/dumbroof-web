@@ -3295,8 +3295,18 @@ def _estimate_roof_age(config: dict, photo_analysis: dict) -> tuple:
     data_points = []
     min_ages = []
 
-    is_three_tab = any(kw in shingle_type for kw in ["3-tab", "three-tab", "three tab"])
-    is_laminate = any(kw in shingle_type for kw in ["architectural", "laminate", "dimensional"])
+    # WS-2: prefer the canonical roof_material_enum (resolved once upstream) over
+    # re-sniffing the free-text label; fall back to substring only when the enum is
+    # absent (legacy configs). Keeps the single-anchor invariant — a slate/tile roof
+    # mislabeled "Architectural" no longer emits false laminate age prose. Mirrors the
+    # generator twin (usarm_pdf_generator._estimate_roof_age).
+    _mat_enum = (struct.get("roof_material_enum") if struct else None) or config.get("roof_material_enum")
+    if _mat_enum:
+        is_three_tab = _mat_enum == "3tab"
+        is_laminate = _mat_enum == "laminate"
+    else:
+        is_three_tab = any(kw in shingle_type for kw in ["3-tab", "three-tab", "three tab"])
+        is_laminate = any(kw in shingle_type for kw in ["architectural", "laminate", "dimensional"])
     type_label = "three-tab" if is_three_tab else "laminate/architectural" if is_laminate else "asphalt composition"
 
     if is_three_tab or is_laminate:
@@ -4131,6 +4141,9 @@ def build_claim_config(
     # detected_material already computed above during scope comparison setup (measurements-first order)
     material_labels = {
         "laminated": "Architectural Laminated Comp Shingle",
+        # WS-2: premium laminate previously had NO label entry, so the raw token
+        # "laminated_premium" leaked verbatim into shingle_type / the spec table.
+        "laminated_premium": "Premium Grade Laminated Comp Shingle",
         "3tab": "3-Tab 25yr Comp Shingle",
         "slate": "Natural Slate",
         "tile": "Clay/Concrete Tile",
@@ -4138,17 +4151,27 @@ def build_claim_config(
         "copper": "Copper",
         "flat": "Modified Bitumen / Flat Roof",
     }
+    # WS-2: claim-wide canonical enum, resolved ONCE here. Generator consumers
+    # read this instead of re-sniffing the shingle_type label by substring.
+    config["roof_material_enum"] = _canonical_material_enum(detected_material)
     if config.get("structures"):
         if len(config["structures"]) > 1:
             # Multi-structure: preserve per-structure shingle_type from extraction,
             # only fill in claim-wide default where struct has no classifiable material
             default_label = material_labels.get(detected_material, detected_material)
+            default_enum = _canonical_material_enum(detected_material)
             for s in config["structures"]:
                 existing = s.get("shingle_type", "")
                 if not existing or not _classify_from_text(existing):
                     s["shingle_type"] = default_label
+                    s["roof_material_enum"] = default_enum
+                else:
+                    # Struct carries its own classifiable label — derive its enum
+                    # from THAT label so per-structure material is honored.
+                    s["roof_material_enum"] = _canonical_material_enum(_classify_from_text(existing))
         else:
             config["structures"][0]["shingle_type"] = material_labels.get(detected_material, detected_material)
+            config["structures"][0]["roof_material_enum"] = _canonical_material_enum(detected_material)
 
     # Clean structure names: underscores → spaces
     for struct in config.get("structures", []):
@@ -4220,6 +4243,47 @@ def _classify_from_text(text: str) -> Optional[str]:
                                   "composite shingle", "asphalt shingle", "dimensional shingle"]):
         return "laminated"
     return None
+
+
+# WS-2 — Canonical roof-material enum. The single upstream anchor that every
+# downstream forensic/spec/wind/repairability consumer reads, instead of each
+# re-sniffing a free-text label by substring. Internal pricing categories
+# (slate/tile/flat/metal_standing_seam/copper/laminated/laminated_premium/3tab,
+# plus None) collapse into a compact display/branching enum.
+#
+#   3tab     — standard / strip shingle
+#   laminate — architectural / dimensional / "laminated_premium" (a PRICING tier,
+#              NOT a separate forensic material — premium laminate is still laminate)
+#   slate    — natural slate
+#   tile      — clay / concrete / barrel tile
+#   metal     — standing seam, copper, any metal panel system
+#   other     — flat (TPO/EPDM/mod-bit/BUR) and anything unclassifiable
+#
+# Persisted as config['roof_material_enum'] AND structures[i]['roof_material_enum'].
+# The human-readable shingle_type label stays for DISPLAY only.
+MATERIAL_ENUM_VALUES = ("3tab", "laminate", "slate", "tile", "metal", "other")
+
+_INTERNAL_TO_ENUM = {
+    "3tab": "3tab",
+    "laminated": "laminate",
+    "laminated_premium": "laminate",
+    "slate": "slate",
+    "tile": "tile",
+    "metal_standing_seam": "metal",
+    "copper": "metal",
+    "flat": "other",
+}
+
+
+def _canonical_material_enum(internal_material: Optional[str]) -> str:
+    """Map an internal pricing/detection material category to the canonical enum.
+
+    Unknown / None / unclassifiable inputs collapse to 'other' so the enum is
+    always one of MATERIAL_ENUM_VALUES.
+    """
+    if not internal_material:
+        return "other"
+    return _INTERNAL_TO_ENUM.get(internal_material, "other")
 
 
 def _majority_vote_material(votes: list) -> str:
@@ -4996,7 +5060,10 @@ def build_line_items(measurements: dict, photo_analysis: dict, state: str, user_
     pitch_str = struct.get("predominant_pitch", "")
     if pitch_str in ("0/12", "0", ""):
         import math
-        if material in ("slate", "tile"):
+        # WS-2: route the specialty-steep decision through the canonical enum so
+        # "slate/tile are steep" is defined once (slate→slate, tile→tile — same
+        # result as the prior literal check, now sharing the single mapper).
+        if _canonical_material_enum(material) in ("slate", "tile"):
             default_rise = 8  # Slate/tile is typically steep
         else:
             default_rise = 6  # Standard residential
