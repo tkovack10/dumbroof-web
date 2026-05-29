@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
+import { PUBLIC_DOMAINS } from "@/lib/public-domains";
 
 /**
  * Get a single claim by ID — allows access if the requesting user
@@ -63,11 +64,20 @@ export async function GET(req: NextRequest) {
   // Legacy fallback: email-domain sharing for claims/users that don't have
   // a company_id wired yet (e.g. a solo user whose teammate hasn't been
   // invited via the company_invites flow). Kept for back-compat.
+  //
+  // Intentionally EXCLUDES public mailbox domains (gmail.com, outlook.com, …) —
+  // otherwise any two unrelated users on the same consumer provider would
+  // cross-access each other's claims. Mirrors the assign-rep route guard.
   const { data: owner } = await supabaseAdmin.auth.admin.getUserById(claim.user_id);
   if (owner?.user?.email) {
-    const ownerDomain = owner.user.email.split("@")[1];
-    const userDomain = user.email!.split("@")[1];
-    if (ownerDomain === userDomain) {
+    const ownerDomain = owner.user.email.split("@")[1]?.toLowerCase();
+    const userDomain = user.email!.split("@")[1]?.toLowerCase();
+    if (
+      ownerDomain &&
+      userDomain &&
+      ownerDomain === userDomain &&
+      !PUBLIC_DOMAINS.has(ownerDomain)
+    ) {
       return NextResponse.json({ claim });
     }
   }

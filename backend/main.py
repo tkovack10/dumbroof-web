@@ -1114,19 +1114,17 @@ _STREAM_RETRYABLE_ERRORS = tuple(filter(None, [
 # ===================================================================
 # RICHARD AUTH — JWT verification + claim ownership check
 #
-# Soft-fail by default to preserve backwards compatibility while we
-# roll out frontend Authorization-header support. Flip the env var
-# RICHARD_ENFORCE_AUTH=true once every Richard caller passes a JWT.
-#
-# Policy (RICHARD_ENFORCE_AUTH unset/false):
-#   - If a valid Authorization: Bearer JWT is present, derive user_id from it
-#     (more trustworthy than body.user_id which is client-controlled).
-#   - Otherwise fall back to body.user_id and log a [BRAIN AUTH] warning so
-#     we can monitor what fraction of traffic still relies on the body field.
-#
-# Policy (RICHARD_ENFORCE_AUTH=true):
-#   - Missing / invalid JWT → 401
+# Auth is ENFORCED UNCONDITIONALLY on every per-claim Richard endpoint
+# (chat / approve-action / reset / suggestions / history). The former
+# RICHARD_ENFORCE_AUTH soft-fail rollout flag is now permanent — the env
+# var no longer gates anything on these endpoints. Policy:
+#   - Missing / invalid Authorization: Bearer JWT → 401
 #   - Valid JWT but user does not own the claim and is not in same company → 403
+#     (see _user_can_access_claim: owner OR shared company_id)
+#
+# NOTE: the admin-brain endpoint (/api/admin-brain/chat) is keyed on user_id,
+# not claim ownership, and is NOT a per-claim endpoint — it retains its own
+# RICHARD_ENFORCE_AUTH-gated posture and is intentionally left unchanged here.
 # ===================================================================
 def _verify_supabase_jwt(token: str) -> Optional[str]:
     """Verify a Supabase auth JWT by calling /auth/v1/user. Returns the
@@ -1162,27 +1160,23 @@ def _verify_supabase_jwt(token: str) -> Optional[str]:
 
 
 def _resolve_brain_user_id(authorization: Optional[str], body_user_id: Optional[str]) -> Optional[str]:
-    """Resolve the caller's user_id, preferring a verified JWT.
+    """Resolve the caller's user_id from the verified Supabase JWT ONLY.
 
-    Returns the resolved user_id, or None if RICHARD_ENFORCE_AUTH=true
-    and we couldn't authenticate the request. Soft-fail mode falls back
-    to body_user_id with a warning log.
+    Auth is now enforced unconditionally (the RICHARD_ENFORCE_AUTH stopgap is
+    permanent). The caller's identity is derived solely from a verified
+    Authorization: Bearer <jwt>. A missing or invalid token returns None, which
+    every per-claim Richard endpoint translates into a 401/403.
+
+    We deliberately NEVER trust the client-controlled body.user_id — it can be
+    spoofed to impersonate another tenant. body_user_id is retained in the
+    signature only so callers can cross-check it against the verified id
+    (see admin_brain_chat), not as a fallback identity source.
     """
-    enforce = os.environ.get("RICHARD_ENFORCE_AUTH", "").strip().lower() in ("1", "true", "yes")
     token = ""
     if authorization and authorization.lower().startswith("bearer "):
         token = authorization[7:].strip()
     jwt_user_id = _verify_supabase_jwt(token) if token else None
-
-    if jwt_user_id:
-        return jwt_user_id
-    if enforce:
-        return None
-    # Soft-fail: fall back to body field, log for rollout monitoring
-    if body_user_id:
-        print(f"[BRAIN AUTH] no/invalid JWT, falling back to body.user_id (enforce=false)")
-        return (body_user_id or "").strip() or None
-    return None
+    return jwt_user_id or None
 
 
 def _user_can_access_claim(sb, user_id: str, claim_data: dict) -> bool:
@@ -1729,14 +1723,14 @@ async def claim_brain_chat(
 
     claim_data = result.data
 
-    # Auth: prefer Supabase JWT, fall back to body.user_id (soft-fail) until
-    # RICHARD_ENFORCE_AUTH=true. When enforced, also gate ownership.
+    # Auth (enforced unconditionally): require a verified Supabase JWT and gate
+    # claim ownership (owner OR same company_id). Missing/invalid token → 401;
+    # non-owner/non-company-member → 403.
     resolved_user_id = _resolve_brain_user_id(authorization, body.user_id)
-    if os.environ.get("RICHARD_ENFORCE_AUTH", "").strip().lower() in ("1", "true", "yes"):
-        if not resolved_user_id:
-            raise HTTPException(status_code=401, detail="Authentication required")
-        if not _user_can_access_claim(sb, resolved_user_id, claim_data):
-            raise HTTPException(status_code=403, detail="You don't have access to this claim")
+    if not resolved_user_id:
+        raise HTTPException(status_code=401, detail="Authentication required")
+    if not _user_can_access_claim(sb, resolved_user_id, claim_data):
+        raise HTTPException(status_code=403, detail="You don't have access to this claim")
 
     # Load photos with annotations
     photos_result = sb.table("photos").select(
@@ -2577,17 +2571,17 @@ async def approve_brain_action(claim_id: str, body: ToolApproval, background_tas
     claim_result = sb.table("claims").select("*").eq("id", claim_id).maybe_single().execute()
     claim_row = (claim_result.data if claim_result else None) or {}
 
-    # Auth: prefer Supabase JWT; fall back to claim_row.user_id (soft-fail)
-    # until RICHARD_ENFORCE_AUTH=true. When enforced, also gate ownership.
+    # Auth (enforced unconditionally): require a verified Supabase JWT and gate
+    # claim ownership (owner OR same company_id). Missing/invalid token → 401;
+    # non-owner/non-company-member → 403.
     resolved_user_id = _resolve_brain_user_id(authorization, None)
-    if os.environ.get("RICHARD_ENFORCE_AUTH", "").strip().lower() in ("1", "true", "yes"):
-        if not resolved_user_id:
-            raise HTTPException(status_code=401, detail="Authentication required")
-        if not _user_can_access_claim(sb, resolved_user_id, claim_row):
-            raise HTTPException(status_code=403, detail="You don't have access to this claim")
+    if not resolved_user_id:
+        raise HTTPException(status_code=401, detail="Authentication required")
+    if not _user_can_access_claim(sb, resolved_user_id, claim_row):
+        raise HTTPException(status_code=403, detail="You don't have access to this claim")
 
-    # Audit trail uses the verified user when available; falls back to the
-    # claim owner if soft-fail mode and no JWT — same behavior as before.
+    # Audit trail uses the verified user (always present now that auth is
+    # enforced above).
     user_id = resolved_user_id or claim_row.get("user_id") or ""
 
     if not body.approved:
@@ -3366,16 +3360,15 @@ async def reset_claim_brain(claim_id: str, authorization: Optional[str] = Header
     """Reset the Claim Brain conversation for a claim."""
     try:
         sb = get_supabase_client()
-        # Auth (env-flagged): when enforced, require ownership before nuking
-        # someone else's chat history.
-        if os.environ.get("RICHARD_ENFORCE_AUTH", "").strip().lower() in ("1", "true", "yes"):
-            resolved_user_id = _resolve_brain_user_id(authorization, None)
-            if not resolved_user_id:
-                raise HTTPException(status_code=401, detail="Authentication required")
-            claim_res = sb.table("claims").select("user_id, company_id").eq("id", claim_id).maybe_single().execute()
-            claim_row = (claim_res.data if claim_res else None) or {}
-            if not _user_can_access_claim(sb, resolved_user_id, claim_row):
-                raise HTTPException(status_code=403, detail="You don't have access to this claim")
+        # Auth (enforced unconditionally): require a verified JWT + claim
+        # ownership before nuking someone else's chat history.
+        resolved_user_id = _resolve_brain_user_id(authorization, None)
+        if not resolved_user_id:
+            raise HTTPException(status_code=401, detail="Authentication required")
+        claim_res = sb.table("claims").select("user_id, company_id").eq("id", claim_id).maybe_single().execute()
+        claim_row = (claim_res.data if claim_res else None) or {}
+        if not _user_can_access_claim(sb, resolved_user_id, claim_row):
+            raise HTTPException(status_code=403, detail="You don't have access to this claim")
         clear_conversation(sb, "claim", claim_id)
         sb.table("claim_brain_messages").delete().eq("claim_id", claim_id).execute()
     except HTTPException:
@@ -3618,16 +3611,21 @@ async def admin_brain_chat(body: AdminChatMessage, authorization: Optional[str] 
     from claim_brain_tools import CLAIM_BRAIN_TOOLS, execute_tool, _handle_list_integrations, _handle_get_company_portfolio_summary
 
     sb = get_supabase_client()
-    # Resolve caller — JWT preferred, body.user_id soft-fail. When the env
-    # flag is on, JWT becomes mandatory and we additionally require it match
-    # body.user_id (prevents user A from impersonating user B in the body).
+    # Admin-brain is keyed on user_id (no claim ownership to gate), so it is
+    # NOT one of the per-claim endpoints hardened for cross-tenant IDOR. Its
+    # auth posture is intentionally unchanged: JWT preferred; when the env flag
+    # is on, JWT becomes mandatory and must match body.user_id (prevents user A
+    # from impersonating user B in the body); soft-fail otherwise falls back to
+    # body.user_id. _resolve_brain_user_id now returns the JWT identity only, so
+    # the body fallback is applied explicitly here rather than inside the helper.
     enforce_auth = os.environ.get("RICHARD_ENFORCE_AUTH", "").strip().lower() in ("1", "true", "yes")
-    resolved_user_id = _resolve_brain_user_id(authorization, body.user_id)
-    if enforce_auth and not resolved_user_id:
+    jwt_user_id = _resolve_brain_user_id(authorization, body.user_id)
+    if enforce_auth and not jwt_user_id:
         raise HTTPException(status_code=401, detail="Authentication required")
-    if enforce_auth and body.user_id and body.user_id != resolved_user_id:
+    if enforce_auth and body.user_id and body.user_id != jwt_user_id:
         raise HTTPException(status_code=403, detail="user_id mismatch with verified token")
-    user_id = (resolved_user_id or "").strip()
+    # Soft-fail (env flag off): prefer the verified JWT, else the body field.
+    user_id = (jwt_user_id or (body.user_id or "")).strip()
     if not user_id:
         raise HTTPException(status_code=400, detail="user_id required")
 
@@ -3680,7 +3678,7 @@ async def admin_brain_chat(body: AdminChatMessage, authorization: Optional[str] 
         from richard_middleware import prepare_brain_request
         brain_req = await prepare_brain_request(
             sb=sb,
-            user_id=resolved_user_id,
+            user_id=user_id,
             claim_id=None,  # admin/setup chats are not bound to a claim
             scope=scope,  # 'user' or 'company'
             user_message=body.message or "",
@@ -4307,12 +4305,12 @@ async def claim_brain_suggestions(claim_id: str, authorization: Optional[str] = 
     ).eq("id", claim_id).maybe_single().execute()
     claim = (result.data if result else None) or {}
 
-    if os.environ.get("RICHARD_ENFORCE_AUTH", "").strip().lower() in ("1", "true", "yes"):
-        resolved_user_id = _resolve_brain_user_id(authorization, None)
-        if not resolved_user_id:
-            raise HTTPException(status_code=401, detail="Authentication required")
-        if not _user_can_access_claim(sb, resolved_user_id, claim):
-            raise HTTPException(status_code=403, detail="You don't have access to this claim")
+    # Auth (enforced unconditionally): require a verified JWT + claim ownership.
+    resolved_user_id = _resolve_brain_user_id(authorization, None)
+    if not resolved_user_id:
+        raise HTTPException(status_code=401, detail="Authentication required")
+    if not _user_can_access_claim(sb, resolved_user_id, claim):
+        raise HTTPException(status_code=403, detail="You don't have access to this claim")
 
     suggestions: list[dict] = []
 
@@ -4396,15 +4394,15 @@ async def claim_brain_suggestions(claim_id: str, authorization: Optional[str] = 
 async def claim_brain_history(claim_id: str, authorization: Optional[str] = Header(default=None)):
     """Fetch persisted Claim Brain messages for frontend rehydration."""
     sb = get_supabase_client()
-    if os.environ.get("RICHARD_ENFORCE_AUTH", "").strip().lower() in ("1", "true", "yes"):
-        resolved_user_id = _resolve_brain_user_id(authorization, None)
-        if not resolved_user_id:
-            raise HTTPException(status_code=401, detail="Authentication required")
-        # Quick ownership check — don't leak chat history across users.
-        c = sb.table("claims").select("user_id, company_id").eq("id", claim_id).maybe_single().execute()
-        crow = (c.data if c else None) or {}
-        if not _user_can_access_claim(sb, resolved_user_id, crow):
-            raise HTTPException(status_code=403, detail="You don't have access to this claim")
+    # Auth (enforced unconditionally): require a verified JWT + claim ownership
+    # so we don't leak chat history across users.
+    resolved_user_id = _resolve_brain_user_id(authorization, None)
+    if not resolved_user_id:
+        raise HTTPException(status_code=401, detail="Authentication required")
+    c = sb.table("claims").select("user_id, company_id").eq("id", claim_id).maybe_single().execute()
+    crow = (c.data if c else None) or {}
+    if not _user_can_access_claim(sb, resolved_user_id, crow):
+        raise HTTPException(status_code=403, detail="You don't have access to this claim")
     result = sb.table("claim_brain_messages") \
         .select("role, content") \
         .eq("claim_id", claim_id) \
@@ -5070,13 +5068,27 @@ async def _get_user_integration_client(user_id: str, provider: str):
 
 
 @app.get("/api/integrations/acculynx/jobs")
-async def acculynx_jobs(user_id: str, search: str = ""):
+async def acculynx_jobs(
+    search: str = "",
+    user_id: Optional[str] = None,
+    authorization: Optional[str] = Header(default=None),
+):
     """Search/list jobs from the user's AccuLynx account.
 
     Paginates v2 API and filters by address/city/state client-side.
     AccuLynx search= param is unreliable (doesn't filter by address).
+
+    Auth: the caller identity is derived from the verified Supabase JWT, NOT
+    from the legacy user_id query param (which was unauthenticated and let any
+    caller read another tenant's AccuLynx jobs). A missing/invalid token → 401.
+    If a user_id query param is still supplied, it must match the verified id.
     """
-    client = await _get_user_integration_client(user_id, "acculynx")
+    auth_user_id = _resolve_brain_user_id(authorization, None)
+    if not auth_user_id:
+        raise HTTPException(status_code=401, detail="Authentication required")
+    if user_id and user_id != auth_user_id:
+        raise HTTPException(status_code=403, detail="user_id mismatch with verified token")
+    client = await _get_user_integration_client(auth_user_id, "acculynx")
     jobs = await client.search_jobs(query=search)
     return {"jobs": jobs}
 
