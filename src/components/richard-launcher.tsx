@@ -4,7 +4,7 @@ import { useState } from "react";
 import { AdminBrainChat } from "@/components/admin-brain-chat";
 import { RichardIcon } from "@/components/richard-icon";
 
-type RichardScope = "user" | "company";
+type RichardScope = "user" | "company" | "dashboard";
 
 interface RichardLauncherProps {
   userId: string;
@@ -15,7 +15,12 @@ interface RichardLauncherProps {
 export function RichardLauncher({ userId, scope = "user", initiallyOpen = false }: RichardLauncherProps) {
   const [open, setOpen] = useState(initiallyOpen);
 
-  const label = scope === "company" ? "Richard — Portfolio" : "Richard — Setup";
+  const label =
+    scope === "company"
+      ? "Richard — Portfolio"
+      : scope === "dashboard"
+        ? "Richard"
+        : "Richard — Setup";
 
   if (!open) {
     return (
