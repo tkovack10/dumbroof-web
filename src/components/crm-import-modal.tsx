@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { getRichardAuthHeaders } from "@/lib/richard-auth";
 
 interface CrmImportModalProps {
   open: boolean;
@@ -94,8 +95,12 @@ export function CrmImportModal({
     setSearching(true);
     setError("");
     try {
+      // Send the Supabase JWT — the backend derives the caller's user_id from
+      // the verified token (the user_id query param is no longer trusted).
+      const authHeaders = await getRichardAuthHeaders();
       const res = await fetch(
-        `${backendUrl}/api/integrations/acculynx/jobs?user_id=${userId}&search=${encodeURIComponent(search)}`
+        `${backendUrl}/api/integrations/acculynx/jobs?user_id=${userId}&search=${encodeURIComponent(search)}`,
+        { headers: authHeaders }
       );
       const data = await res.json();
       setJobs(data.jobs || []);

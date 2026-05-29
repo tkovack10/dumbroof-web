@@ -5068,13 +5068,27 @@ async def _get_user_integration_client(user_id: str, provider: str):
 
 
 @app.get("/api/integrations/acculynx/jobs")
-async def acculynx_jobs(user_id: str, search: str = ""):
+async def acculynx_jobs(
+    search: str = "",
+    user_id: Optional[str] = None,
+    authorization: Optional[str] = Header(default=None),
+):
     """Search/list jobs from the user's AccuLynx account.
 
     Paginates v2 API and filters by address/city/state client-side.
     AccuLynx search= param is unreliable (doesn't filter by address).
+
+    Auth: the caller identity is derived from the verified Supabase JWT, NOT
+    from the legacy user_id query param (which was unauthenticated and let any
+    caller read another tenant's AccuLynx jobs). A missing/invalid token → 401.
+    If a user_id query param is still supplied, it must match the verified id.
     """
-    client = await _get_user_integration_client(user_id, "acculynx")
+    auth_user_id = _resolve_brain_user_id(authorization, None)
+    if not auth_user_id:
+        raise HTTPException(status_code=401, detail="Authentication required")
+    if user_id and user_id != auth_user_id:
+        raise HTTPException(status_code=403, detail="user_id mismatch with verified token")
+    client = await _get_user_integration_client(auth_user_id, "acculynx")
     jobs = await client.search_jobs(query=search)
     return {"jobs": jobs}
 
