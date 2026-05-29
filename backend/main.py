@@ -125,7 +125,7 @@ APPROVAL_GATED_TOOL_NAMES = frozenset({
     "invite_team_member",
 })
 
-# Auto-approve BUT rate-limited. trigger_reprocess regenerates all 5 PDFs
+# Auto-approve BUT rate-limited. trigger_reprocess regenerates the full PDF set
 # and burns ~$1.15 in Anthropic credits per call. Auto-chain (Day 5) +
 # self-correction loop could otherwise fire 2-3 reprocesses per turn.
 # Default = 1 reprocess per claim per 5 minutes. Env-overridable.

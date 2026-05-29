@@ -12,7 +12,6 @@ Output:
     02_XACTIMATE_ESTIMATE.pdf
     03_SUPPLEMENT_REPORT.pdf
     04_DENIAL_APPEAL_LETTER.pdf
-    05_COVER_EMAIL.pdf
 
 All output saved to pdf_output/ next to the claim_config.json.
 """
@@ -3628,128 +3627,6 @@ Claims Department<br>
 # DOCUMENT 5: COVER EMAIL
 # ===================================================================
 
-def build_cover_email(config):
-    """Build cover email — ready to send."""
-    lang = get_language(config)
-    print(f"Building Cover Email... [role: {lang['role']}]")
-
-    logo_b64 = get_logo_b64(config)
-    prop = config["property"]
-    ins = config["insured"]
-    carrier = config["carrier"]
-    dates = config["dates"]
-    company = config["company"]
-    weather = config["weather"]
-    findings = config["forensic_findings"]
-    cover = config.get("cover_email", {})
-
-    fin = compute_financials(config)
-
-    # Compute total_photos with fallback for cover email
-    _total_photos = findings.get("total_photos", 0)
-    if not _total_photos:
-        _total_photos = len(config.get("photo_annotations", {}))
-    _total_photos_str = str(_total_photos) if _total_photos else "multiple"
-
-    # Enclosed documents (handle both list and string-with-newlines formats)
-    enclosed = cover.get("enclosed_documents", [])
-    if isinstance(enclosed, str):
-        enclosed = [line.strip() for line in enclosed.replace("\\n", "\n").split("\n") if line.strip()]
-    enclosed_html = ""
-    for doc in enclosed:
-        if isinstance(doc, dict):
-            enclosed_html += f"<li><strong>{doc['name']}</strong> — {doc.get('detail', '')}</li>\n"
-        else:
-            enclosed_html += f"<li><strong>{doc}</strong></li>\n"
-
-    # Build the summary paragraph
-    summary_para = f"""The current scope of {fmt_money(fin['carrier_rcv'])} RCV"""
-
-    # Add context about what carrier approved
-    if fin['carrier_net'] <= 0 or fin['carrier_net'] < fin['deductible'] * 0.1:
-        summary_para += f""", resulting in a net claim that effectively denies meaningful coverage after the {fmt_money(fin['deductible'])} deductible."""
-    else:
-        summary_para += f" addresses only limited components."
-
-    summary_para += f""" After a thorough forensic analysis — supported by HailTrace weather verification confirming {weather.get('hail_size_algorithm','')} hail at the property"""
-
-    if weather.get("hail_size_nws_reports"):
-        nws_sizes = [r["size"] for r in weather["hail_size_nws_reports"][:1]]
-        summary_para += f""", NWS Local Storm Reports documenting {nws_sizes[0]} hail"""
-
-    summary_para += f""", {_total_photos_str} inspection photos, and EagleView aerial measurements — we have determined that the full scope of storm damage requires <strong>{fmt_money(fin['total_with_op'])} RCV</strong> in repairs."""
-
-    # Key highlight paragraph
-    highlight = ""
-    fa = findings.get("fieldassist_findings")
-    if fa:
-        highlight = f"""<p>We particularly draw your attention to the {carrier.get('inspector_company','')} report, which documents "Potentially Covered Damage: Yes" and granular loss on all {len(fa.get('slopes_with_granular_loss',[]))} slopes, directly contradicting the carrier's limited scope. We believe this internal contradiction warrants a thorough re-evaluation of the claim.</p>"""
-    elif carrier.get("carrier_acknowledged_items"):
-        highlight = f"""<p>We note that the carrier's scope acknowledges hail damage to roof accessories but denies damage to the shingles directly adjacent to those components on the same roof slope. This is physically inconsistent — the shingles have a lower damage threshold and were exposed to the same hailstones.</p>"""
-
-    html = f"""<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<title>Cover Email -- {prop['address']}</title>
-<style>
-{CSS_COMMON}
-body {{ font-size: 11pt; line-height: 1.7; max-width: 600pt; margin: 0 auto; }}
-.email-header {{ background: #f5f5f5; padding: 12pt 16pt; border-radius: 4pt; margin-bottom: 16pt; font-size: 10pt; }}
-.email-header .field {{ margin-bottom: 3pt; }}
-.email-header .label {{ font-weight: 600; display: inline-block; width: 60pt; color: #555; }}
-</style>
-</head>
-<body>
-
-<div style="text-align:center; margin-bottom:16pt;">
-    {render_logo_block(logo_b64, company['name'], css_class='logo-img', inline_style='height:50pt; width:auto; margin-bottom:8pt;')}<br>
-    <div style="font-size:16pt; font-weight:800; color:#0d2137; letter-spacing:1pt;">COVER EMAIL -- READY TO SEND</div>
-</div>
-
-<div class="email-header">
-    <div class="field"><span class="label">To:</span> {cover.get('to', cover.get('to_email', carrier.get('claims_email', '')))}</div>
-    <div class="field"><span class="label">CC:</span> {cover.get('cc', cover.get('cc_email', ins.get('email', '')))}</div>
-    <div class="field"><span class="label">Subject:</span> {cover.get('subject', cover.get('subject_line', 'RE: ' + carrier['claim_number'] + ' -- ' + lang['doc4_subject_default'] + ' -- ' + prop['address']))}</div>
-</div>
-
-<hr style="border:none; border-top:1px solid #ddd; margin:16pt 0;">
-
-<p>Good afternoon,</p>
-
-<p>{"Please find enclosed our formal supplement and appeal for" if lang["role"] == "advocate" else "Please find enclosed our contractor scope documentation for"} Claim #{carrier['claim_number']}, property at {prop['address']} (Insured: {ins['name']}, Date of Loss: {dates['date_of_loss']}).</p>
-
-<p>{summary_para}</p>
-
-<p>The enclosed documentation includes:</p>
-<ol>
-{enclosed_html}
-</ol>
-
-{highlight}
-
-<p>{"We request adjuster review and response within 15 business days per 11 NYCRR 216.4(b)." if lang["regulatory_citations"] else "We request adjuster review and response at your earliest convenience."} We are available for a joint re-inspection at the carrier's convenience.</p>
-
-<p>Thank you for your prompt attention.</p>
-
-{_build_uppa_disclaimer(config)}
-
-<div class="footer-sig">
-    <div class="name">{company['ceo_name']}</div>
-    <div class="title">{company['ceo_title']}</div>
-    <div>{company['cell_phone']} | {company['email']}</div>
-    <div>{company.get('website', '')}</div>
-</div>
-
-</body>
-</html>"""
-
-    path = os.path.join(config["_paths"]["output"], "05_COVER_EMAIL.html")
-    with open(path, "w") as f:
-        f.write(html)
-    return path
-
-
 # ===================================================================
 # PHASE 1: PRE-SCOPE COVER LETTER (sent before carrier inspection)
 # ===================================================================
@@ -4055,7 +3932,7 @@ if __name__ == "__main__":
     if phase == "pre-scope":
         print("PHASE 1: PRE-SCOPE — Building Forensic + Estimate + Cover Letter")
     else:
-        print("PHASE 2: POST-SCOPE — Building All 5 Documents")
+        print("PHASE 2: POST-SCOPE — Building Forensic + Estimate + Scope/Supplement + Appeal")
     print("=" * 60)
 
     html_files = []
@@ -4066,12 +3943,11 @@ if __name__ == "__main__":
         html_files.append(("Xactimate Estimate", build_xactimate_estimate(config)))
         html_files.append(("Cover Letter (Pre-Scope)", build_cover_letter(config)))
     else:
-        # PHASE 2 (default): All 5 documents (names adapt to user role)
+        # PHASE 2 (default): forensic + estimate + scope/supplement + appeal (names adapt to user role)
         html_files.append(("Forensic Causation Report", build_forensic_report(config)))
         html_files.append(("Xactimate Estimate", build_xactimate_estimate(config)))
         html_files.append((lang["doc3_title"].title(), build_supplement_report(config)))
         html_files.append((lang["doc4_title"].title(), build_appeal_letter(config)))
-        html_files.append(("Cover Email", build_cover_email(config)))
 
     # Document #6: Code Compliance Report (if measurements available)
     try:
@@ -4100,7 +3976,7 @@ if __name__ == "__main__":
     if phase == "pre-scope":
         print(f"PHASE 1 COMPLETE — 3 PDFs saved to:")
     else:
-        print(f"PHASE 2 COMPLETE — 5 PDFs saved to:")
+        print(f"PHASE 2 COMPLETE — {len(html_files)} PDFs saved to:")
     print(output_dir)
     print("=" * 60)
 
