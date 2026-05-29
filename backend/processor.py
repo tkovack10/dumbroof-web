@@ -1679,9 +1679,14 @@ def analyze_photos(client: anthropic.Anthropic, photo_paths: list[str], user_not
     for path in photo_paths[:100]:
         media_type = get_media_type(path)
         if media_type.startswith("image/"):
-            resized = _shared_resize_photo(path, max_dim=1024, quality=60, suffix="_resized")
-            if not resized:
-                print(f"[PHOTO] Skipping {os.path.basename(path)} — resize/convert failed")
+            # force=True re-encodes EVERY image to a clean JPEG (not only >500KB ones).
+            # First-claim reliability guard: an empty / corrupt / odd-format photo fails
+            # the re-encode -> "" -> skipped HERE, so it can never enter a batch and 400
+            # the whole Vision call (which would error the claim — the lost first
+            # impression we can't afford). Also guarantees the batch media_type is real.
+            resized = _shared_resize_photo(path, max_dim=1024, quality=60, suffix="_resized", force=True)
+            if not resized or not os.path.exists(resized) or os.path.getsize(resized) == 0:
+                print(f"[PHOTO] Skipping {os.path.basename(path)} — empty/unreadable/convert failed")
                 continue
             image_paths.append(resized)
             sz = os.path.getsize(resized) / 1024
@@ -1770,14 +1775,27 @@ def analyze_photos(client: anthropic.Anthropic, photo_paths: list[str], user_not
 
         content = []
         for path in batch:
+            # Per-photo isolation: one unreadable/empty image must never 400 the whole
+            # batch (which errors the claim). Encode defensively, skip on failure, and
+            # label with the ACTUAL media type rather than a blind "image/jpeg".
+            try:
+                b64 = file_to_base64(path)
+            except Exception as _e:
+                b64 = ""
+            if not b64:
+                print(f"[PHOTO] Skipping unreadable image in batch: {os.path.basename(path)}")
+                continue
+            mt = get_media_type(path)
+            if not mt.startswith("image/"):
+                mt = "image/jpeg"
             content.append({
                 "type": "image",
-                "source": {
-                    "type": "base64",
-                    "media_type": "image/jpeg",
-                    "data": file_to_base64(path),
-                },
+                "source": {"type": "base64", "media_type": mt, "data": b64},
             })
+
+        if not any(c.get("type") == "image" for c in content):
+            print(f"[PHOTOS] Batch {batch_num}: no valid images after guard — skipping")
+            continue
 
         content.append({
             "type": "text",
