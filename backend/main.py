@@ -48,6 +48,7 @@ from correspondence_analyzer import (
     regenerate_draft,
 )
 from gmail_poller import poll_gmail_inbox, poll_user_gmail_inboxes
+from lead_poller import poll_lead_inbox
 from chat_storage import load_conversation, append_message, clear_conversation
 
 load_dotenv()
@@ -67,11 +68,14 @@ async def lifespan(app: FastAPI):
     # Per-user inbox poller (hourly, storage-only, no AI) — Phase 3c follow-up.
     # See gmail_poller.py module docstring for cost rationale.
     user_gmail_task = asyncio.create_task(poll_user_gmail_inboxes(sb))
+    # Lead poller — tom@dumbroof.ai prospect inbound → nurture_replies + alerts.
+    lead_task = asyncio.create_task(poll_lead_inbox(sb))
     yield
     claims_task.cancel()
     repairs_task.cancel()
     gmail_task.cancel()
     user_gmail_task.cancel()
+    lead_task.cancel()
 
 
 # Richard model — overridable via env for fast rollback. Defaults to the
