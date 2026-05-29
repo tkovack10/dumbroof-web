@@ -253,7 +253,7 @@ def check_pdf_brand_text(claim: dict, config: dict,
     Looking at the rendered output is the only way to catch that class of bug.
 
     Scans every PDF in output_files (forensic, estimate, scope comparison,
-    clarification letter, cover email) — a generator bug that swaps the
+    clarification letter) — a generator bug that swaps the
     logo on only one document type would otherwise slip through.
 
     `owner_company_name` can be passed in by the aggregator to avoid a

@@ -8143,7 +8143,7 @@ async def process_claim(claim_id: str, refresh_prices: bool = False):
 
         # Forensic-only: keep only the forensic causation report (01_*).
         # Supplement-only: drop the forensic causation report (01_*); keep estimate +
-        # scope comparison + supplement letter + cover (02_-05_).
+        # scope comparison + supplement letter (02_-04_).
         if report_mode == "forensic_only":
             pdfs = [p for p in pdfs if os.path.basename(p).startswith("01_")]
             print(f"[PROCESS] forensic_only: filtered to {len(pdfs)} PDFs (doc 01 only)")
