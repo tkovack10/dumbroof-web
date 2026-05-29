@@ -3886,10 +3886,17 @@ async def admin_brain_chat(body: AdminChatMessage, authorization: Optional[str] 
                             import uuid
                             approval_id = str(uuid.uuid4())[:8]
                             # Cross-worker safe persist — admin Richard preview
-                            # approves can land on any Uvicorn worker.
+                            # approves can land on any Uvicorn worker. The PERSISTED
+                            # copy keeps the server-only `batch` (the resolved send
+                            # plan the approve endpoint executes); see _bulk_execute.
                             _save_pending_action(sb, conv_key, approval_id, tool_result, user_id)
                             tool_result["approval_id"] = approval_id
-                            yield f"data: {json.dumps({'tool_action': tool_result})}\n\n"
+                            # Don't stream the server-only `batch` (full body_html,
+                            # every recipient, attachment storage paths) to the
+                            # browser — the display-safe `preview.claims` +
+                            # `sample_email` already cover the UI. Send a shallow copy.
+                            client_tool_action = {k: v for k, v in tool_result.items() if k != "batch"}
+                            yield f"data: {json.dumps({'tool_action': client_tool_action})}\n\n"
                             tool_use_results.append({
                                 "type": "tool_result",
                                 "tool_use_id": block.id,
@@ -4339,6 +4346,43 @@ async def approve_admin_action(body: AdminToolApproval, background_tasks: Backgr
 
             _audit_log(sb, None, user_id, tool_name, {"service": service}, {"action": "sent", "message": f"disconnected {service}"}, 0)
             return {"status": "sent", "message": f"{service} disconnected.", "data": {"service": service}}
+
+        if tool_name in ("bulk_supplement_campaign", "bulk_forensic_campaign"):
+            # SERVER-SIDE bulk-send gate. This is the ONLY path that reaches
+            # _bulk_execute — the model can only ever produce the action="preview"
+            # that was popped above. We re-verify role + company HERE (at execute
+            # time, on the human's approval), never trusting the saved preview's
+            # claims about the caller.
+            from claim_brain_tools import _ensure_company_role, _company_user_ids, _bulk_execute
+
+            role_err = _ensure_company_role(sb, user_id)
+            if role_err:
+                _audit_log(sb, None, user_id, tool_name, {"approval_id": body.tool_call_id}, {"action": "error", "message": "role gate failed at approve time"}, 0, error="not owner/admin")
+                return {"status": "error", "message": role_err.get("message", "Not authorized.")}
+
+            live_company_id, _ids = _company_user_ids(sb, user_id)
+            saved_company_id = tool_result.get("company_id")
+            if not live_company_id:
+                return {"status": "error", "message": "Could not resolve your company at approve time. Nothing was sent."}
+            if saved_company_id and saved_company_id != live_company_id:
+                # The approving user's company no longer matches the previewed
+                # batch's company — refuse rather than fan out cross-tenant.
+                _audit_log(sb, None, user_id, tool_name, {"approval_id": body.tool_call_id}, {"action": "error", "message": "company mismatch at approve time"}, 0, error="company mismatch")
+                return {"status": "error", "message": "This campaign was prepared for a different company than your current account. Nothing was sent."}
+
+            batch = tool_result.get("batch") or []
+            campaign = tool_result.get("campaign") or ("supplement" if tool_name == "bulk_supplement_campaign" else "forensic")
+            if not batch:
+                return {"status": "sent", "message": "Nothing eligible to send — the campaign was empty.", "data": {"sent": 0, "attempted": 0}}
+
+            result = await _bulk_execute(sb, live_company_id, batch, campaign=campaign)
+            data = result.get("data") or {}
+            _audit_log(
+                sb, None, user_id, tool_name,
+                {"approval_id": body.tool_call_id, "attempted": data.get("attempted"), "campaign": campaign},
+                {"action": "sent", "message": result.get("message", "")[:500]}, 0,
+            )
+            return {"status": "sent", "message": result.get("message", "Campaign complete."), "data": data}
 
         return {"status": "error", "message": f"Unknown admin tool: {tool_name}"}
 

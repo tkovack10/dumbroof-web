@@ -22,19 +22,24 @@ MULTI-TENANCY (this app has a known cross-tenant IDOR history):
   * EVERY claim_events lookup is constrained to the company's own claim ids.
   * If company_id can't be resolved, the tools refuse (no cross-company fan-out).
 
-APPROVAL FLOW:
-  * mode="preview" (default) -> returns action="preview": the eligible-claim list,
-    counts, ONE rendered sample email, and the per-claim attachment plan. Sends
-    NOTHING. The company-scope chat loop surfaces this as a click-to-approve card.
-  * mode="execute" -> runs the sends. The model only calls this AFTER the user
-    explicitly approves the preview (the tool descriptions enforce that, mirroring
-    the platform's REQUIRES-APPROVAL convention). Each send goes out via
-    send_claim_email() from the claim's assigned rep, then the email side-effect
-    recorder fires the supplement_sent / forensic_sent_* events and schedules the
-    3/7/15 follow-up cadence.
+APPROVAL FLOW (server-gated — the model CANNOT send):
+  * The model ONLY ever runs a PREVIEW. The handler returns action="preview": the
+    eligible-claim list, counts, ONE rendered sample email, the per-claim attachment
+    plan, and a per-row `target_type` (named_adjuster vs carrier_intake). Sends
+    NOTHING. The resolved batch is persisted server-side as a pending action keyed
+    by an approval_id (mirrors the single-claim supplement/COC/AOB approve flow).
+  * EXECUTE happens ONLY when a human clicks Approve, which calls the
+    approve_admin_action HTTP endpoint with that approval_id. That endpoint pops the
+    saved batch, RE-VERIFIES company + role + each claim's company_id, then calls
+    _bulk_execute. There is NO model-callable execute path — a model tool_use can
+    never reach _bulk_execute. Each send goes out via send_claim_email() from the
+    claim's assigned rep, then the email side-effect recorder fires the
+    supplement_sent / forensic_sent_* events and schedules the 3/7/15 cadence.
 
-IDEMPOTENT: claims already carrying supplement_sent / forensic_sent_to_carrier
-are skipped. Carrier subject = bare claim number (carrier auto-routing rule).
+IDEMPOTENT: claims already carrying supplement_sent / forensic_sent_to_carrier are
+skipped at BOTH build time and immediately before each send (the live event set is
+re-queried at execute start to shrink the concurrent double-send window). Carrier
+subject = bare claim number (carrier auto-routing rule).
 """
 
 from __future__ import annotations
@@ -329,6 +334,7 @@ def build_supplement_batch(
     min_gap_items: int = 2,
     max_claims: Optional[int] = None,
     exclude_claim_ids: Optional[list[str]] = None,
+    include_carrier_intake: bool = True,
 ) -> tuple[list[dict], dict]:
     """Resolve all eligible supplement-campaign claims for `company_id`.
 
@@ -339,7 +345,13 @@ def build_supplement_batch(
       (scope comparison) present AND an adjuster OR carrier-intake target AND NOT
       already supplement_sent AND not explicitly excluded.
 
-    Returns (batch, skip_counts). Each batch item is a fully-prepared send plan.
+    When `include_carrier_intake` is False, claims with NO named adjuster email are
+    skipped (no_target) instead of falling back to the shared CARRIER_INTAKE_MAP —
+    the approving human opts in to the shared-intake sends explicitly.
+
+    Returns (batch, skip_counts). Each batch item is a fully-prepared send plan and
+    carries `target_type` ("named_adjuster" | "carrier_intake") so the preview can
+    show exactly which sends route to a shared carrier-intake address.
     """
     exclude = set(exclude_claim_ids or [])
     claims = _company_claims(sb, company_id)
@@ -386,11 +398,12 @@ def build_supplement_batch(
             skip["no_doc03"] += 1
             continue
         adjuster = (c.get("adjuster_email") or "").strip()
-        intake = carrier_intake_email(c.get("carrier"))
+        intake = carrier_intake_email(c.get("carrier")) if include_carrier_intake else None
         to_email = adjuster or intake
         if not to_email:
             skip["no_target"] += 1
             continue
+        target_type = "named_adjuster" if adjuster else "carrier_intake"
 
         attachments = [p for p in [
             doc03,
@@ -441,6 +454,7 @@ def build_supplement_batch(
             "claim_id": cid,
             "send_user_id": send_user_id,
             "to_email": to_email,
+            "target_type": target_type,
             "cc": ", ".join(cc_list) if cc_list else None,
             "subject": subject,
             "body_html": body_html,
@@ -524,6 +538,7 @@ def build_forensic_batch(
     *,
     max_claims: Optional[int] = None,
     exclude_claim_ids: Optional[list[str]] = None,
+    include_carrier_intake: bool = True,
 ) -> tuple[list[dict], dict]:
     """Resolve all eligible forensic-campaign claims for `company_id`.
 
@@ -531,6 +546,10 @@ def build_forensic_batch(
       forensic causation PDF present in output_files AND NOT already
       forensic_sent_to_carrier AND an adjuster OR carrier-intake target AND not a
       duplicate property (dedup by normalized address) AND not explicitly excluded.
+
+    When `include_carrier_intake` is False, claims with NO named adjuster email are
+    skipped (no_target) rather than routed to the shared CARRIER_INTAKE_MAP. Each
+    batch item carries `target_type` ("named_adjuster" | "carrier_intake").
 
     Returns (batch, skip_counts).
     """
@@ -559,11 +578,12 @@ def build_forensic_batch(
             skip["already_sent"] += 1
             continue
         adjuster = (c.get("adjuster_email") or "").strip()
-        intake = carrier_intake_email(c.get("carrier"))
+        intake = carrier_intake_email(c.get("carrier")) if include_carrier_intake else None
         to_email = adjuster or intake
         if not to_email:
             skip["no_target"] += 1
             continue
+        target_type = "named_adjuster" if adjuster else "carrier_intake"
         na = _norm_addr(c.get("address"))
         if na and na in seen_addr:
             skip["dup_property"] += 1
@@ -608,6 +628,7 @@ def build_forensic_batch(
             "claim_id": cid,
             "send_user_id": send_user_id,
             "to_email": to_email,
+            "target_type": target_type,
             "cc": ", ".join(cc_list) if cc_list else None,
             "subject": subject,
             "body_html": body_html,
@@ -630,6 +651,10 @@ def build_forensic_batch(
 
 def _forensic_subject_fallback(claim_id: str, address: Optional[str]) -> str:
     sa = _short_addr(address)
+    if not sa:
+        # No claim number AND no address — emit a clean, address-less subject
+        # rather than a dangling "Forensic Causation Report — ".
+        return "Forensic Causation Report — roof inspection findings"
     opts = [
         f"Forensic Causation Report — {sa}",
         f"{sa} — causation report",
