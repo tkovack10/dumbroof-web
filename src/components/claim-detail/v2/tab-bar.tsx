@@ -12,7 +12,8 @@ interface TabBarProps {
  * Renders TWO tab strips in the same component:
  *   - Desktop (≥sm): horizontal top tab bar under the highlights panel.
  *   - Mobile (<sm): bottom tab bar with label-on-active-only (Apple Music
- *     pattern), thumb-reachable. Richard floats bottom-right separately.
+ *     pattern), thumb-reachable. "Ask Richard" is a first-class tab here too on
+ *     v2 (the old floating FAB is now v1-only).
  *
  * Active-tab transition is a 180ms ease-out on color + label + filter glow.
  */

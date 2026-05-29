@@ -62,6 +62,7 @@ export interface V2Slots {
 export interface V2Props {
   claim: Claim;
   slots: V2Slots;
+  userId?: string;  // for the first-class "Ask Richard" tab (per-claim claim-brain-chat)
   // Action handlers (mirrored from Phase 1 ClaimActionBar so highlights-panel can hoist them)
   isReprocessing: boolean;
   onUpload: () => void;
@@ -72,7 +73,7 @@ export interface V2Props {
   activeSupplementItem?: ActiveSupplementItem | null;
 }
 
-export type V2TabKey = "overview" | "documents" | "scope" | "photos" | "comms" | "closeout";
+export type V2TabKey = "overview" | "documents" | "scope" | "photos" | "comms" | "richard" | "closeout";
 
 export const V2_TAB_LABELS: Record<V2TabKey, string> = {
   overview: "Overview",
@@ -80,6 +81,7 @@ export const V2_TAB_LABELS: Record<V2TabKey, string> = {
   scope: "Scope",
   photos: "Photos",
   comms: "Comms",
+  richard: "Ask Richard",
   closeout: "Closeout",
 };
 
@@ -89,9 +91,11 @@ export const V2_TAB_ICONS: Record<V2TabKey, string> = {
   scope: "⚖️",
   photos: "📸",
   comms: "💬",
+  richard: "🤖",
   closeout: "🎯",
 };
 
-// Mobile collapses Documents into Overview (5 nav slots).
-export const V2_MOBILE_TABS: V2TabKey[] = ["overview", "scope", "photos", "comms", "closeout"];
-export const V2_DESKTOP_TABS: V2TabKey[] = ["overview", "documents", "scope", "photos", "comms", "closeout"];
+// Mobile collapses Documents into Overview. "Ask Richard" is a first-class tab
+// on both (replaces the old floating FAB on v2).
+export const V2_MOBILE_TABS: V2TabKey[] = ["overview", "scope", "photos", "comms", "richard", "closeout"];
+export const V2_DESKTOP_TABS: V2TabKey[] = ["overview", "documents", "scope", "photos", "comms", "richard", "closeout"];

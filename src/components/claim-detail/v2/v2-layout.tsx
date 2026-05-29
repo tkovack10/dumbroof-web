@@ -10,6 +10,7 @@ import { ScopeTab } from "./tabs/scope-tab";
 import { PhotosTab } from "./tabs/photos-tab";
 import { CommsTab } from "./tabs/comms-tab";
 import { CloseoutTab } from "./tabs/closeout-tab";
+import { RichardTab } from "./tabs/richard-tab";
 import { V2_DESKTOP_TABS, type V2Props, type V2TabKey } from "./types";
 
 /**
@@ -18,15 +19,15 @@ import { V2_DESKTOP_TABS, type V2Props, type V2TabKey } from "./types";
  * Architecture:
  *   - Sticky highlights panel (always visible)
  *   - Tab bar (top desktop / bottom mobile)
- *   - All 6 tab contents mounted via `display: none`/`block` rather than
- *     conditional render — Richard's auto-chain expects components to stay
- *     live across tab switches.
+ *   - All 7 tab contents (incl. the first-class "Ask Richard" tab) mounted via
+ *     `display: none`/`block` rather than conditional render — Richard's
+ *     auto-chain expects components to stay live across tab switches.
  *   - Right-rail Inspector on lg+ screens; bottom sheet on smaller screens.
  *   - Conditional banners (Win, PendingChanges, NeedsImprovement, QAReview,
  *     FlashSale) come pre-rendered as `slots.conditionalBanners` so they
  *     keep firing identically to v1.
  */
-export function V2Layout({ claim, slots, isReprocessing, onUpload, onReprocess, win, activeSupplementItem }: V2Props) {
+export function V2Layout({ claim, slots, userId, isReprocessing, onUpload, onReprocess, win, activeSupplementItem }: V2Props) {
   const [active, setActive] = useState<V2TabKey>("overview");
   const [inspectorOpen, setInspectorOpen] = useState(false);
   // When a new active selection arrives from the SupplementComposer, auto-open
@@ -130,6 +131,9 @@ export function V2Layout({ claim, slots, isReprocessing, onUpload, onReprocess, 
           </TabPanel>
           <TabPanel show={active === "closeout"}>
             <CloseoutTab claim={claim} slots={slots} />
+          </TabPanel>
+          <TabPanel show={active === "richard"}>
+            <RichardTab claim={claim} userId={userId} />
           </TabPanel>
 
           {/* Mobile-only inspector trigger */}
