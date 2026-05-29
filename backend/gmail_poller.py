@@ -97,8 +97,14 @@ CARRIER_DOMAINS: dict[str, str] = {
 # GMAIL API CLIENT
 # ===================================================================
 
-def get_gmail_service():
-    """Build Gmail API service using service account with domain-wide delegation."""
+def get_gmail_service(user: str = GMAIL_USER):
+    """Build Gmail API service using service account with domain-wide delegation.
+
+    Impersonates ``user`` (default GMAIL_USER=claims@dumbroof.ai). Domain-wide
+    delegation lets the SAME service account act as any dumbroof.ai mailbox —
+    e.g. tom@dumbroof.ai for the lead poller (see lead_poller.py). No extra
+    credentials needed; the gmail.modify scope already covers read + label.
+    """
     sa_json = os.environ.get("GMAIL_SERVICE_ACCOUNT_JSON")
     if not sa_json:
         raise RuntimeError("GMAIL_SERVICE_ACCOUNT_JSON env var not set")
@@ -113,8 +119,8 @@ def get_gmail_service():
     creds = service_account.Credentials.from_service_account_info(
         info, scopes=SCOPES
     )
-    # Delegate to claims@dumbroof.ai mailbox
-    creds = creds.with_subject(GMAIL_USER)
+    # Delegate to the requested mailbox
+    creds = creds.with_subject(user)
 
     return build("gmail", "v1", credentials=creds, cache_discovery=False)
 
