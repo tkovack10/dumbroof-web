@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/client";
 import type { InAppName } from "@/lib/device-detection";
 import { trackBoth, FunnelEvent } from "@/lib/track";
 import { firePixelSignup } from "@/lib/meta-pixel-signup";
-import { getUtmFromBrowser } from "@/lib/utm";
+import { getUtmFromBrowser, deriveSignupSource } from "@/lib/utm";
 
 type Props = {
   inAppName: InAppName;
@@ -77,8 +77,8 @@ export function MobileMagicHero({ inAppName, stats }: Props) {
       options: {
         // emailRedirectTo not needed — email confirmation is OFF in Supabase
         data: {
-          signup_source: inAppName ? `mobile_${inAppName}` : "mobile_direct",
           ...(utm ?? {}),
+          signup_source: deriveSignupSource(utm, inAppName ? `mobile_${inAppName}` : "mobile_direct"),
         },
       },
     });

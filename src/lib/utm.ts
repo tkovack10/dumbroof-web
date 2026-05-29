@@ -102,4 +102,23 @@ export function getUtmFromRequest(req: Request): UtmData | null {
   return match ? parseUtmCookie(match[1]) : null;
 }
 
+/**
+ * Derive a single, consistent `signup_source` for auth metadata so every signup
+ * is attributable to the channel that drove it. Precedence: explicit utm_source
+ * (joined with medium/campaign) > click-id (fbclid/gclid/ttclid) > the caller's
+ * own fallback (e.g. "desktop_hero") > "direct".
+ *
+ * The funnel monitor reads `raw_user_meta_data.signup_source`; before this,
+ * only the mobile hero set it, so ~78% of signups showed no source.
+ */
+export function deriveSignupSource(utm: UtmData | null, fallback?: string): string {
+  if (utm?.utm_source) {
+    return [utm.utm_source, utm.utm_medium, utm.utm_campaign].filter(Boolean).join(" / ");
+  }
+  if (utm?.fbclid) return "facebook";
+  if (utm?.gclid) return "google";
+  if (utm?.ttclid) return "tiktok";
+  return fallback || "direct";
+}
+
 export { UTM_COOKIE, UTM_MAX_AGE };

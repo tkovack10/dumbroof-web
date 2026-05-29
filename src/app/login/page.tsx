@@ -4,7 +4,7 @@ import { Suspense, useState, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { firePixelSignup } from "@/lib/meta-pixel-signup";
-import { getUtmFromBrowser } from "@/lib/utm";
+import { getUtmFromBrowser, deriveSignupSource } from "@/lib/utm";
 
 export default function LoginPage() {
   return (
@@ -71,7 +71,7 @@ function LoginPageContent() {
         password,
         options: {
           emailRedirectTo: `${window.location.origin}/auth/callback`,
-          ...(utm ? { data: utm } : {}),
+          data: { ...(utm ?? {}), signup_source: deriveSignupSource(utm, "login_page") },
         },
       });
       if (error) {

@@ -128,9 +128,14 @@ export default function NewClaimPage() {
         }
       } catch { /* ignore — CRM import just won't show */ }
 
-      // Profile gate: claim reports must carry the user's company branding —
-      // not ours. Required fields match the processor's USARM default-fill
-      // list so no USARM field ever leaks into a user's PDF.
+      // Profile gate: claim reports must carry the user's company TEXT branding
+      // (name/contact/address) — not ours. Logo is NOT required: the backend
+      // renders logo-less for non-USARM companies (brand_isolation.py:110 +
+      // processor.py:6539-6540 "render PDFs WITHOUT a logo"), and the USARM
+      // logo is triple-gated behind is_usarm, so no USARM mark ever leaks.
+      // Dropping logo_path here removes the #1 activation-friction point (the
+      // logo upload) while keeping reports carrier-usable. Users rebrand with a
+      // logo any time after.
       const { data: profile } = await supabase
         .from("company_profiles")
         .select("company_name, logo_path, contact_name, phone, address, city_state_zip")
@@ -139,7 +144,6 @@ export default function NewClaimPage() {
         .maybeSingle();
       const complete = !!(
         profile?.company_name &&
-        profile?.logo_path &&
         profile?.contact_name &&
         profile?.phone &&
         profile?.address &&

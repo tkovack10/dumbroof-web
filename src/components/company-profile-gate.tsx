@@ -56,13 +56,16 @@ export function CompanyProfileGate({
     setLogoPreview(URL.createObjectURL(file));
   };
 
+  // Logo is intentionally NOT required — it was the #1 activation-friction
+  // point. Backend renders logo-less for non-USARM companies (no USARM leak),
+  // and the save below writes logo_path="" when none is provided. Users add a
+  // logo to rebrand any time after.
   const canSubmit =
     companyName.trim() !== "" &&
     contactName.trim() !== "" &&
     phone.trim() !== "" &&
     address.trim() !== "" &&
-    cityStateZip.trim() !== "" &&
-    logoFile !== null;
+    cityStateZip.trim() !== "";
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -253,7 +256,7 @@ export function CompanyProfileGate({
 
           <div>
             <label className="block text-xs font-semibold text-[var(--gray-muted)] uppercase tracking-wider mb-1.5">
-              Company logo *
+              Company logo <span className="normal-case text-[var(--gray-muted)]/70">(optional — add anytime to rebrand)</span>
             </label>
             <div className="flex items-center gap-3">
               {logoPreview ? (
