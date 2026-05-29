@@ -105,7 +105,7 @@ export default async function SignupPage({ searchParams }: SignupPageProps) {
         inviteContext={inviteContext}
         referralContext={referralContext}
         prefillEmail={inviteContext?.inviteEmail || email || ""}
-        nextPath={resolvedNext || "/dashboard/new-claim"}
+        nextPath={resolvedNext || (inviteContext ? "/dashboard" : "/welcome")}
       />
     </Suspense>
   );

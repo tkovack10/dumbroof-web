@@ -204,8 +204,12 @@ export async function GET(request: Request) {
             },
           }).catch(() => {});
 
-          // Honor `next` if present, otherwise default to new-claim form
-          return NextResponse.redirect(`${origin}${next || "/dashboard/new-claim"}`);
+          // New signup → Richard onboarding (/welcome), where Richard creates their
+          // first claim conversationally (activation is the bottleneck — 86% of
+          // signups never made a claim from the old /dashboard/new-claim form, which
+          // also fronts the logo wall). Honor an explicit `next` (e.g. the /instant
+          // funnel's /instant/continue) so deep-link flows still work.
+          return NextResponse.redirect(`${origin}${next || "/welcome"}`);
         }
       }
       // Existing user — honor `next` if present, otherwise dashboard
