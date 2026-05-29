@@ -127,8 +127,27 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    // Apply the coupon if one was passed. A coupon can be missing in live mode
+    // (e.g. created in test mode only) or otherwise invalid — in that case
+    // Stripe returns a non-2xx and stripePost throws. Rather than 500ing the
+    // upgrade CTA, fall back to creating the session at full price WITHOUT the
+    // coupon so the customer can still check out.
     if (coupon) {
-      params["discounts[0][coupon]"] = coupon;
+      try {
+        const session = await stripePost("/checkout/sessions", {
+          ...params,
+          "discounts[0][coupon]": coupon,
+        });
+        return NextResponse.json({ url: session.url });
+      } catch (couponErr) {
+        const couponMessage =
+          couponErr instanceof Error ? couponErr.message : String(couponErr);
+        console.error(
+          `Stripe checkout coupon "${coupon}" failed — retrying at full price:`,
+          couponMessage
+        );
+        // fall through to the no-coupon session creation below
+      }
     }
 
     const session = await stripePost("/checkout/sessions", params);
