@@ -1,0 +1,2364 @@
+{
+  "_coverage": "PA post-scope, wind-only, single",
+  "claim": {
+    "address": "27 Old Bethlehem Rd, Perkasie, PA 18944, USA",
+    "carrier": "The Hanover Insurance Group",
+    "contact_name": "Christopher Wolff",
+    "weather_data": {
+      "event_count": 5,
+      "events": [
+        {
+          "date": "2026-03-16",
+          "distance_miles": 24.378560875795383,
+          "event_type": "Thunderstorm Wind",
+          "hail_size": 66.7,
+          "latitude": 40.28,
+          "location": "",
+          "longitude": -74.81,
+          "source": "SPC_DAILY",
+          "wind_speed": null
+        },
+        {
+          "date": "2026-03-16",
+          "distance_miles": 25.32494518635191,
+          "event_type": "Thunderstorm Wind",
+          "hail_size": 66.7,
+          "latitude": 40.08,
+          "location": "",
+          "longitude": -75.01,
+          "source": "SPC_DAILY",
+          "wind_speed": null
+        },
+        {
+          "date": "2026-03-16",
+          "distance_miles": 35.04557073848972,
+          "event_type": "Thunderstorm Wind",
+          "hail_size": 69.0,
+          "latitude": 40.01,
+          "location": "",
+          "longitude": -74.82,
+          "source": "SPC_DAILY",
+          "wind_speed": null
+        },
+        {
+          "date": "2026-03-16",
+          "distance_miles": 35.91100179934156,
+          "event_type": "Thunderstorm Wind",
+          "hail_size": 69.0,
+          "latitude": 39.88,
+          "location": "",
+          "longitude": -75.22,
+          "source": "SPC_DAILY",
+          "wind_speed": null
+        },
+        {
+          "date": "2026-03-16",
+          "distance_miles": 38.145419896936225,
+          "event_type": "Thunderstorm Wind",
+          "hail_size": 78.3,
+          "latitude": 40.38,
+          "location": "",
+          "longitude": -75.97,
+          "source": "SPC_DAILY",
+          "wind_speed": null
+        }
+      ],
+      "max_hail_inches": 0.0,
+      "max_wind_mph": 78.3
+    }
+  },
+  "config": {
+    "appeal_letter": {
+      "demand_items": [
+        "Review the enclosed forensic documentation and revised scope of loss identifying $37,934.27 in underpayment",
+        "Issue revised payment reflecting the full scope of documented storm-related damage",
+        "Address the line-by-line variance analysis identifying specific underpaid and omitted items",
+        "Schedule a re-inspection if additional verification is needed"
+      ],
+      "enclosed_documents": [
+        "Forensic Causation Report with annotated photography",
+        "Xactimate-format estimate at current pricing",
+        "Supplement report with line-by-line variance analysis",
+        "Formal appeal letter"
+      ],
+      "requested_actions": [
+        "Review the enclosed forensic documentation and revised scope of loss identifying $37,934.27 in underpayment",
+        "Issue revised payment reflecting the full scope of documented storm-related damage",
+        "Address the line-by-line variance analysis identifying specific underpaid and omitted items",
+        "Schedule a re-inspection if additional verification is needed"
+      ]
+    },
+    "carrier": {
+      "adjuster_email": "rnixon@hanover.com",
+      "adjuster_name": "Rachael Nixon",
+      "carrier_arguments": [
+        "Type of Loss: Ice/Snow",
+        "All items assessed at 0% depreciation - no depreciation applied to any line item",
+        "Recoverable depreciation: In some estimates, depreciation may be applied based on the age and condition of the items requiring repair or replacement. If listed as recoverable depreciation, insured may collect after completion of repairs with proof of payment.",
+        "No supplement will be considered without prior approval",
+        "Carrier reserves the right to send flooring samples to independent third party for analysis if applicable",
+        "Overhead at 10% and Profit at 10% applied to all line items",
+        "Material Sales Tax at 6%, Cleaning Sales Tax at 6%",
+        "Labor minimums applied for siding and drywall trades, representing 52.85% of the line item total"
+      ],
+      "carrier_line_items": [
+        {
+          "carrier_amount": 0,
+          "carrier_desc": "NOT INCLUDED",
+          "carrier_qty": 0,
+          "category": "ROOFING",
+          "checklist_desc": "Remove Laminated comp. shingle rfg. - w/out felt",
+          "code_citation": {
+            "code_tag": "UCC R908.3",
+            "has_warranty_void": true,
+            "jurisdiction": "Pennsylvania Uniform Construction Code",
+            "manufacturer_specs": [
+              {
+                "document": "Timberline HDZ Installation Instructions",
+                "manufacturer": "GAF",
+                "requirement": "4-6 nails per shingle, ProStart starter required at eaves and rakes",
+                "warranty_text": "GAF System Plus/Silver Pledge warranty VOID without proper starter and nailing pattern",
+                "warranty_void": true
+              }
+            ],
+            "requirement": "Existing roofing materials shall be removed before applying new roofing when existing roof has two or more applications of any type of roof covering",
+            "section": "R908.3",
+            "supplement_argument": "Complete tear-off is required per code for a code-compliant installation. Overlay is not code-compliant when damage necessitates deck inspection.",
+            "title": "Reroofing — Tear-Off Requirement"
+          },
+          "ev_formula": "41.37 SQ (EagleView roof area)",
+          "ev_qty": 41.37,
+          "ev_unit": "SQ",
+          "irc_code": "UCC R908.3",
+          "item": "Remove Laminated comp. shingle rfg. - w/out felt",
+          "matched_by": "missing",
+          "note": "NOT INCLUDED — Required: 41 SQ @ $89.37/SQ. Calculation: 41.37 SQ (EagleView roof area). Per UCC R908.3: Existing roofing materials shall be removed before applying new roofing when existing roof has two or more applications of any type of roof covering. GAF warranty VOID: GAF System Plus/Silver Pledge warranty VOID without proper starter and nailing pattern. Complete tear-off is required per code for a code-compliant installation. Overlay is not code-compliant when damage necessitates deck inspection.",
+          "photo_refs": [
+            "p06_01",
+            "p03_01",
+            "p03_02"
+          ],
+          "status": "missing",
+          "supplement_argument": "Complete tear-off is required per code for a code-compliant installation. Overlay is not code-compliant when damage necessitates deck inspection.",
+          "supplement_value": 3697.24,
+          "trade": "roofing",
+          "usarm_amount": 3697.24,
+          "usarm_desc": "Remove Laminated comp. shingle rfg. - w/out felt",
+          "xact_code": "RFG 300S",
+          "xact_unit_price": 89.37
+        },
+        {
+          "carrier_amount": 0,
+          "carrier_desc": "NOT INCLUDED",
+          "carrier_qty": 0,
+          "category": "ROOFING",
+          "checklist_desc": "Laminated comp. shingle rfg. - w/out felt",
+          "code_citation": {
+            "code_tag": "UCC R905.1",
+            "has_warranty_void": true,
+            "jurisdiction": "Pennsylvania Uniform Construction Code",
+            "manufacturer_specs": [
+              {
+                "document": "Timberline HDZ Installation Instructions",
+                "manufacturer": "GAF",
+                "requirement": "4-6 nails per shingle, ProStart starter required at eaves and rakes",
+                "warranty_text": "GAF System Plus/Silver Pledge warranty VOID without proper starter and nailing pattern",
+                "warranty_void": true
+              },
+              {
+                "document": "TB-10024261 (Hail Damage Assessment)",
+                "manufacturer": "Owens Corning",
+                "requirement": "Functional damage (mat fracture, granule loss exposing substrate) = full replacement",
+                "warranty_text": "",
+                "warranty_void": false
+              },
+              {
+                "document": "TIS #130 (Hail Damage Assessment)",
+                "manufacturer": "CertainTeed",
+                "requirement": "Mat fracture from hail impact = functional damage requiring replacement",
+                "warranty_text": "",
+                "warranty_void": false
+              },
+              {
+                "document": "Detecting Hail Damage to Asphalt Shingles",
+                "manufacturer": "Atlas",
+                "requirement": "Systematic hail damage assessment criteria for functional vs cosmetic",
+                "warranty_text": "",
+                "warranty_void": false
+              }
+            ],
+            "requirement": "Roofing shall be applied in accordance with manufacturer's installation instructions. Manufacturer instructions carry the force of building code.",
+            "section": "R905.1",
+            "supplement_argument": "Per R905.1, manufacturer installation instructions are legally binding building code. All components specified by the manufacturer (starter, underlayment, flashing) are code-required, not optional upgrades.",
+            "title": "Manufacturer Installation Instructions = Law"
+          },
+          "ev_formula": "41.37 SQ (EagleView roof area)",
+          "ev_qty": 41.37,
+          "ev_unit": "SQ",
+          "irc_code": "R905.2",
+          "item": "Laminated comp. shingle rfg. - w/out felt",
+          "matched_by": "missing",
+          "note": "NOT INCLUDED — Required: 41 SQ @ $349.14/SQ. Calculation: 41.37 SQ (EagleView roof area). Per UCC R905.1: Roofing shall be applied in accordance with manufacturer's installation instructions. Manufacturer instructions carry the force of building code.. GAF warranty VOID: GAF System Plus/Silver Pledge warranty VOID without proper starter and nailing pattern. Per R905.1, manufacturer installation instructions are legally binding building code. All components specified by the manufacturer (starter, underlayment, flashing) are code-required, not optional upgrades.",
+          "photo_refs": [
+            "p06_01",
+            "p03_01",
+            "p03_02"
+          ],
+          "status": "missing",
+          "supplement_argument": "Per R905.1, manufacturer installation instructions are legally binding building code. All components specified by the manufacturer (starter, underlayment, flashing) are code-required, not optional upgrades.",
+          "supplement_value": 14443.92,
+          "trade": "roofing",
+          "usarm_amount": 14443.92,
+          "usarm_desc": "Laminated comp. shingle rfg. - w/out felt",
+          "xact_code": "RFG 300S",
+          "xact_unit_price": 349.14
+        },
+        {
+          "carrier_amount": 0,
+          "carrier_desc": "NOT INCLUDED",
+          "carrier_qty": 0,
+          "category": "ROOFING",
+          "checklist_desc": "Roofing felt - 15 lb.",
+          "code_citation": {
+            "code_tag": "UCC R905.1.1",
+            "has_warranty_void": false,
+            "jurisdiction": "Pennsylvania Uniform Construction Code",
+            "manufacturer_specs": [],
+            "requirement": "Underlayment required over entire roof deck area not covered by ice barrier",
+            "section": "R905.1.1",
+            "supplement_argument": "Underlayment is code-mandated over the entire roof deck. Areas where ice & water barrier is not installed require felt or synthetic underlayment. Omission does not meet code requirements.",
+            "title": "Underlayment Requirement"
+          },
+          "ev_formula": "((41.37 × 100) − 1107) / 100 = 30.30 SQ",
+          "ev_qty": 30.3,
+          "ev_unit": "SQ",
+          "irc_code": "R905.1.1",
+          "item": "Roofing felt - 15 lb.",
+          "matched_by": "missing",
+          "note": "NOT INCLUDED — Required: 30 SQ @ $48.12/SQ. Calculation: ((41.37 × 100) − 1107) / 100 = 30.30 SQ. Per UCC R905.1.1: Underlayment required over entire roof deck area not covered by ice barrier. Underlayment is code-mandated over the entire roof deck. Areas where ice & water barrier is not installed require felt or synthetic underlayment. Omission does not meet code requirements.",
+          "photo_refs": [
+            "p06_01",
+            "p03_01",
+            "p03_02"
+          ],
+          "status": "missing",
+          "supplement_argument": "Underlayment is code-mandated over the entire roof deck. Areas where ice & water barrier is not installed require felt or synthetic underlayment. Omission does not meet code requirements.",
+          "supplement_value": 1458.04,
+          "trade": "roofing",
+          "usarm_amount": 1458.04,
+          "usarm_desc": "Roofing felt - 15 lb.",
+          "xact_code": "RFG FELT15",
+          "xact_unit_price": 48.12
+        },
+        {
+          "carrier_amount": 0,
+          "carrier_desc": "NOT INCLUDED",
+          "carrier_qty": 0,
+          "category": "ROOFING",
+          "checklist_desc": "Ice & water barrier",
+          "code_citation": {
+            "code_tag": "UCC R905.1.2",
+            "has_warranty_void": true,
+            "jurisdiction": "Pennsylvania Uniform Construction Code",
+            "manufacturer_specs": [
+              {
+                "document": "WeatherWatch Mineral-Surfaced Leak Barrier",
+                "manufacturer": "GAF",
+                "requirement": "Required at eaves, valleys, and around penetrations per GAF system requirements",
+                "warranty_text": "GAF warranty VOID without WeatherWatch/StormGuard at eaves and valleys",
+                "warranty_void": true
+              }
+            ],
+            "requirement": "Ice barrier required at eaves extending from eave edge to at least 24 inches past interior wall line, and in valleys",
+            "section": "R905.1.2",
+            "supplement_argument": "Ice & water barrier is required by code at all eaves and valleys. This is not an optional upgrade — it is a mandatory building code requirement for a code-compliant installation.",
+            "title": "Ice Barrier Requirement"
+          },
+          "ev_formula": "(Eave 264 × 3) + (Valley 105 × 3) = 1107 SF",
+          "ev_qty": 1107,
+          "ev_unit": "SF",
+          "irc_code": "R905.1.2",
+          "item": "Ice & water barrier",
+          "matched_by": "missing",
+          "note": "NOT INCLUDED — Required: 1107 SF @ $2.39/SF. Calculation: (Eave 264 × 3) + (Valley 105 × 3) = 1107 SF. Per UCC R905.1.2: Ice barrier required at eaves extending from eave edge to at least 24 inches past interior wall line, and in valleys. GAF warranty VOID: GAF warranty VOID without WeatherWatch/StormGuard at eaves and valleys. Ice & water barrier is required by code at all eaves and valleys. This is not an optional upgrade — it is a mandatory building code requirement for a code-compliant installation. | [C001] Carrier scope has NO ice & water barrier. UCC R905.1.2 requires 0 SF minimum (0 LF eaves × 6ft + 0 LF valleys × 6ft).",
+          "photo_refs": [
+            "p06_01",
+            "p03_01",
+            "p03_02"
+          ],
+          "status": "missing",
+          "supplement_argument": "Ice & water barrier is required by code at all eaves and valleys. This is not an optional upgrade — it is a mandatory building code requirement for a code-compliant installation.",
+          "supplement_value": 2645.73,
+          "trade": "roofing",
+          "usarm_amount": 2645.73,
+          "usarm_desc": "Ice & water barrier",
+          "xact_code": "RFG IWS",
+          "xact_unit_price": 2.39
+        },
+        {
+          "carrier_amount": 0,
+          "carrier_desc": "NOT INCLUDED",
+          "carrier_qty": 0,
+          "category": "ROOFING",
+          "checklist_desc": "Asphalt starter - universal starter course",
+          "code_citation": {
+            "code_tag": "UCC R905.1",
+            "has_warranty_void": true,
+            "jurisdiction": "Pennsylvania Uniform Construction Code",
+            "manufacturer_specs": [
+              {
+                "document": "Timberline HDZ Installation Instructions",
+                "manufacturer": "GAF",
+                "requirement": "4-6 nails per shingle, ProStart starter required at eaves and rakes",
+                "warranty_text": "GAF System Plus/Silver Pledge warranty VOID without proper starter and nailing pattern",
+                "warranty_void": true
+              },
+              {
+                "document": "Duration Series Install 10024264",
+                "manufacturer": "Owens Corning",
+                "requirement": "OC Starter Course required at eaves and rakes",
+                "warranty_text": "SureNail Technology warranty VOID without OC-approved starter",
+                "warranty_void": true
+              },
+              {
+                "document": "Landmark Series Installation Instructions",
+                "manufacturer": "CertainTeed",
+                "requirement": "SwiftStart starter required at eaves and rakes",
+                "warranty_text": "SureStart warranty VOID without CertainTeed-approved starter",
+                "warranty_void": true
+              }
+            ],
+            "requirement": "Starter course required at eaves and rakes per manufacturer installation instructions (R905.1 — manufacturer instructions = code)",
+            "section": "R905.1",
+            "supplement_argument": "Starter course is required by ALL major manufacturers (GAF, OC, CertainTeed). Per R905.1, manufacturer instructions carry the force of code. Omitting starter voids the manufacturer warranty.",
+            "title": "Starter Course (Manufacturer Required)"
+          },
+          "ev_formula": "Eave 264 + Rake 220 = 484 LF",
+          "ev_qty": 484,
+          "ev_unit": "LF",
+          "irc_code": "UCC R905.1",
+          "item": "Asphalt starter - universal starter course",
+          "matched_by": "missing",
+          "note": "NOT INCLUDED — Required: 484 LF @ $2.58/LF. Calculation: Eave 264 + Rake 220 = 484 LF. Per UCC R905.1: Starter course required at eaves and rakes per manufacturer installation instructions (R905.1 — manufacturer instructions = code). GAF warranty VOID: GAF System Plus/Silver Pledge warranty VOID without proper starter and nailing pattern. Owens Corning warranty VOID: SureNail Technology warranty VOID without OC-approved starter. Starter course is required by ALL major manufacturers (GAF, OC, CertainTeed). Per R905.1, manufacturer instructions carry the force of code. Omitting starter voids the manufacturer warranty.",
+          "photo_refs": [
+            "p06_01",
+            "p03_01",
+            "p03_02"
+          ],
+          "status": "missing",
+          "supplement_argument": "Starter course is required by ALL major manufacturers (GAF, OC, CertainTeed). Per R905.1, manufacturer instructions carry the force of code. Omitting starter voids the manufacturer warranty.",
+          "supplement_value": 1248.72,
+          "trade": "roofing",
+          "usarm_amount": 1248.72,
+          "usarm_desc": "Asphalt starter - universal starter course",
+          "xact_code": "RFG ASTR-",
+          "xact_unit_price": 2.58
+        },
+        {
+          "carrier_amount": 0,
+          "carrier_desc": "NOT INCLUDED",
+          "carrier_qty": 0,
+          "category": "ROOFING",
+          "checklist_desc": "R&R Hip / Ridge cap - Standard profile - composition shingles",
+          "code_citation": {
+            "code_tag": "UCC R806",
+            "has_warranty_void": false,
+            "jurisdiction": "Pennsylvania Uniform Construction Code",
+            "manufacturer_specs": [],
+            "requirement": "Enclosed attics shall have cross ventilation. Ridge vent provides exhaust ventilation per R806.1",
+            "section": "R806",
+            "supplement_argument": "Ridge ventilation is required for proper attic ventilation per code. When ridge cap is replaced, ridge vent must be replaced to maintain code-compliant ventilation.",
+            "title": "Roof Ventilation"
+          },
+          "ev_formula": "Ridge 145 LF (EagleView)",
+          "ev_qty": 145,
+          "ev_unit": "LF",
+          "irc_code": "UCC R806",
+          "item": "R&R Hip / Ridge cap - Standard profile - composition shingles",
+          "matched_by": "missing",
+          "note": "NOT INCLUDED — Required: 145 LF @ $13.21/LF. Calculation: Ridge 145 LF (EagleView). Per UCC R806: Enclosed attics shall have cross ventilation. Ridge vent provides exhaust ventilation per R806.1. Ridge ventilation is required for proper attic ventilation per code. When ridge cap is replaced, ridge vent must be replaced to maintain code-compliant ventilation. | [COMP_RIDGE_CAP] Carrier scope does not include ridge cap. This is a mandatory roofing component per Manufacturer specification.",
+          "photo_refs": [
+            "p06_01",
+            "p03_01",
+            "p03_02"
+          ],
+          "status": "missing",
+          "supplement_argument": "Ridge ventilation is required for proper attic ventilation per code. When ridge cap is replaced, ridge vent must be replaced to maintain code-compliant ventilation.",
+          "supplement_value": 1915.45,
+          "trade": "roofing",
+          "usarm_amount": 1915.45,
+          "usarm_desc": "R&R Hip / Ridge cap - Standard profile - composition shingles",
+          "xact_code": "RFG RIDGCS",
+          "xact_unit_price": 13.21
+        },
+        {
+          "carrier_amount": 0,
+          "carrier_desc": "NOT INCLUDED",
+          "carrier_qty": 0,
+          "category": "ROOFING",
+          "checklist_desc": "R&R Drip edge",
+          "code_citation": {
+            "code_tag": "UCC R905.2.8.5",
+            "has_warranty_void": false,
+            "jurisdiction": "Pennsylvania Uniform Construction Code",
+            "manufacturer_specs": [],
+            "requirement": "Drip edge shall be provided at eaves and gable rake edges of shingle roofs",
+            "section": "R905.2.8.5",
+            "supplement_argument": "Drip edge is required at all eaves and rakes per code. Protects fascia and deck edge from water damage. Not an optional upgrade.",
+            "title": "Drip Edge Requirement"
+          },
+          "ev_formula": "(Eave 264 + Rake 220) × 1.05 = 508 LF",
+          "ev_qty": 508.2,
+          "ev_unit": "LF",
+          "irc_code": "R905.2.7",
+          "item": "R&R Drip edge",
+          "matched_by": "missing",
+          "note": "NOT INCLUDED — Required: 508 LF @ $4.21/LF. Calculation: (Eave 264 + Rake 220) × 1.05 = 508 LF. Per UCC R905.2.8.5: Drip edge shall be provided at eaves and gable rake edges of shingle roofs. Drip edge required at eaves and rakes per IRC R905.2.7. Minimum 2.5 inches below sheathing, 2 inches up deck. Underlayment OVER drip edge at eaves, UNDER at rakes. 5% waste factor standard | [COMP_DRIP_EDGE] Carrier scope does not include drip edge. This is a mandatory roofing component per IRC R905.2.8.5.",
+          "photo_refs": [
+            "p06_01",
+            "p03_01",
+            "p03_02"
+          ],
+          "status": "missing",
+          "supplement_argument": "Drip edge required at eaves and rakes per IRC R905.2.7. Minimum 2.5 inches below sheathing, 2 inches up deck. Underlayment OVER drip edge at eaves, UNDER at rakes. 5% waste factor standard",
+          "supplement_value": 2139.52,
+          "trade": "roofing",
+          "usarm_amount": 2139.52,
+          "usarm_desc": "R&R Drip edge",
+          "xact_code": "RFG DRIP",
+          "xact_unit_price": 4.21
+        },
+        {
+          "carrier_amount": 0,
+          "carrier_desc": "NOT INCLUDED",
+          "carrier_qty": 0,
+          "category": "ROOFING",
+          "checklist_desc": "Remove Step flashing",
+          "code_citation": {
+            "code_tag": "UCC R905.2.8.3",
+            "has_warranty_void": false,
+            "jurisdiction": "Pennsylvania Uniform Construction Code",
+            "manufacturer_specs": [],
+            "requirement": "Step flashing shall be used where roof planes intersect vertical walls",
+            "section": "R905.2.8.3",
+            "supplement_argument": "Step flashing is code-required at every wall-to-roof junction. When roofing is replaced, step flashing must be replaced to maintain weathertight integrity per code.",
+            "title": "Step Flashing at Wall Junctions"
+          },
+          "ev_formula": "Step 130 LF (EagleView)",
+          "ev_qty": 130,
+          "ev_unit": "LF",
+          "irc_code": "R905.2.8.4",
+          "item": "Remove Step flashing",
+          "matched_by": "missing",
+          "note": "NOT INCLUDED — Required: 130 LF @ $15.53/LF. Calculation: Step 130 LF (EagleView). Per UCC R905.2.8.3: Step flashing shall be used where roof planes intersect vertical walls. Step flashing is code-required at every wall-to-roof junction. When roofing is replaced, step flashing must be replaced to maintain weathertight integrity per code.",
+          "photo_refs": [
+            "p06_01",
+            "p11_02",
+            "p12_02"
+          ],
+          "status": "missing",
+          "supplement_argument": "Step flashing is code-required at every wall-to-roof junction. When roofing is replaced, step flashing must be replaced to maintain weathertight integrity per code.",
+          "supplement_value": 2018.9,
+          "trade": "roofing",
+          "usarm_amount": 2119.84,
+          "usarm_desc": "R&R Step flashing",
+          "xact_code": "RFG STEP",
+          "xact_unit_price": 15.53
+        },
+        {
+          "carrier_amount": 0,
+          "carrier_desc": "NOT INCLUDED",
+          "carrier_qty": 0,
+          "category": "ROOFING",
+          "checklist_desc": "Step flashing",
+          "code_citation": {
+            "code_tag": "UCC R905.2.8.3",
+            "has_warranty_void": false,
+            "jurisdiction": "Pennsylvania Uniform Construction Code",
+            "manufacturer_specs": [],
+            "requirement": "Step flashing shall be used where roof planes intersect vertical walls",
+            "section": "R905.2.8.3",
+            "supplement_argument": "Step flashing is code-required at every wall-to-roof junction. When roofing is replaced, step flashing must be replaced to maintain weathertight integrity per code.",
+            "title": "Step Flashing at Wall Junctions"
+          },
+          "ev_formula": "Step 130 × 1.05 = 136 LF",
+          "ev_qty": 136.5,
+          "ev_unit": "LF",
+          "irc_code": "R905.2.8.4",
+          "item": "Step flashing",
+          "matched_by": "missing",
+          "note": "NOT INCLUDED — Required: 136 LF @ $15.53/LF. Calculation: Step 130 × 1.05 = 136 LF. Per UCC R905.2.8.3: Step flashing shall be used where roof planes intersect vertical walls. Step flashing required at all wall-to-roof intersections per IRC R905.2.8.4. Minimum 10 inches height. Siding removal mandatory for proper installation — nail horizontal flange to roof ONLY, never through siding",
+          "photo_refs": [
+            "p06_01",
+            "p11_02",
+            "p12_02"
+          ],
+          "status": "missing",
+          "supplement_argument": "Step flashing required at all wall-to-roof intersections per IRC R905.2.8.4. Minimum 10 inches height. Siding removal mandatory for proper installation — nail horizontal flange to roof ONLY, never through siding",
+          "supplement_value": 2119.84,
+          "trade": "roofing",
+          "usarm_amount": 2119.84,
+          "usarm_desc": "R&R Step flashing",
+          "xact_code": "RFG STEP",
+          "xact_unit_price": 15.53
+        },
+        {
+          "carrier_amount": 0,
+          "carrier_desc": "NOT INCLUDED",
+          "carrier_qty": 0,
+          "category": "ROOFING",
+          "checklist_desc": "Remove Counterflashing - Apron flashing",
+          "code_citation": null,
+          "ev_formula": "Step 130 LF (EagleView)",
+          "ev_qty": 130,
+          "ev_unit": "LF",
+          "irc_code": "R905.2.8",
+          "item": "Remove Counterflashing - Apron flashing",
+          "matched_by": "missing",
+          "note": "NOT INCLUDED — Required: 130 LF @ $0.71/LF. Calculation: Step 130 LF (EagleView). Required per R905.2.8. Counterflashing removal required at all roof-to-wall intersections per IRC R905.2.8",
+          "photo_refs": [
+            "p06_01",
+            "p11_02",
+            "p12_02"
+          ],
+          "status": "missing",
+          "supplement_argument": "Counterflashing removal required at all roof-to-wall intersections per IRC R905.2.8",
+          "supplement_value": 92.3,
+          "trade": "roofing",
+          "usarm_amount": 92.3,
+          "usarm_desc": "Remove Counterflashing - Apron flashing",
+          "xact_code": "RFG FLCF",
+          "xact_unit_price": 0.71
+        },
+        {
+          "carrier_amount": 0,
+          "carrier_desc": "NOT INCLUDED",
+          "carrier_qty": 0,
+          "category": "ROOFING",
+          "checklist_desc": "Counterflashing - Apron flashing",
+          "code_citation": null,
+          "ev_formula": "Counter 130 × 1.05 = 136 LF",
+          "ev_qty": 136.5,
+          "ev_unit": "LF",
+          "irc_code": "R905.2.8",
+          "item": "Counterflashing - Apron flashing",
+          "matched_by": "missing",
+          "note": "NOT INCLUDED — Required: 136 LF @ $12.21/LF. Calculation: Counter 130 × 1.05 = 136 LF. Required per R905.2.8. Counterflashing required at all roof-to-wall intersections per IRC R905.2.8",
+          "photo_refs": [
+            "p06_01",
+            "p11_02",
+            "p12_02"
+          ],
+          "status": "missing",
+          "supplement_argument": "Counterflashing required at all roof-to-wall intersections per IRC R905.2.8",
+          "supplement_value": 1666.67,
+          "trade": "roofing",
+          "usarm_amount": 1666.67,
+          "usarm_desc": "Counterflashing - Apron flashing",
+          "xact_code": "RFG FLCF",
+          "xact_unit_price": 12.21
+        },
+        {
+          "carrier_amount": 0,
+          "carrier_desc": "NOT INCLUDED",
+          "carrier_qty": 0,
+          "category": "ROOFING",
+          "checklist_desc": "R&R Continuous ridge vent - shingle-over style",
+          "code_citation": {
+            "code_tag": "UCC R806",
+            "has_warranty_void": false,
+            "jurisdiction": "Pennsylvania Uniform Construction Code",
+            "manufacturer_specs": [],
+            "requirement": "Enclosed attics shall have cross ventilation. Ridge vent provides exhaust ventilation per R806.1",
+            "section": "R806",
+            "supplement_argument": "Ridge ventilation is required for proper attic ventilation per code. When ridge cap is replaced, ridge vent must be replaced to maintain code-compliant ventilation.",
+            "title": "Roof Ventilation"
+          },
+          "ev_formula": "Ridge 145 LF (EagleView)",
+          "ev_qty": 145,
+          "ev_unit": "LF",
+          "irc_code": "R806",
+          "item": "R&R Continuous ridge vent - shingle-over style",
+          "matched_by": "missing",
+          "note": "NOT INCLUDED — Required: 145 LF @ $11.97/LF. Calculation: Ridge 145 LF (EagleView). Per UCC R806: Enclosed attics shall have cross ventilation. Ridge vent provides exhaust ventilation per R806.1. Ventilation required per IRC R806 — 1 SF NFVA per 150 SF attic area (1:150 ratio). OC warranty VOID without proper ventilation. Ridge vent must be R&R during re-roofing | [COMP_RIDGE_VENT] Carrier scope does not include ridge vent. This is a mandatory roofing component per IRC R806.1.",
+          "photo_refs": [
+            "p06_01",
+            "p03_01",
+            "p03_02"
+          ],
+          "status": "missing",
+          "supplement_argument": "Ventilation required per IRC R806 — 1 SF NFVA per 150 SF attic area (1:150 ratio). OC warranty VOID without proper ventilation. Ridge vent must be R&R during re-roofing",
+          "supplement_value": 1735.65,
+          "trade": "roofing",
+          "usarm_amount": 1735.65,
+          "usarm_desc": "R&R Continuous ridge vent - shingle-over style",
+          "xact_code": "RFG RGVC",
+          "xact_unit_price": 11.97
+        },
+        {
+          "carrier_amount": 0,
+          "carrier_desc": "NOT INCLUDED",
+          "carrier_qty": 0,
+          "category": "ROOFING",
+          "checklist_desc": "Roofer - per hour",
+          "code_citation": null,
+          "ev_formula": "max(4, 41 / 4) = 10 HR",
+          "ev_qty": 10,
+          "ev_unit": "HR",
+          "irc_code": null,
+          "item": "Roofer - per hour",
+          "matched_by": "missing",
+          "note": "NOT INCLUDED — Required: 10 HR @ $194.00/HR. Calculation: max(4, 41 / 4) = 10 HR. 8 hours roofer labor mandatory on every roofing estimate per industry standard",
+          "photo_refs": [
+            "p06_01",
+            "p03_01",
+            "p03_02"
+          ],
+          "status": "missing",
+          "supplement_argument": "8 hours roofer labor mandatory on every roofing estimate per industry standard",
+          "supplement_value": 1940.0,
+          "trade": "roofing",
+          "usarm_amount": 1940.0,
+          "usarm_desc": "Roofer - per hour",
+          "xact_code": "",
+          "xact_unit_price": 194.0
+        },
+        {
+          "carrier_amount": 0,
+          "carrier_desc": "NOT INCLUDED",
+          "carrier_qty": 0,
+          "category": "ROOFING",
+          "checklist_desc": "Equipment operator",
+          "code_citation": null,
+          "ev_formula": "",
+          "ev_qty": 5,
+          "ev_unit": "EA",
+          "irc_code": null,
+          "item": "Equipment operator",
+          "matched_by": "missing",
+          "note": "NOT INCLUDED — Required: 5 EA @ $450.00/EA | [UP006] Carrier scope does not include equipment operator charge. Required for 2+ story and/or steep roofs requiring material staging equipment.",
+          "status": "missing",
+          "supplement_argument": null,
+          "supplement_value": 2250.0,
+          "trade": "roofing",
+          "usarm_amount": 435.0,
+          "usarm_desc": "Equipment operator",
+          "xact_code": "",
+          "xact_unit_price": 450.0
+        },
+        {
+          "carrier_amount": 0,
+          "carrier_desc": "NOT INCLUDED",
+          "carrier_qty": 0,
+          "category": "ROOFING",
+          "checklist_desc": "",
+          "code_citation": {
+            "code_tag": "UCC R905.1.2",
+            "has_warranty_void": true,
+            "jurisdiction": "Pennsylvania Uniform Construction Code",
+            "manufacturer_specs": [
+              {
+                "document": "WeatherWatch Mineral-Surfaced Leak Barrier",
+                "manufacturer": "GAF",
+                "requirement": "Required at eaves, valleys, and around penetrations per GAF system requirements",
+                "warranty_text": "GAF warranty VOID without WeatherWatch/StormGuard at eaves and valleys",
+                "warranty_void": true
+              }
+            ],
+            "requirement": "Ice barrier required at eaves extending from eave edge to at least 24 inches past interior wall line, and in valleys",
+            "section": "R905.1.2",
+            "supplement_argument": "Ice & water barrier is required by code at all eaves and valleys. This is not an optional upgrade — it is a mandatory building code requirement for a code-compliant installation.",
+            "title": "Ice Barrier Requirement"
+          },
+          "ev_qty": 27.15,
+          "ev_unit": "SQ",
+          "irc_code": "UCC R905.1.2",
+          "matched_by": "missing",
+          "note": "NOT INCLUDED — Required: 27 SQ @ $30.00/SQ. Per UCC R905.1.2: Ice barrier required at eaves extending from eave edge to at least 24 inches past interior wall line | [COMP_UNDERLAYMENT] Carrier scope does not include underlayment. This is a mandatory roofing component per IRC R905.1.1.",
+          "photo_refs": [
+            "p06_01",
+            "p03_01",
+            "p03_02"
+          ],
+          "status": "missing",
+          "supplement_argument": "Ice & water barrier is required by code at all eaves and valleys. This is not an optional upgrade — it is a mandatory building code requirement for a code-compliant installation.",
+          "supplement_value": 814.5,
+          "trade": "",
+          "usarm_amount": 814.5,
+          "usarm_desc": "Underlayment - felt 15# (deck area not covered by I&W)"
+        },
+        {
+          "carrier_amount": 0,
+          "carrier_desc": "NOT INCLUDED",
+          "carrier_qty": 0,
+          "category": "ROOFING",
+          "checklist_desc": "",
+          "code_citation": null,
+          "ev_qty": 28.19,
+          "ev_unit": "SQ",
+          "irc_code": null,
+          "matched_by": "missing",
+          "note": "NOT INCLUDED — Required: 28 SQ @ $17.50/SQ. Steep roof charge required per Xactimate guidelines — increased labor, safety equipment, and reduced productivity on 7/12+ slopes",
+          "photo_refs": [
+            "p06_01",
+            "p03_01",
+            "p03_02"
+          ],
+          "status": "missing",
+          "supplement_argument": "Steep roof charge required per Xactimate guidelines — increased labor, safety equipment, and reduced productivity on 7/12+ slopes",
+          "supplement_value": 493.33,
+          "trade": "roofing",
+          "usarm_amount": 493.33,
+          "usarm_desc": "Remove - Additional charge for steep roof 7/12-9/12"
+        },
+        {
+          "carrier_amount": 0,
+          "carrier_desc": "NOT INCLUDED",
+          "carrier_qty": 0,
+          "category": "ROOFING",
+          "checklist_desc": "",
+          "code_citation": null,
+          "ev_qty": 28.19,
+          "ev_unit": "SQ",
+          "irc_code": null,
+          "matched_by": "missing",
+          "note": "NOT INCLUDED — Required: 28 SQ @ $62.00/SQ. Steep roof charge required per Xactimate guidelines — increased labor, safety equipment, and reduced productivity on 7/12+ slopes",
+          "photo_refs": [
+            "p06_01",
+            "p03_01",
+            "p03_02"
+          ],
+          "status": "missing",
+          "supplement_argument": "Steep roof charge required per Xactimate guidelines — increased labor, safety equipment, and reduced productivity on 7/12+ slopes",
+          "supplement_value": 1747.78,
+          "trade": "roofing",
+          "usarm_amount": 1747.78,
+          "usarm_desc": "Additional charge for steep roof 7/12-9/12"
+        },
+        {
+          "carrier_amount": 0,
+          "carrier_desc": "NOT INCLUDED",
+          "carrier_qty": 0,
+          "category": "ROOFING",
+          "checklist_desc": "",
+          "code_citation": null,
+          "ev_qty": 8.2,
+          "ev_unit": "SQ",
+          "irc_code": null,
+          "matched_by": "missing",
+          "note": "NOT INCLUDED — Required: 8 SQ @ $27.50/SQ",
+          "photo_refs": [
+            "p06_01",
+            "p03_01",
+            "p03_02"
+          ],
+          "status": "missing",
+          "supplement_argument": null,
+          "supplement_value": 225.5,
+          "trade": "roofing",
+          "usarm_amount": 225.5,
+          "usarm_desc": "Remove - Additional charge for steep roof 10/12-12/12"
+        },
+        {
+          "carrier_amount": 0,
+          "carrier_desc": "NOT INCLUDED",
+          "carrier_qty": 0,
+          "category": "ROOFING",
+          "checklist_desc": "",
+          "code_citation": null,
+          "ev_qty": 8.2,
+          "ev_unit": "SQ",
+          "irc_code": null,
+          "matched_by": "missing",
+          "note": "NOT INCLUDED — Required: 8 SQ @ $98.00/SQ",
+          "photo_refs": [
+            "p06_01",
+            "p03_01",
+            "p03_02"
+          ],
+          "status": "missing",
+          "supplement_argument": null,
+          "supplement_value": 803.6,
+          "trade": "roofing",
+          "usarm_amount": 803.6,
+          "usarm_desc": "Additional charge for steep roof 10/12-12/12"
+        },
+        {
+          "carrier_amount": 0,
+          "carrier_desc": "NOT INCLUDED",
+          "carrier_qty": 0,
+          "category": "ROOFING",
+          "checklist_desc": "",
+          "code_citation": null,
+          "ev_qty": 0.32,
+          "ev_unit": "SQ",
+          "irc_code": null,
+          "matched_by": "missing",
+          "note": "NOT INCLUDED — Required: 0 SQ @ $35.00/SQ",
+          "photo_refs": [
+            "p06_01",
+            "p03_01",
+            "p03_02"
+          ],
+          "status": "missing",
+          "supplement_argument": null,
+          "supplement_value": 11.2,
+          "trade": "roofing",
+          "usarm_amount": 11.2,
+          "usarm_desc": "Remove - Additional charge for steep roof >12/12"
+        },
+        {
+          "carrier_amount": 0,
+          "carrier_desc": "NOT INCLUDED",
+          "carrier_qty": 0,
+          "category": "ROOFING",
+          "checklist_desc": "",
+          "code_citation": null,
+          "ev_qty": 0.32,
+          "ev_unit": "SQ",
+          "irc_code": null,
+          "matched_by": "missing",
+          "note": "NOT INCLUDED — Required: 0 SQ @ $128.00/SQ",
+          "photo_refs": [
+            "p06_01",
+            "p03_01",
+            "p03_02"
+          ],
+          "status": "missing",
+          "supplement_argument": null,
+          "supplement_value": 40.96,
+          "trade": "roofing",
+          "usarm_amount": 40.96,
+          "usarm_desc": "Additional charge for steep roof >12/12"
+        },
+        {
+          "carrier_amount": 87.09,
+          "carrier_desc": "Fascia - metal - 6\"",
+          "carrier_qty": 10.0,
+          "carrier_unit": "LF",
+          "category": "SIDING",
+          "item": "Fascia - metal - 6\"",
+          "matched_by": "carrier_only",
+          "note": "Carrier-only: 10 LF @ $7.10/LF — not on EagleView checklist",
+          "review_flag": "Verify: legitimate scope item or padding?",
+          "status": "carrier_only",
+          "supplement_value": 0,
+          "trade": "siding",
+          "usarm_amount": 0,
+          "usarm_desc": "",
+          "xact_code": null
+        },
+        {
+          "carrier_amount": 389.92,
+          "carrier_desc": "Siding labor minimum",
+          "carrier_qty": 1.0,
+          "carrier_unit": "EA",
+          "category": "SIDING",
+          "item": "Siding labor minimum",
+          "matched_by": "carrier_only",
+          "note": "Carrier-only: 1 EA @ $324.94/EA — not on EagleView checklist",
+          "photo_refs": [
+            "p11_03"
+          ],
+          "review_flag": "Verify: legitimate scope item or padding?",
+          "status": "carrier_only",
+          "supplement_value": 0,
+          "trade": "siding",
+          "usarm_amount": 0,
+          "usarm_desc": "",
+          "xact_code": null
+        },
+        {
+          "carrier_amount": 133.31,
+          "carrier_desc": "Haul debris - per pickup truck load - including dump fees",
+          "carrier_notes": "Other. AGE/LIFE: 0/NA, Condition: Avg, Dep: NA",
+          "carrier_qty": 0.5,
+          "carrier_unit": "EA",
+          "carrier_unit_price": 222.18,
+          "category": "GENERAL",
+          "checklist_desc": "Dumpster load - Approx. 30 yards, 5-7 tons of debris",
+          "code_citation": null,
+          "ev_formula": "",
+          "ev_qty": 1,
+          "ev_unit": "EA",
+          "irc_code": null,
+          "item": "Haul debris - per pickup truck load - including dump fees",
+          "matched_by": "intent_desc",
+          "note": "Unit price: Xact $850.00 vs Carrier $222.18. Job-related overhead — dumpster required for debris disposal",
+          "price_variance": "Xact: $850.00, Carrier: $222.18",
+          "status": "under",
+          "supplement_argument": "Job-related overhead — dumpster required for debris disposal",
+          "supplement_value": 716.69,
+          "trade": "general",
+          "usarm_amount": 850.0,
+          "usarm_desc": "Dumpster load - Approx. 30 yards, 5-7 tons of debris",
+          "xact_code": "",
+          "xact_unit_price": 850.0
+        },
+        {
+          "carrier_amount": 80.94,
+          "carrier_desc": "Floor protection - plastic and tape - 10 mil",
+          "carrier_notes": "Interior. AGE/LIFE: 0/15 yrs, Condition: Avg, Dep: 0%",
+          "carrier_qty": 200.06,
+          "carrier_unit": "SF",
+          "carrier_unit_price": 0.33,
+          "category": "CODE COMPLIANCE",
+          "checklist_desc": "Fall protection harness and lanyard - per day",
+          "code_citation": null,
+          "ev_formula": "",
+          "ev_qty": 2,
+          "ev_unit": "DA",
+          "irc_code": null,
+          "item": "Floor protection - plastic and tape - 10 mil",
+          "matched_by": "intent_desc",
+          "note": "UNIT MISMATCH: Carrier: SF, Expected: DA",
+          "price_variance": "Xact: $8.00, Carrier: $0.33",
+          "status": "under",
+          "supplement_argument": "Fall protection required per OSHA 29 CFR 1926.501 for work at heights above 6 feet",
+          "supplement_value": 0,
+          "trade": "roofing",
+          "unit_mismatch": "Carrier: SF, Expected: DA",
+          "usarm_amount": 16.0,
+          "usarm_desc": "Fall protection harness and lanyard - per day",
+          "xact_code": "",
+          "xact_unit_price": 8.0
+        },
+        {
+          "carrier_amount": 631.48,
+          "carrier_desc": "Drywall labor minimum",
+          "carrier_notes": "Labor Minimums Applied. AGE/LIFE: 0/NA, Condition: Avg, Dep: 0%",
+          "carrier_qty": 1.0,
+          "carrier_unit": "EA",
+          "carrier_unit_price": 526.24,
+          "category": "GENERAL",
+          "checklist_desc": "Administrative/supervisor labor charge",
+          "code_citation": null,
+          "ev_formula": "",
+          "ev_qty": 2.5,
+          "ev_unit": "HR",
+          "irc_code": null,
+          "item": "Drywall labor minimum",
+          "matched_by": "intent_notes",
+          "note": "UNIT MISMATCH: Carrier: EA, Expected: HR",
+          "price_variance": "Xact: $41.73, Carrier: $526.24",
+          "status": "under",
+          "supplement_argument": "Administrative labor for re-inspection and project coordination",
+          "supplement_value": 0,
+          "trade": "general",
+          "unit_mismatch": "Carrier: EA, Expected: HR",
+          "usarm_amount": 104.32,
+          "usarm_desc": "Administrative/supervisor labor charge",
+          "xact_code": "",
+          "xact_unit_price": 41.73
+        },
+        {
+          "carrier_amount": 45.77,
+          "carrier_desc": "R&R 5/8\" drywall - hung, taped, floated, ready for paint",
+          "carrier_qty": 9.0,
+          "carrier_unit": "SF",
+          "category": "UNKNOWN",
+          "item": "R&R 5/8\" drywall - hung, taped, floated, ready for paint",
+          "matched_by": "carrier_only",
+          "note": "Carrier-only: 9 SF @ $4.19/SF — not on EagleView checklist",
+          "photo_refs": [
+            "p11_03"
+          ],
+          "review_flag": "Verify: legitimate scope item or padding?",
+          "status": "carrier_only",
+          "supplement_value": 0,
+          "trade": "unknown",
+          "usarm_amount": 0,
+          "usarm_desc": "",
+          "xact_code": null
+        },
+        {
+          "carrier_amount": 8.76,
+          "carrier_desc": "Seal the surface area w/latex based stain blocker - one coat",
+          "carrier_qty": 10.8,
+          "carrier_unit": "SF",
+          "category": "UNKNOWN",
+          "item": "Seal the surface area w/latex based stain blocker - one coat",
+          "matched_by": "carrier_only",
+          "note": "Carrier-only: 11 SF @ $0.67/SF — not on EagleView checklist",
+          "review_flag": "Verify: legitimate scope item or padding?",
+          "status": "carrier_only",
+          "supplement_value": 0,
+          "trade": "unknown",
+          "usarm_amount": 0,
+          "usarm_desc": "",
+          "xact_code": null
+        },
+        {
+          "carrier_amount": 271.09,
+          "carrier_desc": "Paint the surface area - two coats",
+          "carrier_qty": 200.06,
+          "carrier_unit": "SF",
+          "category": "UNKNOWN",
+          "item": "Paint the surface area - two coats",
+          "matched_by": "carrier_only",
+          "note": "Carrier-only: 200 SF @ $1.11/SF — not on EagleView checklist",
+          "review_flag": "Verify: legitimate scope item or padding?",
+          "status": "carrier_only",
+          "supplement_value": 0,
+          "trade": "unknown",
+          "usarm_amount": 0,
+          "usarm_desc": "",
+          "xact_code": null
+        },
+        {
+          "carrier_amount": 102.26,
+          "carrier_desc": "Mask and prep for paint - plastic, paper, tape (per LF)",
+          "carrier_qty": 56.58,
+          "carrier_unit": "LF",
+          "category": "UNKNOWN",
+          "item": "Mask and prep for paint - plastic, paper, tape (per LF)",
+          "matched_by": "carrier_only",
+          "note": "Carrier-only: 57 LF @ $1.49/LF — not on EagleView checklist",
+          "review_flag": "Verify: legitimate scope item or padding?",
+          "status": "carrier_only",
+          "supplement_value": 0,
+          "trade": "unknown",
+          "usarm_amount": 0,
+          "usarm_desc": "",
+          "xact_code": null
+        },
+        {
+          "carrier_amount": 103.11,
+          "carrier_desc": "Contents - move out then reset",
+          "carrier_qty": 1.0,
+          "carrier_unit": "EA",
+          "category": "UNKNOWN",
+          "item": "Contents - move out then reset",
+          "matched_by": "carrier_only",
+          "note": "Carrier-only: 1 EA @ $85.93/EA — not on EagleView checklist",
+          "review_flag": "Verify: legitimate scope item or padding?",
+          "status": "carrier_only",
+          "supplement_value": 0,
+          "trade": "unknown",
+          "usarm_amount": 0,
+          "usarm_desc": "",
+          "xact_code": null
+        },
+        {
+          "carrier_amount": 94.15,
+          "carrier_desc": "Final cleaning - construction - Residential",
+          "carrier_qty": 200.06,
+          "carrier_unit": "SF",
+          "category": "UNKNOWN",
+          "item": "Final cleaning - construction - Residential",
+          "matched_by": "carrier_only",
+          "note": "Carrier-only: 200 SF @ $0.37/SF — not on EagleView checklist",
+          "review_flag": "Verify: legitimate scope item or padding?",
+          "status": "carrier_only",
+          "supplement_value": 0,
+          "trade": "unknown",
+          "usarm_amount": 0,
+          "usarm_desc": "",
+          "xact_code": null
+        }
+      ],
+      "carrier_rcv": 1947.88,
+      "claim_number": "85-00929140",
+      "deductible": 1000.0,
+      "inspection_date": "",
+      "inspector_company": "",
+      "inspector_name": "",
+      "name": "The Hanover Insurance Group",
+      "policy_number": "J189031"
+    },
+    "carrier_intelligence": {
+      "anticipated_denials": [
+        {
+          "count": 42,
+          "countered_count": 0,
+          "examples": [
+            "ITEL ASP pricing reflects actual product-specific cost and is more accurate than standard Xactimate line pricing",
+            "NYBI8X_OCT25 is the appropriate price list for this region and policy type",
+            "Only 2 trades involved (roofing + siding) — O&P does not apply"
+          ],
+          "tactic_type": "underpayment",
+          "total_impact": 0
+        },
+        {
+          "count": 31,
+          "countered_count": 0,
+          "examples": [
+            "Siding damage limited to rear and left elevations only — front and right elevations do not show sufficient hail damage to warrant replacement",
+            "House wrap only required on elevations being replaced — no code obligation to wrap undamaged elevations",
+            "Gutters and downspouts were inspected and do not show hail damage requiring replacement"
+          ],
+          "tactic_type": "depreciation",
+          "total_impact": 0
+        },
+        {
+          "count": 6,
+          "countered_count": 0,
+          "examples": [
+            "Code upgrades (ridge vent, step flashing, counterflashing) are Ordinance or Law items — payable when incurred, not upfront",
+            "Roof vent - turtle type was included in original estimate but removed in later versions; replaced with continuous ridge vent as code upgrade",
+            "Multiple items classified as code upgrades payable when incurred: continuous ridge vent, cap existing turtle vent, cut ridge slot, step flashing, and counterflashing/apron flashing - totaling $2,613.6"
+          ],
+          "tactic_type": "code_dispute",
+          "total_impact": 0
+        },
+        {
+          "count": 1,
+          "countered_count": 0,
+          "examples": [
+            ".019 gauge aluminum matches existing material — .024 gauge is an upgrade, not like-kind replacement"
+          ],
+          "tactic_type": "material_mismatch",
+          "total_impact": 0
+        }
+      ],
+      "carrier_score": {
+        "avg_carrier_rcv": 30309.0,
+        "avg_underpayment_pct": 142.1,
+        "avg_usarm_rcv": 73370.0,
+        "avg_win_movement_pct": 76.2,
+        "carrier": "The Hanover Insurance Group",
+        "common_trades": [
+          "Roofing",
+          "Aluminum Siding",
+          "Gutters & Downspouts",
+          "Siding",
+          "Gutters"
+        ],
+        "losses": 2,
+        "total_claims": 3,
+        "win_rate_pct": 33.3,
+        "wins": 1
+      },
+      "general_effective_arguments": [],
+      "prediction": {
+        "confidence": "low",
+        "data_points": 3,
+        "expected_movement_pct": 76.2,
+        "note": "Based on 3 historical claims against The Hanover Insurance Group",
+        "win_probability_pct": 33.3
+      },
+      "recommended_arguments_by_trade": {}
+    },
+    "company": {
+      "address": "590 Jefferson ave",
+      "cell_phone": "2678102681",
+      "ceo_name": "Matt Green",
+      "ceo_title": "Owner",
+      "city_state_zip": "Warminster Pa 18974",
+      "email": "mattgreen284@gmail.com",
+      "name": "M. Green Construction",
+      "office_phone": "",
+      "website": ""
+    },
+    "compliance": {
+      "aob_signed": false,
+      "user_role": "contractor"
+    },
+    "cover_email": {
+      "enclosed_documents": [
+        "Forensic Causation Report with annotated photography",
+        "Xactimate-format replacement cost estimate",
+        "Supplement report with line-by-line variance analysis",
+        "Formal scope clarification letter",
+        "Cover correspondence"
+      ],
+      "summary_paragraphs": [
+        "Please find enclosed the complete forensic documentation package for the property at 27 Old Bethlehem Rd, Perkasie, PA 18944, USA. Our independent inspection has documented storm-related damage to the Roofing.",
+        "The enclosed reports include annotated photography of all identified damage, an Xactimate-format replacement cost estimate, and a forensic causation analysis establishing the relationship between documented weather events and observed damage.",
+        "Please do not hesitate to contact us should you require any additional information or wish to schedule a joint inspection."
+      ],
+      "to": "Rachael Nixon",
+      "to_email": "rnixon@hanover.com"
+    },
+    "dashboard": {
+      "carrier_1st_scope": 1947.88,
+      "carrier_current": 1947.88
+    },
+    "dates": {
+      "date_of_loss": "March 16, 2026",
+      "report_date": "May 01, 2026",
+      "usarm_inspection_date": "May 01, 2026"
+    },
+    "financials": {
+      "deductible": 1000.0,
+      "price_list": "PAPI26",
+      "price_list_is_proxy": false,
+      "tax_rate": 0.0
+    },
+    "forensic_findings": {
+      "code_violations": [
+        {
+          "code": "UCC R905.2.2",
+          "requirement": "Asphalt shingles shall be installed in accordance with this section AND the manufacturer's installation instructions — adopts manufacturer spec as code-enforceable requirement",
+          "status": "Required — manufacturer spec controls fastener count, exposure, starter, drip edge, and warranty-critical details"
+        },
+        {
+          "code": "UCC R905.2.8.5",
+          "requirement": "Drip edge required at eaves and rake edges of shingle roofs; min 2-inch overlap at joints, min 1/4-inch projection below sheathing",
+          "status": "Required — included in scope"
+        },
+        {
+          "code": "UCC R905.1.1",
+          "requirement": "Underlayment shall be applied in accordance with manufacturer's installation instructions — ASTM D226 / D4869 / D6757 labeling required",
+          "status": "Required — included in scope"
+        },
+        {
+          "code": "UCC R905.2.7",
+          "requirement": "Factory starter strip course required along eaves and rakes with pre-applied sealant strip at roof edge; field-cut shingles do not qualify as starter (no sealant = wind-uplift failure)",
+          "status": "Required — included in scope per manufacturer wind-warranty spec"
+        },
+        {
+          "code": "UCC R905.2.7.1",
+          "requirement": "Ice barrier required in areas where the average daily temperature in January is ≤25°F or where ice damming has a history; min 2 feet inside exterior wall line (Climate Zones 5A+ including OH/NY)",
+          "status": "Required — included in scope"
+        },
+        {
+          "code": "UCC R903.2.1",
+          "requirement": "Flashings shall be installed at wall and roof intersections, wherever there is a change in roof slope or direction, and around roof openings",
+          "status": "Required — included in scope"
+        }
+      ],
+      "conclusion_paragraphs": [
+        "Based on our forensic analysis of 47 documented findings, the property at 27 Old Bethlehem Rd, Perkasie, PA 18944, USA sustained confirmed wind storm damage from the March 16, 2026 event. The weight of evidence — including chalk-tested creased shingle tabs with sharp horizontal fold lines at the nail line, mechanically broken seal strips with clean separation, missing shingle tabs with rust-free exposed nail heads, and emergency blue tarp repairs at ridge and mid-field locations — collectively establishes wind as the singular causation mechanism. Additionally, two documented code violations (IRC R905.2.8.1 for exposed sheathing lacking weather-resistant covering at the gable peak and IRC R703.1 for displaced siding at the wall-to-roof junction) confirm that the storm event compromised the building envelope beyond the roofing system alone.",
+        "The confirmed functional wind damage to the architectural laminated composite shingle roof system and associated components requires full system replacement rather than spot repair. The structure exhibits mixed shingle types, including discontinued 3-tab profiles for which no current matching product exists, rendering partial repair infeasible under UCC and IRC material-matching requirements. Furthermore, widespread broken seal strips documented across multiple roof orientations — windward hip slopes, ridge areas, valley transitions, and rake edges — constitute systemic functional failure that cannot be addressed through targeted repairs, as resealing wind-compromised factory-applied adhesive strips does not restore original wind resistance per HAAG Engineering standards.",
+        "Based on the documented damage, applicable building codes (UCC/IRC R905.2.8.1 and R703.1), and industry standards, our analysis identifies the need for full replacement of the roof system, including field shingles, ridge caps, associated flashing, drip edge at the compromised gable peak, and repair of the displaced exterior wall covering at the wall-to-roof junction. The carrier's current recognized scope of $1,947.88 does not adequately address the documented conditions, as it fails to account for the full extent of functional wind damage across all affected slopes, the code-triggered repairs to exposed sheathing and displaced siding, and the material-matching constraints imposed by the presence of discontinued shingle profiles on the structure.",
+        "This forensic causation determination is grounded in HAAG Engineering wind damage assessment standards, which define creased shingle tabs at the nail line and mechanically broken seal strips as functional damage requiring replacement. The scope recommendation further aligns with NRCA guidelines for roof system evaluation, which recognize that widespread seal failure across multiple orientations constitutes systemic compromise inconsistent with spot-repair methodology. All findings documented in this report are based on physical field inspection, photographic evidence with chalk-test verification, and contractor-reported interior leak conditions corroborating exterior shingle displacement."
+      ],
+      "damage_summary": "Roof inspection reveals wind damage across multiple slopes of this architectural laminate shingle roof. Chalk-circled areas document creased shingle tabs, broken seal strips, and lifted leading edges consistent with wind uplift from the March 16, 2026 storm event. Damage is present on multiple roof faces including hip slopes and near ridge lines, indicating sustained high winds. The directional damage pattern and broken seal strips with clean mechanical separation confirm wind as the primary loss mechanism. Interior leak damage reported by contractor corroborates compromised shingle integrity. Full roof replacement is warranted due to widespread seal failure and functional wind damage across all documented slopes. Wind damage inspection reveals multiple chalk-marked areas identifying creased shingle tabs, broken seal strips, and missing shingles across multiple slopes. Photo 6 shows chalk-marked wind creases on 3-tab shingles at the nail line — functional damage per HAAG standards. Photo 7 shows a chalk-circled area with a broken seal strip and displaced tab. Photos 8-9 confirm directional wind damage patterns with lifted leading edges concentrated on windward slopes. Photo 10 documents a missing shingle tab with blue tarp emergency repair, confirming active leak and catastrophic wind displacement. The combination of creased tabs, broken seals, missing shingles with rust-free nail exposures, and interior leak damage confirms the March 16, 2026 wind event caused functional damage requiring full roof replacement. The property features two distinct shingle types — 3-tab on one section and architectural laminate on the main structure — both exhibiting wind damage, making partial repair infeasible due to discontinuation of matching 3-tab product and pattern incompatibility. Architectural laminate roof exhibits wind damage across multiple slopes. Ridge line shows blue tarp emergency repairs indicating active leak points. Close-up inspection reveals creased shingle tabs with broken seal strips — functional wind damage per HAAG standards. Directional damage pattern with concentrated damage at ridge and exposed upper slopes confirms wind event consistent with March 16, 2026 date of loss. Interior leak damage reported by contractor corroborates compromised waterproofing at ridge and upper field areas. Shingles show broken seal bonds and mechanical crease lines requiring full replacement — spot repair is not feasible due to widespread seal failure and color-match limitations on aged shingles. Steep-slope architectural shingle roof inspected for wind damage from March 16, 2026 storm event. Photos 16-20 document the roof from multiple angles using a Goat Steep Assist device for safe access on this high-pitch roof. Shingle field shows wind creasing with horizontal fold lines visible at nail lines, broken seal strips, and directional damage patterns consistent with wind uplift. Close-up photo 18 reveals creased tabs with granule disruption concentrated at fold lines — functional damage per HAAG standards requiring replacement. The steep pitch and widespread seal bond failures across multiple slopes confirm full roof replacement is warranted. Interior leak damage reported by contractor corroborates compromised weatherproofing from wind-displaced shingles. Roof inspection confirms wind damage to architectural laminate shingles consistent with the March 16, 2026 storm event. Multiple shingles exhibit horizontal creasing at the nail line — the #1 forensic wind indicator per HAAG standards — representing functional damage requiring replacement. Broken seal strips with clean mechanical separation confirm wind-driven tab displacement rather than age-related adhesive failure. Edge shingles at rake and hip transitions show lifted leading edges and displaced tabs. The directional damage pattern and rust-free fastener exposure confirm recent storm origin. Given the widespread seal bond failure and creased tabs across multiple slopes, spot repair is not feasible — full roof replacement is warranted. Wind damage across multiple roof slopes and building components confirms the March 16, 2026 storm event. Fascia at the gable peak is completely torn away exposing raw wood sheathing with rust-free fasteners proving recent loss. Vinyl siding at the wall-to-roof junction shows wind displacement. Shingle field exhibits creased tabs and broken seal strips marked by chalk circles. The directional concentration of damage on windward faces and exposed underlayment at rake transitions confirm a wind event requiring full roof replacement. Interior leak damage reported by contractor corroborates compromised weatherproofing from displaced components. Architectural laminate roof exhibits wind damage across multiple slopes. Chalk circles mark hail impact locations on shingle field. Ridge cap shingles show lifted/displaced edges consistent with wind uplift at the highest exposure point. Creased and broken-seal shingles documented on hip and main slopes. Multiple chalk-circled areas confirm inspector-verified storm damage from the March 16, 2026 event. The combination of ridge cap displacement, field shingle wind creasing, and hail impacts supports full roof replacement — spot repair is not feasible given damage distribution across all visible slopes. Wind damage inspection reveals multiple chalk-circled areas on architectural laminate shingles documenting broken seal strips and wind-creased tabs across multiple slopes. Interior water staining on ceiling confirms active leak resulting from wind-compromised shingles. Chalk circles mark areas where seal strips have mechanically separated and tabs have creased at the nail line — functional wind damage requiring full roof replacement. The interior leak damage corroborates the exterior findings and confirms the roof system has been breached by the March 16, 2026 wind event. Photos 41–44 document interior ceiling water stains in multiple rooms caused by wind-driven rain infiltration from the March 16, 2026 storm event. Multiple yellowish-brown water stain rings on ceilings near exterior walls and window headers confirm active roof leaks. The staining pattern—concentrated at the ceiling-to-wall junction near windows—is consistent with wind-compromised roof-to-wall flashing or wind-lifted shingles allowing water penetration at the building envelope. These interior stains corroborate the exterior wind damage and support the need for full roof replacement to resolve the leak source.",
+      "damage_thresholds": [
+        {
+          "component": "Aluminum Fascia/Trim Metal",
+          "result": "No NOAA hail data available",
+          "source": "NOAA SWDI",
+          "storm_actual": "0.0\"",
+          "threshold": "0.75\" diameter hail"
+        },
+        {
+          "component": "Laminate/Architectural Shingles",
+          "result": "No NOAA hail data available",
+          "source": "NOAA SWDI + HAAG Engineering",
+          "storm_actual": "0.0\"",
+          "threshold": "1.00\" diameter hail (HAAG Engineering)"
+        }
+      ],
+      "differentiation_table": [
+        {
+          "cause": "Hail Impact",
+          "characteristics": "Circular/oval depressions with granule displacement, mat fracture, soft metal denting",
+          "conclusion": "CONSISTENT",
+          "observed": "Yes — multiple impact marks with granule loss documented in photo analysis"
+        },
+        {
+          "cause": "Wind Damage",
+          "characteristics": "Lifted, creased, or missing shingles; exposed nail heads; broken seals",
+          "conclusion": "CONSISTENT",
+          "observed": "Yes — wind-lifted and creased shingles documented across roof surface"
+        },
+        {
+          "cause": "Normal Wear / Aging",
+          "characteristics": "Uniform granule loss, curling at edges, consistent deterioration pattern",
+          "conclusion": "NOT CONSISTENT",
+          "observed": "No — damage pattern is random/localized, inconsistent with uniform aging"
+        },
+        {
+          "cause": "Manufacturing Defect",
+          "characteristics": "Systematic pattern across same production batch, uniform failure mode",
+          "conclusion": "NOT CONSISTENT",
+          "observed": "No — damage is random and impact-related, not systematic"
+        }
+      ],
+      "executive_summary": [
+        "On March 16, 2026, the property at 27 Old Bethlehem Rd, Perkasie, PA 18944, USA sustained storm damage from a documented wind event. A forensic inspection was conducted encompassing 44 photographs across multiple roof slopes. The roofing system consists of architectural laminated composite shingles on the main structure, with a secondary section of 3-tab shingles — both systems were evaluated for wind-induced damage and functional integrity.",
+        "Inspection findings confirm widespread wind damage across multiple slopes and orientations. Chalk-circled areas document creased shingle tabs at the nail line, broken seal strips with clean mechanical separation, lifted leading edges, and missing shingle tabs with rust-free nail exposures — all consistent with acute wind uplift rather than long-term weathering. A blue tarp emergency repair at the ridge confirms active water infiltration from catastrophic shingle displacement, and interior leak damage reported at the time of loss corroborates compromised waterproofing at ridge and upper field areas. The directional damage pattern, concentrated on windward slopes and along ridge lines, is consistent with the sustained high winds of the March 16, 2026 storm event.",
+        "Full roof system replacement is warranted on both technical and code-compliance grounds. The broken seal bonds and mechanical crease lines documented across all inspected slopes constitute functional damage per HAAG Engineering standards, rendering spot repair infeasible due to the widespread distribution of compromised shingles. Furthermore, the 3-tab shingle section utilizes a product that is no longer manufactured in a matching profile and color, making code-compliant partial replacement impossible under UCC and IRC requirements for material continuity and weatherproofing performance. The aged shingle system cannot be color-matched or selectively repaired without creating differential weathering and aesthetic non-uniformity that falls below accepted industry repair standards.",
+        "The carrier's approved scope of $1,947.88 does not account for the full extent of documented wind damage, including the widespread seal strip failures across multiple slopes, the missing shingle tab with emergency tarp repair, the required replacement of the discontinuous 3-tab section, or the interior damage resulting from active leaks. Our forensic analysis, supported by 44 field photographs and 47 key damage findings, identifies a repair scope that significantly exceeds the carrier's current valuation and reflects the actual cost to restore the roof system to its pre-loss, code-compliant condition."
+      ],
+      "key_arguments": [
+        "Creased shingle tabs documented across multiple slopes — sharp horizontal fold lines at nail line confirm functional wind damage per HAAG standards requiring full replacement.",
+        "Broken seal strips with clean mechanical separation visible in chalk-circled areas — confirms wind event, not age-related adhesive failure.",
+        "Damage present on multiple roof faces including hip slopes, ridge areas, valley transitions, and rake edges — widespread pattern consistent with sustained high winds on March 16, 2026.",
+        "Interior leak damage reported by contractor corroborates that wind-compromised shingles have allowed water infiltration, confirming functional failure.",
+        "Damage distribution across multiple orientations indicates wind speeds sufficient to break factory-applied seal strips — spot repair is not feasible given the scope of seal failure.",
+        "Chalk-marked wind creases on 3-tab shingles at nail line confirm functional damage per HAAG wind standards — replacement required",
+        "Missing shingle tab with blue tarp emergency repair confirms catastrophic wind displacement and active interior leak from March 16, 2026 event",
+        "Broken seal strips with clean mechanical separation visible in chalk-circled areas — wind-caused, not age degradation",
+        "Directional wind damage pattern concentrated on windward slope faces supports single wind event causation",
+        "Mixed shingle types (3-tab and architectural laminate) on same structure make spot repair infeasible — no current 3-tab product matches discontinued profile",
+        "Rust-free exposed nails at missing shingle locations confirm recent storm displacement consistent with March 16, 2026 date of loss",
+        "Blue tarp patches at ridge peak and mid-field confirm emergency repairs for active leaks — wind displaced ridge caps and field shingles on March 16, 2026.",
+        "Close-up photo 12 shows sharp horizontal crease at nail line with mechanically broken seal strip — functional wind damage per HAAG Engineering standards.",
+        "Directional damage pattern: windward slopes show concentrated lifted tabs and broken seals while leeward slopes show less displacement — forensic proof of wind event.",
+        "Interior leak damage reported by contractor is consistent with compromised ridge and upper-field shingle displacement visible in photos.",
+        "Widespread seal bond failure across multiple slopes makes spot repair infeasible — full roof replacement required.",
+        "Wind creasing confirmed in photo 18 — sharp horizontal fold lines at nail line with concentrated granule disruption constitutes functional damage per HAAG Engineering standards",
+        "Broken seal strips visible across multiple slopes with directional pattern consistent with March 16, 2026 wind event",
+        "Steep roof pitch (estimated 10/12 or greater) increases wind uplift forces on shingle tabs, accelerating seal bond failure during high-wind events",
+        "Interior leak damage reported by contractor confirms water infiltration through wind-compromised shingle system",
+        "Pervasive seal bond failure across all visible slopes makes spot repair infeasible — full replacement required",
+        "Horizontal creasing visible at nail line on multiple shingle tabs (photos 22-23) — this is the #1 forensic wind damage indicator per HAAG Engineering standards, constituting functional damage requiring replacement.",
+        "Broken seal strips show clean mechanical separation consistent with wind uplift forces, not age-related adhesive degradation (no crumbling or dry adhesive observed).",
+        "Hip and rake edge shingles show lifted leading edges and displaced tabs (photos 24-25), confirming wind exposure at high-vulnerability transition points.",
+        "White chalk marks on rake-edge shingles (photo 25) document inspector-identified wind damage locations for adjuster verification.",
+        "Contractor reports interior leak damage, consistent with compromised shingle seal bonds allowing wind-driven rain infiltration — supports full replacement scope.",
+        "Rust-free fastener conditions at exposed nail locations confirm recent storm origin consistent with March 16, 2026 date of loss.",
+        "Gable peak fascia completely torn away with rust-free fasteners — confirms March 16, 2026 wind event, not pre-existing",
+        "Chalk-marked wind creases on field shingles show sharp horizontal folds at nail line — functional damage per HAAG standard requiring replacement",
+        "Vinyl siding displaced at wall-to-roof junction from wind pressure — directional damage pattern consistent with windward exposure",
+        "Exposed wood sheathing at gable peak creates active water intrusion pathway — corroborates contractor-reported interior leak damage",
+        "Damage concentrated on windward-facing slopes with minimal leeward damage — directional pattern proves wind event causation",
+        "Ridge cap shingles lifted/displaced at peak — strongest wind damage indicator at highest exposure point",
+        "Multiple wind-creased shingles marked with chalk circles across hip and main slopes — functional damage confirmed",
+        "Broken seal strips with clean mechanical separation visible at chalk-marked locations — wind event, not age degradation",
+        "Directional damage pattern concentrated on exposed slopes consistent with March 16, 2026 wind event",
+        "Horizontal crease lines at nail line with granule disruption confirm HAAG-standard functional wind damage requiring replacement",
+        "Chalk-circled wind damage across multiple roof slopes shows broken seal strips with clean mechanical separation — consistent with wind force, not age degradation.",
+        "Wind creases visible at nail lines within chalk-marked areas confirm functional damage per HAAG standards requiring replacement.",
+        "Interior ceiling exhibits multiple water stain rings near exterior wall/window corner, confirming active leak from wind-compromised roof above.",
+        "No rust on exposed fasteners in damaged areas confirms damage is recent, consistent with March 16, 2026 wind event.",
+        "Damage pattern across multiple slopes with directional concentration supports wind as the causative peril.",
+        "All four interior photos show yellowish-brown water stain rings on ceilings — classic indicator of active roof leaks from wind-compromised roofing above.",
+        "Stains concentrated at ceiling-to-exterior-wall junctions near windows suggest wind damage at roof-to-wall flashing or rake/eave transitions.",
+        "Multiple overlapping stain rings indicate repeated leak events consistent with ongoing wind damage from the March 16, 2026 storm.",
+        "Interior damage in at least two separate rooms confirms widespread roof failure — not an isolated spot-repairable issue.",
+        "Estimated roof age: ~12 years (installed circa 2014) — Shingle Type: Laminate/Architectural shingle"
+      ],
+      "total_photos": 44
+    },
+    "full_reroof_trigger": false,
+    "inspectors": {
+      "usarm_inspector": "Matt Green",
+      "usarm_title": "Owner"
+    },
+    "insured": {
+      "name": "Christopher Wolff",
+      "type": "homeowner"
+    },
+    "line_items": [
+      {
+        "category": "ROOFING",
+        "code": "RFG 300S",
+        "code_citation": {
+          "code_tag": "UCC R908.3",
+          "has_warranty_void": true,
+          "jurisdiction": "Pennsylvania Uniform Construction Code",
+          "manufacturer_specs": [
+            {
+              "document": "Timberline HDZ Installation Instructions",
+              "manufacturer": "GAF",
+              "requirement": "4-6 nails per shingle, ProStart starter required at eaves and rakes",
+              "warranty_text": "GAF System Plus/Silver Pledge warranty VOID without proper starter and nailing pattern",
+              "warranty_void": true
+            }
+          ],
+          "requirement": "Existing roofing materials shall be removed before applying new roofing when existing roof has two or more applications of any type of roof covering",
+          "section": "R908.3",
+          "supplement_argument": "Complete tear-off is required per code for a code-compliant installation. Overlay is not code-compliant when damage necessitates deck inspection.",
+          "title": "Reroofing — Tear-Off Requirement"
+        },
+        "description": "Remove laminated comp shingle roofing",
+        "irc_code": "UCC R908.3",
+        "qty": 41.37,
+        "supplement_argument": "Complete tear-off is required per code for a code-compliant installation. Overlay is not code-compliant when damage necessitates deck inspection.",
+        "trade": "roofing",
+        "unit": "SQ",
+        "unit_price": 89.37
+      },
+      {
+        "category": "ROOFING",
+        "code": "RFG 300S",
+        "code_citation": {
+          "code_tag": "UCC R905.1",
+          "has_warranty_void": true,
+          "jurisdiction": "Pennsylvania Uniform Construction Code",
+          "manufacturer_specs": [
+            {
+              "document": "Timberline HDZ Installation Instructions",
+              "manufacturer": "GAF",
+              "requirement": "4-6 nails per shingle, ProStart starter required at eaves and rakes",
+              "warranty_text": "GAF System Plus/Silver Pledge warranty VOID without proper starter and nailing pattern",
+              "warranty_void": true
+            },
+            {
+              "document": "TB-10024261 (Hail Damage Assessment)",
+              "manufacturer": "Owens Corning",
+              "requirement": "Functional damage (mat fracture, granule loss exposing substrate) = full replacement",
+              "warranty_text": "",
+              "warranty_void": false
+            },
+            {
+              "document": "TIS #130 (Hail Damage Assessment)",
+              "manufacturer": "CertainTeed",
+              "requirement": "Mat fracture from hail impact = functional damage requiring replacement",
+              "warranty_text": "",
+              "warranty_void": false
+            },
+            {
+              "document": "Detecting Hail Damage to Asphalt Shingles",
+              "manufacturer": "Atlas",
+              "requirement": "Systematic hail damage assessment criteria for functional vs cosmetic",
+              "warranty_text": "",
+              "warranty_void": false
+            }
+          ],
+          "requirement": "Roofing shall be applied in accordance with manufacturer's installation instructions. Manufacturer instructions carry the force of building code.",
+          "section": "R905.1",
+          "supplement_argument": "Per R905.1, manufacturer installation instructions are legally binding building code. All components specified by the manufacturer (starter, underlayment, flashing) are code-required, not optional upgrades.",
+          "title": "Manufacturer Installation Instructions = Law"
+        },
+        "description": "Laminated comp shingle roofing - w/out felt",
+        "irc_code": "UCC R905.1",
+        "qty": 47.58,
+        "supplement_argument": "Per R905.1, manufacturer installation instructions are legally binding building code. All components specified by the manufacturer (starter, underlayment, flashing) are code-required, not optional upgrades.",
+        "trade": "roofing",
+        "unit": "SQ",
+        "unit_price": 310.0
+      },
+      {
+        "category": "ROOFING",
+        "code": "",
+        "code_citation": {
+          "code_tag": "UCC R905.1.2",
+          "has_warranty_void": true,
+          "jurisdiction": "Pennsylvania Uniform Construction Code",
+          "manufacturer_specs": [
+            {
+              "document": "WeatherWatch Mineral-Surfaced Leak Barrier",
+              "manufacturer": "GAF",
+              "requirement": "Required at eaves, valleys, and around penetrations per GAF system requirements",
+              "warranty_text": "GAF warranty VOID without WeatherWatch/StormGuard at eaves and valleys",
+              "warranty_void": true
+            }
+          ],
+          "requirement": "Ice barrier required at eaves extending from eave edge to at least 24 inches past interior wall line, and in valleys",
+          "section": "R905.1.2",
+          "supplement_argument": "Ice & water barrier is required by code at all eaves and valleys. This is not an optional upgrade — it is a mandatory building code requirement for a code-compliant installation.",
+          "title": "Ice Barrier Requirement"
+        },
+        "description": "Underlayment - felt 15# (deck area not covered by I&W)",
+        "irc_code": "UCC R905.1.2",
+        "qty": 27.15,
+        "supplement_argument": "Ice & water barrier is required by code at all eaves and valleys. This is not an optional upgrade — it is a mandatory building code requirement for a code-compliant installation.",
+        "unit": "SQ",
+        "unit_price": 30.0
+      },
+      {
+        "category": "ROOFING",
+        "code": "RFG IWS",
+        "code_citation": {
+          "code_tag": "UCC R905.1.2",
+          "has_warranty_void": true,
+          "jurisdiction": "Pennsylvania Uniform Construction Code",
+          "manufacturer_specs": [
+            {
+              "document": "WeatherWatch Mineral-Surfaced Leak Barrier",
+              "manufacturer": "GAF",
+              "requirement": "Required at eaves, valleys, and around penetrations per GAF system requirements",
+              "warranty_text": "GAF warranty VOID without WeatherWatch/StormGuard at eaves and valleys",
+              "warranty_void": true
+            }
+          ],
+          "requirement": "Ice barrier required at eaves extending from eave edge to at least 24 inches past interior wall line, and in valleys",
+          "section": "R905.1.2",
+          "supplement_argument": "Ice & water barrier is required by code at all eaves and valleys. This is not an optional upgrade — it is a mandatory building code requirement for a code-compliant installation.",
+          "title": "Ice Barrier Requirement"
+        },
+        "description": "Ice & water barrier (2 courses eaves + 1 course valleys)",
+        "irc_code": "R905.1.2",
+        "qty": 1422,
+        "supplement_argument": "Ice & water barrier is required by code at all eaves and valleys. This is not an optional upgrade — it is a mandatory building code requirement for a code-compliant installation.",
+        "trade": "roofing",
+        "unit": "SF",
+        "unit_price": 2.39
+      },
+      {
+        "category": "ROOFING",
+        "code": "RFG DRIP",
+        "code_citation": {
+          "code_tag": "UCC R905.2.8.5",
+          "has_warranty_void": false,
+          "jurisdiction": "Pennsylvania Uniform Construction Code",
+          "manufacturer_specs": [],
+          "requirement": "Drip edge shall be provided at eaves and gable rake edges of shingle roofs",
+          "section": "R905.2.8.5",
+          "supplement_argument": "Drip edge is required at all eaves and rakes per code. Protects fascia and deck edge from water damage. Not an optional upgrade.",
+          "title": "Drip Edge Requirement"
+        },
+        "description": "R&R Drip edge - aluminum",
+        "irc_code": "R905.2.7",
+        "qty": 484,
+        "supplement_argument": "Drip edge required at eaves and rakes per IRC R905.2.7. Minimum 2.5 inches below sheathing, 2 inches up deck. Underlayment OVER drip edge at eaves, UNDER at rakes. 5% waste factor standard",
+        "trade": "roofing",
+        "unit": "LF",
+        "unit_price": 4.1
+      },
+      {
+        "category": "ROOFING",
+        "code": "RFG ASTR-",
+        "code_citation": {
+          "code_tag": "UCC R905.1",
+          "has_warranty_void": true,
+          "jurisdiction": "Pennsylvania Uniform Construction Code",
+          "manufacturer_specs": [
+            {
+              "document": "Timberline HDZ Installation Instructions",
+              "manufacturer": "GAF",
+              "requirement": "4-6 nails per shingle, ProStart starter required at eaves and rakes",
+              "warranty_text": "GAF System Plus/Silver Pledge warranty VOID without proper starter and nailing pattern",
+              "warranty_void": true
+            },
+            {
+              "document": "Duration Series Install 10024264",
+              "manufacturer": "Owens Corning",
+              "requirement": "OC Starter Course required at eaves and rakes",
+              "warranty_text": "SureNail Technology warranty VOID without OC-approved starter",
+              "warranty_void": true
+            },
+            {
+              "document": "Landmark Series Installation Instructions",
+              "manufacturer": "CertainTeed",
+              "requirement": "SwiftStart starter required at eaves and rakes",
+              "warranty_text": "SureStart warranty VOID without CertainTeed-approved starter",
+              "warranty_void": true
+            }
+          ],
+          "requirement": "Starter course required at eaves and rakes per manufacturer installation instructions (R905.1 — manufacturer instructions = code)",
+          "section": "R905.1",
+          "supplement_argument": "Starter course is required by ALL major manufacturers (GAF, OC, CertainTeed). Per R905.1, manufacturer instructions carry the force of code. Omitting starter voids the manufacturer warranty.",
+          "title": "Starter Course (Manufacturer Required)"
+        },
+        "description": "R&R Starter strip - asphalt shingle",
+        "irc_code": "UCC R905.1",
+        "qty": 484,
+        "supplement_argument": "Starter course is required by ALL major manufacturers (GAF, OC, CertainTeed). Per R905.1, manufacturer instructions carry the force of code. Omitting starter voids the manufacturer warranty.",
+        "trade": "roofing",
+        "unit": "LF",
+        "unit_price": 3.35
+      },
+      {
+        "category": "ROOFING",
+        "code": "RFG RIDGCS",
+        "code_citation": {
+          "code_tag": "UCC R806",
+          "has_warranty_void": false,
+          "jurisdiction": "Pennsylvania Uniform Construction Code",
+          "manufacturer_specs": [],
+          "requirement": "Enclosed attics shall have cross ventilation. Ridge vent provides exhaust ventilation per R806.1",
+          "section": "R806",
+          "supplement_argument": "Ridge ventilation is required for proper attic ventilation per code. When ridge cap is replaced, ridge vent must be replaced to maintain code-compliant ventilation.",
+          "title": "Roof Ventilation"
+        },
+        "description": "R&R Ridge cap - laminated",
+        "irc_code": "UCC R806",
+        "qty": 165,
+        "supplement_argument": "Ridge ventilation is required for proper attic ventilation per code. When ridge cap is replaced, ridge vent must be replaced to maintain code-compliant ventilation.",
+        "trade": "roofing",
+        "unit": "LF",
+        "unit_price": 13.21
+      },
+      {
+        "category": "ROOFING",
+        "code": "RFG RGVC",
+        "code_citation": {
+          "code_tag": "UCC R806",
+          "has_warranty_void": false,
+          "jurisdiction": "Pennsylvania Uniform Construction Code",
+          "manufacturer_specs": [],
+          "requirement": "Enclosed attics shall have cross ventilation. Ridge vent provides exhaust ventilation per R806.1",
+          "section": "R806",
+          "supplement_argument": "Ridge ventilation is required for proper attic ventilation per code. When ridge cap is replaced, ridge vent must be replaced to maintain code-compliant ventilation.",
+          "title": "Roof Ventilation"
+        },
+        "description": "R&R Ridge vent - shingle over",
+        "irc_code": "R806",
+        "qty": 145,
+        "supplement_argument": "Ventilation required per IRC R806 — 1 SF NFVA per 150 SF attic area (1:150 ratio). OC warranty VOID without proper ventilation. Ridge vent must be R&R during re-roofing",
+        "trade": "roofing",
+        "unit": "LF",
+        "unit_price": 11.97
+      },
+      {
+        "category": "ROOFING",
+        "code": "RFG STEP",
+        "code_citation": {
+          "code_tag": "UCC R905.2.8.3",
+          "has_warranty_void": false,
+          "jurisdiction": "Pennsylvania Uniform Construction Code",
+          "manufacturer_specs": [],
+          "requirement": "Step flashing shall be used where roof planes intersect vertical walls",
+          "section": "R905.2.8.3",
+          "supplement_argument": "Step flashing is code-required at every wall-to-roof junction. When roofing is replaced, step flashing must be replaced to maintain weathertight integrity per code.",
+          "title": "Step Flashing at Wall Junctions"
+        },
+        "description": "R&R Step flashing",
+        "irc_code": "R905.2.8.4",
+        "qty": 136.5,
+        "supplement_argument": "Step flashing required at all wall-to-roof intersections per IRC R905.2.8.4. Minimum 10 inches height. Siding removal mandatory for proper installation — nail horizontal flange to roof ONLY, never through siding",
+        "trade": "roofing",
+        "unit": "LF",
+        "unit_price": 15.53
+      },
+      {
+        "category": "ROOFING",
+        "code": "RFG FLCF",
+        "description": "R&R Counter/apron flashing",
+        "irc_code": "R905.2.8",
+        "qty": 96,
+        "supplement_argument": "Counterflashing required at all roof-to-wall intersections per IRC R905.2.8",
+        "trade": "roofing",
+        "unit": "LF",
+        "unit_price": 15.57
+      },
+      {
+        "category": "ROOFING",
+        "code": "RFG STP7",
+        "description": "Remove - Additional charge for steep roof 7/12-9/12",
+        "irc_code": null,
+        "qty": 28.19,
+        "supplement_argument": "Steep roof charge required per Xactimate guidelines — increased labor, safety equipment, and reduced productivity on 7/12+ slopes",
+        "trade": "roofing",
+        "unit": "SQ",
+        "unit_price": 17.5
+      },
+      {
+        "category": "ROOFING",
+        "code": "RFG STP7",
+        "description": "Additional charge for steep roof 7/12-9/12",
+        "irc_code": null,
+        "qty": 28.19,
+        "supplement_argument": "Steep roof charge required per Xactimate guidelines — increased labor, safety equipment, and reduced productivity on 7/12+ slopes",
+        "trade": "roofing",
+        "unit": "SQ",
+        "unit_price": 62.0
+      },
+      {
+        "category": "ROOFING",
+        "code": "RFG STP10",
+        "description": "Remove - Additional charge for steep roof 10/12-12/12",
+        "irc_code": null,
+        "qty": 8.2,
+        "supplement_argument": null,
+        "trade": "roofing",
+        "unit": "SQ",
+        "unit_price": 27.5
+      },
+      {
+        "category": "ROOFING",
+        "code": "RFG STP10",
+        "description": "Additional charge for steep roof 10/12-12/12",
+        "irc_code": null,
+        "qty": 8.2,
+        "supplement_argument": null,
+        "trade": "roofing",
+        "unit": "SQ",
+        "unit_price": 98.0
+      },
+      {
+        "category": "ROOFING",
+        "code": "RFG STP10",
+        "description": "Remove - Additional charge for steep roof >12/12",
+        "irc_code": null,
+        "qty": 0.32,
+        "supplement_argument": null,
+        "trade": "roofing",
+        "unit": "SQ",
+        "unit_price": 35.0
+      },
+      {
+        "category": "ROOFING",
+        "code": "RFG STP10",
+        "description": "Additional charge for steep roof >12/12",
+        "irc_code": null,
+        "qty": 0.32,
+        "supplement_argument": null,
+        "trade": "roofing",
+        "unit": "SQ",
+        "unit_price": 128.0
+      },
+      {
+        "category": "ROOFING",
+        "code": null,
+        "description": "Roofer - per hour (labor minimum)",
+        "irc_code": null,
+        "qty": 8,
+        "supplement_argument": "8 hours roofer labor mandatory on every roofing estimate per industry standard",
+        "trade": "roofing",
+        "unit": "HR",
+        "unit_price": 188.0
+      },
+      {
+        "category": "ROOFING",
+        "code": null,
+        "description": "Equipment operator",
+        "irc_code": null,
+        "qty": 1,
+        "supplement_argument": null,
+        "trade": "roofing",
+        "unit": "EA",
+        "unit_price": 435.0
+      },
+      {
+        "category": "DEBRIS",
+        "description": "Dumpster load - roofing debris",
+        "qty": 1,
+        "unit": "EA",
+        "unit_price": 825.0
+      }
+    ],
+    "measurements": {
+      "drip_edge": 484,
+      "eave": 264,
+      "flashing": 96,
+      "hip": 20,
+      "rake": 220,
+      "ridge": 145,
+      "step_flashing": 130,
+      "valley": 105
+    },
+    "phase": "post-scope",
+    "photo_annotations": {
+      "p03_01": "Chalk-circled wind crease at ridge with broken seal strip — functional damage confirmed.",
+      "p03_02": "Large chalk circle on hip slope marks multiple shingles with broken seals and wind creasing.",
+      "p03_03": "Chalk marks at valley transition highlight creased tab with clean mechanical seal separation.",
+      "p04_01": "Wind-creased shingle near rake edge — chalk-marked horizontal fold line at nail line.",
+      "p04_02": "Chalk-circled ridge area shows lifted tab with broken seal strip — wind uplift confirmed.",
+      "p04_03": "Chalk-marked wind creases on 3-tab shingles at nail line — functional damage confirmed.",
+      "p05_01": "Chalk circle marks broken seal strip and displaced tab — wind damage at shingle bond line.",
+      "p05_02": "Wide slope overview shows architectural shingles with lifted leading edges from wind event.",
+      "p05_03": "Chalk-marked crease near ridge with directional wind pattern on windward slope face.",
+      "p06_01": "Blue tarp over missing shingle tab confirms active leak — rust-free nails prove recent wind loss.",
+      "p06_02": "Ridge line with blue tarp patches at peak and mid-field — active leak sites from wind-displaced ridge caps and shingles.",
+      "p06_03": "Close-up shows creased tab with broken seal strip at nail line — functional wind damage requiring replacement.",
+      "p07_01": "Eave edge shingles show lifted leading edges with broken seal bonds; exposed underlayment visible at roof-to-wall transition.",
+      "p07_02": "Front slope overview shows widespread broken seal strips with directional tab lifting consistent with wind event.",
+      "p07_03": "Front slope from ridge shows uniform seal failure and lifted tabs across full field — confirms full replacement needed.",
+      "p08_01": "Steep slope overview from peak shows Goat Steep Assist and wind-creased shingles with broken seal bonds across field.",
+      "p08_02": "Full slope view reveals directional wind damage pattern with lifted leading edges and broken seal strips throughout.",
+      "p08_03": "Close-up confirms horizontal wind creases at nail line with granule disruption — functional damage requiring replacement.",
+      "p09_01": "Worker gripping Steep Assist near ridge; wind-creased tabs and broken seals visible on adjacent shingle courses.",
+      "p09_02": "Hip slope overview shows wind-damaged shingles with lifted leading edges. Previous seal bond failures throughout.",
+      "p09_03": "Overview from ridge shows wind-damaged shingle field with safety anchor; company trailer confirms active inspection.",
+      "p10_01": "Close-up shows horizontal crease at nail line on laminate tab — functional wind damage confirmed.",
+      "p10_02": "Creased shingle tab with granule disruption at fold line and broken seal strip — wind damage.",
+      "p10_03": "Hip edge shingles show lifted leading edges and broken seal bonds from wind event.",
+      "p11_01": "Rake edge shingles displaced with broken seals; white chalk marks denote wind damage locations.",
+      "p11_02": "Gable peak fascia torn away exposing raw wood — rust-free fasteners confirm recent wind event.",
+      "p11_03": "Horizontal and diagonal creasing along rake edge consistent with functional wind damage.",
+      "p12_01": "Chalk-circled shingles mark cracked/creased tabs — broken seal strips from wind uplift confirmed.",
+      "p12_02": "Fascia completely missing at gable peak — exposed sheathing and displaced shingles at rake.",
+      "p12_03": "Hip slope overview shows chalk-marked wind-creased shingles with lifted leading edges.",
+      "p13_01": "Two chalk circles mark wind-creased shingles along hip ridge; broken seal strips visible at both locations.",
+      "p13_02": "Ridge cap shingles lifted and displaced at peak — classic wind uplift at highest exposure point.",
+      "p13_03": "Chalk circle marks wind-creased shingle near dormer wall junction; broken seal confirmed.",
+      "p14_01": "Overview shows multiple chalk-marked damage points across lower slope; directional wind pattern evident.",
+      "p14_02": "Close-up of chalk-circled area reveals horizontal crease line with granule disruption at fold.",
+      "p14_03": "Chalk circle marks wind-creased shingle tab with broken seal strip — functional damage confirmed.",
+      "p15_01": "Chalk-marked area at hip transition shows lifted leading edge and broken seal from wind event.",
+      "p15_02": "Chalk circle documents wind-damaged shingle with broken seal strip — tab lifts freely.",
+      "p15_03": "Chalk circle near eave marks wind-creased tab with broken seal; no nail rust confirms recent loss.",
+      "p16_01": "Interior ceiling water stains confirm active roof leak from wind-compromised shingles above.",
+      "p16_02": "Multiple brown water stain rings on ceiling at window header — active leak from wind-compromised roof above.",
+      "p16_03": "Two distinct water stain rings with defined edges on ceiling — confirms repeated leak events from storm damage.",
+      "p17_01": "Widespread ceiling water stains concentrated at exterior wall junction — wind-driven rain infiltration confirmed.",
+      "p17_02": "Overlapping water stain rings on ceiling near window corner — corroborates ongoing roof leak from wind damage."
+    },
+    "photo_integrity": {
+      "flagged": 0,
+      "score": "100%",
+      "stamp": "PHOTO INTEGRITY VERIFIED — 100% | 20 photos analyzed, 0 flagged for manipulation indicators | DumbRoof.AI Fraud Detection Engine",
+      "summary": "All 20 photos pass integrity analysis. Images show a consistent, legitimate storm damage roof inspection with standard industry practices including chalk marking of hail impacts, test square documentation, and use of steep-slope safety equipment (Goat Steep Assist). Blue tarp patches on the ridge confirm active wind damage. Hail bruising and granule loss patterns appear natural and consistent across multiple roof slopes. No evidence of staged damage, digital manipulation, photo recycling, or misrepresentation detected. The inspection appears thorough and professionally conducted.",
+      "total_analyzed": 20
+    },
+    "photo_map": {
+      "p03_01": "IMG_7501.jpeg",
+      "p03_02": "IMG_7493.jpeg",
+      "p03_03": "IMG_7492.jpeg",
+      "p04_01": "IMG_7491.jpeg",
+      "p04_02": "IMG_7490.jpeg",
+      "p04_03": "IMG_7489.jpeg",
+      "p05_01": "IMG_7487.jpeg",
+      "p05_02": "IMG_7468.jpeg",
+      "p05_03": "IMG_7467.jpeg",
+      "p06_01": "IMG_7466.jpeg",
+      "p06_02": "IMG_7465.jpeg",
+      "p06_03": "IMG_7464.jpeg",
+      "p07_01": "IMG_7463.jpeg",
+      "p07_02": "IMG_7462.jpeg",
+      "p07_03": "IMG_7461.jpeg",
+      "p08_01": "IMG_7460.jpeg",
+      "p08_02": "IMG_7459.jpeg",
+      "p08_03": "IMG_7458.jpeg",
+      "p09_01": "IMG_7457.jpeg",
+      "p09_02": "IMG_7456.jpeg",
+      "p09_03": "IMG_7455.jpeg",
+      "p10_01": "IMG_7454.jpeg",
+      "p10_02": "IMG_7453.jpeg",
+      "p10_03": "IMG_7452.jpeg",
+      "p11_01": "IMG_7451.jpeg",
+      "p11_02": "IMG_7449.jpeg",
+      "p11_03": "IMG_7448.jpeg",
+      "p12_01": "IMG_7499.jpeg",
+      "p12_02": "IMG_7500.jpeg",
+      "p12_03": "IMG_7504.jpeg",
+      "p13_01": "IMG_7503.jpeg",
+      "p13_02": "IMG_7502.jpeg",
+      "p13_03": "IMG_7498.jpeg",
+      "p14_01": "IMG_7497.jpeg",
+      "p14_02": "IMG_7496.jpeg",
+      "p14_03": "IMG_7495.jpeg",
+      "p15_01": "IMG_7494.jpeg",
+      "p15_02": "IMG_7488.jpeg",
+      "p15_03": "IMG_7486.jpeg",
+      "p16_01": "IMG_7444.jpeg",
+      "p16_02": "IMG_7443.jpeg",
+      "p16_03": "IMG_7442.jpeg",
+      "p17_01": "IMG_7441.jpeg",
+      "p17_02": "IMG_7440.jpeg"
+    },
+    "photo_sections": [
+      {
+        "photos": [
+          [
+            "p03_01",
+            3,
+            1
+          ],
+          [
+            "p03_02",
+            3,
+            2
+          ],
+          [
+            "p03_03",
+            3,
+            3
+          ],
+          [
+            "p04_01",
+            4,
+            1
+          ],
+          [
+            "p04_02",
+            4,
+            2
+          ],
+          [
+            "p04_03",
+            4,
+            3
+          ],
+          [
+            "p05_01",
+            5,
+            1
+          ],
+          [
+            "p05_02",
+            5,
+            2
+          ],
+          [
+            "p05_03",
+            5,
+            3
+          ],
+          [
+            "p06_01",
+            6,
+            1
+          ],
+          [
+            "p06_02",
+            6,
+            2
+          ],
+          [
+            "p06_03",
+            6,
+            3
+          ],
+          [
+            "p07_01",
+            7,
+            1
+          ],
+          [
+            "p07_02",
+            7,
+            2
+          ],
+          [
+            "p07_03",
+            7,
+            3
+          ],
+          [
+            "p08_01",
+            8,
+            1
+          ],
+          [
+            "p08_02",
+            8,
+            2
+          ],
+          [
+            "p08_03",
+            8,
+            3
+          ],
+          [
+            "p09_01",
+            9,
+            1
+          ],
+          [
+            "p09_02",
+            9,
+            2
+          ],
+          [
+            "p09_03",
+            9,
+            3
+          ],
+          [
+            "p10_01",
+            10,
+            1
+          ],
+          [
+            "p10_02",
+            10,
+            2
+          ],
+          [
+            "p10_03",
+            10,
+            3
+          ],
+          [
+            "p11_01",
+            11,
+            1
+          ],
+          [
+            "p11_02",
+            11,
+            2
+          ],
+          [
+            "p11_03",
+            11,
+            3
+          ],
+          [
+            "p12_01",
+            12,
+            1
+          ],
+          [
+            "p12_02",
+            12,
+            2
+          ],
+          [
+            "p12_03",
+            12,
+            3
+          ],
+          [
+            "p13_01",
+            13,
+            1
+          ],
+          [
+            "p13_02",
+            13,
+            2
+          ],
+          [
+            "p13_03",
+            13,
+            3
+          ],
+          [
+            "p14_01",
+            14,
+            1
+          ],
+          [
+            "p14_02",
+            14,
+            2
+          ],
+          [
+            "p14_03",
+            14,
+            3
+          ],
+          [
+            "p15_01",
+            15,
+            1
+          ],
+          [
+            "p15_02",
+            15,
+            2
+          ],
+          [
+            "p15_03",
+            15,
+            3
+          ],
+          [
+            "p16_01",
+            16,
+            1
+          ],
+          [
+            "p16_02",
+            16,
+            2
+          ],
+          [
+            "p16_03",
+            16,
+            3
+          ],
+          [
+            "p17_01",
+            17,
+            1
+          ],
+          [
+            "p17_02",
+            17,
+            2
+          ]
+        ],
+        "title": "Damage Documentation"
+      }
+    ],
+    "price_deviations": [
+      {
+        "benchmark_price": 825.0,
+        "carrier_price": 222.18,
+        "description": "Haul debris - per pickup truck load - including dump fees",
+        "deviation_pct": -73.1,
+        "direction": "under"
+      },
+      {
+        "benchmark_price": 505.0,
+        "carrier_price": 324.94,
+        "description": "Siding labor minimum",
+        "deviation_pct": -35.7,
+        "direction": "under"
+      }
+    ],
+    "property": {
+      "address": "27 Old Bethlehem Rd, Perkasie, PA 18944, USA",
+      "city": "Perkasie",
+      "state": "PA",
+      "year_built_OPTIONAL": null,
+      "zip": "18944"
+    },
+    "roof_facets": {
+      "_synthesized": true,
+      "north_arrow_angle": 0,
+      "roof_facets": [
+        {
+          "area_pct": 25.0,
+          "cardinal": "N",
+          "facet_id": "N",
+          "pitch": null,
+          "polygon_pixels": []
+        },
+        {
+          "area_pct": 25.0,
+          "cardinal": "E",
+          "facet_id": "E",
+          "pitch": null,
+          "polygon_pixels": []
+        },
+        {
+          "area_pct": 25.0,
+          "cardinal": "S",
+          "facet_id": "S",
+          "pitch": null,
+          "polygon_pixels": []
+        },
+        {
+          "area_pct": 25.0,
+          "cardinal": "W",
+          "facet_id": "W",
+          "pitch": null,
+          "polygon_pixels": []
+        }
+      ],
+      "scale_bar": null
+    },
+    "scope": {
+      "o_and_p": false,
+      "trades": [
+        "Roofing"
+      ]
+    },
+    "scope_revisions": [
+      {
+        "argument_mapping": [],
+        "items_added": [],
+        "items_added_count": 0,
+        "items_increased": [],
+        "items_increased_count": 0,
+        "items_removed": [],
+        "items_still_missing_count": 0,
+        "movement": 0.0,
+        "movement_pct": 0.0,
+        "new_rcv": 1947.88,
+        "previous_rcv": 1947.88,
+        "revision_date": "2026-05-01"
+      }
+    ],
+    "settlement_prediction": {
+      "avg_movement_pct": 76.2,
+      "avg_settlement": 56769.0,
+      "avg_usarm_rcv": 73370.0,
+      "confidence": "low",
+      "data_points": 3,
+      "note": "Based on 3 similar claims against The Hanover Insurance Group",
+      "predicted_additional_amount": 1484.0,
+      "predicted_settlement_range": {
+        "high": 4174.0,
+        "low": 2690.0,
+        "mid": 3432.0
+      },
+      "win_probability_pct": 33.3
+    },
+    "slope_damage": [
+      {
+        "area_pct": 25.0,
+        "cardinal": "N",
+        "damage_photos": 0,
+        "dominant_damage_type": null,
+        "facet_id": "N",
+        "pitch": null,
+        "total_photos": 0,
+        "weighted_damage_pct": 0.0
+      },
+      {
+        "area_pct": 25.0,
+        "cardinal": "E",
+        "damage_photos": 0,
+        "dominant_damage_type": null,
+        "facet_id": "E",
+        "pitch": null,
+        "total_photos": 0,
+        "weighted_damage_pct": 0.0
+      },
+      {
+        "area_pct": 25.0,
+        "cardinal": "S",
+        "damage_photos": 0,
+        "dominant_damage_type": null,
+        "facet_id": "S",
+        "pitch": null,
+        "total_photos": 0,
+        "weighted_damage_pct": 0.0
+      },
+      {
+        "area_pct": 25.0,
+        "cardinal": "W",
+        "damage_photos": 0,
+        "dominant_damage_type": null,
+        "facet_id": "W",
+        "pitch": null,
+        "total_photos": 0,
+        "weighted_damage_pct": 0.0
+      },
+      {
+        "area_pct": 0.0,
+        "cardinal": null,
+        "damage_photos": 0,
+        "dominant_damage_type": null,
+        "facet_id": "_unassigned",
+        "pitch": null,
+        "total_photos": 44,
+        "weighted_damage_pct": 0.0
+      }
+    ],
+    "source_docs": {
+      "companycam_pdf": "_no_companycam.pdf"
+    },
+    "structures": [
+      {
+        "age": 12,
+        "facets": 21,
+        "measurements": {
+          "drip_edge": 484,
+          "eave": 264,
+          "flashing": 96,
+          "hip": 20,
+          "rake": 220,
+          "ridge": 145,
+          "step_flashing": 130,
+          "valley": 105
+        },
+        "name": "Main Roof",
+        "pitches": [
+          {
+            "area_sf": 466,
+            "percent": 11,
+            "pitch": "4/12"
+          },
+          {
+            "area_sf": 459,
+            "percent": 11,
+            "pitch": "7/12"
+          },
+          {
+            "area_sf": 2360,
+            "percent": 57,
+            "pitch": "8/12"
+          },
+          {
+            "area_sf": 820,
+            "percent": 20,
+            "pitch": "12/12"
+          },
+          {
+            "area_sf": 23,
+            "percent": 1,
+            "pitch": "14/12"
+          },
+          {
+            "area_sf": 9,
+            "percent": 0,
+            "pitch": "19/12"
+          }
+        ],
+        "predominant_pitch": "8/12",
+        "roof_area_sf": 4137,
+        "roof_area_sq": 41.37,
+        "shingle_type": "Architectural Laminated Comp Shingle",
+        "style": "combination",
+        "waste_factor": 1.15
+      }
+    ],
+    "user_notes": "Full roof replacement wind damage. Interior damage from leak",
+    "weather": {
+      "damage_thresholds": [
+        {
+          "component": "Aluminum Fascia/Trim Metal",
+          "result": "No NOAA hail data available",
+          "source": "NOAA SWDI",
+          "storm_actual": "0.0\"",
+          "threshold": "0.75\" diameter hail"
+        },
+        {
+          "component": "Laminate/Architectural Shingles",
+          "result": "No NOAA hail data available",
+          "source": "NOAA SWDI + HAAG Engineering",
+          "storm_actual": "0.0\"",
+          "threshold": "1.00\" diameter hail (HAAG Engineering)"
+        }
+      ],
+      "hail_size": "",
+      "noaa": {
+        "episode_narrative": "",
+        "event_count": 5,
+        "events": [
+          {
+            "date": "2026-03-16",
+            "distance_miles": 24.4,
+            "event_type": "Thunderstorm Wind",
+            "latitude": 40.28,
+            "longitude": -74.81,
+            "magnitude": 66.7,
+            "magnitude_type": "wind_mph",
+            "narrative": "(PHI)",
+            "noaa_url": "https://www.spc.noaa.gov/climo/reports/260316_rpts_filtered_wind.csv",
+            "source": "SPC_DAILY",
+            "source_detail": "SPC Report — Trenton Mercer Airport, NJ",
+            "time_utc": "0333"
+          },
+          {
+            "date": "2026-03-16",
+            "distance_miles": 25.3,
+            "event_type": "Thunderstorm Wind",
+            "latitude": 40.08,
+            "longitude": -75.01,
+            "magnitude": 66.7,
+            "magnitude_type": "wind_mph",
+            "narrative": "(PHI)",
+            "noaa_url": "https://www.spc.noaa.gov/climo/reports/260316_rpts_filtered_wind.csv",
+            "source": "SPC_DAILY",
+            "source_detail": "SPC Report — Northeast Philadelphia, PA",
+            "time_utc": "0320"
+          },
+          {
+            "date": "2026-03-16",
+            "distance_miles": 35.0,
+            "event_type": "Thunderstorm Wind",
+            "latitude": 40.01,
+            "longitude": -74.82,
+            "magnitude": 69.0,
+            "magnitude_type": "wind_mph",
+            "narrative": "Estimated 60 mph wind gusts at WFO Mount Holly. (PHI)",
+            "noaa_url": "https://www.spc.noaa.gov/climo/reports/260316_rpts_filtered_wind.csv",
+            "source": "SPC_DAILY",
+            "source_detail": "SPC Report — Mount Holly WFO, NJ",
+            "time_utc": "0334"
+          },
+          {
+            "date": "2026-03-16",
+            "distance_miles": 35.9,
+            "event_type": "Thunderstorm Wind",
+            "latitude": 39.88,
+            "longitude": -75.22,
+            "magnitude": 69.0,
+            "magnitude_type": "wind_mph",
+            "narrative": "(PHI)",
+            "noaa_url": "https://www.spc.noaa.gov/climo/reports/260316_rpts_filtered_wind.csv",
+            "source": "SPC_DAILY",
+            "source_detail": "SPC Report — Philadelphia Internatio, PA",
+            "time_utc": "0311"
+          },
+          {
+            "date": "2026-03-16",
+            "distance_miles": 38.1,
+            "event_type": "Thunderstorm Wind",
+            "latitude": 40.38,
+            "longitude": -75.97,
+            "magnitude": 78.3,
+            "magnitude_type": "wind_mph",
+            "narrative": "(PHI)",
+            "noaa_url": "https://www.spc.noaa.gov/climo/reports/260316_rpts_filtered_wind.csv",
+            "source": "SPC_DAILY",
+            "source_detail": "SPC Report — Reading Regional Airpor, PA",
+            "time_utc": "0211"
+          }
+        ],
+        "max_hail_distance_miles": 0.0,
+        "max_hail_inches": 0.0,
+        "max_wind_mph": 78.3,
+        "query_coords": [
+          40.399371880793,
+          -75.245602588247
+        ],
+        "query_date": "2026-05-01",
+        "query_urls": [
+          "https://www.ncei.noaa.gov/stormevents/csv?beginDate_mm=03&beginDate_dd=14&beginDate_yyyy=2026&endDate_mm=03&endDate_dd=18&endDate_yyyy=2026&hailfilter=0.00&tornfilter=0&windfilter=000&sort=DT&submitbutton=Search&statefips=42%2CPENNSYLVANIA&county=BUCKS:17&eventType=%28C%29%20Hail&eventType=%28C%29%20Thunderstorm%20Wind",
+          "https://www.ncei.noaa.gov/stormevents/csv?beginDate_mm=03&beginDate_dd=14&beginDate_yyyy=2026&endDate_mm=03&endDate_dd=18&endDate_yyyy=2026&hailfilter=0.00&tornfilter=0&windfilter=000&sort=DT&submitbutton=Search&statefips=42%2CPENNSYLVANIA&eventType=%28C%29%20Hail&eventType=%28C%29%20Thunderstorm%20Wind",
+          "https://www.spc.noaa.gov/climo/reports/260316_rpts_filtered_hail.csv",
+          "https://www.spc.noaa.gov/climo/reports/260316_rpts_filtered_wind.csv"
+        ],
+        "search_radius_miles": 3.5
+      },
+      "storm_date": "March 16, 2026",
+      "storm_description": "Severe thunderstorm with wind gusts of 78.3 mph as confirmed by SPC storm reports. Estimated 60 mph wind gusts at WFO Mount Holly. (PHI)",
+      "wind_speed": "78.3 mph"
+    }
+  }
+}

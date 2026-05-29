@@ -1,0 +1,1724 @@
+{
+  "_coverage": "KS post-scope, date-range storm '01/04/2025 - 02/18/2025'",
+  "claim": {
+    "address": "412 W Augusta Ave, Augusta, KS 67010, USA",
+    "carrier": "State Farm",
+    "contact_name": "Usama Faisal",
+    "weather_data": null
+  },
+  "config": {
+    "appeal_letter": {
+      "demand_items": [
+        "Review the enclosed forensic documentation and revised scope of loss identifying $72,347.45 in underpayment",
+        "Issue revised payment reflecting the full scope of documented storm-related damage",
+        "Address the line-by-line variance analysis identifying specific underpaid and omitted items",
+        "Schedule a re-inspection if additional verification is needed"
+      ],
+      "enclosed_documents": [
+        "Forensic Causation Report with annotated photography",
+        "Xactimate-format estimate at current pricing",
+        "Supplement report with line-by-line variance analysis",
+        "Formal appeal letter"
+      ],
+      "requested_actions": [
+        "Review the enclosed forensic documentation and revised scope of loss identifying $72,347.45 in underpayment",
+        "Issue revised payment reflecting the full scope of documented storm-related damage",
+        "Address the line-by-line variance analysis identifying specific underpaid and omitted items",
+        "Schedule a re-inspection if additional verification is needed"
+      ]
+    },
+    "carrier": {
+      "adjuster_email": "",
+      "adjuster_name": "Ben",
+      "carrier_arguments": [
+        "This is my Supplement"
+      ],
+      "carrier_line_items": [
+        {
+          "carrier_amount": 0,
+          "carrier_desc": "NOT INCLUDED",
+          "carrier_qty": 0,
+          "category": "ROOFING",
+          "checklist_desc": "Remove 3 tab - 25 yr. comp. shingle roofing - w/out felt",
+          "code_citation": {
+            "code_tag": "KS-IRC R905.1.1",
+            "has_warranty_void": false,
+            "jurisdiction": "Kansas — no statewide code; most municipalities adopt IRC",
+            "manufacturer_specs": [],
+            "requirement": "Underlayment required over entire roof deck area not covered by ice barrier",
+            "section": "R905.1.1",
+            "supplement_argument": "Underlayment is code-mandated over the entire roof deck. Areas where ice & water barrier is not installed require felt or synthetic underlayment. Omission does not meet code requirements.",
+            "title": "Underlayment Requirement"
+          },
+          "ev_formula": "28.47 SQ (EagleView roof area)",
+          "ev_qty": 28.47,
+          "ev_unit": "SQ",
+          "irc_code": "KS-IRC R905.1.1",
+          "item": "Remove 3 tab - 25 yr. comp. shingle roofing - w/out felt",
+          "matched_by": "missing",
+          "note": "NOT INCLUDED — Required: 28 SQ @ $60.23/SQ. Calculation: 28.47 SQ (EagleView roof area). Per KS-IRC R905.1.1: Underlayment required over entire roof deck area not covered by ice barrier. Underlayment is code-mandated over the entire roof deck. Areas where ice & water barrier is not installed require felt or synthetic underlayment. Omission does not meet code requirements.",
+          "status": "missing",
+          "supplement_argument": "Underlayment is code-mandated over the entire roof deck. Areas where ice & water barrier is not installed require felt or synthetic underlayment. Omission does not meet code requirements.",
+          "supplement_value": 1714.75,
+          "trade": "roofing",
+          "usarm_amount": 1714.75,
+          "usarm_desc": "Remove 3 tab - 25 yr. comp. shingle roofing - w/out felt",
+          "xact_code": "RFG 240S",
+          "xact_unit_price": 60.23
+        },
+        {
+          "carrier_amount": 0,
+          "carrier_desc": "NOT INCLUDED",
+          "carrier_qty": 0,
+          "category": "ROOFING",
+          "checklist_desc": "3 tab - 25 yr. comp. shingle roofing - w/out felt",
+          "code_citation": {
+            "code_tag": "KS-IRC R905.1.1",
+            "has_warranty_void": false,
+            "jurisdiction": "Kansas — no statewide code; most municipalities adopt IRC",
+            "manufacturer_specs": [],
+            "requirement": "Underlayment required over entire roof deck area not covered by ice barrier",
+            "section": "R905.1.1",
+            "supplement_argument": "Underlayment is code-mandated over the entire roof deck. Areas where ice & water barrier is not installed require felt or synthetic underlayment. Omission does not meet code requirements.",
+            "title": "Underlayment Requirement"
+          },
+          "ev_formula": "28.47 SQ (EagleView roof area)",
+          "ev_qty": 28.47,
+          "ev_unit": "SQ",
+          "irc_code": "R905.2",
+          "item": "3 tab - 25 yr. comp. shingle roofing - w/out felt",
+          "matched_by": "missing",
+          "note": "NOT INCLUDED — Required: 28 SQ @ $255.55/SQ. Calculation: 28.47 SQ (EagleView roof area). Per KS-IRC R905.1.1: Underlayment required over entire roof deck area not covered by ice barrier. Underlayment is code-mandated over the entire roof deck. Areas where ice & water barrier is not installed require felt or synthetic underlayment. Omission does not meet code requirements.",
+          "status": "missing",
+          "supplement_argument": "Underlayment is code-mandated over the entire roof deck. Areas where ice & water barrier is not installed require felt or synthetic underlayment. Omission does not meet code requirements.",
+          "supplement_value": 7275.51,
+          "trade": "roofing",
+          "usarm_amount": 7275.51,
+          "usarm_desc": "3 tab - 25 yr. comp. shingle roofing - w/out felt",
+          "xact_code": "RFG 240S",
+          "xact_unit_price": 255.55
+        },
+        {
+          "carrier_amount": 688.4,
+          "carrier_desc": "Roofing felt - synthetic underlayment",
+          "carrier_notes": "",
+          "carrier_qty": 10,
+          "carrier_unit": "SQ",
+          "carrier_unit_price": 68.84,
+          "category": "ROOFING",
+          "checklist_desc": "Roofing felt - 15 lb.",
+          "code_citation": {
+            "code_tag": "KS-IRC R905.1.1",
+            "has_warranty_void": false,
+            "jurisdiction": "Kansas — no statewide code; most municipalities adopt IRC",
+            "manufacturer_specs": [],
+            "requirement": "Underlayment required over entire roof deck area not covered by ice barrier",
+            "section": "R905.1.1",
+            "supplement_argument": "Underlayment is code-mandated over the entire roof deck. Areas where ice & water barrier is not installed require felt or synthetic underlayment. Omission does not meet code requirements.",
+            "title": "Underlayment Requirement"
+          },
+          "ev_formula": "((28.47 × 100) − 888) / 100 = 19.59 SQ",
+          "ev_qty": 19.59,
+          "ev_unit": "SQ",
+          "irc_code": "R905.1.1",
+          "item": "Roofing felt - synthetic underlayment",
+          "matched_by": "intent_desc",
+          "note": "Required: 20 SQ @ $48.12/SQ. Carrier: 10 SQ @ $68.84/SQ. Carrier is 10 SQ short. Calculation: ((28.47 × 100) − 888) / 100 = 19.59 SQ. Per KS-IRC R905.1.1: Underlayment required over entire roof deck area not covered by ice barrier",
+          "price_variance": "Xact: $48.12, Carrier: $68.84",
+          "qty_variance": "Short 10 SQ",
+          "status": "under",
+          "supplement_argument": "Underlayment is code-mandated over the entire roof deck. Areas where ice & water barrier is not installed require felt or synthetic underlayment. Omission does not meet code requirements.",
+          "supplement_value": 254.27,
+          "trade": "roofing",
+          "usarm_amount": 942.67,
+          "usarm_desc": "Roofing felt - 15 lb.",
+          "xact_code": "RFG FELT15",
+          "xact_unit_price": 48.12
+        },
+        {
+          "carrier_amount": 0,
+          "carrier_desc": "NOT INCLUDED",
+          "carrier_qty": 0,
+          "category": "ROOFING",
+          "checklist_desc": "Ice & water barrier",
+          "code_citation": {
+            "code_tag": "KS-IRC R905.1.2",
+            "has_warranty_void": true,
+            "jurisdiction": "Kansas — no statewide code; most municipalities adopt IRC",
+            "manufacturer_specs": [
+              {
+                "document": "WeatherWatch Mineral-Surfaced Leak Barrier",
+                "manufacturer": "GAF",
+                "requirement": "Required at eaves, valleys, and around penetrations per GAF system requirements",
+                "warranty_text": "GAF warranty VOID without WeatherWatch/StormGuard at eaves and valleys",
+                "warranty_void": true
+              }
+            ],
+            "requirement": "Ice barrier required at eaves extending from eave edge to at least 24 inches past interior wall line, and in valleys",
+            "section": "R905.1.2",
+            "supplement_argument": "Ice & water barrier is required by code at all eaves and valleys. This is not an optional upgrade — it is a mandatory building code requirement for a code-compliant installation.",
+            "title": "Ice Barrier Requirement"
+          },
+          "ev_formula": "(Eave 148 × 6) + (Valley 0 × 3) = 888 SF",
+          "ev_qty": 888,
+          "ev_unit": "SF",
+          "irc_code": "R905.1.2",
+          "item": "Ice & water barrier",
+          "matched_by": "missing",
+          "note": "NOT INCLUDED — Required: 888 SF @ $1.88/SF. Calculation: (Eave 148 × 6) + (Valley 0 × 3) = 888 SF. Per KS-IRC R905.1.2: Ice barrier required at eaves extending from eave edge to at least 24 inches past interior wall line, and in valleys. GAF warranty VOID: GAF warranty VOID without WeatherWatch/StormGuard at eaves and valleys. Ice & water barrier is required by code at all eaves and valleys. This is not an optional upgrade — it is a mandatory building code requirement for a code-compliant installation. | [C001] Carrier scope has NO ice & water barrier. IRC R905.1.2 requires 0 SF minimum (0 LF eaves × 6ft + 0 LF valleys × 6ft).",
+          "status": "missing",
+          "supplement_argument": "Ice & water barrier is required by code at all eaves and valleys. This is not an optional upgrade — it is a mandatory building code requirement for a code-compliant installation.",
+          "supplement_value": 1669.44,
+          "trade": "roofing",
+          "usarm_amount": 1669.44,
+          "usarm_desc": "Ice & water barrier",
+          "xact_code": "RFG IWS",
+          "xact_unit_price": 1.88
+        },
+        {
+          "carrier_amount": 0,
+          "carrier_desc": "NOT INCLUDED",
+          "carrier_qty": 0,
+          "category": "ROOFING",
+          "checklist_desc": "Asphalt starter - universal starter course",
+          "code_citation": {
+            "code_tag": "KS-IRC R905.1",
+            "has_warranty_void": true,
+            "jurisdiction": "Kansas — no statewide code; most municipalities adopt IRC",
+            "manufacturer_specs": [
+              {
+                "document": "Timberline HDZ Installation Instructions",
+                "manufacturer": "GAF",
+                "requirement": "4-6 nails per shingle, ProStart starter required at eaves and rakes",
+                "warranty_text": "GAF System Plus/Silver Pledge warranty VOID without proper starter and nailing pattern",
+                "warranty_void": true
+              },
+              {
+                "document": "Duration Series Install 10024264",
+                "manufacturer": "Owens Corning",
+                "requirement": "OC Starter Course required at eaves and rakes",
+                "warranty_text": "SureNail Technology warranty VOID without OC-approved starter",
+                "warranty_void": true
+              },
+              {
+                "document": "Landmark Series Installation Instructions",
+                "manufacturer": "CertainTeed",
+                "requirement": "SwiftStart starter required at eaves and rakes",
+                "warranty_text": "SureStart warranty VOID without CertainTeed-approved starter",
+                "warranty_void": true
+              }
+            ],
+            "requirement": "Starter course required at eaves and rakes per manufacturer installation instructions (R905.1 — manufacturer instructions = code)",
+            "section": "R905.1",
+            "supplement_argument": "Starter course is required by ALL major manufacturers (GAF, OC, CertainTeed). Per R905.1, manufacturer instructions carry the force of code. Omitting starter voids the manufacturer warranty.",
+            "title": "Starter Course (Manufacturer Required)"
+          },
+          "ev_formula": "Eave 148 + Rake 0 = 148 LF",
+          "ev_qty": 148,
+          "ev_unit": "LF",
+          "irc_code": "KS-IRC R905.1",
+          "item": "Asphalt starter - universal starter course",
+          "matched_by": "missing",
+          "note": "NOT INCLUDED — Required: 148 LF @ $1.95/LF. Calculation: Eave 148 + Rake 0 = 148 LF. Per KS-IRC R905.1: Starter course required at eaves and rakes per manufacturer installation instructions (R905.1 — manufacturer instructions = code). GAF warranty VOID: GAF System Plus/Silver Pledge warranty VOID without proper starter and nailing pattern. Owens Corning warranty VOID: SureNail Technology warranty VOID without OC-approved starter. Starter course is required by ALL major manufacturers (GAF, OC, CertainTeed). Per R905.1, manufacturer instructions carry the force of code. Omitting starter voids the manufacturer warranty.",
+          "status": "missing",
+          "supplement_argument": "Starter course is required by ALL major manufacturers (GAF, OC, CertainTeed). Per R905.1, manufacturer instructions carry the force of code. Omitting starter voids the manufacturer warranty.",
+          "supplement_value": 288.6,
+          "trade": "roofing",
+          "usarm_amount": 288.6,
+          "usarm_desc": "Asphalt starter - universal starter course",
+          "xact_code": "RFG ASTR-",
+          "xact_unit_price": 1.95
+        },
+        {
+          "carrier_amount": 0,
+          "carrier_desc": "NOT INCLUDED",
+          "carrier_qty": 0,
+          "category": "ROOFING",
+          "checklist_desc": "R&R Hip/Ridge cap - cut from 3 tab - composition shingles",
+          "code_citation": {
+            "code_tag": "KS-IRC R806",
+            "has_warranty_void": false,
+            "jurisdiction": "Kansas — no statewide code; most municipalities adopt IRC",
+            "manufacturer_specs": [],
+            "requirement": "Enclosed attics shall have cross ventilation. Ridge vent provides exhaust ventilation per R806.1",
+            "section": "R806",
+            "supplement_argument": "Ridge ventilation is required for proper attic ventilation per code. When ridge cap is replaced, ridge vent must be replaced to maintain code-compliant ventilation.",
+            "title": "Roof Ventilation"
+          },
+          "ev_formula": "Ridge 52 LF (EagleView)",
+          "ev_qty": 52,
+          "ev_unit": "LF",
+          "irc_code": "KS-IRC R806",
+          "item": "R&R Hip/Ridge cap - cut from 3 tab - composition shingles",
+          "matched_by": "missing",
+          "note": "NOT INCLUDED — Required: 52 LF @ $10.76/LF. Calculation: Ridge 52 LF (EagleView). Per KS-IRC R806: Enclosed attics shall have cross ventilation. Ridge vent provides exhaust ventilation per R806.1. Ridge ventilation is required for proper attic ventilation per code. When ridge cap is replaced, ridge vent must be replaced to maintain code-compliant ventilation. | [COMP_RIDGE_CAP] Carrier scope does not include ridge cap. This is a mandatory roofing component per Manufacturer specification.",
+          "status": "missing",
+          "supplement_argument": "Ridge ventilation is required for proper attic ventilation per code. When ridge cap is replaced, ridge vent must be replaced to maintain code-compliant ventilation.",
+          "supplement_value": 559.52,
+          "trade": "roofing",
+          "usarm_amount": 559.52,
+          "usarm_desc": "R&R Hip/Ridge cap - cut from 3 tab - composition shingles",
+          "xact_code": "",
+          "xact_unit_price": 10.76
+        },
+        {
+          "carrier_amount": 0,
+          "carrier_desc": "NOT INCLUDED",
+          "carrier_qty": 0,
+          "category": "ROOFING",
+          "checklist_desc": "R&R Drip edge",
+          "code_citation": {
+            "code_tag": "KS-IRC R905.2.8.5",
+            "has_warranty_void": false,
+            "jurisdiction": "Kansas — no statewide code; most municipalities adopt IRC",
+            "manufacturer_specs": [],
+            "requirement": "Drip edge shall be provided at eaves and gable rake edges of shingle roofs",
+            "section": "R905.2.8.5",
+            "supplement_argument": "Drip edge is required at all eaves and rakes per code. Protects fascia and deck edge from water damage. Not an optional upgrade.",
+            "title": "Drip Edge Requirement"
+          },
+          "ev_formula": "(Eave 148 + Rake 0) × 1.05 = 155 LF",
+          "ev_qty": 155.4,
+          "ev_unit": "LF",
+          "irc_code": "R905.2.7",
+          "item": "R&R Drip edge",
+          "matched_by": "missing",
+          "note": "NOT INCLUDED — Required: 155 LF @ $3.45/LF. Calculation: (Eave 148 + Rake 0) × 1.05 = 155 LF. Per KS-IRC R905.2.8.5: Drip edge shall be provided at eaves and gable rake edges of shingle roofs. Drip edge required at eaves and rakes per IRC R905.2.7. Minimum 2.5 inches below sheathing, 2 inches up deck. Underlayment OVER drip edge at eaves, UNDER at rakes. 5% waste factor standard | [COMP_DRIP_EDGE] Carrier scope does not include drip edge. This is a mandatory roofing component per IRC R905.2.8.5.",
+          "status": "missing",
+          "supplement_argument": "Drip edge required at eaves and rakes per IRC R905.2.7. Minimum 2.5 inches below sheathing, 2 inches up deck. Underlayment OVER drip edge at eaves, UNDER at rakes. 5% waste factor standard",
+          "supplement_value": 536.13,
+          "trade": "roofing",
+          "usarm_amount": 536.13,
+          "usarm_desc": "R&R Drip edge",
+          "xact_code": "RFG DRIP",
+          "xact_unit_price": 3.45
+        },
+        {
+          "carrier_amount": 0,
+          "carrier_desc": "NOT INCLUDED",
+          "carrier_qty": 0,
+          "category": "ROOFING",
+          "checklist_desc": "R&R Continuous ridge vent - shingle-over style",
+          "code_citation": {
+            "code_tag": "KS-IRC R806",
+            "has_warranty_void": false,
+            "jurisdiction": "Kansas — no statewide code; most municipalities adopt IRC",
+            "manufacturer_specs": [],
+            "requirement": "Enclosed attics shall have cross ventilation. Ridge vent provides exhaust ventilation per R806.1",
+            "section": "R806",
+            "supplement_argument": "Ridge ventilation is required for proper attic ventilation per code. When ridge cap is replaced, ridge vent must be replaced to maintain code-compliant ventilation.",
+            "title": "Roof Ventilation"
+          },
+          "ev_formula": "Ridge 52 LF (EagleView)",
+          "ev_qty": 52,
+          "ev_unit": "LF",
+          "irc_code": "R806",
+          "item": "R&R Continuous ridge vent - shingle-over style",
+          "matched_by": "missing",
+          "note": "NOT INCLUDED — Required: 52 LF @ $11.97/LF. Calculation: Ridge 52 LF (EagleView). Per KS-IRC R806: Enclosed attics shall have cross ventilation. Ridge vent provides exhaust ventilation per R806.1. Ventilation required per IRC R806 — 1 SF NFVA per 150 SF attic area (1:150 ratio). OC warranty VOID without proper ventilation. Ridge vent must be R&R during re-roofing | [COMP_RIDGE_VENT] Carrier scope does not include ridge vent. This is a mandatory roofing component per IRC R806.1.",
+          "status": "missing",
+          "supplement_argument": "Ventilation required per IRC R806 — 1 SF NFVA per 150 SF attic area (1:150 ratio). OC warranty VOID without proper ventilation. Ridge vent must be R&R during re-roofing",
+          "supplement_value": 622.44,
+          "trade": "roofing",
+          "usarm_amount": 622.44,
+          "usarm_desc": "R&R Continuous ridge vent - shingle-over style",
+          "xact_code": "RFG RGVC",
+          "xact_unit_price": 11.97
+        },
+        {
+          "carrier_amount": 0,
+          "carrier_desc": "NOT INCLUDED",
+          "carrier_qty": 0,
+          "category": "ROOFING",
+          "checklist_desc": "Roofer - per hour",
+          "code_citation": null,
+          "ev_formula": "max(4, 28 / 4) = 7 HR",
+          "ev_qty": 7,
+          "ev_unit": "HR",
+          "irc_code": null,
+          "item": "Roofer - per hour",
+          "matched_by": "missing",
+          "note": "NOT INCLUDED — Required: 7 HR @ $194.00/HR. Calculation: max(4, 28 / 4) = 7 HR. 8 hours roofer labor mandatory on every roofing estimate per industry standard",
+          "status": "missing",
+          "supplement_argument": "8 hours roofer labor mandatory on every roofing estimate per industry standard",
+          "supplement_value": 1358.0,
+          "trade": "roofing",
+          "usarm_amount": 1358.0,
+          "usarm_desc": "Roofer - per hour",
+          "xact_code": "",
+          "xact_unit_price": 194.0
+        },
+        {
+          "carrier_amount": 0,
+          "carrier_desc": "NOT INCLUDED",
+          "carrier_qty": 0,
+          "category": "ROOFING",
+          "checklist_desc": "Equipment operator",
+          "code_citation": null,
+          "ev_formula": "",
+          "ev_qty": 4,
+          "ev_unit": "EA",
+          "irc_code": null,
+          "item": "Equipment operator",
+          "matched_by": "missing",
+          "note": "NOT INCLUDED — Required: 4 EA @ $450.00/EA | [UP006] Carrier scope does not include equipment operator charge. Required for 2+ story and/or steep roofs requiring material staging equipment.",
+          "status": "missing",
+          "supplement_argument": null,
+          "supplement_value": 1800.0,
+          "trade": "roofing",
+          "usarm_amount": 450.0,
+          "usarm_desc": "Equipment operator",
+          "xact_code": "",
+          "xact_unit_price": 450.0
+        },
+        {
+          "carrier_amount": 0,
+          "carrier_desc": "NOT INCLUDED",
+          "carrier_qty": 0,
+          "category": "ROOFING",
+          "checklist_desc": "",
+          "code_citation": {
+            "code_tag": "KS-IRC R905.1.2",
+            "has_warranty_void": true,
+            "jurisdiction": "Kansas — no statewide code; most municipalities adopt IRC",
+            "manufacturer_specs": [
+              {
+                "document": "WeatherWatch Mineral-Surfaced Leak Barrier",
+                "manufacturer": "GAF",
+                "requirement": "Required at eaves, valleys, and around penetrations per GAF system requirements",
+                "warranty_text": "GAF warranty VOID without WeatherWatch/StormGuard at eaves and valleys",
+                "warranty_void": true
+              }
+            ],
+            "requirement": "Ice barrier required at eaves extending from eave edge to at least 24 inches past interior wall line, and in valleys",
+            "section": "R905.1.2",
+            "supplement_argument": "Ice & water barrier is required by code at all eaves and valleys. This is not an optional upgrade — it is a mandatory building code requirement for a code-compliant installation.",
+            "title": "Ice Barrier Requirement"
+          },
+          "ev_qty": 19.59,
+          "ev_unit": "SQ",
+          "irc_code": "KS-IRC R905.1.2",
+          "matched_by": "missing",
+          "note": "NOT INCLUDED — Required: 20 SQ @ $32.00/SQ. Per KS-IRC R905.1.2: Ice barrier required at eaves extending from eave edge to at least 24 inches past interior wall line | [COMP_UNDERLAYMENT] Carrier scope does not include underlayment. This is a mandatory roofing component per IRC R905.1.1.",
+          "status": "missing",
+          "supplement_argument": "Ice & water barrier is required by code at all eaves and valleys. This is not an optional upgrade — it is a mandatory building code requirement for a code-compliant installation.",
+          "supplement_value": 626.88,
+          "trade": "",
+          "usarm_amount": 626.88,
+          "usarm_desc": "Underlayment - felt 15# (deck area not covered by I&W)"
+        },
+        {
+          "carrier_amount": 68.2,
+          "carrier_desc": "R&R Synthetic stucco repair",
+          "carrier_notes": "Remove & Replace. Remove cost $0.95/SF, Replace cost $12.69/SF.",
+          "carrier_qty": 5,
+          "carrier_unit": "SF",
+          "carrier_unit_price": 12.69,
+          "category": "ROOFING",
+          "checklist_desc": "",
+          "code_citation": null,
+          "ev_qty": 28.47,
+          "ev_unit": "SQ",
+          "irc_code": null,
+          "item": "R&R Synthetic stucco repair",
+          "matched_by": "usarm_extra",
+          "note": "Required: 28 SQ, Carrier: 5 SQ, Short 23 SQ. Unit price: Xact $18.00 vs Carrier $12.69",
+          "status": "under",
+          "supplement_argument": "Steep roof charge required per Xactimate guidelines — increased labor, safety equipment, and reduced productivity on 7/12+ slopes",
+          "supplement_value": 444.26,
+          "trade": "roofing",
+          "usarm_amount": 512.46,
+          "usarm_desc": "Remove - Additional charge for steep roof 7/12-9/12"
+        },
+        {
+          "carrier_amount": 0,
+          "carrier_desc": "NOT INCLUDED",
+          "carrier_qty": 0,
+          "category": "ROOFING",
+          "checklist_desc": "",
+          "code_citation": null,
+          "ev_qty": 28.47,
+          "ev_unit": "SQ",
+          "irc_code": null,
+          "matched_by": "missing",
+          "note": "NOT INCLUDED — Required: 28 SQ @ $64.07/SQ. Steep roof charge required per Xactimate guidelines — increased labor, safety equipment, and reduced productivity on 7/12+ slopes",
+          "status": "missing",
+          "supplement_argument": "Steep roof charge required per Xactimate guidelines — increased labor, safety equipment, and reduced productivity on 7/12+ slopes",
+          "supplement_value": 1824.07,
+          "trade": "roofing",
+          "usarm_amount": 1824.07,
+          "usarm_desc": "Additional charge for steep roof 7/12-9/12"
+        },
+        {
+          "carrier_amount": 12.7,
+          "carrier_desc": "Paint (stain) wood shingles",
+          "carrier_qty": 10,
+          "carrier_unit": "SF",
+          "category": "ROOFING",
+          "item": "Paint (stain) wood shingles",
+          "matched_by": "carrier_only",
+          "note": "Carrier-only: 10 SF @ $1.27/SF — not on EagleView checklist",
+          "review_flag": "Verify: legitimate scope item or padding?",
+          "status": "carrier_only",
+          "supplement_value": 0,
+          "trade": "roofing",
+          "usarm_amount": 0,
+          "usarm_desc": "",
+          "xact_code": "RF-IN-SH-051"
+        },
+        {
+          "carrier_amount": 0,
+          "carrier_desc": "NOT INCLUDED",
+          "carrier_qty": 0,
+          "category": "GUTTERS",
+          "checklist_desc": "",
+          "code_citation": null,
+          "ev_qty": 237,
+          "ev_unit": "LF",
+          "irc_code": null,
+          "matched_by": "missing",
+          "note": "NOT INCLUDED — Required: 237 LF @ $9.56/LF",
+          "status": "missing",
+          "supplement_argument": null,
+          "supplement_value": 2265.72,
+          "trade": "gutters",
+          "usarm_amount": 2265.72,
+          "usarm_desc": "R&R Seamless aluminum gutter & downspout"
+        },
+        {
+          "carrier_amount": 0,
+          "carrier_desc": "NOT INCLUDED",
+          "carrier_qty": 0,
+          "category": "SIDING",
+          "checklist_desc": "",
+          "code_citation": null,
+          "ev_qty": 1917,
+          "ev_unit": "SF",
+          "irc_code": null,
+          "matched_by": "missing",
+          "note": "NOT INCLUDED — Required: 1917 SF @ $11.27/SF",
+          "status": "missing",
+          "supplement_argument": null,
+          "supplement_value": 21604.59,
+          "trade": "siding",
+          "usarm_amount": 21604.59,
+          "usarm_desc": "R&R Siding - .024 metal (aluminum/steel)"
+        },
+        {
+          "carrier_amount": 0,
+          "carrier_desc": "NOT INCLUDED",
+          "carrier_qty": 0,
+          "category": "SIDING",
+          "checklist_desc": "",
+          "code_citation": null,
+          "ev_qty": 1,
+          "ev_unit": "EA",
+          "irc_code": null,
+          "matched_by": "missing",
+          "note": "NOT INCLUDED — Required: 1 EA @ $519.46/EA. Siding labor minimum mandatory on every siding estimate",
+          "status": "missing",
+          "supplement_argument": "Siding labor minimum mandatory on every siding estimate",
+          "supplement_value": 519.46,
+          "trade": "siding",
+          "usarm_amount": 519.46,
+          "usarm_desc": "Siding labor minimum"
+        },
+        {
+          "carrier_amount": 0,
+          "carrier_desc": "NOT INCLUDED",
+          "carrier_qty": 0,
+          "category": "SIDING",
+          "checklist_desc": "",
+          "code_citation": {
+            "code_tag": "KS-IRC R703.2",
+            "has_warranty_void": true,
+            "jurisdiction": "Kansas — no statewide code; most municipalities adopt IRC",
+            "manufacturer_specs": [
+              {
+                "document": "CertainTeed Siding Installation Manual (7th Edition)",
+                "manufacturer": "CertainTeed",
+                "requirement": "CertainTeed-approved WRB required behind all siding. CertaWrap or equivalent with min 2\" horizontal overlap, 6\" vertical overlap. WRB must cover ALL sheathing before siding install.",
+                "warranty_text": "SureStart PLUS warranty VOID without approved WRB behind siding",
+                "warranty_void": true
+              },
+              {
+                "document": "HardiePlank Installation Instructions (HZ10)",
+                "manufacturer": "James Hardie",
+                "requirement": "WRB required — James Hardie-approved house wrap with min 2\" shingle laps. Tyvek HomeWrap, DrainWrap, or equivalent. WRB continuity at corners is MANDATORY — cannot terminate at building corners.",
+                "warranty_text": "ColorPlus warranty VOID without approved WRB. 30-year substrate warranty requires continuous WRB",
+                "warranty_void": true
+              },
+              {
+                "document": "Alside Vinyl Siding Installation Guide",
+                "manufacturer": "Alside / Associated Materials",
+                "requirement": "WRB required behind all vinyl siding per manufacturer specs. House wrap must be installed prior to siding. Cannot reuse existing WRB if damaged during siding removal.",
+                "warranty_text": "Lifetime Limited warranty requires code-compliant WRB installation",
+                "warranty_void": true
+              },
+              {
+                "document": "Tyvek HomeWrap Installation Guidelines",
+                "manufacturer": "DuPont",
+                "requirement": "Install over sheathing BEFORE siding. Min 6\" overlap at horizontal seams, 12\" at vertical seams. Tape all seams with Tyvek tape. Must wrap around corners min 12\".",
+                "warranty_text": "Tyvek 10-year warranty VOID with improper installation",
+                "warranty_void": true
+              }
+            ],
+            "requirement": "WRB required on ALL exterior walls. Min 2\" horizontal laps, 6\" joint laps. Must wrap around corners per R703.1 — corner rule forces adjacent elevation if one elevation approved.",
+            "section": "R703.2",
+            "supplement_argument": "House wrap is mandatory per R703.2 on all exterior walls. The corner rule (R703.1) requires continuous weather barrier around corners — if the carrier approves siding on one elevation, the WRB must continue around the corner to the adjacent elevation to maintain continuity. This is not 'additional scope' — it is a code-required installation method.",
+            "title": "Weather-Resistive Barrier (House Wrap)"
+          },
+          "ev_qty": 1917,
+          "ev_unit": "SF",
+          "irc_code": "KS-IRC R703.2",
+          "matched_by": "missing",
+          "note": "NOT INCLUDED — Required: 1917 SF @ $0.64/SF. Per KS-IRC R703.2: WRB required on ALL exterior walls. Min 2\" horizontal laps, 6\" joint laps. Must wrap around corners ",
+          "status": "missing",
+          "supplement_argument": "House wrap is mandatory per R703.2 on all exterior walls. The corner rule (R703.1) requires continuous weather barrier around corners — if the carrier approves siding on one elevation, the WRB must continue around the corner to the adjacent elevation to maintain continuity. This is not 'additional scope' — it is a code-required installation method.",
+          "supplement_value": 1226.88,
+          "trade": "",
+          "usarm_amount": 1226.88,
+          "usarm_desc": "House wrap / Tyvek (code-required per KS-IRC R703.2)"
+        },
+        {
+          "carrier_amount": 0,
+          "carrier_desc": "NOT INCLUDED",
+          "carrier_qty": 0,
+          "category": "SIDING",
+          "checklist_desc": "",
+          "code_citation": {
+            "code_tag": "KS-IRC R703.2",
+            "has_warranty_void": true,
+            "jurisdiction": "Kansas — no statewide code; most municipalities adopt IRC",
+            "manufacturer_specs": [
+              {
+                "document": "CertainTeed Siding Installation Manual (7th Edition)",
+                "manufacturer": "CertainTeed",
+                "requirement": "CertainTeed-approved WRB required behind all siding. CertaWrap or equivalent with min 2\" horizontal overlap, 6\" vertical overlap. WRB must cover ALL sheathing before siding install.",
+                "warranty_text": "SureStart PLUS warranty VOID without approved WRB behind siding",
+                "warranty_void": true
+              },
+              {
+                "document": "HardiePlank Installation Instructions (HZ10)",
+                "manufacturer": "James Hardie",
+                "requirement": "WRB required — James Hardie-approved house wrap with min 2\" shingle laps. Tyvek HomeWrap, DrainWrap, or equivalent. WRB continuity at corners is MANDATORY — cannot terminate at building corners.",
+                "warranty_text": "ColorPlus warranty VOID without approved WRB. 30-year substrate warranty requires continuous WRB",
+                "warranty_void": true
+              },
+              {
+                "document": "Alside Vinyl Siding Installation Guide",
+                "manufacturer": "Alside / Associated Materials",
+                "requirement": "WRB required behind all vinyl siding per manufacturer specs. House wrap must be installed prior to siding. Cannot reuse existing WRB if damaged during siding removal.",
+                "warranty_text": "Lifetime Limited warranty requires code-compliant WRB installation",
+                "warranty_void": true
+              },
+              {
+                "document": "Tyvek HomeWrap Installation Guidelines",
+                "manufacturer": "DuPont",
+                "requirement": "Install over sheathing BEFORE siding. Min 6\" overlap at horizontal seams, 12\" at vertical seams. Tape all seams with Tyvek tape. Must wrap around corners min 12\".",
+                "warranty_text": "Tyvek 10-year warranty VOID with improper installation",
+                "warranty_void": true
+              }
+            ],
+            "requirement": "WRB required on ALL exterior walls. Min 2\" horizontal laps, 6\" joint laps. Must wrap around corners per R703.1 — corner rule forces adjacent elevation if one elevation approved.",
+            "section": "R703.2",
+            "supplement_argument": "House wrap is mandatory per R703.2 on all exterior walls. The corner rule (R703.1) requires continuous weather barrier around corners — if the carrier approves siding on one elevation, the WRB must continue around the corner to the adjacent elevation to maintain continuity. This is not 'additional scope' — it is a code-required installation method.",
+            "title": "Weather-Resistive Barrier (House Wrap)"
+          },
+          "ev_qty": 1917,
+          "ev_unit": "SF",
+          "irc_code": "KS-IRC R703.2",
+          "matched_by": "missing",
+          "note": "NOT INCLUDED — Required: 1917 SF @ $1.00/SF. Per KS-IRC R703.2: WRB required on ALL exterior walls. Min 2\" horizontal laps, 6\" joint laps. Must wrap around corners ",
+          "status": "missing",
+          "supplement_argument": "House wrap is mandatory per R703.2 on all exterior walls. The corner rule (R703.1) requires continuous weather barrier around corners — if the carrier approves siding on one elevation, the WRB must continue around the corner to the adjacent elevation to maintain continuity. This is not 'additional scope' — it is a code-required installation method.",
+          "supplement_value": 1917.0,
+          "trade": "",
+          "usarm_amount": 1917.0,
+          "usarm_desc": "Fanfold insulation board"
+        },
+        {
+          "carrier_amount": 0,
+          "carrier_desc": "NOT INCLUDED",
+          "carrier_qty": 0,
+          "category": "SIDING",
+          "checklist_desc": "",
+          "code_citation": {
+            "code_tag": "KS-IRC R703.4",
+            "has_warranty_void": true,
+            "jurisdiction": "Kansas — no statewide code; most municipalities adopt IRC",
+            "manufacturer_specs": [
+              {
+                "document": "CertainTeed Siding Installation Manual (7th Edition)",
+                "manufacturer": "CertainTeed",
+                "requirement": "Head flashing required above all windows, doors, and penetrations. Kick-out flashing at roof-to-wall/gutter junctions. Z-flashing between dissimilar materials.",
+                "warranty_text": "Warranty VOID if moisture intrusion results from missing flashing",
+                "warranty_void": true
+              }
+            ],
+            "requirement": "Flashing required at ALL window and door openings per R703.4. Openings must be sealed to prevent water intrusion behind WRB. J-channel/window wraps are the method of compliance for vinyl and aluminum siding.",
+            "section": "R703.4",
+            "supplement_argument": "Window and door flashing is mandatory per R703.4. When siding is replaced, existing window wraps and J-channel are disturbed and must be replaced to maintain the water-resistant seal between the window frame and the weather-resistive barrier. This is not cosmetic — it is the primary defense against water infiltration at openings.",
+            "title": "Window & Door Flashing/Wraps"
+          },
+          "ev_qty": 13,
+          "ev_unit": "EA",
+          "irc_code": "KS-IRC R703.4",
+          "matched_by": "missing",
+          "note": "NOT INCLUDED — Required: 13 EA @ $398.11/EA. Per KS-IRC R703.4: Flashing required at ALL window and door openings per R703.4. Openings must be sealed to prevent wat",
+          "status": "missing",
+          "supplement_argument": "Window and door flashing is mandatory per R703.4. When siding is replaced, existing window wraps and J-channel are disturbed and must be replaced to maintain the water-resistant seal between the window frame and the weather-resistive barrier. This is not cosmetic — it is the primary defense against water infiltration at openings.",
+          "supplement_value": 5175.43,
+          "trade": "siding",
+          "usarm_amount": 5175.43,
+          "usarm_desc": "R&R Wrap wood window frame & trim with aluminum sheet"
+        },
+        {
+          "carrier_amount": 0,
+          "carrier_desc": "NOT INCLUDED",
+          "carrier_qty": 0,
+          "category": "SIDING",
+          "checklist_desc": "",
+          "code_citation": null,
+          "ev_qty": 34,
+          "ev_unit": "LF",
+          "irc_code": "",
+          "matched_by": "missing",
+          "note": "NOT INCLUDED — Required: 34 LF @ $27.51/LF",
+          "status": "missing",
+          "supplement_argument": "",
+          "supplement_value": 935.34,
+          "trade": "",
+          "usarm_amount": 935.34,
+          "usarm_desc": "R&R Door frame wrap - aluminum coil stock"
+        },
+        {
+          "carrier_amount": 0,
+          "carrier_desc": "NOT INCLUDED",
+          "carrier_qty": 0,
+          "category": "SIDING",
+          "checklist_desc": "",
+          "code_citation": null,
+          "ev_qty": 34,
+          "ev_unit": "LF",
+          "irc_code": "",
+          "matched_by": "missing",
+          "note": "NOT INCLUDED — Required: 34 LF @ $24.55/LF",
+          "status": "missing",
+          "supplement_argument": "",
+          "supplement_value": 834.7,
+          "trade": "",
+          "usarm_amount": 834.7,
+          "usarm_desc": "R&R Garage door wrap - aluminum coil stock"
+        },
+        {
+          "carrier_amount": 0,
+          "carrier_desc": "NOT INCLUDED",
+          "carrier_qty": 0,
+          "category": "SIDING",
+          "checklist_desc": "",
+          "code_citation": null,
+          "ev_qty": 1,
+          "ev_unit": "WK",
+          "irc_code": "",
+          "matched_by": "missing",
+          "note": "NOT INCLUDED — Required: 1 WK @ $1405.00/WK",
+          "status": "missing",
+          "supplement_argument": "",
+          "supplement_value": 1405.0,
+          "trade": "",
+          "usarm_amount": 1405.0,
+          "usarm_desc": "Scaffolding - per week"
+        },
+        {
+          "carrier_amount": 0,
+          "carrier_desc": "NOT INCLUDED",
+          "carrier_qty": 0,
+          "category": "GENERAL",
+          "checklist_desc": "Dumpster load - Approx. 30 yards, 5-7 tons of debris",
+          "code_citation": null,
+          "ev_formula": "",
+          "ev_qty": 1,
+          "ev_unit": "EA",
+          "irc_code": null,
+          "item": "Dumpster load - Approx. 30 yards, 5-7 tons of debris",
+          "matched_by": "missing",
+          "note": "NOT INCLUDED — Required: 1 EA @ $850.00/EA. Job-related overhead — dumpster required for debris disposal",
+          "status": "missing",
+          "supplement_argument": "Job-related overhead — dumpster required for debris disposal",
+          "supplement_value": 850.0,
+          "trade": "general",
+          "usarm_amount": 850.0,
+          "usarm_desc": "Dumpster load - Approx. 30 yards, 5-7 tons of debris",
+          "xact_code": "",
+          "xact_unit_price": 850.0
+        },
+        {
+          "carrier_amount": 0,
+          "carrier_desc": "NOT INCLUDED",
+          "carrier_qty": 0,
+          "category": "CODE COMPLIANCE",
+          "checklist_desc": "Fall protection harness and lanyard - per day",
+          "code_citation": null,
+          "ev_formula": "",
+          "ev_qty": 2,
+          "ev_unit": "DA",
+          "irc_code": null,
+          "item": "Fall protection harness and lanyard - per day",
+          "matched_by": "missing",
+          "note": "NOT INCLUDED — Required: 2 DA @ $8.00/DA. Fall protection required per OSHA 29 CFR 1926.501 for work at heights above 6 feet",
+          "status": "missing",
+          "supplement_argument": "Fall protection required per OSHA 29 CFR 1926.501 for work at heights above 6 feet",
+          "supplement_value": 16.0,
+          "trade": "roofing",
+          "usarm_amount": 16.0,
+          "usarm_desc": "Fall protection harness and lanyard - per day",
+          "xact_code": "",
+          "xact_unit_price": 8.0
+        },
+        {
+          "carrier_amount": 0,
+          "carrier_desc": "NOT INCLUDED",
+          "carrier_qty": 0,
+          "category": "GENERAL",
+          "checklist_desc": "Administrative/supervisor labor charge",
+          "code_citation": null,
+          "ev_formula": "",
+          "ev_qty": 2.5,
+          "ev_unit": "HR",
+          "irc_code": null,
+          "item": "Administrative/supervisor labor charge",
+          "matched_by": "missing",
+          "note": "NOT INCLUDED — Required: 2 HR @ $41.73/HR. Administrative labor for re-inspection and project coordination",
+          "status": "missing",
+          "supplement_argument": "Administrative labor for re-inspection and project coordination",
+          "supplement_value": 104.32,
+          "trade": "general",
+          "usarm_amount": 104.32,
+          "usarm_desc": "Administrative/supervisor labor charge",
+          "xact_code": "",
+          "xact_unit_price": 41.73
+        }
+      ],
+      "carrier_rcv": 769.3,
+      "claim_number": "CLM-123-421",
+      "deductible": 0.0,
+      "inspection_date": "2026-05-14",
+      "inspector_company": "",
+      "inspector_name": "",
+      "name": "State Farm",
+      "policy_number": ""
+    },
+    "carrier_intelligence": {
+      "anticipated_denials": [
+        {
+          "count": 448,
+          "countered_count": 0,
+          "examples": [
+            "Estimate is priced based on estimated market pricing for cost of materials and labor at time of loss",
+            "Items 1-13 and 20-22 are listed as PER BID with no pricing assigned - consolidated into single bid item (Item 14)",
+            "Roofing scope was revised by Johnson Ivase (IDT9) on 12/12/2025 - items 1-13 replaced with single USA Roof Masters Invoice bid item of $14,111.88"
+          ],
+          "tactic_type": "underpayment",
+          "total_impact": 0
+        },
+        {
+          "count": 313,
+          "countered_count": 0,
+          "examples": [
+            "Storage shed depreciated at 20% (age 10 years, life 50 years) - average condition",
+            "Wood fence depreciated at 80% (age 10 years, life 12 years) - average condition",
+            "Vinyl siding depreciated at 20% (age 10 years, life 50 years) - average condition"
+          ],
+          "tactic_type": "depreciation",
+          "total_impact": 0
+        },
+        {
+          "count": 209,
+          "countered_count": 193,
+          "examples": [
+            "ADDED: Laminated - comp. shingle rfg. - w/out felt; priced by ITEL ASP on 11 Nov 2025 ($0.00)",
+            "ADDED: R&R Siding - vinyl; Age/Life 10/50 yrs, 20% depreciation ($7,523.60)",
+            "ADDED: R&R House wrap (air/moisture barrier); Age/Life 10/150 yrs, 6.67% depreciation ($615.20)"
+          ],
+          "tactic_type": "counter_argument",
+          "total_impact": 355531.5500000003
+        },
+        {
+          "count": 22,
+          "countered_count": 0,
+          "examples": [
+            "NO HOUSE WRAP — Code-required weather-resistant exterior wall envelope (RCNYS R703.2) completely omitted from the 1st scope.",
+            "Drip edge underscoped (246 LF vs 387 LF — code requires at both eaves AND rakes per RCNYS R905.2.8.5)",
+            "Building codes, ordinances, laws, or regulations that affect repairs may or may not be covered by the policy"
+          ],
+          "tactic_type": "code_dispute",
+          "total_impact": 0
+        },
+        {
+          "count": 3,
+          "countered_count": 0,
+          "examples": [
+            "Carrier's spot repair approach to siding violates RCNYS R703.1/R703.2 continuous weather-resistant exterior wall envelope requirement — Tyvek/house wrap must wrap continuously around outside corners a",
+            "SIDING SPOT REPAIR — Carrier scoped only 2 SQ (200 SF) of wood shake siding on front and left elevations. The property has 6,094 SF of cedar siding across 4 elevations. This is a 97% undercount.",
+            "Carrier acknowledged hail damage warranting full roof replacement, gutter replacement, and window wraps, but illogically limited siding repair to a 25 SF spot patch on the same structure exposed to th"
+          ],
+          "tactic_type": "spot_repair",
+          "total_impact": 0
+        },
+        {
+          "count": 3,
+          "countered_count": 0,
+          "examples": [
+            "Garage metal roof denied entirely despite same storm event damaging same property — soft metal denting confirmed on garage ridge cap and corrugated panels",
+            "Carrier acknowledged only 1 pipe jack on a 1,888 SF (18.88 SQ) roof with 2 structures — denied ALL shingle damage despite 1.25-inch hail confirmed at the property location",
+            "Found 'No storm related damage' on right, rear, and left elevations — denied all siding"
+          ],
+          "tactic_type": "denial",
+          "total_impact": 0
+        },
+        {
+          "count": 2,
+          "countered_count": 0,
+          "examples": [
+            "Carrier scoped only partial roof replacement (14.67 SQ of 29.58 SQ = 49.6%) — less than half the actual roof area despite confirmed 1.75\" hail across the entire property",
+            "Revised estimate dated 1/14/2026 increased from original 1/7/2026 estimate - added full house vinyl siding replacement (2,075.34 SF) and house wrap, upgraded debris removal from pickup truck load to 2"
+          ],
+          "tactic_type": "partial_scope",
+          "total_impact": 0
+        }
+      ],
+      "carrier_score": {
+        "carrier": "State Farm",
+        "error": "unsupported operand type(s) for +: 'float' and 'NoneType'"
+      },
+      "general_effective_arguments": [
+        {
+          "argument": "Multiple circular hail impact holes penetrate vinyl siding panels on all visible elevations, compromising weather envelope integrity.",
+          "description": "ADDED: USA Roof Masters - Siding & Roofing Bid Item ($47,152.31)",
+          "dollar_impact": 47152.31,
+          "tactic_countered": "counter_argument",
+          "trade": null
+        },
+        {
+          "argument": "Single ground-level overview photo insufficient for forensic hail or wind damage determination — no close-range shingle, gutter, or soft metal documentation provided.",
+          "description": "ADDED: R&R Siding - cedar shingle - Front Elevation ($27,654.98)",
+          "dollar_impact": 27654.98,
+          "tactic_countered": "counter_argument",
+          "trade": null
+        },
+        {
+          "argument": "Chalk testing across aluminum lap siding on multiple elevations confirms pervasive hail dent pattern from July 03, 2025 storm",
+          "description": "Remove and replace .019\" metal siding ($24,646.90)",
+          "dollar_impact": 24646.9,
+          "tactic_countered": "counter_argument",
+          "trade": null
+        },
+        {
+          "argument": "Complete hail punch-through penetrations confirmed on multiple natural slate tiles across all visible roof sections — circular voids open to substrate below constitute functional water-infiltration damage requiring full replacement.",
+          "description": "ADDED: Slate roofing - High grade - 18\" to 24\" tall (Roof slope J, C, & D) ($16,520.56)",
+          "dollar_impact": 16520.56,
+          "tactic_countered": "counter_argument",
+          "trade": null
+        },
+        {
+          "argument": "Slate condition is beyond spot repair — widespread brittleness and erosion require full roof replacement",
+          "description": "ADDED: Slate roofing - High grade - 18\" to 24\" tall ($16,520.56)",
+          "dollar_impact": 16520.56,
+          "tactic_countered": "counter_argument",
+          "trade": null
+        }
+      ],
+      "prediction": {
+        "confidence": "low",
+        "message": "Insufficient data (0 claims)"
+      },
+      "recommended_arguments_by_trade": {}
+    },
+    "company": {
+      "address": "Plot 93C Street 7, I-10/3 I 10/3 I-10, Islamabad, 44100, Pakistan",
+      "cell_phone": "03117979349",
+      "ceo_name": "Ben",
+      "ceo_title": "Owner",
+      "city_state_zip": "ISLAMABAD",
+      "email": "usamafaisal1999@gmail.com",
+      "name": "OmniNext",
+      "office_phone": "",
+      "website": "https://omninexttech.com/"
+    },
+    "compliance": {
+      "aob_signed": false,
+      "user_role": "contractor"
+    },
+    "cover_email": {
+      "enclosed_documents": [
+        "Forensic Causation Report with annotated photography",
+        "Xactimate-format replacement cost estimate",
+        "Supplement report with line-by-line variance analysis",
+        "Formal scope clarification letter",
+        "Cover correspondence"
+      ],
+      "summary_paragraphs": [
+        "Please find enclosed the complete forensic documentation package for the property at 412 W Augusta Ave, Augusta, KS 67010, USA. Our independent inspection has documented storm-related damage to the Roofing, Siding, Gutters.",
+        "The enclosed reports include annotated photography of all identified damage, an Xactimate-format replacement cost estimate, and a forensic causation analysis establishing the relationship between documented weather events and observed damage.",
+        "Please do not hesitate to contact us should you require any additional information or wish to schedule a joint inspection."
+      ],
+      "to": "Ben",
+      "to_email": ""
+    },
+    "dates": {
+      "date_of_loss": "May 16, 2026",
+      "report_date": "May 18, 2026",
+      "usarm_inspection_date": "May 18, 2026"
+    },
+    "financials": {
+      "deductible": 0.0,
+      "market_code": "KSWI8X_02MAY26",
+      "price_list": "KSWI26",
+      "price_list_is_proxy": false,
+      "tax_rate": 0.08
+    },
+    "forensic_findings": {
+      "code_violations": [
+        {
+          "code": "KS-IRC R905.2.2",
+          "requirement": "Asphalt shingles shall be installed in accordance with this section AND the manufacturer's installation instructions — adopts manufacturer spec as code-enforceable requirement",
+          "status": "Required — manufacturer spec controls fastener count, exposure, starter, drip edge, and warranty-critical details"
+        },
+        {
+          "code": "KS-IRC R905.2.8.5",
+          "requirement": "Drip edge required at eaves and rake edges of shingle roofs; min 2-inch overlap at joints, min 1/4-inch projection below sheathing",
+          "status": "Required — included in scope"
+        },
+        {
+          "code": "KS-IRC R905.1.1",
+          "requirement": "Underlayment shall be applied in accordance with manufacturer's installation instructions — ASTM D226 / D4869 / D6757 labeling required",
+          "status": "Required — included in scope"
+        },
+        {
+          "code": "KS-IRC R905.2.7",
+          "requirement": "Factory starter strip course required along eaves and rakes with pre-applied sealant strip at roof edge; field-cut shingles do not qualify as starter (no sealant = wind-uplift failure)",
+          "status": "Required — included in scope per manufacturer wind-warranty spec"
+        },
+        {
+          "code": "KS-IRC R905.2.7.1",
+          "requirement": "Ice barrier required in areas where the average daily temperature in January is ≤25°F or where ice damming has a history; min 2 feet inside exterior wall line (Climate Zones 5A+ including OH/NY)",
+          "status": "Required — included in scope"
+        },
+        {
+          "code": "KS-IRC R703.1",
+          "requirement": "Exterior walls shall provide the building with a weather-resistant exterior wall envelope — continuous barrier, no terminations at corners or penetrations",
+          "status": "Required — governs whole-elevation integrity"
+        },
+        {
+          "code": "KS-IRC R703.2",
+          "requirement": "Water-resistive barrier required behind exterior cladding; applied shingle-fashion with min 2-inch horizontal and 6-inch vertical laps; must wrap continuously around outside corners per manufacturer install spec (Tyvek/StuccoWrap min 6-inch corner overlap)",
+          "status": "Required — forces full-elevation replacement when carrier approves partial"
+        },
+        {
+          "code": "KS-IRC R703.4",
+          "requirement": "Wall flashing required at all exterior wall openings (windows, doors, deck ledgers, penetrations) to redirect water to the exterior of the WRB",
+          "status": "Required — window wraps and door flashings non-negotiable"
+        },
+        {
+          "code": "KS-IRC R703.5",
+          "requirement": "Wood/hardboard siding shall be installed in accordance with manufacturer's installation instructions — naturally durable species or preservative-treated; corrosion-resistant fasteners with min 1.5-inch penetration into framing",
+          "status": "Required — manufacturer install spec adopted as code"
+        }
+      ],
+      "conclusion_paragraphs": [
+        "Based on our forensic analysis of 5 documented findings, the property at 412 W Augusta Ave, Augusta, KS 67010, USA sustained confirmed storm damage from the May 16, 2026 event. Aerial imagery reveals granule degradation and mottled color inconsistency across multiple slopes of the hip roof system, patterns consistent with hail exposure rather than uniform aging. The hip roof geometry, which exposes all four slopes equally to hail trajectories with no sheltered face, confirms that no portion of the roof was shielded from the storm event. However, aerial overview imagery alone is insufficient for forensic hail damage determination — ground-level chalk testing and standardized test squares are required to confirm hail impact density and functional damage across each slope.",
+        "The documented condition of the 3-Tab 25yr Comp Shingle roofing system, estimated at approximately 18 years of service life (installed circa 2008), combined with storm-related granule loss and surface degradation, establishes that the affected roof covering requires full system replacement rather than spot repair. Three-tab shingles of this vintage are no longer manufactured in matching profiles by most suppliers, making code-compliant material matching impracticable. Under KS-IRC requirements, partial replacement that results in mismatched materials or compromised weather-barrier continuity does not satisfy the performance standards for residential roof coverings.",
+        "Based on the documented damage, applicable KS-IRC building code requirements, and industry standards, we recommend full replacement of the roof system, including all associated components such as underlayment, flashing, ridge and hip caps, and drip edge. The carrier's current recognized scope of $769.30 does not adequately address the documented conditions at 412 W Augusta Ave, Augusta, KS 67010, USA, and a comprehensive ground-level inspection with chalk testing and test-square documentation is necessary to establish the complete scope of functional hail damage across all four roof slopes.",
+        "This determination is consistent with HAAG Engineering standards for hail damage identification on composition shingles, NRCA guidelines for roof system evaluation and replacement criteria, and the IRC as adopted in Kansas for residential roofing performance requirements. These professional standards collectively establish that forensic causation analysis requires close-range physical inspection — including chalk-circle documentation and systematic test squares — to differentiate storm-caused functional damage from pre-existing wear, and that any scope determination made without such documentation is incomplete."
+      ],
+      "damage_summary": "Aerial imagery of this comp shingle laminated roof reveals a hip-style roof system with visible granule degradation and color inconsistency across multiple slopes. The property shows signs consistent with hail exposure across the roof surface. No chalk test close-ups are available from these overview images, but the roof condition, combined with the May 16, 2026 date of loss, supports further ground-level inspection to confirm hail impact density and functional damage. The hip roof geometry exposes all four slopes to hail trajectories, increasing vulnerability across the entire roof plane.",
+      "differentiation_table": [
+        {
+          "cause": "Hail Impact",
+          "characteristics": "Circular/oval depressions with granule displacement, mat fracture, soft metal denting",
+          "conclusion": "CONSISTENT",
+          "observed": "Yes — multiple impact marks with granule loss documented in photo analysis"
+        },
+        {
+          "cause": "Normal Wear / Aging",
+          "characteristics": "Uniform granule loss, curling at edges, consistent deterioration pattern",
+          "conclusion": "NOT CONSISTENT",
+          "observed": "No — damage pattern is random/localized, inconsistent with uniform aging"
+        },
+        {
+          "cause": "Manufacturing Defect",
+          "characteristics": "Systematic pattern across same production batch, uniform failure mode",
+          "conclusion": "NOT CONSISTENT",
+          "observed": "No — damage is random and impact-related, not systematic"
+        }
+      ],
+      "executive_summary": [
+        "On May 16, 2026, a hail-producing storm system impacted the property located at 412 W Augusta Ave, Augusta, KS 67010, USA. The subject property features a hip-style roof system clad in 3-Tab 25-year composition shingles. Our forensic inspection documented the roof surfaces, exterior building envelope components, and appurtenant soft-metal fixtures across all accessible elevations to assess storm-related damage attributable to the reported hail event.",
+        "Aerial inspection imagery across all four slopes of the hip roof reveals granule degradation and color inconsistency patterns consistent with hail impact exposure. The hip roof geometry, which presents all four slopes to vertical and angular hail trajectories, increases the probability of pervasive damage across the entire roof plane. While the three photographs obtained during this inspection provide overview-level documentation, the observable surface conditions — including granule displacement patterns and mat-level discoloration — are consistent with hail-induced functional damage requiring further close-range chalk testing and soft-metal analysis to confirm impact density.",
+        "The 3-Tab 25-year composition shingles on this roof system cannot be spot-repaired to a pre-loss condition following pervasive hail exposure. Per IRC Section R905.2 and manufacturer installation standards applicable in Kansas, partial shingle replacement across a compromised roof plane introduces differential weathering, color mismatch, and compromised seal-strip adhesion at every repair interface. When hail impacts are distributed across all slopes of a hip roof — as the damage pattern here indicates — full slope or full roof replacement is the only method that restores code-compliant weather protection and maintains material warranty integrity.",
+        "The carrier's approved scope of $769.30 RCV does not reflect the scope of hail damage documented at this property. The carrier estimate omits full roof replacement, does not account for the multi-slope hail exposure inherent to this hip roof configuration, and appears to limit the scope to selective component acknowledgment rather than addressing the functional damage to the primary roofing system. Our forensic analysis identifies material, labor, and code-compliance requirements that substantially exceed the carrier's current valuation, and a detailed Xactimate supplement scope accompanies this report."
+      ],
+      "key_arguments": [
+        "Hip roof design exposes all four slopes equally to hail — no sheltered face exists",
+        "Granule wear and mottled coloration visible from aerial imagery across multiple slopes",
+        "Multiple vehicles and structures on property confirm occupied residential dwelling",
+        "Aerial views alone cannot confirm hail hit counts — ground-level chalk testing and test squares required",
+        "Estimated roof age: ~18 years (installed circa 2008) — Shingle Type: Three-Tab shingle"
+      ],
+      "total_photos": 3
+    },
+    "full_reroof_trigger": false,
+    "inspectors": {
+      "usarm_inspector": "Ben",
+      "usarm_title": "Owner"
+    },
+    "insured": {
+      "name": "Usama Faisal",
+      "type": "homeowner"
+    },
+    "line_items": [
+      {
+        "category": "ROOFING",
+        "code": "",
+        "description": "Remove 3-tab 25yr comp shingle roofing",
+        "irc_code": "",
+        "qty": 28.47,
+        "supplement_argument": "",
+        "unit": "SQ",
+        "unit_price": 60.23
+      },
+      {
+        "category": "ROOFING",
+        "code": "",
+        "code_citation": {
+          "code_tag": "KS-IRC R905.1.1",
+          "has_warranty_void": false,
+          "jurisdiction": "Kansas — no statewide code; most municipalities adopt IRC",
+          "manufacturer_specs": [],
+          "requirement": "Underlayment required over entire roof deck area not covered by ice barrier",
+          "section": "R905.1.1",
+          "supplement_argument": "Underlayment is code-mandated over the entire roof deck. Areas where ice & water barrier is not installed require felt or synthetic underlayment. Omission does not meet code requirements.",
+          "title": "Underlayment Requirement"
+        },
+        "description": "3-tab 25yr comp shingle roofing - w/out felt",
+        "irc_code": "KS-IRC R905.1.1",
+        "qty": 31.89,
+        "supplement_argument": "Underlayment is code-mandated over the entire roof deck. Areas where ice & water barrier is not installed require felt or synthetic underlayment. Omission does not meet code requirements.",
+        "unit": "SQ",
+        "unit_price": 255.55
+      },
+      {
+        "category": "ROOFING",
+        "code": "",
+        "code_citation": {
+          "code_tag": "KS-IRC R905.1.2",
+          "has_warranty_void": true,
+          "jurisdiction": "Kansas — no statewide code; most municipalities adopt IRC",
+          "manufacturer_specs": [
+            {
+              "document": "WeatherWatch Mineral-Surfaced Leak Barrier",
+              "manufacturer": "GAF",
+              "requirement": "Required at eaves, valleys, and around penetrations per GAF system requirements",
+              "warranty_text": "GAF warranty VOID without WeatherWatch/StormGuard at eaves and valleys",
+              "warranty_void": true
+            }
+          ],
+          "requirement": "Ice barrier required at eaves extending from eave edge to at least 24 inches past interior wall line, and in valleys",
+          "section": "R905.1.2",
+          "supplement_argument": "Ice & water barrier is required by code at all eaves and valleys. This is not an optional upgrade — it is a mandatory building code requirement for a code-compliant installation.",
+          "title": "Ice Barrier Requirement"
+        },
+        "description": "Underlayment - felt 15# (deck area not covered by I&W)",
+        "irc_code": "KS-IRC R905.1.2",
+        "qty": 19.59,
+        "supplement_argument": "Ice & water barrier is required by code at all eaves and valleys. This is not an optional upgrade — it is a mandatory building code requirement for a code-compliant installation.",
+        "unit": "SQ",
+        "unit_price": 32.0
+      },
+      {
+        "category": "ROOFING",
+        "code": "RFG IWS",
+        "code_citation": {
+          "code_tag": "KS-IRC R905.1.2",
+          "has_warranty_void": true,
+          "jurisdiction": "Kansas — no statewide code; most municipalities adopt IRC",
+          "manufacturer_specs": [
+            {
+              "document": "WeatherWatch Mineral-Surfaced Leak Barrier",
+              "manufacturer": "GAF",
+              "requirement": "Required at eaves, valleys, and around penetrations per GAF system requirements",
+              "warranty_text": "GAF warranty VOID without WeatherWatch/StormGuard at eaves and valleys",
+              "warranty_void": true
+            }
+          ],
+          "requirement": "Ice barrier required at eaves extending from eave edge to at least 24 inches past interior wall line, and in valleys",
+          "section": "R905.1.2",
+          "supplement_argument": "Ice & water barrier is required by code at all eaves and valleys. This is not an optional upgrade — it is a mandatory building code requirement for a code-compliant installation.",
+          "title": "Ice Barrier Requirement"
+        },
+        "description": "Ice & water barrier (2 courses eaves + 1 course valleys)",
+        "irc_code": "R905.1.2",
+        "qty": 888,
+        "supplement_argument": "Ice & water barrier is required by code at all eaves and valleys. This is not an optional upgrade — it is a mandatory building code requirement for a code-compliant installation.",
+        "trade": "roofing",
+        "unit": "SF",
+        "unit_price": 1.88
+      },
+      {
+        "category": "ROOFING",
+        "code": "",
+        "code_citation": {
+          "code_tag": "KS-IRC R905.2.8.5",
+          "has_warranty_void": false,
+          "jurisdiction": "Kansas — no statewide code; most municipalities adopt IRC",
+          "manufacturer_specs": [],
+          "requirement": "Drip edge shall be provided at eaves and gable rake edges of shingle roofs",
+          "section": "R905.2.8.5",
+          "supplement_argument": "Drip edge is required at all eaves and rakes per code. Protects fascia and deck edge from water damage. Not an optional upgrade.",
+          "title": "Drip Edge Requirement"
+        },
+        "description": "R&R Drip edge - aluminum",
+        "irc_code": "KS-IRC R905.2.8.5",
+        "qty": 148,
+        "supplement_argument": "Drip edge is required at all eaves and rakes per code. Protects fascia and deck edge from water damage. Not an optional upgrade.",
+        "unit": "LF",
+        "unit_price": 3.45
+      },
+      {
+        "category": "ROOFING",
+        "code": "",
+        "code_citation": {
+          "code_tag": "KS-IRC R905.1",
+          "has_warranty_void": true,
+          "jurisdiction": "Kansas — no statewide code; most municipalities adopt IRC",
+          "manufacturer_specs": [
+            {
+              "document": "Timberline HDZ Installation Instructions",
+              "manufacturer": "GAF",
+              "requirement": "4-6 nails per shingle, ProStart starter required at eaves and rakes",
+              "warranty_text": "GAF System Plus/Silver Pledge warranty VOID without proper starter and nailing pattern",
+              "warranty_void": true
+            },
+            {
+              "document": "Duration Series Install 10024264",
+              "manufacturer": "Owens Corning",
+              "requirement": "OC Starter Course required at eaves and rakes",
+              "warranty_text": "SureNail Technology warranty VOID without OC-approved starter",
+              "warranty_void": true
+            },
+            {
+              "document": "Landmark Series Installation Instructions",
+              "manufacturer": "CertainTeed",
+              "requirement": "SwiftStart starter required at eaves and rakes",
+              "warranty_text": "SureStart warranty VOID without CertainTeed-approved starter",
+              "warranty_void": true
+            }
+          ],
+          "requirement": "Starter course required at eaves and rakes per manufacturer installation instructions (R905.1 — manufacturer instructions = code)",
+          "section": "R905.1",
+          "supplement_argument": "Starter course is required by ALL major manufacturers (GAF, OC, CertainTeed). Per R905.1, manufacturer instructions carry the force of code. Omitting starter voids the manufacturer warranty.",
+          "title": "Starter Course (Manufacturer Required)"
+        },
+        "description": "R&R Starter strip - asphalt shingle",
+        "irc_code": "KS-IRC R905.1",
+        "qty": 148,
+        "supplement_argument": "Starter course is required by ALL major manufacturers (GAF, OC, CertainTeed). Per R905.1, manufacturer instructions carry the force of code. Omitting starter voids the manufacturer warranty.",
+        "unit": "LF",
+        "unit_price": 1.95
+      },
+      {
+        "category": "ROOFING",
+        "code": "RFG RIDGCS",
+        "code_citation": {
+          "code_tag": "KS-IRC R806",
+          "has_warranty_void": false,
+          "jurisdiction": "Kansas — no statewide code; most municipalities adopt IRC",
+          "manufacturer_specs": [],
+          "requirement": "Enclosed attics shall have cross ventilation. Ridge vent provides exhaust ventilation per R806.1",
+          "section": "R806",
+          "supplement_argument": "Ridge ventilation is required for proper attic ventilation per code. When ridge cap is replaced, ridge vent must be replaced to maintain code-compliant ventilation.",
+          "title": "Roof Ventilation"
+        },
+        "description": "R&R Hip / Ridge cap - Standard profile - composition shingles",
+        "irc_code": "KS-IRC R806",
+        "qty": 120,
+        "supplement_argument": "Ridge ventilation is required for proper attic ventilation per code. When ridge cap is replaced, ridge vent must be replaced to maintain code-compliant ventilation.",
+        "trade": "roofing",
+        "unit": "LF",
+        "unit_price": 9.79
+      },
+      {
+        "category": "ROOFING",
+        "code": "RFG RGVC",
+        "code_citation": {
+          "code_tag": "KS-IRC R806",
+          "has_warranty_void": false,
+          "jurisdiction": "Kansas — no statewide code; most municipalities adopt IRC",
+          "manufacturer_specs": [],
+          "requirement": "Enclosed attics shall have cross ventilation. Ridge vent provides exhaust ventilation per R806.1",
+          "section": "R806",
+          "supplement_argument": "Ridge ventilation is required for proper attic ventilation per code. When ridge cap is replaced, ridge vent must be replaced to maintain code-compliant ventilation.",
+          "title": "Roof Ventilation"
+        },
+        "description": "R&R Ridge vent - shingle over",
+        "irc_code": "R806",
+        "qty": 52,
+        "supplement_argument": "Ventilation required per IRC R806 — 1 SF NFVA per 150 SF attic area (1:150 ratio). OC warranty VOID without proper ventilation. Ridge vent must be R&R during re-roofing",
+        "trade": "roofing",
+        "unit": "LF",
+        "unit_price": 11.97
+      },
+      {
+        "category": "ROOFING",
+        "code": "RFG STP7",
+        "description": "Remove - Additional charge for steep roof 7/12-9/12",
+        "irc_code": null,
+        "qty": 28.47,
+        "supplement_argument": "Steep roof charge required per Xactimate guidelines — increased labor, safety equipment, and reduced productivity on 7/12+ slopes",
+        "trade": "roofing",
+        "unit": "SQ",
+        "unit_price": 18.0
+      },
+      {
+        "category": "ROOFING",
+        "code": "RFG STP7",
+        "description": "Additional charge for steep roof 7/12-9/12",
+        "irc_code": null,
+        "qty": 28.47,
+        "supplement_argument": "Steep roof charge required per Xactimate guidelines — increased labor, safety equipment, and reduced productivity on 7/12+ slopes",
+        "trade": "roofing",
+        "unit": "SQ",
+        "unit_price": 64.07
+      },
+      {
+        "category": "ROOFING",
+        "code": null,
+        "description": "Roofer - per hour (labor minimum)",
+        "irc_code": null,
+        "qty": 8,
+        "supplement_argument": "8 hours roofer labor mandatory on every roofing estimate per industry standard",
+        "trade": "roofing",
+        "unit": "HR",
+        "unit_price": 194.0
+      },
+      {
+        "category": "ROOFING",
+        "code": null,
+        "description": "Equipment operator",
+        "irc_code": null,
+        "qty": 1,
+        "supplement_argument": null,
+        "trade": "roofing",
+        "unit": "EA",
+        "unit_price": 450.0
+      },
+      {
+        "category": "DEBRIS",
+        "description": "Dumpster load - roofing debris",
+        "qty": 1,
+        "unit": "EA",
+        "unit_price": 850.0
+      },
+      {
+        "category": "DEBRIS",
+        "description": "Dumpster load - siding debris",
+        "qty": 1,
+        "unit": "EA",
+        "unit_price": 850.0
+      },
+      {
+        "category": "GUTTERS",
+        "code": "SFG GUTA",
+        "description": "R&R Seamless aluminum gutter & downspout",
+        "irc_code": null,
+        "qty": 237,
+        "supplement_argument": null,
+        "trade": "gutters",
+        "unit": "LF",
+        "unit_price": 9.56
+      },
+      {
+        "category": "SIDING",
+        "code": "SDG MTL+",
+        "description": "R&R Siding - .024 metal (aluminum/steel)",
+        "irc_code": null,
+        "qty": 1917,
+        "supplement_argument": null,
+        "trade": "siding",
+        "unit": "SF",
+        "unit_price": 11.27
+      },
+      {
+        "category": "SIDING",
+        "code": null,
+        "description": "Siding labor minimum",
+        "irc_code": null,
+        "qty": 1,
+        "supplement_argument": "Siding labor minimum mandatory on every siding estimate",
+        "trade": "siding",
+        "unit": "EA",
+        "unit_price": 519.46
+      },
+      {
+        "category": "SIDING",
+        "code": "",
+        "code_citation": {
+          "code_tag": "KS-IRC R703.2",
+          "has_warranty_void": true,
+          "jurisdiction": "Kansas — no statewide code; most municipalities adopt IRC",
+          "manufacturer_specs": [
+            {
+              "document": "CertainTeed Siding Installation Manual (7th Edition)",
+              "manufacturer": "CertainTeed",
+              "requirement": "CertainTeed-approved WRB required behind all siding. CertaWrap or equivalent with min 2\" horizontal overlap, 6\" vertical overlap. WRB must cover ALL sheathing before siding install.",
+              "warranty_text": "SureStart PLUS warranty VOID without approved WRB behind siding",
+              "warranty_void": true
+            },
+            {
+              "document": "HardiePlank Installation Instructions (HZ10)",
+              "manufacturer": "James Hardie",
+              "requirement": "WRB required — James Hardie-approved house wrap with min 2\" shingle laps. Tyvek HomeWrap, DrainWrap, or equivalent. WRB continuity at corners is MANDATORY — cannot terminate at building corners.",
+              "warranty_text": "ColorPlus warranty VOID without approved WRB. 30-year substrate warranty requires continuous WRB",
+              "warranty_void": true
+            },
+            {
+              "document": "Alside Vinyl Siding Installation Guide",
+              "manufacturer": "Alside / Associated Materials",
+              "requirement": "WRB required behind all vinyl siding per manufacturer specs. House wrap must be installed prior to siding. Cannot reuse existing WRB if damaged during siding removal.",
+              "warranty_text": "Lifetime Limited warranty requires code-compliant WRB installation",
+              "warranty_void": true
+            },
+            {
+              "document": "Tyvek HomeWrap Installation Guidelines",
+              "manufacturer": "DuPont",
+              "requirement": "Install over sheathing BEFORE siding. Min 6\" overlap at horizontal seams, 12\" at vertical seams. Tape all seams with Tyvek tape. Must wrap around corners min 12\".",
+              "warranty_text": "Tyvek 10-year warranty VOID with improper installation",
+              "warranty_void": true
+            }
+          ],
+          "requirement": "WRB required on ALL exterior walls. Min 2\" horizontal laps, 6\" joint laps. Must wrap around corners per R703.1 — corner rule forces adjacent elevation if one elevation approved.",
+          "section": "R703.2",
+          "supplement_argument": "House wrap is mandatory per R703.2 on all exterior walls. The corner rule (R703.1) requires continuous weather barrier around corners — if the carrier approves siding on one elevation, the WRB must continue around the corner to the adjacent elevation to maintain continuity. This is not 'additional scope' — it is a code-required installation method.",
+          "title": "Weather-Resistive Barrier (House Wrap)"
+        },
+        "description": "House wrap / Tyvek (code-required per KS-IRC R703.2)",
+        "irc_code": "KS-IRC R703.2",
+        "qty": 1917,
+        "supplement_argument": "House wrap is mandatory per R703.2 on all exterior walls. The corner rule (R703.1) requires continuous weather barrier around corners — if the carrier approves siding on one elevation, the WRB must continue around the corner to the adjacent elevation to maintain continuity. This is not 'additional scope' — it is a code-required installation method.",
+        "unit": "SF",
+        "unit_price": 0.64
+      },
+      {
+        "category": "SIDING",
+        "code": "",
+        "code_citation": {
+          "code_tag": "KS-IRC R703.2",
+          "has_warranty_void": true,
+          "jurisdiction": "Kansas — no statewide code; most municipalities adopt IRC",
+          "manufacturer_specs": [
+            {
+              "document": "CertainTeed Siding Installation Manual (7th Edition)",
+              "manufacturer": "CertainTeed",
+              "requirement": "CertainTeed-approved WRB required behind all siding. CertaWrap or equivalent with min 2\" horizontal overlap, 6\" vertical overlap. WRB must cover ALL sheathing before siding install.",
+              "warranty_text": "SureStart PLUS warranty VOID without approved WRB behind siding",
+              "warranty_void": true
+            },
+            {
+              "document": "HardiePlank Installation Instructions (HZ10)",
+              "manufacturer": "James Hardie",
+              "requirement": "WRB required — James Hardie-approved house wrap with min 2\" shingle laps. Tyvek HomeWrap, DrainWrap, or equivalent. WRB continuity at corners is MANDATORY — cannot terminate at building corners.",
+              "warranty_text": "ColorPlus warranty VOID without approved WRB. 30-year substrate warranty requires continuous WRB",
+              "warranty_void": true
+            },
+            {
+              "document": "Alside Vinyl Siding Installation Guide",
+              "manufacturer": "Alside / Associated Materials",
+              "requirement": "WRB required behind all vinyl siding per manufacturer specs. House wrap must be installed prior to siding. Cannot reuse existing WRB if damaged during siding removal.",
+              "warranty_text": "Lifetime Limited warranty requires code-compliant WRB installation",
+              "warranty_void": true
+            },
+            {
+              "document": "Tyvek HomeWrap Installation Guidelines",
+              "manufacturer": "DuPont",
+              "requirement": "Install over sheathing BEFORE siding. Min 6\" overlap at horizontal seams, 12\" at vertical seams. Tape all seams with Tyvek tape. Must wrap around corners min 12\".",
+              "warranty_text": "Tyvek 10-year warranty VOID with improper installation",
+              "warranty_void": true
+            }
+          ],
+          "requirement": "WRB required on ALL exterior walls. Min 2\" horizontal laps, 6\" joint laps. Must wrap around corners per R703.1 — corner rule forces adjacent elevation if one elevation approved.",
+          "section": "R703.2",
+          "supplement_argument": "House wrap is mandatory per R703.2 on all exterior walls. The corner rule (R703.1) requires continuous weather barrier around corners — if the carrier approves siding on one elevation, the WRB must continue around the corner to the adjacent elevation to maintain continuity. This is not 'additional scope' — it is a code-required installation method.",
+          "title": "Weather-Resistive Barrier (House Wrap)"
+        },
+        "description": "Fanfold insulation board",
+        "irc_code": "KS-IRC R703.2",
+        "qty": 1917,
+        "supplement_argument": "House wrap is mandatory per R703.2 on all exterior walls. The corner rule (R703.1) requires continuous weather barrier around corners — if the carrier approves siding on one elevation, the WRB must continue around the corner to the adjacent elevation to maintain continuity. This is not 'additional scope' — it is a code-required installation method.",
+        "unit": "SF",
+        "unit_price": 1.0
+      },
+      {
+        "category": "SIDING",
+        "code": null,
+        "code_citation": {
+          "code_tag": "KS-IRC R703.4",
+          "has_warranty_void": true,
+          "jurisdiction": "Kansas — no statewide code; most municipalities adopt IRC",
+          "manufacturer_specs": [
+            {
+              "document": "CertainTeed Siding Installation Manual (7th Edition)",
+              "manufacturer": "CertainTeed",
+              "requirement": "Head flashing required above all windows, doors, and penetrations. Kick-out flashing at roof-to-wall/gutter junctions. Z-flashing between dissimilar materials.",
+              "warranty_text": "Warranty VOID if moisture intrusion results from missing flashing",
+              "warranty_void": true
+            }
+          ],
+          "requirement": "Flashing required at ALL window and door openings per R703.4. Openings must be sealed to prevent water intrusion behind WRB. J-channel/window wraps are the method of compliance for vinyl and aluminum siding.",
+          "section": "R703.4",
+          "supplement_argument": "Window and door flashing is mandatory per R703.4. When siding is replaced, existing window wraps and J-channel are disturbed and must be replaced to maintain the water-resistant seal between the window frame and the weather-resistive barrier. This is not cosmetic — it is the primary defense against water infiltration at openings.",
+          "title": "Window & Door Flashing/Wraps"
+        },
+        "description": "R&R Wrap wood window frame & trim with aluminum sheet",
+        "irc_code": "KS-IRC R703.4",
+        "qty": 13,
+        "supplement_argument": "Window and door flashing is mandatory per R703.4. When siding is replaced, existing window wraps and J-channel are disturbed and must be replaced to maintain the water-resistant seal between the window frame and the weather-resistive barrier. This is not cosmetic — it is the primary defense against water infiltration at openings.",
+        "trade": "siding",
+        "unit": "EA",
+        "unit_price": 398.11
+      },
+      {
+        "category": "SIDING",
+        "code": "",
+        "description": "R&R Door frame wrap - aluminum coil stock",
+        "irc_code": "",
+        "qty": 34,
+        "supplement_argument": "",
+        "unit": "LF",
+        "unit_price": 27.51
+      },
+      {
+        "category": "SIDING",
+        "code": "",
+        "description": "R&R Garage door wrap - aluminum coil stock",
+        "irc_code": "",
+        "qty": 34,
+        "supplement_argument": "",
+        "unit": "LF",
+        "unit_price": 24.55
+      },
+      {
+        "category": "SIDING",
+        "code": "",
+        "description": "Scaffolding - per week",
+        "irc_code": "",
+        "qty": 1,
+        "supplement_argument": "",
+        "unit": "WK",
+        "unit_price": 1405.0
+      }
+    ],
+    "measurements": {
+      "drip_edge": 148,
+      "eave": 148,
+      "flashing": 0,
+      "hip": 68,
+      "rake": 0,
+      "ridge": 52,
+      "step_flashing": 0,
+      "valley": 0
+    },
+    "phase": "post-scope",
+    "photo_annotations": {
+      "p03_01": "Aerial overview shows hip roof with granule wear and mottled shingle surface across all slopes.",
+      "p03_02": "North-facing aerial reveals uneven shingle coloration and possible granule displacement on hip roof.",
+      "p03_03": "South-facing aerial confirms hip roof with visible aging; all slopes exposed to hail trajectory."
+    },
+    "photo_integrity": {
+      "flagged": 0,
+      "score": "100%",
+      "stamp": "PHOTO INTEGRITY VERIFIED — 100% | 3 photos analyzed, 0 flagged for manipulation indicators | DumbRoof.AI Fraud Detection Engine",
+      "summary": "All three aerial inspection photos depict the same residential property from different oblique angles. Roof condition, property features, vehicles, neighboring structures, and environmental context are consistent across all images. No evidence of digital manipulation, cloned regions, impossible shadows, property misrepresentation, or staged damage. All photos pass integrity checks.",
+      "total_analyzed": 3
+    },
+    "photo_map": {
+      "p03_01": "004-east.jpg",
+      "p03_02": "004-north.jpg",
+      "p03_03": "004-south.jpg"
+    },
+    "photo_sections": [
+      {
+        "photos": [
+          [
+            "p03_01",
+            3,
+            1
+          ],
+          [
+            "p03_02",
+            3,
+            2
+          ],
+          [
+            "p03_03",
+            3,
+            3
+          ]
+        ],
+        "title": "Damage Documentation"
+      }
+    ],
+    "property": {
+      "address": "412 W Augusta Ave, Augusta, KS 67010, USA",
+      "city": "Augusta",
+      "state": "KS",
+      "year_built_OPTIONAL": null,
+      "zip": "67010"
+    },
+    "roof_facets": {
+      "north_arrow_angle": 0,
+      "roof_facets": [
+        {
+          "area_pct": 27.5,
+          "cardinal": "N",
+          "facet_id": "F1",
+          "pitch": "8/12",
+          "polygon_pixels": []
+        },
+        {
+          "area_pct": 22.5,
+          "cardinal": "E",
+          "facet_id": "F2",
+          "pitch": "8/12",
+          "polygon_pixels": []
+        },
+        {
+          "area_pct": 27.5,
+          "cardinal": "S",
+          "facet_id": "F3",
+          "pitch": "8/12",
+          "polygon_pixels": []
+        },
+        {
+          "area_pct": 22.5,
+          "cardinal": "W",
+          "facet_id": "F4",
+          "pitch": "8/12",
+          "polygon_pixels": []
+        }
+      ],
+      "scale_bar": null
+    },
+    "scope": {
+      "o_and_p": true,
+      "trades": [
+        "Roofing",
+        "Siding",
+        "Gutters"
+      ]
+    },
+    "settlement_prediction": {
+      "avg_movement_pct": 66.8,
+      "avg_settlement": 60277.0,
+      "avg_usarm_rcv": 43943.0,
+      "confidence": "high",
+      "data_points": 77,
+      "note": "Based on 77 similar claims against State Farm",
+      "predicted_additional_amount": 514.0,
+      "predicted_settlement_range": {
+        "high": 1541.0,
+        "low": 1026.0,
+        "mid": 1283.0
+      },
+      "win_probability_pct": 15.6
+    },
+    "slope_damage": [
+      {
+        "area_pct": 27.5,
+        "cardinal": "N",
+        "damage_photos": 0,
+        "dominant_damage_type": null,
+        "facet_id": "F1",
+        "pitch": "8/12",
+        "total_photos": 0,
+        "weighted_damage_pct": 0.0
+      },
+      {
+        "area_pct": 22.5,
+        "cardinal": "E",
+        "damage_photos": 0,
+        "dominant_damage_type": null,
+        "facet_id": "F2",
+        "pitch": "8/12",
+        "total_photos": 0,
+        "weighted_damage_pct": 0.0
+      },
+      {
+        "area_pct": 27.5,
+        "cardinal": "S",
+        "damage_photos": 0,
+        "dominant_damage_type": null,
+        "facet_id": "F3",
+        "pitch": "8/12",
+        "total_photos": 0,
+        "weighted_damage_pct": 0.0
+      },
+      {
+        "area_pct": 22.5,
+        "cardinal": "W",
+        "damage_photos": 0,
+        "dominant_damage_type": null,
+        "facet_id": "F4",
+        "pitch": "8/12",
+        "total_photos": 0,
+        "weighted_damage_pct": 0.0
+      },
+      {
+        "area_pct": 0.0,
+        "cardinal": null,
+        "damage_photos": 0,
+        "dominant_damage_type": null,
+        "facet_id": "_unassigned",
+        "pitch": null,
+        "total_photos": 3,
+        "weighted_damage_pct": 0.0
+      }
+    ],
+    "source_docs": {
+      "companycam_pdf": "_no_companycam.pdf"
+    },
+    "structures": [
+      {
+        "age": 18,
+        "facets": 4,
+        "measurements": {
+          "eave": 148,
+          "hip": 68,
+          "rake": 0,
+          "ridge": 52,
+          "valley": 0
+        },
+        "name": "Main Roof",
+        "pitches": [
+          {
+            "area_sf": 2847,
+            "percent": 100,
+            "pitch": "8/12"
+          }
+        ],
+        "predominant_pitch": "8/12",
+        "roof_area_sf": 2847,
+        "roof_area_sq": 28.47,
+        "shingle_type": "3-Tab 25yr Comp Shingle",
+        "style": "hip",
+        "waste_factor": 1.1
+      }
+    ],
+    "user_notes": "Shingle roof",
+    "weather": {
+      "hail_size": "",
+      "storm_date": "01/04/2025 - 02/18/2025",
+      "storm_description": "Multiple winter storm events across Kansas including blizzards, heavy snow, freezing rain, ice storms, extreme cold/wind chill, dense fog, and high winds. A powerful long-duration winter storm on January 4-5 brought freezing drizzle, freezing rain with ice accumulations up to 0.66 inches, blizzard conditions with snowfall up to 20.5 inches (Chapman), wind gusts to 58 mph, and caused two fatalities in Sedgwick County. Subsequent events in January and February brought additional heavy snow, ice storms, extreme cold with wind chills of -5 to -15 degrees, and dense fog across the state."
+    }
+  }
+}
