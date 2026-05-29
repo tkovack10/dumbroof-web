@@ -3610,6 +3610,10 @@ ADMIN_SETUP_TOOL_NAMES = {
     "get_company_portfolio_summary",
     "compare_team_performance",
     "get_team_member_workload",
+    # Company-scope BULK carrier-comms campaigns (admin/owner; approval-gated,
+    # company_id resolved server-side; handlers also call _ensure_company_role).
+    "bulk_supplement_campaign",
+    "bulk_forensic_campaign",
 }
 
 
