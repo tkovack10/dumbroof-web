@@ -28,22 +28,36 @@ function escapeHtml(s: string): string {
     .replace(/'/g, "&#39;");
 }
 
+/**
+ * Strip any remaining {{...}} placeholders after interpolation so an unknown
+ * or misspelled token (e.g. {{first_name}}) never reaches a homeowner as a
+ * literal. Blanks the token rather than leaving it visible. Applied last, to
+ * both HTML and plaintext outputs.
+ */
+function stripUnreplacedTokens(s: string): string {
+  return s.replace(/\{\{\s*[\w.]+\s*\}\}/g, "");
+}
+
 /** Interpolate placeholders into an HTML body, escaping each substituted value. */
 export function interpolateHtml(body: string, claim: HomeownerClaimFields): string {
-  return body
-    .replace(/\{\{\s*homeowner_name\s*\}\}/g, escapeHtml(claim.homeowner_name || "there"))
-    .replace(/\{\{\s*address\s*\}\}/g, escapeHtml(claim.address || ""))
-    .replace(/\{\{\s*claim_number\s*\}\}/g, escapeHtml(claim.claim_number || ""))
-    .replace(/\{\{\s*carrier\s*\}\}/g, escapeHtml(claim.carrier || "your carrier"));
+  return stripUnreplacedTokens(
+    body
+      .replace(/\{\{\s*homeowner_name\s*\}\}/g, escapeHtml(claim.homeowner_name || "there"))
+      .replace(/\{\{\s*address\s*\}\}/g, escapeHtml(claim.address || ""))
+      .replace(/\{\{\s*claim_number\s*\}\}/g, escapeHtml(claim.claim_number || ""))
+      .replace(/\{\{\s*carrier\s*\}\}/g, escapeHtml(claim.carrier || "your carrier")),
+  );
 }
 
 /** Interpolate placeholders into a plaintext string (e.g. subject line). */
 export function interpolatePlain(body: string, claim: HomeownerClaimFields): string {
-  return body
-    .replace(/\{\{\s*homeowner_name\s*\}\}/g, claim.homeowner_name || "there")
-    .replace(/\{\{\s*address\s*\}\}/g, claim.address || "")
-    .replace(/\{\{\s*claim_number\s*\}\}/g, claim.claim_number || "")
-    .replace(/\{\{\s*carrier\s*\}\}/g, claim.carrier || "your carrier");
+  return stripUnreplacedTokens(
+    body
+      .replace(/\{\{\s*homeowner_name\s*\}\}/g, claim.homeowner_name || "there")
+      .replace(/\{\{\s*address\s*\}\}/g, claim.address || "")
+      .replace(/\{\{\s*claim_number\s*\}\}/g, claim.claim_number || "")
+      .replace(/\{\{\s*carrier\s*\}\}/g, claim.carrier || "your carrier"),
+  );
 }
 
 /**

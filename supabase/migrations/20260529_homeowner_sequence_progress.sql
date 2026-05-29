@@ -41,3 +41,22 @@ FROM (
 ) sub
 WHERE hs.claim_id = sub.claim_id
   AND hs.last_sent_offset_days IS NULL;
+
+-- ---------------------------------------------------------------------------
+-- Idempotency guard for the cron driver.
+--
+-- The cron records a homeowner_sends row per (claim_id, template_slug) step.
+-- Without a DB constraint, a crash between resend.send() and the cursor
+-- advance re-sends the SAME step on the next run. This partial unique index
+-- makes a duplicate successful send for the same (claim, template) physically
+-- impossible: the cron does a SELECT-then-act check first, and even if two
+-- runs race past that, the second INSERT hits this constraint and is swallowed
+-- as "already sent" (see route.ts isUniqueViolation handling).
+--
+-- Scoped to error_message IS NULL so a FAILED send (error_message set) does NOT
+-- block a later retry of the same step — only a clean prior send does.
+-- Columns verified against 20260419_platform_expansion.sql: homeowner_sends has
+-- claim_id (uuid), template_slug (text), error_message (text).
+CREATE UNIQUE INDEX IF NOT EXISTS homeowner_sends_claim_template_uniq
+    ON homeowner_sends (claim_id, template_slug)
+    WHERE error_message IS NULL;

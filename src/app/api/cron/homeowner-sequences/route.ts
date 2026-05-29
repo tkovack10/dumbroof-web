@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
-import { getResend, EMAIL_FROM_CLAIMS, EMAIL_REPLY_TO, teamBccFor } from "@/lib/resend";
+import { getResend, EMAIL_FROM_CLAIMS, EMAIL_REPLY_TO } from "@/lib/resend";
+import { companyOwnerEmails, mergeBcc } from "@/lib/team-bcc";
 import { recordHeartbeat } from "@/lib/cron-heartbeat";
 import { logClaimEvent } from "@/lib/claim-events";
 import { resolveCompanyAttachments } from "@/lib/homeowner/attachments";
@@ -71,13 +72,14 @@ interface ClaimRow {
 }
 
 function authorize(req: NextRequest): boolean {
+  // Fail closed: this route SENDS email to homeowners, so it must never run
+  // unauthenticated. We require CRON_SECRET to be configured AND presented as
+  // a Bearer token. We deliberately do NOT trust the `vercel-cron` user-agent
+  // or the x-vercel-cron header when the secret is unset — both are spoofable
+  // by any caller, and an unset secret must mean "deny", not "allow anyone".
+  // Vercel Cron is configured to send `Authorization: Bearer ${CRON_SECRET}`.
   const secret = process.env.CRON_SECRET?.trim();
-  const vercelCronHeader = req.headers.get("x-vercel-cron");
-  if (vercelCronHeader) return true;
-  if (!secret) {
-    // No secret configured — fall back to Vercel's cron user-agent.
-    return req.headers.get("user-agent")?.includes("vercel-cron") ?? false;
-  }
+  if (!secret) return false;
   return req.headers.get("authorization") === `Bearer ${secret}`;
 }
 
@@ -136,6 +138,65 @@ function daysSince(startedAtIso: string, now: number): number {
 /** ISO timestamp for started_at + offsetDays days. */
 function scheduledAt(startedAtIso: string, offsetDays: number): string {
   return new Date(Date.parse(startedAtIso) + offsetDays * 86_400_000).toISOString();
+}
+
+interface CompanySender {
+  /** Resend `from` — company display name on the verified dumbroof.ai address. */
+  from: string;
+  /** Resend `replyTo` — the company's own sending address so replies route to them. */
+  replyTo: string;
+}
+
+/**
+ * Resolve the per-tenant sender identity for a claim's homeowner email.
+ *
+ * Resend only sends from VERIFIED domains (dumbroof.ai), so we cannot send
+ * `from` a company's own domain. Instead we put the company's DISPLAY NAME on
+ * the verified claims@dumbroof.ai address and route replies to the company's
+ * own sending address. The homeowner sees their contractor's name; replies go
+ * to the contractor.
+ *
+ * Mapping: company_profiles is keyed by user_id (one row per user), and the
+ * backend resolves a claim's sending profile via claim.user_id
+ * (claim_brain_email.py send_claim_email -> company_profiles.eq(user_id)). We
+ * mirror that: the claim's OWNING user's profile carries company_name +
+ * sending_email. claims.company_id is the team-grouping key, not a
+ * company_profiles primary key, so we key off user_id like the rest of the code.
+ *
+ * Falls back to the platform "Dumb Roof Claims" identity when no company_name
+ * resolves (e.g. claim has no user_id, or profile row missing).
+ */
+async function resolveCompanySender(claim: ClaimRow): Promise<CompanySender> {
+  const fallback: CompanySender = { from: EMAIL_FROM_CLAIMS, replyTo: EMAIL_REPLY_TO };
+  if (!claim.user_id) return fallback;
+  try {
+    const { data } = await supabaseAdmin
+      .from("company_profiles")
+      .select("company_name, sending_email, email")
+      .eq("user_id", claim.user_id)
+      .limit(1);
+    const profile = data?.[0] as
+      | { company_name: string | null; sending_email: string | null; email: string | null }
+      | undefined;
+    const companyName = (profile?.company_name || "").trim();
+    if (!companyName) return fallback;
+    const replyTo = (profile?.sending_email || profile?.email || "").trim() || EMAIL_REPLY_TO;
+    return { from: `${companyName} <claims@dumbroof.ai>`, replyTo };
+  } catch (e) {
+    console.warn(`[homeowner-sequences] sender resolution failed for claim ${claim.id}:`, e);
+    return fallback;
+  }
+}
+
+/**
+ * True when a Supabase/PostgREST error is a unique-constraint violation
+ * (Postgres 23505). Used to swallow the homeowner_sends idempotency index
+ * collision as "already sent" rather than treating it as a hard failure.
+ */
+function isUniqueViolation(err: { code?: string | null; message?: string | null } | null): boolean {
+  if (!err) return false;
+  if (err.code === "23505") return true;
+  return (err.message || "").toLowerCase().includes("duplicate key value");
 }
 
 export async function GET(req: NextRequest) {
@@ -260,12 +321,16 @@ export async function GET(req: NextRequest) {
         continue;
       }
 
-      // Belt-and-suspenders idempotency: skip if this exact step already sent.
+      // Authoritative idempotency check: skip if this exact step was already
+      // sent SUCCESSFULLY. Scope to error_message IS NULL so a prior FAILED send
+      // (error_message set, slot freed under the partial unique index) does NOT
+      // block a retry — only a clean prior send advances the cursor here.
       const { data: priorSends } = await supabaseAdmin
         .from("homeowner_sends")
         .select("id")
         .eq("claim_id", seq.claim_id)
         .eq("template_slug", dueStep.slug)
+        .is("error_message", null)
         .limit(1);
       if (priorSends && priorSends.length > 0) {
         // Already sent (cursor must have lagged). Advance cursor + reschedule.
@@ -285,14 +350,62 @@ export async function GET(req: NextRequest) {
         claim.company_id,
       );
 
-      // BCC the platform team (+ USARM mailbox when the recipient is USARM).
-      const bcc = teamBccFor({ recipientEmail: claim.homeowner_email });
+      // ---- Reserve the send slot BEFORE calling Resend (idempotency) --------
+      // Insert the homeowner_sends row first. The partial unique index
+      // homeowner_sends_claim_template_uniq (claim_id, template_slug) WHERE
+      // error_message IS NULL makes a duplicate clean send physically
+      // impossible. If two cron runs race past the SELECT-then-act check above,
+      // the loser hits the constraint here and we treat it as "already sent":
+      // advance the cursor and move on, never double-sending.
+      const { data: reserved, error: reserveErr } = await supabaseAdmin
+        .from("homeowner_sends")
+        .insert({
+          claim_id: seq.claim_id,
+          template_slug: dueStep.slug,
+          to_email: claim.homeowner_email,
+          subject,
+          body_preview: (tmpl.body_text || "").slice(0, 500),
+          attachments: assetSlugs,
+          sent_by: null, // cron
+          resend_email_id: null,
+          metadata: { offset_days: dueOffset, source: "cron" },
+        })
+        .select("id")
+        .limit(1);
+
+      if (reserveErr) {
+        if (isUniqueViolation(reserveErr)) {
+          // Another run already sent this step. Advance + reschedule, don't resend.
+          await advanceCursor(seq, dueOffset, steps);
+          results.skipped++;
+          continue;
+        }
+        console.error(
+          `[homeowner-sequences] reserve insert failed for claim ${seq.claim_id} step ${dueStep.slug}:`,
+          reserveErr.message,
+        );
+        results.errors++;
+        continue;
+      }
+
+      const sendRowId = (reserved?.[0]?.id as string | undefined) ?? null;
+
+      // Per-tenant sender identity: company display name on the verified
+      // dumbroof.ai address; replies route to the company's own address.
+      const sender = await resolveCompanySender(claim);
+
+      // BCC the SENDING company's owner (founding owner of the claim's company),
+      // keyed off the claim's owning user — never off the recipient's email
+      // domain. Owner is BCC only (never leak internal addresses to the
+      // homeowner). Mirrors send-now. No DumbRoof team BCC (send-now omits it).
+      const ownerBcc = await companyOwnerEmails(claim.user_id ?? "");
+      const bcc = mergeBcc(undefined, ownerBcc, claim.homeowner_email);
 
       const { data: sent, error: sendErr } = await resend.emails.send({
-        from: EMAIL_FROM_CLAIMS,
+        from: sender.from,
         to: [claim.homeowner_email],
         bcc: bcc.length > 0 ? bcc : undefined,
-        replyTo: EMAIL_REPLY_TO,
+        replyTo: sender.replyTo,
         subject,
         html,
         attachments: attachments.length > 0 ? attachments : undefined,
@@ -303,38 +416,28 @@ export async function GET(req: NextRequest) {
       });
 
       if (sendErr) {
-        // Record the failure on the send log; do NOT advance the cursor so the
-        // step retries next run.
-        await supabaseAdmin.from("homeowner_sends").insert({
-          claim_id: seq.claim_id,
-          template_slug: dueStep.slug,
-          to_email: claim.homeowner_email,
-          subject,
-          body_preview: (tmpl.body_text || "").slice(0, 500),
-          attachments: assetSlugs,
-          sent_by: null, // cron
-          resend_email_id: null,
-          error_message: sendErr.message,
-          metadata: { offset_days: dueOffset, source: "cron" },
-        });
+        // Send failed. Mark the reserved row with an error so it no longer holds
+        // the unique slot (the index is WHERE error_message IS NULL), letting the
+        // step retry next run. Do NOT advance the cursor.
+        if (sendRowId) {
+          await supabaseAdmin
+            .from("homeowner_sends")
+            .update({ error_message: sendErr.message })
+            .eq("id", sendRowId);
+        }
         results.errors++;
         continue;
       }
 
       const resendId = sent?.id || null;
 
-      // Log the send.
-      await supabaseAdmin.from("homeowner_sends").insert({
-        claim_id: seq.claim_id,
-        template_slug: dueStep.slug,
-        to_email: claim.homeowner_email,
-        subject,
-        body_preview: (tmpl.body_text || "").slice(0, 500),
-        attachments: assetSlugs,
-        sent_by: null, // cron
-        resend_email_id: resendId,
-        metadata: { offset_days: dueOffset, source: "cron" },
-      });
+      // Send succeeded — attach the Resend id to the reserved row.
+      if (sendRowId) {
+        await supabaseAdmin
+          .from("homeowner_sends")
+          .update({ resend_email_id: resendId })
+          .eq("id", sendRowId);
+      }
 
       // Bump the per-claim comms counter.
       await supabaseAdmin
