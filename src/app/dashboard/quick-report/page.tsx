@@ -210,6 +210,22 @@ export default function QuickReportPage() {
 
       if (dbError) throw new Error(dbError.message);
 
+      // Fire StartTrial — browser pixel + server CAPI mirror, same dedup pattern
+      // as the new-claim flow. This is an activation event (a claim was created),
+      // which is what the live StartTrial ad set optimizes on. Fire-and-forget.
+      const capiEventId = `claim_${slug}_starttrial`;
+      window.fbq?.("track", "StartTrial", { value: 499, currency: "USD" }, { eventID: capiEventId });
+      fetch("/api/capi-event", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          eventName: "StartTrial",
+          eventId: capiEventId,
+          eventSourceUrl: window.location.href,
+          customData: { value: 499, currency: "USD", content_name: "Claim Package", content_category: "pre-scope" },
+        }),
+      }).catch(() => {});
+
       // Counter is incremented by processor.py atomically with the quota gate.
       setStatus("success");
     } catch (err) {

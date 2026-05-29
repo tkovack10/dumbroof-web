@@ -157,10 +157,27 @@ export function OnboardingChat({ userId, firstName }: { userId: string; firstNam
               if (data.tool_action) {
                 const ta = data.tool_action as { action?: string; data?: Record<string, unknown> };
                 if (ta.action === "complete" && ta.data?.claim_id) {
+                  const claimSlug = String(ta.data.slug || slug);
                   setCreated({
-                    claimSlug: String(ta.data.slug || slug),
+                    claimSlug,
                     label: REPORT_LABELS[String(ta.data.report_mode || "")] || "claim package",
                   });
+                  // Activation event: the user just created their first claim via
+                  // Richard onboarding. Fire StartTrial (browser pixel + CAPI mirror,
+                  // deduped by event_id) so Meta can optimize the live StartTrial ad
+                  // set on real activations. Fire-and-forget — never blocks the UI.
+                  const capiEventId = `claim_${claimSlug}_starttrial`;
+                  window.fbq?.("track", "StartTrial", { value: 499, currency: "USD" }, { eventID: capiEventId });
+                  fetch("/api/capi-event", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                      eventName: "StartTrial",
+                      eventId: capiEventId,
+                      eventSourceUrl: window.location.href,
+                      customData: { value: 499, currency: "USD", content_name: "Claim Package", content_category: "onboarding" },
+                    }),
+                  }).catch(() => {});
                 }
               }
               if (data.error) {

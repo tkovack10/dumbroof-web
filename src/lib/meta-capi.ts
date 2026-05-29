@@ -1,7 +1,11 @@
 import crypto from "crypto";
 
-const PIXEL_ID = process.env.META_PIXEL_ID;
-const ACCESS_TOKEN = process.env.META_CAPI_TOKEN;
+// .trim() is load-bearing: META_PIXEL_ID is configured as "766657346239697\n"
+// (trailing newline). Without trimming, the pixel URL becomes .../766657346239697%0A/events
+// and Meta 400s with "Object … does not exist", silently dropping every event.
+// meta-conversions-api.ts already trims; this keeps the two CAPI paths consistent.
+const PIXEL_ID = process.env.META_PIXEL_ID?.trim();
+const ACCESS_TOKEN = process.env.META_CAPI_TOKEN?.trim();
 const API_VERSION = "v21.0";
 
 function sha256(value: string): string {
