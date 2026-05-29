@@ -17,7 +17,7 @@ from __future__ import annotations
 from typing import Any, Optional
 from supabase import Client
 
-VALID_SCOPES = ("user", "company", "claim")
+VALID_SCOPES = ("user", "company", "claim", "onboarding")
 DEFAULT_LIMIT = 50  # tail length to load — matches the prior in-memory cap
 MAX_LIMIT = 200
 

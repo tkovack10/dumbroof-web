@@ -1166,6 +1166,32 @@ CLAIM_BRAIN_TOOLS = [
             "required": ["retail_job_id", "amount", "description"],
         },
     },
+    {
+        "name": "create_claim_from_minimal_input",
+        "description": (
+            "Create the user's FIRST claim from the onboarding conversation, then "
+            "start processing it immediately. Call this ONCE you have: (a) the user "
+            "has uploaded at least inspection PHOTOS or the carrier's SCOPE/estimate "
+            "via the upload box, AND (b) their property ADDRESS. You do NOT pass "
+            "files — they're already staged under the onboarding session; just pass "
+            "the 'slug' (given to you in context) plus the address, and (if known) "
+            "the insurance carrier and date of loss. The report type auto-detects "
+            "from what they uploaded: photos -> forensic damage report (date of loss "
+            "is strongly recommended — it drives the storm/weather corroboration); "
+            "carrier scope -> instant supplement. Creates immediately (no approval "
+            "needed). ONBOARDING ONLY — for users who have not made a claim yet."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "slug": {"type": "string", "description": "The onboarding session id provided to you in context. Identifies where the user's uploaded files are staged. Required."},
+                "address": {"type": "string", "description": "Property street address (required). If the user genuinely won't provide one, pass 'Pending — please update'."},
+                "carrier": {"type": "string", "description": "Insurance carrier name if known (optional)."},
+                "date_of_loss": {"type": "string", "description": "Date of loss as YYYY-MM-DD if known. Optional but strongly recommended for photo/forensic claims — it drives the NOAA storm-weather section of the report."},
+            },
+            "required": ["slug", "address"],
+        },
+    },
 ]
 
 
@@ -1372,6 +1398,9 @@ async def execute_tool(
             result = await _handle_send_company_intro_email(sb, user_id, company_profile, tool_input)
         elif tool_name == "send_retail_invoice":
             result = await _handle_send_retail_invoice(sb, user_id, company_profile, tool_input)
+        # ─── Onboarding: create the user's first claim (Phase 1a activation) ──
+        elif tool_name == "create_claim_from_minimal_input":
+            result = _handle_create_claim_from_minimal_input(sb, user_id, tool_input)
         else:
             result = {"action": "error", "message": f"Unknown tool: {tool_name}"}
     except Exception as e:
@@ -1383,6 +1412,134 @@ async def execute_tool(
         _audit_log(sb, claim_id, user_id, tool_name, tool_input, result, duration_ms, err)
 
     return result
+
+
+def _handle_create_claim_from_minimal_input(sb: Client, user_id: str, tool_input: dict) -> dict:
+    """Onboarding (Phase 1a activation): create the user's FIRST claim conversationally.
+
+    The /welcome upload box has already staged the user's files under
+    {user_id}/{slug}/{photos|measurements|scope}/ (authed upload route). Richard
+    passes only the session `slug` + address (+ optional carrier/date_of_loss);
+    this handler DISCOVERS the uploaded files by listing storage, INFERS the
+    report_mode from what's present, and inserts the claim with status='uploaded'
+    so the existing poller (main.poll_for_claims) processes it. No file moves, no
+    second pricing path — mirrors the proven instant-intake/claim insert recipe.
+
+    Idempotent on (user_id, slug): re-invocation returns the existing claim rather
+    than creating a duplicate (the model may call this more than once). The
+    backend is already brand-safe with no logo (processor renders neutral
+    "Your Roofing Company"); the UI prompts for the logo AFTER the report builds.
+    Returns action='complete' (auto-create — no approval gate, per product spec).
+    See project_richard_onboarding_activation.
+    """
+    import re as _re
+
+    slug = (tool_input.get("slug") or "").strip()
+    address = (tool_input.get("address") or "").strip()
+    carrier = (tool_input.get("carrier") or "").strip()
+    dol = (tool_input.get("date_of_loss") or "").strip()
+
+    # Slug must match the onboarding-session format the UI generates. Reject
+    # anything else so a hallucinated slug can't point file_path at another
+    # user's prefix (it's always under {user_id}/ anyway, but be strict).
+    if not slug or not _re.match(r"^[A-Za-z0-9_-]{4,64}$", slug):
+        return {"action": "error", "message": "Missing or invalid onboarding session id (slug)."}
+
+    file_path = f"{user_id}/{slug}"
+    BUCKET = "claim-documents"
+
+    # Idempotency — if this onboarding session already produced a claim, return it.
+    try:
+        existing = (
+            sb.table("claims").select("id,slug,report_mode")
+            .eq("user_id", user_id).eq("slug", slug).limit(1).execute()
+        )
+        if existing.data:
+            row = existing.data[0]
+            return {
+                "action": "complete",
+                "message": "Your claim is already being created — hang tight.",
+                "data": {"claim_id": row["id"], "slug": row["slug"], "already_existed": True},
+            }
+    except Exception:
+        pass  # fall through to create
+
+    def _list_folder(folder: str) -> list:
+        try:
+            res = sb.storage.from_(BUCKET).list(f"{file_path}/{folder}")
+            return [f["name"] for f in (res or []) if f.get("id") is not None]
+        except Exception:
+            return []
+
+    photos = _list_folder("photos")
+    measurements = _list_folder("measurements")
+    scope = _list_folder("scope")
+
+    # Phase 1a supports the two FREE entry points: photos -> forensic, scope ->
+    # supplement. Bare measurements (no photos, no scope) need the estimate_only
+    # report_mode (Phase 1b) — until then, guide the user.
+    if not photos and not scope:
+        return {
+            "action": "error",
+            "message": (
+                "No inspection photos or carrier scope are staged yet. Ask the user to "
+                "upload photos (for a forensic damage report) or the carrier's scope/estimate "
+                "(for an instant supplement), then call this again."
+            ),
+        }
+
+    # Infer report_mode (matches instant-intake + the processor's auto-upgrade
+    # semantics: a second input upgrades a minimal mode to 'full').
+    if scope and not photos:
+        report_mode, phase = "supplement_only", "post-scope"
+    elif photos and not scope and not measurements:
+        report_mode, phase = "forensic_only", "pre-scope"
+    else:
+        report_mode, phase = "full", ("post-scope" if scope else "pre-scope")
+
+    payload = {
+        "user_id": user_id,
+        "slug": slug,
+        "address": address or "Pending — please update",
+        "carrier": carrier,
+        "phase": phase,
+        "status": "uploaded",
+        "file_path": file_path,
+        "report_mode": report_mode,
+        "photo_files": photos or None,
+        "measurement_files": measurements or None,
+        "scope_files": scope or None,
+        "user_notes": "[richard onboarding] first claim created conversationally",
+    }
+    if dol and _re.match(r"^\d{4}-\d{2}-\d{2}$", dol):
+        payload["date_of_loss"] = dol
+
+    try:
+        ins = sb.table("claims").insert(payload).execute()
+    except Exception as e:
+        return {"action": "error", "message": f"Could not create the claim: {type(e).__name__}: {e}"}
+
+    row = (ins.data or [{}])[0] if isinstance(ins.data, list) else (ins.data or {})
+    claim_id = row.get("id")
+    rslug = row.get("slug", slug)
+    label = {
+        "forensic_only": "forensic damage report",
+        "supplement_only": "instant supplement",
+        "full": "full appeal package",
+    }.get(report_mode, "claim")
+
+    return {
+        "action": "complete",
+        "message": f"Created the claim for {address or 'this property'} — building the {label} now.",
+        "data": {
+            "claim_id": claim_id,
+            "slug": rslug,
+            "report_mode": report_mode,
+            "photo_count": len(photos),
+            "has_scope": bool(scope),
+            "has_measurements": bool(measurements),
+        },
+    }
 
 
 def _install_supplement_items(claim_data: dict) -> list[dict]:
