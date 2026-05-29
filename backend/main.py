@@ -15,6 +15,7 @@ Run locally:  uvicorn main:app --reload --port 8000
 import os
 import json
 import asyncio
+import hashlib
 import urllib.parse
 import urllib.request
 from contextlib import asynccontextmanager
@@ -3319,7 +3320,6 @@ def _build_cadence_body_html(
     days = item.get("offset_days", 0)
     cadence_type = preview.get("cadence_type", "")
     address = claim_row.get("address") or "the subject property"
-    carrier = claim_row.get("carrier") or "your office"
     claim_number = preview.get("subject") or claim_row.get("claim_number") or ""
 
     tone_map = {
@@ -3330,13 +3330,81 @@ def _build_cadence_body_html(
     }
     tone_label = tone_map.get(followup_number, f"follow-up {followup_number}")
 
-    top = (
-        f"<p>Following up on our prior correspondence regarding the claim at <strong>{address}</strong> "
-        f"(claim number <strong>{claim_number}</strong>).</p>"
-        f"<p>It has been approximately {days} days and we have not yet received a response from {carrier}. "
-        f"Please confirm receipt and provide a status update at your earliest convenience.</p>"
-        f"<p>The attached documentation remains available for your review.</p>"
-    )
+    # Human, varied follow-up copy. These used to be one stiff template
+    # ("Following up on our prior correspondence ... It has been approximately
+    # N days ...") sent on every claim — to an adjuster that reads as automated.
+    # We rotate phrasing deterministically by claim + follow-up number so the
+    # same claim is reproducible, steps escalate naturally, and different claims
+    # read differently. Contractor mode: nudge for a status update, no advocacy
+    # language (no "demand"/"appeal"/statutes).
+    prop = f"<strong>{address}</strong>"
+    seed = f"{claim_number}|{address}|{followup_number}"
+    pick = lambda opts: opts[int(hashlib.sha256(seed.encode("utf-8")).hexdigest(), 16) % len(opts)]
+
+    if followup_number <= 1:
+        top = pick([
+            (
+                f"<p>Hi there,</p>"
+                f"<p>Just circling back on {prop} — wanted to make sure the documentation I sent over "
+                f"came through okay. No rush, just let me know it's on your radar and roughly where it "
+                f"sits. Happy to answer anything.</p>"
+            ),
+            (
+                f"<p>Hi there,</p>"
+                f"<p>Following up on {prop}. Hoping you've had a chance to look at what I sent — if "
+                f"there's anything you need from me to keep it moving, just say the word.</p>"
+            ),
+            (
+                f"<p>Hi there,</p>"
+                f"<p>Checking in on {prop}. Could you confirm you received the file and let me know "
+                f"the next step on your end? Glad to send more detail if it helps.</p>"
+            ),
+        ])
+    elif followup_number == 2:
+        top = pick([
+            (
+                f"<p>Hi there,</p>"
+                f"<p>Following up again on {prop} — it's been about {days} days and I haven't heard "
+                f"back yet. Could you confirm receipt and let me know where things stand? Want to keep "
+                f"this one moving for the homeowner.</p>"
+            ),
+            (
+                f"<p>Hi there,</p>"
+                f"<p>Just bumping {prop} back up. I want to make sure nothing fell through the cracks — "
+                f"a quick note on the status would be a big help. Thanks for staying on it.</p>"
+            ),
+        ])
+    elif followup_number == 3:
+        top = pick([
+            (
+                f"<p>Hi there,</p>"
+                f"<p>Wanted to flag {prop} — we're now about {days} days out without a response, and "
+                f"the homeowner's asking for updates. Could you let me know the status so I can keep "
+                f"them in the loop? I appreciate your help getting this unstuck.</p>"
+            ),
+            (
+                f"<p>Hi there,</p>"
+                f"<p>Following up on {prop} again. It's been roughly {days} days and the delay is "
+                f"holding up the repair. A status update whenever you can would really help — happy "
+                f"to jump on a call if that's easier.</p>"
+            ),
+        ])
+    else:
+        top = pick([
+            (
+                f"<p>Hi there,</p>"
+                f"<p>One more note on {prop}. We've followed up a few times over the last {days} days "
+                f"without hearing back. I'd really like to get this resolved with you directly — could "
+                f"you let me know the status, or point me to who I should be working with? Thanks for "
+                f"your help.</p>"
+            ),
+            (
+                f"<p>Hi there,</p>"
+                f"<p>I'm checking in on {prop} once more — it's been about {days} days and the file's "
+                f"still open on our side. Whatever you can share on where it stands would be "
+                f"appreciated, and I'm glad to resend anything that didn't come through.</p>"
+            ),
+        ])
 
     if previous_body_html:
         import html as _html

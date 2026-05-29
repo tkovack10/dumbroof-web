@@ -23,6 +23,7 @@ import os
 import json
 import time
 import base64
+import hashlib
 import traceback
 from datetime import datetime
 from typing import Optional, Any
@@ -1558,6 +1559,227 @@ def _install_supplement_items(claim_data: dict) -> list[dict]:
     return items
 
 
+# ═══════════════════════════════════════════════════════════════════════
+# HUMAN, VARIED CARRIER-EMAIL COPY
+# ═══════════════════════════════════════════════════════════════════════
+# Carrier-facing supplement / completion / AOB emails used to open with stiff
+# boilerplate ("Dear {carrier} Claims Department, Please find enclosed ...").
+# To an adjuster that reads as template/AI output — and identical wording
+# across every USARM email screams the same thing. These helpers produce
+# natural, contractor-written copy and rotate through several distinctly-worded
+# variants, chosen deterministically per claim so the same claim is always
+# reproducible but different claims read differently.
+#
+# Compliance note: CONTRACTOR mode. Factual + warm, no public-adjuster advocacy
+# ("demand", "on behalf of", "appeal", statute citations). Multi-tenant — every
+# company-specific token comes from variables, nothing is hardcoded to USARM.
+#
+# Subject lines are intentionally NOT varied for carrier sends: the platform
+# rule (richard_prompts/claim/compliance_contractor_mode.md + the Gmail reply
+# poller that matches on `subject:{claim_number}`, claim_brain_email.py) requires
+# the bare claim number as the subject for carrier auto-routing. Only the BODY
+# rotates.
+
+def _adjuster_first_name(claim_data: dict, fallback: str = "there") -> str:
+    """Best-effort adjuster first name for a friendly greeting.
+
+    Reads claim_data.adjuster_name (then previous_carrier_data.adjuster_name),
+    takes the first token, and title-cases it. Falls back gracefully when no
+    name is on file (e.g. "there" for "Hi there," or "Claims Team")."""
+    name = (claim_data.get("adjuster_name") or "").strip()
+    if not name:
+        prev = claim_data.get("previous_carrier_data") or {}
+        if isinstance(prev, dict):
+            name = (prev.get("adjuster_name") or "").strip()
+    if not name:
+        return fallback
+    # Strip honorifics, take the first real token.
+    parts = [p for p in name.replace(",", " ").split() if p]
+    honorifics = {"mr", "mr.", "mrs", "mrs.", "ms", "ms.", "dr", "dr.", "miss"}
+    for p in parts:
+        if p.lower().strip(".") in {h.strip(".") for h in honorifics}:
+            continue
+        return p[:1].upper() + p[1:]
+    return fallback
+
+
+def _variant_index(claim_data: dict, n: int, salt: str = "") -> int:
+    """Deterministically pick a variant 0..n-1 from the claim id (+ optional
+    salt so two different email kinds on the same claim don't always land on
+    the same index). Stable across runs, varied across claims."""
+    if n <= 1:
+        return 0
+    seed = f"{claim_data.get('id') or claim_data.get('claim_id') or ''}|{salt}"
+    digest = hashlib.sha256(seed.encode("utf-8")).hexdigest()
+    return int(digest, 16) % n
+
+
+def _greeting(first_name: str) -> str:
+    """Natural opening line. 'Hi there,' when we don't have a name."""
+    if first_name in ("there", "Claims Team", ""):
+        return "Hi there,"
+    return f"Hi {first_name},"
+
+
+def _sign_off(rep_name: Optional[str], company_name: str, salt: str, claim_data: dict) -> str:
+    """Rotating, human sign-off. Uses the rep's name when we have one, otherwise
+    the company name."""
+    who = (rep_name or "").strip() or company_name
+    line2 = f"{who}<br/>{company_name}" if (rep_name or "").strip() else company_name
+    options = ["Thanks,", "Thank you,", "Appreciate it,", "Best,"]
+    idx = _variant_index(claim_data, len(options), salt=f"signoff|{salt}")
+    return f"<p>{options[idx]}<br/>{line2}</p>"
+
+
+def _supplement_email_body(
+    claim_data: dict,
+    company_profile: dict,
+    *,
+    items: Optional[list[dict]] = None,
+    contractor_rcv: Optional[float] = None,
+    coc_attached: bool = False,
+    additional_notes: str = "",
+    completion: bool = False,
+) -> str:
+    """Build a human, varied carrier-facing supplement / completion email body.
+
+    `completion=False` → a scope-supplement note (the estimate missed some items;
+    here's the supplement + supporting docs).
+    `completion=True`  → a post-install completion + final-supplement note.
+
+    Variants rotate per claim. Everything is driven by the passed-in claim /
+    company variables — provider-agnostic, no hardcoded company."""
+    address = claim_data.get("address") or "the property"
+    homeowner = (claim_data.get("homeowner_name") or "").strip()
+    carrier = claim_data.get("carrier") or "your office"
+    company_name = company_profile.get("company_name") or "our office"
+    rep_name = (company_profile.get("contact_name") or "").strip() or None
+    first_name = _adjuster_first_name(claim_data)
+    greeting = _greeting(first_name)
+
+    prop_ref = f"<strong>{address}</strong>"
+    if homeowner:
+        prop_ref += f" ({homeowner})"
+
+    docs_phrase = (
+        "I've attached the supplement along with the supporting documentation"
+        if not coc_attached
+        else "I've attached the signed completion certificate along with the supplement"
+    )
+
+    if completion:
+        rcv_txt = f"${contractor_rcv:,.2f}" if contractor_rcv else "the completed scope"
+        # 5 distinctly-worded completion variants.
+        openers = [
+            (
+                f"<p>{greeting}</p>"
+                f"<p>Wrapping up on {prop_ref} — the crew finished the storm-damage work "
+                f"and everything's buttoned up. {docs_phrase} for your file. The completed "
+                f"replacement cost came to <strong>{rcv_txt}</strong>.</p>"
+                f"<p>Whenever you've had a chance to review, we'd appreciate getting the final "
+                f"payment moving. Glad to send anything else you need.</p>"
+            ),
+            (
+                f"<p>{greeting}</p>"
+                f"<p>Quick update on {prop_ref}: the restoration is done and the job passed our "
+                f"final walk. {docs_phrase} so you have the full record. Total replacement cost "
+                f"for the completed work is <strong>{rcv_txt}</strong>.</p>"
+                f"<p>Let me know if anything looks off — otherwise we're all set on our end and "
+                f"would appreciate the file moving to final payment.</p>"
+            ),
+            (
+                f"<p>{greeting}</p>"
+                f"<p>Just letting you know we've completed the work at {prop_ref}. The crew is off "
+                f"the site and the homeowner's squared away. {docs_phrase} for your records — "
+                f"the completed replacement cost is <strong>{rcv_txt}</strong>.</p>"
+                f"<p>Happy to walk through any of it. Whenever you can close this out on final "
+                f"payment, that'd be great.</p>"
+            ),
+            (
+                f"<p>{greeting}</p>"
+                f"<p>Good news on {prop_ref} — all the storm-damage work is finished and signed off. "
+                f"{docs_phrase}, and the completed replacement cost landed at <strong>{rcv_txt}</strong>.</p>"
+                f"<p>If you need photos, invoices, or anything else to wrap the file, just say the word. "
+                f"Otherwise we'd appreciate getting final payment scheduled.</p>"
+            ),
+            (
+                f"<p>{greeting}</p>"
+                f"<p>We finished up at {prop_ref} this week — the work's complete and the homeowner's "
+                f"happy. {docs_phrase} so everything's in one place. Completed replacement cost is "
+                f"<strong>{rcv_txt}</strong>.</p>"
+                f"<p>Take a look when you get a minute and let me know if you need more. We'd appreciate "
+                f"the final payment moving along.</p>"
+            ),
+        ]
+        idx = _variant_index(claim_data, len(openers), salt="completion")
+        body = openers[idx]
+    else:
+        # 6 distinctly-worded supplement variants (varied openings, structure, sign-offs).
+        openers = [
+            (
+                f"<p>{greeting}</p>"
+                f"<p>We finished going back through the scope on {prop_ref} and there are a few items "
+                f"the original estimate didn't pick up. {docs_phrase} so you can see exactly what we "
+                f"found and why it belongs in the repair.</p>"
+                f"<p>Happy to walk through any line on it — just let me know what works.</p>"
+            ),
+            (
+                f"<p>{greeting}</p>"
+                f"<p>Following up on {prop_ref}. When we got into the detailed scope, a handful of items "
+                f"came up that weren't in the current estimate. {docs_phrase}, with photos and notes on "
+                f"each one.</p>"
+                f"<p>Take a look when you can and tell me if anything needs more backup — glad to send it.</p>"
+            ),
+            (
+                f"<p>{greeting}</p>"
+                f"<p>I wanted to get this over to you on {prop_ref}. After reviewing the full scope against "
+                f"what's on site, we put together a short supplement for the pieces that were missed. "
+                f"{docs_phrase}.</p>"
+                f"<p>Let me know if you'd like to go through it together, or if you need anything else from me.</p>"
+            ),
+            (
+                f"<p>{greeting}</p>"
+                f"<p>Quick note on {prop_ref}: comparing the estimate to the actual conditions, we found a "
+                f"few line items that should be added. Nothing dramatic — just making sure the scope matches "
+                f"the work. {docs_phrase} for your review.</p>"
+                f"<p>Reach out with any questions and I'll get you whatever you need.</p>"
+            ),
+            (
+                f"<p>{greeting}</p>"
+                f"<p>Thanks for your help on {prop_ref}. We've put together a supplement covering the items "
+                f"that came up once we walked the full scope. {docs_phrase}, including the supporting "
+                f"documentation for each.</p>"
+                f"<p>I'm around if you want to talk through any of it.</p>"
+            ),
+            (
+                f"<p>{greeting}</p>"
+                f"<p>Circling back on {prop_ref}. A few things weren't captured in the original estimate, so "
+                f"we documented them and pulled them into a supplement. {docs_phrase} so it's all in one place.</p>"
+                f"<p>Let me know if anything needs clarifying — happy to send more detail.</p>"
+            ),
+        ]
+        idx = _variant_index(claim_data, len(openers), salt="supplement")
+        body = openers[idx]
+
+    # Itemized supplement scope (install-supplement / discovered items), if any.
+    if items:
+        rows = "".join(
+            f"<li>{(it.get('description') or '').strip()}"
+            + (f" — ${it.get('amount'):,.2f}" if it.get("amount") else "")
+            + "</li>"
+            for it in items
+            if (it.get("description") or "").strip()
+        )
+        if rows:
+            body += f"<p>Items in this supplement:</p><ul>{rows}</ul>"
+
+    if additional_notes.strip():
+        body += f"<p>{additional_notes.strip()}</p>"
+
+    body += _sign_off(rep_name, company_name, salt="completion" if completion else "supplement", claim_data=claim_data)
+    return body
+
+
 async def _handle_supplement_email(sb, claim_id, user_id, claim_data, company_profile, tool_input):
     """Generate supplement email draft + cover letter PDF for approval."""
     from claim_brain_pdfs import generate_supplement_cover_pdf
@@ -1574,6 +1796,26 @@ async def _handle_supplement_email(sb, claim_id, user_id, claim_data, company_pr
     file_path = f"{claim_data.get('file_path', claim_id)}/brain/supplement_cover_{datetime.now().strftime('%Y%m%d_%H%M')}.pdf"
     sb.storage.from_("claim-documents").upload(file_path, pdf_bytes, {"content-type": "application/pdf"})
 
+    # Subject = claim number only (carrier auto-routing + Gmail reply matching).
+    # Fall back to the LLM-supplied subject if no claim number is on file yet.
+    claim_number = _resolve_claim_number_or_error(claim_data)
+    subject = claim_number or (tool_input.get("subject") or "").strip()
+
+    # Human, varied body. The supplement composer used to emit stiff, identical
+    # boilerplate; this rotates natural contractor-written copy per claim. Any
+    # extra context the model wrote in `body` is folded in as a closing note so
+    # claim-specific detail isn't lost.
+    extra_note = (tool_input.get("body") or "").strip()
+    # If the model handed us plain text (no tags), pass it through as a note; if
+    # it handed us HTML we leave it out of the note to avoid double-formatting.
+    plain_note = extra_note if (extra_note and "<" not in extra_note) else ""
+    body_html = _supplement_email_body(
+        claim_data,
+        company_profile,
+        items=supplement_items or None,
+        additional_notes=plain_note,
+    )
+
     return {
         "action": "preview",
         "type": "email",
@@ -1581,8 +1823,8 @@ async def _handle_supplement_email(sb, claim_id, user_id, claim_data, company_pr
         "draft": {
             "to": tool_input["to_email"],
             "cc": claim_data.get("homeowner_email") if tool_input.get("cc_homeowner") else None,
-            "subject": tool_input["subject"],
-            "body_html": tool_input["body"],
+            "subject": subject,
+            "body_html": body_html,
             "attachments": [{"path": file_path, "filename": "Supplement_Cover_Letter.pdf"}],
         },
         "message": f"Draft supplement email ready for {tool_input['to_email']}. Supplement cover letter PDF attached.",
@@ -1661,19 +1903,39 @@ async def _handle_generate_coc(sb, claim_id, user_id, claim_data, company_profil
 
     if tool_input.get("send_to_email"):
         company_name = company_profile.get("company_name", "Your Roofing Company")
+        rep_name = (company_profile.get("contact_name") or "").strip() or None
         address = claim_data.get("address", "the property")
-        carrier = claim_data.get("carrier", "Insurance Carrier")
+        greeting = _greeting(_adjuster_first_name(claim_data))
+        prop = f"<strong>{address}</strong>"
+        # Human, varied completion-certificate note. Subject keeps the claim number
+        # when we have one (carrier routing); otherwise the descriptive fallback.
+        coc_variants = [
+            (
+                f"<p>{greeting}</p>"
+                f"<p>The storm-damage work at {prop} is complete. I've attached the completion "
+                f"certificate — everything was done to the approved scope and to code. Whenever "
+                f"you've had a look, we'd appreciate getting final payment moving.</p>"
+            ),
+            (
+                f"<p>{greeting}</p>"
+                f"<p>Closing the loop on {prop}: the job's finished and signed off, and the "
+                f"completion certificate is attached for your file. Let me know if you need anything "
+                f"else before final payment.</p>"
+            ),
+            (
+                f"<p>{greeting}</p>"
+                f"<p>Good to report the work at {prop} is wrapped up and passed our final walk. The "
+                f"completion certificate is attached. Glad to send photos or invoices if that helps "
+                f"close the file — otherwise we'd appreciate the final payment scheduled.</p>"
+            ),
+        ]
+        body_idx = _variant_index(claim_data, len(coc_variants), salt="coc")
+        coc_body = coc_variants[body_idx] + _sign_off(rep_name, company_name, salt="coc", claim_data=claim_data)
+        claim_number = _resolve_claim_number_or_error(claim_data)
         result["draft"] = {
             "to": tool_input["send_to_email"],
-            "subject": f"Certificate of Completion — {address}",
-            "body_html": (
-                f"<p>Dear {carrier} Claims Department,</p>"
-                f"<p>Please find attached the Certificate of Completion for storm damage restoration "
-                f"work at {address}. All work has been completed in accordance with the approved scope "
-                f"and applicable building codes.</p>"
-                f"<p>Please process final payment at your earliest convenience.</p>"
-                f"<p>Respectfully,<br/>{company_name}</p>"
-            ),
+            "subject": claim_number or f"Certificate of Completion — {address}",
+            "body_html": coc_body,
             "attachments": [{"path": file_path, "filename": "Certificate_of_Completion.pdf"}],
         }
         result["message"] = f"COC ready to send to {tool_input['send_to_email']}."
@@ -1697,8 +1959,37 @@ async def _handle_aob_to_carrier(sb, claim_id, user_id, claim_data, company_prof
         attachments.append({"path": tool_input["signed_aob_path"], "filename": "Signed_AOB.pdf"})
 
     company_name = company_profile.get("company_name", "Your Roofing Company")
+    rep_name = (company_profile.get("contact_name") or "").strip() or None
     address = claim_data.get("address", "the property")
-    carrier = claim_data.get("carrier", "Insurance Carrier")
+    greeting = _greeting(_adjuster_first_name(claim_data))
+    prop = f"<strong>{address}</strong>"
+
+    # Human, varied AOB-submission note. Factual, contractor-neutral — just
+    # letting the carrier know the homeowner authorized us and asking them to
+    # add us to the file.
+    aob_variants = [
+        (
+            f"<p>{greeting}</p>"
+            f"<p>The homeowner at {prop} has asked us to handle the roof repairs and signed an "
+            f"Assignment of Benefits — it's attached. Could you add {company_name} to the file as "
+            f"an authorized contact so we can coordinate on this one? Thanks for your help.</p>"
+        ),
+        (
+            f"<p>{greeting}</p>"
+            f"<p>Quick heads-up on {prop}: the homeowner has retained {company_name} for the "
+            f"storm-damage work and signed the attached Assignment of Benefits. Whenever you get a "
+            f"chance, please update your records to include us as a point of contact.</p>"
+        ),
+        (
+            f"<p>{greeting}</p>"
+            f"<p>We're working with the homeowner at {prop} on their roof. The signed Assignment of "
+            f"Benefits is attached — if you could add {company_name} to the claim file so we're "
+            f"looped in going forward, that'd be great. Happy to provide anything else you need.</p>"
+        ),
+    ]
+    aob_idx = _variant_index(claim_data, len(aob_variants), salt="aob")
+    aob_body = aob_variants[aob_idx] + _sign_off(rep_name, company_name, salt="aob", claim_data=claim_data)
+    claim_number = _resolve_claim_number_or_error(claim_data)
 
     return {
         "action": "preview",
@@ -1706,13 +1997,8 @@ async def _handle_aob_to_carrier(sb, claim_id, user_id, claim_data, company_prof
         "tool_name": "send_aob_to_carrier",
         "draft": {
             "to": tool_input["to_email"],
-            "subject": f"Assignment of Claim Benefits — {address}",
-            "body_html": (
-                f"<p>Dear {carrier} Claims Department,</p>"
-                f"<p>Please find enclosed the executed Assignment of Claim Benefits for the above-referenced property. "
-                f"Please update your records to include {company_name} as an authorized representative.</p>"
-                f"<p>Respectfully,<br/>{company_name}</p>"
-            ),
+            "subject": claim_number or f"Assignment of Claim Benefits — {address}",
+            "body_html": aob_body,
             "attachments": attachments,
         },
         "message": f"AOB package ready to send to {tool_input['to_email']}.",
@@ -5265,12 +5551,7 @@ async def _handle_preview_send_install_supplement(
             "message": "Cannot send install supplement: claim number is missing. Per email rules, the subject must be the claim number only.",
         }
 
-    address = claim_data.get("address") or "the property"
-    homeowner = claim_data.get("homeowner_name") or "the homeowner"
     contractor_rcv = float(claim_data.get("contractor_rcv") or 0)
-    carrier = claim_data.get("carrier") or "the carrier"
-    company_name = company_profile.get("company_name") or "Our company"
-    contact_name = company_profile.get("contact_name") or "the project manager"
 
     # Find the most recent COC PDF for this claim (best-effort)
     attachments: list[dict] = []
@@ -5292,30 +5573,16 @@ async def _handle_preview_send_install_supplement(
         except Exception as e:
             print(f"[install_supplement] COC lookup failed (non-fatal): {e}", flush=True)
 
-    # Compose install-supplement body. Contractor mode — no advocacy language.
-    notes_section = ""
-    if additional_notes:
-        notes_section = (
-            f"<p><strong>Additional notes:</strong> {additional_notes}</p>"
-        )
-    coc_line = (
-        "<p>The signed Certificate of Completion is attached for your records.</p>"
-        if attachments
-        else "<p>The Certificate of Completion is available on request.</p>"
-    )
-
-    body_html = (
-        f"<p>Dear adjuster,</p>"
-        f"<p>This message confirms that the storm-damage restoration work at "
-        f"<strong>{address}</strong> for <strong>{homeowner}</strong> has been completed.</p>"
-        f"<p>The contractor RCV for the completed scope is <strong>${contractor_rcv:,.2f}</strong>. "
-        f"Please process final payment per the attached documentation and your standard "
-        f"post-completion procedures.</p>"
-        f"{coc_line}"
-        f"{notes_section}"
-        f"<p>If you need any clarification or supporting documentation, "
-        f"please contact {contact_name} at {company_name}.</p>"
-        f"<p>Thank you,<br/>{company_name}</p>"
+    # Human, varied completion + install-supplement body. Contractor mode — no
+    # advocacy language; copy rotates per claim so adjusters don't see identical
+    # templates. (Was the stiff "Dear adjuster, This message confirms ..." block.)
+    body_html = _supplement_email_body(
+        claim_data,
+        company_profile,
+        contractor_rcv=contractor_rcv,
+        coc_attached=bool(attachments),
+        additional_notes=additional_notes,
+        completion=True,
     )
 
     return {
