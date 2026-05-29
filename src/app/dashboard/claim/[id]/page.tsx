@@ -892,6 +892,7 @@ export default function ClaimDetailPage() {
       {uiVersion === "v2" ? (
         <V2Layout
           claim={claim}
+          userId={currentUserId}
           activeSupplementItem={activeSupplementItem}
           isReprocessing={reprocessing || isReprocessingState}
           onUpload={() => {
@@ -1858,8 +1859,10 @@ export default function ClaimDetailPage() {
       </div>
       )}
 
-      {/* Claim Brain — AI Chat */}
-      {claim && (
+      {/* Claim Brain — AI Chat (v1 only). v2 promotes Richard to the first-class
+          "Ask Richard" tab (see V2Layout / richard-tab); guarding to v1 keeps
+          Richard from double-mounting on v2. */}
+      {claim && uiVersion !== "v2" && (
         <ClaimBrainChat
           claimId={claim.id}
           claimAddress={claim.address}
