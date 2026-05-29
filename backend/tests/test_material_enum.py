@@ -264,6 +264,26 @@ def test_laminated_premium_does_not_leak():
            "(d) spec table shows the human 'Premium Grade Laminated' label")
 
 
+def test_processor_roof_age_uses_enum():
+    # WS-2 fix-first: processor._estimate_roof_age is the SECOND material-resolution
+    # site (twin of the generator's). It must follow the canonical enum, not re-sniff
+    # the label. Hostile case: label says "Architectural Laminated" but enum=slate →
+    # must NOT emit laminate/3tab age-dating prose.
+    cfg = {"structures": [{"shingle_type": "Architectural Laminated Comp Shingle",
+                           "roof_material_enum": "slate"}],
+           "roof_material_enum": "slate"}
+    _age, reasoning = P._estimate_roof_age(cfg, {"exposure_inches": 5.0})
+    low = (reasoning or "").lower()
+    _check("laminate" not in low and "three-tab" not in low and "architectural" not in low,
+           "(e) processor._estimate_roof_age: slate enum → no laminate/3tab prose despite hostile label")
+
+    # Enum ABSENT (legacy config) → substring fallback still resolves the label.
+    cfg_legacy = {"structures": [{"shingle_type": "Architectural Laminated Comp Shingle"}]}
+    _age2, reasoning2 = P._estimate_roof_age(cfg_legacy, {"exposure_inches": 5.0})
+    _check("laminate" in (reasoning2 or "").lower(),
+           "(e) processor._estimate_roof_age: enum absent → legacy substring resolves laminate")
+
+
 # --------------------------------------------------------------------------
 
 def main() -> int:
@@ -272,6 +292,7 @@ def main() -> int:
     test_absent_enum_matches_legacy_golden()
     test_absent_enum_helper_returns_none()
     test_laminated_premium_does_not_leak()
+    test_processor_roof_age_uses_enum()
 
     print()
     if _FAILURES:

@@ -3295,8 +3295,18 @@ def _estimate_roof_age(config: dict, photo_analysis: dict) -> tuple:
     data_points = []
     min_ages = []
 
-    is_three_tab = any(kw in shingle_type for kw in ["3-tab", "three-tab", "three tab"])
-    is_laminate = any(kw in shingle_type for kw in ["architectural", "laminate", "dimensional"])
+    # WS-2: prefer the canonical roof_material_enum (resolved once upstream) over
+    # re-sniffing the free-text label; fall back to substring only when the enum is
+    # absent (legacy configs). Keeps the single-anchor invariant — a slate/tile roof
+    # mislabeled "Architectural" no longer emits false laminate age prose. Mirrors the
+    # generator twin (usarm_pdf_generator._estimate_roof_age).
+    _mat_enum = (struct.get("roof_material_enum") if struct else None) or config.get("roof_material_enum")
+    if _mat_enum:
+        is_three_tab = _mat_enum == "3tab"
+        is_laminate = _mat_enum == "laminate"
+    else:
+        is_three_tab = any(kw in shingle_type for kw in ["3-tab", "three-tab", "three tab"])
+        is_laminate = any(kw in shingle_type for kw in ["architectural", "laminate", "dimensional"])
     type_label = "three-tab" if is_three_tab else "laminate/architectural" if is_laminate else "asphalt composition"
 
     if is_three_tab or is_laminate:
