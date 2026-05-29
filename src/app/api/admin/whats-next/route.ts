@@ -105,19 +105,20 @@ export async function GET() {
     return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
   }
 
-  // Admin gate via company_profiles
+  // No admin gate: the query below is team-scoped via getTeamUserIds, so any
+  // authenticated user (including a fresh solo signup who is almost never
+  // is_admin) gets their OWN money-ranked next actions — never another
+  // company's. We only read the profile row for the email fallback that
+  // getTeamUserIds needs to resolve domain-based teams.
   const { data: profileRows } = await supabaseAdmin
     .from("company_profiles")
-    .select("is_admin, email")
+    .select("email")
     .eq("user_id", user.id)
     .limit(1);
-  if (!profileRows?.[0]?.is_admin) {
-    return NextResponse.json({ error: "Not authorized" }, { status: 403 });
-  }
 
   const teamLookup = await getTeamUserIds({
     id: user.id,
-    email: user.email || profileRows[0].email || null,
+    email: user.email || profileRows?.[0]?.email || null,
   });
   const teamUserIds = teamLookup.userIds;
   const repMap = new Map<string, string>();
