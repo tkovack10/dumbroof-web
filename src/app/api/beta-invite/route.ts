@@ -1,10 +1,7 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_KEY!
-);
+// Lazy service-role client (see @/lib/supabase/admin) — avoids instantiating at
+// module load, which broke `next build` page-data collection without env vars.
+import { supabaseAdmin as supabase } from "@/lib/supabase/admin";
 
 export async function POST(request: Request) {
   try {
