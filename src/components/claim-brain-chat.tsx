@@ -56,6 +56,10 @@ interface ClaimBrainChatProps {
   variance?: number;
   userId?: string;
   filePath?: string;
+  // When true, render inline (fills its container) instead of a floating FAB +
+  // fixed panel — used by the first-class "Ask Richard" claim tab (v2). Starts
+  // open and hides the × (the tab itself is the container; there's nothing to close to).
+  inlineMode?: boolean;
 }
 
 const TOOL_ICONS: Record<string, string> = {
@@ -1208,12 +1212,13 @@ export function ClaimBrainChat({
   variance,
   userId,
   filePath,
+  inlineMode = false,
 }: ClaimBrainChatProps) {
   const { locale } = useI18n();
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [isStreaming, setIsStreaming] = useState(false);
-  const [isOpen, setIsOpen] = useState(false);
+  const [isOpen, setIsOpen] = useState(Boolean(inlineMode));  // inline tab starts open (also triggers the conversation-load + suggestions effects)
   const [pending, setPending] = useState<PendingAttachment[]>([]);
   const [dragActive, setDragActive] = useState(false);
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
@@ -1620,7 +1625,11 @@ export function ClaimBrainChat({
 
   return (
     <div
-      className={`fixed right-4 sm:right-6 bottom-[calc(env(safe-area-inset-bottom,0px)+1rem)] sm:bottom-6 z-50 w-[calc(100vw-2rem)] sm:w-[440px] h-[min(80vh,600px)] sm:h-[600px] bg-[#0f1729] rounded-2xl shadow-2xl flex flex-col overflow-hidden transition-colors ${
+      className={`${
+        inlineMode
+          ? "relative w-full h-[70vh] sm:h-[640px]"
+          : "fixed right-4 sm:right-6 bottom-[calc(env(safe-area-inset-bottom,0px)+1rem)] sm:bottom-6 z-50 w-[calc(100vw-2rem)] sm:w-[440px] h-[min(80vh,600px)] sm:h-[600px] shadow-2xl"
+      } bg-[#0f1729] rounded-2xl flex flex-col overflow-hidden transition-colors ${
         dragActive ? "border-2 border-dashed border-blue-400" : "border border-white/10"
       }`}
       onDragOver={(e) => {
@@ -1674,12 +1683,14 @@ export function ClaimBrainChat({
           >
             Reset
           </button>
-          <button
-            onClick={() => setIsOpen(false)}
-            className="text-white/30 hover:text-white/60 w-7 h-7 flex items-center justify-center rounded transition-colors text-lg"
-          >
-            ×
-          </button>
+          {!inlineMode && (
+            <button
+              onClick={() => setIsOpen(false)}
+              className="text-white/30 hover:text-white/60 w-7 h-7 flex items-center justify-center rounded transition-colors text-lg"
+            >
+              ×
+            </button>
+          )}
         </div>
       </div>
 
