@@ -9,6 +9,7 @@ Generates a PDF with:
 """
 
 import os
+import re
 import html as _html
 from compliance_svg import generate_house_svg, collect_annotations_from_config, CODE_TO_ZONE
 
@@ -442,6 +443,39 @@ def build_compliance_report(config: dict) -> str:
     return output_path
 
 
+def _num(value) -> float:
+    """Coerce a measurement value to a float, tolerating strings.
+
+    E268 (2026-05-29): real configs store measurement values as display
+    strings like ``'109 ft'`` / ``'1,250 SF'`` / ``''`` (11/34 production
+    configs). The old ``eave > 0`` comparison raised ``TypeError`` on those.
+    This strips any non-numeric trailing/leading characters and returns 0.0
+    when the value is empty, ``None``, or otherwise non-numeric — never raises.
+    """
+    if value is None:
+        return 0.0
+    if isinstance(value, bool):  # avoid True->1.0 surprises
+        return 0.0
+    if isinstance(value, (int, float)):
+        try:
+            return float(value)
+        except (ValueError, OverflowError):
+            return 0.0
+    if isinstance(value, str):
+        s = value.strip().replace(",", "")
+        if not s:
+            return 0.0
+        # Pull the first numeric token (handles '109 ft', '1250 SF', '32.5lf').
+        m = re.search(r"-?\d+(?:\.\d+)?", s)
+        if not m:
+            return 0.0
+        try:
+            return float(m.group(0))
+        except (ValueError, OverflowError):
+            return 0.0
+    return 0.0
+
+
 def has_measurements(config: dict) -> bool:
     """Check if the config has enough measurement data for the compliance report.
 
@@ -454,22 +488,70 @@ def has_measurements(config: dict) -> bool:
     because measurements lived on structures[0] only — top-level
     `measurements` had every key at 0 (only drip_edge was set). The structures
     fallback below recovers area for that path.
+
+    E268 (2026-05-29): float-coerce every value via ``_num`` BEFORE comparison
+    so string values like ``'109 ft'`` never raise ``TypeError``. This is a
+    prerequisite for the WS-5 no-data render guards that call it from the
+    PDF-generation path.
     """
+    if not isinstance(config, dict):
+        return False
     m = config.get("measurements", {}) or {}
-    eave = m.get("eave", 0) or 0
-    rake = m.get("rake", 0) or 0
-    area = m.get("total_area", 0) or m.get("area_sq", 0) or 0
+    if not isinstance(m, dict):
+        m = {}
+    eave = _num(m.get("eave", 0))
+    rake = _num(m.get("rake", 0))
+    area = _num(m.get("total_area", 0)) or _num(m.get("area_sq", 0))
 
     if not area:
         for s in (config.get("structures") or []):
             if not isinstance(s, dict):
                 continue
             area = (
-                s.get("roof_area_sq", 0)
-                or (s.get("roof_area_sf", 0) or 0) / 100.0
-                or 0
+                _num(s.get("roof_area_sq", 0))
+                or _num(s.get("roof_area_sf", 0)) / 100.0
             )
             if area:
                 break
 
     return eave > 0 or rake > 0 or area > 0
+
+
+def weather_verified(config: dict) -> bool:
+    """Return True when the claim has ANY production-stored storm verification.
+
+    WS-5 (2026-05-29): production stores ``config['weather']`` as ONLY the three
+    keys written by ``processor.py`` —
+        {"hail_size", "storm_date", "storm_description"}
+    plus, when a NOAA/pre-seed pass ran, ``weather['noaa']['event_count']``.
+
+    The rich keys (``hail_size_algorithm``, ``hailtrace_id``, ``verification_method``,
+    ``max_hail_inches`` …) are NEVER written in prod, so a heuristic keyed on
+    them would FALSE-NEGATIVE on a real verified claim. This helper therefore
+    keys ONLY on the prod-shape fields:
+
+      * any of hail_size / storm_date / storm_description is non-empty, OR
+      * weather.noaa.event_count > 0
+
+    Tolerant of string values and missing/odd shapes — never raises.
+    """
+    if not isinstance(config, dict):
+        return False
+    w = config.get("weather", {})
+    if not isinstance(w, dict):
+        return False
+
+    for key in ("hail_size", "storm_date", "storm_description"):
+        v = w.get(key, "")
+        if isinstance(v, str):
+            if v.strip():
+                return True
+        elif v:  # non-empty/truthy non-string (e.g. a number)
+            return True
+
+    noaa = w.get("noaa", {})
+    if isinstance(noaa, dict):
+        if _num(noaa.get("event_count", 0)) > 0:
+            return True
+
+    return False

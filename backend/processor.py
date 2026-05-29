@@ -3924,6 +3924,34 @@ def build_claim_config(
         # weather-corroboration paragraph in the forensic report will be empty.
         _early_warnings.append("WEATHER_EXTRACTION_FAILED")
 
+    # WS-5 GUARD 6 — enclosed-documents manifest. When the claim has no usable
+    # measurements AND no priced line items, the Xactimate estimate is in an
+    # "estimate pending" posture (the generator renders an ESTIMATE PENDING
+    # notice instead of a $0 table). Reflect that honestly in the manifest
+    # instead of listing an "estimate at current pricing" that isn't priced yet.
+    # Reuse the single source of truth (compliance_report.has_measurements) so
+    # this matches the generator's gate exactly, incl. string/comma coercion.
+    try:
+        from compliance_report import has_measurements as _ws5_has_measurements
+        _ws5_meas_ok = bool(_ws5_has_measurements(
+            {"measurements": meas, "structures": structs}
+        ))
+    except Exception as _ws5_e:  # noqa: BLE001 — manifest labeling must never crash
+        print(f"[WS-5] has_measurements check skipped ({_ws5_e}); assuming measured")
+        _ws5_meas_ok = True
+
+    _ws5_estimate_pending = (not _ws5_meas_ok) and (not line_items)
+    _ws5_estimate_label = (
+        "Xactimate-format estimate — PENDING measurement upload"
+        if _ws5_estimate_pending else
+        "Xactimate-format estimate at current pricing"
+    )
+    _ws5_estimate_label_cover = (
+        "Xactimate-format estimate — PENDING measurement upload"
+        if _ws5_estimate_pending else
+        "Xactimate-format replacement cost estimate"
+    )
+
     config = {
         "phase": phase,
         "company": {
@@ -4034,7 +4062,7 @@ def build_claim_config(
             "demand_items": [],
             "enclosed_documents": [
                 "Forensic Causation Report with annotated photography",
-                "Xactimate-format estimate at current pricing",
+                _ws5_estimate_label,
             ],
             "requested_actions": [
                 "Review the enclosed forensic documentation and revised scope of loss",
@@ -4049,7 +4077,7 @@ def build_claim_config(
             "summary_paragraphs": [],
             "enclosed_documents": [
                 "Forensic Causation Report with annotated photography",
-                "Xactimate-format replacement cost estimate",
+                _ws5_estimate_label_cover,
             ] + ([
                 "Supplement report with line-by-line variance analysis",
                 "Formal scope clarification letter",

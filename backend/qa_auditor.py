@@ -350,6 +350,87 @@ def compute_forensic_prevalence_flags(config: dict, claim: dict) -> list[dict]:
     return flags
 
 
+def compute_ws5_nodata_flags(config: dict, claim: dict) -> list[dict]:
+    """Return MEDIUM-only WS-5 no-data / placeholder flags.
+
+    Same posture as compute_forensic_prevalence_flags (WS-0): every dict is
+    severity='medium', NEVER critical, NEVER blocking — pure detection/telemetry.
+    Catches the WS-5 symptom class: a report that ASSERTS measurements or weather
+    it does not have, or renders a placeholder owner / blank identity rows.
+
+    Flags:
+      WS5_NO_MEASUREMENTS_ASSERTED — no usable measurements, yet the narrative
+                                     superset still cites EagleView measurements.
+      WS5_WEATHER_UNVERIFIED_CONFIRMED — not weather-verified (prod shape), yet
+                                     the narrative still says "confirmed ... storm".
+      WS5_PLACEHOLDER_OWNER         — insured.name is the 'Property Owner'
+                                     placeholder (untargeted package).
+    """
+    flags: list[dict] = []
+    if not isinstance(config, dict):
+        return flags
+    claim = claim if isinstance(claim, dict) else {}
+
+    # Reuse the hardened, prod-shape helpers as the single source of truth so
+    # this detector reads the SAME signals the render guards gate on
+    # (detection-superset principle). Defensive fallback keeps QA crash-free.
+    try:
+        from compliance_report import has_measurements as _hm
+        from compliance_report import weather_verified as _wv
+        meas_ok = bool(_hm(config))
+        wx_ok = bool(_wv(config))
+    except Exception as e:  # noqa: BLE001 — detection must never raise into the gate
+        print(f"[QA] WS-5 signal import skipped: {e}")
+        return flags
+
+    text = _forensic_superset_text(config)
+    text_l = text.lower()
+
+    # (1) WS5_NO_MEASUREMENTS_ASSERTED
+    if not meas_ok and "eagleview" in text_l:
+        flags.append({
+            "issue": "WS5_NO_MEASUREMENTS_ASSERTED",
+            "severity": "medium",
+            "check": "ws5_nodata",
+            "detail": (
+                "Claim has no usable measurements (has_measurements is False) "
+                "but the narrative cites EagleView measurements — verify the "
+                "measurement file was attached before delivery."
+            ),
+        })
+
+    # (2) WS5_WEATHER_UNVERIFIED_CONFIRMED
+    if not wx_ok and re.search(r"confirmed[^.]{0,40}(storm|severe weather|hail)", text_l):
+        flags.append({
+            "issue": "WS5_WEATHER_UNVERIFIED_CONFIRMED",
+            "severity": "medium",
+            "check": "ws5_nodata",
+            "detail": (
+                "Claim is not weather-verified (no hail_size/storm_date/"
+                "storm_description and no NOAA event_count) but the narrative "
+                "asserts a 'confirmed' storm — soften to 'reported' or attach "
+                "storm verification."
+            ),
+        })
+
+    # (3) WS5_PLACEHOLDER_OWNER
+    ins = config.get("insured", {})
+    if isinstance(ins, dict):
+        owner = (ins.get("name") or "").strip().lower()
+        if owner in ("property owner", ""):
+            flags.append({
+                "issue": "WS5_PLACEHOLDER_OWNER",
+                "severity": "medium",
+                "check": "ws5_nodata",
+                "detail": (
+                    "insured.name is the 'Property Owner' placeholder — set the "
+                    "real homeowner_name so the appeal package is targeted."
+                ),
+            })
+
+    return flags
+
+
 def _build_prose_bundle(config: dict) -> dict:
     ff = config.get("forensic_findings", {}) or {}
     exec_summary = ff.get("executive_summary") or []
@@ -706,6 +787,15 @@ def audit_claim(
         print(f"[QA] compute_forensic_prevalence_flags crashed (ignored): {e}")
         prevalence_flags = []
 
+    # WS-5 no-data / placeholder flags — MEDIUM-only, same posture as WS-0.
+    # Asserting measurements/weather the claim doesn't have, or a placeholder
+    # owner. Never critical, never blocking — pure early-warning telemetry.
+    try:
+        ws5_flags = compute_ws5_nodata_flags(config, claim)
+    except Exception as e:  # noqa: BLE001 — detection must never break the audit
+        print(f"[QA] compute_ws5_nodata_flags crashed (ignored): {e}")
+        ws5_flags = []
+
     # Merge flag arrays. Order: prose flags first (carries the LLM's narrative
     # summary), then deterministic — keeps the human-readable audit summary
     # focused on prose issues with brand/NOAA flags appended below.
@@ -714,6 +804,7 @@ def audit_claim(
         list(prose_result.get("medium") or [])
         + pdf_result.get("medium", [])
         + prevalence_flags
+        + ws5_flags
     )
     merged_low = list(prose_result.get("low") or []) + pdf_result.get("low", [])
 
