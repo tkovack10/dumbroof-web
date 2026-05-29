@@ -58,6 +58,10 @@
       "schedule": "0 14 * * *"
     },
     {
+      "path": "/api/cron/homeowner-sequences",
+      "schedule": "0 13 * * *"
+    },
+    {
       "path": "/api/cron/gsc-sync",
       "schedule": "0 8 * * *"
     },
