@@ -13,11 +13,13 @@ type Data = {
     adClicks7d: number;
     signups7d: number;
     signupsAll: number;
-    activatedAll: number;
+    createdAll: number; // >=1 claim row, any status
+    reachedReadyAll: number; // >=1 status='ready' claim with output PDFs
     paidAll: number;
     convAdToSignup: number | null;
-    convSignupToActivated: number | null;
-    convActivatedToPaid: number | null;
+    convSignupToCreated: number | null;
+    convCreatedToReachedReady: number | null; // the activation drop-off
+    convReachedReadyToPaid: number | null;
   };
 };
 
@@ -66,16 +68,18 @@ export function PathsMonitor() {
   // The leak = the lowest conversion step (highlight it red).
   const convs = [
     { key: "ad→signup", v: f.convAdToSignup },
-    { key: "signup→activated", v: f.convSignupToActivated },
-    { key: "activated→paid", v: f.convActivatedToPaid },
+    { key: "signup→created", v: f.convSignupToCreated },
+    { key: "created→ready", v: f.convCreatedToReachedReady },
+    { key: "ready→paid", v: f.convReachedReadyToPaid },
   ].filter((c) => c.v != null);
   const worst = convs.length ? convs.reduce((a, b) => ((a.v ?? 1) <= (b.v ?? 1) ? a : b)).key : "";
 
   const steps = [
     { label: "Ad clicks", sub: "/fb/* · 7d", value: f.adClicks7d, conv: null as number | null, convKey: "" },
     { label: "Signups", sub: "7d", value: f.signups7d, conv: f.convAdToSignup, convKey: "ad→signup" },
-    { label: "Activated", sub: "≥1 claim · all-time", value: f.activatedAll, conv: f.convSignupToActivated, convKey: "signup→activated" },
-    { label: "Paid", sub: "all-time", value: f.paidAll, conv: f.convActivatedToPaid, convKey: "activated→paid" },
+    { label: "Created", sub: "≥1 claim row · all-time", value: f.createdAll, conv: f.convSignupToCreated, convKey: "signup→created" },
+    { label: "Reached ready", sub: "claim w/ PDFs · all-time", value: f.reachedReadyAll, conv: f.convCreatedToReachedReady, convKey: "created→ready" },
+    { label: "Paid", sub: "all-time", value: f.paidAll, conv: f.convReachedReadyToPaid, convKey: "ready→paid" },
   ];
 
   return (
@@ -100,7 +104,7 @@ export function PathsMonitor() {
       </div>
 
       {/* Funnel chain */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 mb-8">
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-2.5 mb-8">
         {steps.map((s, i) => {
           const isLeak = s.convKey === worst && s.conv != null;
           return (
