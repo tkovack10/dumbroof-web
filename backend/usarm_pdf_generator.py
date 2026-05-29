@@ -680,7 +680,11 @@ def _build_appeal_opening(config, fin):
         # the insured, Property Owner". Real owner renders verbatim with the
         # ", {name}" appositive (byte-identical to the prior output).
         _appeal_owner_appos = "" if ws5_owner_is_placeholder(config) else f", {ins['name']}"
-        return f"We write on behalf of the insured{_appeal_owner_appos}, to formally supplement and appeal the scope of loss issued for the above-referenced claim. The carrier's scope totals {fmt_money(fin['carrier_rcv'])} RCV. We respectfully request that {carrier['name']} re-evaluate the claim and approve the full scope of necessary repairs totaling <strong>{fmt_money(fin['total_with_op'])} RCV</strong>."
+        # WS-5 GUARD (blank carrier) — post-scope claims normally carry a carrier
+        # name, but a failed extraction can leave it blank; fall back to a neutral
+        # "the carrier" so the sentence never reads "request that  re-evaluate".
+        _appeal_carrier = "the carrier" if ws5_blank(carrier['name']) else carrier['name']
+        return f"We write on behalf of the insured{_appeal_owner_appos}, to formally supplement and appeal the scope of loss issued for the above-referenced claim. The carrier's scope totals {fmt_money(fin['carrier_rcv'])} RCV. We respectfully request that {_appeal_carrier} re-evaluate the claim and approve the full scope of necessary repairs totaling <strong>{fmt_money(fin['total_with_op'])} RCV</strong>."
     elif lang["role"] == "contractor_aob":
         return f"Per the executed Assignment of Benefits, we are submitting our updated contractor scope for the above-referenced claim. The current approval totals {fmt_money(fin['carrier_rcv'])} RCV. Our professional scope of work, {_scope_basis}, totals <strong>{fmt_money(fin['total_with_op'])} RCV</strong>."
     elif lang["role"] == "contractor":
@@ -3887,6 +3891,10 @@ def build_appeal_letter(config):
         doc4_id_lines += f"<strong>Policy Number:</strong> {carrier.get('policy_number', '')}<br>\n"
     if not _doc4_owner_ph:
         doc4_id_lines += f"<strong>Property Owner:</strong> {ins['name']}<br>\n"
+    # WS-5 GUARD (blank carrier) — drop the recipient-address carrier-name line when
+    # blank so the "To" block never opens with a dangling empty line. Real carrier
+    # renders "{name}<br>\n" verbatim (byte-identical).
+    _doc4_recipient_name = "" if ws5_blank(carrier['name']) else f"{carrier['name']}<br>\n"
 
     html = f"""<!DOCTYPE html>
 <html lang="en">
@@ -3914,8 +3922,7 @@ h2 {{ font-size: 13pt; }}
 
 <p><strong>{dates['report_date']}</strong></p>
 
-<p>{carrier['name']}<br>
-Claims Department<br>
+<p>{_doc4_recipient_name}Claims Department<br>
 {carrier.get('claims_email', '')}</p>
 
 <p><strong>RE: {appeal.get('subject_line', lang['doc4_subject_default'])}</strong><br>

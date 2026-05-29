@@ -403,6 +403,25 @@ def test_doc04_fulldata_advocate_opening_renders_owner():
     assert "on behalf of the insured, Jane Homeowner, to formally" in html
 
 
+def test_doc04_nodata_blank_carrier_no_leak():
+    # WS-5 fix-first: a blank carrier name (post-scope, failed carrier-name
+    # extraction) must NOT leave a dangling recipient line or a double-space in
+    # the advocate opening.
+    html = _render(G.build_appeal_letter,
+                   _nodata_config(compliance={"user_role": "public_adjuster"}))
+    assert "request that  re-evaluate" not in html             # no double-space
+    assert "request that the carrier re-evaluate" in html       # neutral fallback
+    assert "<p>Claims Department<br>" in html                   # recipient name line dropped, no dangling <br>
+    assert "<p><br>" not in html
+
+
+def test_doc04_fulldata_carrier_renders():
+    html = _render(G.build_appeal_letter,
+                   _fulldata_config(compliance={"user_role": "public_adjuster"}))
+    assert "request that State Farm re-evaluate" in html        # real carrier in opening
+    assert "State Farm<br>\nClaims Department" in html          # real carrier in recipient (byte-identical)
+
+
 # --- Pre-scope cover letter salutation ---
 
 def test_cover_letter_nodata_contractor_salutation_no_placeholder_leak():
