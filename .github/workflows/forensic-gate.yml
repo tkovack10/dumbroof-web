@@ -1,0 +1,31 @@
+name: forensic-gate
+
+# The forensic-report regression gate (WS-0). Runs the golden-corpus snapshot
+# diff + the flag/citation tests on every PR and on pushes to main, so any
+# forensic edit that silently changes a report (or reintroduces a fixed defect)
+# fails CI before it can merge. All three tests run fully offline — no secrets.
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+jobs:
+  forensic-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install backend dependencies
+        run: pip install -r backend/requirements.txt
+      - name: Golden forensic corpus — must be byte-identical (no silent report drift)
+        working-directory: backend
+        run: python3 tests/test_golden_forensic_corpus.py
+      - name: Forensic prevalence flags (medium-only, non-blocking)
+        working-directory: backend
+        run: python3 tests/test_forensic_prevalence_flags.py
+      - name: Code-citation regression (E267 felt mis-citation)
+        working-directory: backend
+        run: python3 tests/test_code_citation_felt.py
