@@ -297,6 +297,138 @@ def test_qa_detector_clean_verified_no_flags():
     assert compute_ws5_nodata_flags(cfg, {}) == []
 
 
+# ---------------------------------------------------------------------------
+# Guard 3 EXTENSION — placeholder owner + blank carrier identity headers on
+# Docs 02 / 03 / 04 / 05 (the golden corpus is Doc-01-only and cannot cover
+# these). Each doc: (a) a placeholder-owner + no-data config leaks NEITHER the
+# literal "Property Owner" identity cell NOR a dangling "Carrier / Claim:  — "
+# / blank-claim / blank-policy row; (b) a FULL-data config still renders the
+# real owner + carrier + claim (no over-suppression).
+# ---------------------------------------------------------------------------
+
+# build_appeal_letter renders a company address footer; _base_config's company
+# block omits address/city_state_zip, so docs that need them get a fuller block.
+_FULL_COMPANY = {
+    "name": "USA ROOF MASTERS", "tagline": "", "ceo_name": "Tom Kovack Jr.",
+    "ceo_title": "CEO", "email": "t@x.com", "cell_phone": "267-679-1504",
+    "office_phone": "", "website": "",
+    "address": "3070 Bristol Pike", "city_state_zip": "Bensalem, PA 19020",
+}
+
+
+def _nodata_config(**over):
+    """Placeholder-owner + no-data posture: blank carrier/claim/policy, no
+    measurements, no line items, no weather. The primary pre-scope no-data case."""
+    cfg = _base_config(
+        phase="pre-scope",
+        company=dict(_FULL_COMPANY),
+        insured={"name": "Property Owner", "type": "homeowner"},
+        carrier={"name": "", "claim_number": "", "policy_number": ""},
+        measurements={},
+        line_items=[],
+        structures=[{"name": "Main Dwelling", "roof_area_sf": 0,
+                     "roof_area_sq": 0, "style": "gable"}],
+        weather={"hail_size": "", "storm_date": "", "storm_description": ""},
+    )
+    for k, v in over.items():
+        cfg[k] = v
+    return cfg
+
+
+def _fulldata_config(**over):
+    cfg = _base_config(phase="pre-scope", company=dict(_FULL_COMPANY))
+    for k, v in over.items():
+        cfg[k] = v
+    return cfg
+
+
+# --- Doc 02 (Xactimate estimate) identity header ---
+
+def test_doc02_nodata_identity_header_no_placeholder_leak():
+    html = _render(G.build_xactimate_estimate, _nodata_config())
+    assert "Property Owner</strong></td><td>Property Owner" not in html
+    # dangling combined Carrier / Claim cell ("<name> — <#>" with both blank)
+    assert "Carrier / Claim</strong></td><td> — </td>" not in html
+    assert "Policy</strong></td><td></td>" not in html
+
+
+def test_doc02_fulldata_identity_header_renders_real_values():
+    html = _render(G.build_xactimate_estimate, _fulldata_config())
+    assert "Property Owner</strong></td><td>Jane Homeowner</td>" in html
+    assert "Carrier / Claim</strong></td><td>State Farm — CLM-1</td>" in html
+    assert "Policy</strong></td><td>POL-9</td>" in html
+
+
+# --- Doc 03 (supplement / scope comparison) property block ---
+
+def test_doc03_nodata_property_block_no_placeholder_leak():
+    html = _render(G.build_supplement_report, _nodata_config())
+    assert "Property Owner</strong></td><td>Property Owner" not in html
+    assert "Carrier / Claim</strong></td><td> — </td>" not in html
+
+
+def test_doc03_fulldata_property_block_renders_real_values():
+    html = _render(G.build_supplement_report, _fulldata_config())
+    assert "Property Owner</strong></td><td>Jane Homeowner</td>" in html
+    assert "Carrier / Claim</strong></td><td>State Farm — CLM-1</td>" in html
+
+
+# --- Doc 04 (appeal / clarification letter) RE: header + opening prose ---
+
+def test_doc04_nodata_header_no_placeholder_leak():
+    html = _render(G.build_appeal_letter, _nodata_config())
+    assert "Property Owner:</strong> Property Owner" not in html
+    # blank claim / policy lines suppressed (would render "...:</strong> <br>")
+    assert "Claim Number:</strong> <br>" not in html
+    assert "Policy Number:</strong> <br>" not in html
+
+
+def test_doc04_nodata_advocate_opening_no_placeholder_leak():
+    html = _render(G.build_appeal_letter,
+                   _nodata_config(compliance={"user_role": "public_adjuster"}))
+    assert "on behalf of the insured, Property Owner" not in html
+    assert "on behalf of the insured, to formally" in html
+
+
+def test_doc04_fulldata_header_renders_real_values():
+    html = _render(G.build_appeal_letter, _fulldata_config())
+    assert "Property Owner:</strong> Jane Homeowner<br>" in html
+    assert "Claim Number:</strong> CLM-1<br>" in html
+    assert "Policy Number:</strong> POL-9<br>" in html
+
+
+def test_doc04_fulldata_advocate_opening_renders_owner():
+    html = _render(G.build_appeal_letter,
+                   _fulldata_config(compliance={"user_role": "public_adjuster"}))
+    assert "on behalf of the insured, Jane Homeowner, to formally" in html
+
+
+# --- Pre-scope cover letter salutation ---
+
+def test_cover_letter_nodata_contractor_salutation_no_placeholder_leak():
+    html = _render(G.build_cover_letter, _nodata_config())
+    assert "retained by <strong>Property Owner" not in html
+    assert "retained by the property owner" in html
+
+
+def test_cover_letter_nodata_advocate_salutation_no_placeholder_leak():
+    html = _render(G.build_cover_letter,
+                   _nodata_config(compliance={"user_role": "public_adjuster"}))
+    assert "represents the insured, <strong>Property Owner" not in html
+    assert "represents the insured, the property owner" in html
+
+
+def test_cover_letter_fulldata_contractor_salutation_renders_owner():
+    html = _render(G.build_cover_letter, _fulldata_config())
+    assert "retained by <strong>Jane Homeowner</strong> for storm damage repairs" in html
+
+
+def test_cover_letter_fulldata_advocate_salutation_renders_owner():
+    html = _render(G.build_cover_letter,
+                   _fulldata_config(compliance={"user_role": "public_adjuster"}))
+    assert "represents the insured, <strong>Jane Homeowner</strong>, under an Assignment of Benefits" in html
+
+
 if __name__ == "__main__":
     failures = 0
     for name, fn in sorted(globals().items()):

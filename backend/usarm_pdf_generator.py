@@ -116,6 +116,74 @@ def ws5_blank(value) -> bool:
     return not str(value).strip()
 
 
+def ws5_owner_label(config, fallback="the property owner") -> str:
+    """Neutral owner phrasing for inline/sentence contexts (e.g. the pre-scope
+    cover-letter salutation). Returns a neutral noun phrase when the insured
+    name is the literal 'Property Owner' placeholder so the package never reads
+    'retained by Property Owner'; otherwise returns the real owner name verbatim
+    (full-data output unchanged).
+    """
+    if ws5_owner_is_placeholder(config):
+        return fallback
+    return (config or {}).get("insured", {}).get("name", "") or fallback
+
+
+def ws5_identity_table_rows(config, *, combined_carrier_claim, include_policy):
+    """Build the placeholder-guarded identity rows for a doc's "Field | Detail"
+    table (Docs 02 / 03). Reuses the EXACT Doc-01 Guard-3 predicates:
+
+      - Property Owner row is suppressed when the owner is the placeholder.
+      - Carrier (or combined Carrier / Claim) and Policy rows are suppressed
+        ONLY in a no-data / placeholder posture AND when the underlying field
+        is blank — so a full-data claim renders every row exactly as before
+        (byte-identical), and a no-data claim never leaks blank/placeholder
+        identity cells.
+
+    combined_carrier_claim=True  → single "Carrier / Claim" row, "<name> — <#>"
+                          =False → separate "Carrier" + "Claim Number" rows.
+    include_policy=True          → emit the "Policy" row (Doc 02); False omits it.
+    """
+    ins = (config or {}).get("insured", {}) or {}
+    carrier = (config or {}).get("carrier", {}) or {}
+    owner_ph = ws5_owner_is_placeholder(config)
+    nodata_id = ws5_nodata_identity(config)
+
+    rows = ""
+    if not owner_ph:
+        rows += (
+            f"    <tr><td><strong>Property Owner</strong></td><td>{ins.get('name','')}</td></tr>\n"
+        )
+
+    _cname = carrier.get("name", "")
+    _cnum = carrier.get("claim_number", "")
+    if combined_carrier_claim:
+        # The combined cell is blank only when BOTH carrier name and claim
+        # number are blank — suppress that empty "Carrier / Claim:  — " row in
+        # a no-data posture; otherwise render the prior cell verbatim.
+        _combined_blank = ws5_blank(_cname) and ws5_blank(_cnum)
+        if not (nodata_id and _combined_blank):
+            rows += (
+                f"    <tr><td><strong>Carrier / Claim</strong></td><td>{_cname} — {_cnum}</td></tr>\n"
+            )
+    else:
+        if not (nodata_id and ws5_blank(_cname)):
+            rows += (
+                f"    <tr><td><strong>Carrier</strong></td><td>{_cname}</td></tr>\n"
+            )
+        if not (nodata_id and ws5_blank(_cnum)):
+            rows += (
+                f"    <tr><td><strong>Claim Number</strong></td><td>{_cnum}</td></tr>\n"
+            )
+
+    if include_policy:
+        _pol = carrier.get("policy_number", "")
+        if not (nodata_id and ws5_blank(_pol)):
+            rows += (
+                f"    <tr><td><strong>Policy</strong></td><td>{_pol}</td></tr>\n"
+            )
+    return rows
+
+
 # ===================================================================
 # HELPERS
 # ===================================================================
@@ -607,7 +675,12 @@ def _build_appeal_opening(config, fin):
     )
 
     if lang["role"] == "advocate":
-        return f"We write on behalf of the insured, {ins['name']}, to formally supplement and appeal the scope of loss issued for the above-referenced claim. The carrier's scope totals {fmt_money(fin['carrier_rcv'])} RCV. We respectfully request that {carrier['name']} re-evaluate the claim and approve the full scope of necessary repairs totaling <strong>{fmt_money(fin['total_with_op'])} RCV</strong>."
+        # WS-5 GUARD (identity prose) — drop the placeholder owner name on a
+        # no-data claim so the advocate appeal opening never reads "on behalf of
+        # the insured, Property Owner". Real owner renders verbatim with the
+        # ", {name}" appositive (byte-identical to the prior output).
+        _appeal_owner_appos = "" if ws5_owner_is_placeholder(config) else f", {ins['name']}"
+        return f"We write on behalf of the insured{_appeal_owner_appos}, to formally supplement and appeal the scope of loss issued for the above-referenced claim. The carrier's scope totals {fmt_money(fin['carrier_rcv'])} RCV. We respectfully request that {carrier['name']} re-evaluate the claim and approve the full scope of necessary repairs totaling <strong>{fmt_money(fin['total_with_op'])} RCV</strong>."
     elif lang["role"] == "contractor_aob":
         return f"Per the executed Assignment of Benefits, we are submitting our updated contractor scope for the above-referenced claim. The current approval totals {fmt_money(fin['carrier_rcv'])} RCV. Our professional scope of work, {_scope_basis}, totals <strong>{fmt_money(fin['total_with_op'])} RCV</strong>."
     elif lang["role"] == "contractor":
@@ -3027,6 +3100,13 @@ def build_xactimate_estimate(config):
     # zero-value tables. When ANY priced line item exists we render normally.
     _ws5_estimate_pending = (not ws5_has_measurements(config)) and (not items)
 
+    # WS-5 GUARD (identity header) — reuse Doc-01 Guard-3 predicates so a
+    # placeholder-owner / no-data claim never renders "Property Owner" or a
+    # blank "Carrier / Claim:  — " / "Policy:" row. Full-data is byte-identical.
+    doc2_identity_rows = ws5_identity_table_rows(
+        config, combined_carrier_claim=True, include_policy=True
+    )
+
     # Build line items table — grouped by structure, then by category, sorted by canonical order
     line_rows = ""
 
@@ -3210,10 +3290,7 @@ body {{ margin: 0; padding: 0; }}
 
 <table>
     <tr><th style="width:35%">Field</th><th>Detail</th></tr>
-    <tr><td><strong>Property Owner</strong></td><td>{ins['name']}</td></tr>
-    <tr><td><strong>Carrier / Claim</strong></td><td>{carrier['name']} — {carrier['claim_number']}</td></tr>
-    <tr><td><strong>Policy</strong></td><td>{carrier.get('policy_number','')}</td></tr>
-    <tr><td><strong>Price List</strong></td><td>{financials.get('price_list', '')}{f" &mdash; {_prov_market_name} ({_prov_market_code})" if _prov_market_name else ""}</td></tr>
+{doc2_identity_rows}    <tr><td><strong>Price List</strong></td><td>{financials.get('price_list', '')}{f" &mdash; {_prov_market_name} ({_prov_market_code})" if _prov_market_name else ""}</td></tr>
     <tr><td><strong>Date of Loss</strong></td><td>{dates['date_of_loss']}</td></tr>
     <tr><td><strong>Scope</strong></td><td>{trades_str}</td></tr>
 {eagleview_row_html}
@@ -3269,6 +3346,25 @@ def build_supplement_report(config):
     line_items = config.get("line_items", [])
 
     fin = compute_financials(config)
+
+    # WS-5 GUARD (identity header) — reuse Doc-01 Guard-3 predicates. The
+    # property block interleaves the address row between owner and carrier, so
+    # build the two identity rows individually (same predicates as the helper):
+    #  - owner row suppressed on placeholder owner
+    #  - combined "Carrier / Claim" row suppressed only in a no-data posture
+    #    when BOTH carrier name and claim number are blank.
+    # Full-data renders both rows verbatim (byte-identical).
+    _doc3_owner_ph = ws5_owner_is_placeholder(config)
+    _doc3_nodata_id = ws5_nodata_identity(config)
+    doc3_owner_row = (
+        "" if _doc3_owner_ph
+        else f"    <tr><td><strong>Property Owner</strong></td><td>{ins['name']}</td></tr>\n"
+    )
+    _doc3_cc_blank = ws5_blank(carrier.get('name')) and ws5_blank(carrier.get('claim_number'))
+    doc3_carrier_row = (
+        "" if (_doc3_nodata_id and _doc3_cc_blank)
+        else f"    <tr><td><strong>Carrier / Claim</strong></td><td>{carrier['name']} — {carrier['claim_number']}</td></tr>\n"
+    )
 
     # ── USARM-first scope comparison ──
     # Our estimate drives the row order (Xactimate build order).
@@ -3480,10 +3576,8 @@ td.var-pos {{ color: #c8102e; font-weight: 700; }}
 
 <table>
     <tr><th style="width:35%">Field</th><th>Detail</th></tr>
-    <tr><td><strong>Property Owner</strong></td><td>{ins['name']}</td></tr>
-    <tr><td><strong>Property</strong></td><td>{prop['address']}</td></tr>
-    <tr><td><strong>Carrier / Claim</strong></td><td>{carrier['name']} — {carrier['claim_number']}</td></tr>
-    <tr><td><strong>Date of Loss</strong></td><td>{dates['date_of_loss']}</td></tr>
+{doc3_owner_row}    <tr><td><strong>Property</strong></td><td>{prop['address']}</td></tr>
+{doc3_carrier_row}    <tr><td><strong>Date of Loss</strong></td><td>{dates['date_of_loss']}</td></tr>
     <tr><td><strong>Adjuster</strong></td><td>{adjuster_info}</td></tr>
     <tr><td><strong>Carrier Scope Date</strong></td><td>{dates.get('carrier_inspection_date', carrier.get('inspection_date', ''))}</td></tr>
     <tr><td><strong>Supplement Date</strong></td><td>{dates['report_date']}</td></tr>
@@ -3779,6 +3873,21 @@ def build_appeal_letter(config):
         _contact_bits.append(_email)
     contact_line = " | ".join(_contact_bits)
 
+    # WS-5 GUARD (identity header) — reuse Doc-01 Guard-3 predicates for the RE:
+    # block's Claim Number / Policy Number / Property Owner lines. Owner line is
+    # suppressed on a placeholder owner; Claim/Policy lines are suppressed only in
+    # a no-data posture when blank. Full-data renders all three lines verbatim
+    # (byte-identical). Each emitted line keeps its trailing "<br>\n".
+    _doc4_owner_ph = ws5_owner_is_placeholder(config)
+    _doc4_nodata_id = ws5_nodata_identity(config)
+    doc4_id_lines = ""
+    if not (_doc4_nodata_id and ws5_blank(carrier.get('claim_number'))):
+        doc4_id_lines += f"<strong>Claim Number:</strong> {carrier['claim_number']}<br>\n"
+    if not (_doc4_nodata_id and ws5_blank(carrier.get('policy_number', ''))):
+        doc4_id_lines += f"<strong>Policy Number:</strong> {carrier.get('policy_number', '')}<br>\n"
+    if not _doc4_owner_ph:
+        doc4_id_lines += f"<strong>Property Owner:</strong> {ins['name']}<br>\n"
+
     html = f"""<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -3810,10 +3919,7 @@ Claims Department<br>
 {carrier.get('claims_email', '')}</p>
 
 <p><strong>RE: {appeal.get('subject_line', lang['doc4_subject_default'])}</strong><br>
-<strong>Claim Number:</strong> {carrier['claim_number']}<br>
-<strong>Policy Number:</strong> {carrier.get('policy_number', '')}<br>
-<strong>Property Owner:</strong> {ins['name']}<br>
-<strong>Property:</strong> {prop['address']}<br>
+{doc4_id_lines}<strong>Property:</strong> {prop['address']}<br>
 <strong>Date of Loss:</strong> {dates['date_of_loss']}<br>
 {"<strong>Adjuster:</strong> " + carrier.get('claim_rep_name','') + ("<br>" if carrier.get('claim_rep_name') else "")}
 </p>
@@ -3883,6 +3989,17 @@ def build_cover_letter(config):
     # WS-5 GUARD 5 — pre-scope cover letter weather + measurement assertions.
     _ws5_wx = ws5_weather_verified(config)
     _ws5_meas = ws5_has_measurements(config)
+
+    # WS-5 GUARD (identity salutation) — reuse Doc-01 Guard-3 placeholder
+    # predicate. On a placeholder owner, the salutation uses a neutral noun
+    # phrase ("the property owner", unwrapped) so the letter never reads
+    # "retained by <strong>Property Owner</strong>" / "represents the insured,
+    # <strong>Property Owner</strong>". For a real owner this is byte-identical
+    # to the prior "<strong>{ins['name']}</strong>" rendering.
+    if ws5_owner_is_placeholder(config):
+        _cover_owner_html = "the property owner"
+    else:
+        _cover_owner_html = f"<strong>{ins['name']}</strong>"
 
     # Storm summary — only assert a "confirmed severe weather event" when the
     # claim is actually weather-verified (prod shape). Otherwise soften to a
@@ -3961,7 +4078,7 @@ body {{ font-size: 11pt; line-height: 1.7; max-width: 600pt; margin: 0 auto; }}
 
 <p>Good afternoon,</p>
 
-<p>{company['name'] + " represents the insured, <strong>" + ins['name'] + "</strong>, under an Assignment of Benefits" if lang["role"] == "advocate" else "We are the licensed contractor retained by <strong>" + ins['name'] + "</strong> for storm damage repairs"} for the property at <strong>{prop['address']}, {prop['city']}, {prop['state']} {prop['zip']}</strong> (Claim #{carrier.get('claim_number','pending')}, Date of Loss: {dates['date_of_loss']}).</p>
+<p>{company['name'] + " represents the insured, " + _cover_owner_html + ", under an Assignment of Benefits" if lang["role"] == "advocate" else "We are the licensed contractor retained by " + _cover_owner_html + " for storm damage repairs"} for the property at <strong>{prop['address']}, {prop['city']}, {prop['state']} {prop['zip']}</strong> (Claim #{carrier.get('claim_number','pending')}, Date of Loss: {dates['date_of_loss']}).</p>
 
 <p>We are submitting our forensic inspection documentation and detailed repair estimate in advance of the carrier's adjuster inspection. Our documentation confirms {storm_summary}.</p>
 
