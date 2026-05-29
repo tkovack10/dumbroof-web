@@ -32,6 +32,28 @@ const GA4_STANDARD_MIRROR: Record<string, { name: string; params?: Record<string
 };
 
 /**
+ * Stable anonymous session id (localStorage) so a visitor's funnel events stitch
+ * into ONE journey across pages and — crucially — across the signup boundary
+ * (homepage → signup → first claim). Falls back gracefully if storage is blocked.
+ */
+function funnelSessionId(): string {
+  if (typeof window === "undefined") return "";
+  try {
+    let s = window.localStorage.getItem("dr_sid");
+    if (!s) {
+      s =
+        typeof crypto !== "undefined" && crypto.randomUUID
+          ? crypto.randomUUID()
+          : `s_${Math.random().toString(36).slice(2)}${Date.now().toString(36)}`;
+      window.localStorage.setItem("dr_sid", s);
+    }
+    return s;
+  } catch {
+    return "";
+  }
+}
+
+/**
  * Fire a funnel event to BOTH Vercel Analytics AND GA4 simultaneously.
  *
  * Vercel Analytics → developer-facing dashboard, custom events for funnel
@@ -62,6 +84,32 @@ export function trackBoth(event: string, properties?: EventProperties): void {
       }
     } catch {
       // Non-fatal
+    }
+  }
+
+  // Persist to our OWN database (/api/track → funnel_events) so the funnel is
+  // answerable in SQL, not only in the GA4 / Vercel consoles. Fire-and-forget;
+  // sendBeacon survives page navigation/unload. Never blocks or throws.
+  if (typeof window !== "undefined") {
+    try {
+      const payload = JSON.stringify({
+        event,
+        properties: properties || null,
+        session_id: funnelSessionId(),
+        path: window.location?.pathname || null,
+      });
+      if (typeof navigator !== "undefined" && typeof navigator.sendBeacon === "function") {
+        navigator.sendBeacon("/api/track", new Blob([payload], { type: "application/json" }));
+      } else {
+        void fetch("/api/track", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: payload,
+          keepalive: true,
+        }).catch(() => {});
+      }
+    } catch {
+      // Non-fatal — analytics must never break the app
     }
   }
 }
