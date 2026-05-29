@@ -539,6 +539,89 @@ CLAIM_BRAIN_TOOLS = [
         "input_schema": {"type": "object", "properties": {}, "required": []},
     },
     {
+        "name": "bulk_supplement_campaign",
+        "description": (
+            "Owner/admin only. Build a COMPANY-WIDE bulk supplement-to-carrier campaign PREVIEW across every "
+            "eligible claim in the company. Eligible = paid (payment/check received) + post-scope phase + "
+            "a real carrier RCV + a positive supplement amount + 2+ code-cited scope gaps + the scope-"
+            "comparison PDF on file + an adjuster or known carrier-intake target + not already supplemented. "
+            "Each email is human, varied (4 rotating tones), code-cited, and attaches the scope comparison + "
+            "code-compliance + estimate PDFs; the carrier subject is the bare claim number. "
+            "\n\nPREVIEW-ONLY / HUMAN-APPROVAL-GATED. Calling this tool ALWAYS just builds a preview and SENDS "
+            "NOTHING — it returns the eligible-claim list, counts, per-row target type (named adjuster vs shared "
+            "carrier-intake), the carrier-intake count, and ONE rendered sample email. You CANNOT send: the "
+            "actual blast runs only after the human clicks Approve on the preview card (a server-side gate). So "
+            "just call it, show the user the list + sample, and tell them to click Approve when ready. There is "
+            "no 'execute' you can trigger. Company scope is resolved server-side from the signed-in owner/admin "
+            "— you cannot target another company."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "min_gap_items": {
+                    "type": "integer",
+                    "default": 2,
+                    "minimum": 1,
+                    "description": "Minimum number of scope-comparison gap items required for a claim to be eligible.",
+                },
+                "max_claims": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "description": "Optional cap on how many claims to include (highest-supplement-value first).",
+                },
+                "include_carrier_intake": {
+                    "type": "boolean",
+                    "default": True,
+                    "description": "When true (default), claims with no named adjuster email fall back to a shared carrier claims-intake address (e.g. State Farm/Allstate/Guard intake). Set false to send ONLY to named adjusters and skip no-adjuster claims. The preview flags every carrier-intake row and gives a count so the human sees them before approving.",
+                },
+                "exclude_claim_ids": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "Claim ids to skip (e.g. ones the user said to hold back after seeing the preview).",
+                },
+            },
+            "required": [],
+        },
+    },
+    {
+        "name": "bulk_forensic_campaign",
+        "description": (
+            "Owner/admin only. Build a COMPANY-WIDE bulk forensic-causation-report-to-carrier campaign PREVIEW "
+            "across every eligible claim in the company. Eligible = a forensic causation PDF on file + an "
+            "adjuster or known carrier-intake target + not already sent to the carrier + de-duplicated by "
+            "property. Each email is human, varied (6 rotating tones), attaches the forensic report, and "
+            "(carrier subject = bare claim number when on file). The homeowner is CC'd when a valid address "
+            "exists."
+            "\n\nPREVIEW-ONLY / HUMAN-APPROVAL-GATED. Calling this tool ALWAYS just builds a preview and SENDS "
+            "NOTHING — it returns the eligible-claim list, counts, per-row target type (named adjuster vs shared "
+            "carrier-intake), the carrier-intake count, and ONE rendered sample email. You CANNOT send: the "
+            "actual blast runs only after the human clicks Approve on the preview card (a server-side gate). "
+            "Just call it, show the user the list + sample, and tell them to click Approve. Company scope is "
+            "resolved server-side from the signed-in owner/admin — you cannot target another company."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "max_claims": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "description": "Optional cap on how many claims to include.",
+                },
+                "include_carrier_intake": {
+                    "type": "boolean",
+                    "default": True,
+                    "description": "When true (default), claims with no named adjuster email fall back to a shared carrier claims-intake address. Set false to send ONLY to named adjusters and skip no-adjuster claims. The preview flags every carrier-intake row and gives a count so the human sees them before approving.",
+                },
+                "exclude_claim_ids": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "Claim ids to skip (e.g. ones the user said to hold back after seeing the preview).",
+                },
+            },
+            "required": [],
+        },
+    },
+    {
         "name": "find_photo",
         "description": (
             "Find a specific photo on this claim by annotation key (e.g. 'p11_02'), "
@@ -1347,6 +1430,10 @@ async def execute_tool(
             result = _handle_compare_team_performance(sb, user_id, tool_input)
         elif tool_name == "get_team_member_workload":
             result = _handle_get_team_member_workload(sb, user_id)
+        elif tool_name == "bulk_supplement_campaign":
+            result = await _handle_bulk_supplement_campaign(sb, user_id, tool_input)
+        elif tool_name == "bulk_forensic_campaign":
+            result = await _handle_bulk_forensic_campaign(sb, user_id, tool_input)
         elif tool_name == "find_photo":
             result = _handle_find_photo(sb, claim_id, tool_input)
         elif tool_name == "edit_photo_annotation":
@@ -3829,6 +3916,374 @@ def _company_user_ids(sb: Client, user_id: str) -> tuple[Optional[str], list[str
         return company_id, ids
     except Exception:
         return None, [user_id]
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# Company-scoped BULK carrier-comms campaigns (admin/owner, approval-gated)
+# ═══════════════════════════════════════════════════════════════════════
+# Productized, multi-tenant translations of the proven USARM one-off scripts.
+# Eligibility + body composition live in backend/bulk_campaigns.py. These
+# handlers own: (1) the role gate, (2) the server-side company_id resolution,
+# (3) the preview/execute split, and (4) the actual send + side-effects on
+# execute. NOTHING is hardcoded to USARM.
+
+def _bulk_resolve_company(sb: Client, user_id: str) -> tuple[Optional[dict], Optional[str]]:
+    """Gate + resolve. Returns (error_dict, None) to reject, or (None, company_id)
+    to proceed. company_id comes ONLY from the authenticated user_id."""
+    role_err = _ensure_company_role(sb, user_id)
+    if role_err:
+        return role_err, None
+    company_id, _ids = _company_user_ids(sb, user_id)
+    if not company_id:
+        return {
+            "action": "error",
+            "message": (
+                "I couldn't resolve your company. Bulk campaigns run across your company's claims, "
+                "so your account needs to be linked to a company first."
+            ),
+        }, None
+    return None, company_id
+
+
+async def _handle_bulk_supplement_campaign(sb: Client, user_id: str, tool_input: dict) -> dict:
+    """Company-wide bulk supplement→carrier campaign — PREVIEW ONLY.
+
+    This handler NEVER sends. It builds the company-scoped batch and returns
+    action="preview". The admin-brain chat loop persists the preview (including the
+    resolved batch) as a pending action keyed by an approval_id; the actual send runs
+    ONLY when a human clicks Approve, which routes through approve_admin_action ->
+    _bulk_execute. The `mode` tool param is intentionally ignored here — there is no
+    model-reachable execute path (prompt-injection / confused-model hardening)."""
+    from bulk_campaigns import build_supplement_batch
+
+    err, company_id = _bulk_resolve_company(sb, user_id)
+    if err:
+        return err
+
+    min_gap_items = int(tool_input.get("min_gap_items") or 2)
+    max_claims = tool_input.get("max_claims")
+    max_claims = int(max_claims) if max_claims else None
+    exclude = tool_input.get("exclude_claim_ids") or []
+    include_carrier_intake = _bulk_bool(tool_input.get("include_carrier_intake"), default=True)
+
+    try:
+        batch, skip = build_supplement_batch(
+            sb, company_id, user_id,
+            min_gap_items=min_gap_items, max_claims=max_claims, exclude_claim_ids=exclude,
+            include_carrier_intake=include_carrier_intake,
+        )
+    except Exception as e:
+        return {"action": "error", "message": f"Failed to build supplement campaign: {type(e).__name__}: {e}"}
+
+    total_value = round(sum(float(b.get("supplement_value") or 0) for b in batch), 2)
+    intake_count = sum(1 for b in batch if b.get("target_type") == "carrier_intake")
+
+    # PREVIEW — list + ONE rendered sample + counts. Sends nothing. The resolved
+    # `batch` rides along in the pending action so approve_admin_action can execute
+    # it WITHOUT re-trusting any model input.
+    sample = _bulk_sample(batch[0]) if batch else None
+    rows = [{
+        "claim_id": b["claim_id"],
+        "address": b.get("address"),
+        "claim_number": b.get("claim_number"),
+        "carrier": b.get("carrier"),
+        "adjuster": b.get("adjuster"),
+        "to_email": b["to_email"],
+        "target_type": b.get("target_type"),
+        "n_gaps": b.get("n_gaps"),
+        "top_gaps": b.get("top_gaps"),
+        "supplement_value": b.get("supplement_value"),
+        "attachments": b.get("attachment_filenames"),
+        "rep": b.get("rep_name"),
+    } for b in batch]
+    return {
+        "action": "preview",
+        "type": "bulk_supplement_campaign",
+        "tool_name": "bulk_supplement_campaign",
+        # Resolved, server-side send plan. Read ONLY by approve_admin_action ->
+        # _bulk_execute; never surfaced to or trusted from the model.
+        "batch": batch,
+        "company_id": company_id,
+        "campaign": "supplement",
+        "preview": {
+            "action_label": f"Send {len(batch)} supplement email{'s' if len(batch) != 1 else ''}",
+            "campaign": "supplement",
+            "company_id": company_id,
+            "eligible_count": len(batch),
+            "total_supplement_value": total_value,
+            "carrier_intake_count": intake_count,
+            "include_carrier_intake": include_carrier_intake,
+            "skipped": skip,
+            "min_gap_items": min_gap_items,
+            "sample_email": sample,
+            "claims": rows,
+        },
+        "message": (
+            f"{len(batch)} eligible supplement{'s' if len(batch) != 1 else ''} ready "
+            f"(${total_value:,.0f} total supplement value"
+            + (f"; {intake_count} would go to a shared carrier-intake address rather than a named adjuster"
+               if intake_count else "")
+            + f"). Nothing has been sent. Review the list and the sample email below; when you click "
+            f"Approve I'll run the campaign — I can't send these myself."
+        ),
+    }
+
+
+async def _handle_bulk_forensic_campaign(sb: Client, user_id: str, tool_input: dict) -> dict:
+    """Company-wide bulk forensic→carrier campaign — PREVIEW ONLY.
+
+    Same server-gated approval pattern as _handle_bulk_supplement_campaign: this
+    NEVER sends. The resolved batch is returned in the preview and executed only via
+    a human Approve through approve_admin_action -> _bulk_execute."""
+    from bulk_campaigns import build_forensic_batch
+
+    err, company_id = _bulk_resolve_company(sb, user_id)
+    if err:
+        return err
+
+    max_claims = tool_input.get("max_claims")
+    max_claims = int(max_claims) if max_claims else None
+    exclude = tool_input.get("exclude_claim_ids") or []
+    include_carrier_intake = _bulk_bool(tool_input.get("include_carrier_intake"), default=True)
+
+    try:
+        batch, skip = build_forensic_batch(
+            sb, company_id, user_id, max_claims=max_claims, exclude_claim_ids=exclude,
+            include_carrier_intake=include_carrier_intake,
+        )
+    except Exception as e:
+        return {"action": "error", "message": f"Failed to build forensic campaign: {type(e).__name__}: {e}"}
+
+    intake_count = sum(1 for b in batch if b.get("target_type") == "carrier_intake")
+
+    sample = _bulk_sample(batch[0]) if batch else None
+    rows = [{
+        "claim_id": b["claim_id"],
+        "address": b.get("address"),
+        "claim_number": b.get("claim_number"),
+        "carrier": b.get("carrier"),
+        "adjuster": b.get("adjuster"),
+        "to_email": b["to_email"],
+        "target_type": b.get("target_type"),
+        "attachments": b.get("attachment_filenames"),
+        "cc_homeowner": b.get("cc_homeowner"),
+        "rep": b.get("rep_name"),
+    } for b in batch]
+    return {
+        "action": "preview",
+        "type": "bulk_forensic_campaign",
+        "tool_name": "bulk_forensic_campaign",
+        "batch": batch,
+        "company_id": company_id,
+        "campaign": "forensic",
+        "preview": {
+            "action_label": f"Send {len(batch)} forensic report{'s' if len(batch) != 1 else ''}",
+            "campaign": "forensic",
+            "company_id": company_id,
+            "eligible_count": len(batch),
+            "carrier_intake_count": intake_count,
+            "include_carrier_intake": include_carrier_intake,
+            "skipped": skip,
+            "sample_email": sample,
+            "claims": rows,
+        },
+        "message": (
+            f"{len(batch)} eligible forensic report{'s' if len(batch) != 1 else ''} ready to send to "
+            f"carriers"
+            + (f" ({intake_count} would route to a shared carrier-intake address rather than a named adjuster)"
+               if intake_count else "")
+            + f". Nothing has been sent. Review the list and the sample email below; when you click "
+            f"Approve I'll run the campaign — I can't send these myself."
+        ),
+    }
+
+
+def _bulk_bool(v, *, default: bool) -> bool:
+    """Coerce a tool-input flag to bool, tolerating strings ('false'/'no'/'0')."""
+    if v is None:
+        return default
+    if isinstance(v, bool):
+        return v
+    if isinstance(v, (int, float)):
+        return bool(v)
+    return str(v).strip().lower() not in ("false", "no", "0", "off", "")
+
+
+def _bulk_sample(b: dict) -> dict:
+    """A single rendered email for the preview card."""
+    return {
+        "claim_id": b["claim_id"],
+        "address": b.get("address"),
+        "to": b["to_email"],
+        "cc": b.get("cc"),
+        "subject": b["subject"],
+        "body_html": b["body_html"],
+        "attachments": b.get("attachment_filenames"),
+    }
+
+
+async def _bulk_execute(sb: Client, company_id: str, batch: list[dict], *, campaign: str) -> dict:
+    """Send every prepared email in the batch from its assigned rep, then fire the
+    email side-effects (supplement_sent / forensic_* events + 3/7/15 cadence).
+
+    SECURITY: reachable ONLY from approve_admin_action (a human Approve carrying the
+    popped approval_id). The model has no path here. Even so this stays defense-in-
+    depth: each claim's company_id is RE-VERIFIED before sending, the assigned-rep
+    sender is confirmed to belong to the company, and the live already-sent set is
+    re-queried at execute start so a concurrent send (or a stale preview) can't double
+    up. Per-claim sent/skip results are returned."""
+    from claim_brain_email import send_claim_email
+    # Reuse main.py's idempotent side-effect recorder (events + cadence) so bulk
+    # sends and single-claim Richard sends share one code path.
+    try:
+        from main import _record_email_send_side_effects
+    except Exception as e:
+        _record_email_send_side_effects = None
+        print(f"[BULK] side-effect recorder import failed (sends will still go out): {e}", flush=True)
+
+    # tool_name drives the side-effect recorder's event-type + cadence preset.
+    side_effect_tool = "send_supplement_email" if campaign == "supplement" else "send_to_carrier"
+
+    # The company's authoritative user-id set, resolved DIRECTLY from the
+    # server-side company_id we're executing for (NOT from the batch, and NOT via
+    # any rep in it — a reassigned/orphaned rep could resolve to a different
+    # company). Used for the sender-in-company guard below.
+    company_uid_set: set[str] = set()
+    try:
+        team = sb.table("company_profiles").select("user_id").eq("company_id", company_id).execute()
+        company_uid_set = {r["user_id"] for r in (team.data or []) if r.get("user_id")}
+    except Exception as te:
+        print(f"[BULK] company user-id set load failed for {company_id}: {type(te).__name__}: {te}", flush=True)
+
+    # Fix 4: recompute the LIVE already-sent set at execute start (shrinks the
+    # concurrent / stale-preview double-send window vs. the build-time skip-set).
+    from bulk_campaigns import _claim_event_ids
+    sent_event_types = ["supplement_sent"] if campaign == "supplement" else ["forensic_sent_to_carrier"]
+    try:
+        already_sent_live = _claim_event_ids(sb, [b["claim_id"] for b in batch if b.get("claim_id")], sent_event_types)
+    except Exception as ae:
+        already_sent_live = set()
+        print(f"[BULK] live already-sent recompute failed (proceeding on build-time skip-set): {type(ae).__name__}: {ae}", flush=True)
+
+    results: list[dict] = []
+    sent = 0
+    for b in batch:
+        cid = b["claim_id"]
+        send_user_id = b.get("send_user_id")
+        if not send_user_id:
+            results.append({"claim_id": cid, "address": b.get("address"), "status": "skipped", "reason": "no assigned rep"})
+            continue
+
+        # Fix 4: skip anything that became sent since the preview was built.
+        if cid in already_sent_live:
+            results.append({"claim_id": cid, "address": b.get("address"), "status": "skipped", "reason": "already_sent"})
+            continue
+
+        # Fix 3: sender-in-company guard. The resolved send mailbox must belong to a
+        # member of THIS company; otherwise a reassigned/orphaned claim could send
+        # from a mailbox outside the company. Only enforced when we have a usable set.
+        if company_uid_set and send_user_id not in company_uid_set:
+            results.append({"claim_id": cid, "address": b.get("address"), "status": "skipped", "reason": "rep_not_in_company"})
+            continue
+
+        # Defense-in-depth: confirm the claim still belongs to this company before
+        # sending. (The batch was company-scoped at build time; this guards against
+        # any drift between preview and execute.)
+        try:
+            chk = sb.table("claims").select("company_id, file_path").eq("id", cid).maybe_single().execute()
+            row = (chk.data if chk else None) or {}
+            if row.get("company_id") != company_id:
+                results.append({"claim_id": cid, "address": b.get("address"), "status": "skipped", "reason": "company mismatch"})
+                continue
+        except Exception as ce:
+            results.append({"claim_id": cid, "address": b.get("address"), "status": "skipped", "reason": f"verify failed: {type(ce).__name__}"})
+            continue
+
+        # Resolve attachments (storage paths -> bytes). Refuse the SEND if any
+        # attachment is missing — adjusters shouldn't get an email that claims a
+        # report is attached when it isn't.
+        resolved: list[dict] = []
+        failed: list[str] = []
+        for path in (b.get("attachment_paths") or []):
+            try:
+                content = sb.storage.from_("claim-documents").download(path)
+                resolved.append({"filename": path.rsplit("/", 1)[-1], "content": content})
+            except Exception as ae:
+                failed.append(path)
+                print(f"[BULK] attachment download failed {path}: {type(ae).__name__}: {ae}", flush=True)
+        if failed:
+            results.append({"claim_id": cid, "address": b.get("address"), "status": "skipped",
+                            "reason": f"{len(failed)} attachment(s) missing"})
+            continue
+
+        try:
+            email_result = send_claim_email(
+                sb=sb,
+                claim_id=cid,
+                user_id=send_user_id,
+                to_email=b["to_email"],
+                subject=b["subject"],
+                body_html=b["body_html"],
+                cc=b.get("cc"),
+                attachments=resolved or None,
+                email_type=b.get("email_type") or "custom",
+            )
+            status = email_result.get("status", "sent")
+        except Exception as se:
+            results.append({"claim_id": cid, "address": b.get("address"), "status": "error",
+                            "reason": f"{type(se).__name__}: {se}"})
+            continue
+
+        # Side-effects: fire supplement_sent / forensic_* events + schedule cadence.
+        # Pass a draft-shaped dict so the recorder's attachment/forensic detection
+        # and cadence subject logic work exactly as on the single-claim path.
+        if _record_email_send_side_effects:
+            try:
+                _record_email_send_side_effects(
+                    sb=sb,
+                    claim_id=cid,
+                    user_id=send_user_id,
+                    tool_name=side_effect_tool,
+                    draft_or_preview={
+                        "to": b["to_email"],
+                        "cc": b.get("cc"),
+                        "subject": b["subject"],
+                        "body_html": b["body_html"],
+                        "attachment_paths": b.get("attachment_paths") or [],
+                    },
+                    email_id=email_result.get("email_id"),
+                )
+            except Exception as fe:
+                print(f"[BULK] side-effects failed for {cid} (email already sent): {type(fe).__name__}: {fe}", flush=True)
+
+        sent += 1
+        results.append({
+            "claim_id": cid,
+            "address": b.get("address"),
+            "to_email": b["to_email"],
+            "status": status,
+            "method": email_result.get("method"),
+            "supplement_value": b.get("supplement_value"),
+        })
+
+    skipped = sum(1 for r in results if r["status"] not in ("sent",))
+    return {
+        "action": "complete",
+        "type": f"bulk_{campaign}_campaign",
+        "tool_name": f"bulk_{campaign}_campaign",
+        "data": {
+            "company_id": company_id,
+            "attempted": len(batch),
+            "sent": sent,
+            "skipped": skipped,
+            "results": results,
+        },
+        "message": (
+            f"{campaign.capitalize()} campaign complete: {sent} sent"
+            + (f", {skipped} skipped" if skipped else "")
+            + ". 3/7/15-day follow-up cadences were scheduled for the sends with a claim number on file."
+        ),
+    }
 
 
 def _handle_list_company_claims(sb: Client, user_id: str, tool_input: dict) -> dict:
