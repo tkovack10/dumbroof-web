@@ -3461,8 +3461,8 @@ class AdminChatMessage(BaseModel):
     user_id: str
     locale: str | None = "en"
     scope: str | None = "user"  # "user" (settings) | "company" (portfolio, owner/admin) | "onboarding" (brand-new user, no claim yet)
-    slug: str | None = None  # onboarding only: the session id where the user's first-claim files are staged
-    uploaded_files: dict | None = None  # onboarding only: {"photos": n, "scope": n, "measurements": n} counts from the upload box
+    slug: str | None = None  # onboarding + dashboard: the upload-session id where the user's staged files live
+    uploaded_files: dict | None = None  # onboarding + dashboard: {"photos": n, "scope": n, "measurements": n} counts from the upload box
 
 
 def _user_company_role(sb, user_id: str) -> tuple[str | None, str | None]:

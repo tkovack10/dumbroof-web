@@ -413,8 +413,10 @@ export function AdminBrainChat({ userId, scope = "user" }: AdminBrainChatProps) 
                 // Dashboard claim created: fire StartTrial (browser pixel + CAPI
                 // mirror, deduped by event_id) so Meta optimizes the live StartTrial
                 // ad set on real activations, then rotate the upload session so the
-                // NEXT claim stages under a fresh slug.
-                if (isDashboard && ta.action === "complete" && ta.data?.claim_id) {
+                // NEXT claim stages under a fresh slug. Skip the idempotent replay
+                // (already_existed) so a same-slug re-call can't double-count the
+                // activation event.
+                if (isDashboard && ta.action === "complete" && ta.data?.claim_id && !ta.data?.already_existed) {
                   const claimSlug = String(ta.data.slug || slug);
                   const capiEventId = `claim_${claimSlug}_starttrial`;
                   window.fbq?.("track", "StartTrial", { value: 499, currency: "USD" }, { eventID: capiEventId });
