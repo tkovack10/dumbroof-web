@@ -163,6 +163,37 @@ export async function PUT(req: NextRequest) {
     return NextResponse.json({ error: "No company profile" }, { status: 403 });
   }
 
+  // Tenancy gate on the attachment paths. This handler forwards caller-supplied
+  // pdf_path + completion_photo_paths to the backend, which downloads them via
+  // the RLS-bypassing service-role client. Without confining them to the
+  // claim's storage prefix, a user authorized for one claim could exfiltrate
+  // another tenant's files by passing their storage paths. Mirrors the
+  // send-email route's photo_path validation (PR #67).
+  const { data: claimRows } = await supabaseAdmin
+    .from("claims")
+    .select("file_path")
+    .eq("id", claim_id)
+    .limit(1);
+  const filePath = (claimRows?.[0]?.file_path || "").trim().replace(/\/+$/, "");
+  if (!filePath) {
+    return NextResponse.json({ error: "Claim has no storage path" }, { status: 400 });
+  }
+  // Require the trailing-slash boundary (prefix + "/") so a sibling like
+  // "user/1234/..." can't satisfy a "user/123" prefix. Reject the whole
+  // request if any path (the COC PDF or any completion photo) escapes it.
+  const allowedPrefix = `${filePath}/`;
+  const candidatePaths = [
+    pdf_path,
+    ...(Array.isArray(completion_photo_paths) ? completion_photo_paths : []),
+  ];
+  const invalid = candidatePaths.find((p) => !p || !p.startsWith(allowedPrefix));
+  if (invalid !== undefined) {
+    return NextResponse.json(
+      { error: "One or more attachment paths do not belong to this claim" },
+      { status: 403 }
+    );
+  }
+
   try {
     // Collect all attachment paths: COC PDF + completion photos
     const allAttachments = [pdf_path];

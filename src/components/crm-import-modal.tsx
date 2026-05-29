@@ -117,8 +117,12 @@ export function CrmImportModal({
     setSearching(true);
     setError("");
     try {
+      // Send the Supabase JWT — the backend derives the caller's user_id from
+      // the verified token (the user_id query param is no longer trusted).
+      const authHeaders = await getRichardAuthHeaders();
       const res = await fetch(
-        `${backendUrl}/api/integrations/companycam/projects?user_id=${userId}&query=${encodeURIComponent(search)}`
+        `${backendUrl}/api/integrations/companycam/projects?user_id=${userId}&query=${encodeURIComponent(search)}`,
+        { headers: authHeaders }
       );
       const data = await res.json();
       if (!res.ok || data.error) {
@@ -160,8 +164,12 @@ export function CrmImportModal({
     setLoadingPhotos(true);
     setError("");
     try {
+      // Send the Supabase JWT — the backend derives the caller's user_id from
+      // the verified token (the user_id query param is no longer trusted).
+      const authHeaders = await getRichardAuthHeaders();
       const res = await fetch(
-        `${backendUrl}/api/integrations/companycam/projects/${project.id}/photos?user_id=${userId}`
+        `${backendUrl}/api/integrations/companycam/projects/${project.id}/photos?user_id=${userId}`,
+        { headers: authHeaders }
       );
       const data = await res.json();
       if (!res.ok || data.error) {
@@ -216,11 +224,14 @@ export function CrmImportModal({
     const newSlug = generateSlug(addr || "import");
 
     try {
+      // Send the Supabase JWT — the backend derives the caller's user_id from
+      // the verified token (the user_id body param is no longer trusted).
+      const authHeaders = await getRichardAuthHeaders();
       const res = await fetch(
         `${backendUrl}/api/integrations/acculynx/jobs/${selectedJob.id}/import`,
         {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: { "Content-Type": "application/json", ...authHeaders },
           body: JSON.stringify({
             user_id: userId,
             slug: newSlug,
@@ -265,11 +276,14 @@ export function CrmImportModal({
     const newSlug = generateSlug(addr);
 
     try {
+      // Send the Supabase JWT — the backend derives the caller's user_id from
+      // the verified token (the user_id body param is no longer trusted).
+      const authHeaders = await getRichardAuthHeaders();
       const res = await fetch(
         `${backendUrl}/api/integrations/companycam/projects/${selectedProject.id}/import`,
         {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: { "Content-Type": "application/json", ...authHeaders },
           body: JSON.stringify({
             user_id: userId,
             slug: newSlug,

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
+import { PUBLIC_DOMAINS } from "@/lib/public-domains";
 
 interface AuthResult {
   user: { id: string; email?: string };
@@ -67,15 +68,27 @@ export async function canAccessClaim(userId: string, claimId: string): Promise<b
     if (myCompanyId && myCompanyId === claim.company_id) return true;
   }
 
-  // Legacy: same email domain as claim owner (pre-invite teams still rely on this)
+  // Legacy: same email domain as claim owner (pre-invite teams still rely on this).
+  //
+  // Intentionally EXCLUDES public mailbox domains (gmail.com, outlook.com, …) —
+  // otherwise any two unrelated users on the same consumer provider would
+  // cross-access each other's claims. Mirrors the team-claims/claim + assign-rep
+  // route guards (PR #67).
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (user?.email && claim.user_id) {
     const { data: owner } = await supabaseAdmin.auth.admin.getUserById(claim.user_id);
     if (owner?.user?.email) {
-      const userDomain = user.email.split("@")[1];
-      const ownerDomain = owner.user.email.split("@")[1];
-      if (userDomain === ownerDomain) return true;
+      const userDomain = user.email.split("@")[1]?.toLowerCase();
+      const ownerDomain = owner.user.email.split("@")[1]?.toLowerCase();
+      if (
+        userDomain &&
+        ownerDomain &&
+        userDomain === ownerDomain &&
+        !PUBLIC_DOMAINS.has(ownerDomain)
+      ) {
+        return true;
+      }
     }
   }
 

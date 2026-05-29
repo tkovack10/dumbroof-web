@@ -5162,9 +5162,23 @@ async def acculynx_jobs(
 
 
 @app.get("/api/integrations/acculynx/jobs/{job_id}")
-async def acculynx_job_detail(job_id: str, user_id: str):
-    """Get full job details including contacts and insurance."""
-    client = await _get_user_integration_client(user_id, "acculynx")
+async def acculynx_job_detail(
+    job_id: str,
+    user_id: Optional[str] = None,
+    authorization: Optional[str] = Header(default=None),
+):
+    """Get full job details including contacts and insurance.
+
+    Auth: caller identity is derived from the verified Supabase JWT, NOT the
+    legacy user_id query param (which let any caller read another tenant's
+    AccuLynx job). Missing/invalid token → 401; a supplied user_id must match.
+    """
+    auth_user_id = _resolve_brain_user_id(authorization, None)
+    if not auth_user_id:
+        raise HTTPException(status_code=401, detail="Authentication required")
+    if user_id and user_id != auth_user_id:
+        raise HTTPException(status_code=403, detail="user_id mismatch with verified token")
+    client = await _get_user_integration_client(auth_user_id, "acculynx")
     job = await client.get_job(job_id)
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
@@ -5193,11 +5207,26 @@ async def acculynx_job_detail(job_id: str, user_id: str):
 
 
 @app.get("/api/integrations/companycam/projects")
-async def companycam_projects(user_id: str, query: str = "", page: int = 1):
-    """Search CompanyCam projects by address."""
+async def companycam_projects(
+    query: str = "",
+    page: int = 1,
+    user_id: Optional[str] = None,
+    authorization: Optional[str] = Header(default=None),
+):
+    """Search CompanyCam projects by address.
+
+    Auth: caller identity is derived from the verified Supabase JWT, NOT the
+    legacy user_id query param (which let any caller read another tenant's
+    CompanyCam projects). Missing/invalid token → 401; a supplied user_id must match.
+    """
+    auth_user_id = _resolve_brain_user_id(authorization, None)
+    if not auth_user_id:
+        raise HTTPException(status_code=401, detail="Authentication required")
+    if user_id and user_id != auth_user_id:
+        raise HTTPException(status_code=403, detail="user_id mismatch with verified token")
     from integrations.companycam import CompanyCamAuthError, CompanyCamUnavailableError
     try:
-        client = await _get_user_integration_client(user_id, "companycam")
+        client = await _get_user_integration_client(auth_user_id, "companycam")
         projects = await client.search_projects(query=query, page=page)
         return {"projects": projects}
     except CompanyCamAuthError as e:
@@ -5214,11 +5243,25 @@ async def companycam_projects(user_id: str, query: str = "", page: int = 1):
 
 
 @app.get("/api/integrations/companycam/projects/{project_id}/photos")
-async def companycam_photos(project_id: str, user_id: str):
-    """Get all photos for a CompanyCam project."""
+async def companycam_photos(
+    project_id: str,
+    user_id: Optional[str] = None,
+    authorization: Optional[str] = Header(default=None),
+):
+    """Get all photos for a CompanyCam project.
+
+    Auth: caller identity is derived from the verified Supabase JWT, NOT the
+    legacy user_id query param (which let any caller read another tenant's
+    CompanyCam photos). Missing/invalid token → 401; a supplied user_id must match.
+    """
+    auth_user_id = _resolve_brain_user_id(authorization, None)
+    if not auth_user_id:
+        raise HTTPException(status_code=401, detail="Authentication required")
+    if user_id and user_id != auth_user_id:
+        raise HTTPException(status_code=403, detail="user_id mismatch with verified token")
     from integrations.companycam import CompanyCamClient, CompanyCamAuthError, CompanyCamUnavailableError
     try:
-        client = await _get_user_integration_client(user_id, "companycam")
+        client = await _get_user_integration_client(auth_user_id, "companycam")
         photos = await client.get_all_project_photos(project_id)
 
         # Enrich with download URL + thumbnail URL for each photo
@@ -5250,11 +5293,12 @@ async def companycam_photos(project_id: str, user_id: str):
 @app.post("/api/integrations/companycam/projects/{project_id}/import")
 async def companycam_import(
     project_id: str,
-    user_id: str = Body(...),
     slug: str = Body(...),
+    user_id: Optional[str] = Body(None),
     selected_indices: list[int] | None = Body(None),
     target_path: str | None = Body(None),
     target_folder: str | None = Body(None),
+    authorization: Optional[str] = Header(default=None),
 ):
     """Download photos from CompanyCam and upload to Supabase storage.
 
@@ -5262,11 +5306,21 @@ async def companycam_import(
     Otherwise imports up to 100 photos.
     target_path: override full storage base path (e.g., "user_id/claim-slug/")
     target_folder: subfolder within target_path (e.g., "install-photos", "completion-photos")
+
+    Auth: caller identity is derived from the verified Supabase JWT, NOT the
+    legacy user_id body param (which let any caller import into / read from
+    another tenant's CompanyCam + storage path). Missing/invalid token → 401;
+    a supplied user_id must match.
     """
+    auth_user_id = _resolve_brain_user_id(authorization, None)
+    if not auth_user_id:
+        raise HTTPException(status_code=401, detail="Authentication required")
+    if user_id and user_id != auth_user_id:
+        raise HTTPException(status_code=403, detail="user_id mismatch with verified token")
     from integrations.companycam import CompanyCamClient, CompanyCamAuthError, CompanyCamUnavailableError
 
     try:
-        client = await _get_user_integration_client(user_id, "companycam")
+        client = await _get_user_integration_client(auth_user_id, "companycam")
         photos = await client.get_all_project_photos(project_id)
     except CompanyCamAuthError as e:
         return JSONResponse(status_code=401, content={
@@ -5326,7 +5380,7 @@ async def companycam_import(
                     folder = target_folder or "photos"
                     storage_path = f"{target_path}/{folder}/{fname}"
                 else:
-                    storage_path = f"{user_id}/{slug}/photos/{fname}"
+                    storage_path = f"{auth_user_id}/{slug}/photos/{fname}"
 
                 try:
                     sb.storage.from_("claim-documents").upload(
@@ -5406,14 +5460,28 @@ async def companycam_import(
 
 
 @app.post("/api/integrations/acculynx/jobs/{job_id}/import")
-async def acculynx_import(job_id: str, user_id: str = Body(...), slug: str = Body(...)):
+async def acculynx_import(
+    job_id: str,
+    slug: str = Body(...),
+    user_id: Optional[str] = Body(None),
+    authorization: Optional[str] = Header(default=None),
+):
     """Fetch job details from AccuLynx and return metadata for claim form.
 
     Note: AccuLynx v2 API does NOT support document/photo download (D-022).
     This endpoint returns job metadata only (address, homeowner, carrier).
     Users must upload EagleViews and photos separately.
+
+    Auth: caller identity is derived from the verified Supabase JWT, NOT the
+    legacy user_id body param (which let any caller read another tenant's
+    AccuLynx job). Missing/invalid token → 401; a supplied user_id must match.
     """
-    client = await _get_user_integration_client(user_id, "acculynx")
+    auth_user_id = _resolve_brain_user_id(authorization, None)
+    if not auth_user_id:
+        raise HTTPException(status_code=401, detail="Authentication required")
+    if user_id and user_id != auth_user_id:
+        raise HTTPException(status_code=403, detail="user_id mismatch with verified token")
+    client = await _get_user_integration_client(auth_user_id, "acculynx")
 
     # Fetch normalized job
     job = await client.get_job(job_id)
