@@ -20,6 +20,15 @@ function PricingContent() {
 
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
 
+  // Coupon discount, validated server-side so the page reflects the discount
+  // promised by the claim-page CTA (/pricing?coupon=FIRSTCLAIM50). Only set
+  // when Stripe confirms the coupon is valid — never promise a discount that
+  // won't apply at checkout.
+  const [couponInfo, setCouponInfo] = useState<{
+    percentOff: number | null;
+    amountOff: number | null; // cents
+  } | null>(null);
+
   const trackedRef = useRef(false);
   useEffect(() => {
     const supabase = createBrowserClient(
@@ -37,6 +46,56 @@ function PricingContent() {
       window.ttq?.track("ViewContent", { content_name: "pricing" });
     }
   }, []);
+
+  // Validate the coupon param server-side and reflect the discount in the grid.
+  useEffect(() => {
+    if (!coupon) {
+      setCouponInfo(null);
+      return;
+    }
+    let cancelled = false;
+    fetch(`/api/billing/validate-coupon?coupon=${encodeURIComponent(coupon)}`)
+      .then((r) => r.json())
+      .then((d) => {
+        if (cancelled) return;
+        if (d?.valid && (d.percentOff != null || d.amountOff != null)) {
+          setCouponInfo({ percentOff: d.percentOff ?? null, amountOff: d.amountOff ?? null });
+        } else {
+          // Coupon couldn't be validated (missing/expired/test-mode) → show full
+          // price with no false discount claim. Checkout still degrades safely.
+          setCouponInfo(null);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setCouponInfo(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [coupon]);
+
+  // Apply a validated coupon to a monthly price. Returns null when there is no
+  // discount to show (no coupon, or it didn't meaningfully reduce the price).
+  const discountedPrice = (price: number): number | null => {
+    if (!couponInfo || price <= 0) return null;
+    let next = price;
+    if (couponInfo.percentOff != null) {
+      next = price * (1 - couponInfo.percentOff / 100);
+    } else if (couponInfo.amountOff != null) {
+      next = price - couponInfo.amountOff / 100; // amount_off is in cents
+    }
+    next = Math.max(0, Math.round(next * 100) / 100);
+    return next < price ? next : null;
+  };
+
+  // Badge label, e.g. "50% off your first month" or "$50 off your first month".
+  const couponBadge: string | null = couponInfo
+    ? couponInfo.percentOff != null
+      ? `${couponInfo.percentOff}% off your first month`
+      : couponInfo.amountOff != null
+      ? `$${(couponInfo.amountOff / 100).toLocaleString()} off your first month`
+      : null
+    : null;
 
   const handleCheckout = async (params: { planId?: PlanId; addOnId?: string }) => {
     setLoading(params.planId || params.addOnId || null);
@@ -144,12 +203,37 @@ function PricingContent() {
                   {plan.name}
                 </h3>
                 <div className="mt-3 mb-4">
-                  <span className="text-4xl font-bold text-[var(--white)]">
-                    ${plan.price}
-                  </span>
-                  {plan.price > 0 && (
-                    <span className="text-[var(--gray-muted)] text-sm">/mo</span>
-                  )}
+                  {(() => {
+                    const discounted = discountedPrice(plan.price);
+                    if (discounted != null) {
+                      return (
+                        <>
+                          <span className="text-xl font-bold text-[var(--gray-muted)] line-through mr-2">
+                            ${plan.price}
+                          </span>
+                          <span className="text-4xl font-bold text-[var(--white)]">
+                            ${discounted}
+                          </span>
+                          <span className="text-[var(--gray-muted)] text-sm">/mo</span>
+                          {couponBadge && (
+                            <div className="mt-2 inline-block bg-green-500/15 border border-green-500/30 text-green-400 text-xs font-semibold px-2.5 py-1 rounded-full">
+                              {couponBadge}
+                            </div>
+                          )}
+                        </>
+                      );
+                    }
+                    return (
+                      <>
+                        <span className="text-4xl font-bold text-[var(--white)]">
+                          ${plan.price}
+                        </span>
+                        {plan.price > 0 && (
+                          <span className="text-[var(--gray-muted)] text-sm">/mo</span>
+                        )}
+                      </>
+                    );
+                  })()}
                 </div>
                 <p className="text-sm text-[var(--gray-muted)] mb-2">
                   {id === "starter"
