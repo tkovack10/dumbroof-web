@@ -3395,7 +3395,9 @@ class AdminChatMessage(BaseModel):
     message: str
     user_id: str
     locale: str | None = "en"
-    scope: str | None = "user"  # "user" (settings/onboarding) or "company" (full portfolio, owner/admin only)
+    scope: str | None = "user"  # "user" (settings) | "company" (portfolio, owner/admin) | "onboarding" (brand-new user, no claim yet)
+    slug: str | None = None  # onboarding only: the session id where the user's first-claim files are staged
+    uploaded_files: dict | None = None  # onboarding only: {"photos": n, "scope": n, "measurements": n} counts from the upload box
 
 
 def _user_company_role(sb, user_id: str) -> tuple[str | None, str | None]:
@@ -3546,6 +3548,65 @@ ADMIN_SETUP_TOOL_NAMES = {
 }
 
 
+# Tools the ONBOARDING Richard (scope="onboarding") can call. A brand-new user has
+# no claim yet, so this set is tiny and purpose-built: create the first claim, and
+# light branding capture if the user volunteers it. NO per-claim tools (none exists
+# yet) and NO portfolio tools. See project_richard_onboarding_activation.
+ONBOARDING_TOOL_NAMES = {
+    "create_claim_from_minimal_input",
+    "update_company_profile",
+    "upload_company_logo",
+}
+
+
+def _build_onboarding_brain_prompt(company_profile: dict, slug: Optional[str], uploaded_files: Optional[dict]) -> str:
+    """System prompt for scope='onboarding' — a brand-new user who has NOT made a
+    claim yet. Richard's one job: get them to a finished first report in THIS
+    session by creating their claim conversationally. Activation is the bottleneck
+    (86% of signups never make a claim) — see project_richard_onboarding_activation."""
+    from datetime import datetime
+    contact = company_profile.get("contact_name") or ""
+    first_name = contact.split(" ")[0] if contact else ""
+    uf = uploaded_files or {}
+    def _n(k):
+        try:
+            return int(uf.get(k, 0) or 0)
+        except Exception:
+            return 0
+    photos_n, scope_n, meas_n = _n("photos"), _n("scope"), _n("measurements")
+    uploaded_line = (
+        f"{photos_n} inspection photo(s), {scope_n} carrier-scope doc(s), {meas_n} measurement doc(s)"
+        if (photos_n or scope_n or meas_n) else "nothing yet"
+    )
+    return f"""You are Richard, the DumbRoof AI claims expert — and right now you ARE this person's first experience of the product. {('Their first name is ' + first_name + '. ') if first_name else ''}Your single goal: get them to a finished first report in THIS session by creating their claim for them. Warm, fast, plain-spoken — they're a busy roofer, often on their phone, not an IT person.
+
+Current date/time: {datetime.now().strftime('%Y-%m-%d %H:%M')}
+
+## THIS SESSION
+- Onboarding session id (slug): {slug or '(missing — tell the user to refresh the page)'}
+- Uploaded so far (via the upload box on screen): {uploaded_line}
+
+## YOUR JOB — create their first claim, conversationally
+You do NOT handle files yourself — the upload box on screen stages them and you see the counts above. Gather just enough to create the claim, then create it:
+1. **Property address** (required).
+2. **What they have.** Guide them: "Got inspection photos of the roof? Drop them in the box and I'll build a forensic damage report. No photos yet? Upload the carrier's estimate/scope and I'll build you an instant supplement." If they don't know how to get photos off their phone, walk them through it simply ("iPhone: tap the box → Photo Library → pick your roof shots. Android: tap the box → Gallery.") — be patient and concrete.
+3. **Insurance carrier** — ask once, optional.
+4. **Date of loss** (the storm date, YYYY-MM-DD if known). IMPORTANT for photo claims — it drives the storm/weather section of the report. Ask, but don't block on it.
+
+## WHEN TO CREATE
+As soon as you have (a) an address AND (b) at least photos OR a carrier scope showing in the counts above, call **create_claim_from_minimal_input(slug, address, carrier, date_of_loss)**. It auto-detects the report type from what they uploaded and starts building immediately. Don't wait for everything — momentum matters. If they ONLY have a measurement report (no photos, no scope), tell them you need photos or a carrier scope to start today, and to add one of those.
+
+## AFTER YOU CREATE
+Tell them the report is building and what it'll contain. THEN — only after — mention they can put their own company logo on the report (offer upload_company_logo, or tell them they can add it on the claim page). NEVER ask for a logo before creating the claim; never block the first report on branding.
+
+## RULES
+- One question at a time. Short messages. No walls of text.
+- Never invent an address or detail — if you don't have it, ask.
+- You may capture their company name with update_company_profile if they offer it, but claim creation comes first.
+- You are the front door, not the dashboard — you don't have other claims or settings loaded.
+"""
+
+
 @app.post("/api/admin-brain/chat")
 async def admin_brain_chat(body: AdminChatMessage, authorization: Optional[str] = Header(default=None)):
     """Admin/onboarding assistant. scope='user' = settings/onboarding (default).
@@ -3567,7 +3628,7 @@ async def admin_brain_chat(body: AdminChatMessage, authorization: Optional[str] 
         raise HTTPException(status_code=400, detail="user_id required")
 
     scope = (body.scope or "user").lower()
-    if scope not in ("user", "company"):
+    if scope not in ("user", "company", "onboarding"):
         scope = "user"
 
     # Role gate: scope=company requires owner or admin role
@@ -3593,6 +3654,8 @@ async def admin_brain_chat(body: AdminChatMessage, authorization: Optional[str] 
     if scope == "company":
         summary = _handle_get_company_portfolio_summary(sb, user_id, company_profile.get("company_id"))
         system_prompt = _build_admin_brain_company_prompt(company_profile, integrations, summary.get("data") or {})
+    elif scope == "onboarding":
+        system_prompt = _build_onboarding_brain_prompt(company_profile, body.slug, body.uploaded_files)
     else:
         system_prompt = _build_admin_brain_prompt(company_profile, integrations)
 
@@ -3600,24 +3663,34 @@ async def admin_brain_chat(body: AdminChatMessage, authorization: Optional[str] 
     # - Auto-detect Spanish even when no UI locale was set
     # - For setup scope ('user'), catch per-claim questions and redirect
     #   (Zach 2026-04-28 incident: setup Richard tried to answer claim Qs)
-    from richard_middleware import prepare_brain_request
-    brain_req = await prepare_brain_request(
-        sb=sb,
-        user_id=resolved_user_id,
-        claim_id=None,  # admin/setup chats are not bound to a claim
-        scope=scope,  # 'user' or 'company'
-        user_message=body.message or "",
-    )
+    # Onboarding scope is EXEMPT from the per-claim-question redirect — its whole
+    # job is to CREATE the user's first claim, so "claim questions" are the happy
+    # path, not something to redirect away. (The redirect exists to stop SETUP
+    # Richard from answering per-claim Qs — Zach 2026-04-28 incident.)
+    if scope == "onboarding":
+        setup_redirect_message = None
+        effective_lang = body.locale if body.locale in ("es", "en") else "en"
+        if effective_lang == "es":
+            system_prompt += "\n\n## LANGUAGE: SPANISH\nRespond in Spanish. Technical terms (API, OAuth, Microsoft 365) stay in English.\n"
+    else:
+        from richard_middleware import prepare_brain_request
+        brain_req = await prepare_brain_request(
+            sb=sb,
+            user_id=resolved_user_id,
+            claim_id=None,  # admin/setup chats are not bound to a claim
+            scope=scope,  # 'user' or 'company'
+            user_message=body.message or "",
+        )
 
-    # Explicit locale override beats auto-detection
-    effective_lang = body.locale if body.locale in ("es", "en") else brain_req.detected_language
-    if effective_lang == "es":
-        system_prompt += "\n\n## LANGUAGE: SPANISH\nRespond in Spanish. Technical terms (API, OAuth, Microsoft 365) stay in English.\n"
+        # Explicit locale override beats auto-detection
+        effective_lang = body.locale if body.locale in ("es", "en") else brain_req.detected_language
+        if effective_lang == "es":
+            system_prompt += "\n\n## LANGUAGE: SPANISH\nRespond in Spanish. Technical terms (API, OAuth, Microsoft 365) stay in English.\n"
 
-    # Setup-scope redirect: if user is asking a per-claim question on the
-    # setup chat, short-circuit with a redirect rather than burning an LLM
-    # call (which would just produce the same redirect from the prompt rule).
-    setup_redirect_message = brain_req.redirect_message if not brain_req.can_proceed else None
+        # Setup-scope redirect: if user is asking a per-claim question on the
+        # setup chat, short-circuit with a redirect rather than burning an LLM
+        # call (which would just produce the same redirect from the prompt rule).
+        setup_redirect_message = brain_req.redirect_message if not brain_req.can_proceed else None
 
     # Persistent chat history (Supabase). Scope is 'user' or 'company'.
     history = load_conversation(sb, scope, user_id, limit=50)
@@ -3661,7 +3734,8 @@ async def admin_brain_chat(body: AdminChatMessage, authorization: Optional[str] 
             # portfolio tools. Per-claim tools (claim_id-bound) are intentionally
             # hidden — they'd silently return 0 rows against the "admin" sentinel
             # or error out, leading to the Zach 2026-04-28 confusion.
-            setup_tools = [t for t in CLAIM_BRAIN_TOOLS if t["name"] in ADMIN_SETUP_TOOL_NAMES]
+            _allow = ONBOARDING_TOOL_NAMES if scope == "onboarding" else ADMIN_SETUP_TOOL_NAMES
+            setup_tools = [t for t in CLAIM_BRAIN_TOOLS if t["name"] in _allow]
 
             for _round in range(max_tool_rounds):
                 # Real token streaming + retry-before-first-text. See
