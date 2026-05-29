@@ -35,6 +35,8 @@ export interface Claim {
   adjuster_name?: string | null;
   adjuster_email?: string | null;
   adjuster_phone?: string | null;
+  // Carrier general claims email — fallback deliverable address for supplement/COC
+  carrier_email?: string | null;
   // Homeowner contact (promoted from claim_config to top-level for fast composer pre-fill)
   homeowner_email?: string | null;
   homeowner_phone?: string | null;

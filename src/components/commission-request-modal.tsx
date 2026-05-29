@@ -3,6 +3,7 @@
 import { useState, useCallback, useRef, useMemo } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { directUpload } from "@/lib/upload-utils";
+import { AOB_COMMISSION_CENTS, commissionCentsForCheck } from "@/lib/commissions";
 
 type Type = "check_10pct" | "aob_100" | "other";
 
@@ -31,11 +32,11 @@ export function CommissionRequestModal({
   const [error, setError] = useState<string | null>(null);
 
   const computedCents = useMemo(() => {
-    if (type === "aob_100") return 10_000;
+    if (type === "aob_100") return AOB_COMMISSION_CENTS;
     if (type === "check_10pct") {
       const n = parseFloat(checkAmount.replace(/[^0-9.]/g, ""));
       if (!Number.isFinite(n) || n <= 0) return 0;
-      return Math.round(n * 100 * 0.1);
+      return commissionCentsForCheck(Math.round(n * 100));
     }
     const n = parseFloat(customAmount.replace(/[^0-9.]/g, ""));
     return Number.isFinite(n) && n > 0 ? Math.round(n * 100) : 0;
@@ -103,7 +104,11 @@ export function CommissionRequestModal({
 
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
-        throw new Error(body.error || `HTTP ${res.status}`);
+        const miss =
+          Array.isArray(body.missing) && body.missing.length
+            ? ` Still needed: ${body.missing.join(", ")}.`
+            : "";
+        throw new Error((body.error || `HTTP ${res.status}`) + miss);
       }
 
       reset();

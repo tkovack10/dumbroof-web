@@ -2,6 +2,11 @@
 
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
+import {
+  fmtMoneyCents,
+  fmtCommissionType,
+  timeAgo,
+} from "@/lib/commissions";
 
 type Status = "pending" | "approved" | "rejected" | "paid";
 
@@ -37,33 +42,6 @@ const TABS: { key: Status | "all"; label: string }[] = [
   { key: "rejected", label: "Rejected" },
   { key: "all", label: "All" },
 ];
-
-function fmtMoneyCents(c: number): string {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(c / 100);
-}
-
-function fmtType(t: string): string {
-  if (t === "check_10pct") return "10% of check";
-  if (t === "aob_100") return "$100 AOB";
-  return "Custom";
-}
-
-function timeAgo(iso: string): string {
-  const diff = Date.now() - new Date(iso).getTime();
-  const mins = Math.floor(diff / 60_000);
-  if (mins < 1) return "just now";
-  if (mins < 60) return `${mins}m ago`;
-  const hours = Math.floor(mins / 60);
-  if (hours < 24) return `${hours}h ago`;
-  const days = Math.floor(hours / 24);
-  if (days < 7) return `${days}d ago`;
-  return `${Math.floor(days / 7)}w ago`;
-}
 
 function repName(email: string | null): string {
   if (!email) return "Unknown";
@@ -294,7 +272,7 @@ function RequestCard({
                   {repName(r.rep_email)}
                 </span>
                 <span className="text-xs px-2 py-0.5 rounded-full border border-[var(--border-glass)] text-[var(--gray)]">
-                  {fmtType(r.type)}
+                  {fmtCommissionType(r.type)}
                 </span>
                 <StatusBadge status={r.status} />
               </div>

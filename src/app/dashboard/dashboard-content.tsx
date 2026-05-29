@@ -433,6 +433,7 @@ export function DashboardContent({ user }: { user: User }) {
     { href: "/dashboard/repair-review", label: "Repair Review" },
     { href: "/dashboard/production", label: "Production" },
     { href: "/dashboard/reps", label: "Team / Reps" },
+    { href: "/dashboard/commissions", label: "Commissions" },
     { href: "/dashboard/retail-estimates", label: "Retail Estimates" },
     { href: "/dashboard/company-docs", label: "Company Docs" },
     ...(hasCompanyProfile ? [

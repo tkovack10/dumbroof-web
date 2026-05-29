@@ -1,19 +1,36 @@
 "use client";
 
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useMemo } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { directUpload } from "@/lib/upload-utils";
+import { ClaimPicker } from "@/components/claim-picker";
+import { commissionCentsForCheck } from "@/lib/commissions";
+import type { Claim } from "@/types/claim";
 
 type Source = "insurance" | "homeowner" | "stripe_invoice" | "other";
 
 interface Props {
-  claimId: string;
+  /** Omit when used from the dashboard — the modal shows a claim picker instead. */
+  claimId?: string;
   open: boolean;
   onClose: () => void;
   onUploaded?: () => void;
+  /**
+   * Show the "Also request my 10%" option and auto-file the commission.
+   * OFF by default so the per-claim "record a check" use (any team member,
+   * not just reps) never silently creates a commission. The rep Commissions
+   * dashboard turns it on.
+   */
+  enableCommission?: boolean;
 }
 
-export function CheckUploadModal({ claimId, open, onClose, onUploaded }: Props) {
+export function CheckUploadModal({
+  claimId,
+  open,
+  onClose,
+  onUploaded,
+  enableCommission = false,
+}: Props) {
   const supabase = createClient();
   const fileInput = useRef<HTMLInputElement>(null);
   const [file, setFile] = useState<File | null>(null);
@@ -24,6 +41,19 @@ export function CheckUploadModal({ claimId, open, onClose, onUploaded }: Props) 
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  // When no claimId is passed in (dashboard use), the rep picks the claim here.
+  const [pickedClaim, setPickedClaim] = useState<Claim | null>(null);
+  const [requestCommission, setRequestCommission] = useState(true);
+
+  const effectiveClaimId = claimId ?? pickedClaim?.id ?? null;
+
+  // 10% of the entered amount, for the "also request my commission" line.
+  const commissionCents = useMemo(() => {
+    const n = parseFloat(amount.replace(/[^0-9.]/g, ""));
+    return Number.isFinite(n) && n > 0
+      ? commissionCentsForCheck(Math.round(n * 100))
+      : 0;
+  }, [amount]);
 
   const reset = useCallback(() => {
     setFile(null);
@@ -33,6 +63,8 @@ export function CheckUploadModal({ claimId, open, onClose, onUploaded }: Props) 
     setNotes("");
     setError(null);
     setPreviewUrl(null);
+    setPickedClaim(null);
+    setRequestCommission(true);
   }, []);
 
   const handleClose = useCallback(() => {
@@ -49,6 +81,10 @@ export function CheckUploadModal({ claimId, open, onClose, onUploaded }: Props) 
   }, [previewUrl]);
 
   const submit = useCallback(async () => {
+    if (!effectiveClaimId) {
+      setError("Pick which claim this check is for first.");
+      return;
+    }
     if (!file) {
       setError("Please pick or take a photo of the check first.");
       return;
@@ -59,7 +95,7 @@ export function CheckUploadModal({ claimId, open, onClose, onUploaded }: Props) 
     try {
       // 1. direct-upload the photo to claim-documents bucket
       const ext = file.name.split(".").pop()?.toLowerCase() || "jpg";
-      const path = `claims/${claimId}/checks/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+      const path = `claims/${effectiveClaimId}/checks/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
       const { data: signed, error: signErr } = await supabase.storage
         .from("claim-documents")
         .createSignedUploadUrl(path);
@@ -74,8 +110,9 @@ export function CheckUploadModal({ claimId, open, onClose, onUploaded }: Props) 
         ? Math.round(numeric * 100)
         : null;
 
-      // 3. record metadata
-      const res = await fetch(`/api/claim/${claimId}/upload-check`, {
+      // 3. record metadata — and, if asked, file the rep's 10% in one step
+      const wantCommission = enableCommission && requestCommission && !!amountCents;
+      const res = await fetch(`/api/claim/${effectiveClaimId}/upload-check`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -84,12 +121,23 @@ export function CheckUploadModal({ claimId, open, onClose, onUploaded }: Props) 
           source,
           payor: payor.trim() || null,
           notes: notes.trim() || null,
+          request_commission: wantCommission,
         }),
       });
 
+      const body = await res.json().catch(() => ({}));
       if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
         throw new Error(body.error || `HTTP ${res.status}`);
+      }
+
+      // The check saved. If the rep asked for their 10% but it didn't file
+      // (e.g. RLS), don't pretend it worked — tell them so they can submit it.
+      if (wantCommission && body.commission_requested === false) {
+        onUploaded?.();
+        setError(
+          "Check saved — but we couldn't file your 10% automatically. Open the claim and submit your commission from there."
+        );
+        return;
       }
 
       reset();
@@ -100,7 +148,20 @@ export function CheckUploadModal({ claimId, open, onClose, onUploaded }: Props) 
     } finally {
       setSubmitting(false);
     }
-  }, [file, amount, source, payor, notes, claimId, supabase, reset, onUploaded, onClose]);
+  }, [
+    effectiveClaimId,
+    file,
+    amount,
+    source,
+    payor,
+    notes,
+    enableCommission,
+    requestCommission,
+    supabase,
+    reset,
+    onUploaded,
+    onClose,
+  ]);
 
   if (!open) return null;
 
@@ -136,6 +197,15 @@ export function CheckUploadModal({ claimId, open, onClose, onUploaded }: Props) 
             <div className="rounded-xl border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm text-red-200">
               {error}
             </div>
+          )}
+
+          {/* Claim picker — only when no claim is in context (dashboard use) */}
+          {!claimId && (
+            <ClaimPicker
+              selected={pickedClaim}
+              onSelect={setPickedClaim}
+              label="Which claim is this check for?"
+            />
           )}
 
           {/* Photo */}
@@ -221,6 +291,25 @@ export function CheckUploadModal({ claimId, open, onClose, onUploaded }: Props) 
             </p>
           </div>
 
+          {/* Also request my 10% — one-step commission (rep dashboard only) */}
+          {enableCommission && commissionCents > 0 && (
+            <label className="flex items-center gap-3 cursor-pointer rounded-xl border border-[var(--green)]/40 bg-[var(--green)]/[0.06] px-4 py-3">
+              <input
+                type="checkbox"
+                checked={requestCommission}
+                onChange={(e) => setRequestCommission(e.target.checked)}
+                className="w-4 h-4 accent-[var(--green)]"
+              />
+              <span className="text-sm text-white">
+                Also request my 10% (
+                <span className="font-mono font-bold text-[var(--green)]">
+                  ${(commissionCents / 100).toFixed(2)}
+                </span>
+                )
+              </span>
+            </label>
+          )}
+
           {/* Source */}
           <div>
             <label className="block text-xs font-bold text-[var(--gray-muted)] uppercase tracking-wide mb-2">
@@ -290,7 +379,7 @@ export function CheckUploadModal({ claimId, open, onClose, onUploaded }: Props) 
           <button
             type="button"
             onClick={submit}
-            disabled={submitting || !file}
+            disabled={submitting || !file || !effectiveClaimId}
             className="bg-gradient-to-r from-[var(--green)] to-[var(--cyan)] hover:shadow-[var(--shadow-glow-cyan)] disabled:opacity-40 text-white px-5 py-2 rounded-xl text-sm font-semibold transition-all"
           >
             {submitting ? "Uploading…" : "Record check"}

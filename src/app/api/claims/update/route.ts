@@ -23,6 +23,7 @@ const ALLOWED_FIELDS = new Set([
   "adjuster_name",
   "adjuster_email",
   "adjuster_phone",
+  "carrier_email",
   "claim_number",
   "policy_number",
   "contact_source",

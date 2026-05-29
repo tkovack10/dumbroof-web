@@ -14,6 +14,7 @@ interface ContactRegistryCardProps {
     adjuster_name?: string | null;
     adjuster_email?: string | null;
     adjuster_phone?: string | null;
+    carrier_email?: string | null;
     claim_number?: string | null;
     policy_number?: string | null;
     contact_source?: ContactSource | null;
@@ -28,6 +29,7 @@ const FIELD_LABELS: Record<string, string> = {
   adjuster_name: "Adjuster name",
   adjuster_email: "Adjuster email",
   adjuster_phone: "Adjuster phone",
+  carrier_email: "Carrier claims email",
   claim_number: "Claim #",
   policy_number: "Policy #",
 };
@@ -208,6 +210,7 @@ export function ContactRegistryCard({ claimId, initial, onChange }: ContactRegis
     adjuster_name: initial.adjuster_name || "",
     adjuster_email: initial.adjuster_email || "",
     adjuster_phone: initial.adjuster_phone || "",
+    carrier_email: initial.carrier_email || "",
     claim_number: initial.claim_number || "",
     policy_number: initial.policy_number || "",
   });
@@ -271,6 +274,13 @@ export function ContactRegistryCard({ claimId, initial, onChange }: ContactRegis
             <ContactField claimId={claimId} field="adjuster_phone" label={FIELD_LABELS.adjuster_phone}
               value={values.adjuster_phone} source={source.adjuster_phone} type="tel"
               onSave={handleSave("adjuster_phone")} />
+          </div>
+
+          <div className="mt-4 pt-4 border-t border-white/[0.04]">
+            <p className="text-xs font-semibold text-[var(--gray-muted)] mb-1">Carrier</p>
+            <ContactField claimId={claimId} field="carrier_email" label={FIELD_LABELS.carrier_email}
+              value={values.carrier_email} source={source.carrier_email} type="email"
+              onSave={handleSave("carrier_email")} />
           </div>
 
           <div className="mt-4 pt-4 border-t border-white/[0.04]">
