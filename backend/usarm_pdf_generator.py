@@ -44,6 +44,78 @@ def load_config(config_path):
     os.makedirs(config["_paths"]["output"], exist_ok=True)
     return config
 
+
+# ===================================================================
+# WS-5 — NO-DATA / PLACEHOLDER RENDER GUARDS
+# ===================================================================
+# A claim can reach PDF generation in a "forensic-only" / pre-scope posture
+# with NO uploaded measurements and/or NO storm verification. Unconditionally
+# asserting "0 SF / Facets 0", "confirmed storm damage", "EagleView measurements",
+# or a placeholder "Property Owner" makes the appeal package look fabricated.
+# These guards gate each unconditional assertion on the (hardened) measurement /
+# weather signals so the report degrades to honest, neutral language instead.
+#
+# Both signal helpers live in compliance_report.py (has_measurements was already
+# the gate for Doc 06; weather_verified is the WS-5 sibling). We import them with
+# a defensive fallback so a generator import never hard-fails on this path.
+try:
+    from compliance_report import has_measurements as _ws5_has_measurements
+    from compliance_report import weather_verified as _ws5_weather_verified
+except Exception:  # pragma: no cover — defensive only
+    def _ws5_has_measurements(config):  # type: ignore
+        m = (config or {}).get("measurements", {}) or {}
+        try:
+            return any(float(str(m.get(k, 0)).strip() or 0) > 0
+                       for k in ("eave", "rake", "total_area", "area_sq"))
+        except Exception:
+            return False
+
+    def _ws5_weather_verified(config):  # type: ignore
+        w = (config or {}).get("weather", {}) or {}
+        return bool((w.get("hail_size") or w.get("storm_date")
+                     or w.get("storm_description")))
+
+
+def ws5_has_measurements(config) -> bool:
+    """Generator-side alias for the hardened compliance_report.has_measurements."""
+    return bool(_ws5_has_measurements(config))
+
+
+def ws5_weather_verified(config) -> bool:
+    """Generator-side alias for compliance_report.weather_verified (prod shape)."""
+    return bool(_ws5_weather_verified(config))
+
+
+def ws5_owner_is_placeholder(config) -> bool:
+    """True when the insured name is the literal 'Property Owner' placeholder.
+
+    processor.py defaults insured.name to 'Property Owner' when no real owner
+    name was extracted. Rendering that as the owner makes the package look
+    untargeted, so callers suppress the row / use a neutral relabel.
+    """
+    ins = (config or {}).get("insured", {}) or {}
+    name = ins.get("name", "")
+    return isinstance(name, str) and name.strip().lower() in ("property owner", "")
+
+
+def ws5_nodata_identity(config) -> bool:
+    """No-data posture for the identity (carrier/policy) rows.
+
+    Suppress blank carrier/policy rows ONLY when the claim is in a no-data or
+    placeholder posture (placeholder owner OR no measurements). A full-data
+    claim with a merely-unknown policy number keeps its blank row so existing
+    full-data output stays byte-identical.
+    """
+    return ws5_owner_is_placeholder(config) or not ws5_has_measurements(config)
+
+
+def ws5_blank(value) -> bool:
+    """True when a row value is empty/whitespace after coercion to str."""
+    if value is None:
+        return True
+    return not str(value).strip()
+
+
 # ===================================================================
 # HELPERS
 # ===================================================================
@@ -525,12 +597,21 @@ def _build_appeal_opening(config, fin):
     ins = config["insured"]
     carrier = config["carrier"]
 
+    # WS-5 GUARD 5 — only cite "EagleView measurements" as a basis when the
+    # claim actually has measurements; otherwise the appeal opening hard-claims
+    # an EagleView report that was never attached.
+    _scope_basis = (
+        "based on forensic inspection, EagleView measurements, and current Xactimate pricing"
+        if ws5_has_measurements(config)
+        else "based on forensic inspection and current Xactimate pricing"
+    )
+
     if lang["role"] == "advocate":
         return f"We write on behalf of the insured, {ins['name']}, to formally supplement and appeal the scope of loss issued for the above-referenced claim. The carrier's scope totals {fmt_money(fin['carrier_rcv'])} RCV. We respectfully request that {carrier['name']} re-evaluate the claim and approve the full scope of necessary repairs totaling <strong>{fmt_money(fin['total_with_op'])} RCV</strong>."
     elif lang["role"] == "contractor_aob":
-        return f"Per the executed Assignment of Benefits, we are submitting our updated contractor scope for the above-referenced claim. The current approval totals {fmt_money(fin['carrier_rcv'])} RCV. Our professional scope of work, based on forensic inspection, EagleView measurements, and current Xactimate pricing, totals <strong>{fmt_money(fin['total_with_op'])} RCV</strong>."
+        return f"Per the executed Assignment of Benefits, we are submitting our updated contractor scope for the above-referenced claim. The current approval totals {fmt_money(fin['carrier_rcv'])} RCV. Our professional scope of work, {_scope_basis}, totals <strong>{fmt_money(fin['total_with_op'])} RCV</strong>."
     elif lang["role"] == "contractor":
-        return f"As the licensed contractor engaged for repairs at the above property, we are submitting our professional scope of work for the above-referenced claim. Our scope, based on forensic inspection, EagleView measurements, and current Xactimate pricing, totals <strong>{fmt_money(fin['total_with_op'])} RCV</strong>."
+        return f"As the licensed contractor engaged for repairs at the above property, we are submitting our professional scope of work for the above-referenced claim. Our scope, {_scope_basis}, totals <strong>{fmt_money(fin['total_with_op'])} RCV</strong>."
     else:
         return f"I am writing to request a review of the scope for the above-referenced claim. The current approval totals {fmt_money(fin['carrier_rcv'])} RCV. Based on a professional forensic inspection, the full scope of necessary repairs totals <strong>{fmt_money(fin['total_with_op'])} RCV</strong>."
 
@@ -1937,6 +2018,70 @@ def build_forensic_report(config):
     shingle_type = struct.get("shingle_type", "")
     shingle_cond = struct.get("shingle_condition", "")
 
+    # --- WS-5 no-data / placeholder guards ---
+    _ws5_meas = ws5_has_measurements(config)
+    _ws5_wx = ws5_weather_verified(config)
+    _ws5_owner_ph = ws5_owner_is_placeholder(config)
+    _ws5_nodata_id = ws5_nodata_identity(config)
+
+    # WS-5 GUARD 1 — roof-spec area/facets/pitch rows. When no measurements were
+    # uploaded, the struct fields are all 0/empty; printing "0 SF / Facets 0"
+    # reads as fabricated. Suppress the metric rows and state the forensic
+    # posture instead of asserting zeroes.
+    if _ws5_meas:
+        roof_spec_metric_rows = (
+            f'    <tr><td><strong>Total Roof Area</strong></td><td>{roof_sf:,} SF ({roof_sq} SQ)</td></tr>\n'
+            f'    <tr><td><strong>Waste Factor</strong></td><td>{waste_pct}%</td></tr>\n'
+            f'    <tr><td><strong>Area with Waste</strong></td><td>{roof_sq_waste} SQ</td></tr>\n'
+            f'    <tr><td><strong>Facets</strong></td><td>{facets}</td></tr>\n'
+            f'    <tr><td><strong>Predominant Pitch</strong></td><td>{pitch}</td></tr>\n'
+        )
+    else:
+        roof_spec_metric_rows = (
+            '    <tr><td><strong>Measurements</strong></td>'
+            '<td>Forensic assessment — measurements not included. '
+            'Roof area, facet count, and pitch will be confirmed from an '
+            'EagleView/HOVER report prior to estimate finalization.</td></tr>\n'
+        )
+
+    # WS-5 GUARD 3 — placeholder owner + blank carrier/policy identity rows.
+    # cover-page owner line: drop the "Property Owner:" placeholder line entirely.
+    if _ws5_owner_ph:
+        cover_owner_line = ""
+    else:
+        cover_owner_line = f"<strong>Property Owner:</strong> {ins['name']}<br>\n        "
+
+    # Section 1 identity rows: build conditionally so placeholder owner /
+    # blank carrier / blank policy rows are SUPPRESSED rather than printed
+    # empty. The owner-type suffix logic is preserved verbatim for the
+    # non-placeholder branch so full-data output is byte-identical.
+    _owner_type_suffix = (
+        ' (' + ins['type'] + ')'
+        if ins.get('type', '').lower() not in
+        ('homeowner', 'property owner (homeowner)', 'property owner', '')
+        else ''
+    )
+    section1_identity_rows = ""
+    if not _ws5_owner_ph:
+        section1_identity_rows += (
+            f"    <tr><td><strong>Property Owner</strong></td><td>{ins['name']}{_owner_type_suffix}</td></tr>\n"
+        )
+    # Carrier / Claim / Policy rows: suppress a blank row ONLY in a no-data /
+    # placeholder posture so a full-data claim with a merely-unknown policy
+    # number keeps its existing (blank) row → byte-identical.
+    if not (_ws5_nodata_id and ws5_blank(carrier.get('name'))):
+        section1_identity_rows += (
+            f"    <tr><td><strong>Carrier</strong></td><td>{carrier['name']}</td></tr>\n"
+        )
+    if not (_ws5_nodata_id and ws5_blank(carrier.get('claim_number'))):
+        section1_identity_rows += (
+            f"    <tr><td><strong>Claim Number</strong></td><td>{carrier['claim_number']}</td></tr>\n"
+        )
+    if not (_ws5_nodata_id and ws5_blank(carrier.get('policy_number', ''))):
+        section1_identity_rows += (
+            f"    <tr><td><strong>Policy Number</strong></td><td>{carrier.get('policy_number','')}</td></tr>\n"
+        )
+
     # Pitches table rows
     pitches_html = ""
     for p in struct.get("pitches", []):
@@ -2046,6 +2191,41 @@ def build_forensic_report(config):
                 link_html = f'<a href="{url}" style="color:#0d2137;">{title[:80]}</a>' if url else title[:80]
                 corroborating_html += f'<tr><td><strong>{source_type}</strong></td><td>{link_html}</td><td style="font-size:8.5pt;">{snippet[:150]}</td></tr>\n'
             corroborating_html += '</table>\n'
+
+    # --- WS-5 GUARD 2 — Storm Event Overview ---
+    # When the claim is NOT weather-verified (prod shape: no hail_size /
+    # storm_date / storm_description and no NOAA event_count), the "Storm
+    # Verified" success box + the storm-parameter table render as empty
+    # placeholder cells ("Storm Verified: ", "Storm Date: ", "HailTrace
+    # Report ID: —"). That reads as fabricated. Render a neutral
+    # "weather verification pending" notice instead, and drop the empty
+    # parameter table entirely. The verified branch is byte-identical to the
+    # prior unconditional markup.
+    if _ws5_wx:
+        storm_overview_html = (
+            '<div class="success-box">\n'
+            f"<strong>Storm Verified:</strong> {weather.get('storm_description', '')}\n"
+            '</div>\n\n'
+            '<table>\n'
+            '    <tr><th style="width:35%">Parameter</th><th>Detail</th></tr>\n'
+            f"    <tr><td><strong>Storm Date</strong></td><td>{weather['storm_date']}</td></tr>\n"
+            f"    <tr><td><strong>Hail Size (Algorithm)</strong></td><td>{weather.get('hail_size_algorithm', '')}</td></tr>\n"
+            f"    <tr><td><strong>Hail Size (Meteorologist)</strong></td><td>{weather.get('hail_size_meteorologist', weather.get('hail_size_algorithm', ''))}</td></tr>\n"
+            f"    <tr><td><strong>Verification</strong></td><td>{weather.get('verification_method', '')}</td></tr>\n"
+            f"    <tr><td><strong>HailTrace Report</strong></td><td>ID: {weather.get('hailtrace_id', '')} — {weather.get('hailtrace_url', '')}</td></tr>\n"
+            f"    <tr><td><strong>Coordinates</strong></td><td>{weather.get('coordinates', '')}</td></tr>\n"
+            '</table>'
+        )
+    else:
+        storm_overview_html = (
+            '<div class="success-box" style="background:#f8f9fa;border-color:#c8d6e5;">\n'
+            '<strong>Weather verification pending:</strong> Independent storm '
+            'verification (NOAA/NWS storm data, hail-size confirmation) has not '
+            'yet been attached to this claim. The damage documented in this '
+            'report is based on the field inspection; storm corroboration will '
+            'be supplemented prior to estimate finalization.\n'
+            '</div>'
+        )
 
     # --- Damage thresholds (check both weather and forensic_findings) ---
     thresholds_html = ""
@@ -2171,7 +2351,15 @@ def build_forensic_report(config):
         structures_table += '<h3>All Structures</h3>\n<table>\n'
         structures_table += '<tr><th>Structure</th><th>Area</th><th>Style</th><th>Note</th></tr>\n'
         for s in structures:
-            structures_table += f'<tr><td>{s["name"]}</td><td>{s.get("roof_area_sf","")} SF</td><td>{s.get("style","")}</td><td>{s.get("note","")}</td></tr>\n'
+            # WS-5 GUARD 1 — relabel a 0-SF / empty area cell so a multi-structure
+            # claim with no measurements doesn't render "0 SF" rows. Non-zero
+            # areas render exactly as before (byte-identical for full-data).
+            _s_sf = s.get("roof_area_sf", "")
+            if ws5_blank(_s_sf) or str(_s_sf).strip() in ("0", "0.0"):
+                area_cell = "Measurements pending"
+            else:
+                area_cell = f'{_s_sf} SF'
+            structures_table += f'<tr><td>{s["name"]}</td><td>{area_cell}</td><td>{s.get("style","")}</td><td>{s.get("note","")}</td></tr>\n'
         structures_table += '</table>\n'
 
     # Determine section numbers based on optional sections
@@ -2220,8 +2408,7 @@ def build_forensic_report(config):
     <div class="cover-subtitle">Proprietary Damage Assessment &amp; Causation Analysis</div>
     <div class="cover-info">
         <strong>Property:</strong> {prop['address']}<br>
-        <strong>Property Owner:</strong> {ins['name']}<br>
-        <strong>Date of Loss:</strong> {dates['date_of_loss']}<br>
+        {cover_owner_line}<strong>Date of Loss:</strong> {dates['date_of_loss']}<br>
         <strong>Inspection:</strong> {insp_dates_str}<br>
         <strong>Report Date:</strong> {dates['report_date']}
     </div>
@@ -2239,11 +2426,7 @@ def build_forensic_report(config):
 <table>
     <tr><th style="width:35%">Field</th><th>Detail</th></tr>
     <tr><td><strong>Property Address</strong></td><td>{prop['address']}</td></tr>
-    <tr><td><strong>Property Owner</strong></td><td>{ins['name']}{' (' + ins['type'] + ')' if ins.get('type','').lower() not in ('homeowner', 'property owner (homeowner)', 'property owner', '') else ''}</td></tr>
-    <tr><td><strong>Carrier</strong></td><td>{carrier['name']}</td></tr>
-    <tr><td><strong>Claim Number</strong></td><td>{carrier['claim_number']}</td></tr>
-    <tr><td><strong>Policy Number</strong></td><td>{carrier.get('policy_number','')}</td></tr>
-    <tr><td><strong>Date of Loss</strong></td><td>{dates['date_of_loss']}</td></tr>
+{section1_identity_rows}    <tr><td><strong>Date of Loss</strong></td><td>{dates['date_of_loss']}</td></tr>
     <tr><td><strong>Carrier Inspection</strong></td><td>{dates.get('carrier_inspection_date','')}</td></tr>
     <tr><td><strong>{company['name']} Inspection</strong></td><td>{insp_dates_str}</td></tr>
     <tr><td><strong>{company['name']} Inspector(s)</strong></td><td>{inspector_lines}</td></tr>
@@ -2254,19 +2437,14 @@ def build_forensic_report(config):
 <table>
     <tr><th style="width:35%">Specification</th><th>Detail</th></tr>
     <tr><td><strong>Structure</strong></td><td>{struct_name}</td></tr>
-    <tr><td><strong>Total Roof Area</strong></td><td>{roof_sf:,} SF ({roof_sq} SQ)</td></tr>
-    <tr><td><strong>Waste Factor</strong></td><td>{waste_pct}%</td></tr>
-    <tr><td><strong>Area with Waste</strong></td><td>{roof_sq_waste} SQ</td></tr>
-    <tr><td><strong>Facets</strong></td><td>{facets}</td></tr>
-    <tr><td><strong>Predominant Pitch</strong></td><td>{pitch}</td></tr>
-    <tr><td><strong>Style</strong></td><td>{style}</td></tr>
+{roof_spec_metric_rows}    <tr><td><strong>Style</strong></td><td>{style}</td></tr>
     <tr><td><strong>Shingle Type</strong></td><td>{shingle_type}</td></tr>
     <tr><td><strong>Condition</strong></td><td>{shingle_cond}</td></tr>
 </table>
 
 {structures_table}
 
-{"<h3>Pitch Breakdown</h3><table><tr><th>Pitch</th><th>Area</th><th>%</th></tr>" + pitches_html + "</table>" if pitches_html else ""}
+{"<h3>Pitch Breakdown</h3><table><tr><th>Pitch</th><th>Area</th><th>%</th></tr>" + pitches_html + "</table>" if (pitches_html and _ws5_meas) else ""}
 
 <!-- SECTION 2: EXECUTIVE SUMMARY -->
 <div style="margin-top:24pt;"></div>
@@ -2276,23 +2454,11 @@ def build_forensic_report(config):
 <!-- SECTION 3: STORM EVENT OVERVIEW -->
 <div style="margin-top:24pt;"></div>
 <h2>3. Storm Event Overview</h2>
-<div class="success-box">
-<strong>Storm Verified:</strong> {weather.get('storm_description', '')}
-</div>
+{storm_overview_html}
 
-<table>
-    <tr><th style="width:35%">Parameter</th><th>Detail</th></tr>
-    <tr><td><strong>Storm Date</strong></td><td>{weather['storm_date']}</td></tr>
-    <tr><td><strong>Hail Size (Algorithm)</strong></td><td>{weather.get('hail_size_algorithm', '')}</td></tr>
-    <tr><td><strong>Hail Size (Meteorologist)</strong></td><td>{weather.get('hail_size_meteorologist', weather.get('hail_size_algorithm', ''))}</td></tr>
-    <tr><td><strong>Verification</strong></td><td>{weather.get('verification_method', '')}</td></tr>
-    <tr><td><strong>HailTrace Report</strong></td><td>ID: {weather.get('hailtrace_id', '')} — {weather.get('hailtrace_url', '')}</td></tr>
-    <tr><td><strong>Coordinates</strong></td><td>{weather.get('coordinates', '')}</td></tr>
-</table>
-
-{noaa_citation_html}
-{nws_html}
-{corroborating_html}
+{noaa_citation_html if _ws5_wx else ""}
+{nws_html if _ws5_wx else ""}
+{corroborating_html if _ws5_wx else ""}
 
 {"<h3>Additional Weather Events</h3><table><tr><th>Date</th><th>Type</th><th>Detail</th></tr>" + additional_events_html + "</table>" if additional_events_html else ""}
 
@@ -2853,6 +3019,14 @@ def build_xactimate_estimate(config):
 
     fin = compute_financials(config)
 
+    # WS-5 GUARD 4 — estimate-pending. A forensic-only / pre-scope claim with no
+    # measurements AND no priced initial-scope line items would render a $0
+    # line-item table + $0 TOTAL RCV — which reads as "we estimate this is worth
+    # nothing." Per E252 the doc must NEVER be dropped; instead we emit an
+    # explicit "ESTIMATE PENDING — upload measurements" notice in place of the
+    # zero-value tables. When ANY priced line item exists we render normally.
+    _ws5_estimate_pending = (not ws5_has_measurements(config)) and (not items)
+
     # Build line items table — grouped by structure, then by category, sorted by canonical order
     line_rows = ""
 
@@ -2939,6 +3113,68 @@ def build_xactimate_estimate(config):
     trades_str = ", ".join(t.title() for t in scope.get("trades", []))
     o_and_p_note = scope.get("o_and_p_note", "")
 
+    # WS-5 GUARD 4 — assemble the estimate body. The verified/priced branch is
+    # byte-identical to the prior inline markup; the estimate-pending branch
+    # replaces the $0 line-item + summary + comparison tables with a notice.
+    _eagleview_no = measurements.get('eagleview_report_number', '')
+    if _ws5_estimate_pending:
+        estimate_body = '''<h2>LINE ITEMS</h2>
+<div class="highlight-box" style="border-left:4px solid #c8102e;">
+<strong>ESTIMATE PENDING — measurements required.</strong> No roof measurements
+(EagleView/HOVER) or carrier-scope quantities have been attached to this claim
+yet, so a line-item replacement-cost estimate cannot be priced. Upload an
+EagleView or HOVER measurement report (or the carrier's scope of loss) and this
+estimate will be generated automatically at current Xactimate pricing for the
+applicable region. The enclosed Forensic Causation Report documents the
+storm-related damage observed during the field inspection.
+</div>'''
+    else:
+        estimate_body = f"""<h2>LINE ITEMS</h2>
+<table>
+    <tr><th>Category</th><th>Description</th><th class="amt">Qty</th><th>Unit</th><th class="amt">Unit Price</th><th class="amt">Extension</th></tr>
+    {line_rows}
+    <tr class="total-row">
+        <td colspan="5"><strong>LINE ITEM TOTAL</strong></td>
+        <td class="amt"><strong>{fmt_money(fin['line_total'])}</strong></td>
+    </tr>
+</table>
+
+<div class="page-break"></div>
+
+<h2>ESTIMATE SUMMARY</h2>
+<table>
+    <tr><th>Item</th><th class="amt">Amount</th></tr>
+    <tr><td>Line Item Total</td><td class="amt">{fmt_money(fin['line_total'])}</td></tr>
+    <tr><td>Tax ({fin['tax_rate']*100:g}%)</td><td class="amt">{fmt_money(fin['tax'])}</td></tr>
+    {"<tr><td>Overhead & Profit (10% + 11%)</td><td class='amt'>" + fmt_money(fin['o_and_p_amount']) + "</td></tr>" if fin['o_and_p'] else ""}
+    <tr class="grand-total">
+        <td><strong>TOTAL RCV</strong></td>
+        <td class="amt" style="font-size:14pt;"><strong>{fmt_money(fin['total_with_op'])}</strong></td>
+    </tr>
+</table>
+
+<h3>{lang['comparison_header']}</h3>
+<table>
+    <tr><th></th><th class="amt">{carrier['name']}</th><th class="amt">{company['name']}</th><th class="amt">Variance</th></tr>
+    <tr class="section-total"><td><strong>RCV</strong></td><td class="amt"><strong>{fmt_money(fin['carrier_rcv'])}</strong></td><td class="amt"><strong>{fmt_money(fin['total_with_op'])}</strong></td><td class="amt variance-positive"><strong>+{fmt_money(fin['variance'])}</strong></td></tr>
+</table>
+
+<div class="highlight-box">
+<strong>NOTE ON OVERHEAD &amp; PROFIT:</strong> {"O&P (10% + 11%) is included — " + str(len(scope.get('trades',[]))) + " trades involved (" + trades_str + ")." if fin['o_and_p'] else o_and_p_note}
+</div>
+
+<div class="highlight-box">
+<strong>PRICING NOTE:</strong> {_provenance + ". " if _provenance else ""}All line items priced per Xactimate — {financials.get('price_list', '')} pricing region. Quantities from EagleView Report #{_eagleview_no}. Final scope may be adjusted based on conditions discovered during tear-off and installation.
+</div>"""
+
+    # WS-5 GUARD 4 — property block "EagleView Report" row. In the estimate-
+    # pending posture show an honest "pending" instead of a bare "#"; otherwise
+    # preserve the prior "#<number-or-empty>" rendering exactly (byte-identical).
+    if _ws5_estimate_pending:
+        eagleview_row_html = '    <tr><td><strong>EagleView Report</strong></td><td>Pending — measurements not yet uploaded</td></tr>'
+    else:
+        eagleview_row_html = f'    <tr><td><strong>EagleView Report</strong></td><td>#{_eagleview_no}</td></tr>'
+
     html = f"""<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -2980,46 +3216,10 @@ body {{ margin: 0; padding: 0; }}
     <tr><td><strong>Price List</strong></td><td>{financials.get('price_list', '')}{f" &mdash; {_prov_market_name} ({_prov_market_code})" if _prov_market_name else ""}</td></tr>
     <tr><td><strong>Date of Loss</strong></td><td>{dates['date_of_loss']}</td></tr>
     <tr><td><strong>Scope</strong></td><td>{trades_str}</td></tr>
-    <tr><td><strong>EagleView Report</strong></td><td>#{measurements.get('eagleview_report_number', '')}</td></tr>
+{eagleview_row_html}
 </table>
 
-<h2>LINE ITEMS</h2>
-<table>
-    <tr><th>Category</th><th>Description</th><th class="amt">Qty</th><th>Unit</th><th class="amt">Unit Price</th><th class="amt">Extension</th></tr>
-    {line_rows}
-    <tr class="total-row">
-        <td colspan="5"><strong>LINE ITEM TOTAL</strong></td>
-        <td class="amt"><strong>{fmt_money(fin['line_total'])}</strong></td>
-    </tr>
-</table>
-
-<div class="page-break"></div>
-
-<h2>ESTIMATE SUMMARY</h2>
-<table>
-    <tr><th>Item</th><th class="amt">Amount</th></tr>
-    <tr><td>Line Item Total</td><td class="amt">{fmt_money(fin['line_total'])}</td></tr>
-    <tr><td>Tax ({fin['tax_rate']*100:g}%)</td><td class="amt">{fmt_money(fin['tax'])}</td></tr>
-    {"<tr><td>Overhead & Profit (10% + 11%)</td><td class='amt'>" + fmt_money(fin['o_and_p_amount']) + "</td></tr>" if fin['o_and_p'] else ""}
-    <tr class="grand-total">
-        <td><strong>TOTAL RCV</strong></td>
-        <td class="amt" style="font-size:14pt;"><strong>{fmt_money(fin['total_with_op'])}</strong></td>
-    </tr>
-</table>
-
-<h3>{lang['comparison_header']}</h3>
-<table>
-    <tr><th></th><th class="amt">{carrier['name']}</th><th class="amt">{company['name']}</th><th class="amt">Variance</th></tr>
-    <tr class="section-total"><td><strong>RCV</strong></td><td class="amt"><strong>{fmt_money(fin['carrier_rcv'])}</strong></td><td class="amt"><strong>{fmt_money(fin['total_with_op'])}</strong></td><td class="amt variance-positive"><strong>+{fmt_money(fin['variance'])}</strong></td></tr>
-</table>
-
-<div class="highlight-box">
-<strong>NOTE ON OVERHEAD &amp; PROFIT:</strong> {"O&P (10% + 11%) is included — " + str(len(scope.get('trades',[]))) + " trades involved (" + trades_str + ")." if fin['o_and_p'] else o_and_p_note}
-</div>
-
-<div class="highlight-box">
-<strong>PRICING NOTE:</strong> {_provenance + ". " if _provenance else ""}All line items priced per Xactimate — {financials.get('price_list', '')} pricing region. Quantities from EagleView Report #{measurements.get('eagleview_report_number', '')}. Final scope may be adjusted based on conditions discovered during tear-off and installation.
-</div>
+{estimate_body}
 
 {_build_integrity_stamp(config)}
 
@@ -3412,28 +3612,53 @@ def build_appeal_letter(config):
     # =====================================================
     sections = []  # List of (title, html_content) tuples
 
-    # 1. Always: Storm verification
-    storm_html = f"""<ul>
+    # WS-5 GUARD 5 — Doc 04 storm-verification section. The original asserted
+    # "THE STORM EVENT IS VERIFIED AND UNDISPUTED" with HailTrace ID + algorithmic
+    # hail unconditionally; on a non-weather-verified claim those fields are empty
+    # and the headline overclaims. Gate on weather_verified (prod shape).
+    _ws5_wx = ws5_weather_verified(config)
+
+    # 1. Storm verification (verified branch byte-identical to prior markup)
+    if _ws5_wx:
+        storm_html = f"""<ul>
     <li><strong>HailTrace Forensic Weather Verification (Report ID: {weather.get('hailtrace_id','')}):</strong> {weather.get('verification_method','')} {weather.get('hail_size_algorithm','')} hail at the property coordinates on {weather['storm_date']}.</li>
 """
-    if weather.get("hail_size_nws_reports"):
-        for rpt in weather["hail_size_nws_reports"][:2]:
-            storm_html += f'    <li><strong>NWS:</strong> {rpt.get("size","")} hail reported in {rpt.get("location","")} at {rpt.get("time","")}.</li>\n'
-    if weather.get("nws_warning_tag"):
-        storm_html += f'    <li><strong>NWS Severe Thunderstorm Warning:</strong> "{weather["nws_warning_tag"]}" damage threat tag.</li>\n'
-    for evt in weather.get("additional_events", []):
-        storm_html += f'    <li><strong>Additional event:</strong> {evt["detail"]} on {evt["date"]}.</li>\n'
-    if carrier.get("carrier_acknowledged_items"):
-        storm_html += f'    <li><strong>{carrier["name"]}\'s own scope acknowledges hail damage</strong> to roof components, confirming hail struck this property.</li>\n'
-    storm_html += "</ul>\n"
+        if weather.get("hail_size_nws_reports"):
+            for rpt in weather["hail_size_nws_reports"][:2]:
+                storm_html += f'    <li><strong>NWS:</strong> {rpt.get("size","")} hail reported in {rpt.get("location","")} at {rpt.get("time","")}.</li>\n'
+        if weather.get("nws_warning_tag"):
+            storm_html += f'    <li><strong>NWS Severe Thunderstorm Warning:</strong> "{weather["nws_warning_tag"]}" damage threat tag.</li>\n'
+        for evt in weather.get("additional_events", []):
+            storm_html += f'    <li><strong>Additional event:</strong> {evt["detail"]} on {evt["date"]}.</li>\n'
+        if carrier.get("carrier_acknowledged_items"):
+            storm_html += f'    <li><strong>{carrier["name"]}\'s own scope acknowledges hail damage</strong> to roof components, confirming hail struck this property.</li>\n'
+        storm_html += "</ul>\n"
 
-    # Inject threshold aging chart after storm verification when data available
-    threshold_html = _build_threshold_aging_chart(config)
-    if threshold_html:
-        storm_html += "<p>The confirmed hail size significantly exceeds the research-backed damage threshold for this property's roofing product:</p>\n"
-        storm_html += threshold_html
+        # Inject threshold aging chart after storm verification when data available
+        threshold_html = _build_threshold_aging_chart(config)
+        if threshold_html:
+            storm_html += "<p>The confirmed hail size significantly exceeds the research-backed damage threshold for this property's roofing product:</p>\n"
+            storm_html += threshold_html
 
-    sections.append(("THE STORM EVENT IS VERIFIED AND UNDISPUTED", storm_html))
+        sections.append(("THE STORM EVENT IS VERIFIED AND UNDISPUTED", storm_html))
+    else:
+        storm_html = "<ul>\n"
+        storm_html += (
+            f"    <li><strong>Field inspection findings:</strong> the enclosed "
+            f"Forensic Causation Report documents storm-consistent damage observed "
+            f"at the property"
+            + (f" (date of loss: {dates['date_of_loss']})" if dates.get('date_of_loss') else "")
+            + ".</li>\n"
+        )
+        if carrier.get("carrier_acknowledged_items"):
+            storm_html += f'    <li><strong>{carrier["name"]}\'s own scope acknowledges hail damage</strong> to roof components, confirming hail struck this property.</li>\n'
+        storm_html += "</ul>\n"
+        storm_html += (
+            "<p>Independent storm verification (NOAA/NWS storm data, hail-size "
+            "confirmation) is being supplemented and will be provided to corroborate "
+            "the field findings above.</p>\n"
+        )
+        sections.append(("STORM-RELATED DAMAGE IS DOCUMENTED", storm_html))
 
     # 2. Conditional: FieldAssist contradiction
     if fa:
@@ -3655,8 +3880,22 @@ def build_cover_letter(config):
         _total_photos = len(config.get("photo_annotations", {}))
     _total_photos_str = str(_total_photos) if _total_photos else "multiple"
 
-    # Storm summary
-    storm_summary = f"""a confirmed severe weather event on {dates['date_of_loss']}"""
+    # WS-5 GUARD 5 — pre-scope cover letter weather + measurement assertions.
+    _ws5_wx = ws5_weather_verified(config)
+    _ws5_meas = ws5_has_measurements(config)
+
+    # Storm summary — only assert a "confirmed severe weather event" when the
+    # claim is actually weather-verified (prod shape). Otherwise soften to a
+    # "reported" event so the letter doesn't claim verification it lacks.
+    if _ws5_wx:
+        storm_summary = f"""a confirmed severe weather event on {dates['date_of_loss']}"""
+    else:
+        _dol = dates.get('date_of_loss', '')
+        storm_summary = (
+            f"""a reported severe weather event on {_dol}"""
+            if _dol else
+            """a reported severe weather event at the property (date of loss pending confirmation)"""
+        )
     if weather.get("hail_size_algorithm"):
         storm_summary += f""", with HailTrace-verified {weather['hail_size_algorithm']} algorithmic hail impacting the property"""
     if weather.get("hail_size_nws_reports"):
@@ -3666,13 +3905,20 @@ def build_cover_letter(config):
         storm_summary += f""" over a {weather['duration']} exposure window"""
 
     # Enclosed documents for Phase 1 (handle both list and string-with-newlines formats)
+    # WS-5 GUARD 5 — only list the HailTrace / EagleView attachments in the
+    # default manifest when the claim is actually weather-verified / measured.
+    # Listing an "EagleView Property Measurement Report" we never attached makes
+    # the cover letter misrepresent its own enclosures.
     enclosed_html = ""
-    enclosed_docs = cover.get("enclosed_documents", [
+    _default_enclosed = [
         "Forensic Causation Report with photo-annotated damage analysis",
         f"Xactimate-format repair estimate ({_price_list} pricing)",
-        "HailTrace Weather Verification Report",
-        "EagleView Property Measurement Report"
-    ])
+    ]
+    if _ws5_wx:
+        _default_enclosed.append("HailTrace Weather Verification Report")
+    if _ws5_meas:
+        _default_enclosed.append("EagleView Property Measurement Report")
+    enclosed_docs = cover.get("enclosed_documents", _default_enclosed)
     if isinstance(enclosed_docs, str):
         enclosed_docs = [line.strip() for line in enclosed_docs.replace("\\n", "\n").split("\n") if line.strip()]
     for doc in enclosed_docs:
@@ -3719,7 +3965,7 @@ body {{ font-size: 11pt; line-height: 1.7; max-width: 600pt; margin: 0 auto; }}
 
 <p>We are submitting our forensic inspection documentation and detailed repair estimate in advance of the carrier's adjuster inspection. Our documentation confirms {storm_summary}.</p>
 
-<p>Our certified inspection identified storm damage across <strong>{trades_text}</strong>, supported by {_total_photos_str} inspection photographs with forensic annotations. The enclosed Xactimate-format estimate totals <strong>{fmt_money(fin['total_with_op'])} RCV</strong> based on EagleView-verified measurements and current {_price_list} regional pricing.</p>
+<p>Our certified inspection identified storm damage across <strong>{trades_text}</strong>, supported by {_total_photos_str} inspection photographs with forensic annotations. {("The enclosed Xactimate-format estimate totals <strong>" + fmt_money(fin['total_with_op']) + " RCV</strong> based on EagleView-verified measurements and current " + _price_list + " regional pricing.") if _ws5_meas else ("A detailed Xactimate-format estimate will follow once roof measurements are finalized; pricing will reflect current " + _price_list + " regional rates.")}</p>
 
 <p>The enclosed documentation includes:</p>
 <ol>
