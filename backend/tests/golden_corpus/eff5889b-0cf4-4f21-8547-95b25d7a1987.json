@@ -1,0 +1,3386 @@
+{
+  "_coverage": "PA post-scope, empty storm_date, single",
+  "claim": {
+    "address": "5 Georgetown Cir, Newtown, PA 18940, USA",
+    "carrier": "Pure Insurance",
+    "contact_name": "Justin Harmon",
+    "weather_data": null
+  },
+  "config": {
+    "appeal_letter": {
+      "demand_items": [
+        "Review the enclosed forensic documentation and revised scope of loss identifying $7,637.42 in underpayment",
+        "Issue revised payment reflecting the full scope of documented storm-related damage",
+        "Address the line-by-line variance analysis identifying specific underpaid and omitted items",
+        "Schedule a re-inspection if additional verification is needed"
+      ],
+      "enclosed_documents": [
+        "Forensic Causation Report with annotated photography",
+        "Xactimate-format estimate at current pricing",
+        "Supplement report with line-by-line variance analysis",
+        "Formal appeal letter"
+      ],
+      "requested_actions": [
+        "Review the enclosed forensic documentation and revised scope of loss identifying $7,637.42 in underpayment",
+        "Issue revised payment reflecting the full scope of documented storm-related damage",
+        "Address the line-by-line variance analysis identifying specific underpaid and omitted items",
+        "Schedule a re-inspection if additional verification is needed"
+      ]
+    },
+    "carrier": {
+      "adjuster_email": "dscott@pureinsurance.com",
+      "adjuster_name": "Dawn Scott",
+      "carrier_arguments": [
+        "Type of loss: Wind",
+        "Date of loss: 12/29/2025",
+        "Estimate was prepared based on local material and labor rates for the region (Price List PAPH8X_APR26).",
+        "Amounts allowed should be acceptable to numerous reputable restoration contractors in the area.",
+        "Shingle component RFG500SL was priced by ITEL Asphalt Shingle Pricing (ASP) on 3 Apr 2026.",
+        "Ice & water barrier and drip edge did not previously exist or expand scope of repairs but are required by current building codes. Code upgrade cost is payable when incurred, subject to limits.",
+        "Dwelling - Code Upgrade aggregate limit is $6,000.00; code upgrade RCV is $5,792.64 with $0.00 overage. Code upgrade items are paid when incurred.",
+        "No depreciation was applied; RCV equals ACV for all line items.",
+        "Any additional or hidden damage discovered during the course of repairs should be reported immediately."
+      ],
+      "carrier_line_items": [
+        {
+          "carrier_amount": 3162.87,
+          "carrier_desc": "Tear off composition shingles - Laminated (no haul off)",
+          "carrier_notes": "",
+          "carrier_qty": 57.04,
+          "carrier_unit": "SQ",
+          "carrier_unit_price": 55.45,
+          "category": "ROOFING",
+          "checklist_desc": "Remove Laminated comp. shingle rfg. - w/out felt",
+          "code_citation": {
+            "code_tag": "UCC R908.3",
+            "has_warranty_void": true,
+            "jurisdiction": "Pennsylvania Uniform Construction Code",
+            "manufacturer_specs": [
+              {
+                "document": "Timberline HDZ Installation Instructions",
+                "manufacturer": "GAF",
+                "requirement": "4-6 nails per shingle, ProStart starter required at eaves and rakes",
+                "warranty_text": "GAF System Plus/Silver Pledge warranty VOID without proper starter and nailing pattern",
+                "warranty_void": true
+              }
+            ],
+            "requirement": "Existing roofing materials shall be removed before applying new roofing when existing roof has two or more applications of any type of roof covering",
+            "section": "R908.3",
+            "supplement_argument": "Complete tear-off is required per code for a code-compliant installation. Overlay is not code-compliant when damage necessitates deck inspection.",
+            "title": "Reroofing — Tear-Off Requirement"
+          },
+          "ev_formula": "60.73 SQ (EagleView roof area)",
+          "ev_qty": 60.73,
+          "ev_unit": "SQ",
+          "irc_code": "UCC R908.3",
+          "item": "Tear off composition shingles - Laminated (no haul off)",
+          "matched_by": "intent_desc",
+          "note": "Required: 61 SQ @ $89.37/SQ. Carrier: 57 SQ @ $55.45/SQ. Carrier is 4 SQ short. Calculation: 60.73 SQ (EagleView roof area). Per UCC R908.3: Existing roofing materials shall be removed before applying new roofing when existing roof has two or more applications of any type of roof covering. GAF warranty VOID: GAF System Plus/Silver Pledge warranty VOID without proper starter and nailing pattern",
+          "photo_refs": [
+            "p05_02",
+            "p03_03",
+            "p04_03"
+          ],
+          "price_variance": "Xact: $89.37, Carrier: $55.45",
+          "qty_variance": "Short 4 SQ",
+          "status": "under",
+          "supplement_argument": "Complete tear-off is required per code for a code-compliant installation. Overlay is not code-compliant when damage necessitates deck inspection.",
+          "supplement_value": 2264.57,
+          "trade": "roofing",
+          "usarm_amount": 5427.44,
+          "usarm_desc": "Remove Laminated comp. shingle rfg. - w/out felt",
+          "xact_code": "RFG 300S",
+          "xact_unit_price": 89.37
+        },
+        {
+          "carrier_amount": 33484.39,
+          "carrier_desc": "Laminated - Slate look comp. shingle - w/out felt",
+          "carrier_notes": "Component RFG500SL from this line item was priced by ITEL Asphalt Shingle Pricing (ASP) on 3 Apr 2026. See attached document for more details.",
+          "carrier_qty": 63.75,
+          "carrier_unit": "SQ",
+          "carrier_unit_price": 510.27,
+          "category": "ROOFING",
+          "checklist_desc": "Laminated comp. shingle rfg. - w/out felt",
+          "code_citation": {
+            "code_tag": "UCC R905.1",
+            "has_warranty_void": true,
+            "jurisdiction": "Pennsylvania Uniform Construction Code",
+            "manufacturer_specs": [
+              {
+                "document": "Timberline HDZ Installation Instructions",
+                "manufacturer": "GAF",
+                "requirement": "4-6 nails per shingle, ProStart starter required at eaves and rakes",
+                "warranty_text": "GAF System Plus/Silver Pledge warranty VOID without proper starter and nailing pattern",
+                "warranty_void": true
+              },
+              {
+                "document": "TB-10024261 (Hail Damage Assessment)",
+                "manufacturer": "Owens Corning",
+                "requirement": "Functional damage (mat fracture, granule loss exposing substrate) = full replacement",
+                "warranty_text": "",
+                "warranty_void": false
+              },
+              {
+                "document": "TIS #130 (Hail Damage Assessment)",
+                "manufacturer": "CertainTeed",
+                "requirement": "Mat fracture from hail impact = functional damage requiring replacement",
+                "warranty_text": "",
+                "warranty_void": false
+              },
+              {
+                "document": "Detecting Hail Damage to Asphalt Shingles",
+                "manufacturer": "Atlas",
+                "requirement": "Systematic hail damage assessment criteria for functional vs cosmetic",
+                "warranty_text": "",
+                "warranty_void": false
+              }
+            ],
+            "requirement": "Roofing shall be applied in accordance with manufacturer's installation instructions. Manufacturer instructions carry the force of building code.",
+            "section": "R905.1",
+            "supplement_argument": "Per R905.1, manufacturer installation instructions are legally binding building code. All components specified by the manufacturer (starter, underlayment, flashing) are code-required, not optional upgrades.",
+            "title": "Manufacturer Installation Instructions = Law"
+          },
+          "ev_formula": "60.73 SQ (EagleView roof area)",
+          "ev_qty": 60.73,
+          "ev_unit": "SQ",
+          "irc_code": "R905.2",
+          "item": "Laminated - Slate look comp. shingle - w/out felt",
+          "matched_by": "intent_desc",
+          "note": "Required: 61 SQ @ $349.14/SQ. Carrier: 64 SQ @ $510.27/SQ. Calculation: 60.73 SQ (EagleView roof area). Per UCC R905.1: Roofing shall be applied in accordance with manufacturer's installation instructions. Manufacturer instructions carry the force of building code.. GAF warranty VOID: GAF System Plus/Silver Pledge warranty VOID without proper starter and nailing pattern",
+          "photo_refs": [
+            "p05_02",
+            "p03_03",
+            "p04_03"
+          ],
+          "price_variance": "Xact: $349.14, Carrier: $510.27",
+          "qty_variance": "",
+          "status": "over",
+          "supplement_argument": "Per R905.1, manufacturer installation instructions are legally binding building code. All components specified by the manufacturer (starter, underlayment, flashing) are code-required, not optional upgrades.",
+          "supplement_value": 0,
+          "trade": "roofing",
+          "usarm_amount": 21203.27,
+          "usarm_desc": "Laminated comp. shingle rfg. - w/out felt",
+          "xact_code": "RFG 300S",
+          "xact_unit_price": 349.14
+        },
+        {
+          "carrier_amount": 3832.65,
+          "carrier_desc": "Roofing felt - synthetic underlayment",
+          "carrier_notes": "",
+          "carrier_qty": 57.04,
+          "carrier_unit": "SQ",
+          "carrier_unit_price": 65.75,
+          "category": "ROOFING",
+          "checklist_desc": "Roofing felt - 15 lb.",
+          "code_citation": {
+            "code_tag": "UCC R905.1.1",
+            "has_warranty_void": false,
+            "jurisdiction": "Pennsylvania Uniform Construction Code",
+            "manufacturer_specs": [],
+            "requirement": "Underlayment required over entire roof deck area not covered by ice barrier",
+            "section": "R905.1.1",
+            "supplement_argument": "Underlayment is code-mandated over the entire roof deck. Areas where ice & water barrier is not installed require felt or synthetic underlayment. Omission does not meet code requirements.",
+            "title": "Underlayment Requirement"
+          },
+          "ev_formula": "((60.73 × 100) − 1824) / 100 = 42.49 SQ",
+          "ev_qty": 42.49,
+          "ev_unit": "SQ",
+          "irc_code": "R905.1.1",
+          "item": "Roofing felt - synthetic underlayment",
+          "matched_by": "intent_desc",
+          "note": "Required: 42 SQ @ $48.12/SQ. Carrier: 57 SQ @ $65.75/SQ. Calculation: ((60.73 × 100) − 1824) / 100 = 42.49 SQ. Per UCC R905.1.1: Underlayment required over entire roof deck area not covered by ice barrier",
+          "photo_refs": [
+            "p05_02",
+            "p03_03",
+            "p04_03"
+          ],
+          "price_variance": "Xact: $48.12, Carrier: $65.75",
+          "qty_variance": "",
+          "status": "over",
+          "supplement_argument": "Underlayment is code-mandated over the entire roof deck. Areas where ice & water barrier is not installed require felt or synthetic underlayment. Omission does not meet code requirements.",
+          "supplement_value": 0,
+          "trade": "roofing",
+          "usarm_amount": 2044.62,
+          "usarm_desc": "Roofing felt - 15 lb.",
+          "xact_code": "RFG FELT15",
+          "xact_unit_price": 48.12
+        },
+        {
+          "carrier_amount": 4038.01,
+          "carrier_desc": "Ice & water barrier",
+          "carrier_notes": "This item did not previously exist or expands the scope of repairs, but is required by current building codes. The code upgrade cost is payable when incurred, subject to limits.",
+          "carrier_qty": 1668.6,
+          "carrier_unit": "SF",
+          "carrier_unit_price": 2.39,
+          "category": "ROOFING",
+          "checklist_desc": "Ice & water barrier",
+          "code_citation": {
+            "code_tag": "UCC R905.1.2",
+            "has_warranty_void": true,
+            "jurisdiction": "Pennsylvania Uniform Construction Code",
+            "manufacturer_specs": [
+              {
+                "document": "WeatherWatch Mineral-Surfaced Leak Barrier",
+                "manufacturer": "GAF",
+                "requirement": "Required at eaves, valleys, and around penetrations per GAF system requirements",
+                "warranty_text": "GAF warranty VOID without WeatherWatch/StormGuard at eaves and valleys",
+                "warranty_void": true
+              }
+            ],
+            "requirement": "Ice barrier required at eaves extending from eave edge to at least 24 inches past interior wall line, and in valleys",
+            "section": "R905.1.2",
+            "supplement_argument": "Ice & water barrier is required by code at all eaves and valleys. This is not an optional upgrade — it is a mandatory building code requirement for a code-compliant installation.",
+            "title": "Ice Barrier Requirement"
+          },
+          "ev_formula": "(Eave 360 × 3) + (Valley 248 × 3) = 1824 SF",
+          "ev_qty": 1824,
+          "ev_unit": "SF",
+          "irc_code": "R905.1.2",
+          "item": "Ice & water barrier",
+          "matched_by": "intent_desc",
+          "note": "Required: 1824 SF @ $2.39/SF. Carrier: 1669 SF @ $2.39/SF. Carrier is 155 SF short. Calculation: (Eave 360 × 3) + (Valley 248 × 3) = 1824 SF. Per UCC R905.1.2: Ice barrier required at eaves extending from eave edge to at least 24 inches past interior wall line, and in valleys. GAF warranty VOID: GAF warranty VOID without WeatherWatch/StormGuard at eaves and valleys | [C001] Carrier scope has NO ice & water barrier. UCC R905.1.2 requires 0 SF minimum (0 LF eaves × 6ft + 0 LF valleys × 6ft).",
+          "photo_refs": [
+            "p05_02",
+            "p03_03",
+            "p04_03"
+          ],
+          "qty_variance": "Short 155 SF",
+          "status": "under",
+          "supplement_argument": "Ice & water barrier is required by code at all eaves and valleys. This is not an optional upgrade — it is a mandatory building code requirement for a code-compliant installation.",
+          "supplement_value": 321.35,
+          "trade": "roofing",
+          "usarm_amount": 4359.36,
+          "usarm_desc": "Ice & water barrier",
+          "xact_code": "RFG IWS",
+          "xact_unit_price": 2.39
+        },
+        {
+          "carrier_amount": 1183.59,
+          "carrier_desc": "Asphalt starter - universal starter course",
+          "carrier_notes": "",
+          "carrier_qty": 452.13,
+          "carrier_trick": "starter_as_shingle",
+          "carrier_unit": "LF",
+          "carrier_unit_price": 2.58,
+          "category": "ROOFING",
+          "checklist_desc": "Asphalt starter - universal starter course",
+          "code_citation": {
+            "code_tag": "UCC R905.1",
+            "has_warranty_void": true,
+            "jurisdiction": "Pennsylvania Uniform Construction Code",
+            "manufacturer_specs": [
+              {
+                "document": "Timberline HDZ Installation Instructions",
+                "manufacturer": "GAF",
+                "requirement": "4-6 nails per shingle, ProStart starter required at eaves and rakes",
+                "warranty_text": "GAF System Plus/Silver Pledge warranty VOID without proper starter and nailing pattern",
+                "warranty_void": true
+              },
+              {
+                "document": "Duration Series Install 10024264",
+                "manufacturer": "Owens Corning",
+                "requirement": "OC Starter Course required at eaves and rakes",
+                "warranty_text": "SureNail Technology warranty VOID without OC-approved starter",
+                "warranty_void": true
+              },
+              {
+                "document": "Landmark Series Installation Instructions",
+                "manufacturer": "CertainTeed",
+                "requirement": "SwiftStart starter required at eaves and rakes",
+                "warranty_text": "SureStart warranty VOID without CertainTeed-approved starter",
+                "warranty_void": true
+              }
+            ],
+            "requirement": "Starter course required at eaves and rakes per manufacturer installation instructions (R905.1 — manufacturer instructions = code)",
+            "section": "R905.1",
+            "supplement_argument": "Starter course is required by ALL major manufacturers (GAF, OC, CertainTeed). Per R905.1, manufacturer instructions carry the force of code. Omitting starter voids the manufacturer warranty.",
+            "title": "Starter Course (Manufacturer Required)"
+          },
+          "ev_formula": "Eave 360 + Rake 115 = 475 LF",
+          "ev_qty": 475,
+          "ev_unit": "LF",
+          "irc_code": "UCC R905.1",
+          "item": "Asphalt starter - universal starter course",
+          "matched_by": "intent_desc",
+          "note": "Required: 475 LF @ $2.58/LF. Carrier: 452 LF @ $2.58/LF. Carrier is 23 LF short. Calculation: Eave 360 + Rake 115 = 475 LF. Per UCC R905.1: Starter course required at eaves and rakes per manufacturer installation instructions (R905.1 — manufacturer instructions = code). GAF warranty VOID: GAF System Plus/Silver Pledge warranty VOID without proper starter and nailing pattern. Owens Corning warranty VOID: SureNail Technology warranty VOID without OC-approved starter. Carrier using 3-tab shingle line item for starter course — massive underpayment vs proper starter strip",
+          "photo_refs": [
+            "p05_02",
+            "p03_03",
+            "p04_03"
+          ],
+          "qty_variance": "Short 23 LF",
+          "status": "under",
+          "supplement_argument": "Starter course is required by ALL major manufacturers (GAF, OC, CertainTeed). Per R905.1, manufacturer instructions carry the force of code. Omitting starter voids the manufacturer warranty.",
+          "supplement_value": 41.91,
+          "trade": "roofing",
+          "trick_flag": "Carrier using 3-tab shingle line item for starter course — massive underpayment vs proper starter strip",
+          "usarm_amount": 1225.5,
+          "usarm_desc": "Asphalt starter - universal starter course",
+          "xact_code": "RFG ASTR-",
+          "xact_unit_price": 2.58
+        },
+        {
+          "carrier_amount": 0,
+          "carrier_desc": "NOT INCLUDED",
+          "carrier_qty": 0,
+          "category": "ROOFING",
+          "checklist_desc": "R&R Hip / Ridge cap - Standard profile - composition shingles",
+          "code_citation": {
+            "code_tag": "UCC R806",
+            "has_warranty_void": false,
+            "jurisdiction": "Pennsylvania Uniform Construction Code",
+            "manufacturer_specs": [],
+            "requirement": "Enclosed attics shall have cross ventilation. Ridge vent provides exhaust ventilation per R806.1",
+            "section": "R806",
+            "supplement_argument": "Ridge ventilation is required for proper attic ventilation per code. When ridge cap is replaced, ridge vent must be replaced to maintain code-compliant ventilation.",
+            "title": "Roof Ventilation"
+          },
+          "ev_formula": "Ridge 140 LF (EagleView)",
+          "ev_qty": 140,
+          "ev_unit": "LF",
+          "irc_code": "UCC R806",
+          "item": "R&R Hip / Ridge cap - Standard profile - composition shingles",
+          "matched_by": "missing",
+          "note": "NOT INCLUDED — Required: 140 LF @ $13.21/LF. Calculation: Ridge 140 LF (EagleView). Per UCC R806: Enclosed attics shall have cross ventilation. Ridge vent provides exhaust ventilation per R806.1. Ridge ventilation is required for proper attic ventilation per code. When ridge cap is replaced, ridge vent must be replaced to maintain code-compliant ventilation. | [COMP_RIDGE_CAP] Carrier scope does not include ridge cap. This is a mandatory roofing component per Manufacturer specification.",
+          "photo_refs": [
+            "p05_02",
+            "p03_03",
+            "p04_03"
+          ],
+          "status": "missing",
+          "supplement_argument": "Ridge ventilation is required for proper attic ventilation per code. When ridge cap is replaced, ridge vent must be replaced to maintain code-compliant ventilation.",
+          "supplement_value": 1849.4,
+          "trade": "roofing",
+          "usarm_amount": 1849.4,
+          "usarm_desc": "R&R Hip / Ridge cap - Standard profile - composition shingles",
+          "xact_code": "RFG RIDGCS",
+          "xact_unit_price": 13.21
+        },
+        {
+          "carrier_amount": 1754.63,
+          "carrier_desc": "Drip edge",
+          "carrier_notes": "This item did not previously exist or expands the scope of repairs, but is required by current building codes. The code upgrade cost is payable when incurred, subject to limits.",
+          "carrier_qty": 452.13,
+          "carrier_unit": "LF",
+          "carrier_unit_price": 3.81,
+          "category": "ROOFING",
+          "checklist_desc": "R&R Drip edge",
+          "code_citation": {
+            "code_tag": "UCC R905.2.8.5",
+            "has_warranty_void": false,
+            "jurisdiction": "Pennsylvania Uniform Construction Code",
+            "manufacturer_specs": [],
+            "requirement": "Drip edge shall be provided at eaves and gable rake edges of shingle roofs",
+            "section": "R905.2.8.5",
+            "supplement_argument": "Drip edge is required at all eaves and rakes per code. Protects fascia and deck edge from water damage. Not an optional upgrade.",
+            "title": "Drip Edge Requirement"
+          },
+          "ev_formula": "(Eave 360 + Rake 115) × 1.05 = 499 LF",
+          "ev_qty": 498.75,
+          "ev_unit": "LF",
+          "irc_code": "R905.2.7",
+          "item": "Drip edge",
+          "matched_by": "intent_desc",
+          "note": "Required: 499 LF @ $4.21/LF. Carrier: 452 LF @ $3.81/LF. Carrier is 47 LF short. Calculation: (Eave 360 + Rake 115) × 1.05 = 499 LF. Per UCC R905.2.8.5: Drip edge shall be provided at eaves and gable rake edges of shingle roofs | [COMP_DRIP_EDGE] Carrier scope does not include drip edge. This is a mandatory roofing component per IRC R905.2.8.5.",
+          "photo_refs": [
+            "p05_02",
+            "p03_03",
+            "p04_03"
+          ],
+          "qty_variance": "Short 47 LF",
+          "status": "under",
+          "supplement_argument": "Drip edge required at eaves and rakes per IRC R905.2.7. Minimum 2.5 inches below sheathing, 2 inches up deck. Underlayment OVER drip edge at eaves, UNDER at rakes. 5% waste factor standard",
+          "supplement_value": 345.11,
+          "trade": "roofing",
+          "usarm_amount": 2099.74,
+          "usarm_desc": "R&R Drip edge",
+          "xact_code": "RFG DRIP",
+          "xact_unit_price": 4.21
+        },
+        {
+          "carrier_amount": 715.92,
+          "carrier_desc": "R&R Skylight step flashing kit - 5.1-12 sf",
+          "carrier_notes": "",
+          "carrier_qty": 3.0,
+          "carrier_unit": "EA",
+          "carrier_unit_price": 230.62,
+          "category": "ROOFING",
+          "checklist_desc": "Remove Step flashing",
+          "code_citation": {
+            "code_tag": "UCC R905.2.8.3",
+            "has_warranty_void": false,
+            "jurisdiction": "Pennsylvania Uniform Construction Code",
+            "manufacturer_specs": [],
+            "requirement": "Step flashing shall be used where roof planes intersect vertical walls",
+            "section": "R905.2.8.3",
+            "supplement_argument": "Step flashing is code-required at every wall-to-roof junction. When roofing is replaced, step flashing must be replaced to maintain weathertight integrity per code.",
+            "title": "Step Flashing at Wall Junctions"
+          },
+          "ev_formula": "Step 106 LF (EagleView)",
+          "ev_qty": 106,
+          "ev_unit": "LF",
+          "irc_code": "R905.2.8.4",
+          "item": "R&R Skylight step flashing kit - 5.1-12 sf",
+          "matched_by": "intent_desc",
+          "note": "UNIT MISMATCH: Carrier: EA, Expected: LF. Required: 106 LF (Step 106 LF (EagleView)). Per UCC R905.2.8.3: Step flashing shall be used where roof planes intersect vertical walls",
+          "photo_refs": [
+            "p05_02",
+            "p03_03",
+            "p04_03"
+          ],
+          "price_variance": "Xact: $15.53, Carrier: $230.62",
+          "status": "under",
+          "supplement_argument": "Step flashing is code-required at every wall-to-roof junction. When roofing is replaced, step flashing must be replaced to maintain weathertight integrity per code.",
+          "supplement_value": 1012.57,
+          "trade": "roofing",
+          "unit_mismatch": "Carrier: EA, Expected: LF",
+          "usarm_amount": 1728.49,
+          "usarm_desc": "R&R Step flashing",
+          "xact_code": "RFG STEP",
+          "xact_unit_price": 15.53
+        },
+        {
+          "carrier_amount": 219.45,
+          "carrier_desc": "Flashing - pipe jack",
+          "carrier_notes": "",
+          "carrier_qty": 3.0,
+          "carrier_unit": "EA",
+          "carrier_unit_price": 71.98,
+          "category": "ROOFING",
+          "checklist_desc": "Step flashing",
+          "code_citation": {
+            "code_tag": "UCC R905.2.8.3",
+            "has_warranty_void": false,
+            "jurisdiction": "Pennsylvania Uniform Construction Code",
+            "manufacturer_specs": [],
+            "requirement": "Step flashing shall be used where roof planes intersect vertical walls",
+            "section": "R905.2.8.3",
+            "supplement_argument": "Step flashing is code-required at every wall-to-roof junction. When roofing is replaced, step flashing must be replaced to maintain weathertight integrity per code.",
+            "title": "Step Flashing at Wall Junctions"
+          },
+          "ev_formula": "Step 106 × 1.05 = 111 LF",
+          "ev_qty": 111.3,
+          "ev_unit": "LF",
+          "irc_code": "R905.2.8.4",
+          "item": "Flashing - pipe jack",
+          "matched_by": "fuzzy",
+          "note": "UNIT MISMATCH: Carrier: EA, Expected: LF. Required: 111 LF (Step 106 × 1.05 = 111 LF). Per UCC R905.2.8.3: Step flashing shall be used where roof planes intersect vertical walls",
+          "photo_refs": [
+            "p05_02",
+            "p03_03",
+            "p04_03"
+          ],
+          "price_variance": "Xact: $15.53, Carrier: $71.98",
+          "status": "under",
+          "supplement_argument": "Step flashing required at all wall-to-roof intersections per IRC R905.2.8.4. Minimum 10 inches height. Siding removal mandatory for proper installation — nail horizontal flange to roof ONLY, never through siding",
+          "supplement_value": 1509.04,
+          "trade": "roofing",
+          "unit_mismatch": "Carrier: EA, Expected: LF",
+          "usarm_amount": 1728.49,
+          "usarm_desc": "R&R Step flashing",
+          "xact_code": "RFG STEP",
+          "xact_unit_price": 15.53
+        },
+        {
+          "carrier_amount": 445.48,
+          "carrier_desc": "Remove Additional charge for high roof (2 stories or greater)",
+          "carrier_notes": "",
+          "carrier_qty": 57.04,
+          "carrier_unit": "SQ",
+          "carrier_unit_price": 7.81,
+          "category": "ROOFING",
+          "checklist_desc": "Remove Counterflashing - Apron flashing",
+          "code_citation": null,
+          "ev_formula": "Step 106 LF (EagleView)",
+          "ev_qty": 106,
+          "ev_unit": "LF",
+          "irc_code": "R905.2.8",
+          "item": "Remove Additional charge for high roof (2 stories or greater)",
+          "matched_by": "intent_desc",
+          "note": "UNIT MISMATCH: Carrier: SQ, Expected: LF. Required: 106 LF (Step 106 LF (EagleView))",
+          "photo_refs": [
+            "p05_02",
+            "p03_03",
+            "p04_03"
+          ],
+          "price_variance": "Xact: $0.71, Carrier: $7.81",
+          "status": "under",
+          "supplement_argument": "Counterflashing removal required at all roof-to-wall intersections per IRC R905.2.8",
+          "supplement_value": 0,
+          "trade": "roofing",
+          "unit_mismatch": "Carrier: SQ, Expected: LF",
+          "usarm_amount": 75.26,
+          "usarm_desc": "Remove Counterflashing - Apron flashing",
+          "xact_code": "RFG FLCF",
+          "xact_unit_price": 0.71
+        },
+        {
+          "carrier_amount": 0,
+          "carrier_desc": "NOT INCLUDED",
+          "carrier_qty": 0,
+          "category": "ROOFING",
+          "checklist_desc": "Counterflashing - Apron flashing",
+          "code_citation": null,
+          "ev_formula": "Counter 106 × 1.05 = 111 LF",
+          "ev_qty": 111.3,
+          "ev_unit": "LF",
+          "irc_code": "R905.2.8",
+          "item": "Counterflashing - Apron flashing",
+          "matched_by": "missing",
+          "note": "NOT INCLUDED — Required: 111 LF @ $12.21/LF. Calculation: Counter 106 × 1.05 = 111 LF. Required per R905.2.8. Counterflashing required at all roof-to-wall intersections per IRC R905.2.8",
+          "photo_refs": [
+            "p05_02",
+            "p03_03",
+            "p04_03"
+          ],
+          "status": "missing",
+          "supplement_argument": "Counterflashing required at all roof-to-wall intersections per IRC R905.2.8",
+          "supplement_value": 1358.97,
+          "trade": "roofing",
+          "usarm_amount": 1358.97,
+          "usarm_desc": "Counterflashing - Apron flashing",
+          "xact_code": "RFG FLCF",
+          "xact_unit_price": 12.21
+        },
+        {
+          "carrier_amount": 0,
+          "carrier_desc": "NOT INCLUDED",
+          "carrier_qty": 0,
+          "category": "ROOFING",
+          "checklist_desc": "R&R Flashing - pipe jack",
+          "code_citation": {
+            "code_tag": "UCC R905.2.8",
+            "has_warranty_void": false,
+            "jurisdiction": "Pennsylvania Uniform Construction Code",
+            "manufacturer_specs": [],
+            "requirement": "Flashing shall be installed at wall and roof intersections, at gutters, around roof openings, and at penetrations through the roof plane",
+            "section": "R905.2.8",
+            "supplement_argument": "Pipe jack flashing is code-required at every roof penetration. When roofing is replaced, all pipe boots must be replaced — reusing old pipe boots on new roofing is a code violation.",
+            "title": "Flashing — General (Pipe Penetrations)"
+          },
+          "ev_formula": "1 EA (EagleView)",
+          "ev_qty": 1,
+          "ev_unit": "EA",
+          "irc_code": "R905.2.8",
+          "item": "R&R Flashing - pipe jack",
+          "matched_by": "missing",
+          "note": "NOT INCLUDED — Required: 1 EA @ $82.34/EA. Calculation: 1 EA (EagleView). Per UCC R905.2.8: Flashing shall be installed at wall and roof intersections, at gutters, around roof openings, and at penetrations through the roof plane. Pipe jack flashing is code-required at every roof penetration. When roofing is replaced, all pipe boots must be replaced — reusing old pipe boots on new roofing is a code violation. | [COMP_PIPE_JACK] Carrier scope does not include pipe jack. This is a mandatory roofing component per IRC R903.2.1.",
+          "photo_refs": [
+            "p05_02",
+            "p03_03",
+            "p04_03"
+          ],
+          "status": "missing",
+          "supplement_argument": "Pipe jack flashing is code-required at every roof penetration. When roofing is replaced, all pipe boots must be replaced — reusing old pipe boots on new roofing is a code violation.",
+          "supplement_value": 82.34,
+          "trade": "roofing",
+          "usarm_amount": 82.34,
+          "usarm_desc": "R&R Flashing - pipe jack",
+          "xact_code": "RFG FLPIPE",
+          "xact_unit_price": 82.34
+        },
+        {
+          "carrier_amount": 2077.54,
+          "carrier_desc": "R&R Continuous ridge vent - shingle-over style",
+          "carrier_notes": "",
+          "carrier_qty": 129.25,
+          "carrier_unit": "LF",
+          "carrier_unit_price": 15.73,
+          "category": "ROOFING",
+          "checklist_desc": "R&R Continuous ridge vent - shingle-over style",
+          "code_citation": {
+            "code_tag": "UCC R806",
+            "has_warranty_void": false,
+            "jurisdiction": "Pennsylvania Uniform Construction Code",
+            "manufacturer_specs": [],
+            "requirement": "Enclosed attics shall have cross ventilation. Ridge vent provides exhaust ventilation per R806.1",
+            "section": "R806",
+            "supplement_argument": "Ridge ventilation is required for proper attic ventilation per code. When ridge cap is replaced, ridge vent must be replaced to maintain code-compliant ventilation.",
+            "title": "Roof Ventilation"
+          },
+          "ev_formula": "Ridge 140 LF (EagleView)",
+          "ev_qty": 140,
+          "ev_unit": "LF",
+          "irc_code": "R806",
+          "item": "R&R Continuous ridge vent - shingle-over style",
+          "matched_by": "intent_desc",
+          "note": "Required: 140 LF @ $11.97/LF. Carrier: 129 LF @ $15.73/LF. Carrier is 11 LF short. Calculation: Ridge 140 LF (EagleView). Per UCC R806: Enclosed attics shall have cross ventilation. Ridge vent provides exhaust ventilation per R806.1 | [COMP_RIDGE_VENT] Carrier scope does not include ridge vent. This is a mandatory roofing component per IRC R806.1.",
+          "photo_refs": [
+            "p05_02",
+            "p03_03",
+            "p04_03"
+          ],
+          "price_variance": "Xact: $11.97, Carrier: $15.73",
+          "qty_variance": "Short 11 LF",
+          "status": "under",
+          "supplement_argument": "Ventilation required per IRC R806 — 1 SF NFVA per 150 SF attic area (1:150 ratio). OC warranty VOID without proper ventilation. Ridge vent must be R&R during re-roofing",
+          "supplement_value": 0,
+          "trade": "roofing",
+          "usarm_amount": 1675.8,
+          "usarm_desc": "R&R Continuous ridge vent - shingle-over style",
+          "xact_code": "RFG RGVC",
+          "xact_unit_price": 11.97
+        },
+        {
+          "carrier_amount": 683.12,
+          "carrier_desc": "Remove Additional charge for steep roof - 10/12 - 12/12 slope",
+          "carrier_notes": "",
+          "carrier_qty": 22.62,
+          "carrier_unit": "SQ",
+          "carrier_unit_price": 30.2,
+          "category": "ROOFING",
+          "checklist_desc": "Remove Additional charge for high roof (2 stories or greater)",
+          "code_citation": null,
+          "ev_formula": "60.73 SQ, 2 stories",
+          "ev_qty": 60.73,
+          "ev_unit": "SQ",
+          "irc_code": null,
+          "item": "Remove Additional charge for steep roof - 10/12 - 12/12 slope",
+          "matched_by": "intent_desc",
+          "note": "Required: 61 SQ @ $7.31/SQ. Carrier: 23 SQ @ $30.20/SQ. Carrier is 38 SQ short. Calculation: 60.73 SQ, 2 stories. High roof charge required per Xactimate guidelines — additional labor for material staging, safety, and reduced productivity at height",
+          "photo_refs": [
+            "p05_02",
+            "p03_03",
+            "p04_03"
+          ],
+          "price_variance": "Xact: $7.31, Carrier: $30.20",
+          "qty_variance": "Short 38 SQ",
+          "status": "under",
+          "supplement_argument": "High roof charge required per Xactimate guidelines — additional labor for material staging, safety, and reduced productivity at height",
+          "supplement_value": 0,
+          "trade": "roofing",
+          "usarm_amount": 443.94,
+          "usarm_desc": "Remove Additional charge for high roof (2 stories or greater)",
+          "xact_code": "RFG HIGH",
+          "xact_unit_price": 7.31
+        },
+        {
+          "carrier_amount": 1850.95,
+          "carrier_desc": "Additional charge for high roof (2 stories or greater)",
+          "carrier_notes": "",
+          "carrier_qty": 57.04,
+          "carrier_unit": "SQ",
+          "carrier_unit_price": 32.45,
+          "category": "ROOFING",
+          "checklist_desc": "Additional charge for high roof (2 stories or greater)",
+          "code_citation": null,
+          "ev_formula": "60.73 SQ, 2 stories",
+          "ev_qty": 60.73,
+          "ev_unit": "SQ",
+          "irc_code": null,
+          "item": "Additional charge for high roof (2 stories or greater)",
+          "matched_by": "intent_desc",
+          "note": "Required: 61 SQ @ $30.44/SQ. Carrier: 57 SQ @ $32.45/SQ. Carrier is 4 SQ short. Calculation: 60.73 SQ, 2 stories. High roof charge required per Xactimate guidelines — additional labor for material staging, safety, and reduced productivity at height",
+          "photo_refs": [
+            "p05_02",
+            "p03_03",
+            "p04_03"
+          ],
+          "price_variance": "Xact: $30.44, Carrier: $32.45",
+          "qty_variance": "Short 4 SQ",
+          "status": "under",
+          "supplement_argument": "High roof charge required per Xactimate guidelines — additional labor for material staging, safety, and reduced productivity at height",
+          "supplement_value": 0,
+          "trade": "roofing",
+          "usarm_amount": 1848.62,
+          "usarm_desc": "Additional charge for high roof (2 stories or greater)",
+          "xact_code": "RFG HIGH",
+          "xact_unit_price": 30.44
+        },
+        {
+          "carrier_amount": 0,
+          "carrier_desc": "NOT INCLUDED",
+          "carrier_qty": 0,
+          "category": "ROOFING",
+          "checklist_desc": "Roofer - per hour",
+          "code_citation": null,
+          "ev_formula": "max(4, 61 / 4) = 15 HR",
+          "ev_qty": 15,
+          "ev_unit": "HR",
+          "irc_code": null,
+          "item": "Roofer - per hour",
+          "matched_by": "missing",
+          "note": "NOT INCLUDED — Required: 15 HR @ $194.00/HR. Calculation: max(4, 61 / 4) = 15 HR. 8 hours roofer labor mandatory on every roofing estimate per industry standard",
+          "photo_refs": [
+            "p05_02",
+            "p03_03",
+            "p04_03"
+          ],
+          "status": "missing",
+          "supplement_argument": "8 hours roofer labor mandatory on every roofing estimate per industry standard",
+          "supplement_value": 2910.0,
+          "trade": "roofing",
+          "usarm_amount": 2910.0,
+          "usarm_desc": "Roofer - per hour",
+          "xact_code": "",
+          "xact_unit_price": 194.0
+        },
+        {
+          "carrier_amount": 0,
+          "carrier_desc": "NOT INCLUDED",
+          "carrier_qty": 0,
+          "category": "ROOFING",
+          "checklist_desc": "Equipment operator",
+          "code_citation": null,
+          "ev_formula": "",
+          "ev_qty": 8,
+          "ev_unit": "EA",
+          "irc_code": null,
+          "item": "Equipment operator",
+          "matched_by": "missing",
+          "note": "NOT INCLUDED — Required: 8 EA @ $450.00/EA | [UP006] Carrier scope does not include equipment operator charge. Required for 2+ story and/or steep roofs requiring material staging equipment.",
+          "status": "missing",
+          "supplement_argument": null,
+          "supplement_value": 3600.0,
+          "trade": "roofing",
+          "usarm_amount": 435.0,
+          "usarm_desc": "Equipment operator",
+          "xact_code": "",
+          "xact_unit_price": 450.0
+        },
+        {
+          "carrier_amount": 0,
+          "carrier_desc": "NOT INCLUDED",
+          "carrier_qty": 0,
+          "category": "ROOFING",
+          "checklist_desc": "",
+          "code_citation": {
+            "code_tag": "UCC R905.1.2",
+            "has_warranty_void": true,
+            "jurisdiction": "Pennsylvania Uniform Construction Code",
+            "manufacturer_specs": [
+              {
+                "document": "WeatherWatch Mineral-Surfaced Leak Barrier",
+                "manufacturer": "GAF",
+                "requirement": "Required at eaves, valleys, and around penetrations per GAF system requirements",
+                "warranty_text": "GAF warranty VOID without WeatherWatch/StormGuard at eaves and valleys",
+                "warranty_void": true
+              }
+            ],
+            "requirement": "Ice barrier required at eaves extending from eave edge to at least 24 inches past interior wall line, and in valleys",
+            "section": "R905.1.2",
+            "supplement_argument": "Ice & water barrier is required by code at all eaves and valleys. This is not an optional upgrade — it is a mandatory building code requirement for a code-compliant installation.",
+            "title": "Ice Barrier Requirement"
+          },
+          "ev_qty": 35.05,
+          "ev_unit": "SQ",
+          "irc_code": "UCC R905.1.2",
+          "matched_by": "missing",
+          "note": "NOT INCLUDED — Required: 35 SQ @ $30.00/SQ. Per UCC R905.1.2: Ice barrier required at eaves extending from eave edge to at least 24 inches past interior wall line | [COMP_UNDERLAYMENT] Carrier scope does not include underlayment. This is a mandatory roofing component per IRC R905.1.1.",
+          "photo_refs": [
+            "p05_02",
+            "p03_03",
+            "p04_03"
+          ],
+          "status": "missing",
+          "supplement_argument": "Ice & water barrier is required by code at all eaves and valleys. This is not an optional upgrade — it is a mandatory building code requirement for a code-compliant installation.",
+          "supplement_value": 1051.5,
+          "trade": "",
+          "usarm_amount": 1051.5,
+          "usarm_desc": "Underlayment - felt 15# (deck area not covered by I&W)"
+        },
+        {
+          "carrier_amount": 0,
+          "carrier_desc": "NOT INCLUDED",
+          "carrier_qty": 0,
+          "category": "ROOFING",
+          "checklist_desc": "",
+          "code_citation": {
+            "code_tag": "UCC R905.2.8",
+            "has_warranty_void": false,
+            "jurisdiction": "Pennsylvania Uniform Construction Code",
+            "manufacturer_specs": [],
+            "requirement": "Flashing shall be installed at wall and roof intersections, at gutters, around roof openings, and at penetrations through the roof plane",
+            "section": "R905.2.8",
+            "supplement_argument": "Pipe jack flashing is code-required at every roof penetration. When roofing is replaced, all pipe boots must be replaced — reusing old pipe boots on new roofing is a code violation.",
+            "title": "Flashing — General (Pipe Penetrations)"
+          },
+          "ev_qty": 1,
+          "ev_unit": "EA",
+          "irc_code": "UCC R905.2.8",
+          "matched_by": "missing",
+          "note": "NOT INCLUDED — Required: 1 EA @ $65.00/EA. Per UCC R905.2.8: Flashing shall be installed at wall and roof intersections, at gutters, around roof openings, and at",
+          "photo_refs": [
+            "p05_02",
+            "p03_03",
+            "p04_03"
+          ],
+          "status": "missing",
+          "supplement_argument": "Pipe jack flashing is code-required at every roof penetration. When roofing is replaced, all pipe boots must be replaced — reusing old pipe boots on new roofing is a code violation.",
+          "supplement_value": 65.0,
+          "trade": "",
+          "usarm_amount": 65.0,
+          "usarm_desc": "Pipe boot/jack"
+        },
+        {
+          "carrier_amount": 3827.3,
+          "carrier_desc": "Hip / Ridge cap - High profile - composition shingles",
+          "carrier_qty": 420.01,
+          "carrier_unit": "LF",
+          "category": "ROOFING",
+          "item": "Hip / Ridge cap - High profile - composition shingles",
+          "matched_by": "carrier_only",
+          "note": "Carrier-only: 420 LF @ $8.87/LF — not on EagleView checklist",
+          "photo_refs": [
+            "p05_02",
+            "p03_03",
+            "p04_03"
+          ],
+          "review_flag": "Verify: legitimate scope item or padding?",
+          "status": "carrier_only",
+          "supplement_value": 0,
+          "trade": "roofing",
+          "usarm_amount": 0,
+          "usarm_desc": "",
+          "xact_code": null
+        },
+        {
+          "carrier_amount": 2121.82,
+          "carrier_desc": "Valley metal - (W) profile",
+          "carrier_qty": 226.71,
+          "carrier_unit": "LF",
+          "category": "ROOFING",
+          "item": "Valley metal - (W) profile",
+          "matched_by": "carrier_only",
+          "note": "Carrier-only: 227 LF @ $9.16/LF — not on EagleView checklist",
+          "review_flag": "Verify: legitimate scope item or padding?",
+          "status": "carrier_only",
+          "supplement_value": 0,
+          "trade": "roofing",
+          "usarm_amount": 0,
+          "usarm_desc": "",
+          "xact_code": null
+        },
+        {
+          "carrier_amount": 307.38,
+          "carrier_desc": "Power attic vent cover only - Detach & reset",
+          "carrier_qty": 3.0,
+          "carrier_unit": "EA",
+          "category": "ROOFING",
+          "item": "Power attic vent cover only - Detach & reset",
+          "matched_by": "carrier_only",
+          "note": "Carrier-only: 3 EA @ $102.46/EA — not on EagleView checklist",
+          "photo_refs": [
+            "p05_02",
+            "p03_03",
+            "p04_03"
+          ],
+          "review_flag": "Verify: legitimate scope item or padding?",
+          "status": "carrier_only",
+          "supplement_value": 0,
+          "trade": "roofing",
+          "usarm_amount": 0,
+          "usarm_desc": "",
+          "xact_code": null
+        },
+        {
+          "carrier_amount": 2428.94,
+          "carrier_desc": "Additional charge for steep roof - 10/12 - 12/12 slope",
+          "carrier_qty": 22.62,
+          "carrier_unit": "SQ",
+          "category": "ROOFING",
+          "item": "Additional charge for steep roof - 10/12 - 12/12 slope",
+          "matched_by": "carrier_only",
+          "note": "Carrier-only: 23 SQ @ $107.38/SQ — not on EagleView checklist",
+          "photo_refs": [
+            "p05_02",
+            "p03_03",
+            "p04_03"
+          ],
+          "review_flag": "Verify: legitimate scope item or padding?",
+          "status": "carrier_only",
+          "supplement_value": 0,
+          "trade": "roofing",
+          "usarm_amount": 0,
+          "usarm_desc": "",
+          "xact_code": null
+        },
+        {
+          "carrier_amount": 35.62,
+          "carrier_desc": "Remove Additional charge for steep roof greater than 12/12 slope",
+          "carrier_qty": 0.92,
+          "carrier_unit": "SQ",
+          "category": "ROOFING",
+          "item": "Remove Additional charge for steep roof greater than 12/12 slope",
+          "matched_by": "carrier_only",
+          "note": "Carrier-only: 1 SQ @ $38.72/SQ — not on EagleView checklist",
+          "photo_refs": [
+            "p05_02",
+            "p03_03",
+            "p04_03"
+          ],
+          "review_flag": "Verify: legitimate scope item or padding?",
+          "status": "carrier_only",
+          "supplement_value": 0,
+          "trade": "roofing",
+          "usarm_amount": 0,
+          "usarm_desc": "",
+          "xact_code": null
+        },
+        {
+          "carrier_amount": 128.89,
+          "carrier_desc": "Additional charge for steep roof greater than 12/12 slope",
+          "carrier_qty": 0.92,
+          "carrier_unit": "SQ",
+          "category": "ROOFING",
+          "item": "Additional charge for steep roof greater than 12/12 slope",
+          "matched_by": "carrier_only",
+          "note": "Carrier-only: 1 SQ @ $140.10/SQ — not on EagleView checklist",
+          "photo_refs": [
+            "p05_02",
+            "p03_03",
+            "p04_03"
+          ],
+          "review_flag": "Verify: legitimate scope item or padding?",
+          "status": "carrier_only",
+          "supplement_value": 0,
+          "trade": "roofing",
+          "usarm_amount": 0,
+          "usarm_desc": "",
+          "xact_code": null
+        },
+        {
+          "carrier_amount": 666.51,
+          "carrier_desc": "Remove Additional charge for steep roof - 7/12 to 9/12 slope",
+          "carrier_qty": 34.66,
+          "carrier_unit": "SQ",
+          "category": "ROOFING",
+          "item": "Remove Additional charge for steep roof - 7/12 to 9/12 slope",
+          "matched_by": "carrier_only",
+          "note": "Carrier-only: 35 SQ @ $19.23/SQ — not on EagleView checklist",
+          "photo_refs": [
+            "p05_02",
+            "p03_03",
+            "p04_03"
+          ],
+          "review_flag": "Verify: legitimate scope item or padding?",
+          "status": "carrier_only",
+          "supplement_value": 0,
+          "trade": "roofing",
+          "usarm_amount": 0,
+          "usarm_desc": "",
+          "xact_code": null
+        },
+        {
+          "carrier_amount": 2367.28,
+          "carrier_desc": "Additional charge for steep roof - 7/12 to 9/12 slope",
+          "carrier_qty": 34.66,
+          "carrier_unit": "SQ",
+          "category": "ROOFING",
+          "item": "Additional charge for steep roof - 7/12 to 9/12 slope",
+          "matched_by": "carrier_only",
+          "note": "Carrier-only: 35 SQ @ $68.30/SQ — not on EagleView checklist",
+          "photo_refs": [
+            "p05_02",
+            "p03_03",
+            "p04_03"
+          ],
+          "review_flag": "Verify: legitimate scope item or padding?",
+          "status": "carrier_only",
+          "supplement_value": 0,
+          "trade": "roofing",
+          "usarm_amount": 0,
+          "usarm_desc": "",
+          "xact_code": null
+        },
+        {
+          "carrier_amount": 3337.23,
+          "carrier_desc": "Detach & Reset Gutter / downspout - aluminum - 6\"",
+          "carrier_qty": 559.0,
+          "carrier_unit": "LF",
+          "category": "GUTTERS",
+          "item": "Detach & Reset Gutter / downspout - aluminum - 6\"",
+          "matched_by": "carrier_only",
+          "note": "Carrier-only: 559 LF @ $5.97/LF — not on EagleView checklist",
+          "photo_refs": [
+            "p04_01"
+          ],
+          "review_flag": "Verify: legitimate scope item or padding?",
+          "status": "carrier_only",
+          "supplement_value": 0,
+          "trade": "gutters",
+          "usarm_amount": 0,
+          "usarm_desc": "",
+          "xact_code": null
+        },
+        {
+          "carrier_amount": 947.0,
+          "carrier_desc": "Dumpster load - Approx. 30 yards, 5-7 tons of debris",
+          "carrier_notes": "",
+          "carrier_qty": 1.0,
+          "carrier_unit": "EA",
+          "carrier_unit_price": 947.0,
+          "category": "GENERAL",
+          "checklist_desc": "Dumpster load - Approx. 30 yards, 5-7 tons of debris",
+          "code_citation": null,
+          "ev_formula": "",
+          "ev_qty": 1,
+          "ev_unit": "EA",
+          "irc_code": null,
+          "item": "Dumpster load - Approx. 30 yards, 5-7 tons of debris",
+          "matched_by": "intent_desc",
+          "note": "Carrier includes 1 EA @ $947.00/EA",
+          "price_variance": "Xact: $850.00, Carrier: $947.00",
+          "status": "over",
+          "supplement_argument": "Job-related overhead — dumpster required for debris disposal",
+          "supplement_value": 0,
+          "trade": "general",
+          "usarm_amount": 850.0,
+          "usarm_desc": "Dumpster load - Approx. 30 yards, 5-7 tons of debris",
+          "xact_code": "",
+          "xact_unit_price": 850.0
+        },
+        {
+          "carrier_amount": 0,
+          "carrier_desc": "NOT INCLUDED",
+          "carrier_qty": 0,
+          "category": "CODE COMPLIANCE",
+          "checklist_desc": "Fall protection harness and lanyard - per day",
+          "code_citation": null,
+          "ev_formula": "",
+          "ev_qty": 4,
+          "ev_unit": "DA",
+          "irc_code": null,
+          "item": "Fall protection harness and lanyard - per day",
+          "matched_by": "missing",
+          "note": "NOT INCLUDED — Required: 4 DA @ $8.00/DA. Fall protection required per OSHA 29 CFR 1926.501 for work at heights above 6 feet",
+          "status": "missing",
+          "supplement_argument": "Fall protection required per OSHA 29 CFR 1926.501 for work at heights above 6 feet",
+          "supplement_value": 32.0,
+          "trade": "roofing",
+          "usarm_amount": 32.0,
+          "usarm_desc": "Fall protection harness and lanyard - per day",
+          "xact_code": "",
+          "xact_unit_price": 8.0
+        },
+        {
+          "carrier_amount": 0,
+          "carrier_desc": "NOT INCLUDED",
+          "carrier_qty": 0,
+          "category": "GENERAL",
+          "checklist_desc": "Administrative/supervisor labor charge",
+          "code_citation": null,
+          "ev_formula": "",
+          "ev_qty": 2.5,
+          "ev_unit": "HR",
+          "irc_code": null,
+          "item": "Administrative/supervisor labor charge",
+          "matched_by": "missing",
+          "note": "NOT INCLUDED — Required: 2 HR @ $41.73/HR. Administrative labor for re-inspection and project coordination",
+          "status": "missing",
+          "supplement_argument": "Administrative labor for re-inspection and project coordination",
+          "supplement_value": 104.32,
+          "trade": "general",
+          "usarm_amount": 104.32,
+          "usarm_desc": "Administrative/supervisor labor charge",
+          "xact_code": "",
+          "xact_unit_price": 41.73
+        }
+      ],
+      "carrier_rcv": 63823.93,
+      "claim_number": "PA-008-372",
+      "deductible": 5000.0,
+      "inspection_date": "3/27/2026",
+      "inspector_company": "",
+      "inspector_name": "",
+      "name": "Pure Insurance",
+      "policy_number": "HO199407909"
+    },
+    "carrier_intelligence": {
+      "anticipated_denials": [
+        {
+          "count": 12,
+          "countered_count": 0,
+          "examples": [
+            "Type of Loss: Wind",
+            "Type of Loss: Wind",
+            "Estimate was prepared based on local material and labor rates for the region using price list PAPH8X_APR26."
+          ],
+          "tactic_type": "underpayment",
+          "total_impact": 0
+        },
+        {
+          "count": 6,
+          "countered_count": 0,
+          "examples": [
+            "Ice & water barrier and drip edge did not previously exist or expand the scope of repairs, but are required by current building codes. The code upgrade cost is payable when incurred, subject to limits",
+            "Code upgrade items (ice & water barrier at $4,038.01 and drip edge at $1,754.63) totaling $5,792.64 RCV are classified as paid when incurred.",
+            "Ice & water barrier and drip edge did not previously exist or expand the scope of repairs, but are required by current building codes. The code upgrade cost is payable when incurred, subject to limits"
+          ],
+          "tactic_type": "code_dispute",
+          "total_impact": 0
+        },
+        {
+          "count": 6,
+          "countered_count": 0,
+          "examples": [
+            "Dwelling - Code Upgrade aggregate limit is $6,000.00; the code upgrade RCV of $5,792.64 is within that limit with $0.00 overage.",
+            "No depreciation was applied; RCV equals ACV at $63,823.93.",
+            "Dwelling - Code Upgrade aggregate limit is $6,000.00; code upgrade RCV is $5,792.64 with $0.00 overage"
+          ],
+          "tactic_type": "depreciation",
+          "total_impact": 0
+        }
+      ],
+      "carrier_score": {
+        "avg_carrier_rcv": 63824.0,
+        "avg_underpayment_pct": 12.0,
+        "avg_usarm_rcv": 71461.0,
+        "avg_win_movement_pct": 0,
+        "carrier": "Pure Insurance",
+        "common_trades": [
+          "Roofing"
+        ],
+        "losses": 1,
+        "total_claims": 1,
+        "win_rate_pct": 0.0,
+        "wins": 0
+      },
+      "general_effective_arguments": [],
+      "prediction": {
+        "confidence": "low",
+        "message": "Insufficient data (1 claims)"
+      },
+      "recommended_arguments_by_trade": {}
+    },
+    "company": {
+      "address": "11 Forsgate Ln",
+      "cell_phone": "609 424 2736",
+      "ceo_name": "Greivin",
+      "ceo_title": "Owner",
+      "city_state_zip": "Bordentown, NJ 08505",
+      "email": "greivin@eagleeyeroofing.com",
+      "name": "Eagle Eye Roofing",
+      "office_phone": "",
+      "website": "www.eagleeyeroofing.com"
+    },
+    "compliance": {
+      "aob_signed": false,
+      "user_role": "contractor"
+    },
+    "cover_email": {
+      "enclosed_documents": [
+        "Forensic Causation Report with annotated photography",
+        "Xactimate-format replacement cost estimate",
+        "Supplement report with line-by-line variance analysis",
+        "Formal scope clarification letter",
+        "Cover correspondence"
+      ],
+      "summary_paragraphs": [
+        "Please find enclosed the complete forensic documentation package for the property at 5 Georgetown Cir, Newtown, PA 18940, USA. Our independent inspection has documented storm-related damage to the Roofing.",
+        "The enclosed reports include annotated photography of all identified damage, an Xactimate-format replacement cost estimate, and a forensic causation analysis establishing the relationship between documented weather events and observed damage.",
+        "Please do not hesitate to contact us should you require any additional information or wish to schedule a joint inspection."
+      ],
+      "to": "Dawn Scott",
+      "to_email": "dscott@pureinsurance.com"
+    },
+    "dashboard": {
+      "carrier_1st_scope": 63823.93,
+      "carrier_current": 63823.93
+    },
+    "dates": {
+      "date_of_loss": "",
+      "report_date": "April 27, 2026",
+      "usarm_inspection_date": "April 27, 2026"
+    },
+    "financials": {
+      "deductible": 5000.0,
+      "price_list": "PAPI26",
+      "price_list_is_proxy": false,
+      "tax_rate": 0.0
+    },
+    "forensic_findings": {
+      "code_violations": [
+        {
+          "code": "UCC R905.2.2",
+          "requirement": "Asphalt shingles shall be installed in accordance with this section AND the manufacturer's installation instructions — adopts manufacturer spec as code-enforceable requirement",
+          "status": "Required — manufacturer spec controls fastener count, exposure, starter, drip edge, and warranty-critical details"
+        },
+        {
+          "code": "UCC R905.2.8.5",
+          "requirement": "Drip edge required at eaves and rake edges of shingle roofs; min 2-inch overlap at joints, min 1/4-inch projection below sheathing",
+          "status": "Required — included in scope"
+        },
+        {
+          "code": "UCC R905.1.1",
+          "requirement": "Underlayment shall be applied in accordance with manufacturer's installation instructions — ASTM D226 / D4869 / D6757 labeling required",
+          "status": "Required — included in scope"
+        },
+        {
+          "code": "UCC R905.2.7.1",
+          "requirement": "Ice barrier required in areas where the average daily temperature in January is ≤25°F or where ice damming has a history; min 2 feet inside exterior wall line (Climate Zones 5A+ including OH/NY)",
+          "status": "Required — included in scope"
+        },
+        {
+          "code": "UCC R903.2.1",
+          "requirement": "Flashings shall be installed at wall and roof intersections, wherever there is a change in roof slope or direction, and around roof openings",
+          "status": "Required — included in scope"
+        }
+      ],
+      "conclusion_paragraphs": [
+        "Based on our forensic analysis of 21 documented findings, the property at 5 Georgetown Cir, Newtown, PA 18940, USA sustained confirmed storm damage from the reported storm event. The weight of evidence includes wind-displaced shingle tabs with exposed underlayment and no nail rust at removal points, wind-creased shingles exhibiting sharp horizontal folds with concentrated granule disruption at the nail line, and broken seal strips displaying clean mechanical separation — all consistent with forcible wind removal rather than long-term deterioration. Additionally, excessive granule accumulation in gutters documents widespread bond strip failure accelerated by wind cycling, while directional missing-tab patterns across multiple slopes and clustering near roof penetrations confirm a significant wind event. Three code violations under the UCC and IRC — including compromised weather barriers at critical flashing transitions (IRC R905.2.8.3), mixed shingle products failing to meet manufacturer installation specifications for uniform coverage (IRC R905.2.6), and exposed underlayment subject to UV degradation from missing shingles — further substantiate the scope of functional damage.",
+        "The confirmed wind damage to the laminated premium asphalt shingle roof system and associated components requires full system replacement rather than spot repair. Two incompatible shingle products are installed on interconnected roof planes — architectural laminate on the lower slopes and synthetic slate on the upper slopes — which prevents material matching for partial replacement under any manufacturer's installation guidelines. Furthermore, the lower-slope 3-tab shingles exhibit an approximately 5-inch exposure characteristic of a pre-metric product for which no current shingle matches this coursing, rendering localized repair technically infeasible. The presence of solar-powered attic vent fans on multiple slopes and skylights on at least two slopes necessitates full flashing integration during re-roofing to restore weather-tight integrity at these penetration points.",
+        "Based on the documented damage, applicable building codes (UCC/IRC), and industry standards, we recommend full replacement of the entire roof system, including all shingle surfaces across upper and lower slopes, associated flashings at wall-to-roof junctions, skylight surrounds, and roof penetrations for solar attic vent fans. The carrier's current recognized scope of $63,823.93 does not adequately address the documented conditions, particularly the code-required flashing integration at multiple penetration points, the full removal and replacement necessitated by incompatible mixed shingle systems, and the material-matching constraints that preclude any partial repair approach.",
+        "This forensic determination is consistent with HAAG Engineering's standards for identifying functional wind damage — including wind creases with granule disruption at fold lines and broken seal strips with clean mechanical separation — as well as NRCA guidelines establishing that mixed, non-matching roof systems on interconnected planes require unified replacement to maintain weatherproofing integrity. All code citations reference the IRC as adopted under Pennsylvania's Uniform Construction Code (UCC), and all damage classifications are grounded in field-verified physical evidence documented during our inspection."
+      ],
+      "damage_summary": "This property exhibits a multi-slope asphalt shingle roof system with two distinct shingle types: architectural laminated shingles on the lower addition and a synthetic/composite slate product on the upper main structure. Wind damage is confirmed across multiple areas including a displaced shingle tab at the gutter-to-wall junction (Photo 3), granule shedding into gutters indicating widespread seal strip compromise (Photo 4), and aging shingles on the upper slopes showing individual tab displacement (Photos 2, 5). The two different shingle products and their respective conditions confirm this roof cannot be spot-repaired — the lower architectural shingles show active wind displacement and the upper synthetic slate shows aging with storm-accelerated deterioration. Solar-powered attic vent fans are present on multiple slopes. Skylights are present on at least two slopes. Full replacement is warranted due to wind damage compounded by non-repairability of mixed shingle systems. Architectural laminate shingle roof exhibits multiple wind damage indicators including missing shingle tabs with exposed underlayment, broken seal strips with clean mechanical separation, and wind-creased tabs. Missing tabs expose nail lines with no visible rust, confirming recent storm event. Damage is distributed across multiple roof slopes, indicating a significant wind event. The combination of missing shingles, broken seals, and creased tabs constitutes functional damage requiring full roof replacement — spot repairs cannot restore the system's wind resistance integrity. Asphalt 3-tab shingle roof exhibits multiple wind-damaged areas including missing shingle tabs exposing underlayment, broken seal strips, and granule disruption near a skylight and plumbing vent penetration. At least two locations show missing tabs with exposed black underlayment and rust-free nail areas confirming recent storm loss. The 3-tab shingles with approximately 5\" exposure are a pre-metric product that cannot be spot-repaired with any current shingle on the market — full slope replacement is required to maintain coursing alignment. Wind damage is directional and concentrated on the observed slope, consistent with a wind event rather than uniform aging. Photo 16 shows a full roof slope view of architectural laminated shingles. A missing shingle is visible mid-slope exposing underlayment, indicating wind displacement. The skylight flashing area and surrounding field shingles show no directional pattern but the missing shingle with no visible debris or aging curl confirms wind event. Full replacement is warranted given the wind damage and inability to color-match aged shingles for spot repair.",
+      "differentiation_table": [
+        {
+          "cause": "Wind Damage",
+          "characteristics": "Lifted, creased, or missing shingles; exposed nail heads; broken seals",
+          "conclusion": "CONSISTENT",
+          "observed": "Yes — wind-lifted and creased shingles documented across roof surface"
+        },
+        {
+          "cause": "Normal Wear / Aging",
+          "characteristics": "Uniform granule loss, curling at edges, consistent deterioration pattern",
+          "conclusion": "NOT CONSISTENT",
+          "observed": "No — damage pattern is random/localized, inconsistent with uniform aging"
+        },
+        {
+          "cause": "Manufacturing Defect",
+          "characteristics": "Systematic pattern across same production batch, uniform failure mode",
+          "conclusion": "NOT CONSISTENT",
+          "observed": "No — damage is random and impact-related, not systematic"
+        }
+      ],
+      "executive_summary": [
+        "On the reported storm event date, the property at 5 Georgetown Cir, Newtown, PA 18940, USA sustained wind damage to its multi-slope roof system. The structure features a complex roofing assembly comprising architectural laminated shingles on the lower addition, a synthetic/composite slate product on the upper main structure, and a section of 3-tab shingles — along with multiple penetrations including skylights, plumbing vents, and solar-powered attic ventilation fans. A 16-photograph forensic inspection was conducted to document the storm-related damage and assess the scope of required repairs.",
+        "Wind damage is confirmed across multiple roof slopes and material systems. Displaced shingle tabs with cleanly broken seal strips and exposed underlayment are documented at several locations, with rust-free nail lines at the points of displacement confirming recent mechanical wind separation rather than long-term deterioration. Granule accumulation in gutter troughs is consistent with widespread seal-strip compromise and wind-driven granule shedding across the architectural laminate sections. The 3-tab section exhibits missing tabs exposing underlayment near the skylight and plumbing vent penetrations, with damage directionally concentrated in a pattern consistent with a discrete wind event.",
+        "Full roof system replacement is required on both technical and code-compliance grounds. The property's three distinct shingle products — architectural laminate, synthetic slate, and a pre-metric 3-tab shingle with approximately 5-inch exposure — cannot be spot-repaired with currently manufactured materials while maintaining coursing alignment, color match, or warranty integrity. Under the Pennsylvania Uniform Construction Code (UCC) and the underlying IRC, repairs that cannot restore the roof covering's designed wind resistance to its pre-loss condition necessitate replacement to the extent required to achieve code-compliant performance. The combination of mixed, non-matchable shingle systems and multi-slope wind damage renders piecemeal repair technically infeasible.",
+        "The carrier's current scope of $63,823.93 does not appear to account for the full replacement of all three affected shingle systems, the requisite flashing and penetration rework at skylights and vents, or the code-driven underlayment and fastening requirements triggered by a full re-roof under the UCC. Our forensic documentation identifies material, labor, and code-compliance line items that place the warranted repair scope significantly beyond the carrier's approved amount, and we recommend a comprehensive re-review of the estimate against the documented damage conditions."
+      ],
+      "key_arguments": [
+        "Wind-displaced shingle tab at wall-to-gutter junction (Photo 3) — tab folded over metal gutter with exposed underlayment confirms forcible wind removal from recent storm event",
+        "Excessive granule accumulation in gutters (Photo 4) indicates widespread bond strip failure and shingle surface degradation accelerated by wind cycling",
+        "Two incompatible shingle products installed on same structure — architectural laminate on lower slopes and synthetic slate on upper slopes — prevents any spot repair or partial replacement",
+        "Solar-powered attic vent fans on multiple slopes create additional roof penetrations that increase wind vulnerability at flashing transitions",
+        "Skylights present on at least two slopes — flashing integration with new shingles required during full replacement",
+        "Upper synthetic slate slopes (Photos 2, 5) show individual shingle displacement consistent with directional wind stress pattern",
+        "Missing shingle tabs with no nail rust at exposed areas confirm recent storm wind removal — not long-term deterioration",
+        "Wind crease identified in photo 7: sharp horizontal fold at nail line with concentrated granule disruption = functional damage per HAAG standard",
+        "Broken seal strip in photo 8 shows clean mechanical separation (not dry/crumbling) confirming wind-caused failure, not age degradation",
+        "Directional missing tab pattern across multiple slopes consistent with wind event damage distribution",
+        "Solar attic fan visible on lower slope — penetration area requires intact surrounding shingles for weather-tightness, now compromised",
+        "At least 3 missing shingle tabs across the observed slope expose black underlayment — no nail rust visible confirming recent storm event",
+        "Missing tabs cluster near roof penetrations (skylight, plumbing vent) where wind turbulence accelerates uplift forces",
+        "3-tab shingles with approximately 5\" exposure are pre-metric product — no current 3-tab or laminate shingle matches this coursing, making spot repair infeasible",
+        "Broken seal strips visible on multiple surrounding tabs indicating progressive wind damage beyond just the missing tabs",
+        "Directional damage pattern on single slope consistent with wind event rather than uniform age deterioration",
+        "Missing shingle tab mid-slope on main roof face — exposed underlayment/deck visible, consistent with wind uplift removal.",
+        "Surrounding shingles show aged granule surface — spot repair infeasible due to color/profile mismatch with current product lines.",
+        "Skylight present on slope — flashing integration requires full tear-off for proper re-installation per manufacturer specs.",
+        "Measured shingle exposure of 5.0\" indicates pre-metric product (manufactured before ~2012). Current metric products are 5-5/8\" exposure — mixing creates 5/8\" offset per course, full misalignment after 20 courses. No manufacturer will warrant field-cut shingles. Roof is unrepairable by spot repair.",
+        "Estimated roof age: ~14 years (installed circa 2012) — Shingle Type: Laminate/Architectural shingle; Measured Exposure: 5.0\" — pre-metric standard (laminate last manufactured ~2012)"
+      ],
+      "total_photos": 16
+    },
+    "full_reroof_trigger": false,
+    "inspectors": {
+      "usarm_inspector": "Greivin",
+      "usarm_title": "Owner"
+    },
+    "insured": {
+      "name": "Justin Harmon",
+      "type": "homeowner"
+    },
+    "line_items": [
+      {
+        "category": "ROOFING",
+        "code": "RFG 300S",
+        "code_citation": {
+          "code_tag": "UCC R908.3",
+          "has_warranty_void": true,
+          "jurisdiction": "Pennsylvania Uniform Construction Code",
+          "manufacturer_specs": [
+            {
+              "document": "Timberline HDZ Installation Instructions",
+              "manufacturer": "GAF",
+              "requirement": "4-6 nails per shingle, ProStart starter required at eaves and rakes",
+              "warranty_text": "GAF System Plus/Silver Pledge warranty VOID without proper starter and nailing pattern",
+              "warranty_void": true
+            }
+          ],
+          "requirement": "Existing roofing materials shall be removed before applying new roofing when existing roof has two or more applications of any type of roof covering",
+          "section": "R908.3",
+          "supplement_argument": "Complete tear-off is required per code for a code-compliant installation. Overlay is not code-compliant when damage necessitates deck inspection.",
+          "title": "Reroofing — Tear-Off Requirement"
+        },
+        "description": "Remove laminated comp shingle roofing",
+        "irc_code": "UCC R908.3",
+        "qty": 60.73,
+        "supplement_argument": "Complete tear-off is required per code for a code-compliant installation. Overlay is not code-compliant when damage necessitates deck inspection.",
+        "trade": "roofing",
+        "unit": "SQ",
+        "unit_price": 89.37
+      },
+      {
+        "category": "ROOFING",
+        "code": "RFG 400S",
+        "code_citation": {
+          "code_tag": "UCC R905.1.1",
+          "has_warranty_void": false,
+          "jurisdiction": "Pennsylvania Uniform Construction Code",
+          "manufacturer_specs": [],
+          "requirement": "Underlayment required over entire roof deck area not covered by ice barrier",
+          "section": "R905.1.1",
+          "supplement_argument": "Underlayment is code-mandated over the entire roof deck. Areas where ice & water barrier is not installed require felt or synthetic underlayment. Omission does not meet code requirements.",
+          "title": "Underlayment Requirement"
+        },
+        "description": "Laminated - High grd - comp. shingle rfg. - w/out felt",
+        "irc_code": "R905.2",
+        "qty": 69.84,
+        "supplement_argument": "Underlayment is code-mandated over the entire roof deck. Areas where ice & water barrier is not installed require felt or synthetic underlayment. Omission does not meet code requirements.",
+        "trade": "roofing",
+        "unit": "SQ",
+        "unit_price": 383.17
+      },
+      {
+        "category": "ROOFING",
+        "code": "",
+        "code_citation": {
+          "code_tag": "UCC R905.1.2",
+          "has_warranty_void": true,
+          "jurisdiction": "Pennsylvania Uniform Construction Code",
+          "manufacturer_specs": [
+            {
+              "document": "WeatherWatch Mineral-Surfaced Leak Barrier",
+              "manufacturer": "GAF",
+              "requirement": "Required at eaves, valleys, and around penetrations per GAF system requirements",
+              "warranty_text": "GAF warranty VOID without WeatherWatch/StormGuard at eaves and valleys",
+              "warranty_void": true
+            }
+          ],
+          "requirement": "Ice barrier required at eaves extending from eave edge to at least 24 inches past interior wall line, and in valleys",
+          "section": "R905.1.2",
+          "supplement_argument": "Ice & water barrier is required by code at all eaves and valleys. This is not an optional upgrade — it is a mandatory building code requirement for a code-compliant installation.",
+          "title": "Ice Barrier Requirement"
+        },
+        "description": "Underlayment - felt 15# (deck area not covered by I&W)",
+        "irc_code": "UCC R905.1.2",
+        "qty": 35.05,
+        "supplement_argument": "Ice & water barrier is required by code at all eaves and valleys. This is not an optional upgrade — it is a mandatory building code requirement for a code-compliant installation.",
+        "unit": "SQ",
+        "unit_price": 30.0
+      },
+      {
+        "category": "ROOFING",
+        "code": "RFG IWS",
+        "code_citation": {
+          "code_tag": "UCC R905.1.2",
+          "has_warranty_void": true,
+          "jurisdiction": "Pennsylvania Uniform Construction Code",
+          "manufacturer_specs": [
+            {
+              "document": "WeatherWatch Mineral-Surfaced Leak Barrier",
+              "manufacturer": "GAF",
+              "requirement": "Required at eaves, valleys, and around penetrations per GAF system requirements",
+              "warranty_text": "GAF warranty VOID without WeatherWatch/StormGuard at eaves and valleys",
+              "warranty_void": true
+            }
+          ],
+          "requirement": "Ice barrier required at eaves extending from eave edge to at least 24 inches past interior wall line, and in valleys",
+          "section": "R905.1.2",
+          "supplement_argument": "Ice & water barrier is required by code at all eaves and valleys. This is not an optional upgrade — it is a mandatory building code requirement for a code-compliant installation.",
+          "title": "Ice Barrier Requirement"
+        },
+        "description": "Ice & water barrier (2 courses eaves + 1 course valleys)",
+        "irc_code": "R905.1.2",
+        "qty": 2568,
+        "supplement_argument": "Ice & water barrier is required by code at all eaves and valleys. This is not an optional upgrade — it is a mandatory building code requirement for a code-compliant installation.",
+        "trade": "roofing",
+        "unit": "SF",
+        "unit_price": 2.39
+      },
+      {
+        "category": "ROOFING",
+        "code": "RFG DRIP",
+        "code_citation": {
+          "code_tag": "UCC R905.2.8.5",
+          "has_warranty_void": false,
+          "jurisdiction": "Pennsylvania Uniform Construction Code",
+          "manufacturer_specs": [],
+          "requirement": "Drip edge shall be provided at eaves and gable rake edges of shingle roofs",
+          "section": "R905.2.8.5",
+          "supplement_argument": "Drip edge is required at all eaves and rakes per code. Protects fascia and deck edge from water damage. Not an optional upgrade.",
+          "title": "Drip Edge Requirement"
+        },
+        "description": "R&R Drip edge - aluminum",
+        "irc_code": "R905.2.7",
+        "qty": 475,
+        "supplement_argument": "Drip edge required at eaves and rakes per IRC R905.2.7. Minimum 2.5 inches below sheathing, 2 inches up deck. Underlayment OVER drip edge at eaves, UNDER at rakes. 5% waste factor standard",
+        "trade": "roofing",
+        "unit": "LF",
+        "unit_price": 4.1
+      },
+      {
+        "category": "ROOFING",
+        "code": "RFG GCS240",
+        "code_citation": {
+          "code_tag": "UCC R806",
+          "has_warranty_void": false,
+          "jurisdiction": "Pennsylvania Uniform Construction Code",
+          "manufacturer_specs": [],
+          "requirement": "Enclosed attics shall have cross ventilation. Ridge vent provides exhaust ventilation per R806.1",
+          "section": "R806",
+          "supplement_argument": "Ridge ventilation is required for proper attic ventilation per code. When ridge cap is replaced, ridge vent must be replaced to maintain code-compliant ventilation.",
+          "title": "Roof Ventilation"
+        },
+        "description": "R&R Ridge cap - 3 tab",
+        "irc_code": "UCC R806",
+        "qty": 448,
+        "supplement_argument": "Ridge ventilation is required for proper attic ventilation per code. When ridge cap is replaced, ridge vent must be replaced to maintain code-compliant ventilation.",
+        "trade": "roofing",
+        "unit": "LF",
+        "unit_price": 21.47
+      },
+      {
+        "category": "ROOFING",
+        "code": "RFG RGVC",
+        "code_citation": {
+          "code_tag": "UCC R806",
+          "has_warranty_void": false,
+          "jurisdiction": "Pennsylvania Uniform Construction Code",
+          "manufacturer_specs": [],
+          "requirement": "Enclosed attics shall have cross ventilation. Ridge vent provides exhaust ventilation per R806.1",
+          "section": "R806",
+          "supplement_argument": "Ridge ventilation is required for proper attic ventilation per code. When ridge cap is replaced, ridge vent must be replaced to maintain code-compliant ventilation.",
+          "title": "Roof Ventilation"
+        },
+        "description": "R&R Ridge vent - shingle over",
+        "irc_code": "R806",
+        "qty": 140,
+        "supplement_argument": "Ventilation required per IRC R806 — 1 SF NFVA per 150 SF attic area (1:150 ratio). OC warranty VOID without proper ventilation. Ridge vent must be R&R during re-roofing",
+        "trade": "roofing",
+        "unit": "LF",
+        "unit_price": 11.97
+      },
+      {
+        "category": "ROOFING",
+        "code": "RFG STEP",
+        "code_citation": {
+          "code_tag": "UCC R905.2.8.3",
+          "has_warranty_void": false,
+          "jurisdiction": "Pennsylvania Uniform Construction Code",
+          "manufacturer_specs": [],
+          "requirement": "Step flashing shall be used where roof planes intersect vertical walls",
+          "section": "R905.2.8.3",
+          "supplement_argument": "Step flashing is code-required at every wall-to-roof junction. When roofing is replaced, step flashing must be replaced to maintain weathertight integrity per code.",
+          "title": "Step Flashing at Wall Junctions"
+        },
+        "description": "R&R Step flashing",
+        "irc_code": "R905.2.8.4",
+        "qty": 111.3,
+        "supplement_argument": "Step flashing required at all wall-to-roof intersections per IRC R905.2.8.4. Minimum 10 inches height. Siding removal mandatory for proper installation — nail horizontal flange to roof ONLY, never through siding",
+        "trade": "roofing",
+        "unit": "LF",
+        "unit_price": 15.53
+      },
+      {
+        "category": "ROOFING",
+        "code": "RFG FLCF",
+        "description": "R&R Counter/apron flashing",
+        "irc_code": "R905.2.8",
+        "qty": 35,
+        "supplement_argument": "Counterflashing required at all roof-to-wall intersections per IRC R905.2.8",
+        "trade": "roofing",
+        "unit": "LF",
+        "unit_price": 15.57
+      },
+      {
+        "category": "ROOFING",
+        "code": "RFG DDFL+",
+        "code_citation": {
+          "code_tag": "UCC R905.2.8",
+          "has_warranty_void": false,
+          "jurisdiction": "Pennsylvania Uniform Construction Code",
+          "manufacturer_specs": [
+            {
+              "document": "V-USA-1-0-10 (Skylight Replacement Guide)",
+              "manufacturer": "VELUX",
+              "requirement": "Replace when cladding sealed to glazing is compromised by impact damage",
+              "warranty_text": "",
+              "warranty_void": false
+            }
+          ],
+          "requirement": "Flashing required at all roof openings including skylights. Manufacturer flashing kits required for warranty compliance.",
+          "section": "R905.2.8",
+          "supplement_argument": "Skylight flashing is code-required. When the surrounding roofing is replaced, skylight flashing must be replaced to maintain weathertight seal. VELUX requires OEM flashing kit.",
+          "title": "Skylight Flashing"
+        },
+        "description": "R&R Skylight flashing kit",
+        "irc_code": "R905.2.8",
+        "qty": 1,
+        "supplement_argument": "Skylight flashing is code-required. When the surrounding roofing is replaced, skylight flashing must be replaced to maintain weathertight seal. VELUX requires OEM flashing kit.",
+        "trade": "roofing",
+        "unit": "EA",
+        "unit_price": 265.0
+      },
+      {
+        "category": "ROOFING",
+        "code": "",
+        "code_citation": {
+          "code_tag": "UCC R905.2.8",
+          "has_warranty_void": false,
+          "jurisdiction": "Pennsylvania Uniform Construction Code",
+          "manufacturer_specs": [],
+          "requirement": "Flashing shall be installed at wall and roof intersections, at gutters, around roof openings, and at penetrations through the roof plane",
+          "section": "R905.2.8",
+          "supplement_argument": "Pipe jack flashing is code-required at every roof penetration. When roofing is replaced, all pipe boots must be replaced — reusing old pipe boots on new roofing is a code violation.",
+          "title": "Flashing — General (Pipe Penetrations)"
+        },
+        "description": "Pipe boot/jack",
+        "irc_code": "UCC R905.2.8",
+        "qty": 1,
+        "supplement_argument": "Pipe jack flashing is code-required at every roof penetration. When roofing is replaced, all pipe boots must be replaced — reusing old pipe boots on new roofing is a code violation.",
+        "unit": "EA",
+        "unit_price": 65.0
+      },
+      {
+        "category": "ROOFING",
+        "code": "RFG STP7",
+        "description": "Remove - Additional charge for steep roof 7/12-9/12",
+        "irc_code": null,
+        "qty": 35.41,
+        "supplement_argument": "Steep roof charge required per Xactimate guidelines — increased labor, safety equipment, and reduced productivity on 7/12+ slopes",
+        "trade": "roofing",
+        "unit": "SQ",
+        "unit_price": 17.5
+      },
+      {
+        "category": "ROOFING",
+        "code": "RFG STP7",
+        "description": "Additional charge for steep roof 7/12-9/12",
+        "irc_code": null,
+        "qty": 35.41,
+        "supplement_argument": "Steep roof charge required per Xactimate guidelines — increased labor, safety equipment, and reduced productivity on 7/12+ slopes",
+        "trade": "roofing",
+        "unit": "SQ",
+        "unit_price": 62.0
+      },
+      {
+        "category": "ROOFING",
+        "code": "RFG STP10",
+        "description": "Remove - Additional charge for steep roof 10/12-12/12",
+        "irc_code": null,
+        "qty": 24.09,
+        "supplement_argument": null,
+        "trade": "roofing",
+        "unit": "SQ",
+        "unit_price": 27.5
+      },
+      {
+        "category": "ROOFING",
+        "code": "RFG STP10",
+        "description": "Additional charge for steep roof 10/12-12/12",
+        "irc_code": null,
+        "qty": 24.09,
+        "supplement_argument": null,
+        "trade": "roofing",
+        "unit": "SQ",
+        "unit_price": 98.0
+      },
+      {
+        "category": "ROOFING",
+        "code": "RFG HIGH",
+        "description": "Remove - Additional charge for high roof (2+ stories)",
+        "irc_code": null,
+        "qty": 60.73,
+        "supplement_argument": "High roof charge required per Xactimate guidelines — additional labor for material staging, safety, and reduced productivity at height",
+        "trade": "roofing",
+        "unit": "SQ",
+        "unit_price": 7.1
+      },
+      {
+        "category": "ROOFING",
+        "code": "RFG HIGH",
+        "description": "Additional charge for high roof (2+ stories)",
+        "irc_code": null,
+        "qty": 60.73,
+        "supplement_argument": "High roof charge required per Xactimate guidelines — additional labor for material staging, safety, and reduced productivity at height",
+        "trade": "roofing",
+        "unit": "SQ",
+        "unit_price": 29.5
+      },
+      {
+        "category": "ROOFING",
+        "code": null,
+        "description": "Roofer - per hour (labor minimum)",
+        "irc_code": null,
+        "qty": 8,
+        "supplement_argument": "8 hours roofer labor mandatory on every roofing estimate per industry standard",
+        "trade": "roofing",
+        "unit": "HR",
+        "unit_price": 188.0
+      },
+      {
+        "category": "ROOFING",
+        "code": null,
+        "description": "Equipment operator",
+        "irc_code": null,
+        "qty": 1,
+        "supplement_argument": null,
+        "trade": "roofing",
+        "unit": "EA",
+        "unit_price": 435.0
+      },
+      {
+        "category": "DEBRIS",
+        "description": "Dumpster load - roofing debris",
+        "qty": 1,
+        "unit": "EA",
+        "unit_price": 825.0
+      },
+      {
+        "category": "ROOFING",
+        "description": "Valley metal - (W) profile ",
+        "qty": 226.71,
+        "source": "user_added",
+        "unit": "EA",
+        "unit_price": 9.16
+      },
+      {
+        "category": "ROOFING",
+        "description": "Detach & Reset Gutter / downspout - aluminum - 6\"",
+        "qty": 559.0,
+        "source": "user_added",
+        "unit": "EA",
+        "unit_price": 5.97
+      }
+    ],
+    "measurements": {
+      "drip_edge": 475,
+      "eave": 360,
+      "flashing": 35,
+      "hip": 308,
+      "rake": 115,
+      "ridge": 140,
+      "step_flashing": 106,
+      "valley": 248
+    },
+    "phase": "post-scope",
+    "photo_annotations": {
+      "p03_01": "Overview of lower addition showing architectural shingles, two skylights, and solar attic fan; no missing shingles visible from grade.",
+      "p03_02": "Upper slope synthetic slate with solar attic fan; skylight visible with plumbing vent boot — individual shingle displacement noted near ridge.",
+      "p03_03": "Wind-displaced shingle tab at wall-to-roof junction — tab folded over gutter edge exposing underlayment, confirming recent wind event.",
+      "p04_01": "Gutter trough filled with granule wash and standing water; heavy granule loss confirms widespread shingle seal degradation from wind cycling.",
+      "p04_02": "Upper main roof synthetic slate shingles with solar attic fan; scattered tab displacement visible across field confirming wind stress pattern.",
+      "p04_03": "Missing shingle tab near ridge exposes underlayment; adjacent tabs show broken seals and lifted edges from wind.",
+      "p05_01": "Wind crease visible as sharp horizontal fold line at nail line; granule disruption concentrated at crease.",
+      "p05_02": "Lifted shingle tab reveals clean broken seal strip with no adhesive degradation — wind-caused mechanical separation.",
+      "p05_03": "Missing shingle tab mid-slope exposes dark underlayment; surrounding tabs intact — directional wind removal.",
+      "p06_01": "Duplicate of photo 9 confirming missing tab location; no nail rust visible at exposed area — recent loss.",
+      "p06_02": "Missing shingle tab near eave edge exposes black underlayment; surrounding tabs show broken seal strips from wind.",
+      "p06_03": "Same slope wide view confirms missing tab location; directional wind damage pattern on this face.",
+      "p07_01": "Missing shingle tab mid-slope exposes underlayment; solar attic fan visible at ridge. Rust-free area confirms recent loss.",
+      "p07_02": "Two missing tabs adjacent to skylight and plumbing boot expose underlayment; wind funneling at penetrations caused failure.",
+      "p07_03": "Full skylight view shows missing tabs on downslope side; plumbing boot flashing intact but shingle damage surrounds penetrations.",
+      "p08_01": "Missing shingle mid-slope exposes underlayment — wind displacement confirmed. Skylight visible at lower right."
+    },
+    "photo_integrity": {
+      "flagged": 0,
+      "score": "100%",
+      "stamp": "PHOTO INTEGRITY VERIFIED — 100% | 16 photos analyzed, 0 flagged for manipulation indicators | DumbRoof.AI Fraud Detection Engine",
+      "summary": "All 16 photos appear authentic with no signs of digital manipulation, staged damage, or misrepresentation. The roof shows legitimate age-related wear including granule loss, along with wind damage evidenced by multiple missing or lifted shingle tabs with natural tear patterns and exposed adhesive strips. Duplicate/near-duplicate photos (9-10, 11-12) appear to be standard documentation practice of the same damage from slightly different moments rather than recycled photos from a different property. No tool marks, BB gun impacts, artificial gouging, Photoshop artifacts, or cloned regions were detected.",
+      "total_analyzed": 16
+    },
+    "photo_map": {
+      "p03_01": "image000000.JPG",
+      "p03_02": "image000001.JPG",
+      "p03_03": "image000002.JPG",
+      "p04_01": "image000003.JPG",
+      "p04_02": "image000004.JPG",
+      "p04_03": "20260310_111420.JPG",
+      "p05_01": "20260310_112233.JPG",
+      "p05_02": "20260310_112235.JPG",
+      "p05_03": "20260310_112401_2.JPG",
+      "p06_01": "20260310_112401.JPG",
+      "p06_02": "20260310_112402_2.JPG",
+      "p06_03": "20260310_112402.JPG",
+      "p07_01": "20260310_112406.JPG",
+      "p07_02": "20260310_112501.JPG",
+      "p07_03": "20260310_112502.JPG",
+      "p08_01": "20260310_112503.JPG"
+    },
+    "photo_sections": [
+      {
+        "photos": [
+          [
+            "p03_01",
+            3,
+            1
+          ],
+          [
+            "p03_02",
+            3,
+            2
+          ],
+          [
+            "p03_03",
+            3,
+            3
+          ],
+          [
+            "p04_01",
+            4,
+            1
+          ],
+          [
+            "p04_02",
+            4,
+            2
+          ],
+          [
+            "p04_03",
+            4,
+            3
+          ],
+          [
+            "p05_01",
+            5,
+            1
+          ],
+          [
+            "p05_02",
+            5,
+            2
+          ],
+          [
+            "p05_03",
+            5,
+            3
+          ],
+          [
+            "p06_01",
+            6,
+            1
+          ],
+          [
+            "p06_02",
+            6,
+            2
+          ],
+          [
+            "p06_03",
+            6,
+            3
+          ],
+          [
+            "p07_01",
+            7,
+            1
+          ],
+          [
+            "p07_02",
+            7,
+            2
+          ],
+          [
+            "p07_03",
+            7,
+            3
+          ],
+          [
+            "p08_01",
+            8,
+            1
+          ]
+        ],
+        "title": "Damage Documentation"
+      }
+    ],
+    "price_deviations": [
+      {
+        "benchmark_price": 7.1,
+        "carrier_price": 140.1,
+        "description": "Additional charge for steep roof greater than 12/12 slope",
+        "deviation_pct": 1873.2,
+        "direction": "over"
+      },
+      {
+        "benchmark_price": 12.94,
+        "carrier_price": 230.62,
+        "description": "R&R Skylight step flashing kit - 5.1-12 sf",
+        "deviation_pct": 1682.7,
+        "direction": "over"
+      },
+      {
+        "benchmark_price": 7.1,
+        "carrier_price": 107.38,
+        "description": "Additional charge for steep roof - 10/12 - 12/12 slope",
+        "deviation_pct": 1412.4,
+        "direction": "over"
+      },
+      {
+        "benchmark_price": 7.1,
+        "carrier_price": 68.3,
+        "description": "Additional charge for steep roof - 7/12 to 9/12 slope",
+        "deviation_pct": 862.0,
+        "direction": "over"
+      },
+      {
+        "benchmark_price": 80.19,
+        "carrier_price": 510.27,
+        "description": "Laminated - Slate look comp. shingle - w/out felt",
+        "deviation_pct": 536.4,
+        "direction": "over"
+      },
+      {
+        "benchmark_price": 7.1,
+        "carrier_price": 38.72,
+        "description": "Remove Additional charge for steep roof greater than 12/12 slope",
+        "deviation_pct": 445.4,
+        "direction": "over"
+      },
+      {
+        "benchmark_price": 7.1,
+        "carrier_price": 32.45,
+        "description": "Additional charge for high roof (2 stories or greater)",
+        "deviation_pct": 357.0,
+        "direction": "over"
+      },
+      {
+        "benchmark_price": 7.1,
+        "carrier_price": 30.2,
+        "description": "Remove Additional charge for steep roof - 10/12 - 12/12 slope",
+        "deviation_pct": 325.4,
+        "direction": "over"
+      },
+      {
+        "benchmark_price": 7.1,
+        "carrier_price": 19.23,
+        "description": "Remove Additional charge for steep roof - 7/12 to 9/12 slope",
+        "deviation_pct": 170.8,
+        "direction": "over"
+      },
+      {
+        "benchmark_price": 329.57,
+        "carrier_price": 65.75,
+        "description": "Roofing felt - synthetic underlayment",
+        "deviation_pct": -80.0,
+        "direction": "under"
+      },
+      {
+        "benchmark_price": 10.48,
+        "carrier_price": 15.73,
+        "description": "R&R Continuous ridge vent - shingle-over style",
+        "deviation_pct": 50.1,
+        "direction": "over"
+      },
+      {
+        "benchmark_price": 11.32,
+        "carrier_price": 5.97,
+        "description": "Detach & Reset Gutter / downspout - aluminum - 6\"",
+        "deviation_pct": -47.3,
+        "direction": "under"
+      },
+      {
+        "benchmark_price": 10.81,
+        "carrier_price": 8.87,
+        "description": "Hip / Ridge cap - High profile - composition shingles",
+        "deviation_pct": -17.9,
+        "direction": "under"
+      }
+    ],
+    "property": {
+      "address": "5 Georgetown Cir, Newtown, PA 18940, USA",
+      "city": "Newtown",
+      "state": "PA",
+      "year_built_OPTIONAL": null,
+      "zip": "18940"
+    },
+    "roof_facets": {
+      "north_arrow_angle": 315,
+      "roof_facets": [
+        {
+          "area_pct": 2.09,
+          "cardinal": "S",
+          "facet_id": "AB",
+          "pitch": "12/12",
+          "polygon_pixels": [
+            [
+              168,
+              295
+            ],
+            [
+              218,
+              295
+            ],
+            [
+              248,
+              345
+            ],
+            [
+              168,
+              345
+            ]
+          ]
+        },
+        {
+          "area_pct": 0.13,
+          "cardinal": "N",
+          "facet_id": "R",
+          "pitch": "12/12",
+          "polygon_pixels": [
+            [
+              273,
+              280
+            ],
+            [
+              285,
+              280
+            ],
+            [
+              285,
+              295
+            ],
+            [
+              273,
+              295
+            ]
+          ]
+        },
+        {
+          "area_pct": 0.13,
+          "cardinal": "W",
+          "facet_id": "I",
+          "pitch": "12/12",
+          "polygon_pixels": [
+            [
+              273,
+              295
+            ],
+            [
+              285,
+              295
+            ],
+            [
+              285,
+              310
+            ],
+            [
+              273,
+              310
+            ]
+          ]
+        },
+        {
+          "area_pct": 0.13,
+          "cardinal": "E",
+          "facet_id": "J",
+          "pitch": "12/12",
+          "polygon_pixels": [
+            [
+              285,
+              280
+            ],
+            [
+              300,
+              280
+            ],
+            [
+              300,
+              295
+            ],
+            [
+              285,
+              295
+            ]
+          ]
+        },
+        {
+          "area_pct": 6.57,
+          "cardinal": "S",
+          "facet_id": "AJ",
+          "pitch": "9/12",
+          "polygon_pixels": [
+            [
+              300,
+              280
+            ],
+            [
+              420,
+              280
+            ],
+            [
+              420,
+              345
+            ],
+            [
+              300,
+              345
+            ]
+          ]
+        },
+        {
+          "area_pct": 0.13,
+          "cardinal": "N",
+          "facet_id": "Q",
+          "pitch": "12/12",
+          "polygon_pixels": [
+            [
+              465,
+              275
+            ],
+            [
+              478,
+              275
+            ],
+            [
+              478,
+              290
+            ],
+            [
+              465,
+              290
+            ]
+          ]
+        },
+        {
+          "area_pct": 0.13,
+          "cardinal": "W",
+          "facet_id": "H",
+          "pitch": "12/12",
+          "polygon_pixels": [
+            [
+              465,
+              290
+            ],
+            [
+              478,
+              290
+            ],
+            [
+              478,
+              305
+            ],
+            [
+              465,
+              305
+            ]
+          ]
+        },
+        {
+          "area_pct": 0.3,
+          "cardinal": "E",
+          "facet_id": "G",
+          "pitch": "12/12",
+          "polygon_pixels": [
+            [
+              478,
+              275
+            ],
+            [
+              498,
+              275
+            ],
+            [
+              498,
+              305
+            ],
+            [
+              478,
+              305
+            ]
+          ]
+        },
+        {
+          "area_pct": 4.35,
+          "cardinal": "SE",
+          "facet_id": "AE",
+          "pitch": "9/12",
+          "polygon_pixels": [
+            [
+              498,
+              285
+            ],
+            [
+              570,
+              285
+            ],
+            [
+              570,
+              355
+            ],
+            [
+              498,
+              355
+            ]
+          ]
+        },
+        {
+          "area_pct": 0.25,
+          "cardinal": "N",
+          "facet_id": "M",
+          "pitch": "12/12",
+          "polygon_pixels": [
+            [
+              530,
+              355
+            ],
+            [
+              555,
+              355
+            ],
+            [
+              555,
+              370
+            ],
+            [
+              530,
+              370
+            ]
+          ]
+        },
+        {
+          "area_pct": 0.43,
+          "cardinal": "E",
+          "facet_id": "S",
+          "pitch": "12/12",
+          "polygon_pixels": [
+            [
+              555,
+              355
+            ],
+            [
+              575,
+              355
+            ],
+            [
+              575,
+              380
+            ],
+            [
+              555,
+              380
+            ]
+          ]
+        },
+        {
+          "area_pct": 0.25,
+          "cardinal": "S",
+          "facet_id": "L",
+          "pitch": "12/12",
+          "polygon_pixels": [
+            [
+              530,
+              380
+            ],
+            [
+              555,
+              380
+            ],
+            [
+              555,
+              395
+            ],
+            [
+              530,
+              395
+            ]
+          ]
+        },
+        {
+          "area_pct": 0.86,
+          "cardinal": "W",
+          "facet_id": "U",
+          "pitch": "12/12",
+          "polygon_pixels": [
+            [
+              450,
+              395
+            ],
+            [
+              520,
+              395
+            ],
+            [
+              520,
+              430
+            ],
+            [
+              450,
+              430
+            ]
+          ]
+        },
+        {
+          "area_pct": 12.55,
+          "cardinal": "W",
+          "facet_id": "AN",
+          "pitch": "9/12",
+          "polygon_pixels": [
+            [
+              168,
+              345
+            ],
+            [
+              340,
+              345
+            ],
+            [
+              340,
+              470
+            ],
+            [
+              168,
+              470
+            ]
+          ]
+        },
+        {
+          "area_pct": 5.7,
+          "cardinal": "S",
+          "facet_id": "AI",
+          "pitch": "12/12",
+          "polygon_pixels": [
+            [
+              168,
+              470
+            ],
+            [
+              310,
+              470
+            ],
+            [
+              310,
+              530
+            ],
+            [
+              168,
+              530
+            ]
+          ]
+        },
+        {
+          "area_pct": 10.66,
+          "cardinal": "E",
+          "facet_id": "AM",
+          "pitch": "9/12",
+          "polygon_pixels": [
+            [
+              340,
+              395
+            ],
+            [
+              520,
+              395
+            ],
+            [
+              520,
+              530
+            ],
+            [
+              340,
+              530
+            ]
+          ]
+        },
+        {
+          "area_pct": 5.1,
+          "cardinal": "W",
+          "facet_id": "AH",
+          "pitch": "12/12",
+          "polygon_pixels": [
+            [
+              168,
+              530
+            ],
+            [
+              310,
+              530
+            ],
+            [
+              310,
+              595
+            ],
+            [
+              168,
+              595
+            ]
+          ]
+        },
+        {
+          "area_pct": 1.0,
+          "cardinal": "N",
+          "facet_id": "AA",
+          "pitch": "12/12",
+          "polygon_pixels": [
+            [
+              260,
+              595
+            ],
+            [
+              310,
+              595
+            ],
+            [
+              310,
+              618
+            ],
+            [
+              260,
+              618
+            ]
+          ]
+        },
+        {
+          "area_pct": 1.28,
+          "cardinal": "W",
+          "facet_id": "X",
+          "pitch": "12/12",
+          "polygon_pixels": [
+            [
+              195,
+              618
+            ],
+            [
+              250,
+              618
+            ],
+            [
+              250,
+              650
+            ],
+            [
+              195,
+              650
+            ]
+          ]
+        },
+        {
+          "area_pct": 0.84,
+          "cardinal": "N",
+          "facet_id": "T",
+          "pitch": "9/12",
+          "polygon_pixels": [
+            [
+              390,
+              595
+            ],
+            [
+              450,
+              595
+            ],
+            [
+              450,
+              625
+            ],
+            [
+              390,
+              625
+            ]
+          ]
+        },
+        {
+          "area_pct": 0.1,
+          "cardinal": "N",
+          "facet_id": "E",
+          "pitch": "12/12",
+          "polygon_pixels": [
+            [
+              530,
+              595
+            ],
+            [
+              550,
+              595
+            ],
+            [
+              550,
+              610
+            ],
+            [
+              530,
+              610
+            ]
+          ]
+        },
+        {
+          "area_pct": 0.26,
+          "cardinal": "E",
+          "facet_id": "N",
+          "pitch": "12/12",
+          "polygon_pixels": [
+            [
+              540,
+              610
+            ],
+            [
+              560,
+              610
+            ],
+            [
+              560,
+              635
+            ],
+            [
+              540,
+              635
+            ]
+          ]
+        },
+        {
+          "area_pct": 0.1,
+          "cardinal": "S",
+          "facet_id": "F",
+          "pitch": "12/12",
+          "polygon_pixels": [
+            [
+              530,
+              635
+            ],
+            [
+              550,
+              635
+            ],
+            [
+              550,
+              650
+            ],
+            [
+              530,
+              650
+            ]
+          ]
+        },
+        {
+          "area_pct": 1.3,
+          "cardinal": "S",
+          "facet_id": "Y",
+          "pitch": "12/12",
+          "polygon_pixels": [
+            [
+              195,
+              650
+            ],
+            [
+              268,
+              650
+            ],
+            [
+              268,
+              680
+            ],
+            [
+              195,
+              680
+            ]
+          ]
+        },
+        {
+          "area_pct": 13.58,
+          "cardinal": "W",
+          "facet_id": "AO",
+          "pitch": "9/12",
+          "polygon_pixels": [
+            [
+              268,
+              618
+            ],
+            [
+              440,
+              618
+            ],
+            [
+              440,
+              710
+            ],
+            [
+              268,
+              710
+            ]
+          ]
+        },
+        {
+          "area_pct": 6.69,
+          "cardinal": "E",
+          "facet_id": "AL",
+          "pitch": "9/12",
+          "polygon_pixels": [
+            [
+              440,
+              618
+            ],
+            [
+              540,
+              618
+            ],
+            [
+              540,
+              710
+            ],
+            [
+              440,
+              710
+            ]
+          ]
+        },
+        {
+          "area_pct": 1.0,
+          "cardinal": "W",
+          "facet_id": "Z",
+          "pitch": "12/12",
+          "polygon_pixels": [
+            [
+              195,
+              680
+            ],
+            [
+              268,
+              680
+            ],
+            [
+              268,
+              715
+            ],
+            [
+              195,
+              715
+            ]
+          ]
+        },
+        {
+          "area_pct": 2.6,
+          "cardinal": "S",
+          "facet_id": "AD",
+          "pitch": "12/12",
+          "polygon_pixels": [
+            [
+              440,
+              710
+            ],
+            [
+              540,
+              710
+            ],
+            [
+              540,
+              755
+            ],
+            [
+              440,
+              755
+            ]
+          ]
+        },
+        {
+          "area_pct": 0.91,
+          "cardinal": "E",
+          "facet_id": "V",
+          "pitch": "12/12",
+          "polygon_pixels": [
+            [
+              540,
+              710
+            ],
+            [
+              575,
+              710
+            ],
+            [
+              575,
+              755
+            ],
+            [
+              540,
+              755
+            ]
+          ]
+        },
+        {
+          "area_pct": 0.25,
+          "cardinal": "N",
+          "facet_id": "O",
+          "pitch": "12/12",
+          "polygon_pixels": [
+            [
+              248,
+              720
+            ],
+            [
+              270,
+              720
+            ],
+            [
+              270,
+              740
+            ],
+            [
+              248,
+              740
+            ]
+          ]
+        },
+        {
+          "area_pct": 0.08,
+          "cardinal": "E",
+          "facet_id": "C",
+          "pitch": "3/12",
+          "polygon_pixels": [
+            [
+              270,
+              720
+            ],
+            [
+              285,
+              720
+            ],
+            [
+              285,
+              740
+            ],
+            [
+              270,
+              740
+            ]
+          ]
+        },
+        {
+          "area_pct": 0.82,
+          "cardinal": "W",
+          "facet_id": "W",
+          "pitch": "3/12",
+          "polygon_pixels": [
+            [
+              235,
+              740
+            ],
+            [
+              270,
+              740
+            ],
+            [
+              270,
+              775
+            ],
+            [
+              235,
+              775
+            ]
+          ]
+        },
+        {
+          "area_pct": 0.08,
+          "cardinal": "E",
+          "facet_id": "D",
+          "pitch": "3/12",
+          "polygon_pixels": [
+            [
+              270,
+              740
+            ],
+            [
+              285,
+              740
+            ],
+            [
+              285,
+              775
+            ],
+            [
+              270,
+              775
+            ]
+          ]
+        },
+        {
+          "area_pct": 0.25,
+          "cardinal": "S",
+          "facet_id": "P",
+          "pitch": "12/12",
+          "polygon_pixels": [
+            [
+              248,
+              775
+            ],
+            [
+              270,
+              775
+            ],
+            [
+              270,
+              795
+            ],
+            [
+              248,
+              795
+            ]
+          ]
+        },
+        {
+          "area_pct": 7.56,
+          "cardinal": "E",
+          "facet_id": "AK",
+          "pitch": "9/12",
+          "polygon_pixels": [
+            [
+              380,
+              755
+            ],
+            [
+              540,
+              755
+            ],
+            [
+              540,
+              845
+            ],
+            [
+              380,
+              845
+            ]
+          ]
+        },
+        {
+          "area_pct": 4.36,
+          "cardinal": "W",
+          "facet_id": "AF",
+          "pitch": "9/12",
+          "polygon_pixels": [
+            [
+              268,
+              830
+            ],
+            [
+              400,
+              830
+            ],
+            [
+              400,
+              895
+            ],
+            [
+              268,
+              895
+            ]
+          ]
+        },
+        {
+          "area_pct": 4.36,
+          "cardinal": "E",
+          "facet_id": "AG",
+          "pitch": "9/12",
+          "polygon_pixels": [
+            [
+              400,
+              830
+            ],
+            [
+              530,
+              830
+            ],
+            [
+              530,
+              895
+            ],
+            [
+              400,
+              895
+            ]
+          ]
+        },
+        {
+          "area_pct": 0.07,
+          "cardinal": "N",
+          "facet_id": "A",
+          "pitch": "12/12",
+          "polygon_pixels": [
+            [
+              540,
+              845
+            ],
+            [
+              558,
+              845
+            ],
+            [
+              558,
+              858
+            ],
+            [
+              540,
+              858
+            ]
+          ]
+        },
+        {
+          "area_pct": 0.21,
+          "cardinal": "E",
+          "facet_id": "K",
+          "pitch": "12/12",
+          "polygon_pixels": [
+            [
+              545,
+              858
+            ],
+            [
+              565,
+              858
+            ],
+            [
+              565,
+              878
+            ],
+            [
+              545,
+              878
+            ]
+          ]
+        },
+        {
+          "area_pct": 0.07,
+          "cardinal": "S",
+          "facet_id": "B",
+          "pitch": "12/12",
+          "polygon_pixels": [
+            [
+              540,
+              878
+            ],
+            [
+              558,
+              878
+            ],
+            [
+              558,
+              892
+            ],
+            [
+              540,
+              892
+            ]
+          ]
+        },
+        {
+          "area_pct": 2.35,
+          "cardinal": "S",
+          "facet_id": "AC",
+          "pitch": "12/12",
+          "polygon_pixels": [
+            [
+              320,
+              895
+            ],
+            [
+              480,
+              895
+            ],
+            [
+              480,
+              945
+            ],
+            [
+              320,
+              945
+            ]
+          ]
+        }
+      ],
+      "scale_bar": null
+    },
+    "scope": {
+      "o_and_p": false,
+      "trades": [
+        "Roofing"
+      ]
+    },
+    "scope_revisions": [
+      {
+        "argument_mapping": [],
+        "items_added": [],
+        "items_added_count": 0,
+        "items_increased": [],
+        "items_increased_count": 0,
+        "items_removed": [],
+        "items_still_missing_count": 0,
+        "movement": 0.0,
+        "movement_pct": 0.0,
+        "new_rcv": 63823.93,
+        "previous_rcv": 63823.93,
+        "revision_date": "2026-04-27"
+      }
+    ],
+    "settlement_prediction": {
+      "confidence": "low",
+      "data_points": 1,
+      "message": "Only 1 similar claims — prediction unreliable"
+    },
+    "slope_damage": [
+      {
+        "area_pct": 2.09,
+        "cardinal": "S",
+        "damage_photos": 0,
+        "dominant_damage_type": null,
+        "facet_id": "AB",
+        "pitch": "12/12",
+        "total_photos": 0,
+        "weighted_damage_pct": 0.0
+      },
+      {
+        "area_pct": 0.13,
+        "cardinal": "N",
+        "damage_photos": 0,
+        "dominant_damage_type": null,
+        "facet_id": "R",
+        "pitch": "12/12",
+        "total_photos": 0,
+        "weighted_damage_pct": 0.0
+      },
+      {
+        "area_pct": 0.13,
+        "cardinal": "W",
+        "damage_photos": 0,
+        "dominant_damage_type": null,
+        "facet_id": "I",
+        "pitch": "12/12",
+        "total_photos": 0,
+        "weighted_damage_pct": 0.0
+      },
+      {
+        "area_pct": 0.13,
+        "cardinal": "E",
+        "damage_photos": 0,
+        "dominant_damage_type": null,
+        "facet_id": "J",
+        "pitch": "12/12",
+        "total_photos": 0,
+        "weighted_damage_pct": 0.0
+      },
+      {
+        "area_pct": 6.57,
+        "cardinal": "S",
+        "damage_photos": 0,
+        "dominant_damage_type": null,
+        "facet_id": "AJ",
+        "pitch": "9/12",
+        "total_photos": 0,
+        "weighted_damage_pct": 0.0
+      },
+      {
+        "area_pct": 0.13,
+        "cardinal": "N",
+        "damage_photos": 0,
+        "dominant_damage_type": null,
+        "facet_id": "Q",
+        "pitch": "12/12",
+        "total_photos": 0,
+        "weighted_damage_pct": 0.0
+      },
+      {
+        "area_pct": 0.13,
+        "cardinal": "W",
+        "damage_photos": 0,
+        "dominant_damage_type": null,
+        "facet_id": "H",
+        "pitch": "12/12",
+        "total_photos": 0,
+        "weighted_damage_pct": 0.0
+      },
+      {
+        "area_pct": 0.3,
+        "cardinal": "E",
+        "damage_photos": 0,
+        "dominant_damage_type": null,
+        "facet_id": "G",
+        "pitch": "12/12",
+        "total_photos": 0,
+        "weighted_damage_pct": 0.0
+      },
+      {
+        "area_pct": 4.35,
+        "cardinal": "SE",
+        "damage_photos": 0,
+        "dominant_damage_type": null,
+        "facet_id": "AE",
+        "pitch": "9/12",
+        "total_photos": 0,
+        "weighted_damage_pct": 0.0
+      },
+      {
+        "area_pct": 0.25,
+        "cardinal": "N",
+        "damage_photos": 0,
+        "dominant_damage_type": null,
+        "facet_id": "M",
+        "pitch": "12/12",
+        "total_photos": 0,
+        "weighted_damage_pct": 0.0
+      },
+      {
+        "area_pct": 0.43,
+        "cardinal": "E",
+        "damage_photos": 0,
+        "dominant_damage_type": null,
+        "facet_id": "S",
+        "pitch": "12/12",
+        "total_photos": 0,
+        "weighted_damage_pct": 0.0
+      },
+      {
+        "area_pct": 0.25,
+        "cardinal": "S",
+        "damage_photos": 0,
+        "dominant_damage_type": null,
+        "facet_id": "L",
+        "pitch": "12/12",
+        "total_photos": 0,
+        "weighted_damage_pct": 0.0
+      },
+      {
+        "area_pct": 0.86,
+        "cardinal": "W",
+        "damage_photos": 0,
+        "dominant_damage_type": null,
+        "facet_id": "U",
+        "pitch": "12/12",
+        "total_photos": 0,
+        "weighted_damage_pct": 0.0
+      },
+      {
+        "area_pct": 12.55,
+        "cardinal": "W",
+        "damage_photos": 0,
+        "dominant_damage_type": null,
+        "facet_id": "AN",
+        "pitch": "9/12",
+        "total_photos": 0,
+        "weighted_damage_pct": 0.0
+      },
+      {
+        "area_pct": 5.7,
+        "cardinal": "S",
+        "damage_photos": 0,
+        "dominant_damage_type": null,
+        "facet_id": "AI",
+        "pitch": "12/12",
+        "total_photos": 0,
+        "weighted_damage_pct": 0.0
+      },
+      {
+        "area_pct": 10.66,
+        "cardinal": "E",
+        "damage_photos": 0,
+        "dominant_damage_type": null,
+        "facet_id": "AM",
+        "pitch": "9/12",
+        "total_photos": 0,
+        "weighted_damage_pct": 0.0
+      },
+      {
+        "area_pct": 5.1,
+        "cardinal": "W",
+        "damage_photos": 0,
+        "dominant_damage_type": null,
+        "facet_id": "AH",
+        "pitch": "12/12",
+        "total_photos": 0,
+        "weighted_damage_pct": 0.0
+      },
+      {
+        "area_pct": 1.0,
+        "cardinal": "N",
+        "damage_photos": 0,
+        "dominant_damage_type": null,
+        "facet_id": "AA",
+        "pitch": "12/12",
+        "total_photos": 0,
+        "weighted_damage_pct": 0.0
+      },
+      {
+        "area_pct": 1.28,
+        "cardinal": "W",
+        "damage_photos": 0,
+        "dominant_damage_type": null,
+        "facet_id": "X",
+        "pitch": "12/12",
+        "total_photos": 0,
+        "weighted_damage_pct": 0.0
+      },
+      {
+        "area_pct": 0.84,
+        "cardinal": "N",
+        "damage_photos": 0,
+        "dominant_damage_type": null,
+        "facet_id": "T",
+        "pitch": "9/12",
+        "total_photos": 0,
+        "weighted_damage_pct": 0.0
+      },
+      {
+        "area_pct": 0.1,
+        "cardinal": "N",
+        "damage_photos": 0,
+        "dominant_damage_type": null,
+        "facet_id": "E",
+        "pitch": "12/12",
+        "total_photos": 0,
+        "weighted_damage_pct": 0.0
+      },
+      {
+        "area_pct": 0.26,
+        "cardinal": "E",
+        "damage_photos": 0,
+        "dominant_damage_type": null,
+        "facet_id": "N",
+        "pitch": "12/12",
+        "total_photos": 0,
+        "weighted_damage_pct": 0.0
+      },
+      {
+        "area_pct": 0.1,
+        "cardinal": "S",
+        "damage_photos": 0,
+        "dominant_damage_type": null,
+        "facet_id": "F",
+        "pitch": "12/12",
+        "total_photos": 0,
+        "weighted_damage_pct": 0.0
+      },
+      {
+        "area_pct": 1.3,
+        "cardinal": "S",
+        "damage_photos": 0,
+        "dominant_damage_type": null,
+        "facet_id": "Y",
+        "pitch": "12/12",
+        "total_photos": 0,
+        "weighted_damage_pct": 0.0
+      },
+      {
+        "area_pct": 13.58,
+        "cardinal": "W",
+        "damage_photos": 0,
+        "dominant_damage_type": null,
+        "facet_id": "AO",
+        "pitch": "9/12",
+        "total_photos": 0,
+        "weighted_damage_pct": 0.0
+      },
+      {
+        "area_pct": 6.69,
+        "cardinal": "E",
+        "damage_photos": 0,
+        "dominant_damage_type": null,
+        "facet_id": "AL",
+        "pitch": "9/12",
+        "total_photos": 0,
+        "weighted_damage_pct": 0.0
+      },
+      {
+        "area_pct": 1.0,
+        "cardinal": "W",
+        "damage_photos": 0,
+        "dominant_damage_type": null,
+        "facet_id": "Z",
+        "pitch": "12/12",
+        "total_photos": 0,
+        "weighted_damage_pct": 0.0
+      },
+      {
+        "area_pct": 2.6,
+        "cardinal": "S",
+        "damage_photos": 0,
+        "dominant_damage_type": null,
+        "facet_id": "AD",
+        "pitch": "12/12",
+        "total_photos": 0,
+        "weighted_damage_pct": 0.0
+      },
+      {
+        "area_pct": 0.91,
+        "cardinal": "E",
+        "damage_photos": 0,
+        "dominant_damage_type": null,
+        "facet_id": "V",
+        "pitch": "12/12",
+        "total_photos": 0,
+        "weighted_damage_pct": 0.0
+      },
+      {
+        "area_pct": 0.25,
+        "cardinal": "N",
+        "damage_photos": 0,
+        "dominant_damage_type": null,
+        "facet_id": "O",
+        "pitch": "12/12",
+        "total_photos": 0,
+        "weighted_damage_pct": 0.0
+      },
+      {
+        "area_pct": 0.08,
+        "cardinal": "E",
+        "damage_photos": 0,
+        "dominant_damage_type": null,
+        "facet_id": "C",
+        "pitch": "3/12",
+        "total_photos": 0,
+        "weighted_damage_pct": 0.0
+      },
+      {
+        "area_pct": 0.82,
+        "cardinal": "W",
+        "damage_photos": 0,
+        "dominant_damage_type": null,
+        "facet_id": "W",
+        "pitch": "3/12",
+        "total_photos": 0,
+        "weighted_damage_pct": 0.0
+      },
+      {
+        "area_pct": 0.08,
+        "cardinal": "E",
+        "damage_photos": 0,
+        "dominant_damage_type": null,
+        "facet_id": "D",
+        "pitch": "3/12",
+        "total_photos": 0,
+        "weighted_damage_pct": 0.0
+      },
+      {
+        "area_pct": 0.25,
+        "cardinal": "S",
+        "damage_photos": 0,
+        "dominant_damage_type": null,
+        "facet_id": "P",
+        "pitch": "12/12",
+        "total_photos": 0,
+        "weighted_damage_pct": 0.0
+      },
+      {
+        "area_pct": 7.56,
+        "cardinal": "E",
+        "damage_photos": 0,
+        "dominant_damage_type": null,
+        "facet_id": "AK",
+        "pitch": "9/12",
+        "total_photos": 0,
+        "weighted_damage_pct": 0.0
+      },
+      {
+        "area_pct": 4.36,
+        "cardinal": "W",
+        "damage_photos": 0,
+        "dominant_damage_type": null,
+        "facet_id": "AF",
+        "pitch": "9/12",
+        "total_photos": 0,
+        "weighted_damage_pct": 0.0
+      },
+      {
+        "area_pct": 4.36,
+        "cardinal": "E",
+        "damage_photos": 0,
+        "dominant_damage_type": null,
+        "facet_id": "AG",
+        "pitch": "9/12",
+        "total_photos": 0,
+        "weighted_damage_pct": 0.0
+      },
+      {
+        "area_pct": 0.07,
+        "cardinal": "N",
+        "damage_photos": 0,
+        "dominant_damage_type": null,
+        "facet_id": "A",
+        "pitch": "12/12",
+        "total_photos": 0,
+        "weighted_damage_pct": 0.0
+      },
+      {
+        "area_pct": 0.21,
+        "cardinal": "E",
+        "damage_photos": 0,
+        "dominant_damage_type": null,
+        "facet_id": "K",
+        "pitch": "12/12",
+        "total_photos": 0,
+        "weighted_damage_pct": 0.0
+      },
+      {
+        "area_pct": 0.07,
+        "cardinal": "S",
+        "damage_photos": 0,
+        "dominant_damage_type": null,
+        "facet_id": "B",
+        "pitch": "12/12",
+        "total_photos": 0,
+        "weighted_damage_pct": 0.0
+      },
+      {
+        "area_pct": 2.35,
+        "cardinal": "S",
+        "damage_photos": 0,
+        "dominant_damage_type": null,
+        "facet_id": "AC",
+        "pitch": "12/12",
+        "total_photos": 0,
+        "weighted_damage_pct": 0.0
+      },
+      {
+        "area_pct": 0.0,
+        "cardinal": null,
+        "damage_photos": 0,
+        "dominant_damage_type": null,
+        "facet_id": "_unassigned",
+        "pitch": null,
+        "total_photos": 16,
+        "weighted_damage_pct": 0.0
+      }
+    ],
+    "source_docs": {
+      "companycam_pdf": "_no_companycam.pdf"
+    },
+    "structures": [
+      {
+        "age": 14,
+        "facets": 41,
+        "measurements": {
+          "drip_edge": 475,
+          "eave": 360,
+          "flashing": 35,
+          "hip": 308,
+          "rake": 115,
+          "ridge": 140,
+          "step_flashing": 106,
+          "valley": 248
+        },
+        "name": "Main Roof",
+        "pitches": [
+          {
+            "area_sf": 121.9,
+            "percent": 2,
+            "pitch": "3/12"
+          },
+          {
+            "area_sf": 29.8,
+            "percent": 0.5,
+            "pitch": "8/12"
+          },
+          {
+            "area_sf": 3511.7,
+            "percent": 57.8,
+            "pitch": "9/12"
+          },
+          {
+            "area_sf": 2409.4,
+            "percent": 39.7,
+            "pitch": "12/12"
+          }
+        ],
+        "predominant_pitch": "9/12",
+        "roof_area_sf": 6073,
+        "roof_area_sq": 60.73,
+        "shingle_type": "laminated_premium",
+        "style": "combination",
+        "waste_factor": 1.19
+      }
+    ],
+    "user_notes": "Shingle roof, replacement",
+    "weather": {
+      "hail_size": "",
+      "storm_date": "",
+      "storm_description": ""
+    }
+  }
+}

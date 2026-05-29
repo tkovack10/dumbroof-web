@@ -109,6 +109,247 @@ def _build_ground_truth(config: dict, claim: dict) -> dict:
     }
 
 
+# ==========================================================================
+# WS-0 — Forensic prevalence flags (FLAG-ONLY, MEDIUM-only detection layer)
+# ==========================================================================
+#
+# These are MEDIUM-only flags merged into qa_audit_flags. They are detection
+# scaffolding for the forensic overhaul: they surface latent data-quality and
+# narrative defects WITHOUT ever blocking delivery (they CANNOT be critical and
+# CANNOT change qa_blocked). Live-defect prevalence baseline at ship time (over
+# 192 prose claims): ZERO_SF_ROOF_WITH_MEASUREMENT=50, WRONG_STATE_CODE_LEAK=0,
+# THRESHOLD_HAIL_EXCEEDS_EVENTS=0, WIND_GE_150=0.
+#
+# Detection-superset principle ([[detection-superset-principle]]): the state-code
+# leak scan reads a SUPERSET of the prose surfaces the renderer emits, so a leak
+# in any narrative section is caught, not just the executive summary.
+
+
+def _collect_strings(*vals) -> str:
+    """Flatten nested str/list/dict values into one newline-joined text blob.
+
+    forensic_findings sections are heterogeneous: lists of strings
+    (executive_summary, conclusion_paragraphs, key_arguments) AND lists of
+    dicts ({code, requirement, status} / {title, content}). We harvest every
+    string value at any depth so the scan sees all rendered prose.
+    """
+    parts: list[str] = []
+
+    def rec(v):
+        if v is None:
+            return
+        if isinstance(v, str):
+            parts.append(v)
+        elif isinstance(v, dict):
+            for x in v.values():
+                rec(x)
+        elif isinstance(v, (list, tuple)):
+            for x in v:
+                rec(x)
+        else:
+            parts.append(str(v))
+
+    for v in vals:
+        rec(v)
+    return "\n".join(parts)
+
+
+def _forensic_superset_text(config: dict) -> str:
+    """The SUPERSET of narrative surfaces scanned for the state-code leak.
+
+    Covers executive_summary + conclusion + forensic_findings.key_arguments +
+    code_violations + critical_observations + conclusion_findings, read from
+    BOTH the canonical forensic_findings container and any top-level mirror.
+    """
+    ff = config.get("forensic_findings", {})
+    if not isinstance(ff, dict):
+        ff = {}
+    keys = (
+        "executive_summary",
+        "conclusion",
+        "conclusion_paragraphs",
+        "conclusion_findings",
+        "key_arguments",
+        "code_violations",
+        "critical_observations",
+    )
+    collected = []
+    for k in keys:
+        collected.append(ff.get(k))
+        collected.append(config.get(k))
+    return _collect_strings(*collected)
+
+
+def _to_float(x):
+    try:
+        return float(x)
+    except (TypeError, ValueError):
+        return None
+
+
+_RE_WIND_MPH = re.compile(r"(\d+(?:\.\d+)?)\s*mph", re.IGNORECASE)
+
+
+def compute_forensic_prevalence_flags(config: dict, claim: dict) -> list[dict]:
+    """Return MEDIUM-only prevalence flags for a claim's forensic config.
+
+    Every dict has severity='medium'. This function NEVER returns a critical —
+    it is a detection/telemetry layer, not a gate. Callers merge the result
+    into qa_audit_flags MEDIUM only.
+
+    Flags:
+      WRONG_STATE_CODE_LEAK         — a DIFFERENT state's code-prefix token
+                                      appears in the narrative superset while the
+                                      property is in another state.
+      ZERO_SF_ROOF_WITH_MEASUREMENT — structures[0].roof_area_sf is 0/None yet a
+                                      measurement signal is present.
+      THRESHOLD_HAIL_EXCEEDS_EVENTS — confirmed weather.noaa.max_hail_inches >
+                                      the max per-event hail magnitude (events
+                                      with magnitude_type == 'hail_inches').
+      WIND_GE_150                   — a rendered/NOAA wind speed >= 150 mph
+                                      (regex scoped to 'mph' ONLY).
+    """
+    flags: list[dict] = []
+    if not isinstance(config, dict):
+        return flags
+    claim = claim if isinstance(claim, dict) else {}
+
+    prop = config.get("property", {})
+    if not isinstance(prop, dict):
+        prop = {}
+    state = (prop.get("state") or "").strip().upper()
+    text = _forensic_superset_text(config)
+
+    # (1) WRONG_STATE_CODE_LEAK — import lazily + locally so we never create a
+    # processor import cycle (use building_codes.lookup, NOT processor).
+    if len(state) == 2:
+        try:
+            from building_codes import lookup as _codes
+
+            own_prefix = _codes.get_prefix(state)
+            for other in _codes.all_states():
+                if other == state:
+                    continue
+                other_prefix = _codes.get_prefix(other)
+                if not other_prefix or other_prefix == own_prefix:
+                    continue
+                # Token-boundary match so 'RCO' doesn't match inside a word and
+                # generic shared substrings (e.g. '-IRC') don't false-positive:
+                # we match the FULL other-state prefix as a standalone token.
+                if re.search(
+                    r"(?<![A-Za-z0-9])" + re.escape(other_prefix) + r"(?![A-Za-z0-9])",
+                    text,
+                ):
+                    flags.append({
+                        "issue": "WRONG_STATE_CODE_LEAK",
+                        "severity": "medium",
+                        "check": "forensic_prevalence",
+                        "found": other_prefix,
+                        "expected": own_prefix,
+                        "detail": (
+                            f"Narrative cites code prefix '{other_prefix}' "
+                            f"({other}) but the property is in {state} "
+                            f"(prefix '{own_prefix}')."
+                        ),
+                    })
+                    break  # one flag per claim is enough signal
+        except Exception as e:  # noqa: BLE001 — detection must never raise into the gate
+            print(f"[QA] WRONG_STATE_CODE_LEAK scan skipped: {e}")
+
+    # (2) ZERO_SF_ROOF_WITH_MEASUREMENT
+    structures = config.get("structures", [])
+    if not isinstance(structures, list):
+        structures = []
+    s0 = structures[0] if structures else {}
+    if isinstance(s0, dict):
+        roof_sf = s0.get("roof_area_sf")
+        sf_val = _to_float(roof_sf)
+        roof_zero = (sf_val is None) or (sf_val == 0)
+        measurement_signal = bool(
+            config.get("roof_facets")
+            or config.get("measurement_files")
+            or (claim.get("roof_facets") if isinstance(claim, dict) else None)
+            or (claim.get("measurement_files") if isinstance(claim, dict) else None)
+            or s0.get("eave_lf")
+            or s0.get("roof_area_sq")
+            or s0.get("facets")
+            or (len(structures) > 1 and any(
+                isinstance(st, dict) and _to_float(st.get("roof_area_sf")) for st in structures[1:]
+            ))
+        )
+        if roof_zero and measurement_signal:
+            flags.append({
+                "issue": "ZERO_SF_ROOF_WITH_MEASUREMENT",
+                "severity": "medium",
+                "check": "forensic_prevalence",
+                "found": repr(roof_sf),
+                "detail": (
+                    "structures[0].roof_area_sf is 0/None but a measurement "
+                    "signal (facets / measurement files / linear feet / sibling "
+                    "structure area) is present — the roof area likely did not "
+                    "reach the structure record."
+                ),
+            })
+
+    # (3) THRESHOLD_HAIL_EXCEEDS_EVENTS
+    weather = config.get("weather", {})
+    if not isinstance(weather, dict):
+        weather = {}
+    noaa = weather.get("noaa", {})
+    if not isinstance(noaa, dict):
+        noaa = {}
+    max_hail = _to_float(noaa.get("max_hail_inches"))
+    if max_hail and max_hail > 0:
+        per_event = []
+        for e in (noaa.get("events") or []):
+            if not isinstance(e, dict):
+                continue
+            # Per-event hail magnitude is e['magnitude'] gated on
+            # magnitude_type == 'hail_inches'. (events[].hail_size does NOT exist.)
+            if e.get("magnitude_type") == "hail_inches":
+                v = _to_float(e.get("magnitude"))
+                if v is not None:
+                    per_event.append(v)
+        if per_event and max_hail > max(per_event):
+            flags.append({
+                "issue": "THRESHOLD_HAIL_EXCEEDS_EVENTS",
+                "severity": "medium",
+                "check": "forensic_prevalence",
+                "found": max_hail,
+                "expected": max(per_event),
+                "detail": (
+                    f"Confirmed max_hail_inches={max_hail} exceeds the largest "
+                    f"per-event hail magnitude ({max(per_event)}) across NOAA "
+                    f"events — the headline threshold is not corroborated by any "
+                    f"single event."
+                ),
+            })
+
+    # (4) WIND_GE_150 — NOAA value + any 'N mph' token in the narrative
+    # (regex scoped to 'mph' ONLY so it never matches 'N miles').
+    winds = []
+    nw = _to_float(noaa.get("max_wind_mph"))
+    if nw is not None:
+        winds.append(nw)
+    for m in _RE_WIND_MPH.finditer(text):
+        v = _to_float(m.group(1))
+        if v is not None:
+            winds.append(v)
+    if winds and max(winds) >= 150:
+        flags.append({
+            "issue": "WIND_GE_150",
+            "severity": "medium",
+            "check": "forensic_prevalence",
+            "found": max(winds),
+            "detail": (
+                f"A wind speed of {max(winds)} mph (>= 150) appears in the NOAA "
+                f"data or narrative — verify it is not a transcription/units error."
+            ),
+        })
+
+    return flags
+
+
 def _build_prose_bundle(config: dict) -> dict:
     ff = config.get("forensic_findings", {}) or {}
     exec_summary = ff.get("executive_summary") or []
@@ -455,11 +696,25 @@ def audit_claim(
     else:
         prose_result = audit_forensic_prose(config, claim, claude, call_claude_fn=call_claude_fn)
 
+    # WS-0 forensic prevalence flags — MEDIUM-only detection layer. Computed
+    # unconditionally (cheap, no API cost, no DB read) and merged into MEDIUM
+    # ONLY. By construction these can never be critical, so they cannot affect
+    # `passed`, `recommendation`, or qa_blocked — pure telemetry/early-warning.
+    try:
+        prevalence_flags = compute_forensic_prevalence_flags(config, claim)
+    except Exception as e:  # noqa: BLE001 — detection must never break the audit
+        print(f"[QA] compute_forensic_prevalence_flags crashed (ignored): {e}")
+        prevalence_flags = []
+
     # Merge flag arrays. Order: prose flags first (carries the LLM's narrative
     # summary), then deterministic — keeps the human-readable audit summary
     # focused on prose issues with brand/NOAA flags appended below.
     merged_critical = list(prose_result.get("critical") or []) + pdf_result.get("critical", [])
-    merged_medium = list(prose_result.get("medium") or []) + pdf_result.get("medium", [])
+    merged_medium = (
+        list(prose_result.get("medium") or [])
+        + pdf_result.get("medium", [])
+        + prevalence_flags
+    )
     merged_low = list(prose_result.get("low") or []) + pdf_result.get("low", [])
 
     passed = len(merged_critical) == 0
@@ -502,6 +757,8 @@ def audit_claim(
             "pdf_critical": pdf_crit_count,
             "pdf_medium": len(pdf_result.get("medium", [])),
             "pdf_low": len(pdf_result.get("low", [])),
+            # WS-0 forensic prevalence flags (always MEDIUM, never blocking).
+            "forensic_prevalence_medium": len(prevalence_flags),
         },
     }
 

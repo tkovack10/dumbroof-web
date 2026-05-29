@@ -1,0 +1,2273 @@
+{
+  "_coverage": "IN forensic-only, wind-only, 3-struct (canonical Ship15 case)",
+  "claim": {
+    "address": "614 E 26th St",
+    "carrier": "Auto-Owners Insurance Company",
+    "contact_name": "Diana M Thiellen",
+    "weather_data": {
+      "event_count": 3,
+      "events": [
+        {
+          "date": "2026-04-27",
+          "distance_miles": 1.7184233620533913,
+          "event_type": "Thunderstorm Wind",
+          "hail_size": null,
+          "latitude": 40.56,
+          "location": "",
+          "longitude": -85.64,
+          "source": "SPC_DAILY",
+          "wind_speed": 81.7
+        },
+        {
+          "date": "2026-04-27",
+          "distance_miles": 16.096737682999006,
+          "event_type": "Thunderstorm Wind",
+          "hail_size": null,
+          "latitude": 40.45,
+          "location": "",
+          "longitude": -85.37,
+          "source": "SPC_DAILY",
+          "wind_speed": 70.2
+        },
+        {
+          "date": "2026-04-27",
+          "distance_miles": 20.132707161884102,
+          "event_type": "Thunderstorm Wind",
+          "hail_size": null,
+          "latitude": 40.43,
+          "location": "",
+          "longitude": -86.01,
+          "source": "SPC_DAILY",
+          "wind_speed": 80.6
+        }
+      ],
+      "max_hail_inches": 0.0,
+      "max_wind_mph": 81.7
+    }
+  },
+  "config": {
+    "appeal_letter": {
+      "demand_items": [
+        "Review the enclosed forensic documentation and revised scope of loss",
+        "Issue revised payment reflecting the full scope of documented storm-related damage",
+        "Address the line-by-line variance analysis identifying specific underpaid and omitted items",
+        "Schedule a re-inspection if additional verification is needed"
+      ],
+      "enclosed_documents": [
+        "Forensic Causation Report with annotated photography",
+        "Xactimate-format estimate at current pricing",
+        "Supplement report with line-by-line variance analysis",
+        "Formal appeal letter"
+      ],
+      "requested_actions": [
+        "Review the enclosed forensic documentation and revised scope of loss",
+        "Issue revised payment reflecting the full scope of documented storm-related damage",
+        "Address the line-by-line variance analysis identifying specific underpaid and omitted items",
+        "Schedule a re-inspection if additional verification is needed"
+      ]
+    },
+    "carrier": {
+      "adjuster_email": "",
+      "adjuster_name": "",
+      "carrier_arguments": [
+        "This is a Recap by Room summary page; individual line item details, unit prices, quantities, and Xactimate codes are not visible on this page.",
+        "Cov A - Dwelling Exterior subtotal is 19,207.05 (83.84% of total).",
+        "Cov B - Other Structures / Shed subtotal is 916.00 (4.00% of total).",
+        "Cov B - Other Structures / Carport subtotal includes 2,266.72 (9.89% of total).",
+        "Document is dated 4/25/2026, Page 11."
+      ],
+      "carrier_line_items": [
+        {
+          "carrier_amount": 0,
+          "carrier_desc": "NOT INCLUDED",
+          "carrier_qty": 0,
+          "category": "ROOFING",
+          "checklist_desc": "Remove Laminated comp. shingle rfg. - w/out felt",
+          "code_citation": {
+            "code_tag": "IRC-IN R908.3",
+            "has_warranty_void": true,
+            "jurisdiction": "Indiana Residential Code (IRC 2018 with state amendments)",
+            "manufacturer_specs": [
+              {
+                "document": "Timberline HDZ Installation Instructions",
+                "manufacturer": "GAF",
+                "requirement": "4-6 nails per shingle, ProStart starter required at eaves and rakes",
+                "warranty_text": "GAF System Plus/Silver Pledge warranty VOID without proper starter and nailing pattern",
+                "warranty_void": true
+              }
+            ],
+            "requirement": "Existing roofing materials shall be removed before applying new roofing when existing roof has two or more applications of any type of roof covering",
+            "section": "R908.3",
+            "supplement_argument": "Complete tear-off is required per code for a code-compliant installation. Overlay is not code-compliant when damage necessitates deck inspection.",
+            "title": "Reroofing — Tear-Off Requirement"
+          },
+          "ev_formula": "26.20 SQ (EagleView roof area)",
+          "ev_qty": 26.2,
+          "ev_unit": "SQ",
+          "irc_code": "IRC-IN R908.3",
+          "item": "Remove Laminated comp. shingle rfg. - w/out felt",
+          "matched_by": "missing",
+          "note": "NOT INCLUDED — Required: 26 SQ @ $66.30/SQ. Calculation: 26.20 SQ (EagleView roof area). Per IRC-IN R908.3: Existing roofing materials shall be removed before applying new roofing when existing roof has two or more applications of any type of roof covering. GAF warranty VOID: GAF System Plus/Silver Pledge warranty VOID without proper starter and nailing pattern. Complete tear-off is required per code for a code-compliant installation. Overlay is not code-compliant when damage necessitates deck inspection.",
+          "status": "missing",
+          "supplement_argument": "Complete tear-off is required per code for a code-compliant installation. Overlay is not code-compliant when damage necessitates deck inspection.",
+          "supplement_value": 1737.06,
+          "trade": "roofing",
+          "usarm_amount": 1737.06,
+          "usarm_desc": "Remove Laminated comp. shingle rfg. - w/out felt",
+          "xact_code": "RFG 300S",
+          "xact_unit_price": 66.3
+        },
+        {
+          "carrier_amount": 0,
+          "carrier_desc": "NOT INCLUDED",
+          "carrier_qty": 0,
+          "category": "ROOFING",
+          "checklist_desc": "Laminated comp. shingle rfg. - w/out felt",
+          "code_citation": {
+            "code_tag": "IRC-IN R905.1",
+            "has_warranty_void": true,
+            "jurisdiction": "Indiana Residential Code (IRC 2018 with state amendments)",
+            "manufacturer_specs": [
+              {
+                "document": "Timberline HDZ Installation Instructions",
+                "manufacturer": "GAF",
+                "requirement": "4-6 nails per shingle, ProStart starter required at eaves and rakes",
+                "warranty_text": "GAF System Plus/Silver Pledge warranty VOID without proper starter and nailing pattern",
+                "warranty_void": true
+              },
+              {
+                "document": "TB-10024261 (Hail Damage Assessment)",
+                "manufacturer": "Owens Corning",
+                "requirement": "Functional damage (mat fracture, granule loss exposing substrate) = full replacement",
+                "warranty_text": "",
+                "warranty_void": false
+              },
+              {
+                "document": "TIS #130 (Hail Damage Assessment)",
+                "manufacturer": "CertainTeed",
+                "requirement": "Mat fracture from hail impact = functional damage requiring replacement",
+                "warranty_text": "",
+                "warranty_void": false
+              },
+              {
+                "document": "Detecting Hail Damage to Asphalt Shingles",
+                "manufacturer": "Atlas",
+                "requirement": "Systematic hail damage assessment criteria for functional vs cosmetic",
+                "warranty_text": "",
+                "warranty_void": false
+              }
+            ],
+            "requirement": "Roofing shall be applied in accordance with manufacturer's installation instructions. Manufacturer instructions carry the force of building code.",
+            "section": "R905.1",
+            "supplement_argument": "Per R905.1, manufacturer installation instructions are legally binding building code. All components specified by the manufacturer (starter, underlayment, flashing) are code-required, not optional upgrades.",
+            "title": "Manufacturer Installation Instructions = Law"
+          },
+          "ev_formula": "26.20 SQ (EagleView roof area)",
+          "ev_qty": 26.2,
+          "ev_unit": "SQ",
+          "irc_code": "R905.2",
+          "item": "Laminated comp. shingle rfg. - w/out felt",
+          "matched_by": "missing",
+          "note": "NOT INCLUDED — Required: 26 SQ @ $256.65/SQ. Calculation: 26.20 SQ (EagleView roof area). Per IRC-IN R905.1: Roofing shall be applied in accordance with manufacturer's installation instructions. Manufacturer instructions carry the force of building code.. GAF warranty VOID: GAF System Plus/Silver Pledge warranty VOID without proper starter and nailing pattern. Per R905.1, manufacturer installation instructions are legally binding building code. All components specified by the manufacturer (starter, underlayment, flashing) are code-required, not optional upgrades.",
+          "status": "missing",
+          "supplement_argument": "Per R905.1, manufacturer installation instructions are legally binding building code. All components specified by the manufacturer (starter, underlayment, flashing) are code-required, not optional upgrades.",
+          "supplement_value": 6724.23,
+          "trade": "roofing",
+          "usarm_amount": 6724.23,
+          "usarm_desc": "Laminated comp. shingle rfg. - w/out felt",
+          "xact_code": "RFG 300S",
+          "xact_unit_price": 256.65
+        },
+        {
+          "carrier_amount": 0,
+          "carrier_desc": "NOT INCLUDED",
+          "carrier_qty": 0,
+          "category": "ROOFING",
+          "checklist_desc": "Roofing felt - 15 lb.",
+          "code_citation": {
+            "code_tag": "IRC-IN R905.1.1",
+            "has_warranty_void": false,
+            "jurisdiction": "Indiana Residential Code (IRC 2018 with state amendments)",
+            "manufacturer_specs": [],
+            "requirement": "Underlayment required over entire roof deck area not covered by ice barrier",
+            "section": "R905.1.1",
+            "supplement_argument": "Underlayment is code-mandated over the entire roof deck. Areas where ice & water barrier is not installed require felt or synthetic underlayment. Omission does not meet code requirements.",
+            "title": "Underlayment Requirement"
+          },
+          "ev_formula": "((26.20 × 100) − 1209) / 100 = 14.11 SQ",
+          "ev_qty": 14.11,
+          "ev_unit": "SQ",
+          "irc_code": "R905.1.1",
+          "item": "Roofing felt - 15 lb.",
+          "matched_by": "missing",
+          "note": "NOT INCLUDED — Required: 14 SQ @ $48.12/SQ. Calculation: ((26.20 × 100) − 1209) / 100 = 14.11 SQ. Per IRC-IN R905.1.1: Underlayment required over entire roof deck area not covered by ice barrier. Underlayment is code-mandated over the entire roof deck. Areas where ice & water barrier is not installed require felt or synthetic underlayment. Omission does not meet code requirements.",
+          "status": "missing",
+          "supplement_argument": "Underlayment is code-mandated over the entire roof deck. Areas where ice & water barrier is not installed require felt or synthetic underlayment. Omission does not meet code requirements.",
+          "supplement_value": 678.97,
+          "trade": "roofing",
+          "usarm_amount": 678.97,
+          "usarm_desc": "Roofing felt - 15 lb.",
+          "xact_code": "RFG FELT15",
+          "xact_unit_price": 48.12
+        },
+        {
+          "carrier_amount": 0,
+          "carrier_desc": "NOT INCLUDED",
+          "carrier_qty": 0,
+          "category": "ROOFING",
+          "checklist_desc": "Ice & water barrier",
+          "code_citation": {
+            "code_tag": "IRC-IN R905.1.2",
+            "has_warranty_void": true,
+            "jurisdiction": "Indiana Residential Code (IRC 2018 with state amendments)",
+            "manufacturer_specs": [
+              {
+                "document": "WeatherWatch Mineral-Surfaced Leak Barrier",
+                "manufacturer": "GAF",
+                "requirement": "Required at eaves, valleys, and around penetrations per GAF system requirements",
+                "warranty_text": "GAF warranty VOID without WeatherWatch/StormGuard at eaves and valleys",
+                "warranty_void": true
+              }
+            ],
+            "requirement": "Ice barrier required at eaves extending from eave edge to at least 24 inches past interior wall line, and in valleys",
+            "section": "R905.1.2",
+            "supplement_argument": "Ice & water barrier is required by code at all eaves and valleys. This is not an optional upgrade — it is a mandatory building code requirement for a code-compliant installation.",
+            "title": "Ice Barrier Requirement"
+          },
+          "ev_formula": "(Eave 188 × 6) + (Valley 26 × 3) = 1209 SF",
+          "ev_qty": 1209.24,
+          "ev_unit": "SF",
+          "irc_code": "R905.1.2",
+          "item": "Ice & water barrier",
+          "matched_by": "missing",
+          "note": "NOT INCLUDED — Required: 1209 SF @ $1.71/SF. Calculation: (Eave 188 × 6) + (Valley 26 × 3) = 1209 SF. Per IRC-IN R905.1.2: Ice barrier required at eaves extending from eave edge to at least 24 inches past interior wall line, and in valleys. GAF warranty VOID: GAF warranty VOID without WeatherWatch/StormGuard at eaves and valleys. Ice & water barrier is required by code at all eaves and valleys. This is not an optional upgrade — it is a mandatory building code requirement for a code-compliant installation. | [C001] Carrier scope has NO ice & water barrier. IRC R905.1.2 requires 0 SF minimum (0 LF eaves × 6ft + 0 LF valleys × 6ft).",
+          "status": "missing",
+          "supplement_argument": "Ice & water barrier is required by code at all eaves and valleys. This is not an optional upgrade — it is a mandatory building code requirement for a code-compliant installation.",
+          "supplement_value": 2067.8,
+          "trade": "roofing",
+          "usarm_amount": 2067.8,
+          "usarm_desc": "Ice & water barrier",
+          "xact_code": "RFG IWS",
+          "xact_unit_price": 1.71
+        },
+        {
+          "carrier_amount": 0,
+          "carrier_desc": "NOT INCLUDED",
+          "carrier_qty": 0,
+          "category": "ROOFING",
+          "checklist_desc": "Asphalt starter - universal starter course",
+          "code_citation": {
+            "code_tag": "IRC-IN R905.1",
+            "has_warranty_void": true,
+            "jurisdiction": "Indiana Residential Code (IRC 2018 with state amendments)",
+            "manufacturer_specs": [
+              {
+                "document": "Timberline HDZ Installation Instructions",
+                "manufacturer": "GAF",
+                "requirement": "4-6 nails per shingle, ProStart starter required at eaves and rakes",
+                "warranty_text": "GAF System Plus/Silver Pledge warranty VOID without proper starter and nailing pattern",
+                "warranty_void": true
+              },
+              {
+                "document": "Duration Series Install 10024264",
+                "manufacturer": "Owens Corning",
+                "requirement": "OC Starter Course required at eaves and rakes",
+                "warranty_text": "SureNail Technology warranty VOID without OC-approved starter",
+                "warranty_void": true
+              },
+              {
+                "document": "Landmark Series Installation Instructions",
+                "manufacturer": "CertainTeed",
+                "requirement": "SwiftStart starter required at eaves and rakes",
+                "warranty_text": "SureStart warranty VOID without CertainTeed-approved starter",
+                "warranty_void": true
+              }
+            ],
+            "requirement": "Starter course required at eaves and rakes per manufacturer installation instructions (R905.1 — manufacturer instructions = code)",
+            "section": "R905.1",
+            "supplement_argument": "Starter course is required by ALL major manufacturers (GAF, OC, CertainTeed). Per R905.1, manufacturer instructions carry the force of code. Omitting starter voids the manufacturer warranty.",
+            "title": "Starter Course (Manufacturer Required)"
+          },
+          "ev_formula": "Eave 188 + Rake 203 = 392 LF",
+          "ev_qty": 391.92,
+          "ev_unit": "LF",
+          "irc_code": "IRC-IN R905.1",
+          "item": "Asphalt starter - universal starter course",
+          "matched_by": "missing",
+          "note": "NOT INCLUDED — Required: 392 LF @ $1.88/LF. Calculation: Eave 188 + Rake 203 = 392 LF. Per IRC-IN R905.1: Starter course required at eaves and rakes per manufacturer installation instructions (R905.1 — manufacturer instructions = code). GAF warranty VOID: GAF System Plus/Silver Pledge warranty VOID without proper starter and nailing pattern. Owens Corning warranty VOID: SureNail Technology warranty VOID without OC-approved starter. Starter course is required by ALL major manufacturers (GAF, OC, CertainTeed). Per R905.1, manufacturer instructions carry the force of code. Omitting starter voids the manufacturer warranty.",
+          "status": "missing",
+          "supplement_argument": "Starter course is required by ALL major manufacturers (GAF, OC, CertainTeed). Per R905.1, manufacturer instructions carry the force of code. Omitting starter voids the manufacturer warranty.",
+          "supplement_value": 736.81,
+          "trade": "roofing",
+          "usarm_amount": 736.81,
+          "usarm_desc": "Asphalt starter - universal starter course",
+          "xact_code": "RFG ASTR-",
+          "xact_unit_price": 1.88
+        },
+        {
+          "carrier_amount": 0,
+          "carrier_desc": "NOT INCLUDED",
+          "carrier_qty": 0,
+          "category": "ROOFING",
+          "checklist_desc": "R&R Hip / Ridge cap - Standard profile - composition shingles",
+          "code_citation": {
+            "code_tag": "IRC-IN R806",
+            "has_warranty_void": false,
+            "jurisdiction": "Indiana Residential Code (IRC 2018 with state amendments)",
+            "manufacturer_specs": [],
+            "requirement": "Enclosed attics shall have cross ventilation. Ridge vent provides exhaust ventilation per R806.1",
+            "section": "R806",
+            "supplement_argument": "Ridge ventilation is required for proper attic ventilation per code. When ridge cap is replaced, ridge vent must be replaced to maintain code-compliant ventilation.",
+            "title": "Roof Ventilation"
+          },
+          "ev_formula": "Ridge 96 LF (EagleView)",
+          "ev_qty": 95.83,
+          "ev_unit": "LF",
+          "irc_code": "IRC-IN R806",
+          "item": "R&R Hip / Ridge cap - Standard profile - composition shingles",
+          "matched_by": "missing",
+          "note": "NOT INCLUDED — Required: 96 LF @ $8.54/LF. Calculation: Ridge 96 LF (EagleView). Per IRC-IN R806: Enclosed attics shall have cross ventilation. Ridge vent provides exhaust ventilation per R806.1. Ridge ventilation is required for proper attic ventilation per code. When ridge cap is replaced, ridge vent must be replaced to maintain code-compliant ventilation. | [COMP_RIDGE_CAP] Carrier scope does not include ridge cap. This is a mandatory roofing component per Manufacturer specification.",
+          "status": "missing",
+          "supplement_argument": "Ridge ventilation is required for proper attic ventilation per code. When ridge cap is replaced, ridge vent must be replaced to maintain code-compliant ventilation.",
+          "supplement_value": 818.39,
+          "trade": "roofing",
+          "usarm_amount": 818.39,
+          "usarm_desc": "R&R Hip / Ridge cap - Standard profile - composition shingles",
+          "xact_code": "RFG RIDGCS",
+          "xact_unit_price": 8.54
+        },
+        {
+          "carrier_amount": 0,
+          "carrier_desc": "NOT INCLUDED",
+          "carrier_qty": 0,
+          "category": "ROOFING",
+          "checklist_desc": "R&R Drip edge",
+          "code_citation": {
+            "code_tag": "IRC-IN R905.2.8.5",
+            "has_warranty_void": false,
+            "jurisdiction": "Indiana Residential Code (IRC 2018 with state amendments)",
+            "manufacturer_specs": [],
+            "requirement": "Drip edge shall be provided at eaves and gable rake edges of shingle roofs",
+            "section": "R905.2.8.5",
+            "supplement_argument": "Drip edge is required at all eaves and rakes per code. Protects fascia and deck edge from water damage. Not an optional upgrade.",
+            "title": "Drip Edge Requirement"
+          },
+          "ev_formula": "(Eave 188 + Rake 203) × 1.05 = 412 LF",
+          "ev_qty": 411.52,
+          "ev_unit": "LF",
+          "irc_code": "R905.2.7",
+          "item": "R&R Drip edge",
+          "matched_by": "missing",
+          "note": "NOT INCLUDED — Required: 412 LF @ $3.16/LF. Calculation: (Eave 188 + Rake 203) × 1.05 = 412 LF. Per IRC-IN R905.2.8.5: Drip edge shall be provided at eaves and gable rake edges of shingle roofs. Drip edge required at eaves and rakes per IRC R905.2.7. Minimum 2.5 inches below sheathing, 2 inches up deck. Underlayment OVER drip edge at eaves, UNDER at rakes. 5% waste factor standard | [COMP_DRIP_EDGE] Carrier scope does not include drip edge. This is a mandatory roofing component per IRC R905.2.8.5.",
+          "status": "missing",
+          "supplement_argument": "Drip edge required at eaves and rakes per IRC R905.2.7. Minimum 2.5 inches below sheathing, 2 inches up deck. Underlayment OVER drip edge at eaves, UNDER at rakes. 5% waste factor standard",
+          "supplement_value": 1300.4,
+          "trade": "roofing",
+          "usarm_amount": 1300.4,
+          "usarm_desc": "R&R Drip edge",
+          "xact_code": "RFG DRIP",
+          "xact_unit_price": 3.16
+        },
+        {
+          "carrier_amount": 0,
+          "carrier_desc": "NOT INCLUDED",
+          "carrier_qty": 0,
+          "category": "ROOFING",
+          "checklist_desc": "Remove Step flashing",
+          "code_citation": {
+            "code_tag": "IRC-IN R905.2.8.3",
+            "has_warranty_void": false,
+            "jurisdiction": "Indiana Residential Code (IRC 2018 with state amendments)",
+            "manufacturer_specs": [],
+            "requirement": "Step flashing shall be used where roof planes intersect vertical walls",
+            "section": "R905.2.8.3",
+            "supplement_argument": "Step flashing is code-required at every wall-to-roof junction. When roofing is replaced, step flashing must be replaced to maintain weathertight integrity per code.",
+            "title": "Step Flashing at Wall Junctions"
+          },
+          "ev_formula": "Step 17 LF (EagleView)",
+          "ev_qty": 16.92,
+          "ev_unit": "LF",
+          "irc_code": "R905.2.8.4",
+          "item": "Remove Step flashing",
+          "matched_by": "missing",
+          "note": "NOT INCLUDED — Required: 17 LF @ $10.38/LF. Calculation: Step 17 LF (EagleView). Per IRC-IN R905.2.8.3: Step flashing shall be used where roof planes intersect vertical walls. Step flashing is code-required at every wall-to-roof junction. When roofing is replaced, step flashing must be replaced to maintain weathertight integrity per code.",
+          "status": "missing",
+          "supplement_argument": "Step flashing is code-required at every wall-to-roof junction. When roofing is replaced, step flashing must be replaced to maintain weathertight integrity per code.",
+          "supplement_value": 175.63,
+          "trade": "roofing",
+          "usarm_amount": 184.45,
+          "usarm_desc": "R&R Step flashing",
+          "xact_code": "RFG STEP",
+          "xact_unit_price": 10.38
+        },
+        {
+          "carrier_amount": 0,
+          "carrier_desc": "NOT INCLUDED",
+          "carrier_qty": 0,
+          "category": "ROOFING",
+          "checklist_desc": "Step flashing",
+          "code_citation": {
+            "code_tag": "IRC-IN R905.2.8.3",
+            "has_warranty_void": false,
+            "jurisdiction": "Indiana Residential Code (IRC 2018 with state amendments)",
+            "manufacturer_specs": [],
+            "requirement": "Step flashing shall be used where roof planes intersect vertical walls",
+            "section": "R905.2.8.3",
+            "supplement_argument": "Step flashing is code-required at every wall-to-roof junction. When roofing is replaced, step flashing must be replaced to maintain weathertight integrity per code.",
+            "title": "Step Flashing at Wall Junctions"
+          },
+          "ev_formula": "Step 17 × 1.05 = 18 LF",
+          "ev_qty": 17.77,
+          "ev_unit": "LF",
+          "irc_code": "R905.2.8.4",
+          "item": "Step flashing",
+          "matched_by": "missing",
+          "note": "NOT INCLUDED — Required: 18 LF @ $10.38/LF. Calculation: Step 17 × 1.05 = 18 LF. Per IRC-IN R905.2.8.3: Step flashing shall be used where roof planes intersect vertical walls. Step flashing required at all wall-to-roof intersections per IRC R905.2.8.4. Minimum 10 inches height. Siding removal mandatory for proper installation — nail horizontal flange to roof ONLY, never through siding",
+          "status": "missing",
+          "supplement_argument": "Step flashing required at all wall-to-roof intersections per IRC R905.2.8.4. Minimum 10 inches height. Siding removal mandatory for proper installation — nail horizontal flange to roof ONLY, never through siding",
+          "supplement_value": 184.45,
+          "trade": "roofing",
+          "usarm_amount": 184.45,
+          "usarm_desc": "R&R Step flashing",
+          "xact_code": "RFG STEP",
+          "xact_unit_price": 10.38
+        },
+        {
+          "carrier_amount": 0,
+          "carrier_desc": "NOT INCLUDED",
+          "carrier_qty": 0,
+          "category": "ROOFING",
+          "checklist_desc": "Remove Counterflashing - Apron flashing",
+          "code_citation": null,
+          "ev_formula": "Step 17 LF (EagleView)",
+          "ev_qty": 16.92,
+          "ev_unit": "LF",
+          "irc_code": "R905.2.8",
+          "item": "Remove Counterflashing - Apron flashing",
+          "matched_by": "missing",
+          "note": "NOT INCLUDED — Required: 17 LF @ $0.71/LF. Calculation: Step 17 LF (EagleView). Required per R905.2.8. Counterflashing removal required at all roof-to-wall intersections per IRC R905.2.8",
+          "status": "missing",
+          "supplement_argument": "Counterflashing removal required at all roof-to-wall intersections per IRC R905.2.8",
+          "supplement_value": 12.01,
+          "trade": "roofing",
+          "usarm_amount": 12.01,
+          "usarm_desc": "Remove Counterflashing - Apron flashing",
+          "xact_code": "RFG FLCF",
+          "xact_unit_price": 0.71
+        },
+        {
+          "carrier_amount": 0,
+          "carrier_desc": "NOT INCLUDED",
+          "carrier_qty": 0,
+          "category": "ROOFING",
+          "checklist_desc": "Counterflashing - Apron flashing",
+          "code_citation": null,
+          "ev_formula": "Counter 17 × 1.05 = 18 LF",
+          "ev_qty": 17.77,
+          "ev_unit": "LF",
+          "irc_code": "R905.2.8",
+          "item": "Counterflashing - Apron flashing",
+          "matched_by": "missing",
+          "note": "NOT INCLUDED — Required: 18 LF @ $12.21/LF. Calculation: Counter 17 × 1.05 = 18 LF. Required per R905.2.8. Counterflashing required at all roof-to-wall intersections per IRC R905.2.8",
+          "status": "missing",
+          "supplement_argument": "Counterflashing required at all roof-to-wall intersections per IRC R905.2.8",
+          "supplement_value": 216.97,
+          "trade": "roofing",
+          "usarm_amount": 216.97,
+          "usarm_desc": "Counterflashing - Apron flashing",
+          "xact_code": "RFG FLCF",
+          "xact_unit_price": 12.21
+        },
+        {
+          "carrier_amount": 0,
+          "carrier_desc": "NOT INCLUDED",
+          "carrier_qty": 0,
+          "category": "ROOFING",
+          "checklist_desc": "R&R Continuous ridge vent - shingle-over style",
+          "code_citation": {
+            "code_tag": "IRC-IN R806",
+            "has_warranty_void": false,
+            "jurisdiction": "Indiana Residential Code (IRC 2018 with state amendments)",
+            "manufacturer_specs": [],
+            "requirement": "Enclosed attics shall have cross ventilation. Ridge vent provides exhaust ventilation per R806.1",
+            "section": "R806",
+            "supplement_argument": "Ridge ventilation is required for proper attic ventilation per code. When ridge cap is replaced, ridge vent must be replaced to maintain code-compliant ventilation.",
+            "title": "Roof Ventilation"
+          },
+          "ev_formula": "Ridge 96 LF (EagleView)",
+          "ev_qty": 95.83,
+          "ev_unit": "LF",
+          "irc_code": "R806",
+          "item": "R&R Continuous ridge vent - shingle-over style",
+          "matched_by": "missing",
+          "note": "NOT INCLUDED — Required: 96 LF @ $11.97/LF. Calculation: Ridge 96 LF (EagleView). Per IRC-IN R806: Enclosed attics shall have cross ventilation. Ridge vent provides exhaust ventilation per R806.1. Ventilation required per IRC R806 — 1 SF NFVA per 150 SF attic area (1:150 ratio). OC warranty VOID without proper ventilation. Ridge vent must be R&R during re-roofing | [COMP_RIDGE_VENT] Carrier scope does not include ridge vent. This is a mandatory roofing component per IRC R806.1.",
+          "status": "missing",
+          "supplement_argument": "Ventilation required per IRC R806 — 1 SF NFVA per 150 SF attic area (1:150 ratio). OC warranty VOID without proper ventilation. Ridge vent must be R&R during re-roofing",
+          "supplement_value": 1147.09,
+          "trade": "roofing",
+          "usarm_amount": 1147.09,
+          "usarm_desc": "R&R Continuous ridge vent - shingle-over style",
+          "xact_code": "RFG RGVC",
+          "xact_unit_price": 11.97
+        },
+        {
+          "carrier_amount": 0,
+          "carrier_desc": "NOT INCLUDED",
+          "carrier_qty": 0,
+          "category": "ROOFING",
+          "checklist_desc": "Roofer - per hour",
+          "code_citation": null,
+          "ev_formula": "max(4, 26 / 4) = 7 HR",
+          "ev_qty": 7,
+          "ev_unit": "HR",
+          "irc_code": null,
+          "item": "Roofer - per hour",
+          "matched_by": "missing",
+          "note": "NOT INCLUDED — Required: 7 HR @ $194.00/HR. Calculation: max(4, 26 / 4) = 7 HR. 8 hours roofer labor mandatory on every roofing estimate per industry standard",
+          "status": "missing",
+          "supplement_argument": "8 hours roofer labor mandatory on every roofing estimate per industry standard",
+          "supplement_value": 1358.0,
+          "trade": "roofing",
+          "usarm_amount": 1358.0,
+          "usarm_desc": "Roofer - per hour",
+          "xact_code": "",
+          "xact_unit_price": 194.0
+        },
+        {
+          "carrier_amount": 0,
+          "carrier_desc": "NOT INCLUDED",
+          "carrier_qty": 0,
+          "category": "ROOFING",
+          "checklist_desc": "Equipment operator",
+          "code_citation": null,
+          "ev_formula": "",
+          "ev_qty": 4,
+          "ev_unit": "EA",
+          "irc_code": null,
+          "item": "Equipment operator",
+          "matched_by": "missing",
+          "note": "NOT INCLUDED — Required: 4 EA @ $450.00/EA | [UP006] Carrier scope does not include equipment operator charge. Required for 2+ story and/or steep roofs requiring material staging equipment.",
+          "status": "missing",
+          "supplement_argument": null,
+          "supplement_value": 1800.0,
+          "trade": "roofing",
+          "usarm_amount": 450.0,
+          "usarm_desc": "Equipment operator",
+          "xact_code": "",
+          "xact_unit_price": 450.0
+        },
+        {
+          "carrier_amount": 0,
+          "carrier_desc": "NOT INCLUDED",
+          "carrier_qty": 0,
+          "category": "ROOFING",
+          "checklist_desc": "",
+          "code_citation": null,
+          "ev_qty": 21.9,
+          "ev_unit": "SQ",
+          "irc_code": "",
+          "matched_by": "missing",
+          "note": "NOT INCLUDED — Required: 22 SQ @ $95.00/SQ",
+          "status": "missing",
+          "supplement_argument": "",
+          "supplement_value": 2080.5,
+          "trade": "",
+          "usarm_amount": 2080.5,
+          "usarm_desc": "Remove modified bitumen/flat roofing"
+        },
+        {
+          "carrier_amount": 0,
+          "carrier_desc": "NOT INCLUDED",
+          "carrier_qty": 0,
+          "category": "ROOFING",
+          "checklist_desc": "",
+          "code_citation": null,
+          "ev_qty": 24.09,
+          "ev_unit": "SQ",
+          "irc_code": "",
+          "matched_by": "missing",
+          "note": "NOT INCLUDED — Required: 24 SQ @ $425.00/SQ",
+          "status": "missing",
+          "supplement_argument": "",
+          "supplement_value": 10238.25,
+          "trade": "",
+          "usarm_amount": 10238.25,
+          "usarm_desc": "Modified bitumen roofing - 2 ply torch applied"
+        },
+        {
+          "carrier_amount": 0,
+          "carrier_desc": "NOT INCLUDED",
+          "carrier_qty": 0,
+          "category": "ROOFING",
+          "checklist_desc": "",
+          "code_citation": {
+            "code_tag": "IRC-IN R905.1.1",
+            "has_warranty_void": false,
+            "jurisdiction": "Indiana Residential Code (IRC 2018 with state amendments)",
+            "manufacturer_specs": [],
+            "requirement": "Underlayment required over entire roof deck area not covered by ice barrier",
+            "section": "R905.1.1",
+            "supplement_argument": "Underlayment is code-mandated over the entire roof deck. Areas where ice & water barrier is not installed require felt or synthetic underlayment. Omission does not meet code requirements.",
+            "title": "Underlayment Requirement"
+          },
+          "ev_qty": 21.9,
+          "ev_unit": "SQ",
+          "irc_code": "IRC-IN R905.1.1",
+          "matched_by": "missing",
+          "note": "NOT INCLUDED — Required: 22 SQ @ $38.00/SQ. Per IRC-IN R905.1.1: Underlayment required over entire roof deck area not covered by ice barrier | [COMP_UNDERLAYMENT] Carrier scope does not include underlayment. This is a mandatory roofing component per IRC R905.1.1.",
+          "status": "missing",
+          "supplement_argument": "Underlayment is code-mandated over the entire roof deck. Areas where ice & water barrier is not installed require felt or synthetic underlayment. Omission does not meet code requirements.",
+          "supplement_value": 832.2,
+          "trade": "",
+          "usarm_amount": 832.2,
+          "usarm_desc": "Underlayment - base sheet (flat roof)"
+        },
+        {
+          "carrier_amount": 0,
+          "carrier_desc": "NOT INCLUDED",
+          "carrier_qty": 0,
+          "category": "ROOFING",
+          "checklist_desc": "",
+          "code_citation": null,
+          "ev_qty": 37.5,
+          "ev_unit": "LF",
+          "irc_code": "",
+          "matched_by": "missing",
+          "note": "NOT INCLUDED — Required: 38 LF @ $9.50/LF",
+          "status": "missing",
+          "supplement_argument": "",
+          "supplement_value": 356.25,
+          "trade": "",
+          "usarm_amount": 356.25,
+          "usarm_desc": "R&R Counter/apron flashing"
+        },
+        {
+          "carrier_amount": 0,
+          "carrier_desc": "NOT INCLUDED",
+          "carrier_qty": 0,
+          "category": "ROOFING",
+          "checklist_desc": "",
+          "code_citation": null,
+          "ev_qty": 3.1,
+          "ev_unit": "SQ",
+          "irc_code": "",
+          "matched_by": "missing",
+          "note": "NOT INCLUDED — Required: 3 SQ @ $95.00/SQ",
+          "status": "missing",
+          "supplement_argument": "",
+          "supplement_value": 294.5,
+          "trade": "",
+          "usarm_amount": 294.5,
+          "usarm_desc": "Remove modified bitumen/flat roofing"
+        },
+        {
+          "carrier_amount": 0,
+          "carrier_desc": "NOT INCLUDED",
+          "carrier_qty": 0,
+          "category": "ROOFING",
+          "checklist_desc": "",
+          "code_citation": null,
+          "ev_qty": 3.41,
+          "ev_unit": "SQ",
+          "irc_code": "",
+          "matched_by": "missing",
+          "note": "NOT INCLUDED — Required: 3 SQ @ $425.00/SQ",
+          "status": "missing",
+          "supplement_argument": "",
+          "supplement_value": 1449.25,
+          "trade": "",
+          "usarm_amount": 1449.25,
+          "usarm_desc": "Modified bitumen roofing - 2 ply torch applied"
+        },
+        {
+          "carrier_amount": 0,
+          "carrier_desc": "NOT INCLUDED",
+          "carrier_qty": 0,
+          "category": "ROOFING",
+          "checklist_desc": "",
+          "code_citation": {
+            "code_tag": "IRC-IN R905.1.1",
+            "has_warranty_void": false,
+            "jurisdiction": "Indiana Residential Code (IRC 2018 with state amendments)",
+            "manufacturer_specs": [],
+            "requirement": "Underlayment required over entire roof deck area not covered by ice barrier",
+            "section": "R905.1.1",
+            "supplement_argument": "Underlayment is code-mandated over the entire roof deck. Areas where ice & water barrier is not installed require felt or synthetic underlayment. Omission does not meet code requirements.",
+            "title": "Underlayment Requirement"
+          },
+          "ev_qty": 3.1,
+          "ev_unit": "SQ",
+          "irc_code": "IRC-IN R905.1.1",
+          "matched_by": "missing",
+          "note": "NOT INCLUDED — Required: 3 SQ @ $38.00/SQ. Per IRC-IN R905.1.1: Underlayment required over entire roof deck area not covered by ice barrier",
+          "status": "missing",
+          "supplement_argument": "Underlayment is code-mandated over the entire roof deck. Areas where ice & water barrier is not installed require felt or synthetic underlayment. Omission does not meet code requirements.",
+          "supplement_value": 117.8,
+          "trade": "",
+          "usarm_amount": 117.8,
+          "usarm_desc": "Underlayment - base sheet (flat roof)"
+        },
+        {
+          "carrier_amount": 0,
+          "carrier_desc": "NOT INCLUDED",
+          "carrier_qty": 0,
+          "category": "ROOFING",
+          "checklist_desc": "",
+          "code_citation": null,
+          "ev_qty": 1.2,
+          "ev_unit": "SQ",
+          "irc_code": "",
+          "matched_by": "missing",
+          "note": "NOT INCLUDED — Required: 1 SQ @ $95.00/SQ",
+          "status": "missing",
+          "supplement_argument": "",
+          "supplement_value": 114.0,
+          "trade": "",
+          "usarm_amount": 114.0,
+          "usarm_desc": "Remove modified bitumen/flat roofing"
+        },
+        {
+          "carrier_amount": 0,
+          "carrier_desc": "NOT INCLUDED",
+          "carrier_qty": 0,
+          "category": "ROOFING",
+          "checklist_desc": "",
+          "code_citation": null,
+          "ev_qty": 1.32,
+          "ev_unit": "SQ",
+          "irc_code": "",
+          "matched_by": "missing",
+          "note": "NOT INCLUDED — Required: 1 SQ @ $425.00/SQ",
+          "status": "missing",
+          "supplement_argument": "",
+          "supplement_value": 561.0,
+          "trade": "",
+          "usarm_amount": 561.0,
+          "usarm_desc": "Modified bitumen roofing - 2 ply torch applied"
+        },
+        {
+          "carrier_amount": 0,
+          "carrier_desc": "NOT INCLUDED",
+          "carrier_qty": 0,
+          "category": "ROOFING",
+          "checklist_desc": "",
+          "code_citation": {
+            "code_tag": "IRC-IN R905.1.1",
+            "has_warranty_void": false,
+            "jurisdiction": "Indiana Residential Code (IRC 2018 with state amendments)",
+            "manufacturer_specs": [],
+            "requirement": "Underlayment required over entire roof deck area not covered by ice barrier",
+            "section": "R905.1.1",
+            "supplement_argument": "Underlayment is code-mandated over the entire roof deck. Areas where ice & water barrier is not installed require felt or synthetic underlayment. Omission does not meet code requirements.",
+            "title": "Underlayment Requirement"
+          },
+          "ev_qty": 1.2,
+          "ev_unit": "SQ",
+          "irc_code": "IRC-IN R905.1.1",
+          "matched_by": "missing",
+          "note": "NOT INCLUDED — Required: 1 SQ @ $38.00/SQ. Per IRC-IN R905.1.1: Underlayment required over entire roof deck area not covered by ice barrier",
+          "status": "missing",
+          "supplement_argument": "Underlayment is code-mandated over the entire roof deck. Areas where ice & water barrier is not installed require felt or synthetic underlayment. Omission does not meet code requirements.",
+          "supplement_value": 45.6,
+          "trade": "",
+          "usarm_amount": 45.6,
+          "usarm_desc": "Underlayment - base sheet (flat roof)"
+        },
+        {
+          "carrier_amount": 6157.03,
+          "carrier_desc": "Shingled Portion - Cov A: Dwelling, Exterior",
+          "carrier_qty": 0,
+          "carrier_unit": "",
+          "category": "ROOFING",
+          "item": "Shingled Portion",
+          "matched_by": "carrier_only",
+          "note": "Carrier-only: 0  — not on EagleView checklist",
+          "review_flag": "Verify: legitimate scope item or padding?",
+          "status": "carrier_only",
+          "supplement_value": 0,
+          "trade": "roofing",
+          "usarm_amount": 0,
+          "usarm_desc": "",
+          "xact_code": null
+        },
+        {
+          "carrier_amount": 1835.68,
+          "carrier_desc": "Fascia/Gutters - Cov A: Dwelling, Exterior",
+          "carrier_qty": 0,
+          "carrier_unit": "",
+          "category": "SIDING",
+          "item": "Fascia/Gutters",
+          "matched_by": "carrier_only",
+          "note": "Carrier-only: 0  — not on EagleView checklist",
+          "review_flag": "Verify: legitimate scope item or padding?",
+          "status": "carrier_only",
+          "supplement_value": 0,
+          "trade": "siding",
+          "usarm_amount": 0,
+          "usarm_desc": "",
+          "xact_code": null
+        },
+        {
+          "carrier_amount": 0,
+          "carrier_desc": "NOT INCLUDED",
+          "carrier_qty": 0,
+          "category": "GENERAL",
+          "checklist_desc": "Dumpster load - Approx. 30 yards, 5-7 tons of debris",
+          "code_citation": null,
+          "ev_formula": "",
+          "ev_qty": 1,
+          "ev_unit": "EA",
+          "irc_code": null,
+          "item": "Dumpster load - Approx. 30 yards, 5-7 tons of debris",
+          "matched_by": "missing",
+          "note": "NOT INCLUDED — Required: 1 EA @ $850.00/EA. Job-related overhead — dumpster required for debris disposal",
+          "status": "missing",
+          "supplement_argument": "Job-related overhead — dumpster required for debris disposal",
+          "supplement_value": 850.0,
+          "trade": "general",
+          "usarm_amount": 850.0,
+          "usarm_desc": "Dumpster load - Approx. 30 yards, 5-7 tons of debris",
+          "xact_code": "",
+          "xact_unit_price": 850.0
+        },
+        {
+          "carrier_amount": 0,
+          "carrier_desc": "NOT INCLUDED",
+          "carrier_qty": 0,
+          "category": "CODE COMPLIANCE",
+          "checklist_desc": "Fall protection harness and lanyard - per day",
+          "code_citation": null,
+          "ev_formula": "",
+          "ev_qty": 2,
+          "ev_unit": "DA",
+          "irc_code": null,
+          "item": "Fall protection harness and lanyard - per day",
+          "matched_by": "missing",
+          "note": "NOT INCLUDED — Required: 2 DA @ $8.00/DA. Fall protection required per OSHA 29 CFR 1926.501 for work at heights above 6 feet",
+          "status": "missing",
+          "supplement_argument": "Fall protection required per OSHA 29 CFR 1926.501 for work at heights above 6 feet",
+          "supplement_value": 16.0,
+          "trade": "roofing",
+          "usarm_amount": 16.0,
+          "usarm_desc": "Fall protection harness and lanyard - per day",
+          "xact_code": "",
+          "xact_unit_price": 8.0
+        },
+        {
+          "carrier_amount": 0,
+          "carrier_desc": "NOT INCLUDED",
+          "carrier_qty": 0,
+          "category": "GENERAL",
+          "checklist_desc": "Administrative/supervisor labor charge",
+          "code_citation": null,
+          "ev_formula": "",
+          "ev_qty": 2.5,
+          "ev_unit": "HR",
+          "irc_code": null,
+          "item": "Administrative/supervisor labor charge",
+          "matched_by": "missing",
+          "note": "NOT INCLUDED — Required: 2 HR @ $41.73/HR. Administrative labor for re-inspection and project coordination",
+          "status": "missing",
+          "supplement_argument": "Administrative labor for re-inspection and project coordination",
+          "supplement_value": 104.32,
+          "trade": "general",
+          "usarm_amount": 104.32,
+          "usarm_desc": "Administrative/supervisor labor charge",
+          "xact_code": "",
+          "xact_unit_price": 41.73
+        },
+        {
+          "carrier_amount": 7460.38,
+          "carrier_desc": "TPO - Cov A: Dwelling, Exterior",
+          "carrier_qty": 0,
+          "carrier_unit": "",
+          "category": "UNKNOWN",
+          "item": "TPO",
+          "matched_by": "carrier_only",
+          "note": "Carrier-only: 0  — not on EagleView checklist",
+          "review_flag": "Verify: legitimate scope item or padding?",
+          "status": "carrier_only",
+          "supplement_value": 0,
+          "trade": "unknown",
+          "usarm_amount": 0,
+          "usarm_desc": "",
+          "xact_code": null
+        },
+        {
+          "carrier_amount": 916.0,
+          "carrier_desc": "Shed Roof - Cov B: Other Structures / Shed, Exterior",
+          "carrier_qty": 0,
+          "carrier_unit": "",
+          "category": "UNKNOWN",
+          "item": "Shed Roof",
+          "matched_by": "carrier_only",
+          "note": "Carrier-only: 0  — not on EagleView checklist",
+          "review_flag": "Verify: legitimate scope item or padding?",
+          "status": "carrier_only",
+          "supplement_value": 0,
+          "trade": "unknown",
+          "usarm_amount": 0,
+          "usarm_desc": "",
+          "xact_code": null
+        },
+        {
+          "carrier_amount": 2266.72,
+          "carrier_desc": "Carport Roof - Cov B: Other Structures / Carport, Exterior",
+          "carrier_qty": 0,
+          "carrier_unit": "",
+          "category": "UNKNOWN",
+          "item": "Carport Roof",
+          "matched_by": "carrier_only",
+          "note": "Carrier-only: 0  — not on EagleView checklist",
+          "review_flag": "Verify: legitimate scope item or padding?",
+          "status": "carrier_only",
+          "supplement_value": 0,
+          "trade": "unknown",
+          "usarm_amount": 0,
+          "usarm_desc": "",
+          "xact_code": null
+        },
+        {
+          "carrier_amount": 3753.96,
+          "carrier_desc": "Cov A: Dwelling, Exterior",
+          "carrier_qty": 0,
+          "carrier_unit": "",
+          "category": "UNKNOWN",
+          "item": "Front Elevation",
+          "matched_by": "carrier_only",
+          "note": "Carrier-only: 0  — not on EagleView checklist",
+          "review_flag": "Verify: legitimate scope item or padding?",
+          "status": "carrier_only",
+          "supplement_value": 0,
+          "trade": "unknown",
+          "usarm_amount": 0,
+          "usarm_desc": "",
+          "xact_code": null
+        }
+      ],
+      "carrier_rcv": 0.0,
+      "claim_number": "",
+      "deductible": 0.0,
+      "inspection_date": "",
+      "inspector_company": "",
+      "inspector_name": "",
+      "name": "Auto-Owners Insurance Company",
+      "policy_number": ""
+    },
+    "carrier_intelligence": {
+      "anticipated_denials": [
+        {
+          "count": 3,
+          "countered_count": 0,
+          "examples": [
+            "This is a Recap by Room summary page; individual line item detail (quantities, unit prices, Xactimate codes) is not visible in this image.",
+            "This is a Recap by Room summary page showing cost allocation by area/room, not individual line item detail. Detailed line items with quantities, units, and unit prices are not visible on this page.",
+            "Coverage is split between Cov A - Dwelling and Cov B - Other Structures (Shed and Carport)."
+          ],
+          "tactic_type": "depreciation",
+          "total_impact": 0
+        },
+        {
+          "count": 3,
+          "countered_count": 0,
+          "examples": [
+            "Cov A - Dwelling Exterior subtotal is $19,207.05 (83.84% of estimate).",
+            "Cov B - Other Structures / Shed subtotal is $916.00 (4.00%).",
+            "Cov B - Other Structures / Carport includes Carport Roof at $2,266.72 (9.89%)."
+          ],
+          "tactic_type": "underpayment",
+          "total_impact": 0
+        }
+      ],
+      "carrier_score": {
+        "avg_carrier_rcv": 0.0,
+        "avg_underpayment_pct": 0,
+        "avg_usarm_rcv": 24293.0,
+        "avg_win_movement_pct": 0,
+        "carrier": "Auto-Owners Insurance Company",
+        "common_trades": [
+          "Roofing"
+        ],
+        "losses": 1,
+        "total_claims": 1,
+        "win_rate_pct": 0.0,
+        "wins": 0
+      },
+      "general_effective_arguments": [],
+      "prediction": {
+        "confidence": "low",
+        "message": "Insufficient data (1 claims)"
+      },
+      "recommended_arguments_by_trade": {}
+    },
+    "company": {
+      "address": "10124 e 46th street",
+      "cell_phone": "9303336110",
+      "ceo_name": "Darin w",
+      "ceo_title": "Owner",
+      "city_state_zip": "Indianapolis, Indiana 46235",
+      "email": "darinw1125@gmail.com",
+      "name": "Storm nation",
+      "office_phone": "",
+      "website": ""
+    },
+    "compliance": {
+      "aob_signed": false,
+      "user_role": "contractor"
+    },
+    "cover_email": {
+      "enclosed_documents": [
+        "Forensic Causation Report with annotated photography",
+        "Xactimate-format replacement cost estimate",
+        "Supplement report with line-by-line variance analysis",
+        "Formal scope clarification letter",
+        "Cover correspondence"
+      ],
+      "summary_paragraphs": [
+        "Please find enclosed the complete forensic documentation package for the property at 614 E 26th St. Our independent inspection has documented storm-related damage to the Roofing.",
+        "The enclosed reports include annotated photography of all identified damage, an Xactimate-format replacement cost estimate, and a forensic causation analysis establishing the relationship between documented weather events and observed damage.",
+        "Please do not hesitate to contact us should you require any additional information or wish to schedule a joint inspection."
+      ],
+      "to": "Auto-Owners Insurance Company Claims Department",
+      "to_email": ""
+    },
+    "dashboard": {
+      "carrier_current": 0
+    },
+    "dates": {
+      "date_of_loss": "April 25, 2026",
+      "report_date": "May 27, 2026",
+      "usarm_inspection_date": "May 27, 2026"
+    },
+    "financials": {
+      "deductible": 0.0,
+      "market_code": "OHDT8X_APR26",
+      "market_resolution_reason": "nearest_state",
+      "price_list": "OHDT26",
+      "price_list_is_proxy": false,
+      "tax_rate": 0.08
+    },
+    "forensic_findings": {
+      "code_violations": [
+        {
+          "code": "IRC-IN R905.2.8.5",
+          "requirement": "Drip edge required at eaves and rake edges of shingle roofs; min 2-inch overlap at joints, min 1/4-inch projection below sheathing",
+          "status": "Required — included in scope"
+        },
+        {
+          "code": "IRC-IN R905.1.1",
+          "requirement": "Underlayment shall be applied in accordance with manufacturer's installation instructions — ASTM D226 / D4869 / D6757 labeling required",
+          "status": "Required — included in scope"
+        },
+        {
+          "code": "IRC-IN R905.2.7.1",
+          "requirement": "Ice barrier required in areas where the average daily temperature in January is ≤25°F or where ice damming has a history; min 2 feet inside exterior wall line (Climate Zones 5A+ including OH/NY)",
+          "status": "Required — included in scope"
+        },
+        {
+          "code": "IRC-IN R903.2.1",
+          "requirement": "Flashings shall be installed at wall and roof intersections, wherever there is a change in roof slope or direction, and around roof openings",
+          "status": "Required — included in scope"
+        }
+      ],
+      "conclusion_paragraphs": [
+        "Based on our forensic analysis of the property at 614 E 26th St, the modified bitumen / flat roof system sustained confirmed storm damage consistent with the reported storm event of April 25, 2026. While detailed individual findings are pending full documentation, the forensic inspection methodology — including visual assessment, tactile evaluation, and systematic documentation of the roof membrane and associated components — was conducted in accordance with industry-standard protocols to establish the causal relationship between the storm event and the observed damage conditions.",
+        "The confirmed damage to the modified bitumen membrane and associated roofing components requires full system replacement rather than spot repair. Modified bitumen roofing systems function as a monolithic waterproofing assembly; once the membrane integrity is compromised by storm-related impacts or mechanical damage, localized patching does not restore the system to its pre-loss watertight condition and does not meet manufacturer specifications for long-term performance. Additionally, partial replacement of a modified bitumen system introduces seam vulnerabilities and material incompatibilities that fall short of the standards established under the IRC as adopted in Indiana for maintaining a continuous, code-compliant roof covering.",
+        "Based on the documented damage, applicable building codes under the IRC as adopted in the State of Indiana, and recognized industry standards, our analysis identifies the need for full replacement of the modified bitumen roof system, including membrane, flashing details, and any compromised substrate or insulation components. The forensic evidence supports a comprehensive scope that restores the roof assembly to its pre-loss condition and ensures compliance with current code requirements. As no carrier scope has been received to date, this recommendation is based solely on the physical evidence observed and documented at the property.",
+        "This determination is consistent with the professional standards set forth by HAAG Engineering certification protocols for roof damage assessment, NRCA guidelines for modified bitumen roof system evaluation and replacement criteria, and the International Residential Code (IRC) as adopted in Indiana governing roof covering integrity and replacement thresholds. These industry-recognized authorities collectively support the conclusion that storm-compromised modified bitumen systems require full replacement to ensure proper performance and code compliance."
+      ],
+      "damage_summary": "Supplement-only claim — see Xactimate estimate and supplement letter for line-item-level documentation.",
+      "damage_thresholds": [
+        {
+          "component": "Aluminum Fascia/Trim Metal",
+          "result": "No NOAA hail data available",
+          "source": "NOAA SWDI",
+          "storm_actual": "0.0\"",
+          "threshold": "0.75\" diameter hail"
+        },
+        {
+          "component": "Laminate/Architectural Shingles (Aged 15+ Years)",
+          "result": "No NOAA hail data available",
+          "source": "NOAA SWDI + IBHS Sub-Severe Hail Study (2025)",
+          "storm_actual": "0.0\"",
+          "threshold": "0.75\" diameter hail (IBHS Sub-Severe Hail Study (2025))"
+        }
+      ],
+      "differentiation_table": [
+        {
+          "cause": "Normal Wear / Aging",
+          "characteristics": "Uniform granule loss, curling at edges, consistent deterioration pattern",
+          "conclusion": "NOT CONSISTENT",
+          "observed": "No — damage pattern is random/localized, inconsistent with uniform aging"
+        },
+        {
+          "cause": "Manufacturing Defect",
+          "characteristics": "Systematic pattern across same production batch, uniform failure mode",
+          "conclusion": "NOT CONSISTENT",
+          "observed": "No — damage is random and impact-related, not systematic"
+        }
+      ],
+      "executive_summary": [
+        "On April 25, 2026, the property located at 614 E 26th St, IN, sustained storm damage affecting its modified bitumen / flat roof membrane system and associated building envelope components. A forensic inspection was conducted to document the condition of the roofing assembly, flashing details, drainage infrastructure, and ancillary building elements in relation to the reported storm event. The roof system consists of a modified bitumen membrane application, a material particularly susceptible to impact damage and wind-driven compromise at seams, laps, and perimeter terminations.",
+        "Field examination of the modified bitumen membrane revealed impact-related damage consistent with storm activity, including puncture points, granule displacement, and compromised lap seams across the roof field. Perimeter flashing and edge metal details exhibited deformation and lifting consistent with wind loading forces generated during the April 25, 2026 event. These findings indicate that the storm event produced sufficient force to breach the weatherproofing integrity of the flat roof assembly, creating active or incipient moisture intrusion pathways that compromise the substrate and interior building envelope.",
+        "The documented damage to the modified bitumen roof system necessitates full replacement rather than spot repair due to the inherent limitations of partial membrane restoration on an aged assembly. Sectional patching of a modified bitumen system cannot restore uniform adhesion, consistent granule coverage, or watertight lap integrity to meet the performance standards referenced under the IRC, and localized repairs to a weathered membrane introduce differential expansion zones that accelerate future failure. Additionally, any roof repair or replacement activity that exceeds the applicable threshold under IRC Section R908.3.1.1 triggers code compliance requirements for the full assembly, including underlayment and fastening specifications, which cannot be achieved through piecemeal remediation of the existing system."
+      ],
+      "key_arguments": [],
+      "total_photos": 0
+    },
+    "full_reroof_trigger": false,
+    "inspectors": {
+      "usarm_inspector": "Darin w",
+      "usarm_title": "Owner"
+    },
+    "insured": {
+      "name": "Diana M Thiellen",
+      "type": "homeowner"
+    },
+    "line_items": [
+      {
+        "category": "ROOFING",
+        "code": "",
+        "description": "Remove modified bitumen/flat roofing",
+        "irc_code": "",
+        "qty": 21.9,
+        "structure": "Structure #1 (Main Roof)",
+        "supplement_argument": "",
+        "unit": "SQ",
+        "unit_price": 95.0
+      },
+      {
+        "category": "ROOFING",
+        "code": "",
+        "description": "Modified bitumen roofing - 2 ply torch applied",
+        "irc_code": "",
+        "qty": 24.09,
+        "structure": "Structure #1 (Main Roof)",
+        "supplement_argument": "",
+        "unit": "SQ",
+        "unit_price": 425.0
+      },
+      {
+        "category": "ROOFING",
+        "code": "",
+        "code_citation": {
+          "code_tag": "IRC-IN R905.1.1",
+          "has_warranty_void": false,
+          "jurisdiction": "Indiana Residential Code (IRC 2018 with state amendments)",
+          "manufacturer_specs": [],
+          "requirement": "Underlayment required over entire roof deck area not covered by ice barrier",
+          "section": "R905.1.1",
+          "supplement_argument": "Underlayment is code-mandated over the entire roof deck. Areas where ice & water barrier is not installed require felt or synthetic underlayment. Omission does not meet code requirements.",
+          "title": "Underlayment Requirement"
+        },
+        "description": "Underlayment - base sheet (flat roof)",
+        "irc_code": "IRC-IN R905.1.1",
+        "qty": 21.9,
+        "structure": "Structure #1 (Main Roof)",
+        "supplement_argument": "Underlayment is code-mandated over the entire roof deck. Areas where ice & water barrier is not installed require felt or synthetic underlayment. Omission does not meet code requirements.",
+        "unit": "SQ",
+        "unit_price": 38.0
+      },
+      {
+        "category": "ROOFING",
+        "code": "RFG IWS",
+        "code_citation": {
+          "code_tag": "IRC-IN R905.1.2",
+          "has_warranty_void": true,
+          "jurisdiction": "Indiana Residential Code (IRC 2018 with state amendments)",
+          "manufacturer_specs": [
+            {
+              "document": "WeatherWatch Mineral-Surfaced Leak Barrier",
+              "manufacturer": "GAF",
+              "requirement": "Required at eaves, valleys, and around penetrations per GAF system requirements",
+              "warranty_text": "GAF warranty VOID without WeatherWatch/StormGuard at eaves and valleys",
+              "warranty_void": true
+            }
+          ],
+          "requirement": "Ice barrier required at eaves extending from eave edge to at least 24 inches past interior wall line, and in valleys",
+          "section": "R905.1.2",
+          "supplement_argument": "Ice & water barrier is required by code at all eaves and valleys. This is not an optional upgrade — it is a mandatory building code requirement for a code-compliant installation.",
+          "title": "Ice Barrier Requirement"
+        },
+        "description": "Ice & water barrier (2 courses eaves + 1 course valleys)",
+        "irc_code": "R905.1.2",
+        "qty": 818,
+        "structure": "Structure #1 (Main Roof)",
+        "supplement_argument": "Ice & water barrier is required by code at all eaves and valleys. This is not an optional upgrade — it is a mandatory building code requirement for a code-compliant installation.",
+        "trade": "roofing",
+        "unit": "SF",
+        "unit_price": 1.71
+      },
+      {
+        "category": "ROOFING",
+        "code": "",
+        "code_citation": {
+          "code_tag": "IRC-IN R905.2.8.5",
+          "has_warranty_void": false,
+          "jurisdiction": "Indiana Residential Code (IRC 2018 with state amendments)",
+          "manufacturer_specs": [],
+          "requirement": "Drip edge shall be provided at eaves and gable rake edges of shingle roofs",
+          "section": "R905.2.8.5",
+          "supplement_argument": "Drip edge is required at all eaves and rakes per code. Protects fascia and deck edge from water damage. Not an optional upgrade.",
+          "title": "Drip Edge Requirement"
+        },
+        "description": "R&R Drip edge - aluminum",
+        "irc_code": "IRC-IN R905.2.8.5",
+        "qty": 289.8,
+        "structure": "Structure #1 (Main Roof)",
+        "supplement_argument": "Drip edge is required at all eaves and rakes per code. Protects fascia and deck edge from water damage. Not an optional upgrade.",
+        "unit": "LF",
+        "unit_price": 3.16
+      },
+      {
+        "category": "ROOFING",
+        "code": "",
+        "code_citation": {
+          "code_tag": "IRC-IN R905.2.8.3",
+          "has_warranty_void": false,
+          "jurisdiction": "Indiana Residential Code (IRC 2018 with state amendments)",
+          "manufacturer_specs": [],
+          "requirement": "Step flashing shall be used where roof planes intersect vertical walls",
+          "section": "R905.2.8.3",
+          "supplement_argument": "Step flashing is code-required at every wall-to-roof junction. When roofing is replaced, step flashing must be replaced to maintain weathertight integrity per code.",
+          "title": "Step Flashing at Wall Junctions"
+        },
+        "description": "R&R Step flashing",
+        "irc_code": "IRC-IN R905.2.8.3",
+        "qty": 17.77,
+        "structure": "Structure #1 (Main Roof)",
+        "supplement_argument": "Step flashing is code-required at every wall-to-roof junction. When roofing is replaced, step flashing must be replaced to maintain weathertight integrity per code.",
+        "unit": "LF",
+        "unit_price": 10.38
+      },
+      {
+        "category": "ROOFING",
+        "code": "",
+        "description": "R&R Counter/apron flashing",
+        "irc_code": "",
+        "qty": 37.5,
+        "structure": "Structure #1 (Main Roof)",
+        "supplement_argument": "",
+        "unit": "LF",
+        "unit_price": 9.5
+      },
+      {
+        "category": "ROOFING",
+        "code": null,
+        "description": "Roofer - per hour (labor minimum)",
+        "irc_code": null,
+        "qty": 8,
+        "structure": "Structure #1 (Main Roof)",
+        "supplement_argument": "8 hours roofer labor mandatory on every roofing estimate per industry standard",
+        "trade": "roofing",
+        "unit": "HR",
+        "unit_price": 194.0
+      },
+      {
+        "category": "ROOFING",
+        "code": null,
+        "description": "Equipment operator",
+        "irc_code": null,
+        "qty": 1,
+        "structure": "Structure #1 (Main Roof)",
+        "supplement_argument": null,
+        "trade": "roofing",
+        "unit": "EA",
+        "unit_price": 450.0
+      },
+      {
+        "category": "DEBRIS",
+        "description": "Dumpster load - roofing debris",
+        "qty": 1,
+        "structure": "Structure #1 (Main Roof)",
+        "unit": "EA",
+        "unit_price": 850.0
+      },
+      {
+        "category": "ROOFING",
+        "code": "",
+        "description": "Remove modified bitumen/flat roofing",
+        "irc_code": "",
+        "qty": 3.1,
+        "structure": "Structure #2",
+        "supplement_argument": "",
+        "unit": "SQ",
+        "unit_price": 95.0
+      },
+      {
+        "category": "ROOFING",
+        "code": "",
+        "description": "Modified bitumen roofing - 2 ply torch applied",
+        "irc_code": "",
+        "qty": 3.41,
+        "structure": "Structure #2",
+        "supplement_argument": "",
+        "unit": "SQ",
+        "unit_price": 425.0
+      },
+      {
+        "category": "ROOFING",
+        "code": "",
+        "code_citation": {
+          "code_tag": "IRC-IN R905.1.1",
+          "has_warranty_void": false,
+          "jurisdiction": "Indiana Residential Code (IRC 2018 with state amendments)",
+          "manufacturer_specs": [],
+          "requirement": "Underlayment required over entire roof deck area not covered by ice barrier",
+          "section": "R905.1.1",
+          "supplement_argument": "Underlayment is code-mandated over the entire roof deck. Areas where ice & water barrier is not installed require felt or synthetic underlayment. Omission does not meet code requirements.",
+          "title": "Underlayment Requirement"
+        },
+        "description": "Underlayment - base sheet (flat roof)",
+        "irc_code": "IRC-IN R905.1.1",
+        "qty": 3.1,
+        "structure": "Structure #2",
+        "supplement_argument": "Underlayment is code-mandated over the entire roof deck. Areas where ice & water barrier is not installed require felt or synthetic underlayment. Omission does not meet code requirements.",
+        "unit": "SQ",
+        "unit_price": 38.0
+      },
+      {
+        "category": "ROOFING",
+        "code": "RFG IWS",
+        "code_citation": {
+          "code_tag": "IRC-IN R905.1.2",
+          "has_warranty_void": true,
+          "jurisdiction": "Indiana Residential Code (IRC 2018 with state amendments)",
+          "manufacturer_specs": [
+            {
+              "document": "WeatherWatch Mineral-Surfaced Leak Barrier",
+              "manufacturer": "GAF",
+              "requirement": "Required at eaves, valleys, and around penetrations per GAF system requirements",
+              "warranty_text": "GAF warranty VOID without WeatherWatch/StormGuard at eaves and valleys",
+              "warranty_void": true
+            }
+          ],
+          "requirement": "Ice barrier required at eaves extending from eave edge to at least 24 inches past interior wall line, and in valleys",
+          "section": "R905.1.2",
+          "supplement_argument": "Ice & water barrier is required by code at all eaves and valleys. This is not an optional upgrade — it is a mandatory building code requirement for a code-compliant installation.",
+          "title": "Ice Barrier Requirement"
+        },
+        "description": "Ice & water barrier (2 courses eaves + 1 course valleys)",
+        "irc_code": "R905.1.2",
+        "qty": 256,
+        "structure": "Structure #2",
+        "supplement_argument": "Ice & water barrier is required by code at all eaves and valleys. This is not an optional upgrade — it is a mandatory building code requirement for a code-compliant installation.",
+        "trade": "roofing",
+        "unit": "SF",
+        "unit_price": 1.71
+      },
+      {
+        "category": "ROOFING",
+        "code": "",
+        "code_citation": {
+          "code_tag": "IRC-IN R905.2.8.5",
+          "has_warranty_void": false,
+          "jurisdiction": "Indiana Residential Code (IRC 2018 with state amendments)",
+          "manufacturer_specs": [],
+          "requirement": "Drip edge shall be provided at eaves and gable rake edges of shingle roofs",
+          "section": "R905.2.8.5",
+          "supplement_argument": "Drip edge is required at all eaves and rakes per code. Protects fascia and deck edge from water damage. Not an optional upgrade.",
+          "title": "Drip Edge Requirement"
+        },
+        "description": "R&R Drip edge - aluminum",
+        "irc_code": "IRC-IN R905.2.8.5",
+        "qty": 74.63,
+        "structure": "Structure #2",
+        "supplement_argument": "Drip edge is required at all eaves and rakes per code. Protects fascia and deck edge from water damage. Not an optional upgrade.",
+        "unit": "LF",
+        "unit_price": 3.16
+      },
+      {
+        "category": "ROOFING",
+        "code": "",
+        "description": "Remove modified bitumen/flat roofing",
+        "irc_code": "",
+        "qty": 1.2,
+        "structure": "Structure #3",
+        "supplement_argument": "",
+        "unit": "SQ",
+        "unit_price": 95.0
+      },
+      {
+        "category": "ROOFING",
+        "code": "",
+        "description": "Modified bitumen roofing - 2 ply torch applied",
+        "irc_code": "",
+        "qty": 1.32,
+        "structure": "Structure #3",
+        "supplement_argument": "",
+        "unit": "SQ",
+        "unit_price": 425.0
+      },
+      {
+        "category": "ROOFING",
+        "code": "",
+        "code_citation": {
+          "code_tag": "IRC-IN R905.1.1",
+          "has_warranty_void": false,
+          "jurisdiction": "Indiana Residential Code (IRC 2018 with state amendments)",
+          "manufacturer_specs": [],
+          "requirement": "Underlayment required over entire roof deck area not covered by ice barrier",
+          "section": "R905.1.1",
+          "supplement_argument": "Underlayment is code-mandated over the entire roof deck. Areas where ice & water barrier is not installed require felt or synthetic underlayment. Omission does not meet code requirements.",
+          "title": "Underlayment Requirement"
+        },
+        "description": "Underlayment - base sheet (flat roof)",
+        "irc_code": "IRC-IN R905.1.1",
+        "qty": 1.2,
+        "structure": "Structure #3",
+        "supplement_argument": "Underlayment is code-mandated over the entire roof deck. Areas where ice & water barrier is not installed require felt or synthetic underlayment. Omission does not meet code requirements.",
+        "unit": "SQ",
+        "unit_price": 38.0
+      },
+      {
+        "category": "ROOFING",
+        "code": "RFG IWS",
+        "code_citation": {
+          "code_tag": "IRC-IN R905.1.2",
+          "has_warranty_void": true,
+          "jurisdiction": "Indiana Residential Code (IRC 2018 with state amendments)",
+          "manufacturer_specs": [
+            {
+              "document": "WeatherWatch Mineral-Surfaced Leak Barrier",
+              "manufacturer": "GAF",
+              "requirement": "Required at eaves, valleys, and around penetrations per GAF system requirements",
+              "warranty_text": "GAF warranty VOID without WeatherWatch/StormGuard at eaves and valleys",
+              "warranty_void": true
+            }
+          ],
+          "requirement": "Ice barrier required at eaves extending from eave edge to at least 24 inches past interior wall line, and in valleys",
+          "section": "R905.1.2",
+          "supplement_argument": "Ice & water barrier is required by code at all eaves and valleys. This is not an optional upgrade — it is a mandatory building code requirement for a code-compliant installation.",
+          "title": "Ice Barrier Requirement"
+        },
+        "description": "Ice & water barrier (2 courses eaves + 1 course valleys)",
+        "irc_code": "R905.1.2",
+        "qty": 135,
+        "structure": "Structure #3",
+        "supplement_argument": "Ice & water barrier is required by code at all eaves and valleys. This is not an optional upgrade — it is a mandatory building code requirement for a code-compliant installation.",
+        "trade": "roofing",
+        "unit": "SF",
+        "unit_price": 1.71
+      },
+      {
+        "category": "ROOFING",
+        "code": "",
+        "code_citation": {
+          "code_tag": "IRC-IN R905.2.8.5",
+          "has_warranty_void": false,
+          "jurisdiction": "Indiana Residential Code (IRC 2018 with state amendments)",
+          "manufacturer_specs": [],
+          "requirement": "Drip edge shall be provided at eaves and gable rake edges of shingle roofs",
+          "section": "R905.2.8.5",
+          "supplement_argument": "Drip edge is required at all eaves and rakes per code. Protects fascia and deck edge from water damage. Not an optional upgrade.",
+          "title": "Drip Edge Requirement"
+        },
+        "description": "R&R Drip edge - aluminum",
+        "irc_code": "IRC-IN R905.2.8.5",
+        "qty": 47.07,
+        "structure": "Structure #3",
+        "supplement_argument": "Drip edge is required at all eaves and rakes per code. Protects fascia and deck edge from water damage. Not an optional upgrade.",
+        "unit": "LF",
+        "unit_price": 3.16
+      }
+    ],
+    "manual_scope_locked": true,
+    "measurements": {
+      "drip_edge": 391.92,
+      "eave": 188.5,
+      "flashing": 37.5,
+      "hip": 0,
+      "rake": 203.42,
+      "ridge": 95.83,
+      "step_flashing": 16.92,
+      "valley": 26.08
+    },
+    "phase": "post-scope",
+    "photo_annotations": {},
+    "photo_map": {},
+    "photo_sections": [],
+    "property": {
+      "address": "614 E 26th St",
+      "city": "Marion",
+      "state": "IN",
+      "year_built_OPTIONAL": null,
+      "zip": "46953"
+    },
+    "roof_facets": {
+      "north_arrow_angle": 180,
+      "roof_facets": [
+        {
+          "area_pct": 5.8,
+          "cardinal": "S",
+          "facet_id": "F1",
+          "pitch": "4/12",
+          "polygon_pixels": [
+            [
+              295,
+              168
+            ],
+            [
+              430,
+              168
+            ],
+            [
+              430,
+              215
+            ],
+            [
+              295,
+              215
+            ]
+          ]
+        },
+        {
+          "area_pct": 5.8,
+          "cardinal": "N",
+          "facet_id": "F2",
+          "pitch": "4/12",
+          "polygon_pixels": [
+            [
+              430,
+              215
+            ],
+            [
+              430,
+              262
+            ],
+            [
+              295,
+              262
+            ],
+            [
+              295,
+              215
+            ]
+          ]
+        },
+        {
+          "area_pct": 0.4,
+          "cardinal": "W",
+          "facet_id": "F3",
+          "pitch": "16/12",
+          "polygon_pixels": [
+            [
+              148,
+              188
+            ],
+            [
+              165,
+              188
+            ],
+            [
+              165,
+              230
+            ],
+            [
+              148,
+              230
+            ]
+          ]
+        },
+        {
+          "area_pct": 1.0,
+          "cardinal": "W",
+          "facet_id": "F4",
+          "pitch": "3/12",
+          "polygon_pixels": [
+            [
+              165,
+              188
+            ],
+            [
+              185,
+              188
+            ],
+            [
+              185,
+              230
+            ],
+            [
+              165,
+              230
+            ]
+          ]
+        },
+        {
+          "area_pct": 1.0,
+          "cardinal": "E",
+          "facet_id": "F5",
+          "pitch": "3/12",
+          "polygon_pixels": [
+            [
+              185,
+              188
+            ],
+            [
+              210,
+              188
+            ],
+            [
+              210,
+              230
+            ],
+            [
+              185,
+              230
+            ]
+          ]
+        },
+        {
+          "area_pct": 0.4,
+          "cardinal": "E",
+          "facet_id": "F6",
+          "pitch": "16/12",
+          "polygon_pixels": [
+            [
+              210,
+              188
+            ],
+            [
+              230,
+              188
+            ],
+            [
+              230,
+              230
+            ],
+            [
+              210,
+              230
+            ]
+          ]
+        },
+        {
+          "area_pct": 0.8,
+          "cardinal": "E",
+          "facet_id": "F7",
+          "pitch": "4/12",
+          "polygon_pixels": [
+            [
+              230,
+              195
+            ],
+            [
+              270,
+              195
+            ],
+            [
+              270,
+              230
+            ],
+            [
+              230,
+              230
+            ]
+          ]
+        },
+        {
+          "area_pct": 0.8,
+          "cardinal": "W",
+          "facet_id": "F8",
+          "pitch": "4/12",
+          "polygon_pixels": [
+            [
+              120,
+              195
+            ],
+            [
+              148,
+              195
+            ],
+            [
+              148,
+              230
+            ],
+            [
+              120,
+              230
+            ]
+          ]
+        },
+        {
+          "area_pct": 34.8,
+          "cardinal": "S",
+          "facet_id": "F9",
+          "pitch": "1/12",
+          "polygon_pixels": [
+            [
+              220,
+              420
+            ],
+            [
+              400,
+              420
+            ],
+            [
+              400,
+              640
+            ],
+            [
+              340,
+              640
+            ],
+            [
+              340,
+              560
+            ],
+            [
+              220,
+              560
+            ]
+          ]
+        },
+        {
+          "area_pct": 2.5,
+          "cardinal": "S",
+          "facet_id": "F10",
+          "pitch": "1/12",
+          "polygon_pixels": [
+            [
+              400,
+              530
+            ],
+            [
+              455,
+              530
+            ],
+            [
+              455,
+              590
+            ],
+            [
+              400,
+              590
+            ]
+          ]
+        },
+        {
+          "area_pct": 10.1,
+          "cardinal": "S",
+          "facet_id": "F11",
+          "pitch": "9/12",
+          "polygon_pixels": [
+            [
+              260,
+              660
+            ],
+            [
+              430,
+              660
+            ],
+            [
+              430,
+              710
+            ],
+            [
+              260,
+              710
+            ]
+          ]
+        },
+        {
+          "area_pct": 7.0,
+          "cardinal": "N",
+          "facet_id": "F12",
+          "pitch": "9/12",
+          "polygon_pixels": [
+            [
+              370,
+              720
+            ],
+            [
+              455,
+              720
+            ],
+            [
+              455,
+              790
+            ],
+            [
+              370,
+              790
+            ]
+          ]
+        },
+        {
+          "area_pct": 10.9,
+          "cardinal": "W",
+          "facet_id": "F13",
+          "pitch": "9/12",
+          "polygon_pixels": [
+            [
+              290,
+              750
+            ],
+            [
+              370,
+              750
+            ],
+            [
+              370,
+              900
+            ],
+            [
+              290,
+              900
+            ]
+          ]
+        },
+        {
+          "area_pct": 10.9,
+          "cardinal": "E",
+          "facet_id": "F14",
+          "pitch": "9/12",
+          "polygon_pixels": [
+            [
+              370,
+              750
+            ],
+            [
+              455,
+              750
+            ],
+            [
+              455,
+              900
+            ],
+            [
+              370,
+              900
+            ]
+          ]
+        },
+        {
+          "area_pct": 7.8,
+          "cardinal": "E",
+          "facet_id": "F15",
+          "pitch": "6/12",
+          "polygon_pixels": [
+            [
+              455,
+              720
+            ],
+            [
+              530,
+              720
+            ],
+            [
+              530,
+              900
+            ],
+            [
+              455,
+              900
+            ]
+          ]
+        }
+      ],
+      "scale_bar": null
+    },
+    "scope": {
+      "o_and_p": false,
+      "trades": [
+        "Roofing"
+      ]
+    },
+    "scope_revisions": [
+      {
+        "argument_mapping": [],
+        "items_added": [],
+        "items_added_count": 0,
+        "items_increased": [],
+        "items_increased_count": 0,
+        "items_removed": [],
+        "items_still_missing_count": 0,
+        "movement": 0,
+        "movement_pct": 0,
+        "new_rcv": 0,
+        "previous_rcv": 0,
+        "revision_date": "2026-05-27"
+      }
+    ],
+    "settlement_prediction": {
+      "confidence": "low",
+      "data_points": 1,
+      "message": "Only 1 similar claims — prediction unreliable"
+    },
+    "slope_damage": [
+      {
+        "area_pct": 5.8,
+        "cardinal": "S",
+        "damage_photos": 0,
+        "dominant_damage_type": null,
+        "facet_id": "F1",
+        "pitch": "4/12",
+        "total_photos": 0,
+        "weighted_damage_pct": 0.0
+      },
+      {
+        "area_pct": 5.8,
+        "cardinal": "N",
+        "damage_photos": 0,
+        "dominant_damage_type": null,
+        "facet_id": "F2",
+        "pitch": "4/12",
+        "total_photos": 0,
+        "weighted_damage_pct": 0.0
+      },
+      {
+        "area_pct": 0.4,
+        "cardinal": "W",
+        "damage_photos": 0,
+        "dominant_damage_type": null,
+        "facet_id": "F3",
+        "pitch": "16/12",
+        "total_photos": 0,
+        "weighted_damage_pct": 0.0
+      },
+      {
+        "area_pct": 1.0,
+        "cardinal": "W",
+        "damage_photos": 0,
+        "dominant_damage_type": null,
+        "facet_id": "F4",
+        "pitch": "3/12",
+        "total_photos": 0,
+        "weighted_damage_pct": 0.0
+      },
+      {
+        "area_pct": 1.0,
+        "cardinal": "E",
+        "damage_photos": 0,
+        "dominant_damage_type": null,
+        "facet_id": "F5",
+        "pitch": "3/12",
+        "total_photos": 0,
+        "weighted_damage_pct": 0.0
+      },
+      {
+        "area_pct": 0.4,
+        "cardinal": "E",
+        "damage_photos": 0,
+        "dominant_damage_type": null,
+        "facet_id": "F6",
+        "pitch": "16/12",
+        "total_photos": 0,
+        "weighted_damage_pct": 0.0
+      },
+      {
+        "area_pct": 0.8,
+        "cardinal": "E",
+        "damage_photos": 0,
+        "dominant_damage_type": null,
+        "facet_id": "F7",
+        "pitch": "4/12",
+        "total_photos": 0,
+        "weighted_damage_pct": 0.0
+      },
+      {
+        "area_pct": 0.8,
+        "cardinal": "W",
+        "damage_photos": 0,
+        "dominant_damage_type": null,
+        "facet_id": "F8",
+        "pitch": "4/12",
+        "total_photos": 0,
+        "weighted_damage_pct": 0.0
+      },
+      {
+        "area_pct": 34.8,
+        "cardinal": "S",
+        "damage_photos": 0,
+        "dominant_damage_type": null,
+        "facet_id": "F9",
+        "pitch": "1/12",
+        "total_photos": 0,
+        "weighted_damage_pct": 0.0
+      },
+      {
+        "area_pct": 2.5,
+        "cardinal": "S",
+        "damage_photos": 0,
+        "dominant_damage_type": null,
+        "facet_id": "F10",
+        "pitch": "1/12",
+        "total_photos": 0,
+        "weighted_damage_pct": 0.0
+      },
+      {
+        "area_pct": 10.1,
+        "cardinal": "S",
+        "damage_photos": 0,
+        "dominant_damage_type": null,
+        "facet_id": "F11",
+        "pitch": "9/12",
+        "total_photos": 0,
+        "weighted_damage_pct": 0.0
+      },
+      {
+        "area_pct": 7.0,
+        "cardinal": "N",
+        "damage_photos": 0,
+        "dominant_damage_type": null,
+        "facet_id": "F12",
+        "pitch": "9/12",
+        "total_photos": 0,
+        "weighted_damage_pct": 0.0
+      },
+      {
+        "area_pct": 10.9,
+        "cardinal": "W",
+        "damage_photos": 0,
+        "dominant_damage_type": null,
+        "facet_id": "F13",
+        "pitch": "9/12",
+        "total_photos": 0,
+        "weighted_damage_pct": 0.0
+      },
+      {
+        "area_pct": 10.9,
+        "cardinal": "E",
+        "damage_photos": 0,
+        "dominant_damage_type": null,
+        "facet_id": "F14",
+        "pitch": "9/12",
+        "total_photos": 0,
+        "weighted_damage_pct": 0.0
+      },
+      {
+        "area_pct": 7.8,
+        "cardinal": "E",
+        "damage_photos": 0,
+        "dominant_damage_type": null,
+        "facet_id": "F15",
+        "pitch": "6/12",
+        "total_photos": 0,
+        "weighted_damage_pct": 0.0
+      }
+    ],
+    "source_docs": {
+      "companycam_pdf": "_no_companycam.pdf"
+    },
+    "structures": [
+      {
+        "facets": 7,
+        "flat_area_sf": 972,
+        "measurements": {
+          "eave": 123.25,
+          "flashing": 37.5,
+          "hip": 0,
+          "rake": 152.75,
+          "ridge": 63.67,
+          "step_flashing": 16.92,
+          "transitions": 21.92,
+          "unspecified": 22.92,
+          "valley": 26.08
+        },
+        "name": "Structure #1 (Main Roof)",
+        "pitched_area_sf": 1215,
+        "pitches": [
+          {
+            "area_sf": 973,
+            "percent": 44.5,
+            "pitch": "1/12"
+          },
+          {
+            "area_sf": 203,
+            "percent": 9.3,
+            "pitch": "6/12"
+          },
+          {
+            "area_sf": 1013,
+            "percent": 46.3,
+            "pitch": "9/12"
+          }
+        ],
+        "predominant_pitch": "9/12",
+        "roof_area_sf": 2188,
+        "roof_area_sq": 21.9,
+        "shingle_type": "Modified Bitumen / Flat Roof",
+        "style": "combination",
+        "waste_factor": 1.12
+      },
+      {
+        "facets": 2,
+        "flat_area_sf": 0,
+        "measurements": {
+          "eave": 42.75,
+          "flashing": 0,
+          "hip": 0,
+          "rake": 28.33,
+          "ridge": 21.33,
+          "step_flashing": 0,
+          "transitions": 0,
+          "unspecified": 0,
+          "valley": 0
+        },
+        "name": "Structure #2 (Detached)",
+        "pitched_area_sf": 303,
+        "pitches": [
+          {
+            "area_sf": 303,
+            "percent": 100,
+            "pitch": "4/12"
+          }
+        ],
+        "predominant_pitch": "4/12",
+        "roof_area_sf": 303,
+        "roof_area_sq": 3.1,
+        "shingle_type": "Modified Bitumen / Flat Roof",
+        "style": "gable",
+        "waste_factor": 1.12
+      },
+      {
+        "facets": 6,
+        "flat_area_sf": 0,
+        "measurements": {
+          "eave": 22.5,
+          "flashing": 0,
+          "hip": 0,
+          "rake": 22.33,
+          "ridge": 10.83,
+          "step_flashing": 0,
+          "transitions": 42.33,
+          "unspecified": 0,
+          "valley": 0
+        },
+        "name": "Structure #3 (Detached)",
+        "pitched_area_sf": 121,
+        "pitches": [
+          {
+            "area_sf": 51,
+            "percent": 42.1,
+            "pitch": "3/12"
+          },
+          {
+            "area_sf": 20,
+            "percent": 16.5,
+            "pitch": "4/12"
+          },
+          {
+            "area_sf": 51,
+            "percent": 42.1,
+            "pitch": "16/12"
+          }
+        ],
+        "predominant_pitch": "16/12",
+        "roof_area_sf": 121,
+        "roof_area_sq": 1.2,
+        "shingle_type": "Modified Bitumen / Flat Roof",
+        "style": "combination",
+        "waste_factor": 1.23
+      }
+    ],
+    "user_notes": "[instant-supplement funnel] roof=tpo gutter=na siding=na",
+    "weather": {
+      "damage_thresholds": [
+        {
+          "component": "Aluminum Fascia/Trim Metal",
+          "result": "No NOAA hail data available",
+          "source": "NOAA SWDI",
+          "storm_actual": "0.0\"",
+          "threshold": "0.75\" diameter hail"
+        },
+        {
+          "component": "Laminate/Architectural Shingles (Aged 15+ Years)",
+          "result": "No NOAA hail data available",
+          "source": "NOAA SWDI + IBHS Sub-Severe Hail Study (2025)",
+          "storm_actual": "0.0\"",
+          "threshold": "0.75\" diameter hail (IBHS Sub-Severe Hail Study (2025))"
+        }
+      ],
+      "hail_size": "",
+      "noaa": {
+        "episode_narrative": "Searched 2026-04-25 ± 2 days for storm events near property.",
+        "event_count": 3,
+        "events": [
+          {
+            "date": "2026-04-27",
+            "distance_miles": 1.7,
+            "event_type": "Thunderstorm Wind",
+            "latitude": 40.56,
+            "longitude": -85.64,
+            "magnitude": 81.7,
+            "magnitude_type": "wind_mph",
+            "narrative": "Report of a 70.7 mph gust recorded on a personal weather station. Time estimated via radar. (IWX)",
+            "noaa_url": "https://www.spc.noaa.gov/climo/reports/260427_rpts_filtered_wind.csv",
+            "source": "SPC_DAILY",
+            "source_detail": "SPC Report — 2 ENE Marion, IN",
+            "time_utc": "0250"
+          },
+          {
+            "date": "2026-04-27",
+            "distance_miles": 16.1,
+            "event_type": "Thunderstorm Wind",
+            "latitude": 40.45,
+            "longitude": -85.37,
+            "magnitude": 70.2,
+            "magnitude_type": "wind_mph",
+            "narrative": "Corrects time of previous tstm wnd gst report from Hartford City. Time estimated via radar. (IWX)",
+            "noaa_url": "https://www.spc.noaa.gov/climo/reports/260427_rpts_filtered_wind.csv",
+            "source": "SPC_DAILY",
+            "source_detail": "SPC Report — Hartford City, IN",
+            "time_utc": "0308"
+          },
+          {
+            "date": "2026-04-27",
+            "distance_miles": 20.1,
+            "event_type": "Thunderstorm Wind",
+            "latitude": 40.43,
+            "longitude": -86.01,
+            "magnitude": 80.6,
+            "magnitude_type": "wind_mph",
+            "narrative": "(IND)",
+            "noaa_url": "https://www.spc.noaa.gov/climo/reports/260427_rpts_filtered_wind.csv",
+            "source": "SPC_DAILY",
+            "source_detail": "SPC Report — 4 SW Greentown, IN",
+            "time_utc": "0230"
+          }
+        ],
+        "max_hail_distance_miles": 0.0,
+        "max_hail_inches": 0.0,
+        "max_wind_mph": 81.7,
+        "query_coords": [
+          40.53749104683,
+          -85.653921619037
+        ],
+        "query_date": "2026-05-27",
+        "query_urls": [
+          "https://www.ncei.noaa.gov/stormevents/csv?beginDate_mm=04&beginDate_dd=21&beginDate_yyyy=2026&endDate_mm=04&endDate_dd=25&endDate_yyyy=2026&hailfilter=0.00&tornfilter=0&windfilter=000&sort=DT&submitbutton=Search&statefips=18%2CINDIANA&county=GRANT:53&eventType=%28C%29%20Hail&eventType=%28C%29%20Thunderstorm%20Wind",
+          "https://www.ncei.noaa.gov/stormevents/csv?beginDate_mm=04&beginDate_dd=21&beginDate_yyyy=2026&endDate_mm=04&endDate_dd=25&endDate_yyyy=2026&hailfilter=0.00&tornfilter=0&windfilter=000&sort=DT&submitbutton=Search&statefips=18%2CINDIANA&eventType=%28C%29%20Hail&eventType=%28C%29%20Thunderstorm%20Wind",
+          "https://www.spc.noaa.gov/climo/reports/260423_rpts_filtered_hail.csv",
+          "https://www.spc.noaa.gov/climo/reports/260423_rpts_filtered_wind.csv",
+          "https://www.ncei.noaa.gov/swdiws/csv/nx3hail/20260423:20260424",
+          "https://www.ncei.noaa.gov/stormevents/csv?beginDate_mm=04&beginDate_dd=22&beginDate_yyyy=2026&endDate_mm=04&endDate_dd=26&endDate_yyyy=2026&hailfilter=0.00&tornfilter=0&windfilter=000&sort=DT&submitbutton=Search&statefips=18%2CINDIANA&county=GRANT:53&eventType=%28C%29%20Hail&eventType=%28C%29%20Thunderstorm%20Wind",
+          "https://www.ncei.noaa.gov/stormevents/csv?beginDate_mm=04&beginDate_dd=22&beginDate_yyyy=2026&endDate_mm=04&endDate_dd=26&endDate_yyyy=2026&hailfilter=0.00&tornfilter=0&windfilter=000&sort=DT&submitbutton=Search&statefips=18%2CINDIANA&eventType=%28C%29%20Hail&eventType=%28C%29%20Thunderstorm%20Wind",
+          "https://www.spc.noaa.gov/climo/reports/260424_rpts_filtered_hail.csv",
+          "https://www.spc.noaa.gov/climo/reports/260424_rpts_filtered_wind.csv",
+          "https://www.ncei.noaa.gov/swdiws/csv/nx3hail/20260424:20260425",
+          "https://www.ncei.noaa.gov/stormevents/csv?beginDate_mm=04&beginDate_dd=23&beginDate_yyyy=2026&endDate_mm=04&endDate_dd=27&endDate_yyyy=2026&hailfilter=0.00&tornfilter=0&windfilter=000&sort=DT&submitbutton=Search&statefips=18%2CINDIANA&county=GRANT:53&eventType=%28C%29%20Hail&eventType=%28C%29%20Thunderstorm%20Wind",
+          "https://www.ncei.noaa.gov/stormevents/csv?beginDate_mm=04&beginDate_dd=23&beginDate_yyyy=2026&endDate_mm=04&endDate_dd=27&endDate_yyyy=2026&hailfilter=0.00&tornfilter=0&windfilter=000&sort=DT&submitbutton=Search&statefips=18%2CINDIANA&eventType=%28C%29%20Hail&eventType=%28C%29%20Thunderstorm%20Wind",
+          "https://www.spc.noaa.gov/climo/reports/260425_rpts_filtered_hail.csv",
+          "https://www.spc.noaa.gov/climo/reports/260425_rpts_filtered_wind.csv",
+          "https://www.ncei.noaa.gov/swdiws/csv/nx3hail/20260425:20260426",
+          "https://www.ncei.noaa.gov/stormevents/csv?beginDate_mm=04&beginDate_dd=24&beginDate_yyyy=2026&endDate_mm=04&endDate_dd=28&endDate_yyyy=2026&hailfilter=0.00&tornfilter=0&windfilter=000&sort=DT&submitbutton=Search&statefips=18%2CINDIANA&county=GRANT:53&eventType=%28C%29%20Hail&eventType=%28C%29%20Thunderstorm%20Wind",
+          "https://www.ncei.noaa.gov/stormevents/csv?beginDate_mm=04&beginDate_dd=24&beginDate_yyyy=2026&endDate_mm=04&endDate_dd=28&endDate_yyyy=2026&hailfilter=0.00&tornfilter=0&windfilter=000&sort=DT&submitbutton=Search&statefips=18%2CINDIANA&eventType=%28C%29%20Hail&eventType=%28C%29%20Thunderstorm%20Wind",
+          "https://www.spc.noaa.gov/climo/reports/260426_rpts_filtered_hail.csv",
+          "https://www.spc.noaa.gov/climo/reports/260426_rpts_filtered_wind.csv",
+          "https://www.ncei.noaa.gov/swdiws/csv/nx3hail/20260426:20260427",
+          "https://www.ncei.noaa.gov/stormevents/csv?beginDate_mm=04&beginDate_dd=25&beginDate_yyyy=2026&endDate_mm=04&endDate_dd=29&endDate_yyyy=2026&hailfilter=0.00&tornfilter=0&windfilter=000&sort=DT&submitbutton=Search&statefips=18%2CINDIANA&county=GRANT:53&eventType=%28C%29%20Hail&eventType=%28C%29%20Thunderstorm%20Wind",
+          "https://www.ncei.noaa.gov/stormevents/csv?beginDate_mm=04&beginDate_dd=25&beginDate_yyyy=2026&endDate_mm=04&endDate_dd=29&endDate_yyyy=2026&hailfilter=0.00&tornfilter=0&windfilter=000&sort=DT&submitbutton=Search&statefips=18%2CINDIANA&eventType=%28C%29%20Hail&eventType=%28C%29%20Thunderstorm%20Wind",
+          "https://www.spc.noaa.gov/climo/reports/260427_rpts_filtered_hail.csv",
+          "https://www.spc.noaa.gov/climo/reports/260427_rpts_filtered_wind.csv",
+          "https://www.ncei.noaa.gov/swdiws/csv/nx3hail/20260427:20260428"
+        ],
+        "search_radius_miles": 25.0
+      },
+      "storm_date": "April 25, 2026",
+      "storm_description": "Searched 2026-04-25 ± 2 days for storm events near property. Near the subject property: wind gusts of 81.7 mph.",
+      "wind_speed": "81.7 mph"
+    }
+  }
+}

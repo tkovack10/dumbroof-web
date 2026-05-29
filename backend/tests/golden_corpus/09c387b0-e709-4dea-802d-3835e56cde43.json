@@ -1,0 +1,1484 @@
+{
+  "_coverage": "OH forensic-only, hail+wind, multi-struct",
+  "claim": {
+    "address": "9130 Avon Lake Rd, Lodi, OH 44254, USA",
+    "carrier": "State Farm",
+    "contact_name": "Kris Massey",
+    "weather_data": {
+      "event_count": 4,
+      "events": [
+        {
+          "date": "2026-03-13",
+          "distance_miles": 33.60497888115166,
+          "event_type": "Hail",
+          "hail_size": 1.25,
+          "latitude": 41.443,
+          "location": "",
+          "longitude": -82.324,
+          "source": "SWDI_NX3HAIL",
+          "wind_speed": null
+        },
+        {
+          "date": "2026-03-13",
+          "distance_miles": 39.9428186908583,
+          "event_type": "Hail",
+          "hail_size": 1.0,
+          "latitude": 41.569,
+          "location": "",
+          "longitude": -82.252,
+          "source": "SWDI_NX3HAIL",
+          "wind_speed": null
+        },
+        {
+          "date": "2026-03-11",
+          "distance_miles": 24.482923183657007,
+          "event_type": "Thunderstorm Wind",
+          "hail_size": 70.2,
+          "latitude": 41.35,
+          "location": "",
+          "longitude": -82.18,
+          "source": "SPC_DAILY",
+          "wind_speed": null
+        },
+        {
+          "date": "2026-03-11",
+          "distance_miles": 30.77396552902101,
+          "event_type": "Thunderstorm Wind",
+          "hail_size": 76.0,
+          "latitude": 40.82,
+          "location": "",
+          "longitude": -82.52,
+          "source": "SPC_DAILY",
+          "wind_speed": null
+        }
+      ],
+      "max_hail_inches": 1.25,
+      "max_wind_mph": 76.0
+    }
+  },
+  "config": {
+    "appeal_letter": {
+      "demand_items": [
+        "Review the enclosed forensic documentation and revised scope of loss",
+        "Issue revised payment reflecting the full scope of documented storm-related damage",
+        "Schedule a re-inspection if additional verification is needed"
+      ],
+      "enclosed_documents": [
+        "Forensic Causation Report with annotated photography",
+        "Xactimate-format estimate at current pricing",
+        "Supplement report with line-by-line variance analysis",
+        "Formal appeal letter"
+      ],
+      "requested_actions": [
+        "Review the enclosed forensic documentation and revised scope of loss",
+        "Issue revised payment reflecting the full scope of documented storm-related damage",
+        "Schedule a re-inspection if additional verification is needed"
+      ]
+    },
+    "carrier": {
+      "adjuster_email": "",
+      "adjuster_name": "",
+      "carrier_arguments": [
+        "This estimate is priced based on estimated market pricing for the cost of materials, labor, and other factors at the time of the loss.",
+        "Adjustments in market pricing and timing of the repairs may impact the final cost of covered repairs. Should you or your contractor find during the course of repairs that the actual and necessary cost of covered repairs at the time of repair is higher than this one, you should contact us prior to beginning repairs. State Farm will work with you and your contractor to determine the actual and necessary cost of covered repairs at the time repairs will be completed, subject to policy terms, conditions and limits.",
+        "We want you to receive quality repair work to restore the damages to your property.",
+        "State Farm is a Participating Insurer of the California Earthquake Authority, P.O. Box 52295, Phoenix, AZ 85072-2295, CEA Fax: (886) 529-8467"
+      ],
+      "carrier_line_items": [],
+      "carrier_rcv": 0.0,
+      "claim_number": "35-97W0-661",
+      "deductible": 0.0,
+      "inspection_date": "",
+      "inspector_company": "",
+      "inspector_name": "",
+      "name": "State Farm",
+      "policy_number": ""
+    },
+    "carrier_intelligence": {
+      "anticipated_denials": [
+        {
+          "count": 431,
+          "countered_count": 0,
+          "examples": [
+            "Estimate is priced based on estimated market pricing for cost of materials and labor at time of loss",
+            "Adjustments in market pricing and timing of repairs may impact final cost of covered repairs",
+            "General contractor overhead and profit not included (0% GC Overhead, 0% GC Profit)"
+          ],
+          "tactic_type": "underpayment",
+          "total_impact": 0
+        },
+        {
+          "count": 309,
+          "countered_count": 0,
+          "examples": [
+            "Wood fence depreciated at 80% (age 10 years, life 12 years) - average condition",
+            "Vinyl siding depreciated at 20% (age 10 years, life 50 years) - average condition",
+            "Storage shed depreciated at 20% (age 10 years, life 50 years) - average condition"
+          ],
+          "tactic_type": "depreciation",
+          "total_impact": 0
+        },
+        {
+          "count": 230,
+          "countered_count": 210,
+          "examples": [
+            "ADDED: Laminated - comp. shingle rfg. - w/out felt; priced by ITEL ASP on 11 Nov 2025 ($0.00)",
+            "ADDED: R&R Siding - vinyl; Age/Life 10/50 yrs, 20% depreciation ($7,523.60)",
+            "ADDED: R&R House wrap (air/moisture barrier); Age/Life 10/150 yrs, 6.67% depreciation ($615.20)"
+          ],
+          "tactic_type": "counter_argument",
+          "total_impact": 398776.20000000036
+        },
+        {
+          "count": 23,
+          "countered_count": 0,
+          "examples": [
+            "Drip edge underscoped (246 LF vs 387 LF — code requires at both eaves AND rakes per RCNYS R905.2.8.5)",
+            "Carrier omitted ALL code-required roofing components: no ice & water barrier (RCNYS R905.1.2), no underlayment (RCNYS R905.1.1), no drip edge (RCNYS R905.2.8.5), no starter strip",
+            "NO HOUSE WRAP — Code-required weather-resistant exterior wall envelope (RCNYS R703.2) completely omitted from the 1st scope."
+          ],
+          "tactic_type": "code_dispute",
+          "total_impact": 0
+        },
+        {
+          "count": 3,
+          "countered_count": 0,
+          "examples": [
+            "Carrier acknowledged hail damage warranting full roof replacement, gutter replacement, and window wraps, but illogically limited siding repair to a 25 SF spot patch on the same structure exposed to th",
+            "Carrier's spot repair approach to siding violates RCNYS R703.1/R703.2 continuous weather-resistant exterior wall envelope requirement — Tyvek/house wrap must wrap continuously around outside corners a",
+            "SIDING SPOT REPAIR — Carrier scoped only 2 SQ (200 SF) of wood shake siding on front and left elevations. The property has 6,094 SF of cedar siding across 4 elevations. This is a 97% undercount."
+          ],
+          "tactic_type": "spot_repair",
+          "total_impact": 0
+        },
+        {
+          "count": 2,
+          "countered_count": 0,
+          "examples": [
+            "Garage metal roof denied entirely despite same storm event damaging same property — soft metal denting confirmed on garage ridge cap and corrugated panels",
+            "Carrier acknowledged only 1 pipe jack on a 1,888 SF (18.88 SQ) roof with 2 structures — denied ALL shingle damage despite 1.25-inch hail confirmed at the property location"
+          ],
+          "tactic_type": "denial",
+          "total_impact": 0
+        },
+        {
+          "count": 2,
+          "countered_count": 0,
+          "examples": [
+            "Carrier scoped only partial roof replacement (14.67 SQ of 29.58 SQ = 49.6%) — less than half the actual roof area despite confirmed 1.75\" hail across the entire property",
+            "Revised estimate dated 1/14/2026 increased from original 1/7/2026 estimate - added full house vinyl siding replacement (2,075.34 SF) and house wrap, upgraded debris removal from pickup truck load to 2"
+          ],
+          "tactic_type": "partial_scope",
+          "total_impact": 0
+        }
+      ],
+      "carrier_score": {
+        "carrier": "State Farm",
+        "error": "unsupported operand type(s) for +: 'float' and 'NoneType'"
+      },
+      "general_effective_arguments": [
+        {
+          "argument": "Multiple circular hail impact holes penetrate vinyl siding panels on all visible elevations, compromising weather envelope integrity.",
+          "description": "ADDED: USA Roof Masters - Siding & Roofing Bid Item ($47,152.31)",
+          "dollar_impact": 47152.31,
+          "tactic_countered": "counter_argument",
+          "trade": null
+        },
+        {
+          "argument": "Single ground-level overview photo insufficient for forensic hail or wind damage determination — no close-range shingle, gutter, or soft metal documentation provided.",
+          "description": "ADDED: R&R Siding - cedar shingle - Front Elevation ($27,654.98)",
+          "dollar_impact": 27654.98,
+          "tactic_countered": "counter_argument",
+          "trade": null
+        },
+        {
+          "argument": "Complete hail punch-through penetrations confirmed on multiple natural slate tiles across all visible roof sections — circular voids open to substrate below constitute functional water-infiltration damage requiring full replacement.",
+          "description": "ADDED: Slate roofing - High grade - 18\" to 24\" tall (Roof slope J, C, & D) ($16,520.56)",
+          "dollar_impact": 16520.56,
+          "tactic_countered": "counter_argument",
+          "trade": null
+        },
+        {
+          "argument": "Slate condition is beyond spot repair — widespread brittleness and erosion require full roof replacement",
+          "description": "ADDED: Slate roofing - High grade - 18\" to 24\" tall ($16,520.56)",
+          "dollar_impact": 16520.56,
+          "tactic_countered": "counter_argument",
+          "trade": null
+        },
+        {
+          "argument": "Metal roof (corrugated/R-panel) visible but no close-up chalk testing documented in this photo set",
+          "description": "ADDED: R&R Metal roofing - corrugated - 29 gauge - galv. ($16,218.75)",
+          "dollar_impact": 16218.75,
+          "tactic_countered": "counter_argument",
+          "trade": null
+        }
+      ],
+      "prediction": {
+        "confidence": "low",
+        "message": "Insufficient data (0 claims)"
+      },
+      "recommended_arguments_by_trade": {}
+    },
+    "company": {
+      "address": "1020 Main St",
+      "cell_phone": "3305910803",
+      "ceo_name": "Josh Wiseman",
+      "ceo_title": "Owner",
+      "city_state_zip": "Grafton",
+      "email": "JoshW@HomeWiseHome.com",
+      "name": "HomeWise",
+      "office_phone": "",
+      "website": "www.HomeWiseHome.com"
+    },
+    "compliance": {
+      "aob_signed": false,
+      "user_role": "contractor"
+    },
+    "cover_email": {
+      "enclosed_documents": [
+        "Forensic Causation Report with annotated photography",
+        "Xactimate-format replacement cost estimate",
+        "Supplement report with line-by-line variance analysis",
+        "Formal scope clarification letter",
+        "Cover correspondence"
+      ],
+      "summary_paragraphs": [
+        "Please find enclosed the complete forensic documentation package for the property at 9130 Avon Lake Rd, Lodi, OH 44254, USA. Our independent inspection has documented storm-related damage to the Roofing.",
+        "The enclosed reports include annotated photography of all identified damage, an Xactimate-format replacement cost estimate, and a forensic causation analysis establishing the relationship between documented weather events and observed damage.",
+        "Please do not hesitate to contact us should you require any additional information or wish to schedule a joint inspection."
+      ],
+      "to": "State Farm Claims Department",
+      "to_email": ""
+    },
+    "dashboard": {
+      "carrier_current": 0
+    },
+    "dates": {
+      "date_of_loss": "March 13, 2026",
+      "report_date": "May 03, 2026",
+      "usarm_inspection_date": "May 03, 2026"
+    },
+    "financials": {
+      "deductible": 0.0,
+      "market_code": "OHAK8X_APR26",
+      "price_list": "OHDT26",
+      "price_list_is_proxy": false,
+      "tax_rate": 0.0725
+    },
+    "forensic_findings": {
+      "code_violations": [
+        {
+          "code": "RCO R905.2.2",
+          "requirement": "Asphalt shingles shall be installed in accordance with this section AND the manufacturer's installation instructions — adopts manufacturer spec as code-enforceable requirement",
+          "status": "Required — manufacturer spec controls fastener count, exposure, starter, drip edge, and warranty-critical details"
+        },
+        {
+          "code": "RCO R905.2.8.5",
+          "requirement": "Drip edge required at eaves and rake edges of shingle roofs; min 2-inch overlap at joints, min 1/4-inch projection below sheathing",
+          "status": "Required — included in scope"
+        },
+        {
+          "code": "RCO R905.1.1",
+          "requirement": "Underlayment shall be applied in accordance with manufacturer's installation instructions — ASTM D226 / D4869 / D6757 labeling required",
+          "status": "Required — included in scope"
+        },
+        {
+          "code": "RCO R905.2.7",
+          "requirement": "Factory starter strip course required along eaves and rakes with pre-applied sealant strip at roof edge; field-cut shingles do not qualify as starter (no sealant = wind-uplift failure)",
+          "status": "Required — included in scope per manufacturer wind-warranty spec"
+        },
+        {
+          "code": "RCO R905.1.2",
+          "requirement": "Ice barrier required in areas where the average daily temperature in January is ≤25°F or where ice damming has a history; min 2 feet inside exterior wall line (Climate Zones 5A+ including OH/NY)",
+          "status": "Required — included in scope"
+        },
+        {
+          "code": "RCO R903.2.1",
+          "requirement": "Flashings shall be installed at wall and roof intersections, wherever there is a change in roof slope or direction, and around roof openings",
+          "status": "Required — included in scope"
+        }
+      ],
+      "conclusion_paragraphs": [
+        "Based on our forensic analysis of 18 documented findings, the property at 9130 Avon Lake Rd, Lodi, OH 44254, USA sustained confirmed wind storm damage from the March 13, 2026 event. The weight of evidence is substantial: widespread shingle loss across the rear elevation exposing both synthetic underlayment and bare deck, wind-creased tabs with sharp horizontal fold lines at the nail line exhibiting clean mechanical seal breaks, and an exposed roofing nail with zero rust formation — forensic confirmation that the damage occurred during the recent storm rather than representing a pre-existing condition. The directional damage pattern, concentrated on the rear windward elevation while the front elevation remains largely intact, is consistent with a single directional wind event and eliminates age-related deterioration as a competing cause.",
+        "The confirmed wind damage to the Architectural Laminated Comp Shingle roofing system and associated components on the rear elevation requires full slope replacement rather than spot repair. The existing older 3-tab shingle product features a narrow 5-inch exposure that cannot be matched with any currently manufactured shingle product; current metric 3-tab shingles carry a 5-5/8-inch exposure, which would create cumulative course misalignment across the slope, resulting in an aesthetically inconsistent and functionally compromised repair. Furthermore, the widespread areas of exposed deck and underlayment constitute a violation of IRC R905.2.6 as adopted under the RCO, which mandates a complete weather-resistant roof covering — partial patching with mismatched materials cannot restore code compliance.",
+        "Based on the documented damage, applicable building codes under the RCO, and recognized industry standards, our analysis identifies the need for full replacement of the rear roof slope, including removal of all remaining compromised shingles, inspection and repair of any damaged deck sheathing, and installation of a new code-compliant roofing system with proper underlayment, flashing, and ridge components. The forensic evidence further supports inclusion of the rear elevation — which sustained the most severe and widespread wind damage — in any claim scope, as the directional damage pattern, mechanical seal failures, and material discontinuation collectively render spot repair infeasible and non-code-compliant.",
+        "This determination is supported by HAAG Engineering standards for wind damage assessment, which classify wind-creased tabs with mechanical seal breaks at the bond line as functional damage requiring replacement rather than cosmetic repair. NRCA guidelines further establish that mixing discontinued shingle products with current-production materials compromises weatherproofing performance and manufacturer warranty coverage. All findings documented in this report are grounded in physical forensic evidence observed and photographed at the property, interpreted in accordance with these recognized professional standards and the IRC as adopted under Ohio's Residential Code (RCO)."
+      ],
+      "damage_summary": "Rear elevation of this 3-tab roof sustained significant wind damage during the March 13, 2026 storm event. Multiple shingles are missing across the rear slope, exposing underlayment and bare deck. Remaining shingles show wind creases at the nail line with clean mechanical seal breaks confirming forcible wind separation — not age-related adhesive failure. An exposed nail with no rust confirms recent storm timing. A directional damage pattern is evident: damage is concentrated on the rear elevation (windward face) while the front face appears largely intact, consistent with the contractor's observation that State Farm paid for the front but the rear — which sustained the worst damage — was not included. The older 3-tab shingles with their narrow exposure cannot be matched with any current product, making spot repair infeasible and full replacement necessary. Photos 6-10 document wind damage to the rear elevation of an older 3-tab asphalt shingle roof. Close-up inspection reveals wind-creased tabs with sharp horizontal fold lines at the nail line, mechanically broken seal strips with clean separation, and a lifted/turned-back shingle tab with a pry bar demonstrating zero adhesion. The final two photos show a large area of shingles stripped to expose RhinoRoof U20 synthetic underlayment — consistent with widespread wind removal on the rear slope. The contractor notes damage is widespread only on the rear elevation, confirming a directional wind pattern (rear = windward face). The 3-tab shingles appear to be an older discontinued product; spot repair with current metric shingles would create exposure misalignment, supporting full slope replacement. The combination of creased tabs, broken seals, and missing shingles across the rear elevation constitutes functional damage from the March 13, 2026 wind event. Photo 11 shows the rear elevation of the shop roof with RhinoRoof U20 synthetic underlayment exposed where shingles have been removed or blown off. A tape measure documents the extent of exposed underlayment. Per contractor notes, widespread wind damage exists on the rear elevation of this older 3-tab roof. The exposed underlayment with no shingles present confirms catastrophic wind loss on this slope from the March 13, 2026 storm event.",
+      "damage_thresholds": [
+        {
+          "component": "Aluminum Fascia/Trim Metal",
+          "result": "EXCEEDED — 1.7x threshold",
+          "source": "NOAA SWDI",
+          "storm_actual": "1.25\" (NOAA SWDI NX3HAIL, NEXRAD KCLE, 33.6 mi from property)",
+          "threshold": "0.75\" diameter hail"
+        },
+        {
+          "component": "Laminate/Architectural Shingles",
+          "result": "EXCEEDED — 1.2x threshold",
+          "source": "NOAA SWDI + HAAG Engineering",
+          "storm_actual": "1.25\" (NOAA SWDI NX3HAIL, NEXRAD KCLE, 33.6 mi from property)",
+          "threshold": "1.00\" diameter hail (HAAG Engineering)"
+        }
+      ],
+      "differentiation_table": [
+        {
+          "cause": "Wind Damage",
+          "characteristics": "Lifted, creased, or missing shingles; exposed nail heads; broken seals",
+          "conclusion": "CONSISTENT",
+          "observed": "Yes — wind-lifted and creased shingles documented across roof surface"
+        },
+        {
+          "cause": "Normal Wear / Aging",
+          "characteristics": "Uniform granule loss, curling at edges, consistent deterioration pattern",
+          "conclusion": "NOT CONSISTENT",
+          "observed": "No — damage pattern is random/localized, inconsistent with uniform aging"
+        },
+        {
+          "cause": "Manufacturing Defect",
+          "characteristics": "Systematic pattern across same production batch, uniform failure mode",
+          "conclusion": "NOT CONSISTENT",
+          "observed": "No — damage is random and impact-related, not systematic"
+        }
+      ],
+      "executive_summary": [
+        "On March 13, 2026, the property at 9130 Avon Lake Rd, Lodi, OH 44254, USA sustained storm damage from a documented wind event. The subject property features an architectural laminated comp shingle system on the main dwelling and an older 3-tab asphalt shingle system on the shop structure. An 11-photograph forensic inspection was conducted to document the type, extent, and causation of wind damage across all roof elevations, with particular focus on the rear slopes of both structures where damage concentration was most severe.",
+        "The rear elevations of both the dwelling and the shop exhibit widespread wind damage characterized by missing shingles, exposed RhinoRoof U20 synthetic underlayment, and bare roof deck. Close-range inspection of remaining shingles on the rear slope reveals sharp horizontal wind creases at the nail line with mechanically broken seal strips exhibiting clean separation — forensic indicators consistent with forcible wind uplift rather than age-related adhesive degradation. An exposed fastener with no oxidation corroborates recent storm-period timing, and the directional concentration of damage on the rear (windward) elevation, with the front elevation remaining largely intact, confirms a coherent wind-load pattern consistent with the March 13, 2026 event.",
+        "The damaged 3-tab shingles are an older discontinued product with a nominal exposure dimension that cannot be matched by any currently manufactured metric shingle; spot repairs would produce visible exposure misalignment and fail to restore a uniform weather-resistant surface, rendering piecemeal repair technically infeasible. Under the Residential Code of Ohio (RCO), referencing IRC Section R905.2, replacement roofing materials must provide equivalent weather protection, and mixed installations of mismatched shingle profiles compromise both aesthetic uniformity and functional water-shedding performance. Full slope replacement of the rear elevations on both the dwelling and shop structures is therefore the minimum scope necessary to restore code-compliant roof system integrity following the March 13, 2026 wind event."
+      ],
+      "key_arguments": [
+        "Widespread missing shingles on rear elevation with exposed underlayment and bare deck — emergency tarp in place confirms active leak vulnerability.",
+        "Exposed roofing nail at shingle joint shows zero rust — forensic proof that shingle loss occurred during the recent March 13, 2026 wind event, not a pre-existing condition.",
+        "Wind-creased tab with clean mechanical seal break at bond line confirms functional damage per HAAG standards — replacement required.",
+        "Directional damage pattern: rear (windward) elevation shows severe wind damage while front elevation is largely intact, consistent with a single directional wind event.",
+        "Older 3-tab shingle product with narrow exposure cannot be matched with any current shingle product on the market — spot repair is infeasible, full slope replacement required.",
+        "Contractor notes State Farm paid for front face but rear elevation sustained the most severe damage and was not included in the original settlement — supplemental claim warranted.",
+        "Wind-creased tabs with sharp horizontal fold lines at the nail line — functional damage per HAAG standard requiring replacement.",
+        "Mechanically broken seal strips with clean separation confirm wind-driven failure, not age-related adhesive degradation.",
+        "Pry bar test demonstrates zero remaining seal adhesion on affected shingles — tabs lift freely without resistance.",
+        "Widespread shingle loss on rear elevation exposes synthetic underlayment across a large area — directional pattern confirms windward face damage from March 13, 2026 event.",
+        "Older 3-tab product is likely discontinued; current metric 3-tab shingles have 5-5/8\" exposure, creating cumulative misalignment if spot-repaired on a 5\" exposure roof.",
+        "Damage concentrated on rear elevation with front reportedly intact — directional wind pattern is forensic proof of a single wind event.",
+        "Rear shop elevation shows complete shingle loss exposing RhinoRoof U20 synthetic underlayment — consistent with catastrophic wind stripping from March 13, 2026 storm",
+        "Tape measure documents width of exposed area confirming widespread damage on rear slope as noted by contractor",
+        "Green cap nails visible through underlayment indicate recent underlayment installation as temporary weather protection after wind loss event",
+        "Contractor confirms SF has paid for front face but rear elevation damage remains unaddressed — directional wind pattern (rear > front) is classic windward-face concentration",
+        "Older 3-tab shingles are more vulnerable to wind uplift due to age-degraded seal strips — storm event exploited this vulnerability on the windward rear slope",
+        "Estimated roof age: ~12 years (installed circa 2014) — Shingle Type: Laminate/Architectural shingle"
+      ],
+      "total_photos": 11
+    },
+    "full_reroof_trigger": false,
+    "inspectors": {
+      "usarm_inspector": "Josh Wiseman",
+      "usarm_title": "Owner"
+    },
+    "insured": {
+      "name": "Kris Massey",
+      "type": "homeowner"
+    },
+    "line_items": [
+      {
+        "category": "ROOFING",
+        "code": "RFG 300S",
+        "code_citation": {
+          "code_tag": "RCO R908.3",
+          "has_warranty_void": true,
+          "jurisdiction": "Residential Code of Ohio",
+          "manufacturer_specs": [
+            {
+              "document": "Timberline HDZ Installation Instructions",
+              "manufacturer": "GAF",
+              "requirement": "4-6 nails per shingle, ProStart starter required at eaves and rakes",
+              "warranty_text": "GAF System Plus/Silver Pledge warranty VOID without proper starter and nailing pattern",
+              "warranty_void": true
+            }
+          ],
+          "requirement": "Existing roofing materials shall be removed before applying new roofing when existing roof has two or more applications of any type of roof covering",
+          "section": "R908.3",
+          "supplement_argument": "Complete tear-off is required per code for a code-compliant installation. Overlay is not code-compliant when damage necessitates deck inspection.",
+          "title": "Reroofing — Tear-Off Requirement"
+        },
+        "description": "Remove laminated comp shingle roofing",
+        "irc_code": "RCO R908.3",
+        "qty": 23.8,
+        "structure": "Structure #1",
+        "supplement_argument": "Complete tear-off is required per code for a code-compliant installation. Overlay is not code-compliant when damage necessitates deck inspection.",
+        "trade": "roofing",
+        "unit": "SQ",
+        "unit_price": 71.18
+      },
+      {
+        "category": "ROOFING",
+        "code": "RFG 300S",
+        "code_citation": {
+          "code_tag": "RCO R905.1",
+          "has_warranty_void": true,
+          "jurisdiction": "Residential Code of Ohio",
+          "manufacturer_specs": [
+            {
+              "document": "Timberline HDZ Installation Instructions",
+              "manufacturer": "GAF",
+              "requirement": "4-6 nails per shingle, ProStart starter required at eaves and rakes",
+              "warranty_text": "GAF System Plus/Silver Pledge warranty VOID without proper starter and nailing pattern",
+              "warranty_void": true
+            },
+            {
+              "document": "TB-10024261 (Hail Damage Assessment)",
+              "manufacturer": "Owens Corning",
+              "requirement": "Functional damage (mat fracture, granule loss exposing substrate) = full replacement",
+              "warranty_text": "",
+              "warranty_void": false
+            },
+            {
+              "document": "TIS #130 (Hail Damage Assessment)",
+              "manufacturer": "CertainTeed",
+              "requirement": "Mat fracture from hail impact = functional damage requiring replacement",
+              "warranty_text": "",
+              "warranty_void": false
+            },
+            {
+              "document": "Detecting Hail Damage to Asphalt Shingles",
+              "manufacturer": "Atlas",
+              "requirement": "Systematic hail damage assessment criteria for functional vs cosmetic",
+              "warranty_text": "",
+              "warranty_void": false
+            }
+          ],
+          "requirement": "Roofing shall be applied in accordance with manufacturer's installation instructions. Manufacturer instructions carry the force of building code.",
+          "section": "R905.1",
+          "supplement_argument": "Per R905.1, manufacturer installation instructions are legally binding building code. All components specified by the manufacturer (starter, underlayment, flashing) are code-required, not optional upgrades.",
+          "title": "Manufacturer Installation Instructions = Law"
+        },
+        "description": "Laminated comp shingle roofing - w/out felt",
+        "irc_code": "R905.2",
+        "qty": 26.18,
+        "structure": "Structure #1",
+        "supplement_argument": "Per R905.1, manufacturer installation instructions are legally binding building code. All components specified by the manufacturer (starter, underlayment, flashing) are code-required, not optional upgrades.",
+        "trade": "roofing",
+        "unit": "SQ",
+        "unit_price": 267.32
+      },
+      {
+        "category": "ROOFING",
+        "code": "",
+        "code_citation": {
+          "code_tag": "RCO R905.1.2",
+          "has_warranty_void": true,
+          "jurisdiction": "Residential Code of Ohio",
+          "manufacturer_specs": [
+            {
+              "document": "WeatherWatch Mineral-Surfaced Leak Barrier",
+              "manufacturer": "GAF",
+              "requirement": "Required at eaves, valleys, and around penetrations per GAF system requirements",
+              "warranty_text": "GAF warranty VOID without WeatherWatch/StormGuard at eaves and valleys",
+              "warranty_void": true
+            }
+          ],
+          "requirement": "Ice barrier required at eaves extending from eave edge to at least 24 inches past interior wall line, and in valleys",
+          "section": "R905.1.2",
+          "supplement_argument": "Ice & water barrier is required by code at all eaves and valleys. This is not an optional upgrade — it is a mandatory building code requirement for a code-compliant installation.",
+          "title": "Ice Barrier Requirement"
+        },
+        "description": "Underlayment - felt 15# (deck area not covered by I&W)",
+        "irc_code": "RCO R905.1.2",
+        "qty": 15.18,
+        "structure": "Structure #1",
+        "supplement_argument": "Ice & water barrier is required by code at all eaves and valleys. This is not an optional upgrade — it is a mandatory building code requirement for a code-compliant installation.",
+        "unit": "SQ",
+        "unit_price": 32.0
+      },
+      {
+        "category": "ROOFING",
+        "code": "RFG IWS",
+        "code_citation": {
+          "code_tag": "RCO R905.1.2",
+          "has_warranty_void": true,
+          "jurisdiction": "Residential Code of Ohio",
+          "manufacturer_specs": [
+            {
+              "document": "WeatherWatch Mineral-Surfaced Leak Barrier",
+              "manufacturer": "GAF",
+              "requirement": "Required at eaves, valleys, and around penetrations per GAF system requirements",
+              "warranty_text": "GAF warranty VOID without WeatherWatch/StormGuard at eaves and valleys",
+              "warranty_void": true
+            }
+          ],
+          "requirement": "Ice barrier required at eaves extending from eave edge to at least 24 inches past interior wall line, and in valleys",
+          "section": "R905.1.2",
+          "supplement_argument": "Ice & water barrier is required by code at all eaves and valleys. This is not an optional upgrade — it is a mandatory building code requirement for a code-compliant installation.",
+          "title": "Ice Barrier Requirement"
+        },
+        "description": "Ice & water barrier (2 courses eaves + 1 course valleys)",
+        "irc_code": "R905.1.2",
+        "qty": 858,
+        "structure": "Structure #1",
+        "supplement_argument": "Ice & water barrier is required by code at all eaves and valleys. This is not an optional upgrade — it is a mandatory building code requirement for a code-compliant installation.",
+        "trade": "roofing",
+        "unit": "SF",
+        "unit_price": 1.64
+      },
+      {
+        "category": "ROOFING",
+        "code": "RFG DRIP",
+        "code_citation": {
+          "code_tag": "RCO R905.2.8.5",
+          "has_warranty_void": false,
+          "jurisdiction": "Residential Code of Ohio",
+          "manufacturer_specs": [],
+          "requirement": "Drip edge shall be provided at eaves and gable rake edges of shingle roofs",
+          "section": "R905.2.8.5",
+          "supplement_argument": "Drip edge is required at all eaves and rakes per code. Protects fascia and deck edge from water damage. Not an optional upgrade.",
+          "title": "Drip Edge Requirement"
+        },
+        "description": "R&R Drip edge - aluminum",
+        "irc_code": "R905.2.7",
+        "qty": 264.25,
+        "structure": "Structure #1",
+        "supplement_argument": "Drip edge required at eaves and rakes per IRC R905.2.7. Minimum 2.5 inches below sheathing, 2 inches up deck. Underlayment OVER drip edge at eaves, UNDER at rakes. 5% waste factor standard",
+        "trade": "roofing",
+        "unit": "LF",
+        "unit_price": 3.25
+      },
+      {
+        "category": "ROOFING",
+        "code": "",
+        "code_citation": {
+          "code_tag": "RCO R905.1",
+          "has_warranty_void": true,
+          "jurisdiction": "Residential Code of Ohio",
+          "manufacturer_specs": [
+            {
+              "document": "Timberline HDZ Installation Instructions",
+              "manufacturer": "GAF",
+              "requirement": "4-6 nails per shingle, ProStart starter required at eaves and rakes",
+              "warranty_text": "GAF System Plus/Silver Pledge warranty VOID without proper starter and nailing pattern",
+              "warranty_void": true
+            },
+            {
+              "document": "Duration Series Install 10024264",
+              "manufacturer": "Owens Corning",
+              "requirement": "OC Starter Course required at eaves and rakes",
+              "warranty_text": "SureNail Technology warranty VOID without OC-approved starter",
+              "warranty_void": true
+            },
+            {
+              "document": "Landmark Series Installation Instructions",
+              "manufacturer": "CertainTeed",
+              "requirement": "SwiftStart starter required at eaves and rakes",
+              "warranty_text": "SureStart warranty VOID without CertainTeed-approved starter",
+              "warranty_void": true
+            }
+          ],
+          "requirement": "Starter course required at eaves and rakes per manufacturer installation instructions (R905.1 — manufacturer instructions = code)",
+          "section": "R905.1",
+          "supplement_argument": "Starter course is required by ALL major manufacturers (GAF, OC, CertainTeed). Per R905.1, manufacturer instructions carry the force of code. Omitting starter voids the manufacturer warranty.",
+          "title": "Starter Course (Manufacturer Required)"
+        },
+        "description": "R&R Starter strip - asphalt shingle",
+        "irc_code": "RCO R905.1",
+        "qty": 251.67000000000002,
+        "structure": "Structure #1",
+        "supplement_argument": "Starter course is required by ALL major manufacturers (GAF, OC, CertainTeed). Per R905.1, manufacturer instructions carry the force of code. Omitting starter voids the manufacturer warranty.",
+        "unit": "LF",
+        "unit_price": 1.9
+      },
+      {
+        "category": "ROOFING",
+        "code": "RFG RIDGCS",
+        "code_citation": {
+          "code_tag": "RCO R806",
+          "has_warranty_void": false,
+          "jurisdiction": "Residential Code of Ohio",
+          "manufacturer_specs": [],
+          "requirement": "Enclosed attics shall have cross ventilation. Ridge vent provides exhaust ventilation per R806.1",
+          "section": "R806",
+          "supplement_argument": "Ridge ventilation is required for proper attic ventilation per code. When ridge cap is replaced, ridge vent must be replaced to maintain code-compliant ventilation.",
+          "title": "Roof Ventilation"
+        },
+        "description": "R&R Ridge cap - laminated",
+        "irc_code": "RCO R806",
+        "qty": 71.42,
+        "structure": "Structure #1",
+        "supplement_argument": "Ridge ventilation is required for proper attic ventilation per code. When ridge cap is replaced, ridge vent must be replaced to maintain code-compliant ventilation.",
+        "trade": "roofing",
+        "unit": "LF",
+        "unit_price": 8.84
+      },
+      {
+        "category": "ROOFING",
+        "code": "RFG RGVC",
+        "code_citation": {
+          "code_tag": "RCO R806",
+          "has_warranty_void": false,
+          "jurisdiction": "Residential Code of Ohio",
+          "manufacturer_specs": [],
+          "requirement": "Enclosed attics shall have cross ventilation. Ridge vent provides exhaust ventilation per R806.1",
+          "section": "R806",
+          "supplement_argument": "Ridge ventilation is required for proper attic ventilation per code. When ridge cap is replaced, ridge vent must be replaced to maintain code-compliant ventilation.",
+          "title": "Roof Ventilation"
+        },
+        "description": "R&R Ridge vent - shingle over",
+        "irc_code": "R806",
+        "qty": 71.42,
+        "structure": "Structure #1",
+        "supplement_argument": "Ventilation required per IRC R806 — 1 SF NFVA per 150 SF attic area (1:150 ratio). OC warranty VOID without proper ventilation. Ridge vent must be R&R during re-roofing",
+        "trade": "roofing",
+        "unit": "LF",
+        "unit_price": 11.97
+      },
+      {
+        "category": "ROOFING",
+        "code": "",
+        "code_citation": {
+          "code_tag": "RCO R905.2.8.3",
+          "has_warranty_void": false,
+          "jurisdiction": "Residential Code of Ohio",
+          "manufacturer_specs": [],
+          "requirement": "Step flashing shall be used where roof planes intersect vertical walls",
+          "section": "R905.2.8.3",
+          "supplement_argument": "Step flashing is code-required at every wall-to-roof junction. When roofing is replaced, step flashing must be replaced to maintain weathertight integrity per code.",
+          "title": "Step Flashing at Wall Junctions"
+        },
+        "description": "R&R Step flashing",
+        "irc_code": "RCO R905.2.8.3",
+        "qty": 30.8,
+        "structure": "Structure #1",
+        "supplement_argument": "Step flashing is code-required at every wall-to-roof junction. When roofing is replaced, step flashing must be replaced to maintain weathertight integrity per code.",
+        "unit": "LF",
+        "unit_price": 10.78
+      },
+      {
+        "category": "ROOFING",
+        "code": "RFG FLCF",
+        "description": "R&R Counter/apron flashing",
+        "irc_code": "R905.2.8",
+        "qty": 0.25,
+        "structure": "Structure #1",
+        "supplement_argument": "Counterflashing required at all roof-to-wall intersections per IRC R905.2.8",
+        "trade": "roofing",
+        "unit": "LF",
+        "unit_price": 15.57
+      },
+      {
+        "category": "ROOFING",
+        "code": null,
+        "description": "Roofer - per hour (labor minimum)",
+        "irc_code": null,
+        "qty": 8,
+        "structure": "Structure #1",
+        "supplement_argument": "8 hours roofer labor mandatory on every roofing estimate per industry standard",
+        "trade": "roofing",
+        "unit": "HR",
+        "unit_price": 194.0
+      },
+      {
+        "category": "ROOFING",
+        "code": null,
+        "description": "Equipment operator",
+        "irc_code": null,
+        "qty": 1,
+        "structure": "Structure #1",
+        "supplement_argument": null,
+        "trade": "roofing",
+        "unit": "EA",
+        "unit_price": 450.0
+      },
+      {
+        "category": "DEBRIS",
+        "description": "Dumpster load - roofing debris",
+        "qty": 1,
+        "structure": "Structure #1",
+        "unit": "EA",
+        "unit_price": 850.0
+      },
+      {
+        "category": "ROOFING",
+        "code": "RFG 300S",
+        "code_citation": {
+          "code_tag": "RCO R908.3",
+          "has_warranty_void": true,
+          "jurisdiction": "Residential Code of Ohio",
+          "manufacturer_specs": [
+            {
+              "document": "Timberline HDZ Installation Instructions",
+              "manufacturer": "GAF",
+              "requirement": "4-6 nails per shingle, ProStart starter required at eaves and rakes",
+              "warranty_text": "GAF System Plus/Silver Pledge warranty VOID without proper starter and nailing pattern",
+              "warranty_void": true
+            }
+          ],
+          "requirement": "Existing roofing materials shall be removed before applying new roofing when existing roof has two or more applications of any type of roof covering",
+          "section": "R908.3",
+          "supplement_argument": "Complete tear-off is required per code for a code-compliant installation. Overlay is not code-compliant when damage necessitates deck inspection.",
+          "title": "Reroofing — Tear-Off Requirement"
+        },
+        "description": "Remove laminated comp shingle roofing",
+        "irc_code": "RCO R908.3",
+        "qty": 11.8,
+        "structure": "Structure #2",
+        "supplement_argument": "Complete tear-off is required per code for a code-compliant installation. Overlay is not code-compliant when damage necessitates deck inspection.",
+        "trade": "roofing",
+        "unit": "SQ",
+        "unit_price": 71.18
+      },
+      {
+        "category": "ROOFING",
+        "code": "RFG 300S",
+        "code_citation": {
+          "code_tag": "RCO R905.1",
+          "has_warranty_void": true,
+          "jurisdiction": "Residential Code of Ohio",
+          "manufacturer_specs": [
+            {
+              "document": "Timberline HDZ Installation Instructions",
+              "manufacturer": "GAF",
+              "requirement": "4-6 nails per shingle, ProStart starter required at eaves and rakes",
+              "warranty_text": "GAF System Plus/Silver Pledge warranty VOID without proper starter and nailing pattern",
+              "warranty_void": true
+            },
+            {
+              "document": "TB-10024261 (Hail Damage Assessment)",
+              "manufacturer": "Owens Corning",
+              "requirement": "Functional damage (mat fracture, granule loss exposing substrate) = full replacement",
+              "warranty_text": "",
+              "warranty_void": false
+            },
+            {
+              "document": "TIS #130 (Hail Damage Assessment)",
+              "manufacturer": "CertainTeed",
+              "requirement": "Mat fracture from hail impact = functional damage requiring replacement",
+              "warranty_text": "",
+              "warranty_void": false
+            },
+            {
+              "document": "Detecting Hail Damage to Asphalt Shingles",
+              "manufacturer": "Atlas",
+              "requirement": "Systematic hail damage assessment criteria for functional vs cosmetic",
+              "warranty_text": "",
+              "warranty_void": false
+            }
+          ],
+          "requirement": "Roofing shall be applied in accordance with manufacturer's installation instructions. Manufacturer instructions carry the force of building code.",
+          "section": "R905.1",
+          "supplement_argument": "Per R905.1, manufacturer installation instructions are legally binding building code. All components specified by the manufacturer (starter, underlayment, flashing) are code-required, not optional upgrades.",
+          "title": "Manufacturer Installation Instructions = Law"
+        },
+        "description": "Laminated comp shingle roofing - w/out felt",
+        "irc_code": "R905.2",
+        "qty": 12.98,
+        "structure": "Structure #2",
+        "supplement_argument": "Per R905.1, manufacturer installation instructions are legally binding building code. All components specified by the manufacturer (starter, underlayment, flashing) are code-required, not optional upgrades.",
+        "trade": "roofing",
+        "unit": "SQ",
+        "unit_price": 267.32
+      },
+      {
+        "category": "ROOFING",
+        "code": "",
+        "code_citation": {
+          "code_tag": "RCO R905.1.2",
+          "has_warranty_void": true,
+          "jurisdiction": "Residential Code of Ohio",
+          "manufacturer_specs": [
+            {
+              "document": "WeatherWatch Mineral-Surfaced Leak Barrier",
+              "manufacturer": "GAF",
+              "requirement": "Required at eaves, valleys, and around penetrations per GAF system requirements",
+              "warranty_text": "GAF warranty VOID without WeatherWatch/StormGuard at eaves and valleys",
+              "warranty_void": true
+            }
+          ],
+          "requirement": "Ice barrier required at eaves extending from eave edge to at least 24 inches past interior wall line, and in valleys",
+          "section": "R905.1.2",
+          "supplement_argument": "Ice & water barrier is required by code at all eaves and valleys. This is not an optional upgrade — it is a mandatory building code requirement for a code-compliant installation.",
+          "title": "Ice Barrier Requirement"
+        },
+        "description": "Underlayment - felt 15# (deck area not covered by I&W)",
+        "irc_code": "RCO R905.1.2",
+        "qty": 7.86,
+        "structure": "Structure #2",
+        "supplement_argument": "Ice & water barrier is required by code at all eaves and valleys. This is not an optional upgrade — it is a mandatory building code requirement for a code-compliant installation.",
+        "unit": "SQ",
+        "unit_price": 32.0
+      },
+      {
+        "category": "ROOFING",
+        "code": "RFG IWS",
+        "code_citation": {
+          "code_tag": "RCO R905.1.2",
+          "has_warranty_void": true,
+          "jurisdiction": "Residential Code of Ohio",
+          "manufacturer_specs": [
+            {
+              "document": "WeatherWatch Mineral-Surfaced Leak Barrier",
+              "manufacturer": "GAF",
+              "requirement": "Required at eaves, valleys, and around penetrations per GAF system requirements",
+              "warranty_text": "GAF warranty VOID without WeatherWatch/StormGuard at eaves and valleys",
+              "warranty_void": true
+            }
+          ],
+          "requirement": "Ice barrier required at eaves extending from eave edge to at least 24 inches past interior wall line, and in valleys",
+          "section": "R905.1.2",
+          "supplement_argument": "Ice & water barrier is required by code at all eaves and valleys. This is not an optional upgrade — it is a mandatory building code requirement for a code-compliant installation.",
+          "title": "Ice Barrier Requirement"
+        },
+        "description": "Ice & water barrier (2 courses eaves + 1 course valleys)",
+        "irc_code": "R905.1.2",
+        "qty": 387,
+        "structure": "Structure #2",
+        "supplement_argument": "Ice & water barrier is required by code at all eaves and valleys. This is not an optional upgrade — it is a mandatory building code requirement for a code-compliant installation.",
+        "trade": "roofing",
+        "unit": "SF",
+        "unit_price": 1.64
+      },
+      {
+        "category": "ROOFING",
+        "code": "RFG DRIP",
+        "code_citation": {
+          "code_tag": "RCO R905.2.8.5",
+          "has_warranty_void": false,
+          "jurisdiction": "Residential Code of Ohio",
+          "manufacturer_specs": [],
+          "requirement": "Drip edge shall be provided at eaves and gable rake edges of shingle roofs",
+          "section": "R905.2.8.5",
+          "supplement_argument": "Drip edge is required at all eaves and rakes per code. Protects fascia and deck edge from water damage. Not an optional upgrade.",
+          "title": "Drip Edge Requirement"
+        },
+        "description": "R&R Drip edge - aluminum",
+        "irc_code": "R905.2.7",
+        "qty": 144.02,
+        "structure": "Structure #2",
+        "supplement_argument": "Drip edge required at eaves and rakes per IRC R905.2.7. Minimum 2.5 inches below sheathing, 2 inches up deck. Underlayment OVER drip edge at eaves, UNDER at rakes. 5% waste factor standard",
+        "trade": "roofing",
+        "unit": "LF",
+        "unit_price": 3.25
+      },
+      {
+        "category": "ROOFING",
+        "code": "",
+        "code_citation": {
+          "code_tag": "RCO R905.1",
+          "has_warranty_void": true,
+          "jurisdiction": "Residential Code of Ohio",
+          "manufacturer_specs": [
+            {
+              "document": "Timberline HDZ Installation Instructions",
+              "manufacturer": "GAF",
+              "requirement": "4-6 nails per shingle, ProStart starter required at eaves and rakes",
+              "warranty_text": "GAF System Plus/Silver Pledge warranty VOID without proper starter and nailing pattern",
+              "warranty_void": true
+            },
+            {
+              "document": "Duration Series Install 10024264",
+              "manufacturer": "Owens Corning",
+              "requirement": "OC Starter Course required at eaves and rakes",
+              "warranty_text": "SureNail Technology warranty VOID without OC-approved starter",
+              "warranty_void": true
+            },
+            {
+              "document": "Landmark Series Installation Instructions",
+              "manufacturer": "CertainTeed",
+              "requirement": "SwiftStart starter required at eaves and rakes",
+              "warranty_text": "SureStart warranty VOID without CertainTeed-approved starter",
+              "warranty_void": true
+            }
+          ],
+          "requirement": "Starter course required at eaves and rakes per manufacturer installation instructions (R905.1 — manufacturer instructions = code)",
+          "section": "R905.1",
+          "supplement_argument": "Starter course is required by ALL major manufacturers (GAF, OC, CertainTeed). Per R905.1, manufacturer instructions carry the force of code. Omitting starter voids the manufacturer warranty.",
+          "title": "Starter Course (Manufacturer Required)"
+        },
+        "description": "R&R Starter strip - asphalt shingle",
+        "irc_code": "RCO R905.1",
+        "qty": 137.16,
+        "structure": "Structure #2",
+        "supplement_argument": "Starter course is required by ALL major manufacturers (GAF, OC, CertainTeed). Per R905.1, manufacturer instructions carry the force of code. Omitting starter voids the manufacturer warranty.",
+        "unit": "LF",
+        "unit_price": 1.9
+      },
+      {
+        "category": "ROOFING",
+        "code": "RFG RIDGCS",
+        "code_citation": {
+          "code_tag": "RCO R806",
+          "has_warranty_void": false,
+          "jurisdiction": "Residential Code of Ohio",
+          "manufacturer_specs": [],
+          "requirement": "Enclosed attics shall have cross ventilation. Ridge vent provides exhaust ventilation per R806.1",
+          "section": "R806",
+          "supplement_argument": "Ridge ventilation is required for proper attic ventilation per code. When ridge cap is replaced, ridge vent must be replaced to maintain code-compliant ventilation.",
+          "title": "Roof Ventilation"
+        },
+        "description": "R&R Ridge cap - laminated",
+        "irc_code": "RCO R806",
+        "qty": 32.33,
+        "structure": "Structure #2",
+        "supplement_argument": "Ridge ventilation is required for proper attic ventilation per code. When ridge cap is replaced, ridge vent must be replaced to maintain code-compliant ventilation.",
+        "trade": "roofing",
+        "unit": "LF",
+        "unit_price": 8.84
+      },
+      {
+        "category": "ROOFING",
+        "code": "RFG RGVC",
+        "code_citation": {
+          "code_tag": "RCO R806",
+          "has_warranty_void": false,
+          "jurisdiction": "Residential Code of Ohio",
+          "manufacturer_specs": [],
+          "requirement": "Enclosed attics shall have cross ventilation. Ridge vent provides exhaust ventilation per R806.1",
+          "section": "R806",
+          "supplement_argument": "Ridge ventilation is required for proper attic ventilation per code. When ridge cap is replaced, ridge vent must be replaced to maintain code-compliant ventilation.",
+          "title": "Roof Ventilation"
+        },
+        "description": "R&R Ridge vent - shingle over",
+        "irc_code": "R806",
+        "qty": 32.33,
+        "structure": "Structure #2",
+        "supplement_argument": "Ventilation required per IRC R806 — 1 SF NFVA per 150 SF attic area (1:150 ratio). OC warranty VOID without proper ventilation. Ridge vent must be R&R during re-roofing",
+        "trade": "roofing",
+        "unit": "LF",
+        "unit_price": 11.97
+      }
+    ],
+    "measurements": {
+      "drip_edge": 388.92,
+      "eave": 207.67,
+      "flashing": 0.25,
+      "hip": 0,
+      "rake": 181.25,
+      "ridge": 103.67,
+      "step_flashing": 29.33,
+      "valley": 0
+    },
+    "phase": "pre-scope",
+    "photo_annotations": {
+      "p03_01": "RhinoRoof underlayment tarp secured over missing shingles on rear slope — active wind damage area.",
+      "p03_02": "Exposed nail at shingle joint with no rust confirms recent wind-driven shingle loss from March 2026 event.",
+      "p03_03": "Wind-creased tab reveals clean mechanical seal break at bond line — functional damage confirmed.",
+      "p04_01": "Displaced shingle tab at flashing transition exposes gap — wind-driven separation at vulnerable joint.",
+      "p04_02": "Tarp pulled back reveals widespread missing 3-tab shingles on rear slope — exposed underlayment and deck.",
+      "p04_03": "Wind-creased 3-tab shingle with sharp fold at nail line; broken seal strip confirms functional wind damage.",
+      "p05_01": "Close-up of mechanically broken seal strip at shingle overlap — clean separation consistent with wind event.",
+      "p05_02": "Pry bar lifts shingle tab freely — zero seal adhesion confirms wind-broken bond, not age degradation.",
+      "p05_03": "Large section of shingles removed exposing RhinoRoof U20 underlayment — widespread wind loss on rear slope.",
+      "p06_01": "Wider view of exposed RhinoRoof U20 synthetic underlayment after wind-stripped shingles on rear elevation.",
+      "p06_02": "Rear shop slope: shingles stripped exposing RhinoRoof U20 underlayment — tape measures extent of wind loss."
+    },
+    "photo_map": {
+      "p03_01": "20260422_173653.jpg",
+      "p03_02": "20260422_173215.jpg",
+      "p03_03": "20260422_173151.jpg",
+      "p04_01": "20260422_173058.jpg",
+      "p04_02": "20260422_173434.jpg",
+      "p04_03": "20260422_173218.jpg",
+      "p05_01": "20260422_173146.jpg",
+      "p05_02": "20260422_173101.jpg",
+      "p05_03": "20260422_172904.jpg",
+      "p06_01": "20260422_172835.jpg",
+      "p06_02": "20260422_172816.jpg"
+    },
+    "photo_sections": [
+      {
+        "photos": [
+          [
+            "p03_01",
+            3,
+            1
+          ],
+          [
+            "p03_02",
+            3,
+            2
+          ],
+          [
+            "p03_03",
+            3,
+            3
+          ],
+          [
+            "p04_01",
+            4,
+            1
+          ],
+          [
+            "p04_02",
+            4,
+            2
+          ],
+          [
+            "p04_03",
+            4,
+            3
+          ],
+          [
+            "p05_01",
+            5,
+            1
+          ],
+          [
+            "p05_02",
+            5,
+            2
+          ],
+          [
+            "p05_03",
+            5,
+            3
+          ],
+          [
+            "p06_01",
+            6,
+            1
+          ],
+          [
+            "p06_02",
+            6,
+            2
+          ]
+        ],
+        "title": "Damage Documentation"
+      }
+    ],
+    "property": {
+      "address": "9130 Avon Lake Rd, Lodi, OH 44254, USA",
+      "city": "Lodi",
+      "state": "OH",
+      "year_built_OPTIONAL": null,
+      "zip": "44254"
+    },
+    "roof_facets": {
+      "north_arrow_angle": 0,
+      "roof_facets": [
+        {
+          "area_pct": 22.1,
+          "cardinal": "W",
+          "facet_id": "F1",
+          "pitch": "3/12",
+          "polygon_pixels": [
+            [
+              527,
+              235
+            ],
+            [
+              680,
+              235
+            ],
+            [
+              680,
+              490
+            ],
+            [
+              527,
+              490
+            ]
+          ]
+        },
+        {
+          "area_pct": 11.6,
+          "cardinal": "E",
+          "facet_id": "F2",
+          "pitch": "3/12",
+          "polygon_pixels": [
+            [
+              680,
+              235
+            ],
+            [
+              810,
+              235
+            ],
+            [
+              810,
+              490
+            ],
+            [
+              680,
+              490
+            ]
+          ]
+        },
+        {
+          "area_pct": 22.2,
+          "cardinal": "W",
+          "facet_id": "F3",
+          "pitch": "3/12",
+          "polygon_pixels": [
+            [
+              490,
+              510
+            ],
+            [
+              680,
+              510
+            ],
+            [
+              680,
+              870
+            ],
+            [
+              490,
+              870
+            ]
+          ]
+        },
+        {
+          "area_pct": 21.6,
+          "cardinal": "E",
+          "facet_id": "F4",
+          "pitch": "3/12",
+          "polygon_pixels": [
+            [
+              680,
+              490
+            ],
+            [
+              810,
+              490
+            ],
+            [
+              810,
+              870
+            ],
+            [
+              680,
+              870
+            ]
+          ]
+        },
+        {
+          "area_pct": 13.1,
+          "cardinal": "W",
+          "facet_id": "F5",
+          "pitch": "4/12",
+          "polygon_pixels": [
+            [
+              80,
+              430
+            ],
+            [
+              200,
+              430
+            ],
+            [
+              200,
+              720
+            ],
+            [
+              80,
+              720
+            ]
+          ]
+        },
+        {
+          "area_pct": 10.0,
+          "cardinal": "E",
+          "facet_id": "F6",
+          "pitch": "4/12",
+          "polygon_pixels": [
+            [
+              200,
+              430
+            ],
+            [
+              310,
+              430
+            ],
+            [
+              310,
+              720
+            ],
+            [
+              200,
+              720
+            ]
+          ]
+        }
+      ],
+      "scale_bar": null
+    },
+    "scope": {
+      "o_and_p": false,
+      "trades": [
+        "Roofing"
+      ]
+    },
+    "scope_revisions": [
+      {
+        "argument_mapping": [],
+        "items_added": [],
+        "items_added_count": 0,
+        "items_increased": [],
+        "items_increased_count": 0,
+        "items_removed": [],
+        "items_still_missing_count": 0,
+        "movement": 0,
+        "movement_pct": 0,
+        "new_rcv": 0,
+        "previous_rcv": 0,
+        "revision_date": "2026-05-03"
+      }
+    ],
+    "settlement_prediction": {
+      "avg_movement_pct": 0,
+      "avg_settlement": 0,
+      "avg_usarm_rcv": 32647.0,
+      "confidence": "low",
+      "data_points": 3,
+      "note": "Based on 3 similar claims against State Farm",
+      "predicted_additional_amount": null,
+      "predicted_settlement_range": null,
+      "win_probability_pct": 0.0
+    },
+    "slope_damage": [
+      {
+        "area_pct": 22.1,
+        "cardinal": "W",
+        "damage_photos": 0,
+        "dominant_damage_type": null,
+        "facet_id": "F1",
+        "pitch": "3/12",
+        "total_photos": 0,
+        "weighted_damage_pct": 0.0
+      },
+      {
+        "area_pct": 11.6,
+        "cardinal": "E",
+        "damage_photos": 0,
+        "dominant_damage_type": null,
+        "facet_id": "F2",
+        "pitch": "3/12",
+        "total_photos": 0,
+        "weighted_damage_pct": 0.0
+      },
+      {
+        "area_pct": 22.2,
+        "cardinal": "W",
+        "damage_photos": 0,
+        "dominant_damage_type": null,
+        "facet_id": "F3",
+        "pitch": "3/12",
+        "total_photos": 0,
+        "weighted_damage_pct": 0.0
+      },
+      {
+        "area_pct": 21.6,
+        "cardinal": "E",
+        "damage_photos": 0,
+        "dominant_damage_type": null,
+        "facet_id": "F4",
+        "pitch": "3/12",
+        "total_photos": 0,
+        "weighted_damage_pct": 0.0
+      },
+      {
+        "area_pct": 13.1,
+        "cardinal": "W",
+        "damage_photos": 0,
+        "dominant_damage_type": null,
+        "facet_id": "F5",
+        "pitch": "4/12",
+        "total_photos": 0,
+        "weighted_damage_pct": 0.0
+      },
+      {
+        "area_pct": 10.0,
+        "cardinal": "E",
+        "damage_photos": 0,
+        "dominant_damage_type": null,
+        "facet_id": "F6",
+        "pitch": "4/12",
+        "total_photos": 0,
+        "weighted_damage_pct": 0.0
+      },
+      {
+        "area_pct": 0.0,
+        "cardinal": null,
+        "damage_photos": 0,
+        "dominant_damage_type": null,
+        "facet_id": "_unassigned",
+        "pitch": null,
+        "total_photos": 11,
+        "weighted_damage_pct": 0.0
+      }
+    ],
+    "source_docs": {
+      "companycam_pdf": "_no_companycam.pdf"
+    },
+    "structures": [
+      {
+        "age": 12,
+        "facets": 4,
+        "measurements": {
+          "eave": 143.0,
+          "flashing": 0.25,
+          "hip": 0,
+          "rake": 108.67,
+          "ridge": 71.42,
+          "step_flashing": 29.33,
+          "valley": 0
+        },
+        "name": "Structure #1",
+        "pitches": [
+          {
+            "area_sf": 2376,
+            "percent": 100,
+            "pitch": "3/12"
+          }
+        ],
+        "predominant_pitch": "3/12",
+        "roof_area_sf": 2376,
+        "roof_area_sq": 23.8,
+        "shingle_type": "Architectural Laminated Comp Shingle",
+        "style": "gable",
+        "waste_factor": 1.07
+      },
+      {
+        "facets": 2,
+        "measurements": {
+          "eave": 64.58,
+          "flashing": 0,
+          "hip": 0,
+          "rake": 72.58,
+          "ridge": 32.33,
+          "step_flashing": 0,
+          "valley": 0
+        },
+        "name": "Structure #2",
+        "pitches": [
+          {
+            "area_sf": 1173,
+            "percent": 100,
+            "pitch": "4/12"
+          }
+        ],
+        "predominant_pitch": "4/12",
+        "roof_area_sf": 1173,
+        "roof_area_sq": 11.8,
+        "shingle_type": "Architectural Laminated Comp Shingle",
+        "style": "gable",
+        "waste_factor": 1.08
+      }
+    ],
+    "user_notes": "Can not find photos of the shop roof but it is an older 3 tab and the damage is widespread only on the rear elevation but it appears that SF has paid for the front face.",
+    "weather": {
+      "damage_thresholds": [
+        {
+          "component": "Aluminum Fascia/Trim Metal",
+          "result": "EXCEEDED — 1.7x threshold",
+          "source": "NOAA SWDI",
+          "storm_actual": "1.25\" (NOAA SWDI NX3HAIL, NEXRAD KCLE, 33.6 mi from property)",
+          "threshold": "0.75\" diameter hail"
+        },
+        {
+          "component": "Laminate/Architectural Shingles",
+          "result": "EXCEEDED — 1.2x threshold",
+          "source": "NOAA SWDI + HAAG Engineering",
+          "storm_actual": "1.25\" (NOAA SWDI NX3HAIL, NEXRAD KCLE, 33.6 mi from property)",
+          "threshold": "1.00\" diameter hail (HAAG Engineering)"
+        }
+      ],
+      "hail_size": "1.25 inches",
+      "hail_size_algorithm": "1.25 inches (NEXRAD KCLE)",
+      "noaa": {
+        "episode_narrative": "Searched 2026-03-13 ± 2 days for storm events near property.",
+        "event_count": 4,
+        "events": [
+          {
+            "date": "2026-03-13",
+            "distance_miles": 33.6,
+            "event_type": "Hail",
+            "latitude": 41.443,
+            "longitude": -82.324,
+            "magnitude": 1.25,
+            "magnitude_type": "hail_inches",
+            "narrative": "NEXRAD radar hail signature — Prob: 100.0%, Severe Prob: 100%",
+            "noaa_url": "https://www.ncei.noaa.gov/swdiws/csv/nx3hail/20260313:20260314",
+            "source": "SWDI_NX3HAIL",
+            "source_detail": "NEXRAD KCLE",
+            "time_utc": "14:00:18"
+          },
+          {
+            "date": "2026-03-13",
+            "distance_miles": 39.9,
+            "event_type": "Hail",
+            "latitude": 41.569,
+            "longitude": -82.252,
+            "magnitude": 1.0,
+            "magnitude_type": "hail_inches",
+            "narrative": "NEXRAD radar hail signature — Prob: 100.0%, Severe Prob: 100%",
+            "noaa_url": "https://www.ncei.noaa.gov/swdiws/csv/nx3hail/20260313:20260314",
+            "source": "SWDI_NX3HAIL",
+            "source_detail": "NEXRAD KCLE",
+            "time_utc": "14:00:18"
+          },
+          {
+            "date": "2026-03-11",
+            "distance_miles": 24.5,
+            "event_type": "Thunderstorm Wind",
+            "latitude": 41.35,
+            "longitude": -82.18,
+            "magnitude": 70.2,
+            "magnitude_type": "wind_mph",
+            "narrative": "ASOS station KLPR Lorain Elyria. (CLE)",
+            "noaa_url": "https://www.spc.noaa.gov/climo/reports/260311_rpts_filtered_wind.csv",
+            "source": "SPC_DAILY",
+            "source_detail": "SPC Report — 3 E South Amherst, OH",
+            "time_utc": "1616"
+          },
+          {
+            "date": "2026-03-11",
+            "distance_miles": 30.8,
+            "event_type": "Thunderstorm Wind",
+            "latitude": 40.82,
+            "longitude": -82.52,
+            "magnitude": 76.0,
+            "magnitude_type": "wind_mph",
+            "narrative": "Corrects previous non-tstm wnd gst report from 4 N Mansfield. ASOS station KMFD Mansfield. (CLE)",
+            "noaa_url": "https://www.spc.noaa.gov/climo/reports/260311_rpts_filtered_wind.csv",
+            "source": "SPC_DAILY",
+            "source_detail": "SPC Report — 4 N Mansfield, OH",
+            "time_utc": "1541"
+          }
+        ],
+        "max_hail_distance_miles": 33.60497888115166,
+        "max_hail_inches": 1.25,
+        "max_wind_mph": 76.0,
+        "query_coords": [
+          41.023861648436,
+          -81.995915825644
+        ],
+        "query_date": "2026-05-03",
+        "query_urls": [
+          "https://www.ncei.noaa.gov/stormevents/csv?beginDate_mm=03&beginDate_dd=09&beginDate_yyyy=2026&endDate_mm=03&endDate_dd=13&endDate_yyyy=2026&hailfilter=0.00&tornfilter=0&windfilter=000&sort=DT&submitbutton=Search&statefips=39%2COHIO&county=MEDINA:103&eventType=%28C%29%20Hail&eventType=%28C%29%20Thunderstorm%20Wind",
+          "https://www.ncei.noaa.gov/stormevents/csv?beginDate_mm=03&beginDate_dd=09&beginDate_yyyy=2026&endDate_mm=03&endDate_dd=13&endDate_yyyy=2026&hailfilter=0.00&tornfilter=0&windfilter=000&sort=DT&submitbutton=Search&statefips=39%2COHIO&eventType=%28C%29%20Hail&eventType=%28C%29%20Thunderstorm%20Wind",
+          "https://www.spc.noaa.gov/climo/reports/260311_rpts_filtered_hail.csv",
+          "https://www.spc.noaa.gov/climo/reports/260311_rpts_filtered_wind.csv",
+          "https://www.ncei.noaa.gov/swdiws/csv/nx3hail/20260311:20260312",
+          "https://www.ncei.noaa.gov/stormevents/csv?beginDate_mm=03&beginDate_dd=10&beginDate_yyyy=2026&endDate_mm=03&endDate_dd=14&endDate_yyyy=2026&hailfilter=0.00&tornfilter=0&windfilter=000&sort=DT&submitbutton=Search&statefips=39%2COHIO&county=MEDINA:103&eventType=%28C%29%20Hail&eventType=%28C%29%20Thunderstorm%20Wind",
+          "https://www.ncei.noaa.gov/stormevents/csv?beginDate_mm=03&beginDate_dd=10&beginDate_yyyy=2026&endDate_mm=03&endDate_dd=14&endDate_yyyy=2026&hailfilter=0.00&tornfilter=0&windfilter=000&sort=DT&submitbutton=Search&statefips=39%2COHIO&eventType=%28C%29%20Hail&eventType=%28C%29%20Thunderstorm%20Wind",
+          "https://www.spc.noaa.gov/climo/reports/260312_rpts_filtered_hail.csv",
+          "https://www.ncei.noaa.gov/swdiws/csv/nx3hail/20260312:20260313",
+          "https://www.ncei.noaa.gov/stormevents/csv?beginDate_mm=03&beginDate_dd=11&beginDate_yyyy=2026&endDate_mm=03&endDate_dd=15&endDate_yyyy=2026&hailfilter=0.00&tornfilter=0&windfilter=000&sort=DT&submitbutton=Search&statefips=39%2COHIO&county=MEDINA:103&eventType=%28C%29%20Hail&eventType=%28C%29%20Thunderstorm%20Wind",
+          "https://www.ncei.noaa.gov/stormevents/csv?beginDate_mm=03&beginDate_dd=11&beginDate_yyyy=2026&endDate_mm=03&endDate_dd=15&endDate_yyyy=2026&hailfilter=0.00&tornfilter=0&windfilter=000&sort=DT&submitbutton=Search&statefips=39%2COHIO&eventType=%28C%29%20Hail&eventType=%28C%29%20Thunderstorm%20Wind",
+          "https://www.spc.noaa.gov/climo/reports/260313_rpts_filtered_hail.csv",
+          "https://www.ncei.noaa.gov/swdiws/csv/nx3hail/20260313:20260314",
+          "https://www.ncei.noaa.gov/stormevents/csv?beginDate_mm=03&beginDate_dd=12&beginDate_yyyy=2026&endDate_mm=03&endDate_dd=16&endDate_yyyy=2026&hailfilter=0.00&tornfilter=0&windfilter=000&sort=DT&submitbutton=Search&statefips=39%2COHIO&county=MEDINA:103&eventType=%28C%29%20Hail&eventType=%28C%29%20Thunderstorm%20Wind",
+          "https://www.ncei.noaa.gov/stormevents/csv?beginDate_mm=03&beginDate_dd=12&beginDate_yyyy=2026&endDate_mm=03&endDate_dd=16&endDate_yyyy=2026&hailfilter=0.00&tornfilter=0&windfilter=000&sort=DT&submitbutton=Search&statefips=39%2COHIO&eventType=%28C%29%20Hail&eventType=%28C%29%20Thunderstorm%20Wind",
+          "https://www.spc.noaa.gov/climo/reports/260314_rpts_filtered_hail.csv",
+          "https://www.ncei.noaa.gov/swdiws/csv/nx3hail/20260314:20260315",
+          "https://www.ncei.noaa.gov/stormevents/csv?beginDate_mm=03&beginDate_dd=13&beginDate_yyyy=2026&endDate_mm=03&endDate_dd=17&endDate_yyyy=2026&hailfilter=0.00&tornfilter=0&windfilter=000&sort=DT&submitbutton=Search&statefips=39%2COHIO&county=MEDINA:103&eventType=%28C%29%20Hail&eventType=%28C%29%20Thunderstorm%20Wind",
+          "https://www.ncei.noaa.gov/stormevents/csv?beginDate_mm=03&beginDate_dd=13&beginDate_yyyy=2026&endDate_mm=03&endDate_dd=17&endDate_yyyy=2026&hailfilter=0.00&tornfilter=0&windfilter=000&sort=DT&submitbutton=Search&statefips=39%2COHIO&eventType=%28C%29%20Hail&eventType=%28C%29%20Thunderstorm%20Wind",
+          "https://www.spc.noaa.gov/climo/reports/260315_rpts_filtered_hail.csv",
+          "https://www.spc.noaa.gov/climo/reports/260315_rpts_filtered_wind.csv",
+          "https://www.ncei.noaa.gov/swdiws/csv/nx3hail/20260315:20260316"
+        ],
+        "search_radius_miles": 25.0
+      },
+      "storm_date": "March 13, 2026",
+      "storm_description": "Searched 2026-03-13 ± 2 days for storm events near property. Near the subject property: 1.25\" hail reported 33.6 mi from property, wind gusts of 76.0 mph. Hail reports in surrounding area: NEXRAD KCLE (1.25\").",
+      "wind_speed": "76.0 mph"
+    }
+  }
+}

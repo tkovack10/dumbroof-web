@@ -1,0 +1,1085 @@
+{
+  "_coverage": "FL forensic-only, 72mph wind, single, roof_sf=None",
+  "claim": {
+    "address": "9800 International Dr, Orlando, FL 32819, USA",
+    "carrier": "State Farm",
+    "contact_name": "Samuel Lorenz",
+    "weather_data": {
+      "event_count": 17,
+      "events": [
+        {
+          "date": "2026-05-10",
+          "distance_miles": 43.75076350265133,
+          "event_type": "Hail",
+          "hail_size": 0.75,
+          "latitude": 28.685,
+          "location": "",
+          "longitude": -80.811,
+          "source": "SWDI_NX3HAIL",
+          "wind_speed": null
+        },
+        {
+          "date": "2026-05-10",
+          "distance_miles": 44.64387574066245,
+          "event_type": "Hail",
+          "hail_size": 1.25,
+          "latitude": 28.681,
+          "location": "",
+          "longitude": -80.793,
+          "source": "SWDI_NX3HAIL",
+          "wind_speed": null
+        },
+        {
+          "date": "2026-05-10",
+          "distance_miles": 44.64387574066245,
+          "event_type": "Hail",
+          "hail_size": 1.75,
+          "latitude": 28.681,
+          "location": "",
+          "longitude": -80.793,
+          "source": "SWDI_NX3HAIL",
+          "wind_speed": null
+        },
+        {
+          "date": "2026-05-10",
+          "distance_miles": 45.02908736910054,
+          "event_type": "Hail",
+          "hail_size": 0.75,
+          "latitude": 28.687,
+          "location": "",
+          "longitude": -80.789,
+          "source": "SWDI_NX3HAIL",
+          "wind_speed": null
+        },
+        {
+          "date": "2026-05-10",
+          "distance_miles": 46.4428884045209,
+          "event_type": "Hail",
+          "hail_size": 1.0,
+          "latitude": 28.679,
+          "location": "",
+          "longitude": -80.76,
+          "source": "SWDI_NX3HAIL",
+          "wind_speed": null
+        },
+        {
+          "date": "2026-05-10",
+          "distance_miles": 46.7618466857702,
+          "event_type": "Hail",
+          "hail_size": 1.5,
+          "latitude": 28.676,
+          "location": "",
+          "longitude": -80.753,
+          "source": "SWDI_NX3HAIL",
+          "wind_speed": null
+        },
+        {
+          "date": "2026-05-10",
+          "distance_miles": 47.20819949728298,
+          "event_type": "Hail",
+          "hail_size": 1.5,
+          "latitude": 28.649,
+          "location": "",
+          "longitude": -80.734,
+          "source": "SWDI_NX3HAIL",
+          "wind_speed": null
+        },
+        {
+          "date": "2026-05-10",
+          "distance_miles": 47.86234896399425,
+          "event_type": "Hail",
+          "hail_size": 1.25,
+          "latitude": 28.67,
+          "location": "",
+          "longitude": -80.731,
+          "source": "SWDI_NX3HAIL",
+          "wind_speed": null
+        },
+        {
+          "date": "2026-05-10",
+          "distance_miles": 47.99411060937845,
+          "event_type": "Hail",
+          "hail_size": 1.25,
+          "latitude": 28.661,
+          "location": "",
+          "longitude": -80.725,
+          "source": "SWDI_NX3HAIL",
+          "wind_speed": null
+        },
+        {
+          "date": "2026-05-10",
+          "distance_miles": 49.28965598496783,
+          "event_type": "Hail",
+          "hail_size": 1.0,
+          "latitude": 28.66,
+          "location": "",
+          "longitude": -80.702,
+          "source": "SWDI_NX3HAIL",
+          "wind_speed": null
+        },
+        {
+          "date": "2026-05-10",
+          "distance_miles": 49.46999974117452,
+          "event_type": "Hail",
+          "hail_size": 1.5,
+          "latitude": 28.668,
+          "location": "",
+          "longitude": -80.702,
+          "source": "SWDI_NX3HAIL",
+          "wind_speed": null
+        },
+        {
+          "date": "2026-05-09",
+          "distance_miles": 49.55876953112473,
+          "event_type": "Hail",
+          "hail_size": 1.0,
+          "latitude": 28.925,
+          "location": "",
+          "longitude": -80.88,
+          "source": "SWDI_NX3HAIL",
+          "wind_speed": null
+        },
+        {
+          "date": "2026-05-09",
+          "distance_miles": 49.55876953112473,
+          "event_type": "Hail",
+          "hail_size": 1.25,
+          "latitude": 28.925,
+          "location": "",
+          "longitude": -80.88,
+          "source": "SWDI_NX3HAIL",
+          "wind_speed": null
+        },
+        {
+          "date": "2026-05-10",
+          "distance_miles": 49.579035749198766,
+          "event_type": "Hail",
+          "hail_size": 1.25,
+          "latitude": 28.641,
+          "location": "",
+          "longitude": -80.69,
+          "source": "SWDI_NX3HAIL",
+          "wind_speed": null
+        },
+        {
+          "date": "2026-05-09",
+          "distance_miles": 49.79586673117179,
+          "event_type": "Hail",
+          "hail_size": 2.0,
+          "latitude": 28.915,
+          "location": "",
+          "longitude": -80.864,
+          "source": "SWDI_NX3HAIL",
+          "wind_speed": null
+        },
+        {
+          "date": "2026-05-10",
+          "distance_miles": 49.801482583571385,
+          "event_type": "Hail",
+          "hail_size": 1.25,
+          "latitude": 28.649,
+          "location": "",
+          "longitude": -80.689,
+          "source": "SWDI_NX3HAIL",
+          "wind_speed": null
+        },
+        {
+          "date": "2026-05-10",
+          "distance_miles": 48.77970935972035,
+          "event_type": "Thunderstorm Wind",
+          "hail_size": null,
+          "latitude": 28.63,
+          "location": "",
+          "longitude": -80.7,
+          "source": "SPC_DAILY",
+          "wind_speed": 72.5
+        }
+      ],
+      "max_hail_inches": 0.0,
+      "max_wind_mph": 72.5
+    }
+  },
+  "config": {
+    "appeal_letter": {
+      "demand_items": [],
+      "enclosed_documents": [
+        "Forensic Causation Report with annotated photography",
+        "Xactimate-format estimate at current pricing"
+      ],
+      "requested_actions": [
+        "Review the enclosed forensic documentation and revised scope of loss",
+        "Issue revised payment reflecting the full scope of storm-related damage",
+        "Schedule a re-inspection if additional verification is needed"
+      ]
+    },
+    "carrier": {
+      "adjuster_email": "",
+      "adjuster_name": "",
+      "carrier_arguments": [],
+      "carrier_line_items": [],
+      "carrier_rcv": 0,
+      "claim_number": "Pending",
+      "deductible": 0,
+      "inspection_date": "",
+      "inspector_company": "",
+      "inspector_name": "",
+      "name": "State Farm",
+      "policy_number": ""
+    },
+    "carrier_intelligence": {
+      "anticipated_denials": [
+        {
+          "count": 448,
+          "countered_count": 0,
+          "examples": [
+            "Estimate is priced based on estimated market pricing for cost of materials and labor at time of loss",
+            "Items 1-13 and 20-22 are listed as PER BID with no pricing assigned - consolidated into single bid item (Item 14)",
+            "Roofing scope was revised by Johnson Ivase (IDT9) on 12/12/2025 - items 1-13 replaced with single USA Roof Masters Invoice bid item of $14,111.88"
+          ],
+          "tactic_type": "underpayment",
+          "total_impact": 0
+        },
+        {
+          "count": 313,
+          "countered_count": 0,
+          "examples": [
+            "Storage shed depreciated at 20% (age 10 years, life 50 years) - average condition",
+            "Wood fence depreciated at 80% (age 10 years, life 12 years) - average condition",
+            "Vinyl siding depreciated at 20% (age 10 years, life 50 years) - average condition"
+          ],
+          "tactic_type": "depreciation",
+          "total_impact": 0
+        },
+        {
+          "count": 209,
+          "countered_count": 193,
+          "examples": [
+            "ADDED: Laminated - comp. shingle rfg. - w/out felt; priced by ITEL ASP on 11 Nov 2025 ($0.00)",
+            "ADDED: R&R Siding - vinyl; Age/Life 10/50 yrs, 20% depreciation ($7,523.60)",
+            "ADDED: R&R House wrap (air/moisture barrier); Age/Life 10/150 yrs, 6.67% depreciation ($615.20)"
+          ],
+          "tactic_type": "counter_argument",
+          "total_impact": 355531.5500000003
+        },
+        {
+          "count": 22,
+          "countered_count": 0,
+          "examples": [
+            "NO HOUSE WRAP — Code-required weather-resistant exterior wall envelope (RCNYS R703.2) completely omitted from the 1st scope.",
+            "Drip edge underscoped (246 LF vs 387 LF — code requires at both eaves AND rakes per RCNYS R905.2.8.5)",
+            "Building codes, ordinances, laws, or regulations that affect repairs may or may not be covered by the policy"
+          ],
+          "tactic_type": "code_dispute",
+          "total_impact": 0
+        },
+        {
+          "count": 3,
+          "countered_count": 0,
+          "examples": [
+            "Carrier's spot repair approach to siding violates RCNYS R703.1/R703.2 continuous weather-resistant exterior wall envelope requirement — Tyvek/house wrap must wrap continuously around outside corners a",
+            "SIDING SPOT REPAIR — Carrier scoped only 2 SQ (200 SF) of wood shake siding on front and left elevations. The property has 6,094 SF of cedar siding across 4 elevations. This is a 97% undercount.",
+            "Carrier acknowledged hail damage warranting full roof replacement, gutter replacement, and window wraps, but illogically limited siding repair to a 25 SF spot patch on the same structure exposed to th"
+          ],
+          "tactic_type": "spot_repair",
+          "total_impact": 0
+        },
+        {
+          "count": 3,
+          "countered_count": 0,
+          "examples": [
+            "Garage metal roof denied entirely despite same storm event damaging same property — soft metal denting confirmed on garage ridge cap and corrugated panels",
+            "Carrier acknowledged only 1 pipe jack on a 1,888 SF (18.88 SQ) roof with 2 structures — denied ALL shingle damage despite 1.25-inch hail confirmed at the property location",
+            "Found 'No storm related damage' on right, rear, and left elevations — denied all siding"
+          ],
+          "tactic_type": "denial",
+          "total_impact": 0
+        },
+        {
+          "count": 2,
+          "countered_count": 0,
+          "examples": [
+            "Carrier scoped only partial roof replacement (14.67 SQ of 29.58 SQ = 49.6%) — less than half the actual roof area despite confirmed 1.75\" hail across the entire property",
+            "Revised estimate dated 1/14/2026 increased from original 1/7/2026 estimate - added full house vinyl siding replacement (2,075.34 SF) and house wrap, upgraded debris removal from pickup truck load to 2"
+          ],
+          "tactic_type": "partial_scope",
+          "total_impact": 0
+        }
+      ],
+      "carrier_score": {
+        "carrier": "State Farm",
+        "error": "unsupported operand type(s) for +: 'float' and 'NoneType'"
+      },
+      "general_effective_arguments": [
+        {
+          "argument": "Multiple circular hail impact holes penetrate vinyl siding panels on all visible elevations, compromising weather envelope integrity.",
+          "description": "ADDED: USA Roof Masters - Siding & Roofing Bid Item ($47,152.31)",
+          "dollar_impact": 47152.31,
+          "tactic_countered": "counter_argument",
+          "trade": null
+        },
+        {
+          "argument": "Single ground-level overview photo insufficient for forensic hail or wind damage determination — no close-range shingle, gutter, or soft metal documentation provided.",
+          "description": "ADDED: R&R Siding - cedar shingle - Front Elevation ($27,654.98)",
+          "dollar_impact": 27654.98,
+          "tactic_countered": "counter_argument",
+          "trade": null
+        },
+        {
+          "argument": "Chalk testing across aluminum lap siding on multiple elevations confirms pervasive hail dent pattern from July 03, 2025 storm",
+          "description": "Remove and replace .019\" metal siding ($24,646.90)",
+          "dollar_impact": 24646.9,
+          "tactic_countered": "counter_argument",
+          "trade": null
+        },
+        {
+          "argument": "Complete hail punch-through penetrations confirmed on multiple natural slate tiles across all visible roof sections — circular voids open to substrate below constitute functional water-infiltration damage requiring full replacement.",
+          "description": "ADDED: Slate roofing - High grade - 18\" to 24\" tall (Roof slope J, C, & D) ($16,520.56)",
+          "dollar_impact": 16520.56,
+          "tactic_countered": "counter_argument",
+          "trade": null
+        },
+        {
+          "argument": "Slate condition is beyond spot repair — widespread brittleness and erosion require full roof replacement",
+          "description": "ADDED: Slate roofing - High grade - 18\" to 24\" tall ($16,520.56)",
+          "dollar_impact": 16520.56,
+          "tactic_countered": "counter_argument",
+          "trade": null
+        }
+      ],
+      "prediction": {
+        "confidence": "low",
+        "message": "Insufficient data (0 claims)"
+      },
+      "recommended_arguments_by_trade": {}
+    },
+    "company": {
+      "address": "1222 Dixon Boulevard",
+      "cell_phone": "3214378053",
+      "ceo_name": "Samuel Lorenz",
+      "ceo_title": "Owner",
+      "city_state_zip": "Cocoa",
+      "email": "floridaroofconsultants@gmail.com",
+      "name": "Florida Roof Consultants",
+      "office_phone": "",
+      "website": "https://floridaroof.app"
+    },
+    "compliance": {
+      "aob_signed": false,
+      "user_role": "contractor"
+    },
+    "cover_email": {
+      "enclosed_documents": [
+        "Forensic Causation Report with annotated photography",
+        "Xactimate-format replacement cost estimate",
+        "Cover correspondence"
+      ],
+      "summary_paragraphs": [
+        "Please find enclosed the complete forensic documentation package for the property at 9800 International Dr, Orlando, FL 32819, USA. Our independent inspection has documented storm-related damage to the Roofing.",
+        "The enclosed reports include annotated photography of all identified damage, an Xactimate-format replacement cost estimate, and a forensic causation analysis establishing the relationship between documented weather events and observed damage.",
+        "Please do not hesitate to contact us should you require any additional information or wish to schedule a joint inspection."
+      ],
+      "to": "State Farm Claims Department",
+      "to_email": ""
+    },
+    "dates": {
+      "date_of_loss": "May 8, 2026",
+      "report_date": "May 27, 2026",
+      "usarm_inspection_date": "May 27, 2026"
+    },
+    "financials": {
+      "deductible": 0,
+      "market_code": "FLMI8X_02MAY26",
+      "market_resolution_reason": "zip_prefix",
+      "price_list": "FLMI26",
+      "price_list_is_proxy": false,
+      "tax_rate": 0.08
+    },
+    "forensic_findings": {
+      "code_violations": [
+        {
+          "code": "FBC-R R905.2.2",
+          "requirement": "Asphalt shingles shall be installed in accordance with this section AND the manufacturer's installation instructions — adopts manufacturer spec as code-enforceable requirement",
+          "status": "Required — manufacturer spec controls fastener count, exposure, starter, drip edge, and warranty-critical details"
+        },
+        {
+          "code": "FBC-R R905.1.1",
+          "requirement": "Underlayment shall be applied in accordance with manufacturer's installation instructions — ASTM D226 / D4869 / D6757 labeling required",
+          "status": "Required — included in scope"
+        }
+      ],
+      "conclusion_paragraphs": [
+        "Based on our forensic analysis of 10 documented findings, the property at 9800 International Dr, Orlando, FL 32819, USA sustained confirmed storm damage from the May 08, 2026 weather event. Interior inspection revealed active water intrusion across multiple areas of the structure, including saturated ceiling drywall, delaminating texture coating in the garage/utility area, and brown water staining along ceiling-wall junctions — collectively establishing a widespread pattern of roof system breach rather than an isolated, localized leak. The sustained moisture migration paths documented in Photos 2, 4, 7, and 8 confirm that the laminated architectural shingle roof system has functionally failed, allowing water penetration through the roof deck and into the building envelope. Additionally, deteriorated base trim sealant at the exterior wall-floor junction creates a secondary water ingress pathway, further compromising the property's weather-resistant envelope.",
+        "The confirmed damage to the laminated/architectural shingle roofing system and associated interior components requires full roof system replacement. At an estimated age of approximately 12 years, these shingles have not exceeded their rated service life, meaning the functional failure documented through interior water intrusion is attributable to storm-related damage rather than end-of-life wear. Partial repair is not technically viable given the widespread, multi-room nature of the water intrusion pattern; spot repairs cannot restore the compromised roof deck integrity, and the Florida Building Code — Residential (FBC-R) requires that replacement materials match existing materials in composition, profile, and performance characteristics, effectively triggering full system replacement when uniform matching across the roof plane cannot be achieved.",
+        "Based on the documented damage, applicable FBC-R requirements, and industry standards, we recommend full replacement of the roofing system — including shingles, underlayment, compromised decking, and associated flashing — along with repair of all damaged interior finishes including ceiling drywall, texture coating, and affected insulation. Restoration of the exterior base trim sealant system is also warranted to close the secondary water ingress pathway and restore the building envelope to pre-loss, code-compliant condition. Continued delay in remediation poses escalating risk of mold colonization, structural decking rot, and insulation degradation, which would substantially increase the ultimate scope and cost of restoration.",
+        "This forensic determination was developed in accordance with HAAG Engineering residential roof inspection protocols, NRCA guidelines for roof system evaluation, and the International Residential Code (IRC) as adopted and amended by the Florida Building Code — Residential (FBC-R). The interior water intrusion documentation methodology follows established moisture-mapping principles to correlate interior damage signatures with roof system failure points, providing a technically defensible basis for the full replacement scope identified above."
+      ],
+      "damage_summary": "Interior water intrusion damage confirmed across multiple areas of the property. Ceiling staining and active water damage visible in living areas and garage, with moisture migration along wall-ceiling junctions. Exterior wall/foundation shows deteriorated sealant at base trim allowing water ingress. The combination of interior water staining, ceiling material failure in the garage, and compromised exterior envelope confirms roof system failure requiring full replacement to prevent continued structural damage. Interior ceiling inspection reveals water intrusion damage consistent with compromised roof system. Popcorn/textured ceilings show active water staining and material delamination in utility/garage area (photo 8), confirming roof breach allowing moisture penetration. The interior water damage corroborates exterior storm damage and demonstrates functional failure of the roofing system requiring full replacement to prevent continued structural degradation.",
+      "damage_thresholds": [
+        {
+          "component": "Laminate/Architectural Shingles",
+          "result": "No NOAA hail data available",
+          "source": "NOAA SWDI + HAAG Engineering",
+          "storm_actual": "0.0\"",
+          "threshold": "1.00\" diameter hail (HAAG Engineering)"
+        }
+      ],
+      "differentiation_table": [
+        {
+          "cause": "Normal Wear / Aging",
+          "characteristics": "Uniform granule loss, curling at edges, consistent deterioration pattern",
+          "conclusion": "NOT CONSISTENT",
+          "observed": "No — damage pattern is random/localized, inconsistent with uniform aging"
+        },
+        {
+          "cause": "Manufacturing Defect",
+          "characteristics": "Systematic pattern across same production batch, uniform failure mode",
+          "conclusion": "NOT CONSISTENT",
+          "observed": "No — damage is random and impact-related, not systematic"
+        }
+      ],
+      "executive_summary": [
+        "On May 08, 2026, the subject property at 9800 International Dr, Orlando, FL 32819, USA sustained damage from a high-wind storm event. A forensic inspection was conducted to document and assess the condition of the property's exterior envelope and interior systems, including the laminated premium asphalt shingle roof system, exterior wall cladding, sealant joints, and interior ceiling finishes. A total of 9 photographs were captured during the inspection to memorialize conditions across multiple elevations and interior areas.",
+        "The inspection revealed interior water intrusion damage consistent with a compromised roof system resulting from the wind event. Ceiling staining and active moisture migration were documented along wall-ceiling junctions in living areas and the garage, with textured ceiling material exhibiting delamination indicative of sustained water exposure from above. Exterior evaluation confirmed deteriorated sealant at base trim transitions, providing a secondary pathway for wind-driven rain ingress. The directional consistency of interior damage patterns and the correspondence between exterior envelope breaches and interior moisture signatures confirm functional failure of the roofing system attributable to the May 08, 2026 wind-driven storm.",
+        "Spot repair of the laminated premium shingle system is not technically viable due to the widespread nature of the documented damage, the inability to source a color- and profile-matched replacement for the existing weathered material, and the requirement under FBC-R that any roof repair or replacement comply with current wind resistance and underlayment standards (FBC-R Section R905). The documented interior water damage demonstrates that the roof system has lost its capacity to shed water as designed, and partial remediation would leave unaddressed pathways for continued moisture intrusion and progressive structural degradation. Full roof system replacement is required to restore code-compliant weather protection and arrest ongoing damage to interior structural and finish components."
+      ],
+      "key_arguments": [
+        "Active water intrusion through roof system confirmed by saturated ceiling drywall and delaminating material in garage (Photo 4 — critical severity)",
+        "Multiple interior rooms show ceiling water staining indicating widespread roof failure, not isolated leak",
+        "Exterior base trim sealant failure at wall-floor junction creates secondary water ingress pathway",
+        "Water migration along ceiling-wall junction (Photo 2) indicates sustained moisture travel from roof deck",
+        "No exterior roof surface photos provided — interior damage alone confirms functional roof failure requiring replacement",
+        "Active water intrusion through ceiling in utility/garage area with delaminated texture coating and brown water staining confirms roof system breach (photo 8)",
+        "Faint discoloration on popcorn ceiling in second area suggests spreading moisture migration (photo 7)",
+        "Interior water damage corroborates exterior wind damage as the cause of roof system failure",
+        "Continued moisture penetration risks mold growth, structural decking rot, and insulation degradation",
+        "Estimated roof age: ~12 years (installed circa 2014) — Shingle Type: Laminate/Architectural shingle"
+      ],
+      "total_photos": 9
+    },
+    "full_reroof_trigger": false,
+    "inspectors": {
+      "usarm_inspector": "Samuel Lorenz",
+      "usarm_title": "Owner"
+    },
+    "insured": {
+      "name": "Samuel Lorenz",
+      "type": "homeowner"
+    },
+    "line_items": [
+      {
+        "_priced_market": "FLMI8X_02MAY26",
+        "category": "ROOFING",
+        "code": "RFG 300S",
+        "code_citation": {
+          "code_tag": "FBC-R R908.3",
+          "has_warranty_void": true,
+          "jurisdiction": "Florida Building Code, Residential (8th Edition, 2023)",
+          "manufacturer_specs": [
+            {
+              "document": "Timberline HDZ Installation Instructions",
+              "manufacturer": "GAF",
+              "requirement": "4-6 nails per shingle, ProStart starter required at eaves and rakes",
+              "warranty_text": "GAF System Plus/Silver Pledge warranty VOID without proper starter and nailing pattern",
+              "warranty_void": true
+            }
+          ],
+          "requirement": "Existing roofing materials shall be removed before applying new roofing when existing roof has two or more applications of any type of roof covering",
+          "section": "R908.3",
+          "supplement_argument": "Complete tear-off is required per code for a code-compliant installation. Overlay is not code-compliant when damage necessitates deck inspection.",
+          "title": "Reroofing — Tear-Off Requirement"
+        },
+        "description": "Remove laminated comp shingle roofing",
+        "irc_code": "FBC-R R908.3",
+        "qty": 0.0,
+        "supplement_argument": "Complete tear-off is required per code for a code-compliant installation. Overlay is not code-compliant when damage necessitates deck inspection.",
+        "trade": "roofing",
+        "unit": "SQ",
+        "unit_price": 84.96
+      },
+      {
+        "_priced_market": "FLMI8X_02MAY26",
+        "category": "ROOFING",
+        "code": "RFG 400S",
+        "code_citation": {
+          "code_tag": "FBC-R R905.1.1",
+          "has_warranty_void": false,
+          "jurisdiction": "Florida Building Code, Residential (8th Edition, 2023)",
+          "manufacturer_specs": [],
+          "requirement": "Underlayment required over entire roof deck area not covered by ice barrier",
+          "section": "R905.1.1",
+          "supplement_argument": "Underlayment is code-mandated over the entire roof deck. Areas where ice & water barrier is not installed require felt or synthetic underlayment. Omission does not meet code requirements.",
+          "title": "Underlayment Requirement"
+        },
+        "description": "Laminated - High grd - comp. shingle rfg. - w/out felt",
+        "irc_code": "R905.2",
+        "qty": 0.0,
+        "supplement_argument": "Underlayment is code-mandated over the entire roof deck. Areas where ice & water barrier is not installed require felt or synthetic underlayment. Omission does not meet code requirements.",
+        "trade": "roofing",
+        "unit": "SQ",
+        "unit_price": 424.04
+      },
+      {
+        "_priced_market": "FLMI8X_02MAY26",
+        "category": "ROOFING",
+        "code": "",
+        "code_citation": {
+          "code_tag": "FBC-R R905.1.2",
+          "has_warranty_void": true,
+          "jurisdiction": "Florida Building Code, Residential (8th Edition, 2023)",
+          "manufacturer_specs": [
+            {
+              "document": "WeatherWatch Mineral-Surfaced Leak Barrier",
+              "manufacturer": "GAF",
+              "requirement": "Required at eaves, valleys, and around penetrations per GAF system requirements",
+              "warranty_text": "GAF warranty VOID without WeatherWatch/StormGuard at eaves and valleys",
+              "warranty_void": true
+            }
+          ],
+          "requirement": "Ice barrier required at eaves extending from eave edge to at least 24 inches past interior wall line, and in valleys",
+          "section": "R905.1.2",
+          "supplement_argument": "Ice & water barrier is required by code at all eaves and valleys. This is not an optional upgrade — it is a mandatory building code requirement for a code-compliant installation.",
+          "title": "Ice Barrier Requirement"
+        },
+        "description": "Underlayment - felt 15# (deck area not covered by I&W)",
+        "irc_code": "FBC-R R905.1.2",
+        "qty": 0.0,
+        "supplement_argument": "Ice & water barrier is required by code at all eaves and valleys. This is not an optional upgrade — it is a mandatory building code requirement for a code-compliant installation.",
+        "unit": "SQ",
+        "unit_price": 32.0
+      },
+      {
+        "_priced_market": "FLMI8X_02MAY26",
+        "category": "ROOFING",
+        "code": null,
+        "description": "Roofer - per hour (labor minimum)",
+        "irc_code": null,
+        "qty": 8,
+        "supplement_argument": "8 hours roofer labor mandatory on every roofing estimate per industry standard",
+        "trade": "roofing",
+        "unit": "HR",
+        "unit_price": 194.0
+      },
+      {
+        "_priced_market": "FLMI8X_02MAY26",
+        "category": "ROOFING",
+        "code": null,
+        "description": "Equipment operator",
+        "irc_code": null,
+        "qty": 1,
+        "supplement_argument": null,
+        "trade": "roofing",
+        "unit": "EA",
+        "unit_price": 450.0
+      },
+      {
+        "_priced_market": "FLMI8X_02MAY26",
+        "category": "DEBRIS",
+        "description": "Dumpster load - roofing debris",
+        "qty": 1,
+        "unit": "EA",
+        "unit_price": 850.0
+      }
+    ],
+    "measurements": {},
+    "phase": "pre-scope",
+    "photo_annotations": {
+      "p03_01": "Water staining on textured ceiling — discoloration pattern confirms active moisture intrusion from roof above.",
+      "p03_02": "Moisture staining at ceiling-wall junction — water migration path visible along corner seam.",
+      "p03_03": "Deteriorated base trim sealant with gap at wall-floor junction — water ingress pathway confirmed.",
+      "p04_01": "Active water intrusion — saturated ceiling drywall with material delamination exposing substrate. Critical failure.",
+      "p04_02": "Garage wall shows moisture staining near electrical — water migration from roof penetration area.",
+      "p04_03": "Textured popcorn ceiling with track lighting — no visible water staining in this area.",
+      "p05_01": "Close-up of popcorn ceiling texture shows faint discoloration — early water intrusion evidence.",
+      "p05_02": "Active water intrusion — ceiling texture delaminated exposing drywall; brown staining confirms roof breach.",
+      "p05_03": "Smoke detector on popcorn ceiling — minor water staining visible around mounting area."
+    },
+    "photo_integrity": {
+      "flagged": 0,
+      "score": "100%",
+      "stamp": "PHOTO INTEGRITY VERIFIED — 100% | 9 photos analyzed, 0 flagged for manipulation indicators | DumbRoof.AI Fraud Detection Engine",
+      "summary": "All 9 photos pass integrity review. The photo set documents interior water damage consistent with a roof leak — including active water staining, paint peeling/bubbling on garage ceilings, subtle moisture discoloration on interior ceilings, and a potential exterior water entry point. Damage patterns are authentic with natural, gravity-consistent water spread and organic stain edges. No evidence of digital manipulation (no cloning artifacts, no inconsistent lighting/shadows, no impossible geometry). No evidence of staged damage. No evidence of misrepresentation or recycled photos. Photo 6 appears to be a duplicate of Photo 1, which is common in inspection documentation. The claim documentation appears legitimate.",
+      "total_analyzed": 9
+    },
+    "photo_map": {
+      "p03_01": "10567.jpg",
+      "p03_02": "10580.jpg",
+      "p03_03": "10584.jpg",
+      "p04_01": "10591.jpg",
+      "p04_02": "10616.jpg",
+      "p04_03": "10573.jpg",
+      "p05_01": "10579.jpg",
+      "p05_02": "10604.jpg",
+      "p05_03": "10615.jpg"
+    },
+    "photo_sections": [
+      {
+        "photos": [
+          [
+            "p03_01",
+            3,
+            1
+          ],
+          [
+            "p03_02",
+            3,
+            2
+          ],
+          [
+            "p03_03",
+            3,
+            3
+          ],
+          [
+            "p04_01",
+            4,
+            1
+          ],
+          [
+            "p04_02",
+            4,
+            2
+          ],
+          [
+            "p04_03",
+            4,
+            3
+          ],
+          [
+            "p05_01",
+            5,
+            1
+          ],
+          [
+            "p05_02",
+            5,
+            2
+          ],
+          [
+            "p05_03",
+            5,
+            3
+          ]
+        ],
+        "title": "Damage Documentation"
+      }
+    ],
+    "property": {
+      "address": "9800 International Dr, Orlando, FL 32819, USA",
+      "city": "ORLANDO",
+      "state": "FL",
+      "year_built_OPTIONAL": null,
+      "zip": "32819"
+    },
+    "roof_facets": {
+      "_synthesized": true,
+      "north_arrow_angle": 0,
+      "roof_facets": [
+        {
+          "area_pct": 25.0,
+          "cardinal": "N",
+          "facet_id": "N",
+          "pitch": null,
+          "polygon_pixels": []
+        },
+        {
+          "area_pct": 25.0,
+          "cardinal": "E",
+          "facet_id": "E",
+          "pitch": null,
+          "polygon_pixels": []
+        },
+        {
+          "area_pct": 25.0,
+          "cardinal": "S",
+          "facet_id": "S",
+          "pitch": null,
+          "polygon_pixels": []
+        },
+        {
+          "area_pct": 25.0,
+          "cardinal": "W",
+          "facet_id": "W",
+          "pitch": null,
+          "polygon_pixels": []
+        }
+      ],
+      "scale_bar": null
+    },
+    "scope": {
+      "o_and_p": false,
+      "trades": [
+        "Roofing"
+      ]
+    },
+    "settlement_prediction": {
+      "avg_movement_pct": 66.8,
+      "avg_settlement": 60277.0,
+      "avg_usarm_rcv": 44499.0,
+      "confidence": "high",
+      "data_points": 66,
+      "note": "Based on 66 similar claims against State Farm",
+      "predicted_additional_amount": null,
+      "predicted_settlement_range": null,
+      "win_probability_pct": 4.5
+    },
+    "slope_damage": [
+      {
+        "area_pct": 25.0,
+        "cardinal": "N",
+        "damage_photos": 0,
+        "dominant_damage_type": null,
+        "facet_id": "N",
+        "pitch": null,
+        "total_photos": 0,
+        "weighted_damage_pct": 0.0
+      },
+      {
+        "area_pct": 25.0,
+        "cardinal": "E",
+        "damage_photos": 0,
+        "dominant_damage_type": null,
+        "facet_id": "E",
+        "pitch": null,
+        "total_photos": 0,
+        "weighted_damage_pct": 0.0
+      },
+      {
+        "area_pct": 25.0,
+        "cardinal": "S",
+        "damage_photos": 0,
+        "dominant_damage_type": null,
+        "facet_id": "S",
+        "pitch": null,
+        "total_photos": 0,
+        "weighted_damage_pct": 0.0
+      },
+      {
+        "area_pct": 25.0,
+        "cardinal": "W",
+        "damage_photos": 0,
+        "dominant_damage_type": null,
+        "facet_id": "W",
+        "pitch": null,
+        "total_photos": 0,
+        "weighted_damage_pct": 0.0
+      },
+      {
+        "area_pct": 0.0,
+        "cardinal": null,
+        "damage_photos": 0,
+        "dominant_damage_type": null,
+        "facet_id": "_unassigned",
+        "pitch": null,
+        "total_photos": 9,
+        "weighted_damage_pct": 0.0
+      }
+    ],
+    "source_docs": {
+      "companycam_pdf": "_no_companycam.pdf"
+    },
+    "structures": [
+      {
+        "age": 12,
+        "shingle_type": "laminated_premium"
+      }
+    ],
+    "warnings": [
+      "MEASUREMENT_EXTRACTION_FAILED"
+    ],
+    "weather": {
+      "damage_thresholds": [
+        {
+          "component": "Laminate/Architectural Shingles",
+          "result": "No NOAA hail data available",
+          "source": "NOAA SWDI + HAAG Engineering",
+          "storm_actual": "0.0\"",
+          "threshold": "1.00\" diameter hail (HAAG Engineering)"
+        }
+      ],
+      "hail_size": "",
+      "noaa": {
+        "episode_narrative": "Searched 2026-05-08 ± 2 days for storm events near property.",
+        "event_count": 17,
+        "events": [
+          {
+            "date": "2026-05-10",
+            "distance_miles": 43.8,
+            "event_type": "Hail",
+            "latitude": 28.685,
+            "longitude": -80.811,
+            "magnitude": 0.75,
+            "magnitude_type": "hail_inches",
+            "narrative": "NEXRAD radar hail signature — Prob: 100.0%, Severe Prob: 20%",
+            "noaa_url": "https://www.ncei.noaa.gov/swdiws/csv/nx3hail/20260510:20260511",
+            "source": "SWDI_NX3HAIL",
+            "source_detail": "NEXRAD KMCO",
+            "time_utc": "21:26:21"
+          },
+          {
+            "date": "2026-05-10",
+            "distance_miles": 44.6,
+            "event_type": "Hail",
+            "latitude": 28.681,
+            "longitude": -80.793,
+            "magnitude": 1.25,
+            "magnitude_type": "hail_inches",
+            "narrative": "NEXRAD radar hail signature — Prob: 100.0%, Severe Prob: 60%",
+            "noaa_url": "https://www.ncei.noaa.gov/swdiws/csv/nx3hail/20260510:20260511",
+            "source": "SWDI_NX3HAIL",
+            "source_detail": "NEXRAD KJAX",
+            "time_utc": "21:23:18"
+          },
+          {
+            "date": "2026-05-10",
+            "distance_miles": 44.6,
+            "event_type": "Hail",
+            "latitude": 28.681,
+            "longitude": -80.793,
+            "magnitude": 1.75,
+            "magnitude_type": "hail_inches",
+            "narrative": "NEXRAD radar hail signature — Prob: 100.0%, Severe Prob: 80%",
+            "noaa_url": "https://www.ncei.noaa.gov/swdiws/csv/nx3hail/20260510:20260511",
+            "source": "SWDI_NX3HAIL",
+            "source_detail": "NEXRAD KJAX",
+            "time_utc": "21:28:33"
+          },
+          {
+            "date": "2026-05-10",
+            "distance_miles": 45.0,
+            "event_type": "Hail",
+            "latitude": 28.687,
+            "longitude": -80.789,
+            "magnitude": 0.75,
+            "magnitude_type": "hail_inches",
+            "narrative": "NEXRAD radar hail signature — Prob: 100.0%, Severe Prob: 30%",
+            "noaa_url": "https://www.ncei.noaa.gov/swdiws/csv/nx3hail/20260510:20260511",
+            "source": "SWDI_NX3HAIL",
+            "source_detail": "NEXRAD KMCO",
+            "time_utc": "21:29:31"
+          },
+          {
+            "date": "2026-05-10",
+            "distance_miles": 46.4,
+            "event_type": "Hail",
+            "latitude": 28.679,
+            "longitude": -80.76,
+            "magnitude": 1.0,
+            "magnitude_type": "hail_inches",
+            "narrative": "NEXRAD radar hail signature — Prob: 100.0%, Severe Prob: 40%",
+            "noaa_url": "https://www.ncei.noaa.gov/swdiws/csv/nx3hail/20260510:20260511",
+            "source": "SWDI_NX3HAIL",
+            "source_detail": "NEXRAD KMCO",
+            "time_utc": "21:35:31"
+          },
+          {
+            "date": "2026-05-10",
+            "distance_miles": 46.8,
+            "event_type": "Hail",
+            "latitude": 28.676,
+            "longitude": -80.753,
+            "magnitude": 1.5,
+            "magnitude_type": "hail_inches",
+            "narrative": "NEXRAD radar hail signature — Prob: 100.0%, Severe Prob: 60%",
+            "noaa_url": "https://www.ncei.noaa.gov/swdiws/csv/nx3hail/20260510:20260511",
+            "source": "SWDI_NX3HAIL",
+            "source_detail": "NEXRAD KTBW",
+            "time_utc": "21:36:23"
+          },
+          {
+            "date": "2026-05-10",
+            "distance_miles": 47.2,
+            "event_type": "Hail",
+            "latitude": 28.649,
+            "longitude": -80.734,
+            "magnitude": 1.5,
+            "magnitude_type": "hail_inches",
+            "narrative": "NEXRAD radar hail signature — Prob: 100.0%, Severe Prob: 70%",
+            "noaa_url": "https://www.ncei.noaa.gov/swdiws/csv/nx3hail/20260510:20260511",
+            "source": "SWDI_NX3HAIL",
+            "source_detail": "NEXRAD KJAX",
+            "time_utc": "21:38:24"
+          },
+          {
+            "date": "2026-05-10",
+            "distance_miles": 47.9,
+            "event_type": "Hail",
+            "latitude": 28.67,
+            "longitude": -80.731,
+            "magnitude": 1.25,
+            "magnitude_type": "hail_inches",
+            "narrative": "NEXRAD radar hail signature — Prob: 100.0%, Severe Prob: 50%",
+            "noaa_url": "https://www.ncei.noaa.gov/swdiws/csv/nx3hail/20260510:20260511",
+            "source": "SWDI_NX3HAIL",
+            "source_detail": "NEXRAD KMCO",
+            "time_utc": "21:38:21"
+          },
+          {
+            "date": "2026-05-10",
+            "distance_miles": 48.0,
+            "event_type": "Hail",
+            "latitude": 28.661,
+            "longitude": -80.725,
+            "magnitude": 1.25,
+            "magnitude_type": "hail_inches",
+            "narrative": "NEXRAD radar hail signature — Prob: 100.0%, Severe Prob: 50%",
+            "noaa_url": "https://www.ncei.noaa.gov/swdiws/csv/nx3hail/20260510:20260511",
+            "source": "SWDI_NX3HAIL",
+            "source_detail": "NEXRAD KMCO",
+            "time_utc": "21:41:31"
+          },
+          {
+            "date": "2026-05-10",
+            "distance_miles": 49.3,
+            "event_type": "Hail",
+            "latitude": 28.66,
+            "longitude": -80.702,
+            "magnitude": 1.0,
+            "magnitude_type": "hail_inches",
+            "narrative": "NEXRAD radar hail signature — Prob: 100.0%, Severe Prob: 40%",
+            "noaa_url": "https://www.ncei.noaa.gov/swdiws/csv/nx3hail/20260510:20260511",
+            "source": "SWDI_NX3HAIL",
+            "source_detail": "NEXRAD KMCO",
+            "time_utc": "21:44:21"
+          },
+          {
+            "date": "2026-05-10",
+            "distance_miles": 49.5,
+            "event_type": "Hail",
+            "latitude": 28.668,
+            "longitude": -80.702,
+            "magnitude": 1.5,
+            "magnitude_type": "hail_inches",
+            "narrative": "NEXRAD radar hail signature — Prob: 100.0%, Severe Prob: 60%",
+            "noaa_url": "https://www.ncei.noaa.gov/swdiws/csv/nx3hail/20260510:20260511",
+            "source": "SWDI_NX3HAIL",
+            "source_detail": "NEXRAD KTBW",
+            "time_utc": "21:41:52"
+          },
+          {
+            "date": "2026-05-09",
+            "distance_miles": 49.6,
+            "event_type": "Hail",
+            "latitude": 28.925,
+            "longitude": -80.88,
+            "magnitude": 1.0,
+            "magnitude_type": "hail_inches",
+            "narrative": "NEXRAD radar hail signature — Prob: 100.0%, Severe Prob: 30%",
+            "noaa_url": "https://www.ncei.noaa.gov/swdiws/csv/nx3hail/20260509:20260510",
+            "source": "SWDI_NX3HAIL",
+            "source_detail": "NEXRAD KMCO",
+            "time_utc": "21:43:42"
+          },
+          {
+            "date": "2026-05-09",
+            "distance_miles": 49.6,
+            "event_type": "Hail",
+            "latitude": 28.925,
+            "longitude": -80.88,
+            "magnitude": 1.25,
+            "magnitude_type": "hail_inches",
+            "narrative": "NEXRAD radar hail signature — Prob: 100.0%, Severe Prob: 50%",
+            "noaa_url": "https://www.ncei.noaa.gov/swdiws/csv/nx3hail/20260509:20260510",
+            "source": "SWDI_NX3HAIL",
+            "source_detail": "NEXRAD KMCO",
+            "time_utc": "21:46:32"
+          },
+          {
+            "date": "2026-05-10",
+            "distance_miles": 49.6,
+            "event_type": "Hail",
+            "latitude": 28.641,
+            "longitude": -80.69,
+            "magnitude": 1.25,
+            "magnitude_type": "hail_inches",
+            "narrative": "NEXRAD radar hail signature — Prob: 100.0%, Severe Prob: 40%",
+            "noaa_url": "https://www.ncei.noaa.gov/swdiws/csv/nx3hail/20260510:20260511",
+            "source": "SWDI_NX3HAIL",
+            "source_detail": "NEXRAD KMCO",
+            "time_utc": "21:50:21"
+          },
+          {
+            "date": "2026-05-09",
+            "distance_miles": 49.8,
+            "event_type": "Hail",
+            "latitude": 28.915,
+            "longitude": -80.864,
+            "magnitude": 2.0,
+            "magnitude_type": "hail_inches",
+            "narrative": "NEXRAD radar hail signature — Prob: 100.0%, Severe Prob: 70%",
+            "noaa_url": "https://www.ncei.noaa.gov/swdiws/csv/nx3hail/20260509:20260510",
+            "source": "SWDI_NX3HAIL",
+            "source_detail": "NEXRAD KTBW",
+            "time_utc": "21:43:07"
+          },
+          {
+            "date": "2026-05-10",
+            "distance_miles": 49.8,
+            "event_type": "Hail",
+            "latitude": 28.649,
+            "longitude": -80.689,
+            "magnitude": 1.25,
+            "magnitude_type": "hail_inches",
+            "narrative": "NEXRAD radar hail signature — Prob: 100.0%, Severe Prob: 60%",
+            "noaa_url": "https://www.ncei.noaa.gov/swdiws/csv/nx3hail/20260510:20260511",
+            "source": "SWDI_NX3HAIL",
+            "source_detail": "NEXRAD KJAX",
+            "time_utc": "21:43:40"
+          },
+          {
+            "date": "2026-05-10",
+            "distance_miles": 48.8,
+            "event_type": "Thunderstorm Wind",
+            "latitude": 28.63,
+            "longitude": -80.7,
+            "magnitude": 72.5,
+            "magnitude_type": "wind_mph",
+            "narrative": "USSF wind sensor on tower 513 measured a peak wind gust of 63MPH/55KT from the north at 5:55 PM. Earlier... a gust to 47MPH/41KT occurred at 5:45 PM. Sensor elevation i (MLB)",
+            "noaa_url": "https://www.spc.noaa.gov/climo/reports/260510_rpts_filtered_wind.csv",
+            "source": "SPC_DAILY",
+            "source_detail": "SPC Report — 4 NW Kennedy Space Cent, FL",
+            "time_utc": "2155"
+          }
+        ],
+        "max_hail_distance_miles": 0.0,
+        "max_hail_inches": 0.0,
+        "max_wind_mph": 72.5,
+        "query_coords": [
+          28.428659771364,
+          -81.470195328868
+        ],
+        "query_date": "2026-05-27",
+        "query_urls": [
+          "https://www.ncei.noaa.gov/stormevents/csv?beginDate_mm=05&beginDate_dd=04&beginDate_yyyy=2026&endDate_mm=05&endDate_dd=08&endDate_yyyy=2026&hailfilter=0.00&tornfilter=0&windfilter=000&sort=DT&submitbutton=Search&statefips=12%2CFLORIDA&county=ORANGE:95&eventType=%28C%29%20Hail&eventType=%28C%29%20Thunderstorm%20Wind",
+          "https://www.ncei.noaa.gov/stormevents/csv?beginDate_mm=05&beginDate_dd=04&beginDate_yyyy=2026&endDate_mm=05&endDate_dd=08&endDate_yyyy=2026&hailfilter=0.00&tornfilter=0&windfilter=000&sort=DT&submitbutton=Search&statefips=12%2CFLORIDA&eventType=%28C%29%20Hail&eventType=%28C%29%20Thunderstorm%20Wind",
+          "https://www.spc.noaa.gov/climo/reports/260506_rpts_filtered_hail.csv",
+          "https://www.spc.noaa.gov/climo/reports/260506_rpts_filtered_wind.csv",
+          "https://www.ncei.noaa.gov/swdiws/csv/nx3hail/20260506:20260507",
+          "https://www.ncei.noaa.gov/stormevents/csv?beginDate_mm=05&beginDate_dd=05&beginDate_yyyy=2026&endDate_mm=05&endDate_dd=09&endDate_yyyy=2026&hailfilter=0.00&tornfilter=0&windfilter=000&sort=DT&submitbutton=Search&statefips=12%2CFLORIDA&county=ORANGE:95&eventType=%28C%29%20Hail&eventType=%28C%29%20Thunderstorm%20Wind",
+          "https://www.ncei.noaa.gov/stormevents/csv?beginDate_mm=05&beginDate_dd=05&beginDate_yyyy=2026&endDate_mm=05&endDate_dd=09&endDate_yyyy=2026&hailfilter=0.00&tornfilter=0&windfilter=000&sort=DT&submitbutton=Search&statefips=12%2CFLORIDA&eventType=%28C%29%20Hail&eventType=%28C%29%20Thunderstorm%20Wind",
+          "https://www.spc.noaa.gov/climo/reports/260507_rpts_filtered_hail.csv",
+          "https://www.spc.noaa.gov/climo/reports/260507_rpts_filtered_wind.csv",
+          "https://www.ncei.noaa.gov/swdiws/csv/nx3hail/20260507:20260508",
+          "https://www.ncei.noaa.gov/stormevents/csv?beginDate_mm=05&beginDate_dd=06&beginDate_yyyy=2026&endDate_mm=05&endDate_dd=10&endDate_yyyy=2026&hailfilter=0.00&tornfilter=0&windfilter=000&sort=DT&submitbutton=Search&statefips=12%2CFLORIDA&county=ORANGE:95&eventType=%28C%29%20Hail&eventType=%28C%29%20Thunderstorm%20Wind",
+          "https://www.ncei.noaa.gov/stormevents/csv?beginDate_mm=05&beginDate_dd=06&beginDate_yyyy=2026&endDate_mm=05&endDate_dd=10&endDate_yyyy=2026&hailfilter=0.00&tornfilter=0&windfilter=000&sort=DT&submitbutton=Search&statefips=12%2CFLORIDA&eventType=%28C%29%20Hail&eventType=%28C%29%20Thunderstorm%20Wind",
+          "https://www.spc.noaa.gov/climo/reports/260508_rpts_filtered_hail.csv",
+          "https://www.spc.noaa.gov/climo/reports/260508_rpts_filtered_wind.csv",
+          "https://www.ncei.noaa.gov/swdiws/csv/nx3hail/20260508:20260509",
+          "https://www.ncei.noaa.gov/stormevents/csv?beginDate_mm=05&beginDate_dd=07&beginDate_yyyy=2026&endDate_mm=05&endDate_dd=11&endDate_yyyy=2026&hailfilter=0.00&tornfilter=0&windfilter=000&sort=DT&submitbutton=Search&statefips=12%2CFLORIDA&county=ORANGE:95&eventType=%28C%29%20Hail&eventType=%28C%29%20Thunderstorm%20Wind",
+          "https://www.ncei.noaa.gov/stormevents/csv?beginDate_mm=05&beginDate_dd=07&beginDate_yyyy=2026&endDate_mm=05&endDate_dd=11&endDate_yyyy=2026&hailfilter=0.00&tornfilter=0&windfilter=000&sort=DT&submitbutton=Search&statefips=12%2CFLORIDA&eventType=%28C%29%20Hail&eventType=%28C%29%20Thunderstorm%20Wind",
+          "https://www.spc.noaa.gov/climo/reports/260509_rpts_filtered_hail.csv",
+          "https://www.spc.noaa.gov/climo/reports/260509_rpts_filtered_wind.csv",
+          "https://www.ncei.noaa.gov/swdiws/csv/nx3hail/20260509:20260510",
+          "https://www.ncei.noaa.gov/stormevents/csv?beginDate_mm=05&beginDate_dd=08&beginDate_yyyy=2026&endDate_mm=05&endDate_dd=12&endDate_yyyy=2026&hailfilter=0.00&tornfilter=0&windfilter=000&sort=DT&submitbutton=Search&statefips=12%2CFLORIDA&county=ORANGE:95&eventType=%28C%29%20Hail&eventType=%28C%29%20Thunderstorm%20Wind",
+          "https://www.ncei.noaa.gov/stormevents/csv?beginDate_mm=05&beginDate_dd=08&beginDate_yyyy=2026&endDate_mm=05&endDate_dd=12&endDate_yyyy=2026&hailfilter=0.00&tornfilter=0&windfilter=000&sort=DT&submitbutton=Search&statefips=12%2CFLORIDA&eventType=%28C%29%20Hail&eventType=%28C%29%20Thunderstorm%20Wind",
+          "https://www.spc.noaa.gov/climo/reports/260510_rpts_filtered_hail.csv",
+          "https://www.spc.noaa.gov/climo/reports/260510_rpts_filtered_wind.csv",
+          "https://www.ncei.noaa.gov/swdiws/csv/nx3hail/20260510:20260511"
+        ],
+        "search_radius_miles": 25.0
+      },
+      "storm_date": "May 8, 2026",
+      "storm_description": "Searched 2026-05-08 ± 2 days for storm events near property. Near the subject property: wind gusts of 72.5 mph. Hail reports in surrounding area: NEXRAD KTBW (2.0\"), NEXRAD KJAX (1.75\"), NEXRAD KMCO (1.25\").",
+      "wind_speed": "72.5 mph"
+    }
+  }
+}
