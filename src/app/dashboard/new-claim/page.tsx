@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { FileUploadZone } from "@/components/file-upload-zone";
 import { AddressAutocomplete } from "@/components/address-autocomplete";
@@ -16,6 +17,7 @@ import { compressImages } from "@/lib/image-compress";
 type UploadStatus = "idle" | "uploading" | "success" | "error";
 
 export default function NewClaimPage() {
+  const router = useRouter();
   const [propertyAddress, setPropertyAddress] = useState("");
   const quota = useBillingQuota();
   const [homeownerName, setHomeownerName] = useState("");
@@ -336,8 +338,10 @@ export default function NewClaimPage() {
         console.warn("Some files failed to upload:", allErrors);
       }
 
-      // Save claim record to database
-      const { error: dbError } = await supabase.from("claims").insert({
+      // Save claim record to database. Capture the new id so we can land the
+      // user on their live claim page (it polls every 5s) instead of a
+      // dead-end success screen whose only CTA was "Back to Dashboard".
+      const { data: insertedClaim, error: dbError } = await supabase.from("claims").insert({
         user_id: user.id,
         address: propertyAddress,
         ...(homeownerName.trim() ? { homeowner_name: homeownerName.trim() } : {}),
@@ -367,7 +371,7 @@ export default function NewClaimPage() {
             ...(includeSiding && sidingType ? { siding: sidingType } : {}),
           }
         } : {}),
-      });
+      }).select("id").single();
 
       if (dbError) throw new Error(dbError.message);
 
@@ -411,7 +415,15 @@ export default function NewClaimPage() {
         }),
       }).catch(() => {});
 
-      setStatus("success");
+      // Land the user on their live claim page so they watch it build (the
+      // claim page polls every 5s). The old flow set status="success" and
+      // dead-ended at a "Back to Dashboard" link. Fall back to the success
+      // screen only if the insert somehow returned no id.
+      if (insertedClaim?.id) {
+        router.push(`/dashboard/claim/${insertedClaim.id}`);
+      } else {
+        setStatus("success");
+      }
     } catch (err) {
       setStatus("error");
       setErrorMsg(err instanceof Error ? err.message : "Upload failed");
