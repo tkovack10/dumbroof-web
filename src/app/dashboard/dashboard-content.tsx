@@ -709,6 +709,8 @@ export function DashboardContent({ user }: { user: User }) {
           )}
         </div>
 
+        <WhatsNextCard />
+
         <OnboardingChecklist />
 
         {/* Claims / Repairs Tab Bar */}
@@ -1380,5 +1382,101 @@ export function DashboardContent({ user }: { user: User }) {
       <RichardLauncher userId={user.id} scope="user" />
       <PhoneNagModal userId={user.id} />
     </main>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// What's-Next hero card — money-ranked next actions for the signed-in user's
+// own (team-scoped) claims. Data comes from /api/admin/whats-next, which is
+// team-scoped via getTeamUserIds (a solo signup only ever sees their own
+// claims). Renders nothing while loading, on error, or when there are no
+// open actions, so it can never break the dashboard for a fresh signup.
+// ─────────────────────────────────────────────────────────────────────────────
+
+interface WhatsNextPriorityClaim {
+  id: string;
+  address: string | null;
+  carrier_name: string | null;
+  rep_email: string | null;
+  reason: string;
+  reason_chip_color: string;
+  money_at_stake_dollars: number;
+  action_label: string;
+  action_url: string;
+}
+interface WhatsNextData {
+  headline: string;
+  sub: string;
+  total_money_at_stake_dollars: number;
+  total_actions: number;
+  priority_claims: WhatsNextPriorityClaim[];
+}
+
+function WhatsNextCard() {
+  const [data, setData] = useState<WhatsNextData | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const r = await fetch("/api/admin/whats-next", { cache: "no-store" });
+        if (!r.ok) return; // 401 (not signed in) or any error — stay hidden
+        const json = (await r.json()) as WhatsNextData;
+        if (!cancelled) setData(json);
+      } catch {
+        /* network error — stay hidden */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // Hide entirely until we have at least one actionable item.
+  if (!data || !data.priority_claims || data.priority_claims.length === 0) return null;
+
+  return (
+    <div className="mb-6 rounded-2xl border border-[var(--cyan)]/30 bg-[var(--cyan)]/[0.04] p-5 backdrop-blur-sm">
+      <div className="flex items-start justify-between gap-4 mb-3 flex-wrap">
+        <div className="min-w-0">
+          <div className="flex items-center gap-2">
+            <span className="text-[11px] font-semibold uppercase tracking-wide text-[var(--cyan)]">What&apos;s next</span>
+          </div>
+          <h2 className="text-white text-lg font-semibold tracking-tight mt-0.5">{data.headline}</h2>
+          {data.sub && <p className="text-[var(--gray)] text-sm mt-1">{data.sub}</p>}
+        </div>
+      </div>
+
+      <div className="space-y-2">
+        {data.priority_claims.map((p) => (
+          <a
+            key={p.id}
+            href={p.action_url}
+            className="flex items-center justify-between gap-3 rounded-xl border border-[var(--border-glass)] bg-white/[0.03] hover:bg-white/[0.06] hover:border-[var(--cyan)]/40 transition-colors px-4 py-3"
+          >
+            <div className="min-w-0 flex items-center gap-3">
+              <span
+                className="shrink-0 inline-block px-2 py-0.5 rounded-full text-[11px] font-semibold text-black/80"
+                style={{ backgroundColor: p.reason_chip_color }}
+              >
+                {p.reason}
+              </span>
+              <span className="text-white text-sm truncate">{p.address || "Claim"}</span>
+              {p.carrier_name && (
+                <span className="text-[var(--gray-dim)] text-xs truncate hidden sm:inline">· {p.carrier_name}</span>
+              )}
+            </div>
+            <div className="shrink-0 flex items-center gap-3">
+              {p.money_at_stake_dollars > 0 && (
+                <span className="text-emerald-300 text-sm font-semibold tabular-nums">
+                  ${p.money_at_stake_dollars.toLocaleString("en-US")}
+                </span>
+              )}
+              <span className="text-[var(--cyan)] text-sm font-semibold whitespace-nowrap">{p.action_label} →</span>
+            </div>
+          </a>
+        ))}
+      </div>
+    </div>
   );
 }
