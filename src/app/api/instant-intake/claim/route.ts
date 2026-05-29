@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
+import { sendCapiEvent, CapiEventName } from "@/lib/meta-conversions-api";
 
 // POST /api/instant-intake/claim
 //
@@ -163,6 +164,20 @@ export async function POST() {
   if (dbError) {
     return NextResponse.json({ error: `Claim insert failed: ${dbError.message}` }, { status: 500 });
   }
+
+  // Fire StartTrial server-side — this user just activated (created a real claim
+  // from the instant funnel). Meta optimizes the live StartTrial ad set on this
+  // signal. Email is the strong identifier; fbc/fbp lift match quality. The
+  // deterministic event_id keeps it idempotent. Fire-and-forget — never block.
+  sendCapiEvent({
+    eventName: CapiEventName.StartTrial,
+    email: user.email,
+    eventSourceUrl: "https://www.dumbroof.ai/instant",
+    fbc: jar.get("_fbc")?.value,
+    fbp: jar.get("_fbp")?.value,
+    eventId: `claim_${inserted.slug}_starttrial`,
+    customData: { value: 499, currency: "USD", content_name: "Claim Package", content_category: funnel },
+  }).catch(() => {});
 
   // Clear the funnel cookies so a stale token doesn't double-claim on a
   // subsequent visit.
