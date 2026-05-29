@@ -395,6 +395,7 @@ export default function ClaimDetailPage() {
   };
 
   const handleApproveSend = async (draft: EmailDraft) => {
+    if (!claim) return;
     setSendingDraft(draft.id);
     try {
       // Get photo paths for attachments
@@ -405,6 +406,7 @@ export default function ClaimDetailPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           draft_id: draft.id,
+          claim_id: claim.id,
           to: draft.to_email,
           subject: draft.subject,
           body_html: draft.edited_body_html || draft.body_html,

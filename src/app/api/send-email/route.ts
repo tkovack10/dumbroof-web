@@ -1,16 +1,17 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
-import { requireAuth, isAuthError } from "@/lib/api-auth";
+import { requireAuth, isAuthError, canAccessClaim } from "@/lib/api-auth";
 import { getResend, EMAIL_FROM_CLAIMS, EMAIL_REPLY_TO } from "@/lib/resend";
 import { companyOwnerEmails, mergeBcc } from "@/lib/team-bcc";
 
 interface SendEmailRequest {
   draft_id: string;
+  claim_id: string; // required — the claim whose files are being emailed
   to: string;
   cc?: string;
   subject: string;
   body_html: string;
-  photo_paths?: string[]; // Supabase Storage paths
+  photo_paths?: string[]; // Supabase Storage paths (must live under the claim's file_path)
 }
 
 export async function POST(request: Request) {
@@ -26,6 +27,47 @@ export async function POST(request: Request) {
 
     if (!body.to || !body.subject || !body.body_html) {
       return NextResponse.json({ error: "Missing required fields: to, subject, body_html" }, { status: 400 });
+    }
+
+    // Tenancy gate — this endpoint downloads caller-supplied photo_paths via the
+    // RLS-bypassing service-role client, so it MUST verify the caller owns (or
+    // shares the company of) the claim those files belong to, and that every
+    // requested path actually lives under that claim's storage prefix. Without
+    // this, any signed-in user could exfiltrate another tenant's files by POSTing
+    // their storage paths. Mirrors the COC route's ownership check.
+    if (!body.claim_id) {
+      return NextResponse.json({ error: "claim_id required" }, { status: 400 });
+    }
+
+    const authorized = await canAccessClaim(user.id, body.claim_id);
+    if (!authorized) {
+      return NextResponse.json({ error: "Not authorized" }, { status: 403 });
+    }
+
+    // Resolve the claim's storage prefix so we can confine attachments to it.
+    const { data: claimRows } = await supabaseAdmin
+      .from("claims")
+      .select("file_path")
+      .eq("id", body.claim_id)
+      .limit(1);
+    const filePath = (claimRows?.[0]?.file_path || "").trim().replace(/\/+$/, "");
+    if (!filePath) {
+      return NextResponse.json({ error: "Claim has no storage path" }, { status: 400 });
+    }
+
+    // Every photo_path must live under the claim's file_path prefix. Require the
+    // trailing-slash boundary (prefix + "/") so a sibling like "user/1234/..."
+    // can't satisfy a "user/123" prefix. Reject the whole request (rather than
+    // silently skipping) if any path escapes it.
+    const allowedPrefix = `${filePath}/`;
+    if (body.photo_paths && body.photo_paths.length > 0) {
+      const invalid = body.photo_paths.find((p) => !p || !p.startsWith(allowedPrefix));
+      if (invalid !== undefined) {
+        return NextResponse.json(
+          { error: "One or more photo_paths do not belong to this claim" },
+          { status: 403 }
+        );
+      }
     }
 
     // Download photo attachments from Supabase Storage
