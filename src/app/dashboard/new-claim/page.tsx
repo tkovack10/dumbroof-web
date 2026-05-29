@@ -83,6 +83,13 @@ export default function NewClaimPage() {
     return () => { photoUrls.forEach((u) => URL.revokeObjectURL(u)); };
   }, [photoUrls]);
 
+  // Funnel: user reached the new-claim form. This event was DEFINED but never
+  // fired — wiring it closes the "reached the form" step so the drop-off between
+  // dashboard and a submitted claim becomes visible in funnel_events.
+  useEffect(() => {
+    trackBoth(FunnelEvent.NEW_CLAIM_FORM_STARTED);
+  }, []);
+
   // Shared handler for mobile photo inputs (camera + camera roll)
   const handleMobilePhotoAdd = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
