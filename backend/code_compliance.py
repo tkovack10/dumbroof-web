@@ -347,11 +347,19 @@ LINE_ITEM_CODE_MAP = {
 # ── Description keyword → code map key fallback ──────────────────────
 # For items that don't have xact_code set, match by description keywords
 _DESC_TO_CODE_KEY = {
+    # ORDER MATTERS: get_code_citation breaks on the FIRST keyword found in the
+    # (lowercased) description. The felt/underlayment line build_line_items emits is
+    # "Underlayment - felt 15#/30# (deck area not covered by I&W)" — it CONTAINS "i&w",
+    # so the felt/underlayment keys MUST precede the ice/i&w keys, otherwise felt
+    # mis-resolves to RFG IWS (Ice Barrier, R905.1.2) with the GAF WeatherWatch
+    # warranty-void block = a false code citation on carrier-facing reports (E267).
+    # The real ice & water line ("Ice & water barrier ...") contains neither "felt"
+    # nor "underlayment", so it still correctly matches RFG IWS below.
+    "felt": "RFG FELT15|install",
+    "underlayment": "RFG FELT15|install",
     "ice & water": "RFG IWS|install",
     "ice water": "RFG IWS|install",
     "i&w": "RFG IWS|install",
-    "felt": "RFG FELT15|install",
-    "underlayment": "RFG FELT15|install",
     "starter": "RFG ASTR-|install",
     "drip edge": "RFG DRIP|install",
     "ridge vent": "RFG RIDGCS|install",
