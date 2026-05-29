@@ -431,6 +431,112 @@ def compute_ws5_nodata_flags(config: dict, claim: dict) -> list[dict]:
     return flags
 
 
+# ==========================================================================
+# WS-3 — MATERIAL_LOW_CONFIDENCE (FLAG-ONLY, MEDIUM-only detection layer)
+# ==========================================================================
+#
+# Same posture as the WS-0 prevalence flags: MEDIUM, never critical, can NEVER
+# flip qa_blocked. It surfaces when the Vision material identification is weak
+# (low claim-level confidence) OR self-contradictory (≥2 distinct high-confidence
+# roof-surface materials on a SINGLE-structure claim). Making it actionable /
+# blocking / a new UI surface is a deliberate FOLLOW-UP owner decision — out of
+# scope here. The durable inputs are config['roof_material_confidence'] (0-1 or
+# None) and config['roof_material_conflict'] (bool), persisted by processor.py on
+# NON-underscore keys so they survive the claim_config save.
+
+# Below this, the claim-level material confidence is "low" enough to warrant a
+# human glance. Tuned conservatively so it does NOT fire on routine inferred
+# close-ups (which the prompt scores ~0.5-0.84).
+_MATERIAL_LOW_CONFIDENCE_THRESHOLD = 0.5
+
+
+def _is_multi_structure_mixed_material(config: dict) -> bool:
+    """True when the claim legitimately has ≥2 structures with DIFFERENT classifiable
+    roof materials — the one case where a material 'conflict' is expected, not a defect.
+
+    Used to SUPPRESS the conflict half of MATERIAL_LOW_CONFIDENCE so we never
+    false-positive on, e.g., a slate main dwelling + a metal-roof detached garage.
+    """
+    structures = config.get("structures")
+    if not isinstance(structures, list) or len(structures) < 2:
+        return False
+    enums = set()
+    for st in structures:
+        if not isinstance(st, dict):
+            continue
+        e = (st.get("roof_material_enum") or "").strip().lower()
+        # 'other' is the catch-all/unclassified bucket — not a distinct material
+        # for the purpose of "legitimately mixed", so it can't mask a real conflict.
+        if e and e != "other":
+            enums.add(e)
+    return len(enums) >= 2
+
+
+def compute_material_confidence_flags(config: dict, claim: dict) -> list[dict]:
+    """Return MEDIUM-only material-confidence flags. NEVER returns a critical.
+
+    Fires MATERIAL_LOW_CONFIDENCE (medium) when EITHER:
+      * claim-level roof_material_confidence is present AND below the threshold, OR
+      * roof_material_conflict is True AND the claim is NOT a legitimate
+        multi-structure mixed-material property.
+
+    A None/absent confidence is NOT treated as low here (absence of signal is
+    handled separately by the existing data-quality flags) — only an explicit
+    low score fires, to avoid noise on claims that never reported a confidence.
+    """
+    flags: list[dict] = []
+    if not isinstance(config, dict):
+        return flags
+
+    raw_conf = config.get("roof_material_confidence")
+    try:
+        conf = float(raw_conf) if raw_conf is not None else None
+    except (TypeError, ValueError):
+        conf = None
+
+    conflict = bool(config.get("roof_material_conflict"))
+    multi_mixed = _is_multi_structure_mixed_material(config)
+    # A conflict on a legitimately mixed multi-structure claim is expected, not a defect.
+    real_conflict = conflict and not multi_mixed
+
+    low_conf = conf is not None and conf < _MATERIAL_LOW_CONFIDENCE_THRESHOLD
+
+    if low_conf or real_conflict:
+        if low_conf and real_conflict:
+            reason = "low_confidence_and_conflict"
+            detail = (
+                f"Vision material confidence is low ({conf:.2f} < "
+                f"{_MATERIAL_LOW_CONFIDENCE_THRESHOLD}) AND ≥2 distinct high-confidence "
+                f"roof-surface materials were asserted on a single-structure claim — "
+                f"verify the roofing material before relying on the spec/repairability prose."
+            )
+        elif low_conf:
+            reason = "low_confidence"
+            detail = (
+                f"Vision material confidence is low ({conf:.2f} < "
+                f"{_MATERIAL_LOW_CONFIDENCE_THRESHOLD}) — the roofing material "
+                f"identification is weak; verify before relying on it."
+            )
+        else:
+            reason = "conflict"
+            detail = (
+                "≥2 distinct high-confidence roof-surface materials were asserted on a "
+                "single-structure claim — the material identification contradicts itself; "
+                "verify which roofing material is correct."
+            )
+        flags.append({
+            "issue": "MATERIAL_LOW_CONFIDENCE",
+            "severity": "medium",
+            "check": "material_confidence",
+            "reason": reason,
+            "found": conf,
+            "conflict": real_conflict,
+            "detail": detail,
+        })
+
+    return flags
+
+
 def _build_prose_bundle(config: dict) -> dict:
     ff = config.get("forensic_findings", {}) or {}
     exec_summary = ff.get("executive_summary") or []
@@ -796,6 +902,15 @@ def audit_claim(
         print(f"[QA] compute_ws5_nodata_flags crashed (ignored): {e}")
         ws5_flags = []
 
+    # WS-3 MATERIAL_LOW_CONFIDENCE — MEDIUM-only, same posture as WS-0 prevalence:
+    # can NEVER be critical, can NEVER flip qa_blocked. Reads the durable
+    # roof_material_confidence / roof_material_conflict signal persisted on config.
+    try:
+        material_conf_flags = compute_material_confidence_flags(config, claim)
+    except Exception as e:  # noqa: BLE001 — detection must never break the audit
+        print(f"[QA] compute_material_confidence_flags crashed (ignored): {e}")
+        material_conf_flags = []
+
     # Merge flag arrays. Order: prose flags first (carries the LLM's narrative
     # summary), then deterministic — keeps the human-readable audit summary
     # focused on prose issues with brand/NOAA flags appended below.
@@ -805,6 +920,7 @@ def audit_claim(
         + pdf_result.get("medium", [])
         + prevalence_flags
         + ws5_flags
+        + material_conf_flags
     )
     merged_low = list(prose_result.get("low") or []) + pdf_result.get("low", [])
 
@@ -850,6 +966,8 @@ def audit_claim(
             "pdf_low": len(pdf_result.get("low", [])),
             # WS-0 forensic prevalence flags (always MEDIUM, never blocking).
             "forensic_prevalence_medium": len(prevalence_flags),
+            # WS-3 material-confidence flags (always MEDIUM, never blocking).
+            "material_confidence_medium": len(material_conf_flags),
         },
     }
 

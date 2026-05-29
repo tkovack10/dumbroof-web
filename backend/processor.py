@@ -1703,6 +1703,7 @@ def analyze_photos(client: anthropic.Anthropic, photo_paths: list[str], user_not
     damage_summary_parts = []
     shingle_type = ""
     shingle_votes = []
+    shingle_conf_votes = []  # (material_label, confidence) pairs, one per batch
     shingle_condition = ""
     siding_type = ""
     siding_votes = []
@@ -1877,11 +1878,57 @@ HAIL DAMAGE INDICATORS:
 - Fractured/cracked shingle mat (per HAAG standard = functional damage requiring full replacement)
 - Soft metal deformation (gutters, vents, flashing)
 
-MATERIAL INFERENCE (CRITICAL — fixes most common error):
-- When a photo shows a CLOSE-UP of shingle damage (chalk circles, granule detail, mat texture), you can often NOT see enough of the shingle to identify the product.
-- Do NOT default material to "other" for close-up damage shots. Infer material from context: if the claim's other photos show laminate/architectural shingles, tag close-ups as "asphalt_shingle" or "comp_shingle_laminated".
-- "other" should ONLY be used when the material is genuinely unidentifiable AND no context clues exist from surrounding photos.
-- Copper turret caps, metal chimney caps, and metal vent caps = material: "metal" and trade: "roofing" (not "flashing").
+MATERIAL IDENTIFICATION — EXPLICIT DECISION TREE (CRITICAL — fixes the most common error):
+Identify the ROOFING SURFACE material by walking this tree IN ORDER. Pick the FIRST branch whose visual signature you actually observe. Do NOT skip to laminate/asphalt as a fallback.
+
+  1. NATURAL STONE texture / irregular thick edges / muted grey-green-purple stone color /
+     thick layered profile / copper or lead flashing → material "slate". HIGH confidence.
+  2. BARREL or S-CURVE profile / half-round "mission" tiles / terracotta-orange or
+     concrete-grey tiles / mortar ridges at hips → material "tile". HIGH confidence.
+  3. STANDING-SEAM raised vertical ribs / flat metal PANELS with seams / corrugated or
+     R-panel / exposed-fastener metal screws across the field / 5V-crimp → material
+     "metal" (this is a METAL ROOF, NOT flashing). HIGH confidence.
+  4. DIMENSIONAL SHADOW LINES / staggered THICK double-layer tabs / varied tab heights
+     casting shadows (the architectural "depth" look) → material "comp_shingle_laminated".
+     HIGH confidence.
+  5. UNIFORM SINGLE-LAYER tabs / flat consistent rectangles with regular cutouts / no
+     shadow depth / thin single thickness → material "comp_shingle_3tab". HIGH confidence.
+  6. None of the above signatures are visible (extreme close-up, blur, odd angle, the
+     surface fills <1/3 of the frame) → see UNCERTAINTY rule below.
+
+CONTEXT INFERENCE for close-ups: When a photo is a CLOSE-UP of shingle damage (chalk
+circles, granule detail, mat texture) and you cannot see the product profile, infer from
+the claim's OTHER photos — if the wide shots show laminate, tag the close-up
+"comp_shingle_laminated"; if they show 3-tab, tag "comp_shingle_3tab". Inference from
+sibling photos is HIGH confidence ONLY if a sibling clearly shows the product; otherwise
+MEDIUM confidence.
+
+DO NOT DEFAULT (top correction pattern — damage_detective #19):
+- NEVER reflexively output "comp_shingle_laminated" just because you're unsure. Laminate is
+  branch 4 of the tree — it requires dimensional shadow lines / staggered thick tabs. If you
+  do not SEE those, do not pick it as a guess.
+- Distinguish a METAL ROOF (material "metal", trade "roofing" — the field of the roof is
+  metal panels) from METAL FLASHING (material "metal_flashing" — a localized step/counter/
+  valley/drip metal at a transition). A whole roof of metal panels is NOT "flashing".
+- Copper turret caps, metal chimney caps, and metal vent caps = material "metal" / "copper",
+  trade "roofing" (not "flashing").
+
+EPDM / FLAT-ROOF NEGATIVE EXAMPLE (top correction pattern — damage_detective #17):
+- "EPDM" / "EPDM membrane" / "rubber roof" is a FLAT-ROOF surface. ONLY tag a material as
+  EPDM/flat when you see an actual low-slope rubber membrane: a continuous black/dark sheet
+  with seam tape, large field with no individual shingles, parapet/curb terminations.
+- NEVER call dark UNDERLAYMENT (synthetic or felt), the BLACK BACKING of an exposed/flipped
+  shingle, ICE-AND-WATER membrane, or a torn-back tab's dark mat an "EPDM membrane." These
+  are sloped-shingle components, not a flat roof. Calling them EPDM is a fabricated material.
+- A dark patch on a SLOPED shingle roof is exposed mat / underlayment / I&W — NOT EPDM.
+
+PER-PHOTO material_confidence (REQUIRED on every photo_tag):
+- Output a "material_confidence" float 0.0-1.0 in EACH photo_tag reflecting how sure you are
+  of THAT photo's material.
+- 0.85-1.0 = the product signature is clearly visible (you walked branch 1-5 on real signal).
+- 0.5-0.84 = inferred from context / partial signature / sibling photos.
+- 0.0-0.49 = no usable signal. In this case set material to "other" and DO NOT guess a
+  shingle grade — a low-confidence honest "other" is correct, a confident wrong guess is not.
 
 INSPECTOR LANGUAGE (use these exact terms — they carry legal weight):
 - "soft to the touch" = confirmed mat fracture via press test (strongest hail evidence)
@@ -1915,11 +1962,12 @@ SHINGLE EXPOSURE CHECK (CRITICAL FOR REPAIRABILITY):
 - This applies to BOTH 3-tab AND laminate/architectural shingles.
 - If 5" exposure is observed, note it as a KEY FINDING — it proves the roof cannot be spot-repaired.
 
-SLATE/TILE/METAL IDENTIFICATION:
-- If the roofing material is natural slate, clay tile, concrete tile, or standing seam metal, identify it EXACTLY.
-- Slate: Look for natural stone texture, irregular edges, muted colors, copper/lead flashing, thick profile.
-- Tile: Look for barrel/S-curve profile, terracotta/concrete color, mortar ridges.
-- Do NOT default to "comp shingle" if the material is clearly slate, tile, or metal.
+SLATE/TILE/METAL IDENTIFICATION (reinforces decision-tree branches 1-3):
+- If the roofing material is natural slate, clay tile, concrete tile, or standing seam metal, identify it EXACTLY in shingle_type AND in each photo_tag material.
+- Slate: natural stone texture, irregular edges, muted colors, copper/lead flashing, thick profile.
+- Tile: barrel/S-curve profile, terracotta/concrete color, mortar ridges.
+- Metal roof: standing-seam ribs, panels, corrugated/R-panel, exposed-fastener — material "metal", trade "roofing".
+- NEVER default to "comp shingle"/laminate when the material is clearly slate, tile, or metal — and never as a fallback when unsure (set "other" + low confidence instead).
 
 ANALYSIS PRIORITIES:
 - FOCUS ON STORM DAMAGE — hail impacts, wind displacement, fractures from the storm event. This is 90% of the report.
@@ -1944,6 +1992,7 @@ Number the photos starting at {start_num}. Return ONLY valid JSON:
     "photo_{start_num + 1:02d}": "Wind-lifted tab at rake exposes rust-free nails — recent storm damage."
   }},
   "shingle_type": "natural slate / architectural laminated / 3-tab 25yr / standing seam metal / etc",
+  "shingle_type_confidence": 0.9,
   "shingle_condition": "description focusing on storm vulnerability and non-repairability",
   "trades_identified": ["roofing", "gutters", "siding", "window_wraps"],
   "siding_type": "aluminum / vinyl / cedar / fiber_cement / none",
@@ -1966,7 +2015,8 @@ Number the photos starting at {start_num}. Return ONLY valid JSON:
   "photo_tags": {{
     "photo_{start_num:02d}": {{
       "damage_type": "hail_dent | crack | missing | granule_loss | lifted_tab | wind_crease | chalk_test | corrosion | overview | none",
-      "material": "comp_shingle_laminated | comp_shingle_3tab | aluminum_siding | vinyl_siding | cedar_siding | fiber_cement_siding | metal_flashing | chimney_flashing | aluminum_gutter | downspout | gutter_guard | rain_diverter | window | window_wrap | copper | slate | aluminum_trim | metal_vent",
+      "material": "comp_shingle_laminated | comp_shingle_3tab | slate | tile | metal | copper | aluminum_siding | vinyl_siding | cedar_siding | fiber_cement_siding | metal_flashing | chimney_flashing | aluminum_gutter | downspout | gutter_guard | rain_diverter | window | window_wrap | aluminum_trim | metal_vent | other",
+      "material_confidence": 0.9,
       "trade": "roofing | siding | gutters | window_wraps | flashing | general",
       "elevation": "front | rear | left | right | roof | detail | interior",
       "severity": "minor | moderate | severe | critical"
@@ -2025,7 +2075,19 @@ MATERIAL DISAMBIGUATION (avoid these common mis-IDs):
             if not real_photos:
                 batch_has_real_photos = False
         if batch_result.get("shingle_type") and batch_has_real_photos:
-            shingle_votes.append(batch_result["shingle_type"].lower().strip())
+            _st = batch_result["shingle_type"].lower().strip()
+            shingle_votes.append(_st)
+            # Pair the batch-level material label with its self-reported confidence
+            # (clamped 0-1). Used to derive a CLAIM-LEVEL material confidence + to
+            # detect single-structure material conflict downstream.
+            _stc = batch_result.get("shingle_type_confidence")
+            try:
+                _stc = float(_stc)
+            except (TypeError, ValueError):
+                _stc = None
+            if _stc is not None:
+                _stc = max(0.0, min(1.0, _stc))
+            shingle_conf_votes.append((_st, _stc))
         if batch_result.get("shingle_condition"):
             shingle_condition = batch_result["shingle_condition"]
         if batch_result.get("siding_type") and batch_result["siding_type"] != "none":
@@ -2067,6 +2129,13 @@ MATERIAL DISAMBIGUATION (avoid these common mis-IDs):
     if shingle_votes:
         shingle_type = _majority_vote_material(shingle_votes)
 
+    # WS-3: claim-level material confidence + single-structure conflict detection.
+    # Aggregates the per-batch (label, confidence) votes + the per-photo
+    # material_confidence values into one claim-level signal that QA can flag.
+    material_confidence, material_conflict = _aggregate_material_confidence(
+        shingle_conf_votes, all_photo_tags
+    )
+
     # Resolve siding_type by majority vote across batches (not last-batch-wins)
     if siding_votes:
         from collections import Counter
@@ -2085,6 +2154,8 @@ MATERIAL DISAMBIGUATION (avoid these common mis-IDs):
         "photo_annotations": all_annotations,
         "photo_tags": all_photo_tags,
         "shingle_type": shingle_type,
+        "material_confidence": material_confidence,  # WS-3: claim-level 0-1 (None if no signal)
+        "material_conflict": material_conflict,       # WS-3: True if ≥2 distinct high-conf materials
         "shingle_condition": shingle_condition,
         "siding_type": siding_type,
         "trades_identified": sorted(t.replace("_", " ") for t in trades_set),
@@ -3068,9 +3139,15 @@ def synthesize_executive_summary(
     date_of_loss: str = "",
     state: str = "",
     user_damage_type: str = "",
+    roof_material_enum: str = "",
 ) -> list[str]:
     """Use Claude to synthesize raw damage data into a structured executive summary.
-    Returns a list of paragraph strings (3-5 paragraphs)."""
+    Returns a list of paragraph strings (3-5 paragraphs).
+
+    roof_material_enum is the canonical MATERIAL_ENUM_VALUES token resolved
+    upstream ('slate'|'tile'|'metal'|'laminate'|'3tab'|'other'). It is the
+    authoritative flat-roof signal — the `material` arg is only the human display
+    label and does NOT carry a reliable 'flat'/EPDM token (see WS-3)."""
     carrier_rcv = carrier_data.get("carrier_rcv", 0) if carrier_data else 0
     carrier_name = carrier_data["carrier"]["name"] if carrier_data and "carrier" in carrier_data else "the carrier"
 
@@ -3087,6 +3164,24 @@ def synthesize_executive_summary(
     state_code_prefix = _STATE_CODE_PREFIX.get(state_u, "IRC")
     state_code_guidance = f"{state_code_prefix} (or generic IRC)" if state_u else "IRC"
 
+    # WS-3: EPDM is a FLAT-ROOF (low-slope membrane) hail signature. Referencing
+    # "EPDM puncture marks" on a SLOPED shingle/slate/tile/metal roof is a
+    # fabricated material indicator (the prior unconditional clause did exactly
+    # that). Gate the hail-signature list on the AUTHORITATIVE flat-roof signal —
+    # the canonical enum ('other' == flat per MATERIAL_ENUM_VALUES). The `material`
+    # display label only carries 'flat'/'EPDM' tokens by accident, so we anchor on
+    # the enum and fall back to a flat-keyword scan of the label only as a backstop.
+    _enum = (roof_material_enum or "").strip().lower()
+    _mat_label = (material or "").lower()
+    _is_flat_roof = (_enum == "other") or any(
+        kw in _mat_label for kw in ("epdm", "tpo", "modified bitumen", "mod bit",
+                                    "flat roof", "built-up", "bur", "rubber roof")
+    )
+    _hail_signatures = (
+        "circular impacts, granule displacement, mat exposure, soft-metal denting"
+        + (", EPDM puncture marks" if _is_flat_roof else "")
+    )
+
     # Cause-of-loss constraint. The user's selection on the claim form is
     # ground truth — NOAA + photo analysis are corroborating evidence. The
     # model has a tendency to default to compound "hail and wind event"
@@ -3100,8 +3195,7 @@ def synthesize_executive_summary(
             "  language implying wind was a primary cause. Wind is NOT part of this claim.\n"
             "- Do NOT include 'rule out wind' arguments — affirmatively saying 'no wind damage observed' "
             "  introduces wind into a claim where it doesn't belong and reads as if we considered it.\n"
-            "- Focus 100% of the causation language on hail signatures: circular impacts, granule "
-            "  displacement, mat exposure, soft-metal denting, EPDM puncture marks.\n"
+            f"- Focus 100% of the causation language on hail signatures: {_hail_signatures}.\n"
         )
     elif udt == "wind":
         cause_constraint = (
@@ -3129,7 +3223,7 @@ Property address: {property_address}
 Property state: {state_u or 'unknown'}
 Date of loss: {dol_display or 'not specified'}
 The roofing material is: {material}
-
+{"" if _is_flat_roof else "CRITICAL — MATERIAL FIDELITY: This is a SLOPED roof. Do NOT describe it as a flat roof, low-slope roof, EPDM, TPO, modified bitumen, BUR, or rubber membrane, and do NOT cite EPDM/membrane puncture marks as a hail signature — those belong to flat roofs only. Ground every material reference in the stated roofing material above." + chr(10)}
 CRITICAL: The property address is EXACTLY "{property_address}". Use this address verbatim in the report. NEVER change the house number even if a photo appears to show a different number.
 
 CRITICAL: The date of loss is EXACTLY "{dol_display or 'not specified'}". When you reference the date of loss in the report, write it exactly as given. NEVER invent, guess, or paraphrase a different date. NEVER confuse the date of loss with the inspection date. If the date of loss is "not specified", write "the reported storm event" instead of making up a date.
@@ -4182,6 +4276,22 @@ def build_claim_config(
     # WS-2: claim-wide canonical enum, resolved ONCE here. Generator consumers
     # read this instead of re-sniffing the shingle_type label by substring.
     config["roof_material_enum"] = _canonical_material_enum(detected_material)
+
+    # WS-3: persist the Vision material confidence + conflict signal on NON-underscore
+    # config keys so they SURVIVE the claim_config save (the persist filter drops only
+    # keys starting with "_"). The prior audit found material_confidence/_material_review
+    # were stripped and the scoring.photo_analysis fallback was never written, so the
+    # MATERIAL_LOW_CONFIDENCE signal only existed in memory. These two keys are the
+    # durable record the QA auditor reads.
+    _mat_conf = photo_analysis.get("material_confidence")
+    if _mat_conf is not None:
+        try:
+            config["roof_material_confidence"] = max(0.0, min(1.0, float(_mat_conf)))
+        except (TypeError, ValueError):
+            config["roof_material_confidence"] = None
+    else:
+        config["roof_material_confidence"] = None
+    config["roof_material_conflict"] = bool(photo_analysis.get("material_conflict"))
     if config.get("structures"):
         if len(config["structures"]) > 1:
             # Multi-structure: preserve per-structure shingle_type from extraction,
@@ -4345,6 +4455,84 @@ def _majority_vote_material(votes: list) -> str:
             return p
 
     return winners[0]
+
+
+# WS-3 — map a per-photo photo_tag `material` token to the canonical ROOFING
+# enum (MATERIAL_ENUM_VALUES). Returns None for non-roof-surface tokens (siding,
+# gutters, flashing, windows, etc.) so conflict detection only ever compares
+# actual roof-SURFACE materials — a roof + its gutters is NOT a "conflict".
+_PHOTO_TAG_MATERIAL_TO_ENUM = {
+    "comp_shingle_laminated": "laminate",
+    "comp_shingle_3tab": "3tab",
+    "slate": "slate",
+    "tile": "tile",
+    "metal": "metal",
+    "copper": "metal",
+}
+
+
+def _photo_tag_material_to_roof_enum(material_token: Optional[str]) -> Optional[str]:
+    """Canonical roof-surface enum for a photo_tag material, or None if not a roof surface."""
+    if not material_token:
+        return None
+    return _PHOTO_TAG_MATERIAL_TO_ENUM.get(str(material_token).strip().lower())
+
+
+def _aggregate_material_confidence(conf_votes: list, photo_tags: dict):
+    """WS-3: aggregate a CLAIM-LEVEL material confidence + detect material conflict.
+
+    Inputs:
+      conf_votes — list of (batch_shingle_label, confidence|None) from each batch.
+      photo_tags — the FILTERED per-photo tags (non_photo already removed); each
+                   may carry `material` + `material_confidence`.
+
+    Returns (claim_confidence, conflict):
+      claim_confidence — float 0-1, or None when NO confidence signal exists at all
+                         (no batch confidence and no per-photo confidence). None means
+                         "unknown", which the QA layer treats as low/flagworthy.
+      conflict         — True when ≥2 DISTINCT high-confidence roof-SURFACE materials
+                         are asserted (the single-structure conflict the QA flag fires
+                         on). NOTE: this is computed claim-wide; the caller / QA layer
+                         is responsible for suppressing it on legitimate MULTI-structure
+                         mixed-material claims (see qa_auditor MATERIAL_LOW_CONFIDENCE).
+
+    The function NEVER raises — it is a telemetry/derivation helper.
+    """
+    HIGH_CONF = 0.85
+
+    confidences: list[float] = []
+
+    # (1) Per-batch label confidences.
+    for _label, c in (conf_votes or []):
+        if isinstance(c, (int, float)):
+            confidences.append(max(0.0, min(1.0, float(c))))
+
+    # (2) Per-photo material_confidence on ROOF-SURFACE tags only.
+    high_conf_roof_enums: set = set()
+    if isinstance(photo_tags, dict):
+        for _k, tag in photo_tags.items():
+            if not isinstance(tag, dict):
+                continue
+            roof_enum = _photo_tag_material_to_roof_enum(tag.get("material"))
+            mc = tag.get("material_confidence")
+            try:
+                mc = float(mc)
+            except (TypeError, ValueError):
+                mc = None
+            if mc is not None:
+                mc = max(0.0, min(1.0, mc))
+                confidences.append(mc)
+                if roof_enum and mc >= HIGH_CONF:
+                    high_conf_roof_enums.add(roof_enum)
+
+    # Claim-level confidence: mean of all available confidence signals. None when
+    # NOTHING reported a confidence (distinct from a real low score).
+    claim_confidence = round(sum(confidences) / len(confidences), 3) if confidences else None
+
+    # Conflict: ≥2 distinct high-confidence roof-surface materials.
+    conflict = len(high_conf_roof_enums) >= 2
+
+    return claim_confidence, conflict
 
 
 def _detect_roof_material(photo_analysis: dict, user_notes: str = "",
@@ -7665,6 +7853,13 @@ async def process_claim(claim_id: str, refresh_prices: bool = False):
 
         # 9b. Synthesize structured executive summary + conclusion (replaces run-on paragraphs)
         material = config.get("structures", [{}])[0].get("shingle_type", "roofing material")
+        # WS-3: canonical flat-roof signal for the EPDM-clause gate (WS-2 precedence:
+        # per-structure enum first, then claim-wide). 'other' == flat per the enum.
+        _exec_mat_enum = (
+            config.get("structures", [{}])[0].get("roof_material_enum")
+            or config.get("roof_material_enum")
+            or ""
+        )
         try:
             print(f"[PROCESS] Synthesizing executive summary...")
             exec_address = claim.get("address", "") or config.get("property", {}).get("address", "")
@@ -7682,6 +7877,7 @@ async def process_claim(claim_id: str, refresh_prices: bool = False):
                 date_of_loss=exec_dol,
                 state=config.get("property", {}).get("state", "") or state,
                 user_damage_type=(claim.get("estimate_request") or {}).get("damage_type", ""),
+                roof_material_enum=_exec_mat_enum,
             )
             if isinstance(exec_paragraphs, list):
                 exec_paragraphs = _enforce_property_address(exec_paragraphs, exec_address)
