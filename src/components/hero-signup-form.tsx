@@ -4,7 +4,7 @@ import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { trackBoth, FunnelEvent } from "@/lib/track";
 import { firePixelSignup } from "@/lib/meta-pixel-signup";
-import { getUtmFromBrowser } from "@/lib/utm";
+import { getUtmFromBrowser, deriveSignupSource } from "@/lib/utm";
 
 export function HeroSignupForm({ source = "desktop_hero" }: { source?: string } = {}) {
   const [email, setEmail] = useState("");
@@ -43,7 +43,7 @@ export function HeroSignupForm({ source = "desktop_hero" }: { source?: string } 
       password,
       options: {
         // emailRedirectTo not needed — email confirmation is OFF in Supabase
-        ...(utm ? { data: utm } : {}),
+        data: { ...(utm ?? {}), signup_source: deriveSignupSource(utm, source) },
       },
     });
 

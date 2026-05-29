@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { firePixelSignup } from "@/lib/meta-pixel-signup";
-import { getUtmFromBrowser } from "@/lib/utm";
+import { getUtmFromBrowser, deriveSignupSource } from "@/lib/utm";
 
 interface InviteContext {
   token: string;
@@ -109,7 +109,7 @@ export function SignupClient({
       password,
       options: {
         emailRedirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(nextPath)}`,
-        ...(utm ? { data: utm } : {}),
+        data: { ...(utm ?? {}), signup_source: deriveSignupSource(utm, "signup_page") },
       },
     });
 
