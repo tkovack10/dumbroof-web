@@ -40,7 +40,7 @@ export default async function InstantContinuePage() {
   const proto = hdrs.get("x-forwarded-proto") || "https";
   const origin = `${proto}://${host}`;
 
-  let claimSlugOrId: string | null = null;
+  let claimId: string | null = null;
   try {
     const res = await fetch(`${origin}/api/instant-intake/claim`, {
       method: "POST",
@@ -49,7 +49,11 @@ export default async function InstantContinuePage() {
     });
     if (res.ok) {
       const body = (await res.json()) as { claim_id?: string; slug?: string };
-      claimSlugOrId = body.slug || body.claim_id || null;
+      // Route by the claim UUID — the claim page resolves by id, not slug, so
+      // routing by slug 404s at the moment of first activation. Fall back to
+      // slug only if the API somehow omits the id (the slug fallback in
+      // /api/team-claims/claim then resolves it).
+      claimId = body.claim_id || body.slug || null;
     } else {
       console.error("[instant/continue] claim failed", res.status, await res.text().catch(() => ""));
     }
@@ -57,8 +61,8 @@ export default async function InstantContinuePage() {
     console.error("[instant/continue] claim threw", err);
   }
 
-  if (claimSlugOrId) {
-    redirect(`/dashboard/claim/${claimSlugOrId}?source=instant_funnel`);
+  if (claimId) {
+    redirect(`/dashboard/claim/${claimId}?source=instant_funnel`);
   }
   // Fallback: dashboard with a banner. They're authenticated; a missing or
   // expired anon token shouldn't strand them.
