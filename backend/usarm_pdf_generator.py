@@ -1329,14 +1329,30 @@ def _build_threshold_aging_chart(config):
         for dt in (thresholds or []):
             confirmed = dt.get("confirmed_size", dt.get("storm_actual", ""))
             if isinstance(confirmed, str):
-                match = re.search(r'([\d.]+)', confirmed)
+                # Anchor on a real decimal/whole-number hail measurement; a bare
+                # "." or other junk must not crash float() or latch a garbage size.
+                match = re.search(r'(\d+(?:\.\d+)?|\.\d+)', confirmed)
                 if match:
-                    max_hail = float(match.group(1))
-                    break
+                    try:
+                        parsed = float(match.group(1))
+                    except ValueError:
+                        continue
+                    if parsed > 0:
+                        max_hail = parsed
+                        break
             elif isinstance(confirmed, (int, float)):
-                max_hail = float(confirmed)
-                break
+                if confirmed > 0:
+                    max_hail = float(confirmed)
+                    break
 
+    # Guard: a non-positive (zero / unparsed / garbage-latched) confirmed-hail
+    # value must NOT render the chart at all — and in particular must never fire
+    # an "EXCEEDS THRESHOLD" callout (the regex above could previously latch a
+    # stray digit and assert EXCEEDS on a hail-free claim). See WS-4 / E270 guard.
+    try:
+        max_hail = float(max_hail)
+    except (TypeError, ValueError):
+        return ""
     if max_hail <= 0:
         return ""
 
@@ -1348,7 +1364,9 @@ def _build_threshold_aging_chart(config):
     clamped_age = min(age, max_age)
     property_threshold = round(new_threshold - (new_threshold - aged_threshold) * (clamped_age / max_age), 3)
 
-    exceeds = max_hail >= property_threshold
+    # EXCEEDS only when there is a genuinely positive confirmed hail size that
+    # meets/beats the age-adjusted threshold (never on a zero/garbage value).
+    exceeds = max_hail > 0 and max_hail >= property_threshold
     exceeds_text = "EXCEEDS THRESHOLD" if exceeds else "Below threshold"
     exceeds_color = "#c8102e" if exceeds else "#2e7d32"
 
@@ -1467,16 +1485,44 @@ def _build_wind_amplification_chart(config):
         shingle_rating = 110
         rating_label = "ASTM D7158 Class G (110 mph)"
 
-    # Calculate gust and zone velocities
-    gust_factor = 1.3  # Standard open-terrain gust factor
-    gust_speed = round(max_wind * gust_factor)
+    # --- E270 fix: zone factors are PRESSURE coefficients, not velocity multipliers.
+    #
+    # ASCE 7 roof-zone amplification factors {1.35, 1.6, 2.0} are external-pressure
+    # ratios (GCp), and dynamic pressure q ∝ V². A zone whose pressure is R× the
+    # field pressure therefore corresponds to an EQUIVALENT VELOCITY of √R× the
+    # base wind, NOT R×. (√1.35≈1.16, √1.6≈1.26, √2.0≈1.41.) The previous code
+    # multiplied velocity by the pressure ratio, producing physically impossible
+    # 174–250 mph "wind speeds" at a standing house that a reviewing engineer can
+    # attack. See E270 / WS-4.
+    #
+    # The base wind itself: NOAA Storm Events DB and SPC report wind MAGNITUDE as
+    # peak/estimated GUST (3-second), which is already the same kind of quantity
+    # ASCE 7 calls the basic wind speed V (a 3-sec gust at strength level). So we
+    # do NOT apply a second sustained→gust ×1.3 — base_gust = the NOAA value as-is.
+    import math
 
+    base_gust = max_wind  # NOAA wind MAGNITUDE is already a 3-sec gust
+
+    # Physically defensible upper bound for a residential roof-zone equivalent
+    # velocity. The highest ASCE 7 special-wind-region basic gust is ~200 mph
+    # (V_ult); we never display above that regardless of input.
+    VELOCITY_CAP_MPH = 200
+
+    def _equiv_velocity(pressure_ratio):
+        return min(round(base_gust * math.sqrt(pressure_ratio)), VELOCITY_CAP_MPH)
+
+    # Base-gust display: the literal NOAA value (kept as-recorded so the cited
+    # ground figure is verifiable), but still bounded by the physical cap.
+    base_gust_display = min(base_gust, VELOCITY_CAP_MPH)
+
+    # (label, displayed pressure ratio, equivalent velocity mph). Zone rows now
+    # carry the pressure ratio (what ASCE 7 actually defines) and the derived
+    # equivalent velocity for an apples-to-apples comparison vs the ASTM rating.
     zone_multipliers = [
-        ("Ground (NOAA)", 1.0, max_wind),
-        ("Est. Gust", gust_factor, gust_speed),
-        ("Zone 1 — Field", 1.35, round(gust_speed * 1.35)),
-        ("Zone 2 — Edge", 1.6, round(gust_speed * 1.6)),
-        ("Zone 3 — Corner", 2.0, round(gust_speed * 2.0)),
+        ("Ground / Base Gust (NOAA)", 1.0, base_gust_display),
+        ("Zone 1 — Field", 1.35, _equiv_velocity(1.35)),
+        ("Zone 2 — Edge", 1.6, _equiv_velocity(1.6)),
+        ("Zone 3 — Corner", 2.0, _equiv_velocity(2.0)),
     ]
 
     # Determine max velocity for scaling bars
@@ -1500,7 +1546,10 @@ def _build_wind_amplification_chart(config):
             bar_color = "#2e7d32"  # Green — below rating
             status = ""
 
-        mult_label = f" ({mult:.1f}×)" if mult > 1.0 else ""
+        # `mult` is the ASCE 7 zone PRESSURE ratio; the velocity shown is its
+        # √ (equivalent velocity). Label it as a pressure ratio so it is never
+        # misread as a velocity multiplier (E270).
+        mult_label = f" ({mult:.2f}× pressure)" if mult > 1.0 else ""
         status_html = f' <span style="color:{bar_color};font-weight:700;font-size:8pt;">{status}</span>' if status else ""
 
         bar_rows += f'''<div class="bar-row">
@@ -1515,8 +1564,10 @@ def _build_wind_amplification_chart(config):
     html = f'''<div class="threshold-chart">
 <div class="chart-title">Wind Velocity Amplification &mdash; ASCE 7 Roof Zone Analysis</div>
 <p style="font-size:8.5pt;color:#6b7280;margin:3pt 0 8pt 0;">
-Ground-level wind accelerates over the roof due to building geometry (Bernoulli effect).
-ASCE 7 defines velocity multipliers by roof zone &mdash; eaves, rakes, and corners experience 1.5&ndash;2&times; the ground speed.
+Wind accelerates over the roof due to building geometry (Bernoulli effect). ASCE 7 defines roof-zone
+amplification as PRESSURE coefficients &mdash; eaves, rakes, and corners experience roughly 1.35&ndash;2&times; the field
+<em>pressure</em>. Because dynamic pressure scales with the square of velocity, those zones equate to about
+1.16&ndash;1.41&times; the field <em>wind speed</em> (the &radic; of the pressure ratio), shown below as equivalent velocity.
 </p>
 {bar_rows}
 <div class="bar-row" style="margin-top:4pt;border-top:1.5pt dashed #0d47a1;padding-top:4pt;">
@@ -1549,13 +1600,14 @@ ASCE 7 defines velocity multipliers by roof zone &mdash; eaves, rakes, and corne
     html += f'''
 <p style="font-size:8.5pt;color:#374151;margin-top:8pt;">
 The observed damage pattern &mdash; concentrated at eaves, rakes, and corners &mdash; is engineering-consistent
-with ASCE 7 Zone 2&ndash;3 wind amplification from the {max_wind} mph ground-level wind event.
+with ASCE 7 Zone 2&ndash;3 wind amplification from the {max_wind} mph peak gust recorded at this property.
 </p>
 <table style="font-size:7.5pt;color:#6b7280;margin-top:8pt;border:none;">
-    <tr style="border:none;"><td style="border:none;padding:2pt 6pt;"><strong>Engineering basis:</strong></td><td style="border:none;padding:2pt 6pt;">ASCE 7-22, Chapters 26&ndash;30 &mdash; Velocity Pressure Exposure Coefficients (GCp)</td></tr>
+    <tr style="border:none;"><td style="border:none;padding:2pt 6pt;"><strong>Engineering basis:</strong></td><td style="border:none;padding:2pt 6pt;">ASCE 7-22, Chapters 26&ndash;30 &mdash; external pressure coefficients (GCp) by roof zone</td></tr>
     <tr style="border:none;"><td style="border:none;padding:2pt 6pt;"></td><td style="border:none;padding:2pt 6pt;">HAAG Engineering Research &amp; Education Foundation &mdash; Residential wind amplification studies</td></tr>
     <tr style="border:none;"><td style="border:none;padding:2pt 6pt;"></td><td style="border:none;padding:2pt 6pt;">IBHS (Institute for Business &amp; Home Safety) &mdash; Full-scale wind testing facility data</td></tr>
-    <tr style="border:none;"><td style="border:none;padding:2pt 6pt;"><strong>Gust factor:</strong></td><td style="border:none;padding:2pt 6pt;">{gust_factor}&times; sustained &rarr; gust (standard open-terrain per ASCE 7 Table 26.11-1)</td></tr>
+    <tr style="border:none;"><td style="border:none;padding:2pt 6pt;"><strong>Wind speed basis:</strong></td><td style="border:none;padding:2pt 6pt;">ASCE 7 basic wind speed is a 3-second GUST at strength level. NOAA Storm Events / SPC report wind magnitude as a peak gust, so the recorded value is used directly &mdash; no additional sustained&rarr;gust factor is applied.</td></tr>
+    <tr style="border:none;"><td style="border:none;padding:2pt 6pt;"><strong>Zone amplification:</strong></td><td style="border:none;padding:2pt 6pt;">Roof-zone factors are PRESSURE coefficients. Equivalent zone velocity = base gust &times; &radic;(pressure ratio), since dynamic pressure scales with velocity&sup2;. Velocities are illustrative engineering estimates, not a PE-stamped analysis.</td></tr>
     <tr style="border:none;"><td style="border:none;padding:2pt 6pt;"><strong>ASTM test note:</strong></td><td style="border:none;padding:2pt 6pt;">Shingle wind ratings (D3161/D7158) are tested on flat decks in lab conditions &mdash; real-world performance degrades with age, fastener condition, and thermal cycling.</td></tr>
 </table>
 </div>\n'''
