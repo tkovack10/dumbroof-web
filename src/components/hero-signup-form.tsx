@@ -91,8 +91,12 @@ export function HeroSignupForm({ source = "desktop_hero" }: { source?: string } 
     }
 
     if (data.session) {
-      // Auto-confirmed — go straight to upload
-      window.location.href = "/dashboard/new-claim";
+      // Auto-confirmed — send new signups into Richard onboarding (/welcome),
+      // the activation flow, instead of the logo-walled new-claim form.
+      // Matches PR #59 (/signup + auth-callback already route to /welcome).
+      // The plain hero has no invited-teammate / ?next= path, so there is
+      // nothing to honor here — every hero signup is a brand-new user.
+      window.location.href = "/welcome";
     } else {
       // Email confirmation needed
       setStep("done");

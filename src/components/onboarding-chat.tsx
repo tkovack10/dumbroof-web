@@ -57,7 +57,7 @@ export function OnboardingChat({ userId, firstName }: { userId: string; firstNam
   const [files, setFiles] = useState<StagedFile[]>([]);
   const [dragOver, setDragOver] = useState(false);
   const [attachOpen, setAttachOpen] = useState(false);
-  const [created, setCreated] = useState<{ claimSlug: string; label: string } | null>(null);
+  const [created, setCreated] = useState<{ claimId: string; label: string } | null>(null);
 
   const chatRef = useRef<HTMLDivElement>(null);
   const photoInputRef = useRef<HTMLInputElement>(null);
@@ -157,9 +157,12 @@ export function OnboardingChat({ userId, firstName }: { userId: string; firstNam
               if (data.tool_action) {
                 const ta = data.tool_action as { action?: string; data?: Record<string, unknown> };
                 if (ta.action === "complete" && ta.data?.claim_id) {
+                  // Route by the claim UUID — the claim page resolves by id, not
+                  // slug, so routing by slug 404s at the moment of first activation.
+                  const claimId = String(ta.data.claim_id);
                   const claimSlug = String(ta.data.slug || slug);
                   setCreated({
-                    claimSlug,
+                    claimId,
                     label: REPORT_LABELS[String(ta.data.report_mode || "")] || "claim package",
                   });
                   // Activation event: the user just created their first claim via
@@ -238,7 +241,7 @@ export function OnboardingChat({ userId, firstName }: { userId: string; firstNam
             the report whenever you like.
           </p>
           <button
-            onClick={() => router.push(`/dashboard/claim/${created.claimSlug}`)}
+            onClick={() => router.push(`/dashboard/claim/${created.claimId}`)}
             className="w-full bg-gradient-to-b from-violet-500 to-violet-600 hover:from-violet-400 hover:to-violet-500 text-white text-[15px] font-medium py-3 rounded-xl transition-colors shadow-[0_8px_30px_-8px_rgba(139,92,246,0.6)]"
           >
             Watch Richard build it

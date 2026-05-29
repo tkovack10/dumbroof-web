@@ -22,12 +22,23 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "id required" }, { status: 400 });
   }
 
+  // The claim page routes by UUID, but older links (and any caller that still
+  // passes a slug) would 404 here since we look up by id. If the param isn't a
+  // UUID, treat it as a slug. The slug lookup is scoped to the authed user so a
+  // guessed slug can't surface another user's claim through this fallback; the
+  // full ownership/company/domain checks below still run on the resolved row.
+  const isUuid =
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(claimId);
+
   // Get the claim
-  const { data: claim } = await supabaseAdmin
-    .from("claims")
-    .select("*")
-    .eq("id", claimId)
-    .single();
+  const { data: claim } = isUuid
+    ? await supabaseAdmin.from("claims").select("*").eq("id", claimId).single()
+    : await supabaseAdmin
+        .from("claims")
+        .select("*")
+        .eq("slug", claimId)
+        .eq("user_id", user.id)
+        .maybeSingle();
 
   if (!claim) {
     return NextResponse.json({ error: "Claim not found" }, { status: 404 });
