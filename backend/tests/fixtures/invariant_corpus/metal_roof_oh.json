@@ -1,0 +1,116 @@
+{
+  "config": {
+    "phase": "post-scope",
+    "company": {
+      "name": "Summit Metal Roofing Co",
+      "tagline": "",
+      "ceo_name": "Dana Pruitt",
+      "ceo_title": "Owner",
+      "email": "dana@summitmetal.example",
+      "cell_phone": "",
+      "office_phone": "",
+      "website": ""
+    },
+    "property": {
+      "address": "1190 Birchwood Ln",
+      "city": "Dublin",
+      "state": "OH",
+      "zip": "43017"
+    },
+    "insured": {
+      "name": "Patricia Nolan",
+      "type": "homeowner"
+    },
+    "carrier": {
+      "name": "State Farm",
+      "claim_number": "OH-44120",
+      "policy_number": "POLO-12",
+      "deductible": 1000
+    },
+    "dates": {
+      "date_of_loss": "March 16, 2026",
+      "report_date": "March 20, 2026",
+      "usarm_inspection_date": "March 18, 2026"
+    },
+    "inspectors": {
+      "usarm_inspector": "Dana Pruitt",
+      "usarm_title": "Owner"
+    },
+    "scope": {
+      "trades": [
+        "roofing"
+      ],
+      "o_and_p": false
+    },
+    "financials": {
+      "tax_rate": 0.0575,
+      "price_list": "OHCO26",
+      "deductible": 1000
+    },
+    "structures": [
+      {
+        "name": "Main Dwelling",
+        "roof_area_sf": 3200,
+        "roof_area_sq": 32,
+        "facets": 4,
+        "predominant_pitch": "5/12",
+        "style": "gable",
+        "roof_material_enum": "metal",
+        "shingle_type": "Standing Seam Metal Roof",
+        "shingle_condition": "fair"
+      }
+    ],
+    "weather": {
+      "hail_size": "1.5 inches",
+      "storm_date": "April 18, 2026",
+      "storm_description": "Hailstorm with damaging winds near property",
+      "noaa": {
+        "events": [
+          {
+            "event_type": "Hail",
+            "distance_miles": 0.5,
+            "magnitude": 1.5,
+            "magnitude_type": "hail_inches"
+          }
+        ]
+      }
+    },
+    "measurements": {
+      "eave": 120,
+      "rake": 80,
+      "total_area": 2500
+    },
+    "line_items": [
+      {
+        "category": "ROOFING",
+        "description": "R&R Standing seam metal roofing",
+        "qty": 32,
+        "unit": "SQ",
+        "unit_price": 800.0,
+        "trade": "roofing"
+      }
+    ],
+    "photo_annotations": {},
+    "photo_sections": [],
+    "forensic_findings": {
+      "damage_summary": "Storm damage observed.",
+      "code_violations": [],
+      "key_arguments": [],
+      "total_photos": 5
+    },
+    "appeal_letter": {
+      "demand_items": [],
+      "enclosed_documents": [],
+      "requested_actions": []
+    },
+    "cover_letter": {},
+    "roof_material_enum": "metal"
+  },
+  "claim": {
+    "address": "1190 Birchwood Ln, Dublin, OH 43017",
+    "carrier": "State Farm",
+    "contact_name": "Patricia Nolan",
+    "company_name": "Summit Metal Roofing Co"
+  },
+  "_coverage": "Diverse fixture: METAL-roof claim (roof_material_enum=metal, consistent label). Exercises #4 (no metal/asphalt contradiction on a real metal roof) + cold-state (OH) climate path + OH state tax."
+}

@@ -1,0 +1,114 @@
+{
+  "config": {
+    "phase": "post-scope",
+    "company": {
+      "name": "Lone Star Roofing & Restoration",
+      "tagline": "",
+      "ceo_name": "",
+      "ceo_title": "",
+      "email": "",
+      "cell_phone": "",
+      "office_phone": "",
+      "website": ""
+    },
+    "property": {
+      "address": "4821 Mesquite Bend Dr",
+      "city": "Amarillo",
+      "state": "TX",
+      "zip": "79109"
+    },
+    "insured": {
+      "name": "Marcus Delgado",
+      "type": "homeowner"
+    },
+    "carrier": {
+      "name": "Allstate",
+      "claim_number": "TX-0099812",
+      "policy_number": "POLT-55",
+      "deductible": 2500
+    },
+    "dates": {
+      "date_of_loss": "March 16, 2026",
+      "report_date": "March 20, 2026",
+      "usarm_inspection_date": "March 18, 2026"
+    },
+    "inspectors": {
+      "usarm_inspector": "Lone Star Roofing & Restoration",
+      "usarm_title": ""
+    },
+    "scope": {
+      "trades": [
+        "roofing"
+      ],
+      "o_and_p": false
+    },
+    "financials": {
+      "tax_rate": 0.0,
+      "price_list": "TXHO26",
+      "deductible": 2500
+    },
+    "structures": [
+      {
+        "name": "Main Dwelling",
+        "roof_area_sf": 2500,
+        "roof_area_sq": 25,
+        "facets": 6,
+        "predominant_pitch": "6/12",
+        "style": "gable",
+        "shingle_type": "laminate",
+        "shingle_condition": "fair"
+      }
+    ],
+    "weather": {
+      "hail_size": "1.75 inches",
+      "storm_date": "May 2, 2026",
+      "storm_description": "Severe hailstorm near property",
+      "noaa": {
+        "events": [
+          {
+            "event_type": "Hail",
+            "distance_miles": 1.2,
+            "magnitude": 1.75,
+            "magnitude_type": "hail_inches"
+          }
+        ]
+      }
+    },
+    "measurements": {
+      "eave": 120,
+      "rake": 80,
+      "total_area": 2500
+    },
+    "line_items": [
+      {
+        "category": "ROOFING",
+        "description": "R&R Shingle",
+        "qty": 25,
+        "unit": "SQ",
+        "unit_price": 300.0,
+        "trade": "roofing"
+      }
+    ],
+    "photo_annotations": {},
+    "photo_sections": [],
+    "forensic_findings": {
+      "damage_summary": "Storm damage observed.",
+      "code_violations": [],
+      "key_arguments": [],
+      "total_photos": 5
+    },
+    "appeal_letter": {
+      "demand_items": [],
+      "enclosed_documents": [],
+      "requested_actions": []
+    },
+    "cover_letter": {}
+  },
+  "claim": {
+    "address": "4821 Mesquite Bend Dr, Amarillo, TX 79109",
+    "carrier": "Allstate",
+    "contact_name": "Marcus Delgado",
+    "company_name": "Lone Star Roofing & Restoration"
+  },
+  "_coverage": "Diverse fixture: warm-state (TX) EXTERNAL tenant with a blank/incomplete company profile. Exercises E272 (no USARM identity leak), E269 (warm reframe, no cold text), #7/E274 (TX tax=0, not the 8% default)."
+}
