@@ -80,6 +80,11 @@ export function RetailEstimateClient() {
   // null = use the template's default unit_price; a number overrides it. Baked
   // into the saved template_snapshot so it persists with the estimate.
   const [baseUnitPrice, setBaseUnitPrice] = useState<number | null>(null);
+  // Siding wall-area guesstimate (Vision on elevation photos + roof footprint).
+  const [estimatingSiding, setEstimatingSiding] = useState(false);
+  const [sidingEstimate, setSidingEstimate] = useState<{
+    wall_area_sf?: number; window_count?: number; door_count?: number; confidence?: string; source?: string;
+  } | null>(null);
   const [customerName, setCustomerName] = useState("");
   const [customerAddress, setCustomerAddress] = useState("");
   const [customerEmail, setCustomerEmail] = useState("");
@@ -246,6 +251,43 @@ export function RetailEstimateClient() {
       setStatusMsg({ kind: "err", text: `Import failed: ${String(err)}` });
     } finally {
       setImporting(false);
+    }
+  }
+
+  // Siding guesstimate: POST the elevation photos + current roof measurements to
+  // the shared wall-area estimator, then fill wall_area_sf / windows / doors / stories.
+  async function handleEstimateSiding(filesList: File[]) {
+    setEstimatingSiding(true);
+    setStatusMsg(null);
+    try {
+      const fd = new FormData();
+      filesList.slice(0, 8).forEach((f) => fd.append("photos", f));
+      fd.append("measurements", JSON.stringify(measurements));
+      const res = await fetch("/api/retail-measurements/estimate-siding", { method: "POST", body: fd });
+      const data = await res.json();
+      if (!res.ok) {
+        setStatusMsg({ kind: "err", text: data.error || `Estimate failed (${res.status})` });
+        return;
+      }
+      const est = (data.estimate || {}) as {
+        wall_area_sf?: number; window_count?: number; door_count?: number; stories?: number; confidence?: string; source?: string;
+      };
+      setSidingEstimate(est);
+      setMeasurements((m) => ({
+        ...m,
+        wall_area_sf: est.wall_area_sf ?? m.wall_area_sf,
+        window_count: est.window_count ?? m.window_count,
+        door_count: est.door_count ?? m.door_count,
+        stories: est.stories ?? m.stories,
+      }));
+      setStatusMsg({
+        kind: est.confidence === "low" ? "err" : "ok",
+        text: `Estimated ${est.wall_area_sf?.toLocaleString()} SF wall area (${est.confidence || "?"} confidence). Review + edit before saving.`,
+      });
+    } catch (err) {
+      setStatusMsg({ kind: "err", text: `Estimate failed: ${String(err)}` });
+    } finally {
+      setEstimatingSiding(false);
     }
   }
 
@@ -608,6 +650,41 @@ export function RetailEstimateClient() {
               {importMeta && (
                 <div className="text-[10px] text-[var(--cyan)]/80 mb-3 px-3 py-2 rounded bg-[var(--cyan)]/[0.06] border border-[var(--cyan)]/20">
                   Imported from <strong>{importMeta.filename}</strong> — vendor: <strong>{importMeta.vendor}</strong> · confidence: <strong>{importMeta.confidence}</strong>
+                </div>
+              )}
+              {trade === "siding" && (
+                <div className="mb-3 rounded-lg border border-[var(--cyan)]/20 bg-[var(--cyan)]/[0.04] p-3">
+                  <div className="flex items-center justify-between gap-2 flex-wrap">
+                    <p className="text-[11px] text-[var(--gray)] max-w-[60%]">
+                      No HOVER wall area? <strong className="text-[var(--white)]">Guesstimate it</strong> — drop a photo of each elevation (front/back/left/right) and we&apos;ll size the wall area from them + your roof measurements.
+                    </p>
+                    <label
+                      className={`relative inline-flex items-center gap-1.5 text-[11px] font-semibold px-3 py-1.5 rounded-lg border cursor-pointer transition-colors ${
+                        estimatingSiding
+                          ? "bg-white/[0.04] border-white/10 text-[var(--gray-dim)] cursor-wait"
+                          : "bg-[var(--cyan)]/[0.10] border-[var(--cyan)]/40 hover:bg-[var(--cyan)]/[0.18] text-[var(--cyan)]"
+                      }`}
+                    >
+                      {estimatingSiding ? "Estimating…" : "📷 Estimate from photos"}
+                      <input
+                        type="file"
+                        accept="image/*"
+                        multiple
+                        disabled={estimatingSiding}
+                        onChange={(e) => {
+                          const fsel = Array.from(e.target.files || []);
+                          e.target.value = "";
+                          if (fsel.length) handleEstimateSiding(fsel);
+                        }}
+                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-wait"
+                      />
+                    </label>
+                  </div>
+                  {sidingEstimate && (
+                    <div className="mt-2 text-[10px] text-[var(--cyan)]/90">
+                      Estimated <strong>{sidingEstimate.wall_area_sf?.toLocaleString()} SF</strong> wall · {sidingEstimate.window_count ?? 0} windows · {sidingEstimate.door_count ?? 0} doors · confidence: <strong>{sidingEstimate.confidence}</strong> ({sidingEstimate.source}). Review + edit below.
+                    </div>
+                  )}
                 </div>
               )}
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
