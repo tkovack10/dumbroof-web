@@ -397,7 +397,7 @@ def check_ice_water(carrier_items, eagleview_meas, state="NY"):
     # In cold states (IRC Climate Zone 5A+) the cold-climate code mandate is
     # the basis. In warm states the cold mandate is FALSE, so the SAME I&W
     # requirement is reframed onto the manufacturer-installation-as-code basis
-    # (R905.2.2 adopts the manufacturer's installation instructions) and cited
+    # (R905.1 adopts the manufacturer's installation instructions) and cited
     # at valleys + penetrations. The finding STILL fires (the I&W requirement
     # is kept, not dropped) and the required_sf / quantities are unchanged —
     # only the citation + justification TEXT differs.
@@ -407,7 +407,7 @@ def check_ice_water(carrier_items, eagleview_meas, state="NY"):
         iw_basis = "code minimum"
     else:
         prefix = _bc_lookup.get_prefix(state)
-        iw_code_ref = f"{prefix} R905.2.2"
+        iw_code_ref = f"{prefix} R905.1"
         iw_basis = "manufacturer-required minimum"
 
     # Find carrier's I&W line item

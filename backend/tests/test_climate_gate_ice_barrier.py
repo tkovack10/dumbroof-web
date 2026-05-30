@@ -12,7 +12,7 @@ The CLIMATE-GATE ship is a REFRAME, NOT a removal (owner-chosen):
   * WARM states (TX/AZ/SC/FL/…): the SAME I&W requirement is reframed onto the
     MANUFACTURER-installation-as-code basis ("required at valleys and roof
     penetrations per the manufacturer's installation instructions — enforceable
-    under R905.2.2"), which is TRUE everywhere. The literal "Climate Zones 5A+
+    under R905.1"), which is TRUE everywhere. The literal "Climate Zones 5A+
     including OH/NY" + the "January <=25F" rationale are DROPPED.
   * The I&W requirement / line item is KEPT in both — it is manufacturer-
     justified at valleys/penetrations. So the code_violations COUNT — and the
@@ -94,7 +94,7 @@ class TestCitationPath(unittest.TestCase):
             c = get_code_citation("RFG IWS", "install", st, ICE_WATER_DESC)
             self.assertIsNotNone(c, f"{st}: I&W citation must STILL be emitted (kept, not dropped)")
             # reframed section + manufacturer basis present
-            self.assertEqual(c["section"], "R905.2.2", f"{st}: warm I&W -> R905.2.2")
+            self.assertEqual(c["section"], "R905.1", f"{st}: warm I&W -> R905.1")
             self.assertIn(MANUF_BASIS, c["requirement"].lower())
             self.assertIn(MANUF_BASIS, c["supplement_argument"].lower())
             # no cold rationale anywhere in the citation text
@@ -134,7 +134,7 @@ class TestScopeComparisonPath(unittest.TestCase):
             self.assertIsNotNone(f, f"{st}: I&W finding must STILL fire (requirement kept)")
             self.assertTrue(_no_cold_literal(f.detail), f"{st}: cold literal in detail: {f.detail}")
             self.assertIn(MANUF_BASIS, f.detail.lower())
-            self.assertTrue(f.code_reference.endswith("R905.2.2"), f"{st}: {f.code_reference}")
+            self.assertTrue(f.code_reference.endswith("R905.1"), f"{st}: {f.code_reference}")
 
     def test_warm_under_qty_reframed_no_cold_literal_and_emitted(self):
         for st in WARM_STATES:
@@ -142,14 +142,14 @@ class TestScopeComparisonPath(unittest.TestCase):
             self.assertIsNotNone(f, f"{st}: under-qty I&W finding must STILL fire")
             self.assertTrue(_no_cold_literal(f.detail), f"{st}: cold literal in detail: {f.detail}")
             self.assertIn(MANUF_BASIS, f.detail.lower())
-            self.assertTrue(f.code_reference.endswith("R905.2.2"))
+            self.assertTrue(f.code_reference.endswith("R905.1"))
 
     def test_cold_missing_unchanged(self):
         for st in COLD_STATES:
             f = self._missing_finding(st)
             self.assertIsNotNone(f)
-            # cold path keeps the state code_ref (NOT the R905.2.2 manufacturer ref)
-            self.assertFalse(f.code_reference.endswith("R905.2.2"), f"{st}: {f.code_reference}")
+            # cold path keeps the state code_ref (NOT the R905.1 manufacturer ref)
+            self.assertFalse(f.code_reference.endswith("R905.1"), f"{st}: {f.code_reference}")
 
     def test_warm_required_sf_unchanged_vs_cold(self):
         """SCOPE (required SF / quantities) must be identical regardless of climate —
@@ -182,7 +182,7 @@ class TestForensicViolationsPath(unittest.TestCase):
             vios, ice = _iw_violation(st)
             self.assertEqual(len(ice), 1, f"{st}: I&W violation must be KEPT (count=1)")
             iw = ice[0]
-            self.assertTrue(iw["code"].endswith("R905.2.2"), f"{st}: {iw['code']}")
+            self.assertTrue(iw["code"].endswith("R905.1"), f"{st}: {iw['code']}")
             self.assertIn(MANUF_BASIS, iw["requirement"].lower())
             self.assertTrue(_no_cold_literal(iw["requirement"]), f"{st}: {iw['requirement']}")
 

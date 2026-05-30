@@ -6450,8 +6450,8 @@
           "status": "Required — included in scope per manufacturer wind-warranty spec"
         },
         {
-          "code": "AZ-IRC R905.2.2",
-          "requirement": "Ice & water barrier required at valleys and roof penetrations per the shingle manufacturer's installation instructions — enforceable as code under R905.2.2, which adopts the manufacturer's installation instructions as a code requirement",
+          "code": "AZ-IRC R905.1",
+          "requirement": "Ice & water barrier required at valleys and roof penetrations per the shingle manufacturer's installation instructions — enforceable as code under R905.1, which adopts the manufacturer's installation instructions as a code requirement",
           "status": "Required — included in scope"
         },
         {

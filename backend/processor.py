@@ -3539,7 +3539,7 @@ def _build_code_violations(state: str, line_items: list, trades: list) -> list:
             # temp ≤25°F", "Climate Zones 5A+") is TRUE only in cold states.
             # In warm states (TX/AZ/SC/FL/…) that rationale is FALSE, so reframe
             # the SAME I&W requirement to the manufacturer-installation-as-code
-            # basis (R905.2.2 adopts manufacturer specs) — which IS true
+            # basis (R905.1 adopts manufacturer specs) — which IS true
             # everywhere. The I&W violation still EMITS in both branches (it is
             # manufacturer-justified at valleys/penetrations), so the
             # code_violations COUNT — and therefore the damage_score — is
@@ -3553,8 +3553,8 @@ def _build_code_violations(state: str, line_items: list, trades: list) -> list:
                 })
             else:
                 violations.append({
-                    "code": f"{code_prefix} R905.2.2",
-                    "requirement": "Ice & water barrier required at valleys and roof penetrations per the shingle manufacturer's installation instructions — enforceable as code under R905.2.2, which adopts the manufacturer's installation instructions as a code requirement",
+                    "code": f"{code_prefix} R905.1",
+                    "requirement": "Ice & water barrier required at valleys and roof penetrations per the shingle manufacturer's installation instructions — enforceable as code under R905.1, which adopts the manufacturer's installation instructions as a code requirement",
                     "status": "Required — included in scope",
                 })
         if has_flashing:
