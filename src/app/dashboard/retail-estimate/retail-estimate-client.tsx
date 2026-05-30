@@ -76,6 +76,10 @@ export function RetailEstimateClient() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [measurements, setMeasurements] = useState<Measurements>(ALL_FIELD_DEFAULTS);
   const [addonQtys, setAddonQtys] = useState<Record<string, number>>({});
+  // Per-estimate base-price override — companies set their own retail pricing.
+  // null = use the template's default unit_price; a number overrides it. Baked
+  // into the saved template_snapshot so it persists with the estimate.
+  const [baseUnitPrice, setBaseUnitPrice] = useState<number | null>(null);
   const [customerName, setCustomerName] = useState("");
   const [customerAddress, setCustomerAddress] = useState("");
   const [customerEmail, setCustomerEmail] = useState("");
@@ -120,6 +124,7 @@ export function RetailEstimateClient() {
             customer_email: string | null;
             measurements: Measurements;
             addon_qtys: Record<string, number>;
+            template_snapshot?: RetailTemplate;
             status?: string;
           };
           setEstimateId(e.id);
@@ -129,6 +134,9 @@ export function RetailEstimateClient() {
           setCustomerEmail(e.customer_email || "");
           setMeasurements((m) => ({ ...m, ...e.measurements }));
           setAddonQtys(e.addon_qtys || {});
+          // Restore the saved per-estimate price override from the snapshot's billing line.
+          const snapBill = billingLineOf(e.template_snapshot);
+          if (snapBill) setBaseUnitPrice(snapBill.unit_price);
           setMarkupPct(Number((e as unknown as { markup_pct?: number }).markup_pct ?? 0));
           setStatus(e.status || "draft");
           setLoadedExisting(true);
@@ -165,9 +173,12 @@ export function RetailEstimateClient() {
     [billingLine, vars],
   );
 
+  // Effective base price = the company's override, else the template default.
+  const effectiveBasePrice = baseUnitPrice ?? billingLine?.unit_price ?? 0;
+
   const baseTotal = useMemo(
-    () => (billingLine ? baseQty * billingLine.unit_price : 0),
-    [billingLine, baseQty],
+    () => baseQty * effectiveBasePrice,
+    [baseQty, effectiveBasePrice],
   );
 
   const selectedAddonRows = useMemo(() => {
@@ -377,7 +388,12 @@ export function RetailEstimateClient() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           template_id: selected._meta.template_id,
-          template_snapshot: selected,
+          template_snapshot: {
+            ...selected,
+            items: selected.items.map((i) =>
+              i.is_billing_line ? { ...i, unit_price: effectiveBasePrice } : i,
+            ),
+          },
           customer_name: customerName,
           customer_email: customerEmail,
           customer_address: customerAddress,
@@ -470,7 +486,7 @@ export function RetailEstimateClient() {
             return (
               <button
                 key={t._meta.template_id}
-                onClick={() => setSelectedId(t._meta.template_id)}
+                onClick={() => { setSelectedId(t._meta.template_id); setBaseUnitPrice(null); }}
                 className={`text-left rounded-xl border p-4 transition-colors ${
                   isSelected
                     ? "border-[var(--cyan)] bg-[var(--cyan)]/[0.08]"
@@ -617,7 +633,7 @@ export function RetailEstimateClient() {
             <div className="glass-card p-6">
               <div className="flex items-center justify-between mb-3">
                 <h2 className="text-sm font-bold text-[var(--white)]">
-                  Included in {fmtUsd(billingLine?.unit_price ?? 0)}/{billingLine?.unit ?? ""}
+                  Included in {fmtUsd(effectiveBasePrice)}/{billingLine?.unit ?? ""}
                 </h2>
                 <span className="text-[10px] text-[var(--gray-dim)]">Bundled — no extra charge</span>
               </div>
@@ -710,8 +726,18 @@ export function RetailEstimateClient() {
 
               <div className="space-y-2 mb-4 pb-4 border-b border-white/10">
                 <div className="flex justify-between items-baseline text-xs">
-                  <span className="text-[var(--gray-muted)]">
-                    Base ({baseQty.toLocaleString("en-US", { maximumFractionDigits: 1 })} {billingLine?.unit} × {fmtUsd(billingLine?.unit_price ?? 0)})
+                  <span className="text-[var(--gray-muted)] inline-flex items-center gap-1 flex-wrap">
+                    Base ({baseQty.toLocaleString("en-US", { maximumFractionDigits: 1 })} {billingLine?.unit} × $
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={effectiveBasePrice}
+                      onChange={(e) => setBaseUnitPrice(parseFloat(e.target.value) || 0)}
+                      title="Your price — set what your company charges"
+                      className="w-16 px-1 py-0.5 text-[11px] rounded bg-white/[0.05] border border-white/15 text-[var(--white)] focus:outline-none focus:border-[var(--cyan)] font-mono"
+                    />
+                    /{billingLine?.unit})
                   </span>
                   <span className="font-mono text-[var(--white)]">{fmtUsd(baseTotal)}</span>
                 </div>
