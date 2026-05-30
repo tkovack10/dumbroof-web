@@ -396,6 +396,20 @@ h3 { font-size: 16px; font-weight: 600; color: #2c3e50; margin: 20px 0 8px 0; }
 .req-only-list { width: 100%; border-collapse: collapse; margin: 10px 0; font-size: 12px; }
 .req-only-list th { background: #0d2137; color: white; padding: 9px 10px; text-align: left; font-weight: 600; }
 .req-only-list td { padding: 7px 10px; border-bottom: 1px solid #e3e8ee; }
+
+/* ── PHASE 3 siding argument (corner-rule flagship) ── */
+.siding-argument { margin: 24px 0 10px 0; }
+.siding-arg-intro { font-size: 13px; color: #2c3e50; background: #f0f4f8; padding: 12px 16px; border-radius: 6px; border-left: 4px solid #0d2137; }
+.siding-arg-mode { display: inline-block; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 4px; margin-left: 6px; }
+.siding-arg-mode.contractor { background: #eef2f7; color: #5d6d7e; }
+.siding-arg-mode.advocate { background: #fdecea; color: #c0392b; }
+.siding-arg-layer { border: 1px solid #dee2e6; border-radius: 8px; padding: 14px 18px; margin: 12px 0; break-inside: avoid; background: #fafbfc; }
+.siding-arg-layer.hero { border-left: 5px solid #c0392b; background: #fdf8f8; }
+.siding-arg-h { font-size: 15px; font-weight: 700; color: #0d2137; margin-bottom: 6px; }
+.siding-arg-num { display: inline-block; width: 22px; height: 22px; line-height: 22px; text-align: center; background: #0d2137; color: white; border-radius: 50%; font-size: 12px; margin-right: 6px; }
+.siding-arg-layer p { font-size: 13px; color: #2c3e50; margin: 6px 0; }
+.siding-arg-note { font-size: 12px; color: #5d6d7e; font-style: italic; }
+.siding-corner-hero { font-size: 13px; color: #0d2137; background: #fff8e1; border: 1px solid #ffd54f; border-left: 4px solid #f57f17; border-radius: 6px; padding: 12px 16px; margin: 10px 0; font-weight: 500; }
 """
 
 
@@ -1044,8 +1058,16 @@ def build_priced_supplement(config: dict) -> dict:
             f'<b>omitted from the carrier scope</b> &mdash; these are the supplement gap.</p>'
         )
 
+    # PHASE 3 — the siding argument is NARRATIVE; it does NOT touch the priced
+    # subtotal/subset. Returned as a SEPARATE key so the subset-invariant tests
+    # never reason about argument prose. The full report (build_compliance_report)
+    # places it on its own page after the table.
+    siding_argument = _build_siding_argument(config)
+
     return {
         "html": html,
+        "siding_argument": siding_argument,
+        "has_siding_argument": bool(siding_argument),
         "subtotal": round(subtotal, 2),
         # row_count = the UNDERLYING code line-item subset (one per facet); this
         # is what the subset-invariant + scope-timing tests reason about and must
@@ -1058,6 +1080,242 @@ def build_priced_supplement(config: dict) -> dict:
         "is_attribution_view": True,
         "carrier_present": carrier_present,
     }
+
+
+# ── PHASE 3 — THE SIDING ARGUMENT (the flagship corner-rule narrative) ──
+#
+# Renders the role- and state-gated siding argument block beneath the priced
+# supplement. The ARGUMENT ORDER is invariant and load-bearing:
+#   (1) DAMAGE — always #1, the covered peril (anchored on the forensic siding-
+#       damage finding; NEVER lead with code).
+#   (2) CODE COMPLIANCE — the corner rule (R703.1/R703.2) forces the full
+#       elevation; R703.4 wall flashing is disturbed and must be replaced. HERO.
+#   (3) REASONABLE / UNIFORM APPEARANCE — matching (new cladding cannot match
+#       weathered), STATE-GATED: no-statute (NY/PA/NJ) = MDL-902 industry
+#       evidence only; statute states = cite the rule directly.
+#   (4) DIMINISHED VALUE — indemnity makes the insured whole; paying 1–2 of 4
+#       elevations leaves a carrier-created patchwork.
+#
+# UPPA GATING (compliance.user_role): advocacy verbs (demand / required-as-
+# obligation / on behalf of) are PA/attorney/public_adjuster/homeowner ONLY. In
+# CONTRACTOR mode (USARM default) the same facts are stated FACTUALLY with no
+# advocacy/demand language (CLAUDE.md UPPA rules).
+
+# Siding code sections (R703.x) — used to detect that a siding scope is present
+# on the code line items so the siding argument only renders for siding claims.
+_SIDING_CODE_SECTIONS = frozenset({"R703.1", "R703.2", "R703.3", "R703.4", "R703.8"})
+
+
+def _siding_code_items(config: dict) -> list:
+    """The code line items that belong to the siding/exterior-wall trade — a
+    siding code citation (R703.x) OR a SIDING trade/category. Used both to detect
+    siding presence and to drive the argument's anchor list."""
+    out = []
+    for li in _code_line_items(config):
+        cc = li.get("code_citation") or {}
+        section = (cc.get("section") or "").strip()
+        trade = (li.get("trade") or li.get("category") or "").strip().upper()
+        if section in _SIDING_CODE_SECTIONS or trade == "SIDING":
+            out.append(li)
+    return out
+
+
+def _can_advocate(config: dict) -> bool:
+    """UPPA gate — True only for roles licensed to advocate (PA / attorney /
+    public_adjuster / homeowner-on-own-claim). Contractor (USARM default) =
+    False: state code requirements are stated FACTUALLY, no advocacy/demand."""
+    role = ((config.get("compliance") or {}).get("user_role") or "contractor").strip().lower()
+    return role in ("public_adjuster", "attorney", "homeowner")
+
+
+def _siding_damage_anchor(config: dict) -> str:
+    """The forensic siding-DAMAGE sentence the DAMAGE layer leads with. Prefer the
+    forensic damage_summary, then executive_summary, then a structural fallback
+    derived from the storm-damaged elevations. NEVER returns code language — the
+    damage layer is the covered-peril anchor, not the code argument."""
+    ff = config.get("forensic_findings", {}) or {}
+    for key in ("damage_summary", "executive_summary"):
+        val = ff.get(key)
+        if isinstance(val, list):
+            val = " ".join(str(p) for p in val)
+        if isinstance(val, str) and "siding" in val.lower():
+            return val.strip()
+    # Structural fallback: name the damaged elevations.
+    elevs = ((config.get("walls") or {}).get("elevations")) or []
+    damaged = [e.get("name") for e in elevs if e.get("siding_damaged") and e.get("name")]
+    if damaged:
+        return (
+            f"Storm-consistent impact damage to the siding is documented on the "
+            f"{', '.join(damaged)} elevation(s) (the covered peril)."
+        )
+    return "Storm-consistent impact damage to the siding is documented (the covered peril)."
+
+
+def _build_siding_argument(config: dict) -> str:
+    """Render the role- and state-gated siding argument block (DAMAGE → CODE →
+    APPEARANCE → DIMINISHED VALUE, corner rule as the hero). Returns '' when the
+    claim has no siding code scope."""
+    siding_items = _siding_code_items(config)
+    if not siding_items:
+        return ""
+
+    from building_codes import lookup as _bc
+    state = (config.get("property", {}) or {}).get("state", "NY")
+    doctrine = _bc.get_house_wrap_doctrine(state)
+    has_statute = _bc.has_matching_statute(state)
+    advocate = _can_advocate(config)
+    role = ((config.get("compliance") or {}).get("user_role") or "contractor").strip().lower()
+
+    sections = doctrine.get("sections", {}) or {}
+    corner_sec = sections.get("corner_rule", "R703.1")
+    wrb_sec = sections.get("wrb", "R703.2")
+    flash_sec = sections.get("wall_flashing", "R703.4")
+    code_ref = doctrine.get("code_ref", "R703.1 / R703.2")
+    supplement_sentence = doctrine.get("supplement_sentence", "")
+    matching = doctrine.get("matching", {}) or {}
+    naic_ref = matching.get("naic_reference", "NAIC MDL-902 §9.A(2)")
+
+    damage_anchor = _siding_damage_anchor(config)
+
+    # ── Layer 1 — DAMAGE (always #1; the covered peril). Same facts both modes. ──
+    layer_damage = (
+        f'<div class="siding-arg-layer" data-arg-order="1" data-arg-layer="damage">'
+        f'<div class="siding-arg-h"><span class="siding-arg-num">1</span> Storm Damage &mdash; The Covered Peril</div>'
+        f'<p>{_h(damage_anchor)} This is the loss that triggers coverage; the code, '
+        f'appearance, and indemnity points below all follow from it.</p>'
+        f'</div>'
+    )
+
+    # ── Layer 2 — CODE COMPLIANCE (the corner-rule HERO). Verb-gated by role. ──
+    if advocate:
+        code_lead = (
+            f'A code-compliant repair <b>requires</b> a continuous water-resistive '
+            f'barrier ({wrb_sec}) that wraps the outside corners ({corner_sec}).'
+        )
+        code_close = (
+            f'Because the barrier cannot be reinstalled on the approved elevation '
+            f'without wrapping the outside corner &mdash; which requires removing the '
+            f'corner trim and disturbing the connecting elevation&rsquo;s siding &mdash; '
+            f'full-elevation siding replacement is <b>code-required, not additional '
+            f'scope</b>. Wall flashing at openings and penetrations ({flash_sec}) is '
+            f'disturbed when siding is removed and must be replaced.'
+        )
+    else:
+        # CONTRACTOR — factual code statement, NO advocacy/demand verbs.
+        code_lead = (
+            f'Under {code_ref}, a code-compliant exterior-wall installation includes a '
+            f'continuous water-resistive barrier ({wrb_sec}) that wraps the outside '
+            f'corners ({corner_sec}).'
+        )
+        code_close = (
+            f'Because the barrier is continuous and cannot terminate at a corner joint, '
+            f'reinstalling it on the approved elevation involves wrapping the outside '
+            f'corner; doing so involves removing the corner trim, which disturbs the '
+            f'connecting elevation&rsquo;s siding. Wall flashing at openings and '
+            f'penetrations ({flash_sec}) is disturbed when siding is removed and is '
+            f'replaced as part of a code-compliant installation. These are code-driven '
+            f'installation methods, stated for the file.'
+        )
+    hero_sentence = (
+        f'<div class="siding-corner-hero">{_h(supplement_sentence)}</div>'
+        if supplement_sentence else ""
+    )
+    layer_code = (
+        f'<div class="siding-arg-layer hero" data-arg-order="2" data-arg-layer="code">'
+        f'<div class="siding-arg-h"><span class="siding-arg-num">2</span> Code Compliance &mdash; The Corner Rule ({corner_sec} / {wrb_sec})</div>'
+        f'<p>{code_lead}</p>'
+        f'{hero_sentence}'
+        f'<p>{code_close}</p>'
+        f'</div>'
+    )
+
+    # ── Layer 3 — REASONABLE / UNIFORM APPEARANCE (matching). STATE-GATED. ──
+    if has_statute:
+        match_framing = matching.get("statute_framing", "")
+        match_note = (
+            f'This jurisdiction has adopted a matching standard, cited directly above '
+            f'({_h(naic_ref)}).'
+        )
+    else:
+        match_framing = matching.get("no_statute_framing", "")
+        # NO-statute states (NY/PA/NJ): MDL-902 is INDUSTRY EVIDENCE ONLY.
+        match_note = (
+            f'In this jurisdiction there is no matching statute; {_h(naic_ref)} is cited '
+            f'as <b>industry evidence</b> of the policy&rsquo;s &ldquo;like kind and quality&rdquo; '
+            f'standard, not as an enforceable regulation.'
+        )
+    if advocate:
+        match_lead = (
+            'New cladding cannot match the weathered existing siding, so a partial '
+            'repair leaves a visible mismatch that <b>does not satisfy</b> the policy&rsquo;s '
+            '&ldquo;like kind and quality&rdquo; loss-settlement obligation.'
+        )
+    else:
+        match_lead = (
+            'New cladding will not color- or profile-match the weathered existing '
+            'siding, so a partial repair leaves a visible mismatch between new and '
+            'existing material.'
+        )
+    layer_appearance = (
+        f'<div class="siding-arg-layer" data-arg-order="3" data-arg-layer="appearance" '
+        f'data-matching-statute="{"true" if has_statute else "false"}">'
+        f'<div class="siding-arg-h"><span class="siding-arg-num">3</span> Reasonable &amp; Uniform Appearance</div>'
+        f'<p>{match_lead}</p>'
+        f'<p>{_h(match_framing)}</p>'
+        f'<p class="siding-arg-note">{match_note}</p>'
+        f'</div>'
+    )
+
+    # ── Layer 4 — DIMINISHED VALUE (indemnity). Verb-gated by role. ──
+    if advocate:
+        dv_body = (
+            'Indemnity <b>requires</b> making the insured whole &mdash; restoring the '
+            'pre-loss financial position, not merely effecting a physical repair. '
+            'Approving 1&ndash;2 of 4 elevations leaves a permanent patchwork &mdash; a '
+            'carrier-created diminished value that is the opposite of indemnity. Full '
+            'replacement is required to restore both the physical and financial pre-loss '
+            'condition.'
+        )
+    else:
+        dv_body = (
+            'The principle of indemnity is to restore the insured&rsquo;s pre-loss '
+            'condition. A repair limited to 1&ndash;2 of 4 elevations leaves a visible '
+            'patchwork of new and weathered cladding &mdash; a non-uniform exterior that '
+            'did not exist before the loss. This is documented here for the file as a '
+            'factual consequence of a partial scope.'
+        )
+    layer_dv = (
+        f'<div class="siding-arg-layer" data-arg-order="4" data-arg-layer="diminished_value">'
+        f'<div class="siding-arg-h"><span class="siding-arg-num">4</span> Diminished Value &amp; Indemnity</div>'
+        f'<p>{dv_body}</p>'
+        f'</div>'
+    )
+
+    role_badge = (
+        '<span class="siding-arg-mode advocate">Advocacy mode</span>'
+        if advocate else
+        '<span class="siding-arg-mode contractor">Contractor mode &mdash; factual code statement (no advocacy)</span>'
+    )
+
+    # Heading is role-aware: contractor states the code basis factually; advocate
+    # frames it as the required outcome.
+    heading = (
+        'Siding &mdash; Full-Elevation Replacement Required by the Corner Rule'
+        if advocate else
+        'Siding &mdash; Code Basis for Full-Elevation Replacement'
+    )
+
+    return (
+        f'<div class="siding-argument" data-siding-argument="true" '
+        f'data-user-role="{_h(role)}" data-can-advocate="{"true" if advocate else "false"}">'
+        f'<h2>{heading}</h2>'
+        f'<p class="siding-arg-intro">The siding scope is supported in this order: '
+        f'<b>damage</b> (the covered peril) &rarr; <b>code compliance</b> (the corner '
+        f'rule) &rarr; <b>reasonable appearance</b> (matching) &rarr; <b>diminished '
+        f'value</b> (indemnity). {role_badge}</p>'
+        f'{layer_damage}{layer_code}{layer_appearance}{layer_dv}'
+        f'</div>'
+    )
 
 
 def build_requirements_only_supplement(config: dict) -> str:
@@ -1172,6 +1430,17 @@ def build_compliance_report(config: dict) -> str:
         _mode = "requirements-only"
         print("[COMPLIANCE] requirements-only supplement (no measurements, no carrier scope)")
 
+    # 3c. PHASE 3 — SIDING ARGUMENT. Renders ONLY when a siding code scope is
+    # present (R703.x / SIDING trade); empty string otherwise. Role- and
+    # matching-statute-state-gated. Order is invariant: damage → code → appearance
+    # → diminished value, corner rule as the hero. Does NOT touch the priced
+    # subset (the subset invariant is unaffected — this is narrative, not dollars).
+    siding_argument_html = _build_siding_argument(config)
+    if siding_argument_html:
+        print("[COMPLIANCE] siding argument rendered "
+              f"(role={(config.get('compliance') or {}).get('user_role', 'contractor')}, "
+              f"advocate={_can_advocate(config)})")
+
     # 4. Assemble full HTML
     html = f'''<!DOCTYPE html>
 <html>
@@ -1206,6 +1475,7 @@ def build_compliance_report(config: dict) -> str:
     <div class="page-break"></div>
 
     {supplement_html}
+    {("<div class='page-break'></div>" + siding_argument_html) if siding_argument_html else ""}
 </body>
 </html>'''
 

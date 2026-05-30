@@ -295,6 +295,277 @@ class TestSidingFallbackFlagSilentInNY(unittest.TestCase):
         self.assertEqual(flags, [], "NY native siding pricing must not raise the fallback flag")
 
 
+# ── PHASE 3 — THE SIDING ARGUMENT (corner-rule flagship) ──
+#
+# These tests lock the role- and state-gated siding argument block: the invariant
+# argument ORDER (damage first), the contractor/PA advocacy-verb gate, the
+# NY-vs-statute-state matching framing, wall-flashing emission, and the
+# default-full-siding-on-damage processor trigger. They EXTEND the Phase 1/2 gate.
+
+# Carrier-directed advocacy / demand / indemnification-as-obligation framing that
+# is UPPA-prohibited for a contractor (CLAUDE.md) — must be ABSENT in contractor
+# mode and is what PA/attorney mode adds. NOT a ban on factual code-requirement
+# language ("the code requires a WRB"), which contractor mode legitimately uses.
+_ADVOCACY_MARKERS = (
+    "demand",
+    "on behalf of",
+    "does not satisfy",
+    "making the insured whole",
+    "opposite of indemnity",
+    "carrier-created diminished value",
+)
+
+
+class TestSidingArgumentOrder(unittest.TestCase):
+    """The argument ORDER is load-bearing: DAMAGE (1) → CODE (2) → APPEARANCE (3)
+    → DIMINISHED VALUE (4). Damage is ALWAYS first; code never leads."""
+
+    def setUp(self):
+        self.cfg = _load_cfg()
+        self.arg = CR.build_priced_supplement(self.cfg)["siding_argument"]
+
+    def test_argument_is_rendered_for_siding_claim(self):
+        self.assertTrue(self.arg)
+        self.assertIn('data-siding-argument="true"', self.arg)
+
+    def test_layer_order_damage_first_then_code_appearance_dv(self):
+        import re
+        order = re.findall(r'data-arg-layer="(\w+)"', self.arg)
+        self.assertEqual(order, ["damage", "code", "appearance", "diminished_value"])
+
+    def test_damage_layer_leads_and_anchors_on_forensic_finding(self):
+        # The #1 layer is the covered peril and quotes the forensic siding damage —
+        # it must NOT lead with a code citation. Isolate the damage layer by slicing
+        # from its marker to the start of the NEXT layer (the code layer).
+        damage_start = self.arg.index('data-arg-layer="damage"')
+        code_start = self.arg.index('data-arg-layer="code"')
+        damage_block = self.arg[damage_start:code_start]
+        self.assertIn("damage", damage_block.lower())
+        self.assertNotIn("R703", damage_block)  # damage layer never leads with code
+        # And damage precedes code in the document.
+        self.assertLess(damage_start, code_start)
+
+    def test_corner_rule_is_the_hero_in_the_code_layer(self):
+        self.assertIn("siding-corner-hero", self.arg)
+        self.assertIn("wrap", self.arg.lower())
+        self.assertIn("corner", self.arg.lower())
+        # Hero carries the canonical corner sections.
+        self.assertIn("R703.1", self.arg)
+        self.assertIn("R703.2", self.arg)
+
+    def test_no_siding_argument_on_roofing_only_claim(self):
+        # A config with only ROOFING code items renders NO siding argument.
+        roof_only = copy.deepcopy(self.cfg)
+        roof_only["line_items"] = [{
+            "category": "ROOFING", "trade": "ROOFING",
+            "description": "Laminated comp shingle roofing", "qty": 30.0, "unit": "SQ",
+            "unit_price": 285.27, "scope_timing": "initial",
+            "code_citation": {"section": "R905.1", "code_tag": "RCNYS R905.1",
+                              "requirement": "roof covering", "title": "roof"},
+        }]
+        self.assertEqual(CR._build_siding_argument(roof_only), "")
+        self.assertFalse(CR.build_priced_supplement(roof_only)["has_siding_argument"])
+
+
+class TestSidingArgumentUppaGate(unittest.TestCase):
+    """Contractor mode = factual code statements, NO carrier-directed advocacy/
+    demand verbs. PA/attorney mode = full advocacy. Driven by compliance.user_role."""
+
+    def test_contractor_has_no_advocacy_verbs(self):
+        cfg = _load_cfg()
+        self.assertEqual(cfg["compliance"]["user_role"], "contractor")
+        arg = CR.build_priced_supplement(cfg)["siding_argument"].lower()
+        self.assertIn('data-can-advocate="false"', CR.build_priced_supplement(cfg)["siding_argument"])
+        for marker in _ADVOCACY_MARKERS:
+            self.assertNotIn(marker, arg, f"contractor mode must not contain advocacy marker {marker!r}")
+
+    def test_public_adjuster_has_advocacy_verbs(self):
+        base = _load_cfg()
+        pa = copy.deepcopy(base)
+        pa["compliance"]["user_role"] = "public_adjuster"
+        arg = CR.build_priced_supplement(pa)["siding_argument"]
+        self.assertIn('data-can-advocate="true"', arg)
+        low = arg.lower()
+        # PA mode adds the indemnification-as-obligation framing the contractor lacks.
+        self.assertTrue(
+            any(m in low for m in ("does not satisfy", "making the insured whole",
+                                   "opposite of indemnity")),
+            "PA mode must carry advocacy framing",
+        )
+
+    def test_attorney_can_advocate(self):
+        base = _load_cfg()
+        atty = copy.deepcopy(base)
+        atty["compliance"]["user_role"] = "attorney"
+        self.assertTrue(CR._can_advocate(atty))
+        self.assertFalse(CR._can_advocate(base))  # contractor cannot
+
+    def test_contractor_and_pa_render_identical_priced_subset(self):
+        # The advocacy branch moves PROSE only — never the dollar subset.
+        base = _load_cfg()
+        pa = copy.deepcopy(base)
+        pa["compliance"]["user_role"] = "public_adjuster"
+        self.assertAlmostEqual(
+            CR.build_priced_supplement(base)["subtotal"],
+            CR.build_priced_supplement(pa)["subtotal"],
+            places=2,
+        )
+
+
+class TestSidingMatchingStateGate(unittest.TestCase):
+    """NO-statute states (NY/PA/NJ) frame MDL-902 as INDUSTRY EVIDENCE only;
+    matching-statute states (e.g. OH) cite the rule directly. Driven by claim state."""
+
+    def test_ny_is_industry_evidence_only(self):
+        cfg = _load_cfg()  # NY
+        arg = CR.build_priced_supplement(cfg)["siding_argument"]
+        self.assertIn('data-matching-statute="false"', arg)
+        low = arg.lower()
+        self.assertIn("industry evidence", low)
+        self.assertIn("not as an enforceable", low)
+
+    def test_statute_state_cites_the_rule_directly(self):
+        cfg = _load_cfg()
+        cfg["property"]["state"] = "OH"  # Ohio has a matching regulation
+        arg = CR.build_priced_supplement(cfg)["siding_argument"]
+        self.assertIn('data-matching-statute="true"', arg)
+        low = arg.lower()
+        self.assertIn("adopted a matching standard", low)
+        self.assertIn("ohio administrative code", low)
+        # And NOT framed as mere industry evidence.
+        self.assertNotIn("not as an enforceable", low)
+
+    def test_pa_and_nj_are_no_statute_like_ny(self):
+        from building_codes import lookup as _bc
+        for s in ("NY", "PA", "NJ"):
+            self.assertFalse(_bc.has_matching_statute(s), f"{s} must be no-statute")
+        for s in ("OH", "CA", "FL", "MN"):
+            self.assertTrue(_bc.has_matching_statute(s), f"{s} must be a statute state")
+
+
+class TestSidingWallFlashingEmitted(unittest.TestCase):
+    """CLAUDE.md: siding ALWAYS includes wall flashing (R703.4). The processor's
+    siding scope must emit a wall-flashing line with the correct citation."""
+
+    def test_processor_emits_wall_flashing_on_siding_scope(self):
+        import processor as P
+        meas = {
+            "measurements": {"eave": 100, "rake": 80},
+            "structures": [{"roof_area_sq": 25, "roof_area_sf": 2500, "facets": 4,
+                            "predominant_pitch": "6/12"}],
+            "stories": 2,
+            "walls": {"total_wall_area_sf": 2280, "window_count": 8, "door_count": 2,
+                      "elevations": [{"name": "Front", "openings": 4},
+                                     {"name": "Right", "openings": 3},
+                                     {"name": "Left", "openings": 3},
+                                     {"name": "Rear", "openings": 4}]},
+        }
+        photo = {"trades_identified": ["roofing", "siding"], "siding_type": "vinyl",
+                 "photo_tags": {"p01": {"trade": "siding", "material": "vinyl_siding",
+                                        "damage_type": "crack", "severity": "moderate"}}}
+        items = P.build_line_items(meas, photo, "NY", user_notes="",
+                                   estimate_request=None, market_code="")
+        siding = [i for i in items if i.get("category") == "SIDING"]
+        wf = [i for i in siding if "wall flashing" in i["description"].lower()]
+        hw = [i for i in siding if "house wrap" in i["description"].lower()
+              or "tyvek" in i["description"].lower()]
+        self.assertTrue(wf, "siding scope must emit a wall-flashing line")
+        self.assertTrue(hw, "siding scope must emit a house-wrap line")
+        self.assertIn("R703.4", wf[0]["description"])
+        self.assertGreater(float(wf[0]["qty"]), 0)
+        # NY prices wall flashing natively (seeded) — relational, not fallback.
+        self.assertEqual(wf[0].get("_price_source"), "relational")
+
+
+class TestDefaultFullSidingOnDamage(unittest.TestCase):
+    """Phase 3b — a genuine forensic siding-DAMAGE signal + wall measurements
+    AUTO-ENABLES the full siding scope WITHOUT the estimate_request opt-in; a
+    roofing-only claim is UNAFFECTED."""
+
+    def _meas(self):
+        return {
+            "measurements": {"eave": 100, "rake": 80},
+            "structures": [{"roof_area_sq": 25, "roof_area_sf": 2500, "facets": 4,
+                            "predominant_pitch": "6/12"}],
+            "stories": 2,
+            "walls": {"total_wall_area_sf": 2280, "window_count": 8, "door_count": 2,
+                      "elevations": [{"name": "Front", "openings": 4}]},
+        }
+
+    def test_signal_detector_fires_on_siding_damage_tag(self):
+        import processor as P
+        dmg = {"photo_tags": {"p01": {"trade": "siding", "material": "vinyl_siding",
+                                      "damage_type": "crack"}}}
+        self.assertTrue(P.detect_siding_damage_signal(dmg))
+
+    def test_signal_detector_silent_on_overview_wall_photo(self):
+        import processor as P
+        # A wall PHOTOGRAPHED for context (overview) is NOT damage.
+        overview = {"trades_identified": ["roofing", "siding"],
+                    "photo_tags": {"p01": {"trade": "general", "material": "vinyl_siding",
+                                           "damage_type": "overview"}}}
+        self.assertFalse(P.detect_siding_damage_signal(overview))
+
+    def test_default_on_fires_without_opt_in(self):
+        import processor as P
+        photo = {"trades_identified": ["roofing", "siding"], "siding_type": "vinyl",
+                 "photo_tags": {"p01": {"trade": "siding", "material": "vinyl_siding",
+                                        "damage_type": "crack"}}}
+        items = P.build_line_items(self._meas(), photo, "NY", user_notes="",
+                                   estimate_request=None, market_code="")
+        siding = [i for i in items if i.get("category") == "SIDING"]
+        self.assertTrue(siding, "siding-damage signal + walls must auto-enable siding")
+
+    def test_roofing_only_claim_gets_no_siding(self):
+        import processor as P
+        photo = {"trades_identified": ["roofing"],
+                 "photo_tags": {"p01": {"trade": "roofing",
+                                        "material": "comp_shingle_laminated",
+                                        "damage_type": "hail_dent"},
+                                "p02": {"trade": "general", "material": "vinyl_siding",
+                                        "damage_type": "overview"}}}
+        items = P.build_line_items(self._meas(), photo, "NY", user_notes="",
+                                   estimate_request={"roof_material": "comp_shingle"},
+                                   market_code="")
+        siding = [i for i in items if i.get("category") == "SIDING"]
+        self.assertEqual(siding, [], "roofing-only claim must get NO siding line items")
+
+    def test_explicit_masonry_opt_out_beats_damage_default(self):
+        import processor as P
+        photo = {"photo_tags": {"p01": {"trade": "siding", "material": "vinyl_siding",
+                                        "damage_type": "crack"}}}
+        items = P.build_line_items(self._meas(), photo, "NY", user_notes="",
+                                   estimate_request={"siding_type": "brick_veneer"},
+                                   market_code="")
+        siding = [i for i in items if i.get("category") == "SIDING"]
+        self.assertEqual(siding, [], "explicit masonry selection must beat the damage default")
+
+
+class TestSidingFallbackFlagOtherMarket(unittest.TestCase):
+    """CODE_SUPPLEMENT_FALLBACK_PRICED stays SILENT for NY-native house_wrap and
+    FIRES for an other-market house_wrap priced from a fallback (the Alfonso SDG
+    WRAP export follow-up). Driven by _price_source on the frozen row."""
+
+    def test_ny_native_house_wrap_no_flag(self):
+        from qa_auditor import compute_code_supplement_pricing_flags
+        cfg = _load_cfg()  # every code row stamped _price_source='relational'
+        self.assertEqual(compute_code_supplement_pricing_flags(cfg, {}), [])
+
+    def test_other_market_fallback_house_wrap_fires_flag(self):
+        from qa_auditor import compute_code_supplement_pricing_flags
+        cfg = _load_cfg()
+        cfg["property"]["state"] = "TX"
+        # Simulate the other-market reality: house_wrap fell to a non-relational
+        # fallback (TX lacks a native house_wrap rate today).
+        for li in cfg["line_items"]:
+            if "house wrap" in li["description"].lower():
+                li["_price_source"] = "hardcoded-fallback"
+        flags = compute_code_supplement_pricing_flags(cfg, {})
+        self.assertTrue(flags, "other-market fallback house_wrap must fire the flag")
+        self.assertEqual(flags[0]["issue"], "CODE_SUPPLEMENT_FALLBACK_PRICED")
+        self.assertGreaterEqual(flags[0]["found"], 1)
+
+
 class TestGoldenCorpusUntouched(unittest.TestCase):
     """Doc 06 (and this siding fixture) are NOT in the WS-0 forensic corpus →
     Doc 01 must stay 23/23 byte-identical."""
