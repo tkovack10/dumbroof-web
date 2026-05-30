@@ -7311,6 +7311,13 @@ async def process_claim(claim_id: str, refresh_prices: bool = False):
                 print(f"[PROCESS] Auto-upgraded supplement_only → full (photos found after reconcile)", flush=True)
             except Exception:
                 pass
+        if report_mode == "estimate_only" and (claim.get("photo_files") or claim.get("scope_files")):
+            report_mode = "full"
+            try:
+                sb.table("claims").update({"report_mode": "full"}).eq("id", claim_id).execute()
+                print(f"[PROCESS] Auto-upgraded estimate_only → full (photos/scope found after reconcile)", flush=True)
+            except Exception:
+                pass
 
         # 3. Download measurement files
         measurement_paths = []
@@ -8747,12 +8754,13 @@ async def process_claim(claim_id: str, refresh_prices: bool = False):
             print(f"[PROCESS] Damage scoring failed (non-fatal): {e}")
 
         # 10a. Quality Gate — reject if BOTH scores fail (protects rep credibility)
-        # Bypassed for supplement_only: carrier already conceded damage by paying a scope,
-        # so photo-based DS/TAS gating doesn't apply — user is supplementing line items,
-        # not proving damage from scratch.
+        # Bypassed for supplement_only AND estimate_only: neither build proves damage
+        # from photos. supplement_only works off a carrier scope the carrier already
+        # paid; estimate_only is a measurements-only Xactimate estimate with NO photos
+        # at all (the photo-based DS/TAS gate would reject every one of them otherwise).
         DS_FAIL_THRESHOLD = 35   # D- or F
         TAS_FAIL_THRESHOLD = 50  # D or F
-        quality_gate_applies = report_mode != "supplement_only"
+        quality_gate_applies = report_mode not in ("supplement_only", "estimate_only")
         if quality_gate_applies and ds and tas and ds.score < DS_FAIL_THRESHOLD and tas.score < TAS_FAIL_THRESHOLD:
             print(f"[QUALITY] Claim rejected — DS {ds.score} < {DS_FAIL_THRESHOLD} AND TAS {tas.score} < {TAS_FAIL_THRESHOLD}")
             guidance = _build_improvement_guidance(ds, tas)

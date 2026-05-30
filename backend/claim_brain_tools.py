@@ -1255,15 +1255,17 @@ CLAIM_BRAIN_TOOLS = [
         "description": (
             "Create the user's FIRST claim from the onboarding conversation, then "
             "start processing it immediately. Call this ONCE you have: (a) the user "
-            "has uploaded at least inspection PHOTOS or the carrier's SCOPE/estimate "
-            "via the upload box, AND (b) their property ADDRESS. You do NOT pass "
-            "files — they're already staged under the onboarding session; just pass "
-            "the 'slug' (given to you in context) plus the address, and (if known) "
-            "the insurance carrier and date of loss. The report type auto-detects "
-            "from what they uploaded: photos -> forensic damage report (date of loss "
-            "is strongly recommended — it drives the storm/weather corroboration); "
-            "carrier scope -> instant supplement. Creates immediately (no approval "
-            "needed). ONBOARDING ONLY — for users who have not made a claim yet."
+            "has uploaded at least inspection PHOTOS, the carrier's SCOPE/estimate, "
+            "or a MEASUREMENT report (EagleView/HOVER/Roofr/GAF) via the upload box, "
+            "AND (b) their property ADDRESS. You do NOT pass files — they're already "
+            "staged under the onboarding session; just pass the 'slug' (given to you "
+            "in context) plus the address, and (if known) the insurance carrier and "
+            "date of loss. The report type auto-detects from what they uploaded: "
+            "photos -> forensic damage report (date of loss is strongly recommended "
+            "— it drives the storm/weather corroboration); carrier scope -> instant "
+            "supplement; measurements only -> Xactimate-style estimate; any "
+            "combination -> full package. Creates immediately (no approval needed). "
+            "ONBOARDING ONLY — for users who have not made a claim yet."
         ),
         "input_schema": {
             "type": "object",
