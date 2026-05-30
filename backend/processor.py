@@ -3719,6 +3719,29 @@ class _StateCodePrefixProxy:
 _STATE_CODE_PREFIX = _StateCodePrefixProxy()
 
 
+# E275: hand-tuned sales-tax overrides win for the states they cover (preserves
+# live behavior, incl. OH's combined 7.25% vs the JSON's 5.75% state-only rate —
+# reconcile separately). Every OTHER state reads the canonical building_codes
+# table (state_codes.json, 52 states) instead of the old 8% NY default, which
+# was mis-taxing TX (6.25%) and ~40 states the same way. Add rates in the JSON.
+_STATE_TAX_OVERRIDES = {
+    "NY": 0.08, "PA": 0.0, "NJ": 0.06625, "CT": 0.0635,
+    "MD": 0.06, "DE": 0.0, "OH": 0.0725,
+    "MI": 0.06, "IL": 0.0625, "MN": 0.06875,
+    "AZ": 0.056, "SC": 0.06,
+}
+
+
+def _resolve_tax_rate(state: str) -> float:
+    """Per-state sales-tax rate for the estimate. Overrides win for the states
+    they cover; everything else uses the canonical building_codes table (0.0 if
+    a state is genuinely unmodeled — safer than blindly applying 8% NY)."""
+    s = (state or "").upper()
+    if s in _STATE_TAX_OVERRIDES:
+        return _STATE_TAX_OVERRIDES[s]
+    return _bc_lookup.get_sales_tax(s)
+
+
 def _build_code_violations(state: str, line_items: list, trades: list) -> list:
     """Build code violations deterministically from state + scope items.
     Uses state-specific code prefix (RCNYS, RCO, etc.) falling back to IRC.
@@ -4017,15 +4040,9 @@ def build_claim_config(
         else:
             state = "NY"
             print(f"[CONFIG] WARNING: Could not determine state — defaulting to NY")
-    _tax_rates = {
-        "NY": 0.08, "PA": 0.0, "NJ": 0.06625, "CT": 0.0635,
-        "MD": 0.06, "DE": 0.0, "OH": 0.0725,
-        "MI": 0.06, "IL": 0.0625, "MN": 0.06875,
-        "AZ": 0.056, "SC": 0.06,  # Added 2026-05-14 alongside Alfonso's AZ + SC pricing
-    }
-    tax_rate = _tax_rates.get(state, 0.08)
-    if state not in _tax_rates:
-        print(f"[CONFIG] WARNING: No tax rate configured for state '{state}' — defaulting to 8%. Verify with Tom.")
+    tax_rate = _resolve_tax_rate(state)
+    if state and state.upper() not in _STATE_TAX_OVERRIDES:
+        print(f"[CONFIG] tax_rate for '{state}' = {tax_rate:.4f} via building_codes canonical table (E275 — no longer the 8% NY default).")
 
     # Build line items based on measurements and analysis (multi-structure aware)
     # Parse ZIP and city from full address for market-specific pricing
