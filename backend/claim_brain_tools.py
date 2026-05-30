@@ -1563,25 +1563,31 @@ def _handle_create_claim_from_minimal_input(sb: Client, user_id: str, tool_input
     measurements = _list_folder("measurements")
     scope = _list_folder("scope")
 
-    # Phase 1a supports the two FREE entry points: photos -> forensic, scope ->
-    # supplement. Bare measurements (no photos, no scope) need the estimate_only
-    # report_mode (Phase 1b) — until then, guide the user.
-    if not photos and not scope:
+    # Meet the user where they are — any ONE input is enough to start:
+    #   photos       -> forensic causation report
+    #   carrier scope -> instant supplement
+    #   measurements -> Xactimate-style estimate (Doc 02 + priced code-compliance Doc 06)
+    #   any combination -> full appeal package
+    # Only a truly empty upload is rejected.
+    if not photos and not scope and not measurements:
         return {
             "action": "error",
             "message": (
-                "No inspection photos or carrier scope are staged yet. Ask the user to "
-                "upload photos (for a forensic damage report) or the carrier's scope/estimate "
-                "(for an instant supplement), then call this again."
+                "Nothing's staged yet. Ask the user to upload roof photos (for a forensic "
+                "damage report), a measurement report like EagleView/HOVER (for an "
+                "Xactimate-style estimate), and/or the carrier's scope/estimate (for a "
+                "supplement) — any one is enough to start — then call this again."
             ),
         }
 
     # Infer report_mode (matches instant-intake + the processor's auto-upgrade
-    # semantics: a second input upgrades a minimal mode to 'full').
+    # semantics: a second input upgrades a minimal mode toward 'full').
     if scope and not photos:
         report_mode, phase = "supplement_only", "post-scope"
     elif photos and not scope and not measurements:
         report_mode, phase = "forensic_only", "pre-scope"
+    elif measurements and not photos and not scope:
+        report_mode, phase = "estimate_only", "pre-scope"
     else:
         report_mode, phase = "full", ("post-scope" if scope else "pre-scope")
 
@@ -1613,6 +1619,7 @@ def _handle_create_claim_from_minimal_input(sb: Client, user_id: str, tool_input
     label = {
         "forensic_only": "forensic damage report",
         "supplement_only": "instant supplement",
+        "estimate_only": "estimate / scope build",
         "full": "full appeal package",
     }.get(report_mode, "claim")
 
