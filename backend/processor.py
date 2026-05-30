@@ -523,9 +523,14 @@ def _priced(pricing: dict, key: str, fallback: float) -> float:
     val = pricing.get(key)
     if val is not None:
         # Legacy per-state JSON merge (lines below) tags its keys so a native
-        # market rate is never confused with a coarse state-baseline rate.
+        # market rate is never confused with a coarse state-baseline rate. WS-7:
+        # encode WHICH state's legacy JSON the rate came from
+        # ('state-json-fallback:NY') so an auditor (qa_auditor._is_fallback) can
+        # tell an own-state native Xactimate rate (NY house_wrap on a NY claim —
+        # genuinely native, NOT coarse) from a cross-state baseline.
         if key in pricing.get("_legacy_state_keys", ()):
-            sources[key] = "state-json-fallback"
+            _ls = pricing.get("_legacy_state") or ""
+            sources[key] = f"state-json-fallback:{_ls}" if _ls else "state-json-fallback"
         else:
             sources[key] = pricing.get("_price_source", "relational")
         return val
@@ -577,7 +582,48 @@ _LINEITEM_DESC_TO_PRICING_KEY = {
     "R&R Skylight flashing kit": "skylight_flashing",
     "R&R Step flashing - copper": "step_flashing_copper",
     "R&R Step flashing": "step_flashing",
+    # WS-7 SIDING flagship — the EXACT descriptions build_line_items appends for the
+    # full siding scope. Without these the siding rows fall through to claim-level
+    # inferred attribution (_price_source_inferred=True) and falsely trip
+    # CODE_SUPPLEMENT_FALLBACK_PRICED on every siding claim. (House wrap + wall
+    # flashing embed a dynamic {code_prefix} — they are NORMALIZED to their base
+    # form in apply_price_provenance below and keyed via _SIDING_DYNAMIC_DESC_KEYS,
+    # not literal entries here.)
+    "R&R Siding - .024 metal (aluminum/steel)": "siding_aluminum_024",
+    "R&R Siding - vinyl": "siding_vinyl",
+    "R&R Siding - vinyl - high grade": "siding_vinyl_high",
+    "R&R Siding - vinyl - specialty grade": "siding_vinyl_premium",
+    "R&R Siding - vinyl - insulated": "siding_vinyl_insulated",
+    "R&R Cedar shingle siding": "siding_cedar_shingle",
+    "R&R Siding - fiber cement": "siding_vinyl_insulated",
+    "R&R Siding - .019 metal (aluminum/steel)": "siding_metal_019",
+    "Fanfold insulation board": "fanfold_insulation",
+    "Siding labor minimum": "siding_labor_min",
+    "Scaffolding - per week": "scaffolding_week",
+    "Dumpster load - siding debris": "dumpster",
+    "R&R Wrap wood window frame & trim with aluminum sheet": "window_wrap_standard",
+    "R&R Door frame wrap - aluminum coil stock": "door_wrap_aluminum_lf",
+    "R&R Garage door wrap - aluminum coil stock": "garage_door_wrap_lf",
 }
+
+# WS-7 SIDING — house wrap + wall flashing embed a dynamic state code prefix
+# (e.g. "RCNYS"/"TX-IRC"/"IRC") that varies per claim, so they can't be literal
+# reverse-map keys. apply_price_provenance strips the "(code-required per … RNNN.N)"
+# suffix and matches against these stable base prefixes → short_key.
+_SIDING_DYNAMIC_DESC_KEYS = (
+    ("House wrap / Tyvek", "house_wrap"),
+    ("Wall flashing - aluminum", "wall_flashing"),
+)
+
+
+def _siding_dynamic_short_key(base_desc: str):
+    """Return the short_key for a dynamic-code-prefix siding desc (house wrap /
+    wall flashing) or None. Matches the stable leading phrase so the per-state
+    "(code-required per RCNYS R703.2)" suffix never blocks attribution."""
+    for prefix, key in _SIDING_DYNAMIC_DESC_KEYS:
+        if base_desc.startswith(prefix):
+            return key
+    return None
 
 
 def apply_price_provenance(line_items: list, pricing: dict) -> None:
@@ -606,7 +652,11 @@ def apply_price_provenance(line_items: list, pricing: dict) -> None:
         desc = (li.get("description") or "").strip()
         # Strip a "<Structure> — " prefix added by build_multi_structure_line_items.
         base_desc = desc.split(" — ", 1)[-1] if " — " in desc else desc
-        short_key = rev.get(base_desc) or rev.get(desc)
+        short_key = (
+            rev.get(base_desc)
+            or rev.get(desc)
+            or _siding_dynamic_short_key(base_desc)
+        )
         if short_key and short_key in key_sources:
             li["_price_source"] = key_sources[short_key]
         else:
@@ -1021,14 +1071,24 @@ def get_pricing_for_state(state: str, zip_code: str = "", city: str = "", market
     pricing["_market_name"] = market_meta.get("name", "")
     pricing["_price_source"] = _price_source
     pricing["_meta"] = True
+    # WS-7: the claim's own state — so a state-json-fallback key can be labeled with
+    # WHICH state's legacy JSON it came from (own-state native vs cross-state coarse).
+    pricing["_claim_state"] = (state or "").upper()
 
     # Legacy per-state JSON fallback only for short_keys NOT in market data.
     # all-markets.json doesn't have e.g. "scaffold_staging", "slate_specialist_labor" — those
     # come from nybi26.json/papi26.json. We still need them until Alfonso publishes those rates.
     # WS-7: tag every key sourced from this legacy per-state JSON so `_priced` can
-    # label its provenance 'state-json-fallback' (NOT a native per-market rate).
+    # label its provenance 'state-json-fallback:<STATE>' (own-state = native NYBI26/PAPI26/
+    # NJBI26 Xactimate rate; cross-state = coarse). The legacy JSON loaded here IS the
+    # claim's own state when it has one in STATE_PRICE_LIST; a state with no entry falls
+    # back to the NY ("NYBI26") baseline → a genuinely-coarse cross-state rate.
     legacy_state_keys = pricing.setdefault("_legacy_state_keys", set())
     old_price_list = STATE_PRICE_LIST.get(state.upper(), "NYBI26").lower()
+    # The state whose legacy Xactimate JSON we are about to merge from. When the
+    # claim's state has its own list this equals _claim_state (own-state native);
+    # when it doesn't, it stays the NY baseline (cross-state coarse).
+    pricing["_legacy_state"] = state.upper() if state.upper() in STATE_PRICE_LIST else "NY"
     old_pricing = _load_pricing(old_price_list)
     if old_pricing:
         for k, v in old_pricing.items():
@@ -5313,13 +5373,31 @@ def _extract_damage_triggers(photo_analysis: dict) -> dict:
 # Real (non-cosmetic) siding damage types in photo_tags — overview/none/general
 # are NOT damage. Kept tight so a roofing-only claim that merely PHOTOGRAPHS a
 # wall (elevation context shots) never trips the siding-damage signal.
+#
+# Cladding-relevant damage ONLY: hail dents, cracks, missing/torn panels, wind
+# creases, corrosion (metal siding), chalking. 'granule_loss'/'lifted_tab'/
+# 'chalk_test' are ROOF-shingle signatures — a fiber-cement/vinyl WALL does not
+# lose granules or lift tabs — so they are NOT siding damage and were causing a
+# roofing-trade photo (e.g. fiber_cement_siding + granule_loss) to falsely trip
+# the whole-house siding default.
 _SIDING_DAMAGE_TYPES = {
-    "hail_dent", "crack", "missing", "wind_crease", "corrosion",
-    "granule_loss", "lifted_tab", "chalk_test",
+    "hail_dent", "crack", "cracked", "missing", "torn",
+    "wind_crease", "corrosion", "chalking",
 }
+# GENUINE wall-CLADDING materials only. A bare "siding" substring is intentionally
+# EXCLUDED — it matched incidental mentions (e.g. 'siding_trim') and let a gutters/
+# trim photo masquerade as a damaged cladding surface. Trim, j-channel, corner
+# post, soffit, fascia are siding ACCESSORIES, not the cladding field, and never
+# justify a whole-house re-side on their own.
 _SIDING_MATERIAL_TOKENS = (
-    "aluminum_siding", "vinyl_siding", "cedar_siding", "fiber_cement_siding",
-    "siding",
+    "vinyl_siding", "aluminum_siding", "steel_siding",
+    "fiber_cement_siding", "cedar_siding", "wood_siding",
+)
+# Accessory/trim materials that contain 'siding' but are NOT the cladding field.
+# Used to positively REJECT a material that would otherwise loosely match.
+_SIDING_TRIM_TOKENS = (
+    "trim", "j_channel", "j-channel", "corner_post", "corner post",
+    "soffit", "fascia", "starter_strip",
 )
 
 
@@ -5341,29 +5419,80 @@ def detect_siding_damage_signal(photo_analysis: dict, user_notes: str = "") -> b
     if not isinstance(photo_analysis, dict):
         photo_analysis = {}
 
-    # (1) Per-photo tags: a siding surface WITH a real damage type.
+    # (1) Per-photo tags: a genuine SIDING-trade CLADDING surface WITH a real
+    # cladding-damage type. ALL THREE must hold on the SAME photo:
+    #   (a) trade == 'siding'  — NOT gutters/roofing. A gutters-trade or roofing-
+    #       trade photo never auto-enables a whole-house re-side, even if it happens
+    #       to picture a wall material.
+    #   (b) material is a genuine wall-CLADDING field (vinyl/aluminum/steel/fiber-
+    #       cement/cedar/wood siding) AND is NOT a trim/accessory (j-channel, corner
+    #       post, soffit, fascia, trim, starter strip).
+    #   (c) damage_type is a real CLADDING damage (not overview/none/general, and
+    #       not a roof-shingle-only signature like granule_loss/lifted_tab).
     for tag_val in (photo_analysis.get("photo_tags") or {}).values():
         if not isinstance(tag_val, dict):
             continue
         trade = str(tag_val.get("trade", "")).lower()
         material = str(tag_val.get("material", "")).lower()
         dmg = str(tag_val.get("damage_type", "")).lower()
-        is_siding_surface = (trade == "siding") or any(
+        if trade != "siding":
+            continue  # (a) — only the siding trade trips the whole-house default
+        is_trim = any(tok in material for tok in _SIDING_TRIM_TOKENS)
+        is_cladding = (not is_trim) and any(
             tok in material for tok in _SIDING_MATERIAL_TOKENS
         )
-        if is_siding_surface and dmg in _SIDING_DAMAGE_TYPES:
+        if is_cladding and dmg in _SIDING_DAMAGE_TYPES:  # (b) + (c)
             return True
 
-    # (2) user_notes: siding + a damage word within the same note (tight pairing).
+    # (2) user_notes: require siding + damage in CLOSE PROXIMITY (explicit siding-
+    # damage phrasing) — NOT bag-of-words. "new siding installed last year, roof
+    # hail damage" must NOT fire: the only damage word ('hail') is about the ROOF,
+    # and 'siding' is an install mention, not a damage mention. Match an explicit
+    # adjacency window: a siding-damage phrase where a damage word sits within a few
+    # words of 'siding' on either side (e.g. "cracked siding", "siding is dented",
+    # "hail damage to the vinyl siding").
     notes = (user_notes or "").lower()
-    if "siding" in notes and any(
-        w in notes for w in (
-            "damage", "damaged", "cracked", "crack", "hail", "dent", "dented",
-            "broken", "shatter", "impact", "storm-damaged",
-        )
-    ):
+    if _notes_pair_siding_with_damage(notes):
         return True
 
+    return False
+
+
+# Damage words for the user_notes proximity check. Kept separate so the
+# adjacency window is auditable and the roof-only signature ('granule', 'tab')
+# is intentionally absent.
+_NOTES_DAMAGE_WORDS = (
+    "damage", "damaged", "cracked", "crack", "hail", "dent", "dented",
+    "broken", "shatter", "impact", "storm-damaged", "storm damaged", "punctured",
+)
+# How many tokens may sit between 'siding' and a damage word for them to count as
+# a paired siding-damage phrase. Tight enough to reject "new siding installed last
+# year, roof hail damage" (≥5 tokens + a clause break) yet allow natural phrasing
+# like "hail damage to the vinyl siding" (3 tokens).
+_NOTES_SIDING_DAMAGE_WINDOW = 4
+
+
+def _notes_pair_siding_with_damage(notes: str) -> bool:
+    """True iff user_notes contains 'siding' and a damage word in close proximity
+    (within _NOTES_SIDING_DAMAGE_WINDOW tokens, same clause). NOT bag-of-words:
+    a damage word in a different clause (e.g. 'roof hail damage') does not pair
+    with an unrelated 'siding' install mention."""
+    if "siding" not in notes:
+        return False
+    # Split on clause boundaries so a damage word in a separate clause/sentence
+    # cannot pair with 'siding' across the break.
+    import re
+    for clause in re.split(r"[.;\n]|,\s+", notes):
+        if "siding" not in clause:
+            continue
+        toks = re.findall(r"[a-z0-9\-]+", clause)
+        siding_idx = [i for i, t in enumerate(toks) if "siding" in t]
+        dmg_idx = [i for i, t in enumerate(toks)
+                   if any(t == w or t.startswith(w) for w in _NOTES_DAMAGE_WORDS)]
+        for si in siding_idx:
+            for di in dmg_idx:
+                if abs(si - di) <= _NOTES_SIDING_DAMAGE_WINDOW:
+                    return True
     return False
 
 

@@ -576,11 +576,15 @@ def compute_code_supplement_pricing_flags(config: dict, claim: dict) -> list[dic
     qa_blocked.
 
     Fires CODE_SUPPLEMENT_FALLBACK_PRICED (medium) when ≥1 code-supplement row
-    (code_citation present AND qty>0 AND scope_timing=='initial') carries a
-    _price_source NOT in {'relational'} — i.e. it was priced from a fallback
-    (json-fallback / state-json-fallback / hardcoded-fallback) rather than a
-    native per-market relational rate. The detail counts how many such rows so a
-    human knows the fallback exposure before the package ships."""
+    (code_citation present AND qty>0 AND scope_timing=='initial') is priced from a
+    GENUINELY-COARSE source — i.e. a price the claim's OWN market did not natively
+    produce: 'hardcoded-fallback' (cross-market NY baseline), 'json-fallback'
+    (relational unavailable), or a 'state-json-fallback:<S>' whose <S> is NOT the
+    claim's state. It does NOT fire on a native 'relational' rate, nor on an
+    OWN-state 'state-json-fallback' (e.g. NY house_wrap on a NY claim — the native
+    NYBI26 Xactimate rate), nor on key-imprecise attribution alone. The detail
+    counts how many such rows so a human knows the coarse-pricing exposure before
+    the package ships."""
     flags: list[dict] = []
     if not isinstance(config, dict):
         return flags
@@ -589,37 +593,63 @@ def compute_code_supplement_pricing_flags(config: dict, claim: dict) -> list[dic
     if not code_rows:
         return flags
 
+    # The claim's own state — used to tell an OWN-state state-json-fallback (the
+    # native NYBI26/PAPI26/NJBI26 Xactimate rate, e.g. NY house_wrap on a NY claim)
+    # from a CROSS-state baseline (genuinely-coarse pricing).
+    claim_state = str(
+        (config.get("property") or {}).get("state")
+        or (config.get("financials") or {}).get("state")
+        or ""
+    ).strip().upper()
+
     def _is_fallback(li: dict) -> bool:
-        # 'relational' (and any source string that STARTS with 'relational') is
-        # the only native per-market provenance. A missing _price_source is
-        # treated as fallback — we cannot positively assert it's a native rate.
+        # Fire ONLY on GENUINELY-COARSE pricing — a price the claim's own market did
+        # not natively produce:
+        #   * 'hardcoded-fallback'    — the cross-market NY-baseline literal applied
+        #                               to a market lacking the short_key (E251 class).
+        #   * 'json-fallback'         — all-markets inversion used because the
+        #                               relational DB was unavailable (not a verified
+        #                               per-market rate).
+        #   * 'state-json-fallback:<S>' where <S> != the claim's state — a legacy
+        #                               cross-state baseline.
         #
-        # FIX B (panel): processor.apply_price_provenance stamps key-IMPRECISE
-        # rows (composite/derived/manual price, or a desc not in the reverse map)
-        # with the CLAIM-LEVEL source — which is usually 'relational' — and sets
-        # _price_source_inferred=True. Those rows are NOT a positively-verified
-        # native per-market key rate, so they ARE coarse-pricing exposure. Count
-        # an inferred row as fallback so we never UNDER-report. Still MEDIUM-only;
-        # never blocks; never alters the rendered price.
-        if li.get("_price_source_inferred") is True:
-            return True
+        # Do NOT fire on:
+        #   * 'relational'            — native per-market rate.
+        #   * 'state-json-fallback:<S>' where <S> == the claim's state — that IS the
+        #                               claim's OWN-state native Xactimate rate (NY
+        #                               house_wrap on a NY claim is $0.64 native, not
+        #                               coarse). This is the panel false-positive fix.
+        #   * _price_source_inferred alone — key-imprecise attribution is NOT, by
+        #                               itself, coarse pricing. The siding rows are
+        #                               now key-attributed (apply_price_provenance
+        #                               reverse-map additions); even a still-inferred
+        #                               row whose claim-level source is native is not
+        #                               coarse. We classify by the ACTUAL source
+        #                               string, not by whether attribution was exact.
         src = (li.get("_price_source") or "").strip().lower()
-        return not src.startswith("relational")
+        if not src:
+            # No source at all — we cannot positively assert a native rate.
+            return True
+        if src.startswith("relational"):
+            return False
+        if src.startswith("state-json-fallback"):
+            # Suffix form 'state-json-fallback:<STATE>'. Own-state == native, not coarse.
+            _ls = src.split(":", 1)[1].strip().upper() if ":" in src else ""
+            if _ls and claim_state and _ls == claim_state:
+                return False
+            # Unlabeled (legacy stamp) or cross-state → coarse.
+            return True
+        # hardcoded-fallback / json-fallback / anything else non-native → coarse.
+        return True
 
     fallback_rows = [li for li in code_rows if _is_fallback(li)]
     if not fallback_rows:
         return flags
 
     # Break the fallback count down by source for the human-readable detail.
-    # An inferred row (FIX B) is bucketed under a distinct '<source>-inferred'
-    # label so a human sees it was claim-level/key-imprecise attribution, not a
-    # native per-market key rate, even when its raw _price_source reads
-    # 'relational'.
     by_source: dict[str, int] = {}
     for li in fallback_rows:
         src = (li.get("_price_source") or "(unstamped)").strip() or "(unstamped)"
-        if li.get("_price_source_inferred") is True:
-            src = f"{src}-inferred"
         by_source[src] = by_source.get(src, 0) + 1
     breakdown = ", ".join(f"{src}×{n}" for src, n in sorted(by_source.items()))
 

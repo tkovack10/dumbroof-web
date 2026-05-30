@@ -473,8 +473,13 @@ class TestSidingWallFlashingEmitted(unittest.TestCase):
         self.assertTrue(hw, "siding scope must emit a house-wrap line")
         self.assertIn("R703.4", wf[0]["description"])
         self.assertGreater(float(wf[0]["qty"]), 0)
-        # NY prices wall flashing natively (seeded) — relational, not fallback.
-        self.assertEqual(wf[0].get("_price_source"), "relational")
+        # NY prices wall flashing from its OWN-state legacy Xactimate JSON
+        # (nybi26.json $4.85) — its TRUE provenance is 'state-json-fallback:NY', the
+        # NY-native rate, NOT a coarse cross-market fallback. (The prior assertion
+        # 'relational' was reading a HAND-STAMPED fixture, masking the real source.)
+        # It is also now KEY-ATTRIBUTED (reverse map), so it is not 'inferred'.
+        self.assertEqual(wf[0].get("_price_source"), "state-json-fallback:NY")
+        self.assertIsNot(wf[0].get("_price_source_inferred"), True)
 
 
 class TestDefaultFullSidingOnDamage(unittest.TestCase):
@@ -541,29 +546,191 @@ class TestDefaultFullSidingOnDamage(unittest.TestCase):
         self.assertEqual(siding, [], "explicit masonry selection must beat the damage default")
 
 
-class TestSidingFallbackFlagOtherMarket(unittest.TestCase):
-    """CODE_SUPPLEMENT_FALLBACK_PRICED stays SILENT for NY-native house_wrap and
-    FIRES for an other-market house_wrap priced from a fallback (the Alfonso SDG
-    WRAP export follow-up). Driven by _price_source on the frozen row."""
+class TestSidingSignalNotOverEager(unittest.TestCase):
+    """detect_siding_damage_signal must NOT auto-enable whole-house siding on:
+      * a GUTTERS-trade photo with material 'siding_trim' + a damage type,
+      * a ROOFING-trade photo with 'fiber_cement_siding' + a roof signature,
+      * user_notes 'new siding installed last year, roof hail damage' (bag-of-words).
+    It MUST still fire on a genuine SIDING-trade cladding + hail-dent. Adversarial-
+    panel correctness fix: a bare 'siding' substring + roof-shingle damage types +
+    bag-of-words notes were over-firing."""
 
-    def test_ny_native_house_wrap_no_flag(self):
+    def _meas(self):
+        return {
+            "measurements": {"eave": 100, "rake": 80},
+            "structures": [{"roof_area_sq": 25, "roof_area_sf": 2500, "facets": 4,
+                            "predominant_pitch": "6/12"}],
+            "stories": 2,
+            "walls": {"total_wall_area_sf": 2280, "window_count": 8, "door_count": 2,
+                      "elevations": [{"name": "Front", "openings": 4}]},
+        }
+
+    # ---- signal detector (unit) ----
+    def test_gutter_trim_photo_does_not_fire(self):
+        import processor as P
+        dmg = {"photo_tags": {"p01": {"trade": "gutters", "material": "siding_trim",
+                                      "damage_type": "crack"}}}
+        self.assertFalse(P.detect_siding_damage_signal(dmg),
+                         "a gutters-trade trim photo must not auto-enable siding")
+
+    def test_roofing_fiber_cement_photo_does_not_fire(self):
+        import processor as P
+        # ROOFING trade, fiber_cement_siding material, granule_loss (a roof signature).
+        dmg = {"photo_tags": {"p01": {"trade": "roofing", "material": "fiber_cement_siding",
+                                      "damage_type": "granule_loss"}}}
+        self.assertFalse(P.detect_siding_damage_signal(dmg),
+                         "a roofing-trade photo must not auto-enable siding")
+        # Even with a real cladding damage type, the ROOFING trade still excludes it.
+        dmg2 = {"photo_tags": {"p01": {"trade": "roofing", "material": "fiber_cement_siding",
+                                       "damage_type": "hail_dent"}}}
+        self.assertFalse(P.detect_siding_damage_signal(dmg2),
+                         "trade=roofing must never trip the siding-damage signal")
+
+    def test_new_siding_plus_roof_damage_notes_does_not_fire(self):
+        import processor as P
+        notes = "new siding installed last year, roof hail damage"
+        self.assertFalse(P.detect_siding_damage_signal({}, notes),
+                         "bag-of-words 'siding' + unrelated 'roof hail damage' must not fire")
+
+    def test_real_siding_cladding_hail_dent_fires(self):
+        import processor as P
+        dmg = {"photo_tags": {"p01": {"trade": "siding", "material": "vinyl_siding",
+                                      "damage_type": "hail_dent"}}}
+        self.assertTrue(P.detect_siding_damage_signal(dmg),
+                        "a real siding-cladding + hail-dent photo MUST fire")
+
+    def test_explicit_siding_damage_notes_fires(self):
+        import processor as P
+        self.assertTrue(P.detect_siding_damage_signal({}, "cracked siding on the rear elevation"))
+        self.assertTrue(P.detect_siding_damage_signal({}, "hail damage to the vinyl siding"))
+
+    # ---- end-to-end through build_line_items ----
+    def test_gutter_trim_photo_no_siding_line_items(self):
+        import processor as P
+        photo = {"trades_identified": ["roofing", "gutters"],
+                 "photo_tags": {"p01": {"trade": "gutters", "material": "siding_trim",
+                                        "damage_type": "crack"}}}
+        items = P.build_line_items(self._meas(), photo, "NY", user_notes="",
+                                   estimate_request=None, market_code="")
+        siding = [i for i in items if i.get("category") == "SIDING"]
+        self.assertEqual(siding, [], "gutter-trim photo must produce NO siding line items")
+
+    def test_roofing_fiber_cement_photo_no_siding_line_items(self):
+        import processor as P
+        photo = {"trades_identified": ["roofing"],
+                 "photo_tags": {"p01": {"trade": "roofing", "material": "fiber_cement_siding",
+                                        "damage_type": "granule_loss"}}}
+        items = P.build_line_items(self._meas(), photo, "NY", user_notes="",
+                                   estimate_request={"roof_material": "comp_shingle"},
+                                   market_code="")
+        siding = [i for i in items if i.get("category") == "SIDING"]
+        self.assertEqual(siding, [], "roofing fiber-cement photo must produce NO siding line items")
+
+    def test_new_siding_notes_no_siding_line_items(self):
+        import processor as P
+        photo = {"trades_identified": ["roofing"],
+                 "photo_tags": {"p01": {"trade": "roofing", "material": "comp_shingle_laminated",
+                                        "damage_type": "hail_dent"}}}
+        items = P.build_line_items(self._meas(), photo, "NY",
+                                   user_notes="new siding installed last year, roof hail damage",
+                                   estimate_request={"roof_material": "comp_shingle"},
+                                   market_code="")
+        siding = [i for i in items if i.get("category") == "SIDING"]
+        self.assertEqual(siding, [], "'new siding + roof damage' notes must produce NO siding line items")
+
+
+class TestSidingFallbackFlagThroughRealProcessor(unittest.TestCase):
+    """CODE_SUPPLEMENT_FALLBACK_PRICED is NOISE no more. Built THROUGH THE REAL
+    PROCESSOR (build_line_items + apply_price_provenance), not a hand-stamped
+    fixture — the prior test masked the real provenance.
+
+    SILENT on the NY siding fixture's real build (house_wrap/wall_flashing/siding
+    resolve to the OWN-state native NYBI26 rate = 'state-json-fallback:NY', not
+    coarse). FIRES on a TX copy (TX market lacks those short_keys → they fall to
+    'hardcoded-fallback' = a genuinely-coarse cross-market NY baseline)."""
+
+    @staticmethod
+    def _build_siding_config(state):
+        """Run the REAL siding scope through build_line_items + apply_price_provenance
+        for `state`, then shape a config whose code-supplement subset is the priced
+        siding rows. This is the path a real processor run produces — no hand-stamped
+        _price_source anywhere."""
+        import processor as P
+        meas = {
+            "measurements": {"eave": 100, "rake": 80},
+            "structures": [{"roof_area_sq": 25, "roof_area_sf": 2500, "facets": 4,
+                            "predominant_pitch": "6/12"}],
+            "stories": 2,
+            "walls": {"total_wall_area_sf": 2280, "window_count": 8, "door_count": 2,
+                      "elevations": [{"name": "Front", "openings": 4},
+                                     {"name": "Right", "openings": 3},
+                                     {"name": "Left", "openings": 3},
+                                     {"name": "Rear", "openings": 4}]},
+        }
+        photo = {"trades_identified": ["roofing", "siding"], "siding_type": "vinyl",
+                 "photo_tags": {"p01": {"trade": "siding", "material": "vinyl_siding",
+                                        "damage_type": "crack", "severity": "moderate"}}}
+        items = P.build_line_items(meas, photo, state, user_notes="",
+                                   estimate_request=None, market_code="")
+        # Make the SIDING rows qualify as code-supplement rows (the flag only
+        # inspects initial, code-cited, qty>0 rows). We do NOT touch _price_source —
+        # apply_price_provenance already stamped it during the real build.
+        cc = {"section": "R703.2", "code_tag": "RCNYS R703.2",
+              "requirement": "WRB", "title": "wrb"}
+        siding_rows = []
+        for it in items:
+            if it.get("category") in ("SIDING", "DEBRIS"):
+                it["code_citation"] = cc
+                it.setdefault("scope_timing", "initial")
+                siding_rows.append(it)
+        assert siding_rows, "siding scope must produce rows"
+        return {"property": {"state": state}, "line_items": items}
+
+    def test_ny_real_build_flag_silent(self):
         from qa_auditor import compute_code_supplement_pricing_flags
-        cfg = _load_cfg()  # every code row stamped _price_source='relational'
-        self.assertEqual(compute_code_supplement_pricing_flags(cfg, {}), [])
+        cfg = self._build_siding_config("NY")
+        # Sanity: house_wrap/wall_flashing/siding are the OWN-state native rate, and
+        # are key-attributed (not inferred) thanks to the reverse-map additions.
+        by_src = {}
+        for li in cfg["line_items"]:
+            if li.get("category") == "SIDING":
+                by_src.setdefault(li.get("_price_source"), 0)
+                by_src[li.get("_price_source")] += 1
+                self.assertIsNot(li.get("_price_source_inferred"), True,
+                                 f"{li['description']!r} should be key-attributed, not inferred")
+        # Every siding row is either native relational or own-state NY legacy — none coarse.
+        for src in by_src:
+            self.assertTrue(
+                src == "relational" or src == "state-json-fallback:NY",
+                f"unexpected coarse source on a NY siding row: {src!r}",
+            )
+        flags = compute_code_supplement_pricing_flags(cfg, {})
+        self.assertEqual(
+            flags, [],
+            "NY own-state native siding pricing must NOT raise the fallback flag "
+            f"(sources seen: {by_src})",
+        )
 
-    def test_other_market_fallback_house_wrap_fires_flag(self):
+    def test_tx_real_build_flag_fires(self):
+        from qa_auditor import compute_code_supplement_pricing_flags
+        cfg = self._build_siding_config("TX")
+        # TX (a non-priced siding market) → house_wrap/wall_flashing/siding fall to
+        # 'hardcoded-fallback' (the cross-market NY baseline) = genuinely coarse.
+        flags = compute_code_supplement_pricing_flags(cfg, {})
+        self.assertTrue(flags, "TX coarse-priced siding must FIRE the fallback flag")
+        f = flags[0]
+        self.assertEqual(f["issue"], "CODE_SUPPLEMENT_FALLBACK_PRICED")
+        self.assertEqual(f["severity"], "medium")  # MEDIUM-only / never blocking
+        self.assertGreaterEqual(f["found"], 1)
+        # The coarse source is the hardcoded NY baseline, not an own-state legacy rate.
+        self.assertIn("hardcoded-fallback", f["by_source"])
+
+    def test_fixture_still_silent_in_ny(self):
+        # The hand-stamped NY fixture (every row 'relational') is also silent — the
+        # genuinely-coarse rule treats native relational as non-coarse.
         from qa_auditor import compute_code_supplement_pricing_flags
         cfg = _load_cfg()
-        cfg["property"]["state"] = "TX"
-        # Simulate the other-market reality: house_wrap fell to a non-relational
-        # fallback (TX lacks a native house_wrap rate today).
-        for li in cfg["line_items"]:
-            if "house wrap" in li["description"].lower():
-                li["_price_source"] = "hardcoded-fallback"
-        flags = compute_code_supplement_pricing_flags(cfg, {})
-        self.assertTrue(flags, "other-market fallback house_wrap must fire the flag")
-        self.assertEqual(flags[0]["issue"], "CODE_SUPPLEMENT_FALLBACK_PRICED")
-        self.assertGreaterEqual(flags[0]["found"], 1)
+        self.assertEqual(compute_code_supplement_pricing_flags(cfg, {}), [])
 
 
 class TestGoldenCorpusUntouched(unittest.TestCase):
