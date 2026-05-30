@@ -12,17 +12,28 @@
  *   - identifiers (resolved against the variables map)
  *   - + - * / operators with correct precedence
  *   - parentheses
+ *   - a fixed allow-list of math functions: max, min, round, floor, ceil
+ *     (e.g. "max(2, round(eave_lf / 35))" for retail gutter downspout counts)
  *
- * Anything else (function calls, property access, comparison, etc.) throws.
+ * Anything else (property access, comparison, unknown functions, etc.) throws.
  * Missing variables resolve to 0 (so partial measurements don't blow up the UI).
  */
+
+const FUNCTIONS: Record<string, (args: number[]) => number> = {
+  max: (a) => (a.length ? Math.max(...a) : 0),
+  min: (a) => (a.length ? Math.min(...a) : 0),
+  round: (a) => Math.round(a[0] ?? 0),
+  floor: (a) => Math.floor(a[0] ?? 0),
+  ceil: (a) => Math.ceil(a[0] ?? 0),
+};
 
 type Token =
   | { type: "num"; value: number }
   | { type: "ident"; value: string }
   | { type: "op"; value: "+" | "-" | "*" | "/" }
   | { type: "lparen" }
-  | { type: "rparen" };
+  | { type: "rparen" }
+  | { type: "comma" };
 
 function tokenize(input: string): Token[] {
   const tokens: Token[] = [];
@@ -40,6 +51,11 @@ function tokenize(input: string): Token[] {
     }
     if (c === ")") {
       tokens.push({ type: "rparen" });
+      i++;
+      continue;
+    }
+    if (c === ",") {
+      tokens.push({ type: "comma" });
       i++;
       continue;
     }
@@ -117,6 +133,12 @@ class Parser {
     }
     if (t.type === "ident") {
       this.consume();
+      // Function call: ident '(' expr (',' expr)* ')' against the allow-list.
+      if (this.peek()?.type === "lparen") {
+        const fn = FUNCTIONS[t.value];
+        if (!fn) throw new Error(`Unknown function '${t.value}'`);
+        return fn(this.parseArgs());
+      }
       return this.vars[t.value] ?? 0; // missing vars default to 0
     }
     if (t.type === "lparen") {
@@ -131,6 +153,25 @@ class Parser {
       return -this.factor();
     }
     throw new Error(`Unexpected token: ${JSON.stringify(t)}`);
+  }
+
+  // Parse a function arg list: '(' expr (',' expr)* ')'. Assumes the current
+  // token is the opening '('.
+  private parseArgs(): number[] {
+    this.consume(); // '('
+    const args: number[] = [];
+    if (this.peek()?.type === "rparen") {
+      this.consume();
+      return args;
+    }
+    args.push(this.expr());
+    while (this.peek()?.type === "comma") {
+      this.consume();
+      args.push(this.expr());
+    }
+    const next = this.consume();
+    if (next?.type !== "rparen") throw new Error("Expected ')' to close function call");
+    return args;
   }
 }
 

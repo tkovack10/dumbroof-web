@@ -22,7 +22,10 @@ export interface RetailTemplateMeta {
   environmental_note?: string;
   legacy_aliases?: string[];
   legacy_note?: string;
-  system_warranty: {
+  // "roofing" (default when absent), "gutters", or "siding".
+  trade?: string;
+  // Roofing-only fields are optional — gutters/siding templates omit them.
+  system_warranty?: {
     name: string;
     term: string;
     requirements: string;
@@ -30,9 +33,13 @@ export interface RetailTemplateMeta {
     transfer_window_years: number;
     tier_below?: string;
   };
-  documents: RetailTemplateDocument[];
+  documents?: RetailTemplateDocument[];
   pricing_model: string;
-  base_price_per_sq_usd: number;
+  // Display-only "headline" price; the real driver is the billing line's
+  // unit_price/unit. One of these is set per trade.
+  base_price_per_sq_usd?: number;
+  base_price_per_lf_usd?: number;
+  base_price_per_sf_usd?: number;
   base_price_includes_waste: boolean;
   base_includes: string[];
   base_excludes: string[];

@@ -9,44 +9,58 @@ import type {
   RetailTemplateAddon,
 } from "@/lib/retail/templates-types";
 
-interface Measurements {
-  roof_area_sq: number;
-  eave_lf: number;
-  rake_lf: number;
-  ridge_lf: number;
-  hip_lf: number;
-  valley_lf: number;
-  ridge_lf_vented: number;
-  pipe_count_standard: number;
-  step_flash_lf: number;
-  counter_flash_lf: number;
+// Measurements are a flat numeric dict (stored JSONB on the row). WHICH fields
+// the builder shows depends on the selected template's trade — roofing templates
+// omit `_meta.trade` and default to "roofing".
+type Measurements = Record<string, number>;
+
+interface FieldDef {
+  key: string;
+  label: string;
+  default: number;
 }
 
-const DEFAULT_MEASUREMENTS: Measurements = {
-  roof_area_sq: 30,
-  eave_lf: 120,
-  rake_lf: 80,
-  ridge_lf: 40,
-  hip_lf: 0,
-  valley_lf: 20,
-  ridge_lf_vented: 40,
-  pipe_count_standard: 3,
-  step_flash_lf: 20,
-  counter_flash_lf: 12,
+const TRADE_FIELDS: Record<string, FieldDef[]> = {
+  roofing: [
+    { key: "roof_area_sq", label: "Roof area (SQ)", default: 30 },
+    { key: "eave_lf", label: "Eave (LF)", default: 120 },
+    { key: "rake_lf", label: "Rake (LF)", default: 80 },
+    { key: "ridge_lf", label: "Ridge (LF)", default: 40 },
+    { key: "hip_lf", label: "Hip (LF)", default: 0 },
+    { key: "valley_lf", label: "Valley (LF)", default: 20 },
+    { key: "ridge_lf_vented", label: "Ridge vented (LF)", default: 40 },
+    { key: "pipe_count_standard", label: "Standard pipes (EA)", default: 3 },
+    { key: "step_flash_lf", label: "Step flashing (LF)", default: 20 },
+    { key: "counter_flash_lf", label: "Counter flashing (LF)", default: 12 },
+  ],
+  gutters: [
+    { key: "eave_lf", label: "Gutter run / Eave (LF)", default: 120 },
+    { key: "stories", label: "Stories", default: 1 },
+  ],
+  siding: [
+    { key: "wall_area_sf", label: "Wall area (SF)", default: 1800 },
+    { key: "window_count", label: "Windows (EA)", default: 8 },
+    { key: "door_count", label: "Doors (EA)", default: 2 },
+    { key: "stories", label: "Stories", default: 1 },
+  ],
 };
 
-const MEASUREMENT_LABELS: Record<keyof Measurements, string> = {
-  roof_area_sq: "Roof area (SQ)",
-  eave_lf: "Eave (LF)",
-  rake_lf: "Rake (LF)",
-  ridge_lf: "Ridge (LF)",
-  hip_lf: "Hip (LF)",
-  valley_lf: "Valley (LF)",
-  ridge_lf_vented: "Ridge vented (LF)",
-  pipe_count_standard: "Standard pipes (EA)",
-  step_flash_lf: "Step flashing (LF)",
-  counter_flash_lf: "Counter flashing (LF)",
-};
+// Union of every trade's field defaults, so switching trades never drops a value
+// the user already typed and the measurements row stays a stable shape.
+const ALL_FIELD_DEFAULTS: Measurements = Object.values(TRADE_FIELDS)
+  .flat()
+  .reduce<Measurements>((acc, f) => {
+    if (!(f.key in acc)) acc[f.key] = f.default;
+    return acc;
+  }, {});
+
+function templateTrade(t?: { _meta?: { trade?: string } } | null): string {
+  return t?._meta?.trade || "roofing";
+}
+
+function billingLineOf(t?: RetailTemplate | null) {
+  return t?.items?.find((i) => i.is_billing_line) || null;
+}
 
 function fmtUsd(n: number): string {
   return n.toLocaleString("en-US", {
@@ -60,8 +74,17 @@ export function RetailEstimateClient() {
   const router = useRouter();
   const [templates, setTemplates] = useState<RetailTemplate[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [measurements, setMeasurements] = useState<Measurements>(DEFAULT_MEASUREMENTS);
+  const [measurements, setMeasurements] = useState<Measurements>(ALL_FIELD_DEFAULTS);
   const [addonQtys, setAddonQtys] = useState<Record<string, number>>({});
+  // Per-estimate base-price override — companies set their own retail pricing.
+  // null = use the template's default unit_price; a number overrides it. Baked
+  // into the saved template_snapshot so it persists with the estimate.
+  const [baseUnitPrice, setBaseUnitPrice] = useState<number | null>(null);
+  // Siding wall-area guesstimate (Vision on elevation photos + roof footprint).
+  const [estimatingSiding, setEstimatingSiding] = useState(false);
+  const [sidingEstimate, setSidingEstimate] = useState<{
+    wall_area_sf?: number; window_count?: number; door_count?: number; confidence?: string; source?: string;
+  } | null>(null);
   const [customerName, setCustomerName] = useState("");
   const [customerAddress, setCustomerAddress] = useState("");
   const [customerEmail, setCustomerEmail] = useState("");
@@ -104,8 +127,9 @@ export function RetailEstimateClient() {
             customer_name: string | null;
             customer_address: string | null;
             customer_email: string | null;
-            measurements: Partial<Measurements>;
+            measurements: Measurements;
             addon_qtys: Record<string, number>;
+            template_snapshot?: RetailTemplate;
             status?: string;
           };
           setEstimateId(e.id);
@@ -115,6 +139,9 @@ export function RetailEstimateClient() {
           setCustomerEmail(e.customer_email || "");
           setMeasurements((m) => ({ ...m, ...e.measurements }));
           setAddonQtys(e.addon_qtys || {});
+          // Restore the saved per-estimate price override from the snapshot's billing line.
+          const snapBill = billingLineOf(e.template_snapshot);
+          if (snapBill) setBaseUnitPrice(snapBill.unit_price);
           setMarkupPct(Number((e as unknown as { markup_pct?: number }).markup_pct ?? 0));
           setStatus(e.status || "draft");
           setLoadedExisting(true);
@@ -141,16 +168,23 @@ export function RetailEstimateClient() {
     [measurements],
   );
 
-  const billingLine = useMemo(() => {
-    if (!selected) return null;
-    return selected.items.find((i) => i.is_billing_line) || null;
-  }, [selected]);
+  const billingLine = useMemo(() => billingLineOf(selected), [selected]);
 
-  const baseTotal = useMemo(() => {
-    if (!billingLine) return 0;
-    const qty = evaluateFormula(billingLine.quantity_formula, vars);
-    return qty * billingLine.unit_price;
-  }, [billingLine, vars]);
+  const trade = useMemo(() => templateTrade(selected), [selected]);
+  const fields = useMemo(() => TRADE_FIELDS[trade] || TRADE_FIELDS.roofing, [trade]);
+
+  const baseQty = useMemo(
+    () => (billingLine ? evaluateFormula(billingLine.quantity_formula, vars) : 0),
+    [billingLine, vars],
+  );
+
+  // Effective base price = the company's override, else the template default.
+  const effectiveBasePrice = baseUnitPrice ?? billingLine?.unit_price ?? 0;
+
+  const baseTotal = useMemo(
+    () => baseQty * effectiveBasePrice,
+    [baseQty, effectiveBasePrice],
+  );
 
   const selectedAddonRows = useMemo(() => {
     if (!selected) return [] as Array<{ addon: RetailTemplateAddon; qty: number; total: number }>;
@@ -193,8 +227,8 @@ export function RetailEstimateClient() {
       }
       const m = data.measurements || {};
       // Populate every field that came back (0 values still overwrite — user can edit)
-      const next: Partial<Measurements> = {};
-      for (const k of Object.keys(DEFAULT_MEASUREMENTS) as Array<keyof Measurements>) {
+      const next: Measurements = {};
+      for (const k of Object.keys(ALL_FIELD_DEFAULTS)) {
         const raw = m[k];
         if (raw !== undefined && raw !== null) {
           const v = typeof raw === "number" ? raw : parseFloat(String(raw));
@@ -209,15 +243,55 @@ export function RetailEstimateClient() {
         filename: file.name,
       });
       const filled = Object.values(next).filter((v) => v && v > 0).length;
-      const total = Object.keys(DEFAULT_MEASUREMENTS).length;
       setStatusMsg({
         kind: meta.confidence === "low" ? "err" : "ok",
-        text: `Imported ${filled}/${total} fields from ${meta.vendor || "report"} (${meta.confidence || "?"} confidence). Review and edit before saving.`,
+        text: `Imported ${filled} field(s) from ${meta.vendor || "report"} (${meta.confidence || "?"} confidence). Review and edit before saving.`,
       });
     } catch (err) {
       setStatusMsg({ kind: "err", text: `Import failed: ${String(err)}` });
     } finally {
       setImporting(false);
+    }
+  }
+
+  // Siding guesstimate: POST the elevation photos + current roof measurements to
+  // the shared wall-area estimator, then fill wall_area_sf / windows / doors / stories.
+  async function handleEstimateSiding(filesList: File[]) {
+    setEstimatingSiding(true);
+    setStatusMsg(null);
+    try {
+      const fd = new FormData();
+      filesList.slice(0, 8).forEach((f) => fd.append("photos", f));
+      fd.append("measurements", JSON.stringify(measurements));
+      const res = await fetch("/api/retail-measurements/estimate-siding", { method: "POST", body: fd });
+      const data = await res.json();
+      if (!res.ok) {
+        setStatusMsg({ kind: "err", text: data.error || `Estimate failed (${res.status})` });
+        return;
+      }
+      const est = (data.estimate || {}) as {
+        wall_area_sf?: number; window_count?: number; door_count?: number; stories?: number; confidence?: string; source?: string;
+      };
+      if (est.wall_area_sf == null) {
+        setStatusMsg({ kind: "err", text: "Couldn't read a wall area from those photos — enter it manually below." });
+        return;
+      }
+      setSidingEstimate(est);
+      setMeasurements((m) => ({
+        ...m,
+        wall_area_sf: est.wall_area_sf ?? m.wall_area_sf,
+        window_count: est.window_count ?? m.window_count,
+        door_count: est.door_count ?? m.door_count,
+        stories: est.stories ?? m.stories,
+      }));
+      setStatusMsg({
+        kind: est.confidence === "low" ? "err" : "ok",
+        text: `Estimated ${est.wall_area_sf?.toLocaleString()} SF wall area (${est.confidence || "?"} confidence). Review + edit before saving.`,
+      });
+    } catch (err) {
+      setStatusMsg({ kind: "err", text: `Estimate failed: ${String(err)}` });
+    } finally {
+      setEstimatingSiding(false);
     }
   }
 
@@ -360,7 +434,12 @@ export function RetailEstimateClient() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           template_id: selected._meta.template_id,
-          template_snapshot: selected,
+          template_snapshot: {
+            ...selected,
+            items: selected.items.map((i) =>
+              i.is_billing_line ? { ...i, unit_price: effectiveBasePrice } : i,
+            ),
+          },
           customer_name: customerName,
           customer_email: customerEmail,
           customer_address: customerAddress,
@@ -425,7 +504,7 @@ export function RetailEstimateClient() {
           <p className="text-xs text-[var(--gray-muted)] mt-1">
             {loadedExisting
               ? `Editing saved estimate · changes don't auto-save — hit Update to commit`
-              : `Cash jobs · $700/SQ all-in pricing · ${templates.length} manufacturer systems`}
+              : `Cash jobs · ${templates.length} system${templates.length === 1 ? "" : "s"} · roofing, gutters & siding`}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -446,14 +525,14 @@ export function RetailEstimateClient() {
 
       {/* Template Picker */}
       <div className="glass-card p-6">
-        <h2 className="text-sm font-bold text-[var(--white)] mb-3">Shingle Line</h2>
+        <h2 className="text-sm font-bold text-[var(--white)] mb-3">Pick a system</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
           {templates.map((t) => {
             const isSelected = t._meta.template_id === selectedId;
             return (
               <button
                 key={t._meta.template_id}
-                onClick={() => setSelectedId(t._meta.template_id)}
+                onClick={() => { setSelectedId(t._meta.template_id); setBaseUnitPrice(null); }}
                 className={`text-left rounded-xl border p-4 transition-colors ${
                   isSelected
                     ? "border-[var(--cyan)] bg-[var(--cyan)]/[0.08]"
@@ -472,7 +551,8 @@ export function RetailEstimateClient() {
                   {t._meta.smog_reducing_granules ? ` · Smog-reducing` : ""}
                 </p>
                 <p className="text-xs text-[var(--cyan)] font-mono mt-2">
-                  ${t._meta.base_price_per_sq_usd}/SQ
+                  {fmtUsd(billingLineOf(t)?.unit_price ?? 0)}/{billingLineOf(t)?.unit ?? ""}
+                  <span className="text-[var(--gray-dim)] ml-1.5 uppercase text-[9px] not-italic">{templateTrade(t)}</span>
                 </p>
               </button>
             );
@@ -569,25 +649,60 @@ export function RetailEstimateClient() {
                 </label>
               </div>
               <p className="text-[10px] text-[var(--gray-muted)] mb-3">
-                Upload an EagleView, HOVER, GAF QuickMeasure, or Roofr PDF — we&apos;ll auto-fill the 10 measurement fields below. Or enter manually.
+                Upload an EagleView, HOVER, GAF QuickMeasure, or Roofr PDF — we&apos;ll auto-fill the measurement fields below. Or enter manually.
               </p>
               {importMeta && (
                 <div className="text-[10px] text-[var(--cyan)]/80 mb-3 px-3 py-2 rounded bg-[var(--cyan)]/[0.06] border border-[var(--cyan)]/20">
                   Imported from <strong>{importMeta.filename}</strong> — vendor: <strong>{importMeta.vendor}</strong> · confidence: <strong>{importMeta.confidence}</strong>
                 </div>
               )}
+              {trade === "siding" && (
+                <div className="mb-3 rounded-lg border border-[var(--cyan)]/20 bg-[var(--cyan)]/[0.04] p-3">
+                  <div className="flex items-center justify-between gap-2 flex-wrap">
+                    <p className="text-[11px] text-[var(--gray)] max-w-[60%]">
+                      No HOVER wall area? <strong className="text-[var(--white)]">Guesstimate it</strong> — drop a photo of each elevation (front/back/left/right) and we&apos;ll size the wall area from them + your roof measurements.
+                    </p>
+                    <label
+                      className={`relative inline-flex items-center gap-1.5 text-[11px] font-semibold px-3 py-1.5 rounded-lg border cursor-pointer transition-colors ${
+                        estimatingSiding
+                          ? "bg-white/[0.04] border-white/10 text-[var(--gray-dim)] cursor-wait"
+                          : "bg-[var(--cyan)]/[0.10] border-[var(--cyan)]/40 hover:bg-[var(--cyan)]/[0.18] text-[var(--cyan)]"
+                      }`}
+                    >
+                      {estimatingSiding ? "Estimating…" : "📷 Estimate from photos"}
+                      <input
+                        type="file"
+                        accept="image/*"
+                        multiple
+                        disabled={estimatingSiding}
+                        onChange={(e) => {
+                          const fsel = Array.from(e.target.files || []);
+                          e.target.value = "";
+                          if (fsel.length) handleEstimateSiding(fsel);
+                        }}
+                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-wait"
+                      />
+                    </label>
+                  </div>
+                  {sidingEstimate && (
+                    <div className="mt-2 text-[10px] text-[var(--cyan)]/90">
+                      Estimated <strong>{sidingEstimate.wall_area_sf?.toLocaleString()} SF</strong> wall · {sidingEstimate.window_count ?? 0} windows · {sidingEstimate.door_count ?? 0} doors · confidence: <strong>{sidingEstimate.confidence}</strong> ({sidingEstimate.source}). Review + edit below.
+                    </div>
+                  )}
+                </div>
+              )}
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-                {(Object.keys(MEASUREMENT_LABELS) as Array<keyof Measurements>).map((key) => (
-                  <div key={key}>
+                {fields.map((f) => (
+                  <div key={f.key}>
                     <label className="block text-[10px] uppercase tracking-wider text-[var(--gray-muted)] mb-1">
-                      {MEASUREMENT_LABELS[key]}
+                      {f.label}
                     </label>
                     <input
                       type="number"
                       step="0.01"
                       min="0"
-                      value={measurements[key]}
-                      onChange={(e) => updateMeasurement(key, parseFloat(e.target.value) || 0)}
+                      value={measurements[f.key] ?? 0}
+                      onChange={(e) => updateMeasurement(f.key, parseFloat(e.target.value) || 0)}
                       className="w-full px-3 py-2 text-sm rounded-lg bg-white/[0.03] border border-white/10 text-[var(--white)] focus:outline-none focus:border-[var(--cyan)] font-mono"
                     />
                   </div>
@@ -599,7 +714,7 @@ export function RetailEstimateClient() {
             <div className="glass-card p-6">
               <div className="flex items-center justify-between mb-3">
                 <h2 className="text-sm font-bold text-[var(--white)]">
-                  Included in {fmtUsd(selected._meta.base_price_per_sq_usd)}/SQ
+                  Included in {fmtUsd(effectiveBasePrice)}/{billingLine?.unit ?? ""}
                 </h2>
                 <span className="text-[10px] text-[var(--gray-dim)]">Bundled — no extra charge</span>
               </div>
@@ -686,13 +801,24 @@ export function RetailEstimateClient() {
                 {selected._meta.product_line}
               </h2>
               <p className="text-[10px] text-[var(--gray-muted)] mb-4">
-                {selected._meta.manufacturer} · {selected._meta.system_warranty.name}
+                {selected._meta.manufacturer}
+                {selected._meta.system_warranty ? ` · ${selected._meta.system_warranty.name}` : ""}
               </p>
 
               <div className="space-y-2 mb-4 pb-4 border-b border-white/10">
                 <div className="flex justify-between items-baseline text-xs">
-                  <span className="text-[var(--gray-muted)]">
-                    Base ({measurements.roof_area_sq} SQ × ${selected._meta.base_price_per_sq_usd})
+                  <span className="text-[var(--gray-muted)] inline-flex items-center gap-1 flex-wrap">
+                    Base ({baseQty.toLocaleString("en-US", { maximumFractionDigits: 1 })} {billingLine?.unit} × $
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={effectiveBasePrice}
+                      onChange={(e) => setBaseUnitPrice(Math.max(0, parseFloat(e.target.value) || 0))}
+                      title="Your price — set what your company charges"
+                      className="w-16 px-1 py-0.5 text-[11px] rounded bg-white/[0.05] border border-white/15 text-[var(--white)] focus:outline-none focus:border-[var(--cyan)] font-mono"
+                    />
+                    /{billingLine?.unit})
                   </span>
                   <span className="font-mono text-[var(--white)]">{fmtUsd(baseTotal)}</span>
                 </div>
@@ -804,13 +930,13 @@ export function RetailEstimateClient() {
                 </div>
               )}
 
-              {selected._meta.documents?.length > 0 && (
+              {(selected._meta.documents?.length ?? 0) > 0 && (
                 <div className="mb-4">
                   <p className="text-[10px] uppercase tracking-wider text-[var(--gray-muted)] mb-2">
                     Manufacturer Docs
                   </p>
                   <ul className="space-y-1">
-                    {selected._meta.documents.map((d) => (
+                    {selected._meta.documents?.map((d) => (
                       <li key={d.url}>
                         <a
                           href={d.url}
