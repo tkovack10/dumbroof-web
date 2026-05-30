@@ -12,6 +12,7 @@ import os
 import re
 import html as _html
 from compliance_svg import generate_house_svg, collect_annotations_from_config, CODE_TO_ZONE
+from roof_geometry_svg import render_roof_footprint, EDGE_ZONES, _LEGEND_ORDER
 
 
 def _h(text) -> str:
@@ -382,6 +383,26 @@ COMPLIANCE_CSS = """
     --f-serif: 'Spectral', Georgia, 'Times New Roman', serif;
     --f-sans:  'Libre Franklin', -apple-system, Helvetica, Arial, sans-serif;
     --f-mono:  'IBM Plex Mono', 'SFMono-Regular', Menlo, monospace;
+
+    /* — ROOF-FOOTPRINT CODE-ZONE EDGE COLORS —
+         The real-geometry overhead footprint (roof_geometry_svg) strokes each
+         polygon edge by the building-code zone it drives, emitting
+         var(--roof-<zone>, #web-default). We override the web-default brights to
+         the Spectral palette so the footprint reads as part of THIS document, not
+         a generic chart. Each maps an edge type → its code product on-palette: */
+    --roof-eave:        #0d1b3e;   /* navy   — Ice & Water Barrier (eaves)  */
+    --roof-rake:        #1f6b4a;   /* forest — Drip Edge (rakes)            */
+    --roof-ridge:       #9a2b2f;   /* brick  — Ridge Vent (ridges)          */
+    --roof-valley:      #b08a3e;   /* gold   — Valley Metal (valleys)       */
+    --roof-wall:        #c98f6d;   /* clay   — Step Flashing (wall edges)   */
+    --roof-hip:         #8a93a3;   /* mute   — Hip (neutral)                */
+    --roof-unknown:     #8a93a3;   /* mute   — Unclassified (neutral)       */
+    --roof-facet-fill:  rgba(13,27,62,0.06);   /* faint navy footprint fill */
+    --roof-facet-edge:  rgba(0,0,0,0);
+    --roof-bg:          #ffffff;
+    --roof-legend-bg:   rgba(250,248,243,0.92);  /* warm paper             */
+    --roof-legend-border: rgba(13,27,62,0.14);
+    --roof-legend-text: #1a1f29;
 }
 
 @page { size: letter; margin: 0.5in 0.55in; }
@@ -475,6 +496,19 @@ h3 { font-family: var(--f-serif); font-size: 17px; font-weight: 600; color: var(
 
 .rendering-section { text-align: center; margin: 14px 0; }
 .rendering-title { font-family: var(--f-sans); font-size: 11px; color: var(--c-slate); text-transform: uppercase; letter-spacing: 0.18em; font-weight: 700; margin-bottom: 12px; }
+
+/* ── real overhead roof-footprint frame (used IN PLACE of the generic house
+     when EagleView/Vision facet geometry is available; see _build_property_diagram) ── */
+.roof-footprint-frame { border: 1px solid var(--c-line); border-radius: 4px; padding: 18px 18px 14px; margin: 4px auto 0; background: #fff; max-width: 7.2in; break-inside: avoid; }
+.roof-footprint-frame .rff-cap { font-family: var(--f-sans); font-size: 9.5px; color: var(--c-mute); letter-spacing: 0.04em; line-height: 1.5; margin-top: 10px; text-align: left; }
+.roof-footprint-frame .rff-cap b { color: var(--c-slate); }
+/* HTML legend keying edge colors → code zones (mirrors the in-SVG legend so it
+   stays crisp at print scale). Swatch color is the SAME --roof-<zone> token. */
+.rff-legend { display: grid; grid-template-columns: 1fr 1fr; gap: 7px 22px; margin-top: 14px; text-align: left; }
+.rff-legend .leg { display: flex; gap: 9px; align-items: center; }
+.rff-legend .leg .swatch { flex: none; width: 22px; height: 5px; border-radius: 3px; }
+.rff-legend .leg .lt { font-size: 10px; line-height: 1.35; color: var(--c-slate); }
+.rff-legend .leg .lt b { font-family: var(--f-sans); font-size: 9px; letter-spacing: 0.04em; color: var(--c-ink); text-transform: uppercase; }
 
 /* ── code detail cards ── */
 .code-card { border: 1px solid var(--c-line); border-radius: 4px; padding: 18px 22px; margin: 16px 0; break-inside: avoid; background: #fff; }
@@ -1769,6 +1803,90 @@ def build_requirements_only_supplement(config: dict) -> str:
     '''
 
 
+def _extract_roof_facets_payload(config: dict):
+    """Read the claim's roof_facets payload, normalizing the two shapes Vision /
+    persistence can hand us into the {'roof_facets': [...]} dict the geometry
+    renderer expects.
+
+      * Canonical: config['roof_facets'] == {'roof_facets': [...], 'scale_bar': ...}
+      * Bare list: config['roof_facets'] == [ {facet}, {facet}, ... ]
+
+    Returns the dict form (or None if absent / wrong type). render_roof_footprint
+    itself decides renderability (returns None for the synthesized empty-polygon
+    skeleton), so this only normalizes the container.
+    """
+    rf = config.get("roof_facets")
+    if isinstance(rf, dict):
+        return rf
+    if isinstance(rf, list):
+        return {"roof_facets": rf}
+    return None
+
+
+def _footprint_legend_html(svg: str) -> str:
+    """Build the HTML code-zone legend for whichever zones the footprint SVG drew.
+
+    The SVG already carries its own in-image legend; this HTML twin keeps the key
+    crisp at print scale and uses the SAME --roof-<zone> tokens for the swatch, so
+    a per-company re-theme moves both in lockstep. Only zones present in the SVG
+    (matched on the `roof-edge--<type>` modifier) are listed, in the canonical
+    left-to-right order.
+    """
+    rows = []
+    for etype in _LEGEND_ORDER:
+        if f"roof-edge--{etype}" not in svg:
+            continue
+        info = EDGE_ZONES[etype]
+        rows.append(
+            f'<div class="leg">'
+            f'<span class="swatch" style="background:{info["stroke"]};"></span>'
+            f'<span class="lt"><b>{_h(etype.capitalize())}</b> {_h(info["zone"])}</span>'
+            f'</div>'
+        )
+    if not rows:
+        return ""
+    return '<div class="rff-legend">' + "".join(rows) + "</div>"
+
+
+def _build_property_diagram(config: dict, annotations: list) -> str:
+    """The Doc-06 property-diagram block.
+
+    BEFORE drawing the generic parametric house, attempt the REAL overhead roof
+    footprint from the claim's EagleView/Vision facet geometry. If
+    render_roof_footprint returns an SVG (usable polygon geometry), use it inside
+    the annotated footprint frame, with the same section header the house used
+    plus the code-zone legend. If it returns None (no geometry — incl. the siding
+    NY fixture and the ~40% synthesized-skeleton claims), FALL BACK to the existing
+    generic house diagram, unchanged.
+    """
+    payload = _extract_roof_facets_payload(config)
+    footprint_svg = render_roof_footprint(payload) if payload is not None else None
+
+    if footprint_svg:
+        legend = _footprint_legend_html(footprint_svg)
+        return f'''<div class="rendering-section">
+        <div class="rendering-title">Overhead Roof Footprint — Code Requirement Zones</div>
+        <div class="roof-footprint-frame" data-real-footprint="true">
+            {footprint_svg}
+            {legend}
+            <div class="rff-cap">
+                <b>Real overhead roof footprint</b> derived from the measured facet
+                geometry. Each roof edge is colored by the building-code zone it
+                drives &mdash; eaves require the Ice &amp; Water Barrier, rakes the
+                drip edge, ridges the ridge vent, valleys valley metal, and wall
+                lines step flashing.
+            </div>
+        </div>
+    </div>'''
+
+    # No usable geometry → existing generic annotated house, unchanged.
+    house_svg = generate_house_svg(config, annotations)
+    return f'''<div class="rendering-section">
+        <div class="rendering-title">Annotated Property Diagram — Code Requirement Zones</div>
+        {house_svg}
+    </div>'''
+
+
 def build_compliance_report(config: dict) -> str:
     """
     Build the complete Building Code Compliance Report HTML.
@@ -1789,8 +1907,9 @@ def build_compliance_report(config: dict) -> str:
         print("[COMPLIANCE] No code citations found on line items — skipping report")
         return ""
 
-    # 2. Generate annotated house SVG
-    house_svg = generate_house_svg(config, annotations)
+    # 2. Generate the property diagram — REAL overhead roof footprint when facet
+    #    geometry is available, else the generic annotated house (fallback).
+    property_diagram = _build_property_diagram(config, annotations)
 
     # 3. Build sections
     cover_html = _build_cover_page(config, jurisdiction, len(annotations))
@@ -1846,10 +1965,7 @@ def build_compliance_report(config: dict) -> str:
     <div class="page-break"></div>
 
     {_run_head(config, "Property Diagram · Code Requirement Zones")}
-    <div class="rendering-section">
-        <div class="rendering-title">Annotated Property Diagram — Code Requirement Zones</div>
-        {house_svg}
-    </div>
+    {property_diagram}
     {_run_foot(config, "Building Code Compliance Report")}
     <div class="page-break"></div>
 
