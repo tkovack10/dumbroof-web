@@ -3053,6 +3053,22 @@ def _resolve_market_provenance(config):
     return {"market_code": market_code, "market_name": market_name}
 
 
+def _billed_scope_label(items, scope_trades) -> str:
+    """The estimate's 'Scope' header must reflect the trades actually BILLED, not
+    just requested. scope_trades can carry a trade (e.g. 'gutters') that produced
+    no line items, leaving a "Roofing, Gutters" label over a roofing-only estimate.
+    Returns the requested trades that appear in the line items, title-cased; falls
+    back to the full requested scope when there are NO line items (estimate-pending)."""
+    billed = {
+        (it.get("trade") or it.get("category") or "").lower()
+        for it in (items or [])
+        if (it.get("trade") or it.get("category"))
+    }
+    scope_trades = scope_trades or []
+    display = [t for t in scope_trades if t.lower() in billed] if billed else scope_trades
+    return ", ".join(t.title() for t in display)
+
+
 def build_xactimate_estimate(config):
     """Build Xactimate-style line-item estimate with @page margin:0 fix."""
     lang = get_language(config)
@@ -3198,6 +3214,9 @@ def build_xactimate_estimate(config):
 
     # Summary
     trades_str = ", ".join(t.title() for t in scope.get("trades", []))
+    # Gutter-label fix: the header "Scope" must show BILLED trades, not a requested
+    # trade (e.g. "gutters") that produced no line items. See _billed_scope_label.
+    scope_display_str = _billed_scope_label(items, scope.get("trades", []))
     o_and_p_note = scope.get("o_and_p_note", "")
 
     # WS-5 GUARD 4 — assemble the estimate body. The verified/priced branch is
@@ -3247,7 +3266,7 @@ storm-related damage observed during the field inspection.
 </table>
 
 <div class="highlight-box">
-<strong>NOTE ON OVERHEAD &amp; PROFIT:</strong> {"O&P (10% + 11%) is included — " + str(len(scope.get('trades',[]))) + " trades involved (" + trades_str + ")." if fin['o_and_p'] else o_and_p_note}
+<strong>NOTE ON OVERHEAD &amp; PROFIT:</strong> {"O&P (10% + 11%) is included — " + str(len(scope.get('trades',[]))) + " trades involved (" + trades_str + ")." if fin['o_and_p'] else (o_and_p_note or "O&P (10% + 11%) is not applied — this scope involves fewer than 3 trades.")}
 </div>
 
 <div class="highlight-box">
@@ -3299,7 +3318,7 @@ body {{ margin: 0; padding: 0; }}
     <tr><th style="width:35%">Field</th><th>Detail</th></tr>
 {doc2_identity_rows}    <tr><td><strong>Price List</strong></td><td>{financials.get('price_list', '')}{f" &mdash; {_prov_market_name} ({_prov_market_code})" if _prov_market_name else ""}</td></tr>
     <tr><td><strong>Date of Loss</strong></td><td>{dates['date_of_loss']}</td></tr>
-    <tr><td><strong>Scope</strong></td><td>{trades_str}</td></tr>
+    <tr><td><strong>Scope</strong></td><td>{scope_display_str}</td></tr>
 {eagleview_row_html}
 </table>
 
