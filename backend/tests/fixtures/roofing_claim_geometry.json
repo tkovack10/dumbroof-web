@@ -1,0 +1,222 @@
+{
+  "_fixture_doc": "WS-7 Doc-06 ROOFING demo claim with REAL facet geometry. Property is in the TX (Dallas/DFW) priced market; carrier scope present so Doc-06 renders PRICED. The roofing line_items carry code citations + qty so the priced code-compliance supplement has rows. The roof_facets payload carries 4 facets with realistic polygon_pixels (clockwise, normalized ~0-1000, sharing ridge vertices so they tile into a coherent gable footprint) + parallel edge_types arrays so render_roof_footprint draws the REAL overhead footprint with code zones on the actual edges (eaves on the lower/outer edges, rakes on the sloped ends, ridge on the shared interior edge, a valley + a wall/step-flashing edge). This fixture EXISTS to exercise the real-footprint branch of _build_property_diagram (contrast: siding_claim_ny.json has no roof_facets and falls back to the generic house).",
+  "config": {
+    "company": {
+      "name": "USA ROOF MASTERS",
+      "address": "3070 Bristol Pike, Building 1, Suite 122",
+      "city_state_zip": "Bensalem, PA 19020",
+      "ceo_name": "Tom Kovack Jr.",
+      "ceo_title": "CEO",
+      "email": "TKovack@USARoofMasters.com",
+      "cell_phone": "267-679-1504",
+      "office_phone": "267-332-0197",
+      "website": "www.USARoofMasters.com"
+    },
+    "compliance": {
+      "user_role": "contractor"
+    },
+    "property": {
+      "address": "412 Meadow Crest Dr, Garland, TX 75040, USA",
+      "city": "Garland",
+      "state": "TX",
+      "zip": "75040",
+      "stories": 1
+    },
+    "market_code": "TXDF8X",
+    "insured": {
+      "name": "Daniel & Rita Alvarez",
+      "phone": "972-555-0148",
+      "email": "alvarez.home@example.com"
+    },
+    "dates": {
+      "date_of_loss": "2026-03-14"
+    },
+    "carrier": {
+      "name": "Allstate",
+      "claim_number": "TX-2026-0008812",
+      "policy_number": "AS-99820114",
+      "deductible": 2500,
+      "adjuster_name": "Marcus Reed",
+      "adjuster_email": "mreed@allstate-claims.example.com",
+      "inspector_name": "Marcus Reed",
+      "inspector_company": "Allstate Field Services",
+      "inspection_date": "2026-03-25",
+      "carrier_rcv": 9120.40,
+      "carrier_arguments": [
+        "Approved field shingles only; no ice & water barrier, drip edge, or ridge vent line items."
+      ],
+      "carrier_line_items": [
+        {"description": "Laminated comp shingle roofing", "qty": 26.5, "unit": "SQ", "status": "under"},
+        {"description": "Remove laminated comp shingle roofing", "qty": 26.5, "unit": "SQ", "status": "match"},
+        {"description": "Ice & water barrier", "qty": 0, "unit": "SF", "status": "missing"},
+        {"description": "Drip edge", "qty": 0, "unit": "LF", "status": "missing"},
+        {"description": "Ridge vent - shingle-over", "qty": 0, "unit": "LF", "status": "missing"},
+        {"description": "Valley metal", "qty": 0, "unit": "LF", "status": "missing"}
+      ]
+    },
+    "scope": {
+      "trades": ["Roofing"]
+    },
+    "structures": [
+      {
+        "name": "Main Dwelling",
+        "roof_area_sq": 26.5,
+        "roof_area_sf": 2650,
+        "facets": 4,
+        "predominant_pitch": "6/12"
+      }
+    ],
+    "measurements": {
+      "total_area": 2650,
+      "eave": 138.0,
+      "rake": 96.0,
+      "ridge": 64.0,
+      "valley": 28.0,
+      "hip": 0,
+      "flashing": 22.0,
+      "step_flashing": 14.0,
+      "drip_edge": 234.0
+    },
+    "forensic_findings": {
+      "executive_summary": "Wind-driven hail from the March 14, 2026 storm produced widespread granule loss and mat fracturing across all roof slopes of this single-story dwelling. The carrier approved the field shingle replacement but omitted the code-required ice & water barrier, drip edge, ridge ventilation, and valley metal that a compliant tear-off and re-roof requires.",
+      "damage_summary": "Functional hail bruising and granule loss on the comp-shingle roofing field; valleys and eaves show impact concentration consistent with the recorded storm direction."
+    },
+    "line_items": [
+      {
+        "category": "ROOFING",
+        "trade": "ROOFING",
+        "description": "Remove laminated comp shingle roofing",
+        "qty": 26.5,
+        "unit": "SQ",
+        "unit_price": 64.31,
+        "scope_timing": "initial",
+        "_price_source": "relational",
+        "code_citation": {
+          "section": "R908.3",
+          "code_tag": "IRC R908.3",
+          "requirement": "Existing roof coverings shall be removed down to the roof deck (full tear-off).",
+          "title": "Full Tear-Off Required"
+        }
+      },
+      {
+        "category": "ROOFING",
+        "trade": "ROOFING",
+        "description": "Laminated comp shingle roofing",
+        "qty": 28.0,
+        "unit": "SQ",
+        "unit_price": 269.32,
+        "scope_timing": "initial",
+        "_price_source": "relational",
+        "code_citation": {
+          "section": "R905.1",
+          "code_tag": "IRC R905.1",
+          "requirement": "Roof coverings shall be applied in accordance with the manufacturer's installation instructions, which carry the force of code.",
+          "title": "Manufacturer Install = Law"
+        }
+      },
+      {
+        "category": "ROOFING",
+        "trade": "ROOFING",
+        "description": "Ice & water barrier",
+        "qty": 968.0,
+        "unit": "SF",
+        "unit_price": 1.62,
+        "scope_timing": "initial",
+        "_price_source": "relational",
+        "code_citation": {
+          "section": "R905.1.2",
+          "code_tag": "IRC R905.1.2",
+          "requirement": "An ice barrier shall be installed at eaves extending from the lowest edges of all roof surfaces to a point at least 24 in. inside the exterior wall line.",
+          "title": "Ice & Water Barrier"
+        }
+      },
+      {
+        "category": "ROOFING",
+        "trade": "ROOFING",
+        "description": "Drip edge",
+        "qty": 234.0,
+        "unit": "LF",
+        "unit_price": 2.74,
+        "scope_timing": "initial",
+        "_price_source": "relational",
+        "code_citation": {
+          "section": "R905.2.8.5",
+          "code_tag": "IRC R905.2.8.5",
+          "requirement": "A drip edge shall be provided at eaves and rake edges of shingle roofs.",
+          "title": "Drip Edge Required"
+        }
+      },
+      {
+        "category": "ROOFING",
+        "trade": "ROOFING",
+        "description": "Ridge vent - shingle-over",
+        "qty": 64.0,
+        "unit": "LF",
+        "unit_price": 8.91,
+        "scope_timing": "initial",
+        "_price_source": "relational",
+        "code_citation": {
+          "section": "R806.1",
+          "code_tag": "IRC R806.1",
+          "requirement": "Enclosed attic spaces shall be provided with cross ventilation; ridge ventilation completes the balanced intake/exhaust system.",
+          "title": "Ridge Ventilation"
+        }
+      },
+      {
+        "category": "ROOFING",
+        "trade": "ROOFING",
+        "description": "Valley metal",
+        "qty": 28.0,
+        "unit": "LF",
+        "unit_price": 6.18,
+        "scope_timing": "initial",
+        "_price_source": "relational",
+        "code_citation": {
+          "section": "R905.2.8.2",
+          "code_tag": "IRC R905.2.8.2",
+          "requirement": "Valley linings shall be installed in accordance with the manufacturer's instructions before the application of shingles.",
+          "title": "Valley Lining Required"
+        }
+      }
+    ],
+    "roof_facets": {
+      "roof_facets": [
+        {
+          "facet_id": "F1",
+          "cardinal": "S",
+          "pitch": "6/12",
+          "area_pct": 38.0,
+          "polygon_pixels": [[150, 200], [850, 200], [850, 500], [150, 500]],
+          "edge_types": ["eave", "rake", "ridge", "rake"]
+        },
+        {
+          "facet_id": "F2",
+          "cardinal": "N",
+          "pitch": "6/12",
+          "area_pct": 38.0,
+          "polygon_pixels": [[150, 500], [850, 500], [850, 800], [150, 800]],
+          "edge_types": ["ridge", "rake", "eave", "rake"]
+        },
+        {
+          "facet_id": "F3",
+          "cardinal": "W",
+          "pitch": "6/12",
+          "area_pct": 12.0,
+          "polygon_pixels": [[50, 200], [150, 200], [150, 500], [50, 500]],
+          "edge_types": ["eave", "rake", "valley", "eave"]
+        },
+        {
+          "facet_id": "F4",
+          "cardinal": "E",
+          "pitch": "4/12",
+          "area_pct": 12.0,
+          "polygon_pixels": [[850, 500], [950, 500], [950, 800], [850, 800]],
+          "edge_types": ["valley", "rake", "eave", "wall"]
+        }
+      ],
+      "north_arrow_angle": 0.0,
+      "scale_bar": {"pixels": 100, "feet": 22},
+      "_synthesized": false
+    }
+  }
+}

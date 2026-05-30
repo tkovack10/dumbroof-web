@@ -159,12 +159,12 @@ def _svg_house_structure(pts: dict, has_siding: bool, stories: int) -> str:
     """Generate the house structure SVG elements."""
     wt = pts["wall_top"]
 
-    # Colors
-    wall_fill = "#e4e8ed" if not has_siding else "#d6dce5"
-    wall_side_fill = "#ccd3dc" if not has_siding else "#bfc8d4"
-    roof_fill = "#8b9bb0"
-    roof_side_fill = "#7a8a9e"
-    stroke = "#2c3e50"
+    # Colors — "Spectral serif-authority" palette (navy ink + warm neutrals).
+    wall_fill = "#eef0f4" if not has_siding else "#e3e7ee"
+    wall_side_fill = "#dfe3ea" if not has_siding else "#d2d8e2"
+    roof_fill = "#9aa6b8"
+    roof_side_fill = "#828fa3"
+    stroke = "#0d1b3e"
 
     elements = []
 
@@ -208,7 +208,7 @@ def _svg_house_structure(pts: dict, has_siding: bool, stories: int) -> str:
     win_h = pts["wh"] * 0.35
     for wx in [pts["fl"][0] + 60, pts["fl"][0] + 200, pts["fl"][0] + 320]:
         elements.append(f'<rect x="{wx}" y="{win_y}" width="55" height="{win_h}" '
-                         f'rx="2" fill="#a8c4e0" stroke="{stroke}" stroke-width="1.5"/>')
+                         f'rx="2" fill="#c7d3e2" stroke="{stroke}" stroke-width="1.5"/>')
         # Window cross
         elements.append(f'<line x1="{wx}" y1="{win_y + win_h/2}" x2="{wx+55}" y2="{win_y + win_h/2}" '
                          f'stroke="{stroke}" stroke-width="1"/>')
@@ -220,7 +220,7 @@ def _svg_house_structure(pts: dict, has_siding: bool, stories: int) -> str:
     door_h = pts["wh"] * 0.55
     door_y = _HOUSE_BOTTOM - door_h
     elements.append(f'<rect x="{door_x}" y="{door_y}" width="50" height="{door_h}" '
-                     f'rx="2" fill="#6b4c3b" stroke="{stroke}" stroke-width="1.5"/>')
+                     f'rx="2" fill="#7d1d22" stroke="{stroke}" stroke-width="1.5"/>')
 
     # Side windows (use explicit parallelogram instead of skewY to avoid position displacement)
     side_win_x = pts["fr"][0] + 20
@@ -233,16 +233,16 @@ def _svg_house_structure(pts: dict, has_siding: bool, stories: int) -> str:
     sw_bl = (side_win_x, side_win_y + side_win_h)
     elements.append(f'<polygon points="{sw_tl[0]},{sw_tl[1]} {sw_tr[0]},{sw_tr[1]} '
                      f'{sw_br[0]},{sw_br[1]} {sw_bl[0]},{sw_bl[1]}" '
-                     f'fill="#a8c4e0" stroke="{stroke}" stroke-width="1.5"/>')
+                     f'fill="#c7d3e2" stroke="{stroke}" stroke-width="1.5"/>')
 
     # Foundation line
     elements.append(f'<rect x="{pts["fl"][0] - 5}" y="{_HOUSE_BOTTOM}" '
-                     f'width="{_WALL_WIDTH + 10}" height="12" fill="#8c9aab" stroke="{stroke}" stroke-width="1"/>')
+                     f'width="{_WALL_WIDTH + 10}" height="12" fill="#9aa6b8" stroke="{stroke}" stroke-width="1"/>')
 
     # Eave gutter line
     elements.append(f'<line x1="{pts["fl"][0] - 10}" y1="{_HOUSE_BOTTOM + 3}" '
                      f'x2="{pts["fr"][0] + 10}" y2="{_HOUSE_BOTTOM + 3}" '
-                     f'stroke="#5a6878" stroke-width="4" stroke-linecap="round"/>')
+                     f'stroke="#16284f" stroke-width="4" stroke-linecap="round"/>')
 
     return "\n    ".join(elements)
 
@@ -257,30 +257,30 @@ def _svg_zone_highlights(zones: list[str], pts: dict) -> str:
         if zone == "eave-front":
             elements.append(f'<line x1="{pts["fl"][0] - 10}" y1="{_HOUSE_BOTTOM + 3}" '
                              f'x2="{pts["fr"][0] + 10}" y2="{_HOUSE_BOTTOM + 3}" '
-                             f'stroke="#e74c3c" stroke-width="6" opacity="0.6" stroke-linecap="round"/>')
+                             f'stroke="#9a2b2f" stroke-width="6" opacity="0.6" stroke-linecap="round"/>')
         elif zone == "rake-left":
             rpf = pts["roof_peak_front"]
             elements.append(f'<line x1="{rpf[0]}" y1="{rpf[1]}" '
                              f'x2="{pts["roof_fl"][0]}" y2="{pts["roof_fl"][1]}" '
-                             f'stroke="#e74c3c" stroke-width="5" opacity="0.6" stroke-linecap="round"/>')
+                             f'stroke="#9a2b2f" stroke-width="5" opacity="0.6" stroke-linecap="round"/>')
         elif zone == "ridge":
             rpf = pts["roof_peak_front"]
             rpb = pts["roof_peak_side"]
             elements.append(f'<line x1="{rpf[0]}" y1="{rpf[1]}" x2="{rpb[0]}" y2="{rpb[1]}" '
-                             f'stroke="#e74c3c" stroke-width="5" opacity="0.6" stroke-linecap="round"/>')
+                             f'stroke="#9a2b2f" stroke-width="5" opacity="0.6" stroke-linecap="round"/>')
         elif zone == "corner":
             elements.append(f'<line x1="{pts["fr"][0]}" y1="{wt}" x2="{pts["fr"][0]}" y2="{_HOUSE_BOTTOM}" '
-                             f'stroke="#e74c3c" stroke-width="8" opacity="0.5" stroke-linecap="round"/>')
+                             f'stroke="#9a2b2f" stroke-width="8" opacity="0.5" stroke-linecap="round"/>')
         elif zone == "wall-front":
             elements.append(f'<rect x="{pts["fl"][0] + 2}" y="{wt + 2}" '
                              f'width="{_WALL_WIDTH - 4}" height="{pts["wh"] - 4}" '
-                             f'fill="#e74c3c" opacity="0.08" rx="3"/>')
+                             f'fill="#9a2b2f" opacity="0.08" rx="3"/>')
         elif zone == "roof-field":
             rpf = pts["roof_peak_front"]
             elements.append(f'<polygon points="{rpf[0]},{rpf[1]} '
                              f'{pts["roof_fl"][0]},{pts["roof_fl"][1]} '
                              f'{pts["roof_fr"][0]},{pts["roof_fr"][1]}" '
-                             f'fill="#e74c3c" opacity="0.08"/>')
+                             f'fill="#9a2b2f" opacity="0.08"/>')
 
     return "\n    ".join(elements)
 
@@ -307,9 +307,9 @@ def _svg_annotation(zone: str, code_tag: str, title: str, measurement: str,
     ay = bcy + dy / dist * min(box_h / 2 + 10, dist * 0.3)
 
     # Colors
-    border_color = "#c0392b" if is_critical else "#2c3e50"
-    bg_color = "#fdf2f2" if is_critical else "#f0f4f8"
-    tag_color = "#c0392b" if is_critical else "#1a5276"
+    border_color = "#9a2b2f" if is_critical else "#0d1b3e"
+    bg_color = "#f5dede" if is_critical else "#f3efe5"
+    tag_color = "#9a2b2f" if is_critical else "#16284f"
     arrow_color = border_color
 
     svg = f'''
@@ -323,7 +323,7 @@ def _svg_annotation(zone: str, code_tag: str, title: str, measurement: str,
     <text x="{box_x + 10}" y="{box_y + 18}" font-family="Helvetica, Arial, sans-serif"
           font-size="10" font-weight="bold" fill="{tag_color}">{_escape(code_tag)}</text>
     <text x="{box_x + 10}" y="{box_y + 33}" font-family="Helvetica, Arial, sans-serif"
-          font-size="11" fill="#2c3e50">{_escape(title[:35])}</text>
+          font-size="11" fill="#0d1b3e">{_escape(title[:35])}</text>
     <text x="{box_x + 10}" y="{box_y + 48}" font-family="Helvetica, Arial, sans-serif"
           font-size="9" fill="#5d6d7e">{_escape(measurement[:40])}</text>
     '''
@@ -414,19 +414,19 @@ def generate_house_svg(config: dict, annotations: list[dict]) -> str:
       <feDropShadow dx="2" dy="2" stdDeviation="3" flood-color="#000" flood-opacity="0.12"/>
     </filter>
     <marker id="arrowhead-blue" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
-      <polygon points="0 0, 10 3.5, 0 7" fill="#2c3e50"/>
+      <polygon points="0 0, 10 3.5, 0 7" fill="#0d1b3e"/>
     </marker>
     <marker id="arrowhead-red" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
-      <polygon points="0 0, 10 3.5, 0 7" fill="#c0392b"/>
+      <polygon points="0 0, 10 3.5, 0 7" fill="#9a2b2f"/>
     </marker>
   </defs>
 
   <!-- Background -->
-  <rect width="{VIEWBOX_W}" height="{VIEWBOX_H}" fill="#fafbfc" rx="8"/>
+  <rect width="{VIEWBOX_W}" height="{VIEWBOX_H}" fill="#faf8f3" rx="8"/>
 
   <!-- Ground line -->
   <line x1="100" y1="{_HOUSE_BOTTOM + 14}" x2="780" y2="{_HOUSE_BOTTOM + 14}"
-        stroke="#bdc3c7" stroke-width="1" stroke-dasharray="4,4"/>
+        stroke="#d8d2c5" stroke-width="1" stroke-dasharray="4,4"/>
 ''']
 
     # House structure
@@ -453,11 +453,11 @@ def generate_house_svg(config: dict, annotations: list[dict]) -> str:
     # Title bar at bottom
     svg_parts.append(f'''
   <!-- Legend -->
-  <rect x="180" y="{VIEWBOX_H - 40}" width="540" height="30" rx="4" fill="#2c3e50" opacity="0.9"/>
-  <circle cx="220" cy="{VIEWBOX_H - 25}" r="5" fill="#c0392b"/>
+  <rect x="180" y="{VIEWBOX_H - 40}" width="540" height="30" rx="4" fill="#0d1b3e" opacity="0.9"/>
+  <circle cx="220" cy="{VIEWBOX_H - 25}" r="5" fill="#9a2b2f"/>
   <text x="230" y="{VIEWBOX_H - 21}" font-family="Helvetica, Arial" font-size="10" fill="white">
     Code items commonly omitted by carriers</text>
-  <circle cx="500" cy="{VIEWBOX_H - 25}" r="5" fill="#2c3e50"/>
+  <circle cx="500" cy="{VIEWBOX_H - 25}" r="5" fill="#0d1b3e"/>
   <text x="510" y="{VIEWBOX_H - 21}" font-family="Helvetica, Arial" font-size="10" fill="white">
     Standard code requirements</text>
 ''')
@@ -530,7 +530,7 @@ def _build_measurement_string(zone: str, measurements: dict, line_item: dict) ->
         "valley": f"Valley: {measurements.get('valley', 0):.0f} LF",
         "wall-front": f"Wall: {qty:.0f} {unit}",
         "wall-side": f"Wall: {qty:.0f} {unit}",
-        "corner": "Wrap min 12\" around corners",
+        "corner": "Wrap min 6 in. around corners",
         "roof-field": f"Roof: {measurements.get('total_area', 0):.0f} SF",
     }
 

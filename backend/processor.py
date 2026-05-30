@@ -504,10 +504,37 @@ def _priced(pricing: dict, key: str, fallback: float) -> float:
 
     Fallback values remain the canonical NYBI26 baseline. Loud telemetry
     rather than silent overpricing.
+
+    WS-7 (2026-05-29) — PER-ROW PRICE PROVENANCE. Records, per short_key, where
+    the resolved price came from into ``pricing["_key_sources"][key]``:
+        'relational'         — native per-market rate from the relational catalog
+        'json-fallback'      — all-markets.json inversion (relational DB unavailable)
+        'state-json-fallback'— legacy nybi26/papi26 per-state JSON merge (keys
+                               Alfonso hasn't published per-market yet, e.g.
+                               scaffold_staging)
+        'hardcoded-fallback' — the NY-baseline literal below (E251 class). A code
+                               item priced this way must NEVER render on the
+                               carrier-facing supplement as if it were a native
+                               per-market rate — Doc-06 tests hard-FAIL on that.
+    INTERNAL/AUDIT-ONLY — apply_price_provenance() stamps the per-row source onto
+    each line item; the carrier-facing PDF never prints it.
     """
+    sources = pricing.setdefault("_key_sources", {})
     val = pricing.get(key)
     if val is not None:
+        # Legacy per-state JSON merge (lines below) tags its keys so a native
+        # market rate is never confused with a coarse state-baseline rate. WS-7:
+        # encode WHICH state's legacy JSON the rate came from
+        # ('state-json-fallback:NY') so an auditor (qa_auditor._is_fallback) can
+        # tell an own-state native Xactimate rate (NY house_wrap on a NY claim —
+        # genuinely native, NOT coarse) from a cross-state baseline.
+        if key in pricing.get("_legacy_state_keys", ()):
+            _ls = pricing.get("_legacy_state") or ""
+            sources[key] = f"state-json-fallback:{_ls}" if _ls else "state-json-fallback"
+        else:
+            sources[key] = pricing.get("_price_source", "relational")
         return val
+    sources[key] = "hardcoded-fallback"
     market = pricing.get("_market_code", "?")
     bucket = (market, key)
     count = _PRICING_FALLBACK_LOG.get(bucket, 0)
@@ -515,6 +542,129 @@ def _priced(pricing: dict, key: str, fallback: float) -> float:
     if count == 0:  # log only the first time per (market, key) to keep stderr clean
         print(f"[PRICING FALLBACK] market={market} key={key} → ${fallback} (hardcoded NY baseline; this market lacks the matching short_key)")
     return fallback
+
+
+# WS-7: canonical line-item description (the FROZEN desc as it appears in
+# build_line_items' items.append) → pricing short_key. This is the AUTHORITATIVE
+# reverse map for per-row provenance attribution — it mirrors the exact `_priced`
+# call sites in build_line_items, so it covers descriptions that the
+# all-markets-derived `_DESC_TO_PRICING_KEY` (canonical Xactimate descs) does not
+# (e.g. "Ice & water barrier (2 courses eaves + 1 course valleys)").
+_LINEITEM_DESC_TO_PRICING_KEY = {
+    "R&R Natural slate roofing - high grade": None,  # composite price (slate_remove+slate_install) — handled specially
+    "Underlayment - felt 30# (deck area not covered by I&W)": "slate_underlayment",
+    "Copper nails & hooks for slate": "slate_nails_hooks",
+    "Slate roofing - additional labor (specialist)": "slate_specialist_labor",
+    "Scaffold/staging setup & removal": "scaffold_staging",
+    "Remove concrete/clay tile roofing": "tile_remove",
+    "Concrete/clay tile roofing": "tile_install",
+    "Remove modified bitumen/flat roofing": "flat_remove",
+    "Modified bitumen roofing - 2 ply torch applied": "flat_install",
+    "Underlayment - base sheet (flat roof)": "flat_underlayment",
+    "Remove metal roofing - standing seam": "metal_remove",
+    "Metal roofing - standing seam": "metal_install",
+    "Remove laminated comp shingle roofing": "laminated_remove",
+    "Laminated - High grd - comp. shingle rfg. - w/out felt": "laminated_high_install",
+    "Laminated comp shingle roofing - w/out felt": "laminated_install",
+    "Remove 3-tab 25yr comp shingle roofing": "3tab_remove",
+    "3-tab 25yr comp shingle roofing - w/out felt": "3tab_install",
+    "Underlayment - felt 15# (deck area not covered by I&W)": "laminated_underlayment",
+    "Ice & water barrier (2 courses eaves + 1 course valleys)": "ice_water",
+    "R&R Drip edge - copper": "drip_edge_copper",
+    "R&R Drip edge - aluminum": "drip_edge_aluminum",
+    "R&R Starter strip - asphalt shingle": "starter_strip",
+    "R&R Ridge cap - slate": "slate_ridge_cap",
+    "R&R Ridge cap - tile": "tile_ridge_cap",
+    "R&R Ridge cap - metal": "metal_ridge_cap",
+    "R&R Ridge vent - shingle over": "ridge_vent",
+    "R&R Valley flashing - copper": "copper_valley_flashing",
+    "R&R Valley metal": "valley_metal",
+    "R&R Skylight flashing kit": "skylight_flashing",
+    "R&R Step flashing - copper": "step_flashing_copper",
+    "R&R Step flashing": "step_flashing",
+    # WS-7 SIDING flagship — the EXACT descriptions build_line_items appends for the
+    # full siding scope. Without these the siding rows fall through to claim-level
+    # inferred attribution (_price_source_inferred=True) and falsely trip
+    # CODE_SUPPLEMENT_FALLBACK_PRICED on every siding claim. (House wrap + wall
+    # flashing embed a dynamic {code_prefix} — they are NORMALIZED to their base
+    # form in apply_price_provenance below and keyed via _SIDING_DYNAMIC_DESC_KEYS,
+    # not literal entries here.)
+    "R&R Siding - .024 metal (aluminum/steel)": "siding_aluminum_024",
+    "R&R Siding - vinyl": "siding_vinyl",
+    "R&R Siding - vinyl - high grade": "siding_vinyl_high",
+    "R&R Siding - vinyl - specialty grade": "siding_vinyl_premium",
+    "R&R Siding - vinyl - insulated": "siding_vinyl_insulated",
+    "R&R Cedar shingle siding": "siding_cedar_shingle",
+    "R&R Siding - fiber cement": "siding_vinyl_insulated",
+    "R&R Siding - .019 metal (aluminum/steel)": "siding_metal_019",
+    "Fanfold insulation board": "fanfold_insulation",
+    "Siding labor minimum": "siding_labor_min",
+    "Scaffolding - per week": "scaffolding_week",
+    "Dumpster load - siding debris": "dumpster",
+    "R&R Wrap wood window frame & trim with aluminum sheet": "window_wrap_standard",
+    "R&R Door frame wrap - aluminum coil stock": "door_wrap_aluminum_lf",
+    "R&R Garage door wrap - aluminum coil stock": "garage_door_wrap_lf",
+}
+
+# WS-7 SIDING — house wrap + wall flashing embed a dynamic state code prefix
+# (e.g. "RCNYS"/"TX-IRC"/"IRC") that varies per claim, so they can't be literal
+# reverse-map keys. apply_price_provenance strips the "(code-required per … RNNN.N)"
+# suffix and matches against these stable base prefixes → short_key.
+_SIDING_DYNAMIC_DESC_KEYS = (
+    ("House wrap / Tyvek", "house_wrap"),
+    ("Wall flashing - aluminum", "wall_flashing"),
+)
+
+
+def _siding_dynamic_short_key(base_desc: str):
+    """Return the short_key for a dynamic-code-prefix siding desc (house wrap /
+    wall flashing) or None. Matches the stable leading phrase so the per-state
+    "(code-required per RCNYS R703.2)" suffix never blocks attribution."""
+    for prefix, key in _SIDING_DYNAMIC_DESC_KEYS:
+        if base_desc.startswith(prefix):
+            return key
+    return None
+
+
+def apply_price_provenance(line_items: list, pricing: dict) -> None:
+    """WS-7 — stamp each line item with an INTERNAL ``_price_source`` so a code
+    item that fell back to a NY-baseline price (E251 class) is auditable.
+
+    Source is resolved per short_key from ``pricing["_key_sources"]`` (populated
+    by ``_priced``). Resolution order for a given line item's short_key:
+        1. the explicit WS-7 line-item reverse map (mirrors the _priced sites);
+        2. the all-markets canonical-desc reverse map (_DESC_TO_PRICING_KEY).
+    A line whose key can't be reverse-mapped (special/composite/derived prices)
+    is stamped with the claim-level source so it is NEVER left unlabeled — but it
+    is also flagged ``_price_source_inferred=True`` so an auditor can tell the
+    attribution was claim-level, not key-precise.
+
+    Mutates line_items in place. INTERNAL/AUDIT-ONLY — the carrier-facing PDF
+    never prints this field (compliance_report strips _-prefixed keys).
+    """
+    key_sources = pricing.get("_key_sources", {}) or {}
+    claim_source = pricing.get("_price_source", "relational")
+    # Build a single reverse map: canonical all-markets descs first, then the
+    # WS-7 line-item descs override (authoritative for the actual call sites).
+    rev = {desc: key for desc, key in _DESC_TO_PRICING_KEY.items()}
+    rev.update({k: v for k, v in _LINEITEM_DESC_TO_PRICING_KEY.items() if v})
+    for li in line_items:
+        desc = (li.get("description") or "").strip()
+        # Strip a "<Structure> — " prefix added by build_multi_structure_line_items.
+        base_desc = desc.split(" — ", 1)[-1] if " — " in desc else desc
+        short_key = (
+            rev.get(base_desc)
+            or rev.get(desc)
+            or _siding_dynamic_short_key(base_desc)
+        )
+        if short_key and short_key in key_sources:
+            li["_price_source"] = key_sources[short_key]
+        else:
+            # Key-precise attribution unavailable (composite/derived/manual price
+            # or a desc not in either map). Fall back to the claim-level source so
+            # the row is auditable, and flag that the attribution was inferred.
+            li["_price_source"] = claim_source
+            li["_price_source_inferred"] = True
 
 # Canonical state → price list display label (shown in PDF estimate header).
 # Actual price overlay comes from XactRegistry.resolve_market() + all-markets.json,
@@ -921,16 +1071,30 @@ def get_pricing_for_state(state: str, zip_code: str = "", city: str = "", market
     pricing["_market_name"] = market_meta.get("name", "")
     pricing["_price_source"] = _price_source
     pricing["_meta"] = True
+    # WS-7: the claim's own state — so a state-json-fallback key can be labeled with
+    # WHICH state's legacy JSON it came from (own-state native vs cross-state coarse).
+    pricing["_claim_state"] = (state or "").upper()
 
     # Legacy per-state JSON fallback only for short_keys NOT in market data.
     # all-markets.json doesn't have e.g. "scaffold_staging", "slate_specialist_labor" — those
     # come from nybi26.json/papi26.json. We still need them until Alfonso publishes those rates.
+    # WS-7: tag every key sourced from this legacy per-state JSON so `_priced` can
+    # label its provenance 'state-json-fallback:<STATE>' (own-state = native NYBI26/PAPI26/
+    # NJBI26 Xactimate rate; cross-state = coarse). The legacy JSON loaded here IS the
+    # claim's own state when it has one in STATE_PRICE_LIST; a state with no entry falls
+    # back to the NY ("NYBI26") baseline → a genuinely-coarse cross-state rate.
+    legacy_state_keys = pricing.setdefault("_legacy_state_keys", set())
     old_price_list = STATE_PRICE_LIST.get(state.upper(), "NYBI26").lower()
+    # The state whose legacy Xactimate JSON we are about to merge from. When the
+    # claim's state has its own list this equals _claim_state (own-state native);
+    # when it doesn't, it stays the NY baseline (cross-state coarse).
+    pricing["_legacy_state"] = state.upper() if state.upper() in STATE_PRICE_LIST else "NY"
     old_pricing = _load_pricing(old_price_list)
     if old_pricing:
         for k, v in old_pricing.items():
             if k not in pricing and not k.startswith("_"):
                 pricing[k] = v
+                legacy_state_keys.add(k)
 
     mapped = sum(1 for k in pricing if not k.startswith("_"))
     print(f"[PRICING] {market_code} ({market_meta.get('name', '')}): {mapped} keys via {pricing.get('_price_source','?')} + legacy fallback")
@@ -1571,6 +1735,49 @@ def _extract_diagram_pages_pdf(pdf_path: str, max_pages: int = 10) -> Optional[b
         return None
 
 
+# Valid edge classifications for the roof_facets.edge_types parallel array.
+# See extract_roof_facets docstring for the full SHARED DATA CONTRACT.
+_VALID_EDGE_TYPES = frozenset(
+    {"eave", "rake", "ridge", "valley", "hip", "wall", "unknown"}
+)
+
+
+def _normalize_edge_types(facet: dict) -> list:
+    """Repair / canonicalize a single facet's ``edge_types`` so it is ALWAYS a
+    list of exactly len(polygon_pixels) valid edge labels, parallel to the
+    polygon vertices.
+
+    Rules (defensive — Vision output is untrusted, old claims have no field):
+      * Result length == number of polygon vertices (N). No polygon → [].
+      * Each entry lowercased + validated against _VALID_EDGE_TYPES;
+        anything unrecognized (None, "", "gable", a number, etc.) → "unknown".
+      * Vision returned too few labels → pad the tail with "unknown".
+      * Vision returned too many labels → truncate to N.
+      * edge_types missing entirely / not a list → all-"unknown" of length N.
+
+    Never raises — callers run inside the non-fatal facet pipeline.
+    """
+    poly = facet.get("polygon_pixels")
+    n = len(poly) if isinstance(poly, list) else 0
+    if n == 0:
+        # No geometry → no parallel edge array (matches polygon_pixels == []).
+        return []
+
+    raw = facet.get("edge_types")
+    if not isinstance(raw, list):
+        raw = []
+
+    out: list = []
+    for i in range(n):
+        val = raw[i] if i < len(raw) else None
+        try:
+            label = str(val).strip().lower() if val is not None else ""
+        except Exception:
+            label = ""
+        out.append(label if label in _VALID_EDGE_TYPES else "unknown")
+    return out
+
+
 def extract_roof_facets(client: anthropic.Anthropic, pdf_path: str) -> dict:
     """Second Vision pass on a roof measurement PDF (EagleView, HOVER, GAF
     QuickMeasure, AccuLynx, Roofr, or any similar vendor) to extract per-facet
@@ -1582,11 +1789,29 @@ def extract_roof_facets(client: anthropic.Anthropic, pdf_path: str) -> dict:
         {
             "roof_facets": [
                 {"facet_id": "F1", "pitch": "6/12", "cardinal": "N",
-                 "area_pct": 18.5, "polygon_pixels": [[x,y], ...]}
+                 "area_pct": 18.5, "polygon_pixels": [[x,y], ...],
+                 "edge_types": ["eave", "rake", "ridge", "rake"]}
             ],
             "north_arrow_angle": 0,   # degrees clockwise from image-up
             "scale_bar": {"pixels": 100, "feet": 20},
         }
+
+    edge_types — SHARED DATA CONTRACT (frontend + claims.roof_facets column):
+        A parallel array to ``polygon_pixels``. For a facet whose
+        ``polygon_pixels`` has N clockwise vertices, ``edge_types`` is an array
+        of exactly N strings. ``edge_types[i]`` classifies the polygon EDGE
+        running from vertex i to vertex (i+1) mod N as ONE of:
+            "eave", "rake", "ridge", "valley", "hip", "wall", "unknown".
+        These are read off the LABELED EagleView diagram (eave/rake/ridge/
+        valley/hip lines are drawn + labeled on EagleView Premium diagrams).
+        Any edge that cannot be confidently classified is "unknown".
+
+        Backward-compatible: facets WITHOUT polygon_pixels get edge_types=[];
+        old claims persisted before this field still load (consumers must
+        tolerate a missing ``edge_types`` key). ``_normalize_edge_types`` repairs
+        the array so it is ALWAYS exactly len(polygon_pixels) — padding short
+        arrays with "unknown" and truncating long ones — so the parallel-array
+        invariant holds regardless of what Vision returns. Never crashes.
 
     Safe to fail: returns {"roof_facets": []} on any error. Non-fatal — the rest
     of the pipeline still runs (photo→slope mapping falls back to GPS
@@ -1619,6 +1844,7 @@ If there is an overhead roof diagram, extract one entry per distinct slope plane
 - cardinal: primary facing direction relative to the north arrow. One of: N, NE, E, SE, S, SW, W, NW. If the north arrow is missing, infer from typical orientations or use your best guess based on the diagram layout.
 - area_pct: approximate percentage of total roof area this slope represents (0-100). If the vendor shows square footage per slope, convert to percentage. Otherwise estimate from visual size.
 - polygon_pixels: array of [x, y] corner coordinates tracing the slope outline. Normalize to a 0-1000 scale on BOTH axes (origin = top-left of the overhead diagram). List corners in clockwise order.
+- edge_types: an array PARALLEL to polygon_pixels classifying each polygon EDGE. If polygon_pixels has N corners (clockwise), edge_types has exactly N strings. edge_types[i] classifies the edge running from corner i to corner (i+1, wrapping the last corner back to the first). Classify each edge as ONE of: "eave" (horizontal bottom edge where the roof meets the gutter line / lowest run), "rake" (the sloped/angled edge that runs up a gable end), "ridge" (the highest horizontal edge where two slopes meet at the peak), "valley" (a concave internal edge where two roof planes meet and channel water inward), "hip" (a convex external edge where two roof planes meet and shed water outward), "wall" (an edge that abuts a vertical wall — a step-flash / sidewall line), or "unknown" (cannot classify confidently). EagleView Premium diagrams DRAW and LABEL these lines (eaves, rakes, ridges, valleys, hips are distinct line styles / colors with a legend) — read those labels off the diagram and map each polygon edge to the line type it lies on. If you cannot tell, use "unknown" — never guess wildly. Edge order MUST match polygon_pixels order exactly.
 
 Also extract:
 - north_arrow_angle: degrees clockwise from image-up that the north arrow points (0 = up, 90 = right, 180 = down, 270 = left). If not shown, omit or set to 0.
@@ -1627,12 +1853,13 @@ Also extract:
 IMPORTANT:
 - Any top-down roof view with visible slope boundaries counts, even if not a formal "EagleView overhead diagram".
 - Include every visible slope even when the vendor labels only some of them.
-- If the only roof visual is a 3D perspective render (HOVER sometimes does this), skip polygon_pixels (set to []) but STILL include facet_id + cardinal + pitch + area_pct for each identifiable face. Those fields alone are enough for photo→slope mapping.
+- If the only roof visual is a 3D perspective render (HOVER sometimes does this), skip polygon_pixels (set to []) but STILL include facet_id + cardinal + pitch + area_pct for each identifiable face. Those fields alone are enough for photo→slope mapping. When polygon_pixels is [], set edge_types to [].
+- edge_types MUST be the SAME LENGTH as polygon_pixels for every facet. If the diagram has no labeled edge lines (a generic / unlabeled vendor diagram), fill edge_types with "unknown" for every edge rather than omitting it.
 
 Return ONLY valid JSON, no other text:
 {
   "roof_facets": [
-    {"facet_id": "F1", "pitch": "6/12", "cardinal": "N", "area_pct": 20, "polygon_pixels": [[100,200],[300,200],[300,400],[100,400]]}
+    {"facet_id": "F1", "pitch": "6/12", "cardinal": "N", "area_pct": 20, "polygon_pixels": [[100,200],[300,200],[300,400],[100,400]], "edge_types": ["eave", "rake", "ridge", "rake"]}
   ],
   "north_arrow_angle": 0,
   "scale_bar": {"pixels": 100, "feet": 20}
@@ -1663,6 +1890,17 @@ If the report is a Property Owner Report (images only, no overhead diagram), ret
     facets = result.get("roof_facets")
     if not isinstance(facets, list):
         result["roof_facets"] = []
+        facets = result["roof_facets"]
+
+    # Normalize edge_types on every facet so the parallel-array invariant holds
+    # before we persist: edge_types is ALWAYS exactly len(polygon_pixels), every
+    # entry a valid label, "unknown" where Vision was silent/wrong. This is the
+    # ONLY place the contract is enforced — both DB writes persist the whole
+    # roof_facets payload, so a clean array here flows straight through to the
+    # claim_config write AND the claims.roof_facets column write unchanged.
+    for f in facets:
+        if isinstance(f, dict):
+            f["edge_types"] = _normalize_edge_types(f)
 
     facet_count = len(result.get("roof_facets", []))
     print(f"[FACETS] Extracted {facet_count} roof facets from {os.path.basename(pdf_path)}"
@@ -5206,6 +5444,132 @@ def _extract_damage_triggers(photo_analysis: dict) -> dict:
     return triggers
 
 
+# Real (non-cosmetic) siding damage types in photo_tags — overview/none/general
+# are NOT damage. Kept tight so a roofing-only claim that merely PHOTOGRAPHS a
+# wall (elevation context shots) never trips the siding-damage signal.
+#
+# Cladding-relevant damage ONLY: hail dents, cracks, missing/torn panels, wind
+# creases, corrosion (metal siding), chalking. 'granule_loss'/'lifted_tab'/
+# 'chalk_test' are ROOF-shingle signatures — a fiber-cement/vinyl WALL does not
+# lose granules or lift tabs — so they are NOT siding damage and were causing a
+# roofing-trade photo (e.g. fiber_cement_siding + granule_loss) to falsely trip
+# the whole-house siding default.
+_SIDING_DAMAGE_TYPES = {
+    "hail_dent", "crack", "cracked", "missing", "torn",
+    "wind_crease", "corrosion", "chalking",
+}
+# GENUINE wall-CLADDING materials only. A bare "siding" substring is intentionally
+# EXCLUDED — it matched incidental mentions (e.g. 'siding_trim') and let a gutters/
+# trim photo masquerade as a damaged cladding surface. Trim, j-channel, corner
+# post, soffit, fascia are siding ACCESSORIES, not the cladding field, and never
+# justify a whole-house re-side on their own.
+_SIDING_MATERIAL_TOKENS = (
+    "vinyl_siding", "aluminum_siding", "steel_siding",
+    "fiber_cement_siding", "cedar_siding", "wood_siding",
+)
+# Accessory/trim materials that contain 'siding' but are NOT the cladding field.
+# Used to positively REJECT a material that would otherwise loosely match.
+_SIDING_TRIM_TOKENS = (
+    "trim", "j_channel", "j-channel", "corner_post", "corner post",
+    "soffit", "fascia", "starter_strip",
+)
+
+
+def detect_siding_damage_signal(photo_analysis: dict, user_notes: str = "") -> bool:
+    """CONSERVATIVE forensic siding-DAMAGE signal — the trigger for auto-enabling
+    the full-siding scope (Phase 3b). Returns True ONLY on a CLEAR storm-damage
+    signal to a siding/cladding surface; an overview wall photo, a roofing-only
+    claim, or a bare "siding present" mention never trips it.
+
+    A signal requires BOTH (a) a siding/cladding surface AND (b) a real damage
+    type — never material-presence alone. Sources, any one sufficient:
+      1. A photo_tag whose trade is 'siding' (or material is a siding material)
+         AND whose damage_type is a real damage type (not overview/none/general).
+      2. user_notes that explicitly pair siding with damage
+         (e.g. "cracked siding", "hail damage to the vinyl siding").
+    `trades_identified` containing 'siding' is NOT sufficient on its own — that
+    only means siding was photographed, not that it is damaged.
+    """
+    if not isinstance(photo_analysis, dict):
+        photo_analysis = {}
+
+    # (1) Per-photo tags: a genuine SIDING-trade CLADDING surface WITH a real
+    # cladding-damage type. ALL THREE must hold on the SAME photo:
+    #   (a) trade == 'siding'  — NOT gutters/roofing. A gutters-trade or roofing-
+    #       trade photo never auto-enables a whole-house re-side, even if it happens
+    #       to picture a wall material.
+    #   (b) material is a genuine wall-CLADDING field (vinyl/aluminum/steel/fiber-
+    #       cement/cedar/wood siding) AND is NOT a trim/accessory (j-channel, corner
+    #       post, soffit, fascia, trim, starter strip).
+    #   (c) damage_type is a real CLADDING damage (not overview/none/general, and
+    #       not a roof-shingle-only signature like granule_loss/lifted_tab).
+    for tag_val in (photo_analysis.get("photo_tags") or {}).values():
+        if not isinstance(tag_val, dict):
+            continue
+        trade = str(tag_val.get("trade", "")).lower()
+        material = str(tag_val.get("material", "")).lower()
+        dmg = str(tag_val.get("damage_type", "")).lower()
+        if trade != "siding":
+            continue  # (a) — only the siding trade trips the whole-house default
+        is_trim = any(tok in material for tok in _SIDING_TRIM_TOKENS)
+        is_cladding = (not is_trim) and any(
+            tok in material for tok in _SIDING_MATERIAL_TOKENS
+        )
+        if is_cladding and dmg in _SIDING_DAMAGE_TYPES:  # (b) + (c)
+            return True
+
+    # (2) user_notes: require siding + damage in CLOSE PROXIMITY (explicit siding-
+    # damage phrasing) — NOT bag-of-words. "new siding installed last year, roof
+    # hail damage" must NOT fire: the only damage word ('hail') is about the ROOF,
+    # and 'siding' is an install mention, not a damage mention. Match an explicit
+    # adjacency window: a siding-damage phrase where a damage word sits within a few
+    # words of 'siding' on either side (e.g. "cracked siding", "siding is dented",
+    # "hail damage to the vinyl siding").
+    notes = (user_notes or "").lower()
+    if _notes_pair_siding_with_damage(notes):
+        return True
+
+    return False
+
+
+# Damage words for the user_notes proximity check. Kept separate so the
+# adjacency window is auditable and the roof-only signature ('granule', 'tab')
+# is intentionally absent.
+_NOTES_DAMAGE_WORDS = (
+    "damage", "damaged", "cracked", "crack", "hail", "dent", "dented",
+    "broken", "shatter", "impact", "storm-damaged", "storm damaged", "punctured",
+)
+# How many tokens may sit between 'siding' and a damage word for them to count as
+# a paired siding-damage phrase. Tight enough to reject "new siding installed last
+# year, roof hail damage" (≥5 tokens + a clause break) yet allow natural phrasing
+# like "hail damage to the vinyl siding" (3 tokens).
+_NOTES_SIDING_DAMAGE_WINDOW = 4
+
+
+def _notes_pair_siding_with_damage(notes: str) -> bool:
+    """True iff user_notes contains 'siding' and a damage word in close proximity
+    (within _NOTES_SIDING_DAMAGE_WINDOW tokens, same clause). NOT bag-of-words:
+    a damage word in a different clause (e.g. 'roof hail damage') does not pair
+    with an unrelated 'siding' install mention."""
+    if "siding" not in notes:
+        return False
+    # Split on clause boundaries so a damage word in a separate clause/sentence
+    # cannot pair with 'siding' across the break.
+    import re
+    for clause in re.split(r"[.;\n]|,\s+", notes):
+        if "siding" not in clause:
+            continue
+        toks = re.findall(r"[a-z0-9\-]+", clause)
+        siding_idx = [i for i, t in enumerate(toks) if "siding" in t]
+        dmg_idx = [i for i, t in enumerate(toks)
+                   if any(t == w or t.startswith(w) for w in _NOTES_DAMAGE_WORDS)]
+        for si in siding_idx:
+            for di in dmg_idx:
+                if abs(si - di) <= _NOTES_SIDING_DAMAGE_WINDOW:
+                    return True
+    return False
+
+
 def build_line_items(measurements: dict, photo_analysis: dict, state: str, user_notes: str = "", estimate_request: dict = None, zip_code: str = "", city: str = "", market_code: str = "") -> list:
     """Build Xactimate line items from measurements, analysis, and user context.
 
@@ -5720,19 +6084,45 @@ def build_line_items(measurements: dict, photo_analysis: dict, state: str, user_
         downspout_count = max(2, round(eave / 35))
         items.append({"category": "GUTTERS", "description": "Downspout extension - aluminum", "qty": downspout_count, "unit": "EA", "unit_price": _priced(PRICING, "downspout_extension", 22.00)})
 
-    # ===================== SIDING (opt-in via estimate_request only) =====================
-    # ALWAYS includes house wrap when siding is scoped (R703.2 — continuous
-    # weather-resistant exterior wall envelope required per IRC-based code).
-    # House wrap corner rule forces full replacement when carrier approves partial.
-    # Two opt-in shapes:
+    # ===================== SIDING (default-on-damage; opt-in is an override) =====================
+    # ALWAYS includes house wrap + wall flashing when siding is scoped (R703.2
+    # continuous WRB + R703.4 wall flashing — the IRC-based exterior-wall envelope).
+    # The house-wrap corner rule forces full replacement when a carrier approves
+    # partial siding (the SIDING flagship — see Doc 06 siding section).
+    #
+    # Phase 3b — DEFAULT FULL SIDING ON DAMAGE: when there is a genuine forensic
+    # SIDING-DAMAGE signal (detect_siding_damage_signal) AND wall measurements
+    # exist to scope it, auto-enable the siding scope rather than requiring the
+    # estimate_request opt-in. The builder already bills the whole house via
+    # total_wall_area_sf, so the corner rule is honored automatically. The
+    # explicit opt-in is PRESERVED as an override (it still turns siding on even
+    # with no damage signal, and an explicit "na"/masonry selection still wins —
+    # see _siding_excluded below). Conservative: fires only on a CLEAR siding-
+    # damage signal, so roofing-only claims are UNAFFECTED.
+    #
+    # Opt-in shapes:
     #   siding: bool        — legacy estimate-request wizard
     #   siding_type: string — /instant-supplement funnel; "na" / brick_veneer /
-    #                          stone_veneer all exclude siding work.
+    #                          stone_veneer all EXCLUDE siding work.
     _siding_type_opt = _est_req.get("siding_type")
-    _siding_requested = bool(
+    _siding_opt_in = bool(
         _est_req.get("siding")
         or (_siding_type_opt and _siding_type_opt not in ("na", "brick_veneer", "stone_veneer"))
     )
+    # Explicit exclusion: the user chose a non-siding cladding (masonry) or "na".
+    # An explicit opt-OUT must beat the damage default (don't bill vinyl on brick).
+    _siding_excluded = _siding_type_opt in ("na", "brick_veneer", "stone_veneer")
+    # Wall measurements present? (the builder needs an area to scope the whole house)
+    _walls_meas = measurements.get("walls", {}) or {}
+    _has_wall_meas = float(_walls_meas.get("total_wall_area_sf", 0) or 0) > 0 or area_sf > 0
+    _siding_damage = detect_siding_damage_signal(photo_analysis, user_notes)
+    _siding_default_on = (
+        _siding_damage and _has_wall_meas and not _siding_excluded and not _siding_opt_in
+    )
+    _siding_requested = _siding_opt_in or _siding_default_on
+    if _siding_default_on:
+        print("[LINE ITEMS] Siding scope AUTO-ENABLED — forensic siding-damage signal + wall "
+              "measurements present (no estimate_request opt-in needed; corner rule bills whole house)")
     if _siding_requested:
         walls = measurements.get("walls", {})
         wall_area = walls.get("total_wall_area_sf", 0)
@@ -5774,6 +6164,20 @@ def build_line_items(measurements: dict, photo_analysis: dict, state: str, user_
             # corners — cannot terminate at a corner joint. Forces full replacement.
             _code_prefix = _STATE_CODE_PREFIX.get(state, "IRC")
             items.append({"category": "SIDING", "description": f"House wrap / Tyvek (code-required per {_code_prefix} R703.2)", "qty": wall_area, "unit": "SF", "unit_price": _priced(PRICING, "house_wrap", 0.64)})
+
+            # Wall flashing — ALWAYS included with siding (R703.4). CLAUDE.md
+            # critical rule: siding ALWAYS includes house wrap + wall flashing.
+            # Flashing at openings/penetrations is disturbed when siding is removed
+            # and must be replaced to keep the water-resistant seal to the WRB; the
+            # #1 siding item carriers omit. qty derived from openings across all
+            # elevations (≈8 LF perimeter per opening), with a footprint fallback so
+            # a wall-area-only claim still scopes flashing.
+            _elevs = (measurements.get("walls", {}) or {}).get("elevations", []) or []
+            _openings = sum(int(e.get("openings", 0) or 0) for e in _elevs)
+            if _openings <= 0:
+                _openings = max(1, round(wall_area / 200))  # ≈1 opening / 200 SF wall
+            _wall_flashing_lf = _openings * 8  # ≈8 LF flashing perimeter per opening
+            items.append({"category": "SIDING", "description": f"Wall flashing - aluminum (code-required per {_code_prefix} R703.4)", "qty": _wall_flashing_lf, "unit": "LF", "unit_price": _priced(PRICING, "wall_flashing", 4.85)})
 
             # Fanfold insulation (under siding, standard on re-side jobs)
             items.append({"category": "SIDING", "description": "Fanfold insulation board", "qty": wall_area, "unit": "SF", "unit_price": _priced(PRICING, "fanfold_insulation", 1.23)})
@@ -5859,6 +6263,14 @@ def build_line_items(measurements: dict, photo_analysis: dict, state: str, user_
     _pm = PRICING.get("_market_code") or market_code or ""
     for _it in items:
         _it.setdefault("_priced_market", _pm)
+
+    # WS-7: stamp INTERNAL per-row price provenance (_price_source) so a code item
+    # that fell back to a NY-baseline price (E251) is auditable. Carrier-facing PDF
+    # never prints it. Best-effort — never break a build over a provenance stamp.
+    try:
+        apply_price_provenance(items, PRICING)
+    except Exception as _e:
+        print(f"[PRICING PROVENANCE] non-fatal: {_e}")
 
     return _sort_line_items(items)
 
@@ -7402,6 +7814,9 @@ async def process_claim(claim_id: str, refresh_prices: bool = False):
 
         # Attach roof facet polygons (per-slope photo mapping) if extracted.
         # Facet extraction can fail silently — check payload shape before use.
+        # The payload carries the per-facet edge_types[] parallel array
+        # (normalized in extract_roof_facets) alongside polygon_pixels — it
+        # rides into claim_config untouched here.
         if isinstance(roof_facets_data, dict) and roof_facets_data.get("roof_facets"):
             config["roof_facets"] = roof_facets_data
         elif claim.get("latitude") and claim.get("longitude"):
@@ -8602,7 +9017,10 @@ async def process_claim(claim_id: str, refresh_prices: bool = False):
         except Exception as _e:
             print(f"[PROCESS] Could not stage claim_config for persist: {_e}")
 
-        # Persist roof facet polygons for photo→slope mapping + roof map UI
+        # Persist roof facet polygons for photo→slope mapping + roof map UI.
+        # Each facet carries edge_types[] (parallel to polygon_pixels, normalized
+        # in extract_roof_facets) — it persists to the claims.roof_facets JSONB
+        # column here exactly as it was written into claim_config above.
         _rf_payload = config.get("roof_facets")
         if isinstance(_rf_payload, dict) and _rf_payload.get("roof_facets"):
             update_data["roof_facets"] = _rf_payload

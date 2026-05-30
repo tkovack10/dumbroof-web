@@ -1,0 +1,333 @@
+{
+  "_fixture_doc": "WS-7 Doc-06 SIDING gate fixture (PHASE 1). A realistic NY-market siding claim used by tests/test_doc06_siding.py. NY is chosen so house_wrap PRICES NATIVELY ($0.64/SF, Xactimate SDG WRAP) \u2014 the WS-7 CODE_SUPPLEMENT_FALLBACK_PRICED flag correctly stays SILENT here (it only fires in non-NY/PA/NJ markets that lack a native house_wrap rate; queue the Alfonso SDG WRAP export for those \u2014 follow-up, do NOT build here). Citations are the codebase-canonical sections verified against backend/code_compliance.py + backend/compliance_svg.py CODE_TO_ZONE + building_codes/state_codes.json (R703.1 corner rule, R703.2 WRB/house wrap, R703.3 siding install, R703.4 window/door flashing, R703.8 wall flashing) \u2014 no new citation is introduced. Unit prices are the NY native rates from pricing/nybi26.json (read OFF the frozen line item per B.7 \u2014 Doc 06 never re-resolves a price). compliance.user_role is 'contractor' (USARM default, UPPA-safe: factual code-requirement language, no advocacy/demand verbs). The siding test flips a deepcopy to user_role='public_adjuster' to exercise the PA/attorney advocacy path. carrier_line_items deliberately include siding on ONLY 1-2 elevations (Front + Right present; Left + Rear + all WRB/fanfold/corner/wall-flashing missing) so the OMITTED carrier-cross-reference marking has real omissions to render. This config is NOT a golden-corpus forensic snapshot \u2014 Doc 06 is not in WS-0, so adding it cannot perturb the 23/23.",
+  "config": {
+    "property": {
+      "address": "417 Maple Ave, Tonawanda, NY 14150, USA",
+      "city": "Tonawanda",
+      "state": "NY",
+      "zip": "14150",
+      "stories": 2,
+      "year_built_OPTIONAL": 1996
+    },
+    "dates": {
+      "date_of_loss": "2025-06-14"
+    },
+    "company": {
+      "name": "USA ROOF MASTERS",
+      "address": "3070 Bristol Pike, Building 1, Suite 122",
+      "city_state_zip": "Bensalem, PA 19020",
+      "ceo_name": "Tom Kovack Jr.",
+      "ceo_title": "CEO",
+      "email": "TKovack@USARoofMasters.com",
+      "cell_phone": "267-679-1504",
+      "office_phone": "267-332-0197",
+      "website": "www.USARoofMasters.com"
+    },
+    "insured": {
+      "name": "Daniel & Karen Whitfield"
+    },
+    "carrier": {
+      "name": "Allstate",
+      "claim_number": "NY-2025-SDG-0417",
+      "policy_number": "9F-44-218-336",
+      "deductible": 1500.0,
+      "carrier_rcv": 6840.12,
+      "adjuster_name": "R. Petrillo",
+      "adjuster_email": "rpetrillo@claims.example.com",
+      "inspection_date": "2025-06-27",
+      "inspector_name": "R. Petrillo",
+      "inspector_company": "Allstate",
+      "carrier_line_items": [
+        {
+          "status": "under",
+          "usarm_desc": "R&R Siding - vinyl",
+          "checklist_desc": "R&R Siding - vinyl",
+          "carrier_desc": "R&R Siding - vinyl (Front elevation)",
+          "carrier_qty": 612.0,
+          "carrier_unit": "SF",
+          "carrier_unit_price": 6.95,
+          "carrier_amount": 4253.4,
+          "category": "SIDING",
+          "trade": "SIDING",
+          "note": "Carrier approved Front elevation siding only."
+        },
+        {
+          "status": "under",
+          "usarm_desc": "R&R Siding - vinyl",
+          "checklist_desc": "R&R Siding - vinyl",
+          "carrier_desc": "R&R Siding - vinyl (Right elevation)",
+          "carrier_qty": 528.0,
+          "carrier_unit": "SF",
+          "carrier_unit_price": 6.95,
+          "carrier_amount": 3669.6,
+          "category": "SIDING",
+          "trade": "SIDING",
+          "note": "Carrier approved Right elevation siding only \u2014 Left and Rear denied."
+        },
+        {
+          "status": "missing",
+          "usarm_desc": "House wrap (weather-resistive barrier)",
+          "checklist_desc": "House wrap (weather-resistive barrier)",
+          "carrier_desc": "NOT INCLUDED",
+          "category": "SIDING",
+          "trade": "SIDING",
+          "note": "Carrier omitted house wrap entirely \u2014 R703.2 WRB is code-mandated behind all cladding."
+        },
+        {
+          "status": "missing",
+          "usarm_desc": "Fanfold insulation board (1/4 in.)",
+          "checklist_desc": "Fanfold insulation board (1/4 in.)",
+          "carrier_desc": "NOT INCLUDED",
+          "category": "SIDING",
+          "trade": "SIDING",
+          "note": "Carrier omitted fanfold underlayment board."
+        },
+        {
+          "status": "missing",
+          "usarm_desc": "Outside corner post - vinyl",
+          "checklist_desc": "Outside corner post - vinyl",
+          "carrier_desc": "NOT INCLUDED",
+          "category": "SIDING",
+          "trade": "SIDING",
+          "note": "Carrier omitted outside corner posts \u2014 corner trim must be removed to wrap WRB around the outside corner."
+        },
+        {
+          "status": "missing",
+          "usarm_desc": "Wall flashing - aluminum",
+          "checklist_desc": "Wall flashing - aluminum",
+          "carrier_desc": "NOT INCLUDED",
+          "category": "SIDING",
+          "trade": "SIDING",
+          "note": "Carrier omitted wall flashing (R703.8) at openings and intersections \u2014 the #1 siding item carriers omit."
+        }
+      ]
+    },
+    "compliance": {
+      "user_role": "contractor",
+      "aob_signed": true
+    },
+    "scope": {
+      "trades": [
+        "Siding"
+      ]
+    },
+    "measurements": {
+      "wall_area_sf": 2280.0,
+      "siding_sf": 2280.0,
+      "eave": 0,
+      "rake": 0
+    },
+    "structures": [
+      {
+        "name": "Structure #1",
+        "stories": 2,
+        "wall_area_sf": 2280.0,
+        "roof_area_sf": 0,
+        "roof_area_sq": 0
+      }
+    ],
+    "walls": {
+      "total_sf": 2280.0,
+      "elevations": [
+        {
+          "name": "Front",
+          "width_ft": 34.0,
+          "height_ft": 18.0,
+          "area_sf": 612.0,
+          "openings": 4,
+          "siding_damaged": true,
+          "outside_corners": 2
+        },
+        {
+          "name": "Right",
+          "width_ft": 32.0,
+          "height_ft": 18.0,
+          "area_sf": 528.0,
+          "openings": 3,
+          "siding_damaged": true,
+          "outside_corners": 2
+        },
+        {
+          "name": "Left",
+          "width_ft": 32.0,
+          "height_ft": 18.0,
+          "area_sf": 528.0,
+          "openings": 3,
+          "siding_damaged": true,
+          "outside_corners": 2
+        },
+        {
+          "name": "Rear",
+          "width_ft": 34.0,
+          "height_ft": 18.0,
+          "area_sf": 612.0,
+          "openings": 4,
+          "siding_damaged": true,
+          "outside_corners": 2
+        }
+      ]
+    },
+    "forensic_findings": {
+      "executive_summary": "Wind-driven hail and debris impact on June 14, 2025 fractured and cracked vinyl siding across all four elevations of this two-story residence. Impact marks, cracked panels, and dislodged courses are documented on the Front, Right, Left, and Rear walls. The damage is consistent with the verified storm and is the covered peril; it is not pre-existing wear.",
+      "damage_summary": "Vinyl siding shows storm-consistent impact damage on all four elevations: cracked and shattered panels, white-stress impact halos, and wind-dislodged courses. Damage is uniform with the storm track and inconsistent with age-related degradation.",
+      "code_violations": [
+        {
+          "code": "RCNYS R703.2",
+          "requirement": "A water-resistive barrier (house wrap) shall be applied behind all exterior wall cladding, lapped shingle-fashion (min 2 in. horizontal lap, 6 in. joint lap), and shall be continuous \u2014 wrapping around outside corners.",
+          "status": "Carrier scope omits house wrap entirely; a single-elevation siding replacement cannot maintain a continuous WRB at the outside corners."
+        },
+        {
+          "code": "RCNYS R703.1",
+          "requirement": "Exterior walls shall provide a continuous weather-resistant exterior wall envelope; the WRB cannot terminate at an outside-corner joint.",
+          "status": "Wrapping the WRB around the outside corner requires removing the corner trim, which disturbs the connecting elevation's siding."
+        },
+        {
+          "code": "RCNYS R703.4",
+          "requirement": "Flashing shall be installed at exterior wall openings (windows, doors) and penetrations to prevent water entry behind the cladding.",
+          "status": "Carrier scope omits wall/opening flashing disturbed during siding replacement."
+        }
+      ],
+      "damage_thresholds": [
+        {
+          "metric": "Cracked/shattered vinyl panels",
+          "observed": "38 panels across 4 elevations",
+          "threshold": "Repairable units exceed isolated-repair tolerance; new vinyl cannot color-match weathered 1996-era panels",
+          "result": "Full elevation replacement warranted"
+        }
+      ],
+      "differentiation_table": [
+        {
+          "cause": "Storm hail/debris impact",
+          "characteristics": "Random impact halos, fractured panels, fresh break edges, directional with storm track",
+          "observed": "Present on all four elevations, concentrated on storm-facing Front and Right",
+          "conclusion": "Covered peril \u2014 storm-caused"
+        },
+        {
+          "cause": "Age / UV degradation",
+          "characteristics": "Uniform chalking, fading, brittleness without impact halos",
+          "observed": "Not the dominant pattern; fresh fracture edges rule out pure age",
+          "conclusion": "Not the cause of the documented damage"
+        }
+      ],
+      "key_arguments": [
+        "Storm-caused vinyl siding damage is documented on all four elevations (the covered peril).",
+        "R703.2 requires a continuous water-resistive barrier that wraps outside corners; R703.1 prohibits terminating it at a corner joint.",
+        "New vinyl cannot color-match the weathered 1996 siding, so a 1-2 elevation patch leaves a visible mismatch."
+      ],
+      "conclusion_paragraphs": [
+        "The documented storm damage, the R703.2/R703.1 continuous-WRB corner requirement, and the inability of new vinyl to match weathered panels together support full-elevation siding replacement as the code-compliant repair."
+      ],
+      "total_photos": 24
+    },
+    "line_items": [
+      {
+        "category": "SIDING",
+        "trade": "SIDING",
+        "description": "R&R Siding - vinyl (all 4 elevations, storm-damaged)",
+        "qty": 2280.0,
+        "unit": "SF",
+        "unit_price": 7.55,
+        "scope_timing": "initial",
+        "code_citation": {
+          "section": "R703.3",
+          "code_tag": "RCNYS R703.3",
+          "title": "Exterior Wall Covering \u2014 Vinyl Siding",
+          "requirement": "Siding shall be installed per the manufacturer's installation instructions and R703.1 (flashing at intersections); attachment per Table R703.3.2. A code-compliant installation includes the water-resistive barrier (R703.2) and wall flashing (R703.4).",
+          "supplement_argument": "The vinyl siding is storm-damaged on all four elevations (the covered peril). A code-compliant replacement under R703.3 requires the continuous water-resistive barrier (R703.2) wrapped around the outside corners per R703.1; this cannot be achieved on an isolated elevation without disturbing the connecting elevation's siding.",
+          "jurisdiction": "Residential Code of New York State (RCNYS, base code IRC 2018)",
+          "has_warranty_void": false,
+          "manufacturer_specs": []
+        },
+        "_price_source": "relational"
+      },
+      {
+        "category": "SIDING",
+        "trade": "SIDING",
+        "description": "House wrap (weather-resistive barrier) - SDG WRAP, wraps outside corners",
+        "qty": 2280.0,
+        "unit": "SF",
+        "unit_price": 0.64,
+        "scope_timing": "initial",
+        "code_citation": {
+          "section": "R703.2",
+          "code_tag": "RCNYS R703.2",
+          "title": "Weather-Resistive Barrier (House Wrap)",
+          "requirement": "A water-resistive barrier shall be installed behind ALL exterior wall cladding, lapped shingle-fashion (min 2 in. horizontal lap, 6 in. joint lap), and shall be CONTINUOUS \u2014 it must wrap around outside corners and cannot terminate at a corner joint (manufacturer spec: wrap min 6 in. around corners).",
+          "supplement_argument": "House wrap is mandatory per R703.2 behind all cladding. Because the WRB must be continuous and wrap the outside corners per R703.1, it cannot be installed on the approved elevation without wrapping the corner \u2014 which requires removing the corner trim and disturbs the connecting elevation's siding. Full-elevation siding is therefore code-required, not additional scope.",
+          "jurisdiction": "Residential Code of New York State (RCNYS, base code IRC 2018)",
+          "has_warranty_void": false,
+          "manufacturer_specs": [
+            {
+              "manufacturer": "DuPont",
+              "document": "Tyvek HomeWrap Installation Guidelines",
+              "requirement": "WRB must be continuous and wrap a minimum of 6 in. around outside corners; it may not terminate at a corner joint.",
+              "warranty_text": "",
+              "warranty_void": false
+            }
+          ]
+        },
+        "_price_source": "relational"
+      },
+      {
+        "category": "SIDING",
+        "trade": "SIDING",
+        "description": "Fanfold insulation board - 1/4 in. (under vinyl siding)",
+        "qty": 2280.0,
+        "unit": "SF",
+        "unit_price": 1.23,
+        "scope_timing": "initial",
+        "code_citation": {
+          "section": "R703.3",
+          "code_tag": "RCNYS R703.3",
+          "title": "Siding Underlayment / Fanfold Board",
+          "requirement": "Vinyl siding shall be installed over a code-compliant substrate per the manufacturer's installation instructions; fanfold insulation board is the standard backer over which vinyl is fastened.",
+          "supplement_argument": "Fanfold board is the standard substrate for vinyl siding and is disturbed when the siding is removed; it must be replaced as part of a code-compliant R703.3 reinstallation.",
+          "jurisdiction": "Residential Code of New York State (RCNYS, base code IRC 2018)",
+          "has_warranty_void": false,
+          "manufacturer_specs": []
+        },
+        "_price_source": "relational"
+      },
+      {
+        "category": "SIDING",
+        "trade": "SIDING",
+        "description": "Outside corner post - vinyl (corner trim, removed to wrap WRB around corner)",
+        "qty": 8.0,
+        "unit": "EA",
+        "unit_price": 11.47,
+        "scope_timing": "initial",
+        "code_citation": {
+          "section": "R703.1",
+          "code_tag": "RCNYS R703.1",
+          "title": "Continuous Weather-Resistant Wall Envelope (Corner Rule)",
+          "requirement": "Exterior walls shall provide a continuous weather-resistant exterior wall envelope. The water-resistive barrier cannot terminate at an outside-corner joint; it must wrap continuously around the outside corner (R703.1 with R703.2).",
+          "supplement_argument": "The outside corner posts must be removed to wrap the WRB around the outside corner per R703.1. Removing the corner trim necessarily disturbs the connecting elevation's siding, so approving only one elevation leaves the WRB discontinuous at the corner \u2014 not code-compliant.",
+          "jurisdiction": "Residential Code of New York State (RCNYS, base code IRC 2018)",
+          "has_warranty_void": false,
+          "manufacturer_specs": []
+        },
+        "_price_source": "relational"
+      },
+      {
+        "category": "SIDING",
+        "trade": "SIDING",
+        "description": "Wall flashing - aluminum (openings + intersections)",
+        "qty": 96.0,
+        "unit": "LF",
+        "unit_price": 4.85,
+        "scope_timing": "initial",
+        "code_citation": {
+          "section": "R703.4",
+          "code_tag": "RCNYS R703.4",
+          "title": "Wall Flashing at Openings & Intersections",
+          "requirement": "Flashing shall be installed at exterior wall openings (windows, doors) and penetrations, and at wall-to-roof / wall-to-wall intersections, to prevent water entry behind the cladding (R703.4).",
+          "supplement_argument": "Wall and opening flashing is disturbed whenever siding is removed and must be replaced to maintain the water-resistant seal between the openings and the WRB. This is the #1 siding item carriers omit; without it, water infiltration behind the new cladding is inevitable.",
+          "jurisdiction": "Residential Code of New York State (RCNYS, base code IRC 2018)",
+          "has_warranty_void": false,
+          "manufacturer_specs": []
+        },
+        "_price_source": "relational"
+      }
+    ]
+  }
+}

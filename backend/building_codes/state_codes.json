@@ -22,7 +22,22 @@
     },
     "drip_edge":          { "code_ref": "IRC R905.2.8.5", "required": true },
     "ventilation":        { "code_ref": "IRC R806.2",     "nfa_ratio": "1:150" },
-    "house_wrap_corners": { "code_ref": "IRC R703.1 / R703.2" },
+    "house_wrap_corners": {
+      "code_ref": "IRC R703.1 / R703.2",
+      "sections": {
+        "corner_rule": "R703.1",
+        "wrb": "R703.2",
+        "wall_flashing": "R703.4"
+      },
+      "lap_spec": "WRB applied shingle-fashion, min 2 in. horizontal lap / 6 in. joint lap; CONTINUOUS — must wrap around outside corners and cannot terminate at a corner joint (Tyvek manufacturer spec: wrap min 6 in. around corners).",
+      "corner_rule": "A code-compliant water-resistive barrier (R703.2) must be continuous and wrap the outside corner per R703.1; the WRB on the approved elevation cannot be installed without wrapping the corner, which requires removing the corner trim and disturbs the connecting elevation's siding. Full-elevation siding is therefore code-required, not additional scope.",
+      "supplement_sentence": "Per R703.2, a continuous water-resistive barrier is required behind all exterior wall cladding, applied shingle-fashion with a minimum 2 in. horizontal lap and 6 in. joint lap. Per R703.1, that barrier must be continuous and wrap around outside corners — it cannot terminate at a corner joint (DuPont Tyvek installation instructions require wrapping a minimum of 6 in. around outside corners). Because the barrier cannot be reinstalled on the approved elevation without wrapping the outside corner, and wrapping the corner requires removing the corner trim and disturbing the connecting elevation's siding, a code-compliant repair extends to the adjacent elevation. Wall flashing at openings and penetrations (R703.4) is disturbed whenever siding is removed and must be replaced to maintain the water-resistant seal between the openings and the barrier.",
+      "matching": {
+        "no_statute_framing": "Where the jurisdiction has no matching statute, the NAIC Unfair Property/Casualty Claims Settlement Practices Model Regulation (MDL-902 §9.A(2)) is cited as industry evidence — not as an enforceable regulation — of what the policy's 'like kind and quality' loss-settlement standard means: when replaced cladding does not match in color or profile, the area is replaced to a reasonably uniform appearance.",
+        "statute_framing": "Where the jurisdiction has adopted a matching statute or regulation, that rule is cited directly: new cladding that does not reasonably match the undamaged remainder requires replacement of the connected area to a reasonably uniform appearance.",
+        "naic_reference": "NAIC MDL-902 §9.A(2)"
+      }
+    },
     "two_layer_tearoff":  { "code_ref": "IRC R908.3.1.1(3)" },
     "underlayment":       { "code_ref": "IRC R905.1.1" },
     "starter_strip":      { "code_ref": "Manufacturer specification" },
@@ -46,7 +61,22 @@
     },
     "drip_edge":          { "code_ref": "RCNYS R905.2.8.5", "required": true },
     "ventilation":        { "code_ref": "RCNYS R806.2",     "nfa_ratio": "1:150" },
-    "house_wrap_corners": { "code_ref": "RCNYS R703.1 / R703.2" },
+    "house_wrap_corners": {
+      "code_ref": "RCNYS R703.1 / R703.2",
+      "sections": {
+        "corner_rule": "R703.1",
+        "wrb": "R703.2",
+        "wall_flashing": "R703.4"
+      },
+      "lap_spec": "WRB applied shingle-fashion, min 2 in. horizontal lap / 6 in. joint lap; CONTINUOUS — must wrap around outside corners and cannot terminate at a corner joint (Tyvek manufacturer spec: wrap min 6 in. around corners).",
+      "corner_rule": "A code-compliant water-resistive barrier (R703.2) must be continuous and wrap the outside corner per R703.1; the WRB on the approved elevation cannot be installed without wrapping the corner, which requires removing the corner trim and disturbs the connecting elevation's siding. Full-elevation siding is therefore code-required, not additional scope.",
+      "supplement_sentence": "Per RCNYS R703.2, a continuous water-resistive barrier is required behind all exterior wall cladding, applied shingle-fashion with a minimum 2 in. horizontal lap and 6 in. joint lap. Per RCNYS R703.1, that barrier must be continuous and wrap around outside corners — it cannot terminate at a corner joint (DuPont Tyvek installation instructions require wrapping a minimum of 6 in. around outside corners). Because the barrier cannot be reinstalled on the approved elevation without wrapping the outside corner, and wrapping the corner requires removing the corner trim and disturbing the connecting elevation's siding, a code-compliant repair extends to the adjacent elevation. Wall flashing at openings and penetrations (RCNYS R703.4) is disturbed whenever siding is removed and must be replaced to maintain the water-resistant seal between the openings and the barrier.",
+      "matching": {
+        "no_statute_framing": "New York has NO matching statute. The NAIC Unfair Property/Casualty Claims Settlement Practices Model Regulation (MDL-902 §9.A(2)) is cited as industry evidence — not as an enforceable New York regulation — of what the policy's 'like kind and quality' loss-settlement standard means: when replaced cladding does not match in color or profile, the area is replaced to a reasonably uniform appearance.",
+        "statute_framing": "Where the jurisdiction has adopted a matching statute or regulation, that rule is cited directly: new cladding that does not reasonably match the undamaged remainder requires replacement of the connected area to a reasonably uniform appearance.",
+        "naic_reference": "NAIC MDL-902 §9.A(2)"
+      }
+    },
     "two_layer_tearoff":  { "code_ref": "RCNYS R908.3.1.1(3)" },
     "underlayment":       { "code_ref": "RCNYS R905.1.1" },
     "starter_strip":      { "code_ref": "Manufacturer specification" },
@@ -70,7 +100,22 @@
     },
     "drip_edge":          { "code_ref": "RCO R905.2.8.5", "required": true },
     "ventilation":        { "code_ref": "RCO R806.2",     "nfa_ratio": "1:150" },
-    "house_wrap_corners": { "code_ref": "RCO R703.1 / R703.2" },
+    "house_wrap_corners": {
+      "code_ref": "RCO R703.1 / R703.2",
+      "sections": {
+        "corner_rule": "R703.1",
+        "wrb": "R703.2",
+        "wall_flashing": "R703.4"
+      },
+      "lap_spec": "WRB applied shingle-fashion, min 2 in. horizontal lap / 6 in. joint lap; CONTINUOUS — must wrap around outside corners and cannot terminate at a corner joint (Tyvek manufacturer spec: wrap min 6 in. around corners).",
+      "corner_rule": "A code-compliant water-resistive barrier (R703.2) must be continuous and wrap the outside corner per R703.1; the WRB on the approved elevation cannot be installed without wrapping the corner, which requires removing the corner trim and disturbs the connecting elevation's siding. Full-elevation siding is therefore code-required, not additional scope.",
+      "supplement_sentence": "Per RCO R703.2, a continuous water-resistive barrier is required behind all exterior wall cladding, applied shingle-fashion with a minimum 2 in. horizontal lap and 6 in. joint lap. Per RCO R703.1, that barrier must be continuous and wrap around outside corners — it cannot terminate at a corner joint (DuPont Tyvek installation instructions require wrapping a minimum of 6 in. around outside corners). Because the barrier cannot be reinstalled on the approved elevation without wrapping the outside corner, and wrapping the corner requires removing the corner trim and disturbing the connecting elevation's siding, a code-compliant repair extends to the adjacent elevation. Wall flashing at openings and penetrations (RCO R703.4) is disturbed whenever siding is removed and must be replaced to maintain the water-resistant seal between the openings and the barrier.",
+      "matching": {
+        "no_statute_framing": "Ohio has adopted a matching standard — see statute_framing; cite it directly rather than as industry evidence.",
+        "statute_framing": "Ohio Administrative Code 3901-1-54(H)(7) requires that when a covered loss requires replacement of an item and the replacement does not reasonably match adjacent items in quality, color, or size, the insurer replace the items in the area so as to conform to a reasonably uniform appearance. New cladding that does not reasonably match the undamaged remainder therefore requires replacement of the connected area.",
+        "naic_reference": "Ohio Admin. Code 3901-1-54(H)(7); NAIC MDL-902 §9.A(2)"
+      }
+    },
     "two_layer_tearoff":  { "code_ref": "RCO R908.3.1.1(3)" },
     "underlayment":       { "code_ref": "RCO R905.1.1" },
     "starter_strip":      { "code_ref": "Manufacturer specification" },
@@ -94,7 +139,22 @@
     },
     "drip_edge":          { "code_ref": "UCC R905.2.8.5", "required": true },
     "ventilation":        { "code_ref": "UCC R806.2",     "nfa_ratio": "1:150" },
-    "house_wrap_corners": { "code_ref": "UCC R703.1 / R703.2" },
+    "house_wrap_corners": {
+      "code_ref": "UCC R703.1 / R703.2",
+      "sections": {
+        "corner_rule": "R703.1",
+        "wrb": "R703.2",
+        "wall_flashing": "R703.4"
+      },
+      "lap_spec": "WRB applied shingle-fashion, min 2 in. horizontal lap / 6 in. joint lap; CONTINUOUS — must wrap around outside corners and cannot terminate at a corner joint (Tyvek manufacturer spec: wrap min 6 in. around corners).",
+      "corner_rule": "A code-compliant water-resistive barrier (R703.2) must be continuous and wrap the outside corner per R703.1; the WRB on the approved elevation cannot be installed without wrapping the corner, which requires removing the corner trim and disturbs the connecting elevation's siding. Full-elevation siding is therefore code-required, not additional scope.",
+      "supplement_sentence": "Per UCC R703.2, a continuous water-resistive barrier is required behind all exterior wall cladding, applied shingle-fashion with a minimum 2 in. horizontal lap and 6 in. joint lap. Per UCC R703.1, that barrier must be continuous and wrap around outside corners — it cannot terminate at a corner joint (DuPont Tyvek installation instructions require wrapping a minimum of 6 in. around outside corners). Because the barrier cannot be reinstalled on the approved elevation without wrapping the outside corner, and wrapping the corner requires removing the corner trim and disturbing the connecting elevation's siding, a code-compliant repair extends to the adjacent elevation. Wall flashing at openings and penetrations (UCC R703.4) is disturbed whenever siding is removed and must be replaced to maintain the water-resistant seal between the openings and the barrier.",
+      "matching": {
+        "no_statute_framing": "Pennsylvania has NO matching statute (and Greene v. USAA, 936 A.2d 1178, Pa. Super. 2007, is carrier-favorable). The NAIC Unfair Property/Casualty Claims Settlement Practices Model Regulation (MDL-902 §9.A(2)) is cited as industry evidence — not as an enforceable Pennsylvania regulation — of what the policy's 'like kind and quality' loss-settlement standard means: when replaced cladding does not match in color or profile, the area is replaced to a reasonably uniform appearance.",
+        "statute_framing": "Where the jurisdiction has adopted a matching statute or regulation, that rule is cited directly: new cladding that does not reasonably match the undamaged remainder requires replacement of the connected area to a reasonably uniform appearance.",
+        "naic_reference": "NAIC MDL-902 §9.A(2)"
+      }
+    },
     "two_layer_tearoff":  { "code_ref": "UCC R908.3.1.1(3)" },
     "underlayment":       { "code_ref": "UCC R905.1.1" },
     "starter_strip":      { "code_ref": "Manufacturer specification" },
@@ -118,7 +178,22 @@
     },
     "drip_edge":          { "code_ref": "NJUCC R905.2.8.5", "required": true },
     "ventilation":        { "code_ref": "NJUCC R806.2",     "nfa_ratio": "1:150" },
-    "house_wrap_corners": { "code_ref": "NJUCC R703.1 / R703.2" },
+    "house_wrap_corners": {
+      "code_ref": "NJUCC R703.1 / R703.2",
+      "sections": {
+        "corner_rule": "R703.1",
+        "wrb": "R703.2",
+        "wall_flashing": "R703.4"
+      },
+      "lap_spec": "WRB applied shingle-fashion, min 2 in. horizontal lap / 6 in. joint lap; CONTINUOUS — must wrap around outside corners and cannot terminate at a corner joint (Tyvek manufacturer spec: wrap min 6 in. around corners).",
+      "corner_rule": "A code-compliant water-resistive barrier (R703.2) must be continuous and wrap the outside corner per R703.1; the WRB on the approved elevation cannot be installed without wrapping the corner, which requires removing the corner trim and disturbs the connecting elevation's siding. Full-elevation siding is therefore code-required, not additional scope.",
+      "supplement_sentence": "Per NJUCC R703.2, a continuous water-resistive barrier is required behind all exterior wall cladding, applied shingle-fashion with a minimum 2 in. horizontal lap and 6 in. joint lap. Per NJUCC R703.1, that barrier must be continuous and wrap around outside corners — it cannot terminate at a corner joint (DuPont Tyvek installation instructions require wrapping a minimum of 6 in. around outside corners). Because the barrier cannot be reinstalled on the approved elevation without wrapping the outside corner, and wrapping the corner requires removing the corner trim and disturbing the connecting elevation's siding, a code-compliant repair extends to the adjacent elevation. Wall flashing at openings and penetrations (NJUCC R703.4) is disturbed whenever siding is removed and must be replaced to maintain the water-resistant seal between the openings and the barrier.",
+      "matching": {
+        "no_statute_framing": "New Jersey has NO matching statute. The NAIC Unfair Property/Casualty Claims Settlement Practices Model Regulation (MDL-902 §9.A(2)) is cited as industry evidence — not as an enforceable New Jersey regulation — of what the policy's 'like kind and quality' loss-settlement standard means: when replaced cladding does not match in color or profile, the area is replaced to a reasonably uniform appearance.",
+        "statute_framing": "Where the jurisdiction has adopted a matching statute or regulation, that rule is cited directly: new cladding that does not reasonably match the undamaged remainder requires replacement of the connected area to a reasonably uniform appearance.",
+        "naic_reference": "NAIC MDL-902 §9.A(2)"
+      }
+    },
     "two_layer_tearoff":  { "code_ref": "NJUCC R908.3.1.1(3)" },
     "underlayment":       { "code_ref": "NJUCC R905.1.1" },
     "starter_strip":      { "code_ref": "Manufacturer specification" },

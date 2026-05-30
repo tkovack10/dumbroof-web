@@ -187,6 +187,40 @@ def get_code_citation(state: str, concept: str, fallback: Optional[str] = None) 
     return fallback or ""
 
 
+def get_house_wrap_doctrine(state: str) -> dict:
+    """The structured siding corner-rule doctrine for a state's
+    ``house_wrap_corners`` entry (promoted 2026-05-29 from a bare ``code_ref``).
+
+    Shape: {code_ref, sections{corner_rule,wrb,wall_flashing}, lap_spec,
+    corner_rule, supplement_sentence, matching{no_statute_framing,
+    statute_framing, naic_reference}}. States without their own entry inherit the
+    IRC default (jurisdiction-neutral text + IRC prefix). Deep-copied — callers
+    can't mutate the cache."""
+    row = _row_for(state)
+    hw = row.get("house_wrap_corners")
+    if isinstance(hw, dict):
+        return copy.deepcopy(hw)
+    return {}
+
+
+# Matching-statute jurisdictions — states whose insurance regulation/statute
+# affirmatively requires reasonably-uniform-appearance matching, so the rule may
+# be CITED DIRECTLY. In every OTHER state (incl. NY/PA/NJ, which have NO matching
+# statute) MDL-902 is industry EVIDENCE only — never an enforceable regulation.
+# Source: memory/matching-arguments.md "States WITH enforceable matching
+# statutes." Single source of truth for the Doc-06 siding matching-gate.
+MATCHING_STATUTE_STATES = frozenset({
+    "AK", "CA", "CT", "FL", "IA", "KY", "MN", "NE", "OH", "RI", "TN", "UT",
+})
+
+
+def has_matching_statute(state: str) -> bool:
+    """True when the claim's state has an enforceable matching statute/regulation
+    (cite the rule directly); False otherwise (MDL-902 = industry evidence only).
+    Driven off the CLAIM's state — the Doc-06 siding section gates on this."""
+    return _normalize(state) in MATCHING_STATUTE_STATES
+
+
 def get_advocacy_reg(state: str) -> Optional[dict]:
     """State-specific claim-handling regulation (e.g. NY 11 NYCRR § 216).
     Returns None when not applicable — and ONLY used in PA / attorney

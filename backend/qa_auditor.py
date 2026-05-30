@@ -537,6 +537,142 @@ def compute_material_confidence_flags(config: dict, claim: dict) -> list[dict]:
     return flags
 
 
+# ==========================================================================
+# WS-7 — CODE_SUPPLEMENT_FALLBACK_PRICED (FLAG-ONLY, MEDIUM-only detection layer)
+# ==========================================================================
+#
+# Same posture as the WS-0/WS-3 flags: MEDIUM, never critical, can NEVER flip
+# qa_blocked. The Doc 06 priced code-compliance supplement renders every line at
+# the SAME visual weight, so a coarse NY-baseline / state-JSON fallback price
+# renders identically to a native per-market relational rate. We do NOT
+# suppress or alter the rendered price — the supplement price MUST equal Doc
+# 02's frozen price (the subset invariant), and the coarse price is a shared
+# pricing-COVERAGE issue, not a Doc-06 issue. INSTEAD we surface, before the
+# package ships, how many code-supplement rows are priced from a non-relational
+# fallback so a human can decide whether the per-market price list needs
+# sourcing. processor.py stamps the INTERNAL _price_source on every line item
+# (apply_price_provenance); 'relational' is the only native per-market source.
+
+# Mirror compliance_report's code-supplement subset definition (initial-scope,
+# code-cited, qty>0). Kept local so qa_auditor has no import cycle on the PDF
+# layer and so a refactor of one can't silently change the other's contract.
+def _is_code_supplement_row(li: dict) -> bool:
+    if not isinstance(li, dict):
+        return False
+    if not li.get("code_citation"):
+        return False
+    try:
+        qty = float(li.get("qty", 0) or 0)
+    except (TypeError, ValueError):
+        qty = 0.0
+    if qty <= 0:
+        return False
+    return (li.get("scope_timing") or "initial") == "initial"
+
+
+def compute_code_supplement_pricing_flags(config: dict, claim: dict) -> list[dict]:
+    """Return MEDIUM-only flags about the Doc 06 priced code-compliance
+    supplement's price PROVENANCE. NEVER returns a critical; can NEVER flip
+    qa_blocked.
+
+    Fires CODE_SUPPLEMENT_FALLBACK_PRICED (medium) when ≥1 code-supplement row
+    (code_citation present AND qty>0 AND scope_timing=='initial') is priced from a
+    GENUINELY-COARSE source — i.e. a price the claim's OWN market did not natively
+    produce: 'hardcoded-fallback' (cross-market NY baseline), 'json-fallback'
+    (relational unavailable), or a 'state-json-fallback:<S>' whose <S> is NOT the
+    claim's state. It does NOT fire on a native 'relational' rate, nor on an
+    OWN-state 'state-json-fallback' (e.g. NY house_wrap on a NY claim — the native
+    NYBI26 Xactimate rate), nor on key-imprecise attribution alone. The detail
+    counts how many such rows so a human knows the coarse-pricing exposure before
+    the package ships."""
+    flags: list[dict] = []
+    if not isinstance(config, dict):
+        return flags
+
+    code_rows = [li for li in (config.get("line_items") or []) if _is_code_supplement_row(li)]
+    if not code_rows:
+        return flags
+
+    # The claim's own state — used to tell an OWN-state state-json-fallback (the
+    # native NYBI26/PAPI26/NJBI26 Xactimate rate, e.g. NY house_wrap on a NY claim)
+    # from a CROSS-state baseline (genuinely-coarse pricing).
+    claim_state = str(
+        (config.get("property") or {}).get("state")
+        or (config.get("financials") or {}).get("state")
+        or ""
+    ).strip().upper()
+
+    def _is_fallback(li: dict) -> bool:
+        # Fire ONLY on GENUINELY-COARSE pricing — a price the claim's own market did
+        # not natively produce:
+        #   * 'hardcoded-fallback'    — the cross-market NY-baseline literal applied
+        #                               to a market lacking the short_key (E251 class).
+        #   * 'json-fallback'         — all-markets inversion used because the
+        #                               relational DB was unavailable (not a verified
+        #                               per-market rate).
+        #   * 'state-json-fallback:<S>' where <S> != the claim's state — a legacy
+        #                               cross-state baseline.
+        #
+        # Do NOT fire on:
+        #   * 'relational'            — native per-market rate.
+        #   * 'state-json-fallback:<S>' where <S> == the claim's state — that IS the
+        #                               claim's OWN-state native Xactimate rate (NY
+        #                               house_wrap on a NY claim is $0.64 native, not
+        #                               coarse). This is the panel false-positive fix.
+        #   * _price_source_inferred alone — key-imprecise attribution is NOT, by
+        #                               itself, coarse pricing. The siding rows are
+        #                               now key-attributed (apply_price_provenance
+        #                               reverse-map additions); even a still-inferred
+        #                               row whose claim-level source is native is not
+        #                               coarse. We classify by the ACTUAL source
+        #                               string, not by whether attribution was exact.
+        src = (li.get("_price_source") or "").strip().lower()
+        if not src:
+            # No source at all — we cannot positively assert a native rate.
+            return True
+        if src.startswith("relational"):
+            return False
+        if src.startswith("state-json-fallback"):
+            # Suffix form 'state-json-fallback:<STATE>'. Own-state == native, not coarse.
+            _ls = src.split(":", 1)[1].strip().upper() if ":" in src else ""
+            if _ls and claim_state and _ls == claim_state:
+                return False
+            # Unlabeled (legacy stamp) or cross-state → coarse.
+            return True
+        # hardcoded-fallback / json-fallback / anything else non-native → coarse.
+        return True
+
+    fallback_rows = [li for li in code_rows if _is_fallback(li)]
+    if not fallback_rows:
+        return flags
+
+    # Break the fallback count down by source for the human-readable detail.
+    by_source: dict[str, int] = {}
+    for li in fallback_rows:
+        src = (li.get("_price_source") or "(unstamped)").strip() or "(unstamped)"
+        by_source[src] = by_source.get(src, 0) + 1
+    breakdown = ", ".join(f"{src}×{n}" for src, n in sorted(by_source.items()))
+
+    flags.append({
+        "issue": "CODE_SUPPLEMENT_FALLBACK_PRICED",
+        "severity": "medium",
+        "check": "code_supplement_pricing",
+        "reason": "non_relational_price_source",
+        "found": len(fallback_rows),
+        "total_code_rows": len(code_rows),
+        "by_source": by_source,
+        "detail": (
+            f"{len(fallback_rows)} of {len(code_rows)} code-compliance supplement "
+            f"row(s) are priced from a NON-relational fallback ({breakdown}) rather "
+            f"than a native per-market rate. The rendered price is correct (it "
+            f"equals the Doc 02 frozen price); this flags per-market pricing "
+            f"COVERAGE so the price list can be sourced — it does NOT block ship."
+        ),
+    })
+
+    return flags
+
+
 def _build_prose_bundle(config: dict) -> dict:
     ff = config.get("forensic_findings", {}) or {}
     exec_summary = ff.get("executive_summary") or []
@@ -911,6 +1047,17 @@ def audit_claim(
         print(f"[QA] compute_material_confidence_flags crashed (ignored): {e}")
         material_conf_flags = []
 
+    # WS-7 CODE_SUPPLEMENT_FALLBACK_PRICED — MEDIUM-only, same posture as WS-0/WS-3:
+    # can NEVER be critical, can NEVER flip qa_blocked. Surfaces how many Doc 06
+    # code-supplement rows are priced from a non-relational fallback so a human
+    # sees the per-market pricing-coverage exposure BEFORE the package ships. Does
+    # NOT alter the rendered price (the subset invariant keeps it == Doc 02).
+    try:
+        code_supplement_pricing_flags = compute_code_supplement_pricing_flags(config, claim)
+    except Exception as e:  # noqa: BLE001 — detection must never break the audit
+        print(f"[QA] compute_code_supplement_pricing_flags crashed (ignored): {e}")
+        code_supplement_pricing_flags = []
+
     # Merge flag arrays. Order: prose flags first (carries the LLM's narrative
     # summary), then deterministic — keeps the human-readable audit summary
     # focused on prose issues with brand/NOAA flags appended below.
@@ -921,6 +1068,7 @@ def audit_claim(
         + prevalence_flags
         + ws5_flags
         + material_conf_flags
+        + code_supplement_pricing_flags
     )
     merged_low = list(prose_result.get("low") or []) + pdf_result.get("low", [])
 
@@ -968,6 +1116,8 @@ def audit_claim(
             "forensic_prevalence_medium": len(prevalence_flags),
             # WS-3 material-confidence flags (always MEDIUM, never blocking).
             "material_confidence_medium": len(material_conf_flags),
+            # WS-7 code-supplement pricing-provenance flags (always MEDIUM, never blocking).
+            "code_supplement_pricing_medium": len(code_supplement_pricing_flags),
         },
     }
 
