@@ -205,29 +205,58 @@ class TestCorpusBattery(unittest.TestCase):
         self.assertNotIn(_TAG_MATERIAL, mo["tags"],
                          "legitimate multi-structure dual roof wrongly flagged as a #4 contradiction")
 
+    # The three corpus fixtures that render with NO near-property NOAA hail.
+    # Ground truth established by READING each rendered report (not recomputed
+    # from the invariant's own helpers — that would be tautological and could
+    # launder a false positive into the lock):
+    #   KS      08052909 — winter storm, but the NARRATIVE asserts hail causation
+    #            ("scope of hail damage documented at this property",
+    #             "attributable to the reported hail event"). GENUINE latent bug.
+    #   IN_WIND 2afacee4 — high-wind claim; the ONLY hail token is the HAAG
+    #            "Damage Criteria" boilerplate. NOT a bug.
+    #   PA      eff5889b — same HAAG boilerplate only. NOT a bug.
+    _HAIL_KS = "08052909-4d67-4b31-b735-eba46480c2e8"
+    _HAIL_IN_WIND = "2afacee4-7939-4274-a0cb-8b1332bcc763"
+    _HAIL_PA = "eff5889b-0cf4-4f21-8547-95b25d7a1987"
+
     def test_hail_without_noaa_latent_violations_reported(self):
-        """#6 — REPORT (not hide) the fixtures whose forensic narrative asserts
-        hail damage while their storm-of-record carries NO NOAA hail and no
-        measured hail size. These are REAL latent bugs (e.g. the KS winter-storm
-        and IN high-wind fixtures whose prose still says 'hail damage documented
-        at this property' / 'the reported hail event'). We assert the firing set
-        equals an independently-derived expectation so the debt is locked: a NEW
-        unsupported-hail fixture trips the gate; a silently-'fixed' one (config
-        edited to add NOAA hail, or prose de-hailed) also trips it (recompute the
-        ledger on a deliberate corpus change)."""
+        """#6 — REPORT (not hide) the fixtures whose forensic NARRATIVE asserts
+        hail as the cause of loss while their storm-of-record carries NO NOAA
+        hail and no measured hail size.
+
+        The expected set is HAND-VERIFIED from the rendered reports (see the
+        _HAIL_* constants above) — only the KS winter-storm fixture genuinely
+        asserts hail causation without NOAA support. Locking to that constant
+        means: a NEW unsupported-hail fixture trips the gate; a silently-'fixed'
+        KS (config given NOAA hail, or prose de-hailed) also trips it; and a
+        boilerplate-only false positive (the original build's bug) trips it too."""
         firing = {fid for fid, r in corpus().items() if _TAG_HAIL in r["tags"]}
-        # Independently recompute: a fixture whose rendered forensic HTML carries
-        # hail-damage language AND whose config has no near-property NOAA hail.
-        expected = set()
-        for fid, r in corpus().items():
-            cfg = r["config"]
-            html = r["html"]
-            if inv._present_phrases(html, inv._HAIL_DAMAGE_PHRASES) and not inv._noaa_has_near_hail(cfg):
-                expected.add(fid)
         self.assertEqual(
-            firing, expected,
-            f"#6 firing set drifted.\n  firing={sorted(firing)}\n  expected={sorted(expected)}")
-        self.assertTrue(firing, "expected latent unsupported-hail fixtures (winter-storm / wind storms)")
+            firing, {self._HAIL_KS},
+            "#6 firing set drifted from the hand-verified expectation (only the "
+            "KS winter-storm fixture genuinely asserts hail without NOAA).\n"
+            f"  firing={sorted(firing)}\n  expected={[self._HAIL_KS]}")
+
+    def test_hail_boilerplate_false_positive_avoided(self):
+        """Regression guard for the #6 scrub (the #4-class lesson applied to
+        hail): the IN-wind and PA fixtures DO carry a hail token in their
+        rendered text — the HAAG "Damage Criteria" boilerplate — and have NO
+        NOAA hail, so a NAIVE raw-prose scan WOULD mis-fire (exactly the false
+        positives the first build produced). This proves the boilerplate scrub,
+        not luck, is what keeps them quiet."""
+        for fid in (self._HAIL_IN_WIND, self._HAIL_PA):
+            r = corpus()[fid]
+            raw_text = inv._visible_text(r["html"])
+            # A naive scan (no scrub) DOES see a hail token ...
+            self.assertTrue(
+                inv._present_phrases(raw_text, inv._HAIL_DAMAGE_PHRASES),
+                f"{fid[:8]}: expected the HAAG boilerplate hail token in raw text")
+            self.assertFalse(inv._noaa_has_near_hail(r["config"]),
+                             f"{fid[:8]}: expected no NOAA hail")
+            # ... but after scrubbing, no CAUSAL hail language remains -> quiet.
+            self.assertEqual(
+                inv.check_hail_only_with_noaa(r["config"], r["html"]), [],
+                f"{fid[:8]}: boilerplate-only hail mention must not fire #6")
 
     def test_tax_vs_state_latent_violations_are_exactly_the_known_set(self):
         """#7/E274 — the tax-vs-state invariant DOES fire on the pre-fix fixtures
@@ -600,6 +629,55 @@ class TestNegativeHailOnlyWithNoaa(unittest.TestCase):
         html = "<html>Wind damage: lifted and creased shingles along the windward slope.</html>"
         self.assertEqual(inv.check_hail_only_with_noaa(cfg, html), [],
                          "no hail language -> nothing to support")
+
+    def test_quiet_on_haag_boilerplate_only(self):
+        """The HAAG 'Damage Criteria' definitional line mentions 'hail damage' in
+        EVERY report regardless of peril — it is scaffolding, not a causal claim,
+        so it must NOT fire even with no NOAA hail (the IN-wind / PA bug class)."""
+        cfg = _min_config(weather={"hail_size": "", "storm_date": "x",
+                                   "storm_description": "Straight-line wind event",
+                                   "noaa": {"events": [
+                                       {"event_type": "Thunderstorm Wind", "distance_miles": 1.0}]}})
+        html = ("<html><p>Per HAAG Engineering criteria, hail damage to asphalt shingles "
+                "is identified by:</p><ul><li>Circular indentations with granule "
+                "displacement</li></ul><p>Wind damage: creased and lifted shingles along "
+                "the windward slope.</p></html>")
+        self.assertEqual(inv.check_hail_only_with_noaa(cfg, html), [],
+                         "HAAG boilerplate alone (no causal hail assertion) must not fire")
+
+    def test_quiet_on_differentiation_grid_hail_row_only(self):
+        """A wind claim's differentiation grid lists 'Hail Impact' as a ruled-OUT
+        potential cause; that generic row (rendered with the same injected
+        <strong> tags the generator emits) must not trip #6 absent causal prose.
+        Exercises the flatten-then-scrub path on real markup."""
+        cfg = _min_config(weather={"hail_size": "", "storm_date": "x",
+                                   "storm_description": "Wind", "noaa": {"events": []}})
+        html = ("<html><h3>Damage Differentiation Analysis</h3><table>"
+                "<tr><th>Potential Cause</th><th>Expected Characteristics</th>"
+                "<th>Observed?</th><th>Conclusion</th></tr>"
+                "<tr><td><strong>Hail Impact</strong></td>"
+                "<td><strong>Circular</strong> /oval depressions with <strong>granule "
+                "displacement</strong> , <strong>mat fracture</strong> , soft metal denting</td>"
+                "<td><strong style=\"color:#c8102e;\">No</strong></td>"
+                "<td><strong style=\"color:#c8102e;\">NOT CONSISTENT</strong></td></tr></table>"
+                "<p>Directional creasing confirms wind as the proximate cause.</p></html>")
+        self.assertEqual(inv.check_hail_only_with_noaa(cfg, html), [],
+                         "generic differentiation hail row must not fire absent causal prose")
+
+    def test_fires_on_causal_hail_despite_boilerplate(self):
+        """A report carrying BOTH the HAAG boilerplate AND a genuine causal hail
+        assertion (the KS bug shape) must still fire when NOAA shows no hail —
+        proves the scrub is not so aggressive it goes hollow."""
+        cfg = _min_config(weather={"hail_size": "", "storm_date": "x",
+                                   "storm_description": "Winter storm", "noaa": {"events": []}})
+        html = ("<html><p>Per HAAG Engineering criteria, hail damage to asphalt shingles "
+                "is identified by: circular indentations.</p>"
+                "<p>The carrier's scope does not reflect the scope of hail damage "
+                "documented at this property; damage is attributable to the reported "
+                "hail event.</p></html>")
+        v = inv.check_hail_only_with_noaa(cfg, html)
+        self.assertTrue(v, "must FIRE: causal hail assertion survives boilerplate scrub")
+        self.assertIn("#6", v[0])
 
 
 if __name__ == "__main__":

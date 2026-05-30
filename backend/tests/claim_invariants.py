@@ -122,7 +122,9 @@ _ENUM_FAMILY = {
     # must never trigger a contradiction.
 }
 
-# #6 — hail-damage language markers that assert hail as a CAUSE of loss.
+# #6 — hail-damage language markers. A bare occurrence is NOT enough — the
+# generic scaffolding in _HAIL_BOILERPLATE_PATTERNS is stripped first, so only a
+# CAUSAL assertion (in prose / photo findings) survives to be matched.
 _HAIL_DAMAGE_PHRASES = (
     "hail damage",
     "hail impact",
@@ -136,6 +138,39 @@ _HAIL_DAMAGE_PHRASES = (
 # NOAA proximity window: a hail event within this radius counts as "at/near the
 # property". Mirrors how the forensic report cites near-property NOAA events.
 _NOAA_HAIL_RADIUS_MILES = 15.0
+
+# Generic SCAFFOLDING fragments that CONTAIN a hail token but are TEMPLATE
+# boilerplate — definitional criteria and table labels, NOT a causal assertion
+# that THIS loss was caused by hail. They render in (nearly) EVERY forensic
+# report regardless of the actual peril, so a raw prose scan trips on them: the
+# IN-wind and PA fixtures carry NO hail finding yet both rendered the HAAG
+# "Damage Criteria" line. These spans are stripped BEFORE the causal-phrase scan
+# — the SAME lesson #4 learned (do not treat template prose as a substantive
+# assertion; anchor on the claim-specific signal). Sources in usarm_pdf_generator:
+#   1. _build_damage_criteria — "…hail damage to <material> … is identified by:"
+#      (asphalt / standing-seam-metal / natural-slate / tile variants)
+#   2. the "Hail Damage Threshold vs. Product Age" chart label (+ the NOAA
+#      threshold line "… EXCEEDED — N.Nx threshold Hail Damage Threshold …")
+#   3. the Damage-Differentiation grid's generic "Hail Impact" potential-cause
+#      row + its definitional Expected-Characteristics cell. (The grid's
+#      claim-specific Observed?/Conclusion cells are NOT scrubbed.)
+_HAIL_BOILERPLATE_PATTERNS = (
+    re.compile(r"hail(?:\s+and\s+wind)?\s+damage\s+to\s+[^.]*?\bis identified by", re.I),
+    re.compile(r"hail damage threshold", re.I),
+    re.compile(r"hail impact\s+circular\s*/?\s*oval depressions[^.]*?denting", re.I),
+)
+
+
+def _strip_hail_boilerplate(text: str) -> str:
+    """Remove generic hail SCAFFOLDING (definitional criteria + table labels) so
+    the causal-phrase scan sees only claim-specific narrative. Each removed span
+    appears in reports of every peril; a genuine causal assertion ("hail damage
+    documented at this property", "attributable to the reported hail event")
+    survives untouched."""
+    out = text or ""
+    for pat in _HAIL_BOILERPLATE_PATTERNS:
+        out = pat.sub(" ", out)
+    return out
 
 
 # ══════════════════════════════════════════════════════════════════════════
@@ -160,6 +195,20 @@ def is_usarm_tenant(config: dict) -> bool:
 def _present_phrases(haystack: str, phrases) -> list:
     low = (haystack or "").lower()
     return [p for p in phrases if p.lower() in low]
+
+
+_TAG_RE = re.compile(r"<[^>]+>")
+_WS_RE = re.compile(r"\s+")
+
+
+def _visible_text(html: str) -> str:
+    """Flatten rendered HTML to visible text (drop tags, collapse whitespace).
+
+    Phrase scans run against this, not the raw markup, so a substring can't be
+    split by an injected ``<strong>`` (the renderer bolds forensic terms inside
+    table cells) and boilerplate scrubbing sees one clean run of prose.
+    """
+    return _WS_RE.sub(" ", _TAG_RE.sub(" ", html or "")).strip()
 
 
 # ══════════════════════════════════════════════════════════════════════════
@@ -463,20 +512,29 @@ def _noaa_has_near_hail(config: dict) -> bool:
 
 
 def check_hail_only_with_noaa(config: dict, rendered_html: str) -> list[str]:
-    """Hail-damage language may appear only when NOAA shows hail at/near the
-    property. If the rendered report asserts hail as a cause of loss but the
-    NOAA record carries no near-property hail event (and no measured hail
+    """A CAUSAL hail-damage assertion may appear only when NOAA shows hail
+    at/near the property. If the rendered report asserts hail as a cause of loss
+    but the NOAA record carries no near-property hail event (and no measured hail
     size), that is an unsupported hail claim.
+
+    The rendered HTML is flattened to visible text and the generic SCAFFOLDING
+    (HAAG "Damage Criteria" definition, the threshold-chart label, the
+    differentiation-grid hail row — ``_HAIL_BOILERPLATE_PATTERNS``) is stripped
+    FIRST, so a report whose ONLY hail mention is template boilerplate (e.g. the
+    IN-wind / PA fixtures) does NOT fire. Only a claim-specific causal phrase
+    that survives scrubbing counts.
     """
-    hail_phrases = _present_phrases(rendered_html, _HAIL_DAMAGE_PHRASES)
+    text = _strip_hail_boilerplate(_visible_text(rendered_html))
+    hail_phrases = _present_phrases(text, _HAIL_DAMAGE_PHRASES)
     if not hail_phrases:
-        return []  # no hail language to support
+        return []  # no CAUSAL hail language (only scaffolding, if any) to support
     if _noaa_has_near_hail(config):
         return []  # supported
     return [
-        f"#6 HAIL-ONLY-WITH-NOAA: report uses hail-damage language {hail_phrases} "
-        f"but NOAA shows no hail event at/near the property (no near-property "
-        f"hail event, no measured hail size)"
+        f"#6 HAIL-ONLY-WITH-NOAA: report asserts hail as a cause of loss "
+        f"{hail_phrases} (beyond template boilerplate) but NOAA shows no hail "
+        f"event at/near the property (no near-property hail event, no measured "
+        f"hail size)"
     ]
 
 
