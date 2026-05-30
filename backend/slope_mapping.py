@@ -149,9 +149,13 @@ def synthesize_cardinal_facets() -> list:
     anything. Individual per-slope damage aggregation continues to work;
     the overhead map in the UI degrades to the side-panel slope list.
     """
+    # edge_types is the parallel-to-polygon_pixels array (see extract_roof_facets
+    # SHARED DATA CONTRACT). The cardinal skeleton has no polygon geometry, so
+    # edge_types is [] — keeps every persisted facet shape-uniform with the
+    # Vision path (no polygon → empty edge array).
     return [
         {"facet_id": card, "cardinal": card, "pitch": None,
-         "area_pct": 25.0, "polygon_pixels": []}
+         "area_pct": 25.0, "polygon_pixels": [], "edge_types": []}
         for card in ("N", "E", "S", "W")
     ]
 

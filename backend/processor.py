@@ -1735,6 +1735,49 @@ def _extract_diagram_pages_pdf(pdf_path: str, max_pages: int = 10) -> Optional[b
         return None
 
 
+# Valid edge classifications for the roof_facets.edge_types parallel array.
+# See extract_roof_facets docstring for the full SHARED DATA CONTRACT.
+_VALID_EDGE_TYPES = frozenset(
+    {"eave", "rake", "ridge", "valley", "hip", "wall", "unknown"}
+)
+
+
+def _normalize_edge_types(facet: dict) -> list:
+    """Repair / canonicalize a single facet's ``edge_types`` so it is ALWAYS a
+    list of exactly len(polygon_pixels) valid edge labels, parallel to the
+    polygon vertices.
+
+    Rules (defensive — Vision output is untrusted, old claims have no field):
+      * Result length == number of polygon vertices (N). No polygon → [].
+      * Each entry lowercased + validated against _VALID_EDGE_TYPES;
+        anything unrecognized (None, "", "gable", a number, etc.) → "unknown".
+      * Vision returned too few labels → pad the tail with "unknown".
+      * Vision returned too many labels → truncate to N.
+      * edge_types missing entirely / not a list → all-"unknown" of length N.
+
+    Never raises — callers run inside the non-fatal facet pipeline.
+    """
+    poly = facet.get("polygon_pixels")
+    n = len(poly) if isinstance(poly, list) else 0
+    if n == 0:
+        # No geometry → no parallel edge array (matches polygon_pixels == []).
+        return []
+
+    raw = facet.get("edge_types")
+    if not isinstance(raw, list):
+        raw = []
+
+    out: list = []
+    for i in range(n):
+        val = raw[i] if i < len(raw) else None
+        try:
+            label = str(val).strip().lower() if val is not None else ""
+        except Exception:
+            label = ""
+        out.append(label if label in _VALID_EDGE_TYPES else "unknown")
+    return out
+
+
 def extract_roof_facets(client: anthropic.Anthropic, pdf_path: str) -> dict:
     """Second Vision pass on a roof measurement PDF (EagleView, HOVER, GAF
     QuickMeasure, AccuLynx, Roofr, or any similar vendor) to extract per-facet
@@ -1746,11 +1789,29 @@ def extract_roof_facets(client: anthropic.Anthropic, pdf_path: str) -> dict:
         {
             "roof_facets": [
                 {"facet_id": "F1", "pitch": "6/12", "cardinal": "N",
-                 "area_pct": 18.5, "polygon_pixels": [[x,y], ...]}
+                 "area_pct": 18.5, "polygon_pixels": [[x,y], ...],
+                 "edge_types": ["eave", "rake", "ridge", "rake"]}
             ],
             "north_arrow_angle": 0,   # degrees clockwise from image-up
             "scale_bar": {"pixels": 100, "feet": 20},
         }
+
+    edge_types — SHARED DATA CONTRACT (frontend + claims.roof_facets column):
+        A parallel array to ``polygon_pixels``. For a facet whose
+        ``polygon_pixels`` has N clockwise vertices, ``edge_types`` is an array
+        of exactly N strings. ``edge_types[i]`` classifies the polygon EDGE
+        running from vertex i to vertex (i+1) mod N as ONE of:
+            "eave", "rake", "ridge", "valley", "hip", "wall", "unknown".
+        These are read off the LABELED EagleView diagram (eave/rake/ridge/
+        valley/hip lines are drawn + labeled on EagleView Premium diagrams).
+        Any edge that cannot be confidently classified is "unknown".
+
+        Backward-compatible: facets WITHOUT polygon_pixels get edge_types=[];
+        old claims persisted before this field still load (consumers must
+        tolerate a missing ``edge_types`` key). ``_normalize_edge_types`` repairs
+        the array so it is ALWAYS exactly len(polygon_pixels) — padding short
+        arrays with "unknown" and truncating long ones — so the parallel-array
+        invariant holds regardless of what Vision returns. Never crashes.
 
     Safe to fail: returns {"roof_facets": []} on any error. Non-fatal — the rest
     of the pipeline still runs (photo→slope mapping falls back to GPS
@@ -1783,6 +1844,7 @@ If there is an overhead roof diagram, extract one entry per distinct slope plane
 - cardinal: primary facing direction relative to the north arrow. One of: N, NE, E, SE, S, SW, W, NW. If the north arrow is missing, infer from typical orientations or use your best guess based on the diagram layout.
 - area_pct: approximate percentage of total roof area this slope represents (0-100). If the vendor shows square footage per slope, convert to percentage. Otherwise estimate from visual size.
 - polygon_pixels: array of [x, y] corner coordinates tracing the slope outline. Normalize to a 0-1000 scale on BOTH axes (origin = top-left of the overhead diagram). List corners in clockwise order.
+- edge_types: an array PARALLEL to polygon_pixels classifying each polygon EDGE. If polygon_pixels has N corners (clockwise), edge_types has exactly N strings. edge_types[i] classifies the edge running from corner i to corner (i+1, wrapping the last corner back to the first). Classify each edge as ONE of: "eave" (horizontal bottom edge where the roof meets the gutter line / lowest run), "rake" (the sloped/angled edge that runs up a gable end), "ridge" (the highest horizontal edge where two slopes meet at the peak), "valley" (a concave internal edge where two roof planes meet and channel water inward), "hip" (a convex external edge where two roof planes meet and shed water outward), "wall" (an edge that abuts a vertical wall — a step-flash / sidewall line), or "unknown" (cannot classify confidently). EagleView Premium diagrams DRAW and LABEL these lines (eaves, rakes, ridges, valleys, hips are distinct line styles / colors with a legend) — read those labels off the diagram and map each polygon edge to the line type it lies on. If you cannot tell, use "unknown" — never guess wildly. Edge order MUST match polygon_pixels order exactly.
 
 Also extract:
 - north_arrow_angle: degrees clockwise from image-up that the north arrow points (0 = up, 90 = right, 180 = down, 270 = left). If not shown, omit or set to 0.
@@ -1791,12 +1853,13 @@ Also extract:
 IMPORTANT:
 - Any top-down roof view with visible slope boundaries counts, even if not a formal "EagleView overhead diagram".
 - Include every visible slope even when the vendor labels only some of them.
-- If the only roof visual is a 3D perspective render (HOVER sometimes does this), skip polygon_pixels (set to []) but STILL include facet_id + cardinal + pitch + area_pct for each identifiable face. Those fields alone are enough for photo→slope mapping.
+- If the only roof visual is a 3D perspective render (HOVER sometimes does this), skip polygon_pixels (set to []) but STILL include facet_id + cardinal + pitch + area_pct for each identifiable face. Those fields alone are enough for photo→slope mapping. When polygon_pixels is [], set edge_types to [].
+- edge_types MUST be the SAME LENGTH as polygon_pixels for every facet. If the diagram has no labeled edge lines (a generic / unlabeled vendor diagram), fill edge_types with "unknown" for every edge rather than omitting it.
 
 Return ONLY valid JSON, no other text:
 {
   "roof_facets": [
-    {"facet_id": "F1", "pitch": "6/12", "cardinal": "N", "area_pct": 20, "polygon_pixels": [[100,200],[300,200],[300,400],[100,400]]}
+    {"facet_id": "F1", "pitch": "6/12", "cardinal": "N", "area_pct": 20, "polygon_pixels": [[100,200],[300,200],[300,400],[100,400]], "edge_types": ["eave", "rake", "ridge", "rake"]}
   ],
   "north_arrow_angle": 0,
   "scale_bar": {"pixels": 100, "feet": 20}
@@ -1827,6 +1890,17 @@ If the report is a Property Owner Report (images only, no overhead diagram), ret
     facets = result.get("roof_facets")
     if not isinstance(facets, list):
         result["roof_facets"] = []
+        facets = result["roof_facets"]
+
+    # Normalize edge_types on every facet so the parallel-array invariant holds
+    # before we persist: edge_types is ALWAYS exactly len(polygon_pixels), every
+    # entry a valid label, "unknown" where Vision was silent/wrong. This is the
+    # ONLY place the contract is enforced — both DB writes persist the whole
+    # roof_facets payload, so a clean array here flows straight through to the
+    # claim_config write AND the claims.roof_facets column write unchanged.
+    for f in facets:
+        if isinstance(f, dict):
+            f["edge_types"] = _normalize_edge_types(f)
 
     facet_count = len(result.get("roof_facets", []))
     print(f"[FACETS] Extracted {facet_count} roof facets from {os.path.basename(pdf_path)}"
@@ -7740,6 +7814,9 @@ async def process_claim(claim_id: str, refresh_prices: bool = False):
 
         # Attach roof facet polygons (per-slope photo mapping) if extracted.
         # Facet extraction can fail silently — check payload shape before use.
+        # The payload carries the per-facet edge_types[] parallel array
+        # (normalized in extract_roof_facets) alongside polygon_pixels — it
+        # rides into claim_config untouched here.
         if isinstance(roof_facets_data, dict) and roof_facets_data.get("roof_facets"):
             config["roof_facets"] = roof_facets_data
         elif claim.get("latitude") and claim.get("longitude"):
@@ -8940,7 +9017,10 @@ async def process_claim(claim_id: str, refresh_prices: bool = False):
         except Exception as _e:
             print(f"[PROCESS] Could not stage claim_config for persist: {_e}")
 
-        # Persist roof facet polygons for photo→slope mapping + roof map UI
+        # Persist roof facet polygons for photo→slope mapping + roof map UI.
+        # Each facet carries edge_types[] (parallel to polygon_pixels, normalized
+        # in extract_roof_facets) — it persists to the claims.roof_facets JSONB
+        # column here exactly as it was written into claim_config above.
         _rf_payload = config.get("roof_facets")
         if isinstance(_rf_payload, dict) and _rf_payload.get("roof_facets"):
             update_data["roof_facets"] = _rf_payload
