@@ -1,0 +1,51 @@
+{
+  "_meta": {
+    "template_id": "retail-gutters-aluminum-5in",
+    "template_name": "5\" K-Style Aluminum Gutters — Retail System",
+    "trade": "gutters",
+    "manufacturer": "Generic / seamless aluminum",
+    "product_line": "5\" K-Style seamless",
+    "pricing_model": "all_in_per_gutter_lf",
+    "base_price_per_lf_usd": 14.00,
+    "base_price_includes_waste": true,
+    "base_includes": [
+      "Seamless 5\" K-style aluminum gutter, machine-formed on site (.027 gauge)",
+      "Standard downspouts (2\"x3\"), elbows, and drops",
+      "Hidden hangers @ 24\" on center",
+      "Inside / outside mitered corners",
+      "End caps + gutter sealant",
+      "Tear-off + haul-away of existing gutters",
+      "Color from standard aluminum palette",
+      "Workmanship warranty"
+    ],
+    "base_excludes": [
+      "Fascia / soffit repair or replacement — billed separately",
+      "Gutter guards / leaf protection",
+      "6\" oversized gutter upgrade",
+      "Copper or steel material upgrade",
+      "Rotted fascia board replacement"
+    ],
+    "currency": "USD",
+    "as_of_date": "2026-05-29",
+    "notes": "All-in $14.00/LF × gutter run (≈ eave_lf) is the customer-facing price; standard downspouts are bundled in. Itemized lines below show what's included (unit_price 0 = bundled). Real $-amounts live in add_ons. Prices are editable starting points — adjust per your market."
+  },
+
+  "items": [
+    { "line": 1, "category": "gutter_run", "code": "GUT_5IN_ALUM", "description": "5\" K-style seamless aluminum gutter, installed — hidden hangers @ 24\" OC, miters, end caps, sealant. All-in incl. standard downspouts.", "unit": "LF", "unit_price": 14.00, "quantity_formula": "eave_lf", "bundled_in_base": false, "is_billing_line": true, "notes": "All-in billing line: $14.00/LF × gutter run (eave_lf). Downspouts bundled." },
+    { "line": 2, "category": "downspouts", "code": "GUT_DOWNSPOUT_STD", "description": "Standard 2\"x3\" downspouts with elbows and drops — count sized to gutter run", "unit": "EA", "unit_price": 0.00, "quantity_formula": "max(2, round(eave_lf / 35))", "bundled_in_base": true },
+    { "line": 3, "category": "hangers", "code": "GUT_HANGERS", "description": "Hidden gutter hangers @ 24\" on center", "unit": "EA", "unit_price": 0.00, "quantity_formula": "round(eave_lf / 2)", "bundled_in_base": true },
+    { "line": 4, "category": "tearoff", "code": "GUT_TEAROFF", "description": "Tear-off and haul-away of existing gutters + downspouts", "unit": "LF", "unit_price": 0.00, "quantity_formula": "eave_lf", "bundled_in_base": true },
+    { "line": 5, "category": "warranty", "code": "GUT_WARRANTY_LABOR", "description": "Contractor workmanship warranty", "unit": "LS", "unit_price": 0.00, "quantity_formula": "1", "bundled_in_base": true }
+  ],
+
+  "add_ons": [
+    { "code": "GUT_UPGRADE_6IN", "description": "Upgrade to 6\" oversized K-style aluminum (high-flow) — additive over 5\"", "unit": "LF", "unit_price": 3.00, "notes": "Additive per LF over base 5\"." },
+    { "code": "GUT_GUARDS", "description": "Gutter guard / leaf protection — micro-mesh, installed", "unit": "LF", "unit_price": 7.50, "notes": "Per LF of gutter protected." },
+    { "code": "GUT_COPPER_HALFROUND", "description": "Upgrade to copper half-round gutter (in lieu of aluminum)", "unit": "LF", "unit_price": 48.00, "notes": "Substitutes for the aluminum base — premium." },
+    { "code": "GUT_DOWNSPOUT_EXTRA", "description": "Additional downspout beyond standard count (full drop + elbows)", "unit": "EA", "unit_price": 95.00, "notes": "For long runs or extra drainage points." },
+    { "code": "GUT_DOWNSPOUT_2STORY", "description": "Two-story / tall downspout surcharge", "unit": "EA", "unit_price": 45.00, "notes": "Additive per downspout for 2+ story runs." },
+    { "code": "GUT_FASCIA_REPL", "description": "Rotted fascia board replacement (1x6 primed pine)", "unit": "LF", "unit_price": 9.00, "notes": "Allowance — actual qty determined on tear-off." }
+  ],
+
+  "warranty_disclosure": "Seamless aluminum gutters carry a standard contractor workmanship warranty. Material finish (baked-enamel aluminum) carries the manufacturer's finish warranty. Copper and 6\" upgrades are quoted as add-ons."
+}
