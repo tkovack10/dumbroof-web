@@ -537,6 +537,96 @@ def compute_material_confidence_flags(config: dict, claim: dict) -> list[dict]:
     return flags
 
 
+# ==========================================================================
+# WS-7 — CODE_SUPPLEMENT_FALLBACK_PRICED (FLAG-ONLY, MEDIUM-only detection layer)
+# ==========================================================================
+#
+# Same posture as the WS-0/WS-3 flags: MEDIUM, never critical, can NEVER flip
+# qa_blocked. The Doc 06 priced code-compliance supplement renders every line at
+# the SAME visual weight, so a coarse NY-baseline / state-JSON fallback price
+# renders identically to a native per-market relational rate. We do NOT
+# suppress or alter the rendered price — the supplement price MUST equal Doc
+# 02's frozen price (the subset invariant), and the coarse price is a shared
+# pricing-COVERAGE issue, not a Doc-06 issue. INSTEAD we surface, before the
+# package ships, how many code-supplement rows are priced from a non-relational
+# fallback so a human can decide whether the per-market price list needs
+# sourcing. processor.py stamps the INTERNAL _price_source on every line item
+# (apply_price_provenance); 'relational' is the only native per-market source.
+
+# Mirror compliance_report's code-supplement subset definition (initial-scope,
+# code-cited, qty>0). Kept local so qa_auditor has no import cycle on the PDF
+# layer and so a refactor of one can't silently change the other's contract.
+def _is_code_supplement_row(li: dict) -> bool:
+    if not isinstance(li, dict):
+        return False
+    if not li.get("code_citation"):
+        return False
+    try:
+        qty = float(li.get("qty", 0) or 0)
+    except (TypeError, ValueError):
+        qty = 0.0
+    if qty <= 0:
+        return False
+    return (li.get("scope_timing") or "initial") == "initial"
+
+
+def compute_code_supplement_pricing_flags(config: dict, claim: dict) -> list[dict]:
+    """Return MEDIUM-only flags about the Doc 06 priced code-compliance
+    supplement's price PROVENANCE. NEVER returns a critical; can NEVER flip
+    qa_blocked.
+
+    Fires CODE_SUPPLEMENT_FALLBACK_PRICED (medium) when ≥1 code-supplement row
+    (code_citation present AND qty>0 AND scope_timing=='initial') carries a
+    _price_source NOT in {'relational'} — i.e. it was priced from a fallback
+    (json-fallback / state-json-fallback / hardcoded-fallback) rather than a
+    native per-market relational rate. The detail counts how many such rows so a
+    human knows the fallback exposure before the package ships."""
+    flags: list[dict] = []
+    if not isinstance(config, dict):
+        return flags
+
+    code_rows = [li for li in (config.get("line_items") or []) if _is_code_supplement_row(li)]
+    if not code_rows:
+        return flags
+
+    def _is_fallback(li: dict) -> bool:
+        # 'relational' (and any source string that STARTS with 'relational') is
+        # the only native per-market provenance. A missing _price_source is
+        # treated as fallback — we cannot positively assert it's a native rate.
+        src = (li.get("_price_source") or "").strip().lower()
+        return not src.startswith("relational")
+
+    fallback_rows = [li for li in code_rows if _is_fallback(li)]
+    if not fallback_rows:
+        return flags
+
+    # Break the fallback count down by source for the human-readable detail.
+    by_source: dict[str, int] = {}
+    for li in fallback_rows:
+        src = (li.get("_price_source") or "(unstamped)").strip() or "(unstamped)"
+        by_source[src] = by_source.get(src, 0) + 1
+    breakdown = ", ".join(f"{src}×{n}" for src, n in sorted(by_source.items()))
+
+    flags.append({
+        "issue": "CODE_SUPPLEMENT_FALLBACK_PRICED",
+        "severity": "medium",
+        "check": "code_supplement_pricing",
+        "reason": "non_relational_price_source",
+        "found": len(fallback_rows),
+        "total_code_rows": len(code_rows),
+        "by_source": by_source,
+        "detail": (
+            f"{len(fallback_rows)} of {len(code_rows)} code-compliance supplement "
+            f"row(s) are priced from a NON-relational fallback ({breakdown}) rather "
+            f"than a native per-market rate. The rendered price is correct (it "
+            f"equals the Doc 02 frozen price); this flags per-market pricing "
+            f"COVERAGE so the price list can be sourced — it does NOT block ship."
+        ),
+    })
+
+    return flags
+
+
 def _build_prose_bundle(config: dict) -> dict:
     ff = config.get("forensic_findings", {}) or {}
     exec_summary = ff.get("executive_summary") or []
@@ -911,6 +1001,17 @@ def audit_claim(
         print(f"[QA] compute_material_confidence_flags crashed (ignored): {e}")
         material_conf_flags = []
 
+    # WS-7 CODE_SUPPLEMENT_FALLBACK_PRICED — MEDIUM-only, same posture as WS-0/WS-3:
+    # can NEVER be critical, can NEVER flip qa_blocked. Surfaces how many Doc 06
+    # code-supplement rows are priced from a non-relational fallback so a human
+    # sees the per-market pricing-coverage exposure BEFORE the package ships. Does
+    # NOT alter the rendered price (the subset invariant keeps it == Doc 02).
+    try:
+        code_supplement_pricing_flags = compute_code_supplement_pricing_flags(config, claim)
+    except Exception as e:  # noqa: BLE001 — detection must never break the audit
+        print(f"[QA] compute_code_supplement_pricing_flags crashed (ignored): {e}")
+        code_supplement_pricing_flags = []
+
     # Merge flag arrays. Order: prose flags first (carries the LLM's narrative
     # summary), then deterministic — keeps the human-readable audit summary
     # focused on prose issues with brand/NOAA flags appended below.
@@ -921,6 +1022,7 @@ def audit_claim(
         + prevalence_flags
         + ws5_flags
         + material_conf_flags
+        + code_supplement_pricing_flags
     )
     merged_low = list(prose_result.get("low") or []) + pdf_result.get("low", [])
 
@@ -968,6 +1070,8 @@ def audit_claim(
             "forensic_prevalence_medium": len(prevalence_flags),
             # WS-3 material-confidence flags (always MEDIUM, never blocking).
             "material_confidence_medium": len(material_conf_flags),
+            # WS-7 code-supplement pricing-provenance flags (always MEDIUM, never blocking).
+            "code_supplement_pricing_medium": len(code_supplement_pricing_flags),
         },
     }
 

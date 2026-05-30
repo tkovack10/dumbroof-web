@@ -66,24 +66,169 @@ def carrier_scope_present(config: dict) -> bool:
     return bool(rows) and isinstance(rows, list)
 
 
-def _carrier_status_map(config: dict) -> dict:
-    """Map a USARM line-item description → carrier coverage state, derived from
-    the pre-matched carrier.carrier_line_items rows. Keys are normalized
-    descriptions; value is 'omitted' when the carrier did NOT include the item
-    (status=='missing' / carrier_desc=='NOT INCLUDED'), else 'included'."""
-    out = {}
+# ── WS-7 FIX 1 — carrier-vocabulary normalizer + matcher ──
+#
+# The carrier comparison rows (carrier.carrier_line_items[].usarm_desc) and the
+# config line_items[].description come from DIFFERENT vocabularies — the carrier
+# rows use Xactimate-export shorthand ("Ice & water barrier", "...rfg.",
+# "R&R Drip edge") while our line items carry the fuller generator descriptions
+# ("Ice & water barrier (2 courses eaves + 1 course valleys)",
+# "...comp shingle roofing", "R&R Drip edge - aluminum"). An EXACT lowercased
+# join matched only ~4 of 25 rows on fixture 74597c34; the other 21 SILENTLY
+# defaulted to OMITTED — a CARRIER-FACING FALSEHOOD (it claimed the carrier
+# omitted ice & water / laminated shingle / drip edge, all of which the carrier
+# actually included).
+#
+# The scope_comparison engine's matcher (XactRegistry.pre_match_scope_comparison)
+# is a 6-pass, registry-bound, EagleView-checklist-first intent matcher and is
+# NOT cleanly reusable for a flat description↔description join here (it needs a
+# live registry, measurements, carrier-triple aggregation). We DO reuse its
+# proven _clean_desc normalizer as a baseline and layer the carrier-shorthand
+# abbreviation expansions on top.
+
+_CR_STOP_WORDS = frozenset({
+    "and", "or", "the", "of", "for", "a", "an", "to", "in", "with", "without",
+    "per", "approx", "approximately", "remove", "replace", "rr",
+})
+
+# Common Xactimate / carrier shorthand → canonical form. Order matters (apply
+# multi-char tokens before '&').
+_CR_ABBR_RES = [
+    (re.compile(r"\bw/out\b|\bw/o\b"), " without "),
+    (re.compile(r"\brfg\b\.?"), " roofing "),
+    (re.compile(r"\bcomp\b\.?"), " comp "),
+    (re.compile(r"\br&r\b"), " remove replace "),
+    (re.compile(r"\bi&w\b"), " ice and water "),
+    (re.compile(r"&"), " and "),
+]
+
+
+def _cr_normalize(desc: str) -> str:
+    """Normalize a line-item / carrier description for cross-vocabulary matching:
+    lowercase, drop ALL parentheticals "(…)", expand carrier shorthand
+    (rfg.→roofing, w/out→without, &→and, r&r→remove replace, i&w→ice and water),
+    drop remaining punctuation, collapse whitespace. Never raises."""
+    if not desc:
+        return ""
+    s = str(desc).lower().strip()
+    s = re.sub(r"\([^)]*\)", " ", s)          # drop any parentheticals
+    for rgx, rep in _CR_ABBR_RES:
+        s = rgx.sub(rep, s)
+    s = re.sub(r"[^a-z0-9 ]+", " ", s)         # drop punctuation/symbols
+    s = re.sub(r"\s+", " ", s).strip()
+    return s
+
+
+def _cr_tokens(desc: str) -> set:
+    """Significant (non-stopword, ≥2-char) tokens of a normalized description."""
+    return {t for t in _cr_normalize(desc).split() if len(t) >= 2 and t not in _CR_STOP_WORDS}
+
+
+def _cr_match(usarm_desc: str, candidates: list) -> dict | None:
+    """Find the best carrier row matching a USARM line-item description.
+
+    candidates: list of {"norm", "tokens", "row"} for every carrier comparison
+    row that carries a usarm_desc. Match strategy (strongest → weakest):
+      1. exact normalized equality
+      2. normalized contains / startswith (either direction)
+      3. significant-token overlap ≥ 0.6 of the smaller token set
+    Returns the matched candidate dict, or None when nothing matches (caller
+    must then render a NEUTRAL status — NEVER a default OMITTED)."""
+    nu = _cr_normalize(usarm_desc)
+    if not nu:
+        return None
+    tu = _cr_tokens(usarm_desc)
+
+    # 1. exact
+    for c in candidates:
+        if c["norm"] == nu:
+            return c
+    # 2. contains / startswith (either direction)
+    for c in candidates:
+        nc = c["norm"]
+        if nc and (nu in nc or nc in nu):
+            return c
+    # 3. token overlap
+    best, best_ov = None, 0.0
+    for c in candidates:
+        tc = c["tokens"]
+        if not tc or not tu:
+            continue
+        ov = len(tu & tc) / max(1, min(len(tu), len(tc)))
+        if ov > best_ov:
+            best, best_ov = c, ov
+    if best is not None and best_ov >= 0.6:
+        return best
+    return None
+
+
+def _carrier_candidates(config: dict) -> list:
+    """Pre-normalize every carrier comparison row that carries a usarm_desc into
+    {"norm", "tokens", "row"} for matching."""
+    cands = []
     if not carrier_scope_present(config):
-        return out
+        return cands
     for row in config["carrier"]["carrier_line_items"]:
         if not isinstance(row, dict):
             continue
-        desc = (row.get("usarm_desc") or row.get("checklist_desc") or "").strip().lower()
+        desc = (row.get("usarm_desc") or row.get("checklist_desc") or "").strip()
         if not desc:
             continue
-        status = (row.get("status") or "").lower()
-        carrier_desc = (row.get("carrier_desc") or "").strip().upper()
-        omitted = status == "missing" or carrier_desc in ("", "NOT INCLUDED")
-        out[desc] = "omitted" if omitted else "included"
+        cands.append({
+            "norm": _cr_normalize(desc),
+            "tokens": _cr_tokens(desc),
+            "row": row,
+        })
+    return cands
+
+
+def _row_is_omitted(row: dict) -> bool:
+    """A matched carrier row indicates ABSENCE (the carrier did not include the
+    item) when its comparison status is 'missing' OR its carrier_desc is empty /
+    'NOT INCLUDED'. Otherwise the carrier DID include it (under/over/match)."""
+    status = (row.get("status") or "").lower()
+    carrier_desc = (row.get("carrier_desc") or "").strip().upper()
+    return status == "missing" or carrier_desc in ("", "NOT INCLUDED")
+
+
+def _carrier_status_for(usarm_desc: str, candidates: list) -> str | None:
+    """WS-7 FIX 1: resolve a single USARM description against the carrier rows.
+
+    Returns:
+      'included' — positively matched a carrier row the carrier DID include,
+      'omitted'  — positively matched a carrier row that indicates ABSENCE
+                   (status missing / NOT INCLUDED),
+      None       — NO positive match. The caller renders a NEUTRAL status and
+                   MUST NOT claim the carrier omitted the item. This is the
+                   credibility-critical half of the fix: we never assert an
+                   omission we did not positively observe."""
+    cand = _cr_match(usarm_desc, candidates)
+    if cand is None:
+        return None
+    return "omitted" if _row_is_omitted(cand["row"]) else "included"
+
+
+def _carrier_status_map(config: dict) -> dict:
+    """Map a USARM line-item description → carrier coverage state, derived from
+    the pre-matched carrier.carrier_line_items rows via the cross-vocabulary
+    normalizer/matcher (WS-7 FIX 1). Keys are RAW lowercased descriptions; value
+    is 'omitted' (positively matched + carrier indicates absence), 'included'
+    (positively matched + carrier present), or absent from the map when NO
+    positive match was found (caller renders NEUTRAL — never a default OMITTED).
+    """
+    out = {}
+    if not carrier_scope_present(config):
+        return out
+    candidates = _carrier_candidates(config)
+    # Resolve the DISTINCT descriptions present on the USARM code line items.
+    descs = set()
+    for li in config.get("line_items", []) or []:
+        if isinstance(li, dict) and li.get("description"):
+            descs.add(li["description"].strip())
+    for desc in descs:
+        state = _carrier_status_for(desc, candidates)
+        if state is not None:
+            out[desc.lower()] = state
     return out
 
 
@@ -447,10 +592,20 @@ def _code_section_carrier_status(config: dict) -> dict:
         section = (cc.get("section") or "").strip()
         if not section:
             continue
-        state = status_map.get((li.get("description") or "").strip().lower(), "omitted")
-        # If ANY line under a section is omitted, the section is flagged omitted.
-        if out.get(section) != "omitted":
-            out[section] = state
+        # WS-7 FIX 1: NO positive carrier match → NEUTRAL (None), never a default
+        # 'omitted'. Precedence per section: omitted > included > neutral, so a
+        # genuinely-absent line dominates, but an unmatched line never fabricates
+        # an omission.
+        state = status_map.get((li.get("description") or "").strip().lower())  # None when unmatched
+        prev = out.get(section)
+        if prev == "omitted":
+            continue
+        if state == "omitted":
+            out[section] = "omitted"
+        elif state == "included" and prev != "included":
+            out[section] = "included"
+        elif section not in out:
+            out[section] = state  # may be None → neutral
     return out
 
 
@@ -476,10 +631,14 @@ def _build_summary_table(annotations: list[dict], config: dict) -> str:
             # Join on the bare section (strip the jurisdiction prefix off code_tag).
             section = (cc.get("section") or "").strip()
             state = section_status.get(section)
-            if state == "included":
+            if state == "omitted":
+                # WS-7 FIX 1: only OMITTED on a positive carrier-absence match.
+                carrier_cell = '<td class="status-missing">OMITTED</td>'
+            elif state == "included":
                 carrier_cell = '<td class="status-included">Included</td>'
             else:
-                carrier_cell = '<td class="status-missing">OMITTED</td>'
+                # No positive carrier match → NEUTRAL "not compared" dash.
+                carrier_cell = '<td style="color:#95a5a6;">&mdash;</td>'
 
         rows.append(f'''
         <tr>
@@ -583,15 +742,18 @@ def build_priced_supplement(config: dict) -> dict:
             if carrier_present:
                 state = status_map.get((desc or "").strip().lower())
                 if state == "omitted":
+                    # WS-7 FIX 1: only count/label OMITTED when a carrier row
+                    # POSITIVELY matched AND indicates absence — never a default.
                     omitted_count += 1
                     carrier_cell = '<td class="carrier-omitted">OMITTED</td>'
                 elif state == "included":
                     carrier_cell = '<td class="carrier-included">Included</td>'
                 else:
-                    # In USARM scope, not found in the carrier comparison rows →
-                    # treat as a carrier omission (supplement leverage).
-                    omitted_count += 1
-                    carrier_cell = '<td class="carrier-omitted">OMITTED</td>'
+                    # NO positive match against the carrier comparison rows. We
+                    # do NOT know whether the carrier included this item, so we
+                    # render a NEUTRAL "not compared" dash — asserting OMITTED
+                    # here would be a carrier-facing falsehood (the old bug).
+                    carrier_cell = '<td style="color:#95a5a6;">&mdash;</td>'
 
             body_rows.append(f'''<tr>
                 <td><b>{_h(section)}</b></td>
@@ -682,7 +844,17 @@ def build_requirements_only_supplement(config: dict) -> str:
     """WS-7 — forensic-only fallback (NO measurements AND NO carrier scope).
     Renders the same code REQUIREMENTS list with NO qty / price / subtotal, plus
     the upload notice. v1 accepts that this list is thin (it derives from the
-    code-cited annotations the forensic pass produced)."""
+    code-cited annotations the forensic pass produced).
+
+    RESERVED — NOT YET WIRED IN PRODUCTION (WS-7 recon, 2026-05-29). The
+    requirements-only branch below is currently UNREACHABLE in the live
+    pipeline: forensic_only mode skips Doc 06 entirely at the generator gate,
+    AND the forensic_only post-generation filter drops the ``06_`` artifact. So
+    today this branch only ever runs in unit tests. It is kept INTACT (with its
+    tests) as the deliberate foundation for the future forensic-only Doc-06
+    upsell ("upload measurements/scope to unlock the priced supplement"). Wiring
+    it requires a forensic_only filter change that is intentionally OUT OF SCOPE
+    here (it collides with another shell's work) — see follow-up. Do not delete."""
     ahj = _ahj_header(config)
     annotations = collect_annotations_from_config(config)
 
@@ -771,6 +943,11 @@ def build_compliance_report(config: dict) -> str:
               f"carrier_scope={'yes' if supplement['carrier_present'] else 'no'}, "
               f"omitted={supplement['omitted_count']}")
     else:
+        # RESERVED — see build_requirements_only_supplement docstring. This
+        # branch is UNREACHABLE in production today (forensic_only skips Doc 06
+        # at the generator gate + the forensic_only post-gen filter drops 06_).
+        # Kept for the future forensic-only Doc-06 upsell; not yet wired (a
+        # forensic_only filter change is out of scope here). Tests still cover it.
         supplement_html = build_requirements_only_supplement(config)
         _mode = "requirements-only"
         print("[COMPLIANCE] requirements-only supplement (no measurements, no carrier scope)")

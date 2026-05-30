@@ -112,11 +112,35 @@ class TestSubsetInvariant(unittest.TestCase):
         )
         self.assertAlmostEqual(sup["subtotal"], doc02_subset, places=2)
 
-    def test_never_additive_subtotal_le_doc02_total(self):
+    def test_never_additive_subtotal_equals_code_subset_sum(self):
+        # FIX 4: the TRUE non-additive invariant is the subset-SUM identity, not
+        # 'subtotal <= Doc 02 line_total'. The <= form can INVERT under a
+        # hypothetical negative/credit line item (a credit would pull the full
+        # total below a positive code subset, falsely "failing" a correct
+        # supplement). The subset-sum '==' holds UNCONDITIONALLY: the supplement
+        # subtotal is, by construction, the sum of round(qty*unit_price,2) over
+        # exactly the SAME code line_items Doc 02 renders — never additive.
         sup = CR.build_priced_supplement(self.cfg)
+        code_items = CR._code_line_items(self.cfg)
+        code_subset_sum = round(
+            sum(round(float(li["qty"]) * float(li["unit_price"]), 2) for li in code_items), 2
+        )
+        self.assertAlmostEqual(sup["subtotal"], code_subset_sum, places=2)
+        # And that subset is itself a SUBSET of Doc 02's initial line total — the
+        # code subset is necessarily ≤ the full line total when every code line's
+        # extension is non-negative (true for all real configs). We assert the
+        # subset membership directly rather than the fragile magnitude inequality.
         fin = compute_financials(self.cfg)
-        # The code subset can never exceed Doc 02's full initial line total.
-        self.assertLessEqual(sup["subtotal"], fin["line_total"] + 0.005)
+        all_initial_sum = round(
+            sum(
+                round(float(li.get("qty", 0) or 0) * float(li.get("unit_price", 0) or 0), 2)
+                for li in self.cfg.get("line_items", [])
+                if _is_initial_scope(li)
+            ),
+            2,
+        )
+        self.assertAlmostEqual(all_initial_sum, fin["line_total"], places=2)
+        self.assertLessEqual(code_subset_sum, all_initial_sum + 0.005)
 
     def test_every_supplement_item_is_in_doc02(self):
         # Each code line item the supplement prices must be an INITIAL Doc-02 item.
@@ -163,10 +187,63 @@ class TestCarrierCrossRef(unittest.TestCase):
         self.assertTrue(CR.carrier_scope_present(cfg))
         sup = CR.build_priced_supplement(cfg)
         # Carrier column is rendered and at least one OMITTED appears (this TX
-        # fixture's carrier under/omits most code items).
+        # fixture genuinely omits ridge cap / ridge vent / underlayment-felt).
         self.assertIn("Carrier Scope", sup["html"])
         self.assertIn("OMITTED", sup["html"])
         self.assertGreater(sup["omitted_count"], 0)
+        # FIX 1: a matched-Included row must also be rendered (the old bug
+        # defaulted everything to OMITTED, so "Included" never appeared).
+        self.assertIn("Included", sup["html"])
+
+    def test_no_false_omissions_for_included_items(self):
+        # FIX 1 — the credibility-critical assertion: items the carrier ACTUALLY
+        # INCLUDED on this fixture (ice & water, laminated shingle, drip edge,
+        # step flashing — all carrier status 'under' = present) must be matched
+        # 'included', NEVER falsely defaulted to OMITTED.
+        cfg = _priced_cfg()
+        smap = CR._carrier_status_map(cfg)
+        for desc_substr, expected in [
+            ("ice & water barrier", "included"),
+            ("laminated comp shingle roofing - w/out felt", "included"),
+            ("r&r drip edge", "included"),
+            ("r&r step flashing", "included"),
+            # genuinely-absent (carrier status 'missing' / NOT INCLUDED):
+            ("underlayment - felt 15#", "omitted"),
+            ("r&r ridge cap - laminated", "omitted"),
+            ("r&r ridge vent - shingle over", "omitted"),
+        ]:
+            matches = {k: v for k, v in smap.items() if desc_substr in k}
+            self.assertTrue(matches, f"no status-map entry for {desc_substr!r}")
+            for k, v in matches.items():
+                self.assertEqual(v, expected, f"{k!r} should be {expected}, got {v}")
+
+    def test_true_omitted_count_not_inflated(self):
+        # FIX 1: the OMITTED count must be the TRUE number of genuinely-absent
+        # code rows — NOT the old 24/25 that fell out of the default-to-OMITTED
+        # bug. This TX fixture genuinely omits 3 distinct items (underlayment
+        # felt, ridge cap, ridge vent), each repeated across 3 facets → 9 rows.
+        cfg = _priced_cfg()
+        sup = CR.build_priced_supplement(cfg)
+        self.assertEqual(sup["row_count"], 25)
+        self.assertEqual(sup["omitted_count"], 9)
+        # Rendered OMITTED cells equal the counted omissions (no neutral row is
+        # mislabeled, no Included row is mislabeled).
+        self.assertEqual(sup["html"].count('class="carrier-omitted">OMITTED'), 9)
+        # And the formerly-omitted-but-actually-included items now render Included.
+        self.assertGreaterEqual(sup["html"].count('class="carrier-included">Included'), 1)
+
+    def test_unmatched_rows_render_neutral_not_omitted(self):
+        # FIX 1: a code item with NO positive carrier match renders a NEUTRAL
+        # dash, NOT a fabricated OMITTED. (Starter strip matches no carrier row
+        # at the conservative threshold on this fixture → neutral, not OMITTED.)
+        cfg = _priced_cfg()
+        sup = CR.build_priced_supplement(cfg)
+        smap = CR._carrier_status_map(cfg)
+        # 'starter' is in USARM scope but has no positive match → absent from map.
+        starter_keys = [k for k in smap if "starter strip" in k]
+        self.assertEqual(starter_keys, [], "starter should be UNMATCHED (neutral), not in the status map")
+        # The neutral dash cell is rendered for the unmatched rows.
+        self.assertIn('color:#95a5a6;">&mdash;</td>', sup["html"])
 
     def test_status_map_classifies_missing_as_omitted(self):
         cfg = _priced_cfg()
@@ -323,6 +400,80 @@ class TestCosmeticFixes(unittest.TestCase):
         summary = CR._build_summary_table(anns, cfg)
         self.assertIn("Carrier Scope", summary)
         self.assertNotIn("VERIFY", summary)  # the old placeholder is gone
+
+
+class TestCodeSupplementPricingFlag(unittest.TestCase):
+    """FIX 2 — CODE_SUPPLEMENT_FALLBACK_PRICED is a NON-BLOCKING MEDIUM flag that
+    surfaces how many code-supplement rows use a non-relational fallback price.
+    It NEVER alters the rendered price and can NEVER flip qa_blocked."""
+
+    def _code_li(self, src, **extra):
+        li = {
+            "description": "Ice & water barrier",
+            "qty": 10, "unit_price": 2.24,
+            "code_citation": {"section": "R905.1.2"},
+            "scope_timing": "initial",
+        }
+        if src is not None:
+            li["_price_source"] = src
+        li.update(extra)
+        return li
+
+    def test_fires_medium_on_fallback_price(self):
+        from qa_auditor import compute_code_supplement_pricing_flags
+        cfg = {"line_items": [
+            self._code_li("relational"),
+            self._code_li("hardcoded-fallback"),
+            self._code_li("state-json-fallback"),
+        ]}
+        flags = compute_code_supplement_pricing_flags(cfg, {})
+        self.assertEqual(len(flags), 1)
+        f = flags[0]
+        self.assertEqual(f["issue"], "CODE_SUPPLEMENT_FALLBACK_PRICED")
+        self.assertEqual(f["severity"], "medium")           # never critical
+        self.assertEqual(f["found"], 2)                      # 2 of 3 are fallback
+        self.assertEqual(f["total_code_rows"], 3)
+        self.assertIn("hardcoded-fallback", f["by_source"])
+
+    def test_silent_when_all_relational(self):
+        from qa_auditor import compute_code_supplement_pricing_flags
+        cfg = {"line_items": [self._code_li("relational"), self._code_li("relational")]}
+        self.assertEqual(compute_code_supplement_pricing_flags(cfg, {}), [])
+
+    def test_ignores_non_code_and_non_initial_rows(self):
+        from qa_auditor import compute_code_supplement_pricing_flags
+        cfg = {"line_items": [
+            # fallback BUT not code-cited → ignored
+            {"description": "x", "qty": 1, "unit_price": 5, "_price_source": "hardcoded-fallback"},
+            # fallback + code-cited BUT install_supplement → ignored (not in Doc 02 initial)
+            self._code_li("hardcoded-fallback", scope_timing="install_supplement"),
+            # fallback + code-cited BUT qty 0 → ignored
+            self._code_li("hardcoded-fallback", qty=0),
+        ]}
+        self.assertEqual(compute_code_supplement_pricing_flags(cfg, {}), [])
+
+    def test_missing_source_treated_as_fallback(self):
+        from qa_auditor import compute_code_supplement_pricing_flags
+        cfg = {"line_items": [self._code_li(None)]}  # no _price_source
+        flags = compute_code_supplement_pricing_flags(cfg, {})
+        self.assertEqual(len(flags), 1)
+        self.assertEqual(flags[0]["found"], 1)
+
+    def test_fires_on_real_fixture_when_stamped_fallback(self):
+        from qa_auditor import compute_code_supplement_pricing_flags
+        cfg = _priced_cfg()
+        for li in cfg["line_items"]:
+            if li.get("code_citation"):
+                li["_price_source"] = "hardcoded-fallback"
+        flags = compute_code_supplement_pricing_flags(cfg, {})
+        self.assertEqual(len(flags), 1)
+        self.assertGreater(flags[0]["found"], 0)
+        # The flag NEVER alters the rendered price — the subset invariant holds.
+        sup = CR.build_priced_supplement(cfg)
+        code_items = CR._code_line_items(cfg)
+        subset = round(sum(round(float(li["qty"]) * float(li["unit_price"]), 2)
+                           for li in code_items), 2)
+        self.assertAlmostEqual(sup["subtotal"], subset, places=2)
 
 
 class TestGoldenCorpusUntouched(unittest.TestCase):
