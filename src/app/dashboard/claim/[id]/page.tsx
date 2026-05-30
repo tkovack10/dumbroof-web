@@ -20,6 +20,7 @@ import { CocBuilder } from "@/components/coc-builder";
 import { InvoiceBuilder } from "@/components/invoice-builder";
 import { SendDocumentsBlock } from "@/components/send-documents-block";
 import { UploadedDocuments } from "@/components/uploaded-documents";
+import { BrandReportsPrompt } from "@/components/brand-reports-prompt";
 import type { ScopeComparisonRow } from "@/types/scope-comparison";
 
 import type { Claim } from "@/types/claim";
@@ -130,7 +131,7 @@ export default function ClaimDetailPage() {
   const [editRequests, setEditRequests] = useState<EditRequest[]>([]);
   const [applyingEdit, setApplyingEdit] = useState<string | null>(null);
   const [currentUserId, setCurrentUserId] = useState<string>("");
-  const [userProfile, setUserProfile] = useState<{ name: string; company: string; phone: string }>({ name: "", company: "", phone: "" });
+  const [userProfile, setUserProfile] = useState<{ name: string; company: string; phone: string; logoPath: string }>({ name: "", company: "", phone: "", logoPath: "" });
   const [roofMapPhotos, setRoofMapPhotos] = useState<RoofPhotoMapPhoto[]>([]);
   const [roofMapPhotoUrls, setRoofMapPhotoUrls] = useState<Record<string, string>>({});
   const [hasForensicWin, setHasForensicWin] = useState(false);
@@ -153,8 +154,8 @@ export default function ClaimDetailPage() {
     if (user.id && !currentUserId) {
       setCurrentUserId(user.id);
       // Fetch company profile for supplement composer signature
-      supabase.from("company_profiles").select("contact_name,company_name,phone").eq("user_id", user.id).limit(1).then(({ data }) => {
-        if (data?.[0]) setUserProfile({ name: data[0].contact_name || "", company: data[0].company_name || "", phone: data[0].phone || "" });
+      supabase.from("company_profiles").select("contact_name,company_name,phone,logo_path").eq("user_id", user.id).limit(1).then(({ data }) => {
+        if (data?.[0]) setUserProfile({ name: data[0].contact_name || "", company: data[0].company_name || "", phone: data[0].phone || "", logoPath: data[0].logo_path || "" });
       });
     }
 
@@ -955,6 +956,17 @@ export default function ClaimDetailPage() {
             communicationLog: isReady ? <CommunicationLog claimId={claim.id} /> : null,
             generatedDocs: isReady && claim.output_files && claim.output_files.length > 0 ? (
               <div>
+                <BrandReportsPrompt
+                  claimId={claim.id}
+                  userId={currentUserId}
+                  hasLogo={!!userProfile.logoPath}
+                  onBranded={() => {
+                    // Hide the prompt immediately + re-bake the PDFs branded via the
+                    // existing reprocess path (the only reprocess kick on this page).
+                    setUserProfile((p) => ({ ...p, logoPath: "set" }));
+                    handleReprocess();
+                  }}
+                />
                 <div className="grid sm:grid-cols-2 gap-3 mb-4">
                   {claim.output_files.map((file) => (
                     <button
