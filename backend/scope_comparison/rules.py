@@ -393,6 +393,23 @@ def check_ice_water(carrier_items, eagleview_meas, state="NY"):
     required_sf = (eave_lf * req["eave_courses"] * 3) + \
                   (valley_lf * req["valley_width_ft"] * req["valley_sides"])
 
+    # ── CLIMATE GATE (E269) ──────────────────────────────────────────────
+    # In cold states (IRC Climate Zone 5A+) the cold-climate code mandate is
+    # the basis. In warm states the cold mandate is FALSE, so the SAME I&W
+    # requirement is reframed onto the manufacturer-installation-as-code basis
+    # (R905.2.2 adopts the manufacturer's installation instructions) and cited
+    # at valleys + penetrations. The finding STILL fires (the I&W requirement
+    # is kept, not dropped) and the required_sf / quantities are unchanged —
+    # only the citation + justification TEXT differs.
+    code_mandated = _bc_lookup.is_ice_barrier_code_mandated(state)
+    if code_mandated:
+        iw_code_ref = req["code_ref"]
+        iw_basis = "code minimum"
+    else:
+        prefix = _bc_lookup.get_prefix(state)
+        iw_code_ref = f"{prefix} R905.2.2"
+        iw_basis = "manufacturer-required minimum"
+
     # Find carrier's I&W line item
     carrier_iw_sf = 0
     carrier_iw_ext = 0
@@ -404,23 +421,33 @@ def check_ice_water(carrier_items, eagleview_meas, state="NY"):
             break
 
     if carrier_iw_sf == 0:
+        if code_mandated:
+            missing_detail = (
+                f"Carrier scope has NO ice & water barrier. "
+                f"{iw_code_ref} requires {required_sf:.0f} SF minimum "
+                f"({eave_lf} LF eaves × 6ft + {valley_lf} LF valleys × 6ft)."
+            )
+        else:
+            missing_detail = (
+                f"Carrier scope has NO ice & water barrier. The shingle "
+                f"manufacturer's installation instructions — adopted as code "
+                f"under {iw_code_ref} — require ice & water barrier at valleys "
+                f"and roof penetrations, {required_sf:.0f} SF minimum "
+                f"({eave_lf} LF eaves × 6ft + {valley_lf} LF valleys × 6ft)."
+            )
         return Finding(
             rule_id="C001",
             finding_type=FindingType.MISSING,
             severity=Severity.CRITICAL,
             item_description="Ice & Water Barrier",
             title="Ice & Water Barrier COMPLETELY MISSING",
-            detail=(
-                f"Carrier scope has NO ice & water barrier. "
-                f"{req['code_ref']} requires {required_sf:.0f} SF minimum "
-                f"({eave_lf} LF eaves × 6ft + {valley_lf} LF valleys × 6ft)."
-            ),
+            detail=missing_detail,
             carrier_value=0,
             correct_value=required_sf,
             carrier_qty=0,
             correct_qty=required_sf,
             unit="SF",
-            code_reference=req["code_ref"],
+            code_reference=iw_code_ref,
         )
 
     if carrier_iw_sf < required_sf * 0.8:  # Allow 20% tolerance
@@ -430,29 +457,43 @@ def check_ice_water(carrier_items, eagleview_meas, state="NY"):
         correct_ext = required_sf * price_per_sf
         supplement = correct_ext - carrier_iw_ext
 
+        breakdown = (
+            f"({eave_lf} LF eaves × {req['eave_courses']} courses × 3ft = "
+            f"{eave_lf * req['eave_courses'] * 3:.0f} SF eaves + "
+            f"{valley_lf} LF valleys × {req['valley_width_ft']}ft × "
+            f"{req['valley_sides']} sides = "
+            f"{valley_lf * req['valley_width_ft'] * req['valley_sides']:.0f} SF valleys)"
+        )
+        if code_mandated:
+            under_detail = (
+                f"Carrier scoped {carrier_iw_sf:.0f} SF of I&W barrier. "
+                f"{iw_code_ref} requires minimum {required_sf:.0f} SF "
+                f"{breakdown}. "
+                f"Carrier coverage is only {carrier_iw_sf/required_sf*100:.0f}% of {iw_basis}."
+            )
+        else:
+            under_detail = (
+                f"Carrier scoped {carrier_iw_sf:.0f} SF of I&W barrier. The shingle "
+                f"manufacturer's installation instructions — adopted as code under "
+                f"{iw_code_ref} — require ice & water barrier at valleys and roof "
+                f"penetrations, minimum {required_sf:.0f} SF {breakdown}. "
+                f"Carrier coverage is only {carrier_iw_sf/required_sf*100:.0f}% of {iw_basis}."
+            )
+
         return Finding(
             rule_id="C001",
             finding_type=FindingType.UNDER_QTY,
             severity=Severity.CRITICAL,
             item_description="Ice & Water Barrier",
             title=f"I&W Severely Under-Scoped: {carrier_iw_sf:.0f} SF vs {required_sf:.0f} SF required",
-            detail=(
-                f"Carrier scoped {carrier_iw_sf:.0f} SF of I&W barrier. "
-                f"{req['code_ref']} requires minimum {required_sf:.0f} SF "
-                f"({eave_lf} LF eaves × {req['eave_courses']} courses × 3ft = "
-                f"{eave_lf * req['eave_courses'] * 3:.0f} SF eaves + "
-                f"{valley_lf} LF valleys × {req['valley_width_ft']}ft × "
-                f"{req['valley_sides']} sides = "
-                f"{valley_lf * req['valley_width_ft'] * req['valley_sides']:.0f} SF valleys). "
-                f"Carrier coverage is only {carrier_iw_sf/required_sf*100:.0f}% of code minimum."
-            ),
+            detail=under_detail,
             carrier_value=carrier_iw_ext,
             correct_value=correct_ext,
             supplement_value=round(supplement, 2),
             carrier_qty=carrier_iw_sf,
             correct_qty=required_sf,
             unit="SF",
-            code_reference=req["code_ref"],
+            code_reference=iw_code_ref,
             eagleview_reference=f"Eaves: {eave_lf} LF, Valleys: {valley_lf} LF per EagleView",
         )
 

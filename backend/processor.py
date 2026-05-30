@@ -3535,12 +3535,28 @@ def _build_code_violations(state: str, line_items: list, trades: list) -> list:
                 "status": "Required — included in scope per manufacturer wind-warranty spec",
             })
         if has_ice_water:
-            ice_section = "R905.1.2" if code_prefix in ("RCO", "IRC") else "R905.2.7.1"
-            violations.append({
-                "code": f"{code_prefix} {ice_section}",
-                "requirement": "Ice barrier required in areas where the average daily temperature in January is ≤25°F or where ice damming has a history; min 2 feet inside exterior wall line (Climate Zones 5A+ including OH/NY)",
-                "status": "Required — included in scope",
-            })
+            # CLIMATE GATE (E269): the cold-climate code mandate ("avg January
+            # temp ≤25°F", "Climate Zones 5A+") is TRUE only in cold states.
+            # In warm states (TX/AZ/SC/FL/…) that rationale is FALSE, so reframe
+            # the SAME I&W requirement to the manufacturer-installation-as-code
+            # basis (R905.2.2 adopts manufacturer specs) — which IS true
+            # everywhere. The I&W violation still EMITS in both branches (it is
+            # manufacturer-justified at valleys/penetrations), so the
+            # code_violations COUNT — and therefore the damage_score — is
+            # unchanged regardless of climate. Only the requirement TEXT differs.
+            if _bc_lookup.is_ice_barrier_code_mandated(state):
+                ice_section = "R905.1.2" if code_prefix in ("RCO", "IRC") else "R905.2.7.1"
+                violations.append({
+                    "code": f"{code_prefix} {ice_section}",
+                    "requirement": "Ice barrier required in areas where the average daily temperature in January is ≤25°F or where ice damming has a history; min 2 feet inside exterior wall line (Climate Zones 5A+ including OH/NY)",
+                    "status": "Required — included in scope",
+                })
+            else:
+                violations.append({
+                    "code": f"{code_prefix} R905.2.2",
+                    "requirement": "Ice & water barrier required at valleys and roof penetrations per the shingle manufacturer's installation instructions — enforceable as code under R905.2.2, which adopts the manufacturer's installation instructions as a code requirement",
+                    "status": "Required — included in scope",
+                })
         if has_flashing:
             violations.append({
                 "code": f"{code_prefix} R903.2.1",

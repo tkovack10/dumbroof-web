@@ -4942,8 +4942,8 @@
           "status": "Required — included in scope per manufacturer wind-warranty spec"
         },
         {
-          "code": "TX-IRC R905.2.7.1",
-          "requirement": "Ice barrier required in areas where the average daily temperature in January is ≤25°F or where ice damming has a history; min 2 feet inside exterior wall line (Climate Zones 5A+ including OH/NY)",
+          "code": "TX-IRC R905.2.2",
+          "requirement": "Ice & water barrier required at valleys and roof penetrations per the shingle manufacturer's installation instructions — enforceable as code under R905.2.2, which adopts the manufacturer's installation instructions as a code requirement",
           "status": "Required — included in scope"
         },
         {

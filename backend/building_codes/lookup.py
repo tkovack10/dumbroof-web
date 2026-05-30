@@ -74,7 +74,18 @@ def _row_for(state: str) -> dict:
         # sub-dict still gets the IRC ice_barrier).
         state_row = data[state_u]
         for k, v in state_row.items():
-            merged[k] = copy.deepcopy(v)
+            # `ice_barrier` is DEEP-merged over the IRC default so a state can
+            # carry a THIN override (e.g. just {"code_mandated": true} for a
+            # cold-climate state) and still inherit description / eave_courses /
+            # valley_* / code_ref from the default. Every other top-level key is
+            # replaced wholesale (legacy shallow-merge semantics, unchanged).
+            if k == "ice_barrier" and isinstance(v, dict) \
+                    and isinstance(default.get("ice_barrier"), dict):
+                ice = copy.deepcopy(default["ice_barrier"])
+                ice.update(copy.deepcopy(v))
+                merged[k] = ice
+            else:
+                merged[k] = copy.deepcopy(v)
         return merged
     # Unknown state or explicit IRC request — return the default.
     return copy.deepcopy(default)
@@ -135,7 +146,25 @@ def get_ice_barrier(state: str) -> dict:
         "valley_width_ft": ice.get("valley_width_ft", 3),
         "valley_sides":    ice.get("valley_sides", 2),
         "code_ref":        ice.get("code_ref", "IRC R905.1.2"),
+        # Climate gate: True ONLY where the ice-barrier is genuinely a
+        # cold-climate code mandate (IRC Climate Zone 5A+). Warm states default
+        # False — there I&W is required at valleys/penetrations per MANUFACTURER
+        # install instructions (enforceable under R905.2.2), not a cold mandate.
+        "code_mandated":   bool(ice.get("code_mandated", False)),
     }
+
+
+def is_ice_barrier_code_mandated(state: str) -> bool:
+    """True when the ice-barrier is a genuine cold-climate CODE mandate for the
+    state (IRC Climate Zone 5A+ / avg January temp <=25F with eave ice-damming
+    history). False for warm states — where I&W is still REQUIRED at valleys and
+    roof penetrations as a manufacturer installation instruction (enforceable
+    under R905.2.2), but NOT justified by a cold-climate code mandate.
+
+    Single source of truth for the climate gate read by code_compliance.py,
+    scope_comparison/rules.py, and processor._build_code_violations."""
+    ice = _row_for(state).get("ice_barrier") or {}
+    return bool(ice.get("code_mandated", False))
 
 
 def get_sales_tax(state: str) -> float:
