@@ -6865,10 +6865,22 @@ async def process_claim(claim_id: str, refresh_prices: bool = False):
             print(f"[PROCESS] Auto-upgraded supplement_only → full (photos uploaded)", flush=True)
         except Exception:
             pass
+    # estimate_only (measurements-only Xactimate-style build) upgrades to full the
+    # moment EITHER photos OR a carrier scope is added — go straight to full rather
+    # than supplement_only so the added input is fully reconciled.
+    if report_mode == "estimate_only" and (claim.get("photo_files") or claim.get("scope_files")):
+        report_mode = "full"
+        try:
+            sb.table("claims").update({"report_mode": "full"}).eq("id", claim_id).execute()
+            print(f"[PROCESS] Auto-upgraded estimate_only → full (photos/scope uploaded)", flush=True)
+        except Exception:
+            pass
     if report_mode == "forensic_only":
         print(f"[PROCESS] FORENSIC ONLY mode — skipping measurements, line items, scope comparison", flush=True)
     elif report_mode == "supplement_only":
         print(f"[PROCESS] SUPPLEMENT ONLY mode — skipping photo annotation + forensic causation report", flush=True)
+    elif report_mode == "estimate_only":
+        print(f"[PROCESS] ESTIMATE ONLY mode — measurements → Xactimate estimate (Doc 02 + priced code-compliance Doc 06); skipping forensic + supplement", flush=True)
 
     # Detect if this is a REVISION (claim was already processed before)
     is_revision = bool(claim.get("output_files"))
@@ -7909,9 +7921,10 @@ async def process_claim(claim_id: str, refresh_prices: bool = False):
                 print(f"[PROCESS] geocode fallback failed (non-fatal): {geo_err}", flush=True)
 
         # 9b. Attach evidence photos to carrier line items for PDF scope comparison.
-        # Skipped for forensic_only (no carrier line items to attach to) and
-        # supplement_only (no photos to attach in the first place).
-        if report_mode not in ("forensic_only", "supplement_only"):
+        # Skipped for forensic_only (no carrier line items to attach to),
+        # supplement_only (no photos to attach in the first place), and estimate_only
+        # (measurements-only — no photos and no carrier scope to attach against).
+        if report_mode not in ("forensic_only", "supplement_only", "estimate_only"):
             attach_evidence_photos(config, sb, claim_id)
 
         # 9b. Apply user exclusions to config.line_items BEFORE PDF generation.
@@ -8805,6 +8818,13 @@ async def process_claim(claim_id: str, refresh_prices: bool = False):
         elif report_mode == "supplement_only":
             pdfs = [p for p in pdfs if not os.path.basename(p).startswith("01_")]
             print(f"[PROCESS] supplement_only: filtered to {len(pdfs)} PDFs (dropped doc 01)")
+        elif report_mode == "estimate_only":
+            # Measurements-only build: deliver the Xactimate-style estimate (02_) and
+            # the priced code-compliance supplement (06_). Drop forensic (01_), the
+            # pre-scope cover letter (03_), and the scope-comparison/supplement letter
+            # (04_) — there is no carrier scope to compare against and no photos.
+            pdfs = [p for p in pdfs if os.path.basename(p).startswith(("02_", "06_"))]
+            print(f"[PROCESS] estimate_only: filtered to {len(pdfs)} PDFs (docs 02 + 06)")
         else:
             print(f"[PROCESS] Generated {len(pdfs)} PDFs")
 
