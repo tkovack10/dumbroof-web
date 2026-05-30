@@ -86,7 +86,9 @@ function LoginPageContent() {
         // /api/notify-signup forwards to CAPI so the browser pixel + server CAPI
         // fire are merged by Meta into one canonical conversion.
         const { eventId } = firePixelSignup({ email, source: "login_page" });
-        window.fbq?.("track", "StartTrial");
+        // StartTrial is the Meta ACTIVATION optimization event — it fires only
+        // when a claim is actually created, not at signup. See onboarding-chat /
+        // dashboard/new-claim for the activation-time fires.
         window.ttq?.track("CompleteRegistration", {
           contents: [{ content_id: "signup", content_type: "product", content_name: "dumbroof.ai Account" }],
         });
@@ -95,10 +97,11 @@ function LoginPageContent() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ email, eventId, source: "login_page" }),
         }).catch(() => {});
-        window.location.href = "/dashboard/new-claim";
+        window.location.href = "/welcome";
       } else {
         const { eventId } = firePixelSignup({ email, source: "login_page" });
-        window.fbq?.("track", "StartTrial");
+        // StartTrial is the Meta ACTIVATION optimization event — fires only on
+        // claim creation, not at signup. See activation-time fires elsewhere.
         window.ttq?.track("CompleteRegistration", {
           contents: [{ content_id: "signup", content_type: "product", content_name: "dumbroof.ai Account" }],
         });

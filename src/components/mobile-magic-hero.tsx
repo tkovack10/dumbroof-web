@@ -150,7 +150,7 @@ export function MobileMagicHero({ inAppName, stats }: Props) {
     }
 
     if (data.session) {
-      window.location.href = "/dashboard/new-claim";
+      window.location.href = "/welcome";
     } else {
       // Fallback: email confirmation required (shouldn't happen — confirm is OFF)
       window.location.href = "/login?message=Check+your+email+to+confirm";

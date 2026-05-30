@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { userHasClaims } from "@/lib/user-status";
 import { OnboardingChat } from "@/components/onboarding-chat";
 
 export const metadata = {
@@ -19,6 +20,13 @@ export default async function WelcomePage() {
 
   if (!user) {
     redirect("/signup?next=/welcome");
+  }
+
+  // /welcome is the FIRST-claim onboarding. A returning user who already has a
+  // claim and lands here manually shouldn't be pushed to make a second one —
+  // send them to their dashboard instead.
+  if (await userHasClaims(supabase, user.id)) {
+    redirect("/dashboard");
   }
 
   // Best-effort first name for a warm greeting — never blocks the page.

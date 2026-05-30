@@ -65,7 +65,8 @@ export function HeroSignupForm({ source = "desktop_hero" }: { source?: string } 
     // and a dedup eventID we forward to /api/notify-signup so the
     // server-side CAPI fire merges with the browser pixel fire.
     const { eventId } = firePixelSignup({ email, source });
-    window.fbq?.("track", "StartTrial");
+    // StartTrial is the Meta ACTIVATION optimization event — fires only when a
+    // claim is created (see onboarding-chat / new-claim), not at signup.
     window.ttq?.track("CompleteRegistration", {
       contents: [{ content_id: "signup", content_type: "product", content_name: "dumbroof.ai Account" }],
     });

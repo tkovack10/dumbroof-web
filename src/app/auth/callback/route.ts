@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { sendCapiEvent, CapiEventName, extractMetaTracking } from "@/lib/meta-conversions-api";
+import { userHasClaims } from "@/lib/user-status";
 
 /**
  * Notify team + send welcome email via the unified /api/notify-signup endpoint.
@@ -173,13 +174,10 @@ export async function GET(request: Request) {
       }
 
       if (user) {
-        // Check if new user (no claims) — send to new-claim + notify team
-        const { count } = await supabase
-          .from("claims")
-          .select("id", { count: "exact", head: true })
-          .eq("user_id", user.id);
+        // Check if new user (no claims) — send to /welcome + notify team
+        const hasClaims = await userHasClaims(supabase, user.id);
 
-        if (count === 0) {
+        if (!hasClaims) {
           // New user — notify team + send welcome email (both handled by notifyNewSignup).
           // MUST await: fire-and-forget here gets killed when Vercel terminates the
           // function on redirect. 2026-04-06 burst of 7 signups missed welcome this way.
