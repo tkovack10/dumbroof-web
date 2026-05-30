@@ -537,6 +537,39 @@ def compute_material_confidence_flags(config: dict, claim: dict) -> list[dict]:
     return flags
 
 
+def compute_grade_confidence_flags(config: dict, claim: dict) -> list[dict]:
+    """Return a MEDIUM-only shingle-GRADE flag. NEVER returns a critical / never blocks.
+
+    Fires GRADE_PREMIUM_UNCORROBORATED (E271) when a premium/high-grade laminate was
+    explicitly selected but nothing corroborated it, so the estimate was priced as
+    standard architectural laminate (the defensible like-kind). Soft gate: surfaces
+    for review, does NOT hold the claim. Reversible — naming the premium/designer
+    product in the claim notes (then reprocessing) restores premium pricing and clears
+    this flag. processor.py persists config['roof_grade_premium_uncorroborated'] from
+    the SAME corroboration function the pricing gate uses, so flag and price agree.
+    """
+    flags: list[dict] = []
+    if not isinstance(config, dict):
+        return flags
+    if config.get("roof_grade_premium_uncorroborated"):
+        flags.append({
+            "issue": "GRADE_PREMIUM_UNCORROBORATED",
+            "severity": "medium",
+            "check": "grade_confidence",
+            "reason": "premium_selected_without_evidence",
+            "detail": (
+                "A premium/high-grade laminate was selected, but no corroborating "
+                "evidence (a named designer/premium product line in the notes or the "
+                "photo material read, or a carrier scope line listing high-grade) was "
+                "found — so the estimate was priced as standard architectural laminate, "
+                "the defensible like-kind. To bill the premium grade, name the product "
+                "line in the claim notes (e.g. GAF Grand Sequoia, CertainTeed Grand "
+                "Manor) and reprocess."
+            ),
+        })
+    return flags
+
+
 # ==========================================================================
 # WS-7 — CODE_SUPPLEMENT_FALLBACK_PRICED (FLAG-ONLY, MEDIUM-only detection layer)
 # ==========================================================================
@@ -1058,6 +1091,16 @@ def audit_claim(
         print(f"[QA] compute_code_supplement_pricing_flags crashed (ignored): {e}")
         code_supplement_pricing_flags = []
 
+    # E271 GRADE_PREMIUM_UNCORROBORATED — MEDIUM-only, same posture as WS-0/WS-3/WS-7:
+    # can NEVER be critical, can NEVER flip qa_blocked. Surfaces when a premium grade
+    # was selected without corroboration (priced down to standard laminate) so a human
+    # can confirm/restore before the package ships. Soft gate, reversible via reprocess.
+    try:
+        grade_conf_flags = compute_grade_confidence_flags(config, claim)
+    except Exception as e:  # noqa: BLE001 — detection must never break the audit
+        print(f"[QA] compute_grade_confidence_flags crashed (ignored): {e}")
+        grade_conf_flags = []
+
     # Merge flag arrays. Order: prose flags first (carries the LLM's narrative
     # summary), then deterministic — keeps the human-readable audit summary
     # focused on prose issues with brand/NOAA flags appended below.
@@ -1069,6 +1112,7 @@ def audit_claim(
         + ws5_flags
         + material_conf_flags
         + code_supplement_pricing_flags
+        + grade_conf_flags
     )
     merged_low = list(prose_result.get("low") or []) + pdf_result.get("low", [])
 
