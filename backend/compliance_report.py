@@ -440,6 +440,59 @@ def _format_property_address(prop: dict) -> str:
     return f"{addr}, {tail}" if tail else addr
 
 
+# Roofing code sections (R905.x) — the counterpart to _SIDING_CODE_SECTIONS,
+# used to decide the TRADE-AWARE lead citation. A report whose code scope is
+# siding (R703.x) with NO roofing (R905.x) item is a SIDING report and must NOT
+# lead with the roofing R905.1 manufacturer-install citation.
+_ROOFING_CODE_SECTION_PREFIX = "R905"
+
+
+def _report_is_siding(config: dict) -> bool:
+    """True when the Doc-06 code scope is SIDING with no ROOFING code item — i.e.
+    a pure siding report. Drives the trade-aware lead citation (siding → R703.3
+    manufacturer-install basis; roofing/mixed → R905.1). Mixed roof+siding stays
+    on the roofing lead (the roof is the predominant covered trade and R905.1
+    legitimately governs it)."""
+    has_siding = bool(_siding_code_items(config))
+    if not has_siding:
+        return False
+    for li in _code_line_items(config):
+        cc = li.get("code_citation") or {}
+        section = (cc.get("section") or "").strip()
+        trade = (li.get("trade") or li.get("category") or "").strip().upper()
+        if section.startswith(_ROOFING_CODE_SECTION_PREFIX) or trade == "ROOFING":
+            return False
+    return True
+
+
+def _lead_code_basis(config: dict) -> dict:
+    """The TRADE-AWARE lead citation for the cover + visual-reference sections.
+
+    Manufacturer installation instructions carry the force of building code under
+    BOTH the roofing (R905.1) and siding (R703.3) chapters — but the cited section
+    and the noun ("Roofing" vs "Exterior wall coverings") must match the report's
+    trade so a SIDING report never leads with a roofing citation."""
+    if _report_is_siding(config):
+        return {
+            "section": "R703.3",
+            "noun": "Exterior wall coverings",
+            # R703.3.1 / R703.3 (IRC): siding installed per the manufacturer's
+            # installation instructions — the siding analogue of R905.1.
+            "law_quote": (
+                "Exterior wall coverings shall be installed in accordance with "
+                "the <b>manufacturer's installation instructions</b>."
+            ),
+        }
+    return {
+        "section": "R905.1",
+        "noun": "Roofing",
+        "law_quote": (
+            "Roofing shall be applied in accordance with the "
+            "<b>manufacturer's installation instructions</b>."
+        ),
+    }
+
+
 def _build_cover_page(config: dict, jurisdiction: dict, annotation_count: int) -> str:
     """Build the cover page HTML."""
     prop = config.get("property", {})
@@ -451,14 +504,15 @@ def _build_cover_page(config: dict, jurisdiction: dict, annotation_count: int) -
     company_name = _h(company.get("name") or "Your Roofing Company")
     date_of_loss = _h(config.get("dates", {}).get("date_of_loss", ""))
     trades = _h(", ".join(config.get("scope", {}).get("trades") or ["Roofing"]))
+    # TRADE-AWARE lead: a siding report cites R703.3, a roofing/mixed report R905.1.
+    basis = _lead_code_basis(config)
 
     return f'''
     <div class="cover-header">
         <h1>BUILDING CODE COMPLIANCE REPORT</h1>
         <div class="subtitle">Jurisdiction-Specific Installation Requirements &amp; Manufacturer Specifications</div>
         <div class="law-text">
-            Per <b>{jurisdiction["abbrev"]} R905.1</b>: "Roofing shall be applied in accordance with
-            the <b>manufacturer's installation instructions</b>." Manufacturer instructions carry the
+            Per <b>{jurisdiction["abbrev"]} {basis["section"]}</b>: "{basis["law_quote"]}" Manufacturer instructions carry the
             <b>force of building code</b> — they are not optional upgrades.
         </div>
     </div>
@@ -584,9 +638,9 @@ def _build_installation_diagrams(annotations: list[dict], config: dict) -> str:
                 <rect x="30" y="35" width="222" height="150" fill="#2ecc71" opacity="0.2" stroke="#27ae60" stroke-width="2" stroke-dasharray="6,3" rx="3"/>
                 <path d="M 252 35 L 252 185 L 300 155 L 300 15 Z" fill="#2ecc71" opacity="0.2" stroke="#27ae60" stroke-width="2" stroke-dasharray="6,3"/>
 
-                <!-- 12" wrap indicator -->
+                <!-- 6 in. minimum wrap indicator (DuPont Tyvek spec) -->
                 <line x1="252" y1="50" x2="300" y2="35" stroke="#c0392b" stroke-width="2"/>
-                <text x="290" y="28" font-size="10" fill="#c0392b" font-weight="700">Min 12" wrap</text>
+                <text x="285" y="28" font-size="10" fill="#c0392b" font-weight="700">Min 6 in. wrap</text>
 
                 <!-- Corner highlight -->
                 <line x1="240" y1="38" x2="240" y2="182" stroke="#c0392b" stroke-width="4"/>
@@ -595,7 +649,7 @@ def _build_installation_diagrams(annotations: list[dict], config: dict) -> str:
                 <!-- Labels -->
                 <rect x="380" y="40" width="200" height="70" rx="4" fill="#f0f4f8" stroke="#2c3e50" stroke-width="1"/>
                 <text x="390" y="60" font-size="11" fill="#27ae60" font-weight="700">CORRECT:</text>
-                <text x="390" y="76" font-size="10" fill="#2c3e50">WRB wraps 12"+ around</text>
+                <text x="390" y="76" font-size="10" fill="#2c3e50">WRB wraps 6 in.+ around</text>
                 <text x="390" y="90" font-size="10" fill="#2c3e50">corner UNDER corner post.</text>
                 <text x="390" y="104" font-size="10" fill="#c0392b" font-weight="600">Requires adjacent wall</text>
                 <text x="390" y="118" font-size="10" fill="#c0392b" font-weight="600">siding removal.</text>
@@ -607,9 +661,9 @@ def _build_installation_diagrams(annotations: list[dict], config: dict) -> str:
             </svg>
             <div style="font-size:12px; color:#5d6d7e; margin-top:8px;">
                 Per <b>R703.2</b>: Weather-resistive barrier (WRB) must be continuous. At outside corners,
-                house wrap must extend <b>minimum 12 inches</b> around the corner and be installed <b>under</b>
-                the corner post. This requires removal of adjacent wall siding — a single-wall repair
-                is <b>not code-compliant</b>.
+                house wrap must extend a <b>minimum of 6 in.</b> around the corner (DuPont Tyvek installation
+                instructions) and be installed <b>under</b> the corner post. This requires removal of adjacent
+                wall siding — a single-wall repair is <b>not code-compliant</b>.
             </div>
         </div>''')
 
@@ -1177,12 +1231,20 @@ def _build_siding_argument(config: dict) -> str:
 
     damage_anchor = _siding_damage_anchor(config)
 
-    # ── Layer 1 — DAMAGE (always #1; the covered peril). Same facts both modes. ──
+    # ── Layer 1 — DAMAGE (always #1; the covered peril). ──
+    # The trailing clause names ONLY the layers that follow: advocate mode chains
+    # into code/appearance/indemnity; contractor mode chains into the code basis
+    # only (the appearance/indemnity advocacy layers are dropped, so naming them
+    # here would dangle).
+    damage_followon = (
+        "the code, appearance, and indemnity points below all follow from it."
+        if advocate else
+        "the code basis below follows from it."
+    )
     layer_damage = (
         f'<div class="siding-arg-layer" data-arg-order="1" data-arg-layer="damage">'
         f'<div class="siding-arg-h"><span class="siding-arg-num">1</span> Storm Damage &mdash; The Covered Peril</div>'
-        f'<p>{_h(damage_anchor)} This is the loss that triggers coverage; the code, '
-        f'appearance, and indemnity points below all follow from it.</p>'
+        f'<p>{_h(damage_anchor)} This is the loss that triggers coverage; {damage_followon}</p>'
         f'</div>'
     )
 
@@ -1229,45 +1291,51 @@ def _build_siding_argument(config: dict) -> str:
         f'</div>'
     )
 
-    # ── Layer 3 — REASONABLE / UNIFORM APPEARANCE (matching). STATE-GATED. ──
-    if has_statute:
-        match_framing = matching.get("statute_framing", "")
-        match_note = (
-            f'This jurisdiction has adopted a matching standard, cited directly above '
-            f'({_h(naic_ref)}).'
-        )
-    else:
-        match_framing = matching.get("no_statute_framing", "")
-        # NO-statute states (NY/PA/NJ): MDL-902 is INDUSTRY EVIDENCE ONLY.
-        match_note = (
-            f'In this jurisdiction there is no matching statute; {_h(naic_ref)} is cited '
-            f'as <b>industry evidence</b> of the policy&rsquo;s &ldquo;like kind and quality&rdquo; '
-            f'standard, not as an enforceable regulation.'
-        )
+    # ── Layers 3 & 4 are ADVOCACY-ONLY (UPPA, owner-mandated) ──
+    #
+    # ③ matching / reasonable-appearance and ④ diminished-value / indemnity are
+    # CLAIM ADVOCACY — arguing what the policy owes and what makes the insured
+    # whole. For a contractor that IS public adjusting (UPPA-prohibited). So the
+    # contractor render emits ONLY the two factual, contractor-safe layers
+    # (① DAMAGE + ② CODE / the corner rule). PA / attorney / homeowner — whose
+    # JOB is advocacy — get the full four. The step COUNT is therefore variable:
+    # 2 in contractor mode, 4 in advocate mode.
+    layer_appearance = ""
+    layer_dv = ""
     if advocate:
+        # ── Layer 3 — REASONABLE / UNIFORM APPEARANCE (matching). STATE-GATED. ──
+        # In no-statute states (NY/PA/NJ) matching is framed as INDUSTRY EVIDENCE
+        # of the "like kind and quality" standard; statute states cite the rule.
+        if has_statute:
+            match_framing = matching.get("statute_framing", "")
+            match_note = (
+                f'This jurisdiction has adopted a matching standard, cited directly above '
+                f'({_h(naic_ref)}).'
+            )
+        else:
+            match_framing = matching.get("no_statute_framing", "")
+            # NO-statute states (NY/PA/NJ): MDL-902 is INDUSTRY EVIDENCE ONLY.
+            match_note = (
+                f'In this jurisdiction there is no matching statute; {_h(naic_ref)} is cited '
+                f'as <b>industry evidence</b> of the policy&rsquo;s &ldquo;like kind and quality&rdquo; '
+                f'standard, not as an enforceable regulation.'
+            )
         match_lead = (
             'New cladding cannot match the weathered existing siding, so a partial '
             'repair leaves a visible mismatch that <b>does not satisfy</b> the policy&rsquo;s '
             '&ldquo;like kind and quality&rdquo; loss-settlement obligation.'
         )
-    else:
-        match_lead = (
-            'New cladding will not color- or profile-match the weathered existing '
-            'siding, so a partial repair leaves a visible mismatch between new and '
-            'existing material.'
+        layer_appearance = (
+            f'<div class="siding-arg-layer" data-arg-order="3" data-arg-layer="appearance" '
+            f'data-matching-statute="{"true" if has_statute else "false"}">'
+            f'<div class="siding-arg-h"><span class="siding-arg-num">3</span> Reasonable &amp; Uniform Appearance</div>'
+            f'<p>{match_lead}</p>'
+            f'<p>{_h(match_framing)}</p>'
+            f'<p class="siding-arg-note">{match_note}</p>'
+            f'</div>'
         )
-    layer_appearance = (
-        f'<div class="siding-arg-layer" data-arg-order="3" data-arg-layer="appearance" '
-        f'data-matching-statute="{"true" if has_statute else "false"}">'
-        f'<div class="siding-arg-h"><span class="siding-arg-num">3</span> Reasonable &amp; Uniform Appearance</div>'
-        f'<p>{match_lead}</p>'
-        f'<p>{_h(match_framing)}</p>'
-        f'<p class="siding-arg-note">{match_note}</p>'
-        f'</div>'
-    )
 
-    # ── Layer 4 — DIMINISHED VALUE (indemnity). Verb-gated by role. ──
-    if advocate:
+        # ── Layer 4 — DIMINISHED VALUE (indemnity). Advocacy-only. ──
         dv_body = (
             'Indemnity <b>requires</b> making the insured whole &mdash; restoring the '
             'pre-loss financial position, not merely effecting a physical repair. '
@@ -1276,20 +1344,12 @@ def _build_siding_argument(config: dict) -> str:
             'replacement is required to restore both the physical and financial pre-loss '
             'condition.'
         )
-    else:
-        dv_body = (
-            'The principle of indemnity is to restore the insured&rsquo;s pre-loss '
-            'condition. A repair limited to 1&ndash;2 of 4 elevations leaves a visible '
-            'patchwork of new and weathered cladding &mdash; a non-uniform exterior that '
-            'did not exist before the loss. This is documented here for the file as a '
-            'factual consequence of a partial scope.'
+        layer_dv = (
+            f'<div class="siding-arg-layer" data-arg-order="4" data-arg-layer="diminished_value">'
+            f'<div class="siding-arg-h"><span class="siding-arg-num">4</span> Diminished Value &amp; Indemnity</div>'
+            f'<p>{dv_body}</p>'
+            f'</div>'
         )
-    layer_dv = (
-        f'<div class="siding-arg-layer" data-arg-order="4" data-arg-layer="diminished_value">'
-        f'<div class="siding-arg-h"><span class="siding-arg-num">4</span> Diminished Value &amp; Indemnity</div>'
-        f'<p>{dv_body}</p>'
-        f'</div>'
-    )
 
     role_badge = (
         '<span class="siding-arg-mode advocate">Advocacy mode</span>'
@@ -1305,14 +1365,28 @@ def _build_siding_argument(config: dict) -> str:
         'Siding &mdash; Code Basis for Full-Elevation Replacement'
     )
 
+    # The intro names ONLY the layers that actually render: advocate gets the full
+    # four-step chain; contractor gets the two factual layers (matching /
+    # diminished-value are advocacy and are dropped entirely in contractor mode).
+    if advocate:
+        intro = (
+            f'<p class="siding-arg-intro">The siding scope is supported in this order: '
+            f'<b>damage</b> (the covered peril) &rarr; <b>code compliance</b> (the corner '
+            f'rule) &rarr; <b>reasonable appearance</b> (matching) &rarr; <b>diminished '
+            f'value</b> (indemnity). {role_badge}</p>'
+        )
+    else:
+        intro = (
+            f'<p class="siding-arg-intro">The siding scope is supported in this order: '
+            f'<b>damage</b> (the covered peril) &rarr; <b>code compliance</b> (the corner '
+            f'rule). {role_badge}</p>'
+        )
+
     return (
         f'<div class="siding-argument" data-siding-argument="true" '
         f'data-user-role="{_h(role)}" data-can-advocate="{"true" if advocate else "false"}">'
         f'<h2>{heading}</h2>'
-        f'<p class="siding-arg-intro">The siding scope is supported in this order: '
-        f'<b>damage</b> (the covered peril) &rarr; <b>code compliance</b> (the corner '
-        f'rule) &rarr; <b>reasonable appearance</b> (matching) &rarr; <b>diminished '
-        f'value</b> (indemnity). {role_badge}</p>'
+        f'{intro}'
         f'{layer_damage}{layer_code}{layer_appearance}{layer_dv}'
         f'</div>'
     )
@@ -1466,7 +1540,7 @@ def build_compliance_report(config: dict) -> str:
     <p style="font-size:13px; color:#5d6d7e;">
         The following diagrams illustrate correct vs. incorrect installation methods
         for code-required components. These represent manufacturer installation
-        instructions which carry the <b>force of building code</b> per {jurisdiction["abbrev"]} R905.1.
+        instructions which carry the <b>force of building code</b> per {jurisdiction["abbrev"]} {_lead_code_basis(config)["section"]}.
     </p>
     {diagrams}
     <div class="page-break"></div>

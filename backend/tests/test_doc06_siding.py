@@ -46,6 +46,7 @@ Self-contained: plain stdlib unittest, no pytest dependency.
 import copy
 import json
 import os
+import re
 import sys
 import tempfile
 import unittest
@@ -318,7 +319,9 @@ _ADVOCACY_MARKERS = (
 
 class TestSidingArgumentOrder(unittest.TestCase):
     """The argument ORDER is load-bearing: DAMAGE (1) → CODE (2) → APPEARANCE (3)
-    → DIMINISHED VALUE (4). Damage is ALWAYS first; code never leads."""
+    → DIMINISHED VALUE (4). Damage is ALWAYS first; code never leads. The fixture
+    is CONTRACTOR, so layers 3+4 (advocacy) are absent — only damage+code render
+    (see TestSidingArgumentUppaStepCount for the variable step count)."""
 
     def setUp(self):
         self.cfg = _load_cfg()
@@ -328,9 +331,21 @@ class TestSidingArgumentOrder(unittest.TestCase):
         self.assertTrue(self.arg)
         self.assertIn('data-siding-argument="true"', self.arg)
 
-    def test_layer_order_damage_first_then_code_appearance_dv(self):
+    def test_layer_order_contractor_is_damage_then_code_only(self):
+        # CONTRACTOR mode (the fixture): only the two factual layers render, in
+        # order. The advocacy layers (appearance/matching + diminished value) are
+        # DROPPED entirely (UPPA — see TestSidingArgumentUppaStepCount).
         import re
         order = re.findall(r'data-arg-layer="(\w+)"', self.arg)
+        self.assertEqual(order, ["damage", "code"])
+
+    def test_layer_order_advocate_is_full_four(self):
+        # PA/attorney mode keeps the full four-step chain in invariant order.
+        pa = copy.deepcopy(self.cfg)
+        pa["compliance"]["user_role"] = "public_adjuster"
+        import re
+        arg = CR.build_priced_supplement(pa)["siding_argument"]
+        order = re.findall(r'data-arg-layer="(\w+)"', arg)
         self.assertEqual(order, ["damage", "code", "appearance", "diminished_value"])
 
     def test_damage_layer_leads_and_anchors_on_forensic_finding(self):
@@ -412,21 +427,102 @@ class TestSidingArgumentUppaGate(unittest.TestCase):
         )
 
 
+class TestSidingArgumentUppaStepCount(unittest.TestCase):
+    """UPPA OWNER-MANDATE — the siding argument renders a VARIABLE step count
+    driven by compliance.user_role:
+      * CONTRACTOR → ONLY ① DAMAGE + ② CODE (the corner rule). These are factual
+        and contractor-safe. ③ matching/appearance + ④ diminished-value/indemnity
+        are CLAIM ADVOCACY (= public adjusting) and are DROPPED ENTIRELY.
+      * PA / attorney / homeowner → the FULL four steps (advocacy is their job).
+    The priced dollar subset is IDENTICAL in both — only prose changes."""
+
+    # Tokens that may appear ONLY when steps 3/4 render (advocacy).
+    _STEP34_TOKENS = (
+        "diminished value",
+        "indemnity",
+        "matching",
+        "mdl-902",
+        "like kind and quality",
+        'data-arg-layer="appearance"',
+        'data-arg-layer="diminished_value"',
+    )
+
+    def _arg(self, role):
+        cfg = _load_cfg()
+        cfg["compliance"]["user_role"] = role
+        return CR.build_priced_supplement(cfg)["siding_argument"]
+
+    def test_contractor_renders_exactly_two_steps(self):
+        arg = self._arg("contractor")
+        layers = re.findall(r'data-arg-layer="(\w+)"', arg)
+        self.assertEqual(layers, ["damage", "code"], "contractor = 2 factual steps")
+        # The step-number badges 3 and 4 must NOT appear.
+        self.assertNotIn('<span class="siding-arg-num">3</span>', arg)
+        self.assertNotIn('<span class="siding-arg-num">4</span>', arg)
+
+    def test_contractor_drops_step3_and_step4_advocacy_entirely(self):
+        low = self._arg("contractor").lower()
+        for tok in self._STEP34_TOKENS:
+            self.assertNotIn(
+                tok, low,
+                f"contractor mode must NOT render step-3/step-4 advocacy token {tok!r} "
+                "(UPPA-prohibited claim advocacy)",
+            )
+
+    def test_advocate_renders_all_four_steps(self):
+        for role in ("public_adjuster", "attorney", "homeowner"):
+            arg = self._arg(role)
+            layers = re.findall(r'data-arg-layer="(\w+)"', arg)
+            self.assertEqual(
+                layers, ["damage", "code", "appearance", "diminished_value"],
+                f"{role} = full 4 steps",
+            )
+            low = arg.lower()
+            self.assertIn("diminished value", low, f"{role} must carry step 4")
+            self.assertIn("matching", low, f"{role} must carry step 3 matching framing")
+            self.assertIn('<span class="siding-arg-num">3</span>', arg)
+            self.assertIn('<span class="siding-arg-num">4</span>', arg)
+
+    def test_step_count_does_not_move_the_priced_subset(self):
+        # Dropping the two advocacy layers is PROSE-ONLY — the priced $ subset is
+        # byte-identical between contractor and every advocate role.
+        base = _load_cfg()
+        base_sub = CR.build_priced_supplement(base)["subtotal"]
+        self.assertGreater(base_sub, 0)
+        for role in ("public_adjuster", "attorney", "homeowner"):
+            cfg = copy.deepcopy(base)
+            cfg["compliance"]["user_role"] = role
+            self.assertAlmostEqual(
+                CR.build_priced_supplement(cfg)["subtotal"], base_sub, places=2,
+                msg=f"{role} subset must equal the contractor subset",
+            )
+
+
 class TestSidingMatchingStateGate(unittest.TestCase):
     """NO-statute states (NY/PA/NJ) frame MDL-902 as INDUSTRY EVIDENCE only;
-    matching-statute states (e.g. OH) cite the rule directly. Driven by claim state."""
+    matching-statute states (e.g. OH) cite the rule directly. Driven by claim state.
+
+    The matching/appearance layer is step 3 (advocacy) — it renders only in
+    ADVOCATE mode, so these tests run on a public_adjuster copy. The STATE gate is
+    orthogonal to the UPPA role gate: which framing applies is a property of the
+    state; whether step 3 renders at all is a property of the role."""
+
+    def _advocate_cfg(self, state=None):
+        cfg = _load_cfg()  # NY contractor by default
+        cfg["compliance"]["user_role"] = "public_adjuster"  # step 3 only in advocate mode
+        if state:
+            cfg["property"]["state"] = state
+        return cfg
 
     def test_ny_is_industry_evidence_only(self):
-        cfg = _load_cfg()  # NY
-        arg = CR.build_priced_supplement(cfg)["siding_argument"]
+        arg = CR.build_priced_supplement(self._advocate_cfg())["siding_argument"]  # NY
         self.assertIn('data-matching-statute="false"', arg)
         low = arg.lower()
         self.assertIn("industry evidence", low)
         self.assertIn("not as an enforceable", low)
 
     def test_statute_state_cites_the_rule_directly(self):
-        cfg = _load_cfg()
-        cfg["property"]["state"] = "OH"  # Ohio has a matching regulation
+        cfg = self._advocate_cfg("OH")  # Ohio has a matching regulation
         arg = CR.build_priced_supplement(cfg)["siding_argument"]
         self.assertIn('data-matching-statute="true"', arg)
         low = arg.lower()
@@ -731,6 +827,95 @@ class TestSidingFallbackFlagThroughRealProcessor(unittest.TestCase):
         from qa_auditor import compute_code_supplement_pricing_flags
         cfg = _load_cfg()
         self.assertEqual(compute_code_supplement_pricing_flags(cfg, {}), [])
+
+
+# ── PHASE 1 COSMETIC — TRADE-AWARE LEAD CITATION ──
+#
+# The generic Doc-06 lead (cover + visual-reference) must cite the MANUFACTURER-
+# INSTALL basis that matches the report's trade: a SIDING report cites R703.3
+# (exterior wall coverings), a ROOFING/mixed report cites R905.1 (roofing). A
+# siding report must NEVER lead with the roofing R905.1 citation.
+class TestSidingTradeAwareLead(unittest.TestCase):
+    def _render(self, cfg):
+        cfg.setdefault("_paths", {})["output"] = tempfile.mkdtemp()
+        with open(CR.build_compliance_report(cfg)) as f:
+            return f.read()
+
+    def test_detector_classifies_pure_siding_as_siding(self):
+        cfg = _load_cfg()  # all R703.x, no roofing
+        self.assertTrue(CR._report_is_siding(cfg))
+        self.assertEqual(CR._lead_code_basis(cfg)["section"], "R703.3")
+
+    def test_siding_report_leads_with_r703_3_not_r905_1(self):
+        html = self._render(_load_cfg())
+        # Trade-aware siding lead present.
+        self.assertIn("R703.3", html)
+        self.assertIn("Exterior wall coverings shall be installed", html)
+        # The roofing manufacturer-install lead must NOT appear on a siding report.
+        self.assertNotIn("Roofing shall be applied", html)
+        self.assertNotIn("R905.1", html)
+
+    def test_mixed_roof_and_siding_keeps_roofing_lead(self):
+        # A claim with BOTH a roofing (R905.x) and a siding (R703.x) code item is
+        # roof-predominant → stays on the R905.1 lead (roof governs).
+        cfg = _load_cfg()
+        cfg["line_items"].append({
+            "category": "ROOFING", "trade": "ROOFING",
+            "description": "Laminated comp shingle roofing", "qty": 30.0, "unit": "SQ",
+            "unit_price": 285.27, "scope_timing": "initial",
+            "code_citation": {"section": "R905.1", "code_tag": "RCNYS R905.1",
+                              "requirement": "roof covering", "title": "roof"},
+        })
+        self.assertFalse(CR._report_is_siding(cfg))
+        self.assertEqual(CR._lead_code_basis(cfg)["section"], "R905.1")
+
+    def test_roofing_fixture_keeps_r905_1_lead(self):
+        # The roofing golden-corpus fixture must still lead with the roofing basis.
+        import os as _os
+        with open(_os.path.join(_HERE, "golden_corpus",
+                                "74597c34-a482-4a0d-b476-69e3987f9149.json")) as f:
+            roof_cfg = json.load(f)["config"]
+        self.assertFalse(CR._report_is_siding(roof_cfg))
+        self.assertEqual(CR._lead_code_basis(roof_cfg)["section"], "R905.1")
+        html = self._render(roof_cfg)
+        self.assertIn("R905.1", html)
+        self.assertIn("Roofing shall be applied", html)
+
+
+# ── PHASE 1 COSMETIC — CORNER-WRAP DISTANCE RECONCILED ──
+#
+# The legacy House-Wrap Corner Detail diagram said 12"; the canonical doctrine
+# (building_codes state_codes supplement_sentence) cites the DuPont Tyvek 6 in.
+# minimum. The siding content must standardize on "6 in. minimum (Tyvek)"
+# EVERYWHERE — no conflicting 12" survives.
+class TestCornerWrapReconciled(unittest.TestCase):
+    def _render(self, cfg):
+        cfg.setdefault("_paths", {})["output"] = tempfile.mkdtemp()
+        with open(CR.build_compliance_report(cfg)) as f:
+            return f.read()
+
+    def test_corner_wrap_is_6_in_minimum_tyvek(self):
+        html = self._render(_load_cfg())
+        # The diagram + caption both now state the 6 in. minimum.
+        self.assertIn("Min 6 in. wrap", html)
+        self.assertIn("minimum of 6 in.", html)
+        self.assertIn("Tyvek", html)
+
+    def test_no_conflicting_12_inch_corner_wrap(self):
+        html = self._render(_load_cfg())
+        # None of the old 12" corner-wrap phrasings survive (SVG geometry uses a
+        # bare height="12" / width="12" which is NOT a wrap distance, so we assert
+        # only on the human-readable wrap phrasings).
+        for stale in ('Min 12" wrap', "minimum 12 inches", 'wraps 12"', "12\"+"):
+            self.assertNotIn(stale, html, f"stale 12-inch corner-wrap phrasing survived: {stale!r}")
+
+    def test_doctrine_supplement_sentence_uses_6_in(self):
+        # Cross-check the doctrine source: the supplement sentence the hero renders
+        # already standardizes on the 6 in. Tyvek minimum (no 12" there either).
+        from building_codes import lookup as _bc
+        sent = _bc.get_house_wrap_doctrine("NY").get("supplement_sentence", "")
+        self.assertIn("6 in", sent)
+        self.assertNotIn("12 in", sent)
 
 
 class TestGoldenCorpusUntouched(unittest.TestCase):
