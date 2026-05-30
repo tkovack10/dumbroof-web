@@ -77,11 +77,11 @@ export function SignupClient({
   const trackSignupPixels = (signupEmail: string): { eventId: string } => {
     // CompleteRegistration uses firePixelSignup so it carries advanced
     // matching (em) AND a dedup eventID matched server-side via CAPI in
-    // /api/notify-signup. StartTrial / TikTok stay as plain pixel fires —
-    // we don't run CAPI for those, so no dedup needed.
+    // /api/notify-signup. StartTrial is NOT fired here — it's the Meta
+    // ACTIVATION optimization event and only fires on claim creation
+    // (onboarding-chat / new-claim). TikTok stays as a plain pixel fire.
     const { eventId } = firePixelSignup({ email: signupEmail, source: "signup_page" });
     try {
-      window.fbq?.("track", "StartTrial");
       window.ttq?.track("CompleteRegistration", {
         contents: [{ content_id: "signup", content_type: "product", content_name: "dumbroof.ai Account" }],
       });
