@@ -4363,7 +4363,13 @@ def build_claim_config(
             "report_date": datetime.now().strftime("%B %d, %Y"),
         },
         "inspectors": {
-            "usarm_inspector": _contact_name or "Tom Kovack Jr.",
+            # Tenant-safe fallback: the contractor's resolved contact, else THEIR
+            # company name — NEVER a hardcoded USARM person. The old `or "Tom
+            # Kovack Jr."` leaked the platform owner's name onto external tenants'
+            # PDFs (multi-tenancy hygiene bug). An empty value routes through the
+            # generator's existing per-tenant inspector default (usarm_pdf_generator
+            # auto-default: USARM→Zach, gated; external→company contact).
+            "usarm_inspector": _contact_name or (_cp.get("company_name") or ""),
             "usarm_title": (company_profile or {}).get("contact_title", "CEO"),
         },
         "scope": {
