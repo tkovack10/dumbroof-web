@@ -504,10 +504,32 @@ def _priced(pricing: dict, key: str, fallback: float) -> float:
 
     Fallback values remain the canonical NYBI26 baseline. Loud telemetry
     rather than silent overpricing.
+
+    WS-7 (2026-05-29) — PER-ROW PRICE PROVENANCE. Records, per short_key, where
+    the resolved price came from into ``pricing["_key_sources"][key]``:
+        'relational'         — native per-market rate from the relational catalog
+        'json-fallback'      — all-markets.json inversion (relational DB unavailable)
+        'state-json-fallback'— legacy nybi26/papi26 per-state JSON merge (keys
+                               Alfonso hasn't published per-market yet, e.g.
+                               scaffold_staging)
+        'hardcoded-fallback' — the NY-baseline literal below (E251 class). A code
+                               item priced this way must NEVER render on the
+                               carrier-facing supplement as if it were a native
+                               per-market rate — Doc-06 tests hard-FAIL on that.
+    INTERNAL/AUDIT-ONLY — apply_price_provenance() stamps the per-row source onto
+    each line item; the carrier-facing PDF never prints it.
     """
+    sources = pricing.setdefault("_key_sources", {})
     val = pricing.get(key)
     if val is not None:
+        # Legacy per-state JSON merge (lines below) tags its keys so a native
+        # market rate is never confused with a coarse state-baseline rate.
+        if key in pricing.get("_legacy_state_keys", ()):
+            sources[key] = "state-json-fallback"
+        else:
+            sources[key] = pricing.get("_price_source", "relational")
         return val
+    sources[key] = "hardcoded-fallback"
     market = pricing.get("_market_code", "?")
     bucket = (market, key)
     count = _PRICING_FALLBACK_LOG.get(bucket, 0)
@@ -515,6 +537,84 @@ def _priced(pricing: dict, key: str, fallback: float) -> float:
     if count == 0:  # log only the first time per (market, key) to keep stderr clean
         print(f"[PRICING FALLBACK] market={market} key={key} → ${fallback} (hardcoded NY baseline; this market lacks the matching short_key)")
     return fallback
+
+
+# WS-7: canonical line-item description (the FROZEN desc as it appears in
+# build_line_items' items.append) → pricing short_key. This is the AUTHORITATIVE
+# reverse map for per-row provenance attribution — it mirrors the exact `_priced`
+# call sites in build_line_items, so it covers descriptions that the
+# all-markets-derived `_DESC_TO_PRICING_KEY` (canonical Xactimate descs) does not
+# (e.g. "Ice & water barrier (2 courses eaves + 1 course valleys)").
+_LINEITEM_DESC_TO_PRICING_KEY = {
+    "R&R Natural slate roofing - high grade": None,  # composite price (slate_remove+slate_install) — handled specially
+    "Underlayment - felt 30# (deck area not covered by I&W)": "slate_underlayment",
+    "Copper nails & hooks for slate": "slate_nails_hooks",
+    "Slate roofing - additional labor (specialist)": "slate_specialist_labor",
+    "Scaffold/staging setup & removal": "scaffold_staging",
+    "Remove concrete/clay tile roofing": "tile_remove",
+    "Concrete/clay tile roofing": "tile_install",
+    "Remove modified bitumen/flat roofing": "flat_remove",
+    "Modified bitumen roofing - 2 ply torch applied": "flat_install",
+    "Underlayment - base sheet (flat roof)": "flat_underlayment",
+    "Remove metal roofing - standing seam": "metal_remove",
+    "Metal roofing - standing seam": "metal_install",
+    "Remove laminated comp shingle roofing": "laminated_remove",
+    "Laminated - High grd - comp. shingle rfg. - w/out felt": "laminated_high_install",
+    "Laminated comp shingle roofing - w/out felt": "laminated_install",
+    "Remove 3-tab 25yr comp shingle roofing": "3tab_remove",
+    "3-tab 25yr comp shingle roofing - w/out felt": "3tab_install",
+    "Underlayment - felt 15# (deck area not covered by I&W)": "laminated_underlayment",
+    "Ice & water barrier (2 courses eaves + 1 course valleys)": "ice_water",
+    "R&R Drip edge - copper": "drip_edge_copper",
+    "R&R Drip edge - aluminum": "drip_edge_aluminum",
+    "R&R Starter strip - asphalt shingle": "starter_strip",
+    "R&R Ridge cap - slate": "slate_ridge_cap",
+    "R&R Ridge cap - tile": "tile_ridge_cap",
+    "R&R Ridge cap - metal": "metal_ridge_cap",
+    "R&R Ridge vent - shingle over": "ridge_vent",
+    "R&R Valley flashing - copper": "copper_valley_flashing",
+    "R&R Valley metal": "valley_metal",
+    "R&R Skylight flashing kit": "skylight_flashing",
+    "R&R Step flashing - copper": "step_flashing_copper",
+    "R&R Step flashing": "step_flashing",
+}
+
+
+def apply_price_provenance(line_items: list, pricing: dict) -> None:
+    """WS-7 — stamp each line item with an INTERNAL ``_price_source`` so a code
+    item that fell back to a NY-baseline price (E251 class) is auditable.
+
+    Source is resolved per short_key from ``pricing["_key_sources"]`` (populated
+    by ``_priced``). Resolution order for a given line item's short_key:
+        1. the explicit WS-7 line-item reverse map (mirrors the _priced sites);
+        2. the all-markets canonical-desc reverse map (_DESC_TO_PRICING_KEY).
+    A line whose key can't be reverse-mapped (special/composite/derived prices)
+    is stamped with the claim-level source so it is NEVER left unlabeled — but it
+    is also flagged ``_price_source_inferred=True`` so an auditor can tell the
+    attribution was claim-level, not key-precise.
+
+    Mutates line_items in place. INTERNAL/AUDIT-ONLY — the carrier-facing PDF
+    never prints this field (compliance_report strips _-prefixed keys).
+    """
+    key_sources = pricing.get("_key_sources", {}) or {}
+    claim_source = pricing.get("_price_source", "relational")
+    # Build a single reverse map: canonical all-markets descs first, then the
+    # WS-7 line-item descs override (authoritative for the actual call sites).
+    rev = {desc: key for desc, key in _DESC_TO_PRICING_KEY.items()}
+    rev.update({k: v for k, v in _LINEITEM_DESC_TO_PRICING_KEY.items() if v})
+    for li in line_items:
+        desc = (li.get("description") or "").strip()
+        # Strip a "<Structure> — " prefix added by build_multi_structure_line_items.
+        base_desc = desc.split(" — ", 1)[-1] if " — " in desc else desc
+        short_key = rev.get(base_desc) or rev.get(desc)
+        if short_key and short_key in key_sources:
+            li["_price_source"] = key_sources[short_key]
+        else:
+            # Key-precise attribution unavailable (composite/derived/manual price
+            # or a desc not in either map). Fall back to the claim-level source so
+            # the row is auditable, and flag that the attribution was inferred.
+            li["_price_source"] = claim_source
+            li["_price_source_inferred"] = True
 
 # Canonical state → price list display label (shown in PDF estimate header).
 # Actual price overlay comes from XactRegistry.resolve_market() + all-markets.json,
@@ -925,12 +1025,16 @@ def get_pricing_for_state(state: str, zip_code: str = "", city: str = "", market
     # Legacy per-state JSON fallback only for short_keys NOT in market data.
     # all-markets.json doesn't have e.g. "scaffold_staging", "slate_specialist_labor" — those
     # come from nybi26.json/papi26.json. We still need them until Alfonso publishes those rates.
+    # WS-7: tag every key sourced from this legacy per-state JSON so `_priced` can
+    # label its provenance 'state-json-fallback' (NOT a native per-market rate).
+    legacy_state_keys = pricing.setdefault("_legacy_state_keys", set())
     old_price_list = STATE_PRICE_LIST.get(state.upper(), "NYBI26").lower()
     old_pricing = _load_pricing(old_price_list)
     if old_pricing:
         for k, v in old_pricing.items():
             if k not in pricing and not k.startswith("_"):
                 pricing[k] = v
+                legacy_state_keys.add(k)
 
     mapped = sum(1 for k in pricing if not k.startswith("_"))
     print(f"[PRICING] {market_code} ({market_meta.get('name', '')}): {mapped} keys via {pricing.get('_price_source','?')} + legacy fallback")
@@ -5859,6 +5963,14 @@ def build_line_items(measurements: dict, photo_analysis: dict, state: str, user_
     _pm = PRICING.get("_market_code") or market_code or ""
     for _it in items:
         _it.setdefault("_priced_market", _pm)
+
+    # WS-7: stamp INTERNAL per-row price provenance (_price_source) so a code item
+    # that fell back to a NY-baseline price (E251) is auditable. Carrier-facing PDF
+    # never prints it. Best-effort — never break a build over a provenance stamp.
+    try:
+        apply_price_provenance(items, PRICING)
+    except Exception as _e:
+        print(f"[PRICING PROVENANCE] non-fatal: {_e}")
 
     return _sort_line_items(items)
 

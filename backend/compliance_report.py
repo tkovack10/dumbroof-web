@@ -18,6 +18,88 @@ def _h(text) -> str:
     """Escape text for safe HTML embedding."""
     return _html.escape(str(text) if text is not None else "")
 
+
+def _money(val) -> str:
+    """Format a number as US currency for the supplement table."""
+    try:
+        return f"${float(val):,.2f}"
+    except (TypeError, ValueError):
+        return "$0.00"
+
+
+def _is_initial_scope(li: dict) -> bool:
+    """WS-7 subset invariant: Doc 06's priced supplement is a FILTERED VIEW of
+    Doc 02. Doc 02 (build_xactimate_estimate / compute_financials) renders only
+    scope_timing=='initial' items, so the supplement MUST exclude
+    install_supplement items or the subtotal could never equal the sum of the
+    same line_items in Doc 02 (it would be additive — forbidden)."""
+    return (li.get("scope_timing") or "initial") == "initial"
+
+
+def _code_line_items(config: dict) -> list:
+    """The exact subset the priced supplement isolates: every INITIAL line item
+    that (a) carries a code_citation and (b) has qty>0. This is a SUBSET of Doc
+    02 — never additive. Unit price is read OFF the frozen line item; we never
+    re-resolve a price here (B.7 single-snapshot)."""
+    out = []
+    for li in config.get("line_items", []) or []:
+        if not isinstance(li, dict):
+            continue
+        try:
+            qty = float(li.get("qty", 0) or 0)
+        except (TypeError, ValueError):
+            qty = 0.0
+        if li.get("code_citation") and qty > 0 and _is_initial_scope(li):
+            out.append(li)
+    return out
+
+
+def carrier_scope_present(config: dict) -> bool:
+    """True when the claim has a carrier scope to cross-reference. Production
+    stores the pre-matched comparison rows under carrier.carrier_line_items
+    (see processor pre_match_scope_comparison); their presence is the canonical
+    signal that a carrier scope was uploaded + parsed."""
+    if not isinstance(config, dict):
+        return False
+    carrier = config.get("carrier", {}) or {}
+    rows = carrier.get("carrier_line_items")
+    return bool(rows) and isinstance(rows, list)
+
+
+def _carrier_status_map(config: dict) -> dict:
+    """Map a USARM line-item description → carrier coverage state, derived from
+    the pre-matched carrier.carrier_line_items rows. Keys are normalized
+    descriptions; value is 'omitted' when the carrier did NOT include the item
+    (status=='missing' / carrier_desc=='NOT INCLUDED'), else 'included'."""
+    out = {}
+    if not carrier_scope_present(config):
+        return out
+    for row in config["carrier"]["carrier_line_items"]:
+        if not isinstance(row, dict):
+            continue
+        desc = (row.get("usarm_desc") or row.get("checklist_desc") or "").strip().lower()
+        if not desc:
+            continue
+        status = (row.get("status") or "").lower()
+        carrier_desc = (row.get("carrier_desc") or "").strip().upper()
+        omitted = status == "missing" or carrier_desc in ("", "NOT INCLUDED")
+        out[desc] = "omitted" if omitted else "included"
+    return out
+
+
+def _ahj_header(config: dict) -> dict:
+    """AHJ / code-edition header pulled from building_codes/state_codes.json:
+    base_code (e.g. 'IRC 2021'), adopted_year, jurisdiction full name + prefix."""
+    from building_codes import lookup as _bc
+    state = (config.get("property", {}) or {}).get("state", "NY")
+    row = _bc.get_state_codes(state)
+    return {
+        "jurisdiction": row.get("full_name", "International Residential Code"),
+        "prefix": row.get("short_name") or row.get("prefix", "IRC"),
+        "base_code": row.get("base_code", "IRC 2021"),
+        "adopted_year": row.get("adopted_year", ""),
+    }
+
 # ── CSS ──
 
 COMPLIANCE_CSS = """
@@ -66,6 +148,26 @@ h3 { font-size: 16px; font-weight: 600; color: #2c3e50; margin: 20px 0 8px 0; }
 .status-included { color: #27ae60; font-weight: 600; }
 
 .footer { text-align: center; font-size: 10px; color: #95a5a6; margin-top: 30px; padding-top: 10px; border-top: 1px solid #dee2e6; }
+
+/* ── WS-7 priced code-compliance supplement ── */
+.ahj-header { background: #0d2137; color: white; border-radius: 8px; padding: 14px 20px; margin: 18px 0 6px 0; }
+.ahj-header .ahj-title { font-size: 13px; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase; opacity: 0.85; }
+.ahj-header .ahj-body { font-size: 15px; font-weight: 600; margin-top: 4px; }
+.non-additive-banner { background: #fff8e1; border: 1px solid #ffd54f; border-left: 5px solid #f57f17; border-radius: 6px; padding: 12px 16px; margin: 12px 0 18px 0; font-size: 12px; color: #5d4037; }
+.non-additive-banner b { color: #c0392b; }
+.supplement-table { width: 100%; border-collapse: collapse; margin: 10px 0; font-size: 11px; }
+.supplement-table th { background: #0d2137; color: white; padding: 9px 8px; text-align: left; font-weight: 600; }
+.supplement-table td { padding: 7px 8px; border-bottom: 1px solid #e3e8ee; vertical-align: top; }
+.supplement-table td.num { text-align: right; white-space: nowrap; }
+.supplement-table tr.trade-header td { background: #1a3a5c; color: white; font-weight: 700; font-size: 11px; letter-spacing: 0.5px; text-transform: uppercase; }
+.supplement-table tr.trade-subtotal td { background: #f0f4f8; font-weight: 700; border-top: 1.5px solid #0d2137; }
+.supplement-table tr.grand-subtotal td { background: #0d2137; color: white; font-weight: 700; font-size: 13px; }
+.carrier-omitted { color: #c0392b; font-weight: 700; }
+.carrier-included { color: #27ae60; font-weight: 600; }
+.req-only-notice { background: #eef2f7; border: 1px dashed #93a4b8; border-radius: 8px; padding: 16px 20px; margin: 18px 0; font-size: 13px; color: #2c3e50; }
+.req-only-list { width: 100%; border-collapse: collapse; margin: 10px 0; font-size: 12px; }
+.req-only-list th { background: #0d2137; color: white; padding: 9px 10px; text-align: left; font-weight: 600; }
+.req-only-list td { padding: 7px 10px; border-bottom: 1px solid #e3e8ee; }
 """
 
 
@@ -76,10 +178,30 @@ def _get_jurisdiction(state: str) -> dict:
     return _bc_lookup.get_jurisdiction(state)
 
 
+def _format_property_address(prop: dict) -> str:
+    """WS-7 cosmetic fix — dedupe the property address. Production stores the
+    FULL address (often with ', USA') in property.address, so naively appending
+    city/state/zip produced e.g. '... Orlando, FL 32819, USA, ORLANDO, FL 32819'.
+    When the address line already contains the city or zip, use it as-is;
+    otherwise compose from the parts."""
+    addr = (prop.get("address") or "").strip().rstrip(",").strip()
+    # Drop a trailing ", USA" that the geocoder sometimes appends.
+    addr = re.sub(r",?\s*USA\s*$", "", addr, flags=re.IGNORECASE).strip().rstrip(",").strip()
+    city = (prop.get("city") or "").strip()
+    state = (prop.get("state") or "").strip()
+    zip_ = (prop.get("zip") or "").strip()
+    addr_l = addr.lower()
+    already_full = (city and city.lower() in addr_l) or (zip_ and zip_ in addr)
+    if already_full or not addr:
+        return addr or ", ".join(p for p in [city, f"{state} {zip_}".strip()] if p)
+    tail = ", ".join(p for p in [city, f"{state} {zip_}".strip()] if p)
+    return f"{addr}, {tail}" if tail else addr
+
+
 def _build_cover_page(config: dict, jurisdiction: dict, annotation_count: int) -> str:
     """Build the cover page HTML."""
     prop = config.get("property", {})
-    address = _h(f"{prop.get('address', '')}, {prop.get('city', '')}, {prop.get('state', '')} {prop.get('zip', '')}")
+    address = _h(_format_property_address(prop))
     claim_number = _h(config.get("carrier", {}).get("claim_number", ""))
     company = config.get("company", {})
     # Default kept neutral so a missing/empty company_name doesn't leak USARM
@@ -312,15 +434,35 @@ def _build_installation_diagrams(annotations: list[dict], config: dict) -> str:
     return "\n".join(diagrams)
 
 
+def _code_section_carrier_status(config: dict) -> dict:
+    """WS-7 — map a code SECTION (e.g. 'R905.1.2') → carrier coverage state, by
+    joining the per-line carrier status (from carrier.carrier_line_items) onto
+    the code_citation.section of each code-cited line item. Lets the summary
+    table show the REAL carrier-omission status that was previously computed but
+    dropped."""
+    status_map = _carrier_status_map(config)
+    out = {}
+    for li in _code_line_items(config):
+        cc = li.get("code_citation") or {}
+        section = (cc.get("section") or "").strip()
+        if not section:
+            continue
+        state = status_map.get((li.get("description") or "").strip().lower(), "omitted")
+        # If ANY line under a section is omitted, the section is flagged omitted.
+        if out.get(section) != "omitted":
+            out[section] = state
+    return out
+
+
 def _build_summary_table(annotations: list[dict], config: dict) -> str:
-    """Build the summary table of all applicable codes."""
+    """Build the summary table of all applicable codes.
+
+    WS-7: when a carrier scope is present, the previously-dropped carrier-
+    omission status is wired into a real "Carrier Scope" column (INCLUDED vs
+    OMITTED) instead of the old "VERIFY" placeholder."""
     jurisdiction = _get_jurisdiction(config.get("property", {}).get("state", "NY"))
-    carrier_items = set()
-    for li in config.get("line_items", []):
-        carrier_match = li.get("carrier_match", "")
-        if carrier_match and carrier_match != "NOT INCLUDED":
-            desc = li.get("description", "").lower()
-            carrier_items.add(desc[:30])
+    carrier_present = carrier_scope_present(config)
+    section_status = _code_section_carrier_status(config) if carrier_present else {}
 
     rows = []
     for ann in annotations:
@@ -329,23 +471,27 @@ def _build_summary_table(annotations: list[dict], config: dict) -> str:
         mfr_names = ", ".join(s.get("manufacturer", "") for s in mfr_specs[:2]) if mfr_specs else "—"
         has_void = any(s.get("warranty_void") for s in mfr_specs)
 
-        # Determine if carrier included this item
-        zone = ann.get("zone", "")
-        status_class = "status-included"
-        status_text = "Included"
-        # Simple heuristic: if the code is marked as missing in scope comparison
-        if ann.get("is_critical"):
-            status_class = "status-missing"
-            status_text = "VERIFY"
+        carrier_cell = ""
+        if carrier_present:
+            # Join on the bare section (strip the jurisdiction prefix off code_tag).
+            section = (cc.get("section") or "").strip()
+            state = section_status.get(section)
+            if state == "included":
+                carrier_cell = '<td class="status-included">Included</td>'
+            else:
+                carrier_cell = '<td class="status-missing">OMITTED</td>'
 
         rows.append(f'''
         <tr>
-            <td><b>{ann.get("code_tag", "")}</b></td>
-            <td>{ann.get("title", "")}</td>
-            <td>{ann.get("measurement", "")}</td>
-            <td>{mfr_names}</td>
+            <td><b>{_h(ann.get("code_tag", ""))}</b></td>
+            <td>{_h(ann.get("title", ""))}</td>
+            <td>{_h(ann.get("measurement", ""))}</td>
+            <td>{_h(mfr_names)}</td>
             <td>{"WARRANTY VOID" if has_void else "—"}</td>
+            {carrier_cell}
         </tr>''')
+
+    carrier_th = "<th>Carrier Scope</th>" if carrier_present else ""
 
     return f'''
     <h2>Code Requirements Summary</h2>
@@ -357,6 +503,7 @@ def _build_summary_table(annotations: list[dict], config: dict) -> str:
                 <th>Measurement</th>
                 <th>Manufacturer</th>
                 <th>Warranty Impact</th>
+                {carrier_th}
             </tr>
         </thead>
         <tbody>
@@ -364,8 +511,221 @@ def _build_summary_table(annotations: list[dict], config: dict) -> str:
         </tbody>
     </table>
     <div class="footer">
-        Jurisdiction: {jurisdiction["name"]} | Report generated by {config.get("company", {}).get("name") or "Your Roofing Company"}
+        Jurisdiction: {jurisdiction["name"]} | Report generated by {_h(config.get("company", {}).get("name") or "Your Roofing Company")}
     </div>
+    '''
+
+
+def _trade_of(li: dict) -> str:
+    """Display trade/category bucket for grouping supplement rows."""
+    t = (li.get("trade") or li.get("category") or "ROOFING").strip().upper()
+    return t or "ROOFING"
+
+
+def _code_section(li: dict) -> str:
+    """The carrier-facing code section string for a code-cited line item.
+    Prefer the jurisdiction-prefixed code_tag (e.g. 'TX-IRC R905.1.2'); fall
+    back to the bare section."""
+    cc = li.get("code_citation") or {}
+    return cc.get("code_tag") or cc.get("section") or ""
+
+
+def build_priced_supplement(config: dict) -> dict:
+    """WS-7 — build the PRICED code-compliance supplement: a FILTERED VIEW of
+    Doc 02's code-required line items.
+
+    Returns a dict: {'html': <table html>, 'subtotal': float, 'row_count': int,
+    'is_attribution_view': True, 'omitted_count': int}. The subtotal is computed
+    with the EXACT per-line rounding Doc 02 uses
+    (``round(qty*unit_price, 2)`` per item, summed), so it equals the sum of the
+    same line_items in Doc 02 — the subset invariant. NEVER additive.
+
+    Unit prices are read OFF the frozen line items (B.7) — no re-resolution here.
+    """
+    code_items = _code_line_items(config)
+    ahj = _ahj_header(config)
+    carrier_present = carrier_scope_present(config)
+    status_map = _carrier_status_map(config)
+
+    # Group by trade, preserving Doc-02-ish category order.
+    _CAT_ORDER = {"ROOFING": 0, "SIDING": 1, "GUTTERS": 2, "INTERIOR": 3, "GENERAL": 4, "DEBRIS": 5}
+    groups: dict[str, list] = {}
+    for li in code_items:
+        groups.setdefault(_trade_of(li), []).append(li)
+
+    subtotal = 0.0
+    omitted_count = 0
+    body_rows = []
+
+    # Column count drives colspans (carrier column only when a scope is present).
+    n_cols = 8 if carrier_present else 7
+
+    for trade in sorted(groups, key=lambda t: _CAT_ORDER.get(t, 99)):
+        items = groups[trade]
+        body_rows.append(
+            f'<tr class="trade-header"><td colspan="{n_cols}">{_h(trade)}</td></tr>'
+        )
+        trade_subtotal = 0.0
+        for li in items:
+            qty = float(li.get("qty", 0) or 0)
+            unit_price = float(li.get("unit_price", 0) or 0)
+            line_total = round(qty * unit_price, 2)
+            subtotal += line_total
+            trade_subtotal += line_total
+
+            cc = li.get("code_citation") or {}
+            section = _code_section(li)
+            requirement = cc.get("requirement") or cc.get("title") or ""
+            desc = li.get("description", "")
+            unit = li.get("unit", "")
+
+            carrier_cell = ""
+            if carrier_present:
+                state = status_map.get((desc or "").strip().lower())
+                if state == "omitted":
+                    omitted_count += 1
+                    carrier_cell = '<td class="carrier-omitted">OMITTED</td>'
+                elif state == "included":
+                    carrier_cell = '<td class="carrier-included">Included</td>'
+                else:
+                    # In USARM scope, not found in the carrier comparison rows →
+                    # treat as a carrier omission (supplement leverage).
+                    omitted_count += 1
+                    carrier_cell = '<td class="carrier-omitted">OMITTED</td>'
+
+            body_rows.append(f'''<tr>
+                <td><b>{_h(section)}</b></td>
+                <td>{_h(requirement)}</td>
+                <td>{_h(desc)}</td>
+                <td class="num">{qty:g}</td>
+                <td>{_h(unit)}</td>
+                <td class="num">{_money(unit_price)}</td>
+                <td class="num">{_money(line_total)}</td>
+                {carrier_cell}
+            </tr>''')
+
+        body_rows.append(
+            f'<tr class="trade-subtotal"><td colspan="{n_cols-1}">{_h(trade)} subtotal</td>'
+            f'<td class="num">{_money(trade_subtotal)}</td></tr>'
+            if not carrier_present else
+            f'<tr class="trade-subtotal"><td colspan="{n_cols-2}">{_h(trade)} subtotal</td>'
+            f'<td class="num">{_money(trade_subtotal)}</td><td></td></tr>'
+        )
+
+    # Grand subtotal row.
+    if carrier_present:
+        body_rows.append(
+            f'<tr class="grand-subtotal"><td colspan="{n_cols-2}">CODE-COMPLIANCE SUPPLEMENT SUBTOTAL</td>'
+            f'<td class="num">{_money(subtotal)}</td><td></td></tr>'
+        )
+    else:
+        body_rows.append(
+            f'<tr class="grand-subtotal"><td colspan="{n_cols-1}">CODE-COMPLIANCE SUPPLEMENT SUBTOTAL</td>'
+            f'<td class="num">{_money(subtotal)}</td></tr>'
+        )
+
+    carrier_th = "<th>Carrier Scope</th>" if carrier_present else ""
+    adopted = f" (adopted {ahj['adopted_year']})" if ahj.get("adopted_year") else ""
+
+    html = f'''
+    <h2>Code-Compliance Supplement &mdash; Priced</h2>
+
+    <div class="ahj-header" data-ahj="true">
+        <div class="ahj-title">Authority Having Jurisdiction &amp; Code Edition</div>
+        <div class="ahj-body">{_h(ahj['jurisdiction'])} ({_h(ahj['prefix'])}) &mdash; base code {_h(ahj['base_code'])}{_h(adopted)}</div>
+    </div>
+
+    <div class="non-additive-banner" data-attribution-view="true">
+        <b>These items are already included in the Xactimate estimate (Document #2).</b>
+        This supplement isolates the code-mandated subset of that estimate &mdash; it is an
+        <b>attribution view, not additional money</b>. The subtotal below equals the sum of these same
+        line items in the Xactimate estimate and must never be added to it.
+    </div>
+
+    <table class="supplement-table" data-attribution-view="true">
+        <thead>
+            <tr>
+                <th>Code Section</th>
+                <th>Requirement</th>
+                <th>Item</th>
+                <th>Qty</th>
+                <th>Unit</th>
+                <th>Unit Price</th>
+                <th>Line Total</th>
+                {carrier_th}
+            </tr>
+        </thead>
+        <tbody>
+            {"".join(body_rows)}
+        </tbody>
+    </table>
+    '''
+
+    if carrier_present:
+        html += (
+            f'<p style="font-size:12px; color:#5d6d7e; margin-top:8px;">'
+            f'<b class="carrier-omitted">{omitted_count}</b> code-mandated item(s) are '
+            f'<b>omitted from the carrier scope</b> &mdash; these are the supplement gap.</p>'
+        )
+
+    return {
+        "html": html,
+        "subtotal": round(subtotal, 2),
+        "row_count": len(code_items),
+        "omitted_count": omitted_count,
+        "is_attribution_view": True,
+        "carrier_present": carrier_present,
+    }
+
+
+def build_requirements_only_supplement(config: dict) -> str:
+    """WS-7 — forensic-only fallback (NO measurements AND NO carrier scope).
+    Renders the same code REQUIREMENTS list with NO qty / price / subtotal, plus
+    the upload notice. v1 accepts that this list is thin (it derives from the
+    code-cited annotations the forensic pass produced)."""
+    ahj = _ahj_header(config)
+    annotations = collect_annotations_from_config(config)
+
+    rows = []
+    seen = set()
+    for ann in annotations:
+        cc = ann.get("full_citation", {}) or {}
+        tag = ann.get("code_tag", "") or cc.get("code_tag", "")
+        title = ann.get("title", "")
+        requirement = cc.get("requirement", "") or title
+        key = (tag, title)
+        if key in seen:
+            continue
+        seen.add(key)
+        rows.append(f'''<tr>
+            <td><b>{_h(tag)}</b></td>
+            <td>{_h(title)}</td>
+            <td>{_h(requirement)}</td>
+        </tr>''')
+
+    adopted = f" (adopted {ahj['adopted_year']})" if ahj.get("adopted_year") else ""
+    table = ""
+    if rows:
+        table = f'''
+        <table class="req-only-list">
+            <thead><tr><th>Code Section</th><th>Requirement</th><th>Detail</th></tr></thead>
+            <tbody>{"".join(rows)}</tbody>
+        </table>'''
+
+    return f'''
+    <h2>Code-Compliance Supplement &mdash; Requirements Only</h2>
+
+    <div class="ahj-header" data-ahj="true">
+        <div class="ahj-title">Authority Having Jurisdiction &amp; Code Edition</div>
+        <div class="ahj-body">{_h(ahj['jurisdiction'])} ({_h(ahj['prefix'])}) &mdash; base code {_h(ahj['base_code'])}{_h(adopted)}</div>
+    </div>
+
+    <div class="req-only-notice" data-requirements-only="true">
+        <b>Upload roof measurements or the carrier scope</b> to generate the priced
+        code-compliance supplement (Code Section, Requirement, Item, Qty, Unit, Unit Price,
+        Line Total + subtotal). The requirements below are code-mandated regardless of pricing.
+    </div>
+    {table}
     '''
 
 
@@ -398,6 +758,23 @@ def build_compliance_report(config: dict) -> str:
     diagrams = _build_installation_diagrams(annotations, config)
     summary = _build_summary_table(annotations, config)
 
+    # 3b. WS-7 GATING — priced mode when measurements OR a carrier scope is
+    # present; otherwise REQUIREMENTS-ONLY (no qty/price/subtotal) + upload
+    # notice. The priced supplement is a FILTERED, NON-ADDITIVE view of Doc 02.
+    priced_mode = has_measurements(config) or carrier_scope_present(config)
+    if priced_mode:
+        supplement = build_priced_supplement(config)
+        supplement_html = supplement["html"]
+        _mode = "priced"
+        print(f"[COMPLIANCE] priced supplement: {supplement['row_count']} code line items, "
+              f"subtotal={_money(supplement['subtotal'])}, "
+              f"carrier_scope={'yes' if supplement['carrier_present'] else 'no'}, "
+              f"omitted={supplement['omitted_count']}")
+    else:
+        supplement_html = build_requirements_only_supplement(config)
+        _mode = "requirements-only"
+        print("[COMPLIANCE] requirements-only supplement (no measurements, no carrier scope)")
+
     # 4. Assemble full HTML
     html = f'''<!DOCTYPE html>
 <html>
@@ -429,6 +806,9 @@ def build_compliance_report(config: dict) -> str:
     <div class="page-break"></div>
 
     {summary}
+    <div class="page-break"></div>
+
+    {supplement_html}
 </body>
 </html>'''
 
@@ -438,7 +818,7 @@ def build_compliance_report(config: dict) -> str:
     with open(output_path, "w") as f:
         f.write(html)
 
-    print(f"[COMPLIANCE] Report generated: {len(annotations)} codes, "
+    print(f"[COMPLIANCE] Report generated: {len(annotations)} codes, mode={_mode}, "
           f"jurisdiction={jurisdiction['abbrev']}, path={output_path}")
     return output_path
 

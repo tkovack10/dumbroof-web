@@ -4319,10 +4319,14 @@ if __name__ == "__main__":
         html_files.append((lang["doc3_title"].title(), build_supplement_report(config)))
         html_files.append((lang["doc4_title"].title(), build_appeal_letter(config)))
 
-    # Document #6: Code Compliance Report (if measurements available)
+    # Document #6: Code Compliance Report.
+    # WS-7 gating: PRICED mode when measurements OR a carrier scope is present;
+    # otherwise build_compliance_report degrades to a REQUIREMENTS-ONLY supplement
+    # (no qty/price/subtotal) + an upload notice. We still require at least one
+    # code citation (build_compliance_report returns '' when there are none).
     try:
-        from compliance_report import build_compliance_report, has_measurements
-        if has_measurements(config):
+        from compliance_report import build_compliance_report, has_measurements, carrier_scope_present
+        if has_measurements(config) or carrier_scope_present(config):
             compliance_html = build_compliance_report(config)
             if compliance_html:
                 html_files.append(("Code Compliance Report", compliance_html))
