@@ -21,6 +21,7 @@ import { InvoiceBuilder } from "@/components/invoice-builder";
 import { SendDocumentsBlock } from "@/components/send-documents-block";
 import { UploadedDocuments } from "@/components/uploaded-documents";
 import { BrandReportsPrompt } from "@/components/brand-reports-prompt";
+import { trackBoth, FunnelEvent } from "@/lib/track";
 import type { ScopeComparisonRow } from "@/types/scope-comparison";
 
 import type { Claim } from "@/types/claim";
@@ -136,6 +137,23 @@ export default function ClaimDetailPage() {
   const [roofMapPhotoUrls, setRoofMapPhotoUrls] = useState<Record<string, string>>({});
   const [hasForensicWin, setHasForensicWin] = useState(false);
   const formRef = useRef<HTMLDivElement>(null);
+  // Instant-funnel activation: the instant funnel creates the claim server-side
+  // (/instant/continue) then redirects here with ?source=instant_funnel — so this
+  // landing is the only client moment to fire the GA4 activation conversion for that
+  // path (the onboarding path fires its own at the creation moment). Once per arrival.
+  const activationFiredRef = useRef(false);
+  useEffect(() => {
+    if (activationFiredRef.current || typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("source") === "instant_funnel") {
+      activationFiredRef.current = true;
+      trackBoth(FunnelEvent.FIRST_CLAIM_ACTIVATED, { source: "instant_funnel" });
+      // Strip the param so a reload doesn't re-fire the activation.
+      params.delete("source");
+      const qs = params.toString();
+      window.history.replaceState({}, "", window.location.pathname + (qs ? `?${qs}` : ""));
+    }
+  }, []);
   // CompanyCam / AccuLynx integration state — for "import more photos to an
   // existing claim" flow. Same modal used by install-supplement / coc /
   // new-claim flows; this is the 4th surface.
