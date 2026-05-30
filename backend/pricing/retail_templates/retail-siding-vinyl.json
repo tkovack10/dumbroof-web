@@ -1,0 +1,58 @@
+{
+  "_meta": {
+    "template_id": "retail-siding-vinyl",
+    "template_name": "Vinyl Siding — Retail System",
+    "trade": "siding",
+    "manufacturer": "Generic / .044 vinyl",
+    "product_line": "Standard vinyl (D4 / D5)",
+    "pricing_model": "all_in_per_wall_sf",
+    "base_price_per_sf_usd": 10.50,
+    "base_price_includes_waste": true,
+    "base_includes": [
+      "Vinyl siding panels (.044 gauge, double 4\" or 5\"), installed",
+      "House wrap (weather-resistive barrier) — ALWAYS included per IRC R703.2",
+      "Fanfold insulation board backer",
+      "Starter strip, J-channel, inside/outside corner posts, finish trim",
+      "Window wraps / trim (aluminum coil) — standard openings",
+      "Door wraps / trim (aluminum coil) — standard openings",
+      "Tear-off + haul-away of existing siding (1 layer)",
+      "Caulk, fasteners, color from standard palette",
+      "Workmanship warranty"
+    ],
+    "base_excludes": [
+      "Fiber-cement or insulated-vinyl upgrade",
+      "Rotted sheathing / OSB replacement",
+      "Soffit & fascia replacement",
+      "Shutters, gable vents, decorative accents",
+      "Scaffolding for 3+ story walls",
+      "Oversized / bay / specialty window wraps"
+    ],
+    "currency": "USD",
+    "as_of_date": "2026-05-29",
+    "notes": "All-in $10.50/SF × wall_area_sf is the customer-facing price; house wrap, fanfold, trim, and standard window/door wraps are bundled in. Itemized lines below show what's included (unit_price 0 = bundled). Real $-amounts live in add_ons. Prices are editable starting points — every company sets its own retail pricing."
+  },
+
+  "items": [
+    { "line": 1, "category": "siding", "code": "SDG_VINYL_PANEL", "description": "Vinyl siding panels (.044, D4/D5) — installed, all-in (house wrap, fanfold, trim, standard window/door wraps bundled)", "unit": "SF", "unit_price": 10.50, "quantity_formula": "wall_area_sf", "bundled_in_base": false, "is_billing_line": true, "notes": "All-in billing line: $10.50/SF × wall area." },
+    { "line": 2, "category": "house_wrap", "code": "SDG_HOUSEWRAP", "description": "House wrap / weather-resistive barrier — code-required (IRC R703.2)", "unit": "SF", "unit_price": 0.00, "quantity_formula": "wall_area_sf", "bundled_in_base": true },
+    { "line": 3, "category": "insulation", "code": "SDG_FANFOLD", "description": "Fanfold insulation board backer", "unit": "SF", "unit_price": 0.00, "quantity_formula": "wall_area_sf", "bundled_in_base": true },
+    { "line": 4, "category": "window_wrap", "code": "SDG_WINDOW_WRAP", "description": "Aluminum window wrap / trim — standard openings", "unit": "EA", "unit_price": 0.00, "quantity_formula": "window_count", "bundled_in_base": true },
+    { "line": 5, "category": "door_wrap", "code": "SDG_DOOR_WRAP", "description": "Aluminum door wrap / trim — standard openings", "unit": "EA", "unit_price": 0.00, "quantity_formula": "door_count", "bundled_in_base": true },
+    { "line": 6, "category": "trim", "code": "SDG_TRIM", "description": "Starter strip, J-channel, corner posts, finish trim", "unit": "LS", "unit_price": 0.00, "quantity_formula": "1", "bundled_in_base": true },
+    { "line": 7, "category": "tearoff", "code": "SDG_TEAROFF", "description": "Tear-off and haul-away of existing siding (1 layer)", "unit": "SF", "unit_price": 0.00, "quantity_formula": "wall_area_sf", "bundled_in_base": true },
+    { "line": 8, "category": "warranty", "code": "SDG_WARRANTY_LABOR", "description": "Contractor workmanship warranty", "unit": "LS", "unit_price": 0.00, "quantity_formula": "1", "bundled_in_base": true }
+  ],
+
+  "add_ons": [
+    { "code": "SDG_UPGRADE_INSULATED", "description": "Upgrade to insulated vinyl (foam-backed) — additive over standard", "unit": "SF", "unit_price": 3.90, "notes": "Additive per SF over base vinyl." },
+    { "code": "SDG_UPGRADE_FIBERCEMENT", "description": "Upgrade to fiber-cement (James Hardie-type) lap — additive over vinyl", "unit": "SF", "unit_price": 4.50, "notes": "Additive per SF; heavier install, paint-ready." },
+    { "code": "SDG_SHEATHING_REPL", "description": "Rotted sheathing / OSB replacement, per 4x8 sheet (32 SF)", "unit": "EA", "unit_price": 95.00, "notes": "Allowance — actual qty determined on tear-off." },
+    { "code": "SDG_SOFFIT_FASCIA", "description": "Aluminum soffit + fascia wrap", "unit": "LF", "unit_price": 14.00, "notes": "Per LF of eave/rake covered." },
+    { "code": "SDG_SCAFFOLD", "description": "Scaffolding for tall / 3+ story walls", "unit": "WK", "unit_price": 1405.00, "notes": "Per week on site." },
+    { "code": "SDG_WINDOW_WRAP_LARGE", "description": "Oversized / bay / specialty window wrap surcharge", "unit": "EA", "unit_price": 145.00, "notes": "Additive per oversized opening beyond standard." },
+    { "code": "SDG_SHUTTERS", "description": "Vinyl shutters, installed (per pair)", "unit": "PR", "unit_price": 85.00, "notes": "Per window pair." },
+    { "code": "SDG_GABLE_VENT", "description": "Gable / louvered vent, installed", "unit": "EA", "unit_price": 120.00, "notes": "Per vent." }
+  ],
+
+  "warranty_disclosure": "Vinyl siding carries the manufacturer's limited lifetime material warranty (fade/hail varies by product) plus a contractor workmanship warranty. House wrap is included on every job as a code requirement (IRC R703.2), not an upsell. Fiber-cement and insulated-vinyl upgrades are quoted as add-ons."
+}
