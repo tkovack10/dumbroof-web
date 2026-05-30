@@ -1,9 +1,10 @@
 """FastAPI sub-router for retail estimate backend endpoints.
 
 Mounted onto the main FastAPI app via `app.include_router(retail_router)`
-in main.py. Imports ONLY from retail_measurements.py — no processor.py /
-claims dependencies. Keeps the retail workflow physically segregated from
-the insurance/claims pipeline.
+in main.py. Imports only retail_measurements.py + the shared, dependency-light
+wall_area_estimator.py (a neutral module the claims path also uses) — NO
+processor.py / claims-pipeline dependencies. Keeps the retail workflow
+physically segregated from the insurance/claims pipeline.
 """
 
 from __future__ import annotations
@@ -13,9 +14,10 @@ import os
 import tempfile
 
 import anthropic
-from fastapi import APIRouter, File, HTTPException, UploadFile
+from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 
 from retail_measurements import extract_retail_measurements
+from wall_area_estimator import estimate_wall_area
 
 logger = logging.getLogger(__name__)
 
@@ -23,6 +25,7 @@ retail_router = APIRouter(prefix="/api/retail-measurements", tags=["retail"])
 
 
 _MAX_PDF_BYTES = 25 * 1024 * 1024  # 25 MB ceiling (Anthropic doc input ~32MB after b64)
+_MAX_IMG_BYTES = 15 * 1024 * 1024  # 15 MB/elevation photo
 _ALLOWED_CONTENT_TYPES = {"application/pdf", "application/x-pdf", "binary/octet-stream"}
 
 
@@ -101,3 +104,45 @@ async def parse_retail_measurements(file: UploadFile = File(...)) -> dict:
             pass
 
     return {"ok": True, "measurements": result}
+
+
+@retail_router.post("/estimate-siding")
+async def estimate_siding_wall_area(
+    photos: list[UploadFile] = File(default=[]),
+    measurements: str = Form(default="{}"),
+) -> dict:
+    """POST /api/retail-measurements/estimate-siding — guesstimate wall_area_sf for
+    a siding job from the roof footprint measurements + elevation photos (Claude
+    Vision). The shared brain lives in wall_area_estimator.py (the claim siding
+    path uses the same function), so retail is just its first consumer.
+
+    Multipart: `photos` = elevation images (front/back/left/right); `measurements`
+    = a JSON string of the roof measurements (eave_lf, rake_lf, roof_area_sq,
+    stories). With no photos it returns the geometry-only estimate.
+    """
+    import json as _json
+
+    try:
+        roof = _json.loads(measurements) if measurements else {}
+        if not isinstance(roof, dict):
+            roof = {}
+    except Exception:
+        roof = {}
+
+    images: list[bytes] = []
+    for p in photos[:8]:
+        b = await p.read()
+        if b and len(b) <= _MAX_IMG_BYTES:
+            images.append(b)
+
+    try:
+        client = _get_anthropic_client() if images else None
+        result = estimate_wall_area(roof, images or None, client)
+    except anthropic.APIStatusError as e:
+        logger.exception("estimate-siding: Anthropic API error")
+        raise HTTPException(status_code=502, detail=f"Anthropic upstream: {e}")
+    except Exception as e:
+        logger.exception("estimate-siding failed")
+        raise HTTPException(status_code=500, detail=f"Estimate failed: {e}")
+
+    return {"ok": True, "estimate": result}
