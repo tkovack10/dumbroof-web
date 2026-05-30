@@ -26,16 +26,22 @@ it guards.
 Bug classes codified here (from the live-claim QA + retrospective wmu9udhcr):
   E272  TENANT-IDENTITY        check_tenant_identity_leak
   E269  CLIMATE-TEXT-VS-STATE  check_climate_text_vs_state
-  #7/E274 TAX-VS-STATE         check_tax_vs_state
+  #7/E275 TAX-VS-STATE         check_tax_vs_state
   E273  CARRIER-UNDERSCOPE     check_carrier_underscope_area
   #4    MATERIAL-SELF-CONSIST  check_material_self_consistency
   #6    HAIL-ONLY-WITH-NOAA    check_hail_only_with_noaa
 
-DEFERRED (the other shell is fixing these in processor.py right now — adding the
+DEFERRED (the other shell is fixing this in processor.py right now — adding the
 invariant now would assert PRE-fix behavior and fight that work):
-  E275  state-resolution / null-state config assembly
-  E271  grade-tier
-Add their invariants here once those fixes land.
+  E271  grade-tier (shingle grade -> pricing)
+Add its invariant here once that fix lands.
+
+NOTE ON E275: the live-QA's E275 turned out to be the sales-tax bug (the
+_tax_rates dict missing TX -> the flat NY 8% default leaked onto non-NY claims),
+NOT the "null-state config assembly" originally hypothesized. It shipped on main
+(#91) and is GUARDED above as #7/E275 TAX-VS-STATE. Null-state config ASSEMBLY (a
+config reaching the renderer with no resolved state) is a processor.py concern,
+not an output invariant — left to that layer.
 
 Self-contained — stdlib only. Import and call; or run the battery via
 test_claim_invariants.py.
@@ -264,17 +270,17 @@ def check_climate_text_vs_state(config: dict, rendered_html: str) -> list[str]:
 
 
 # ══════════════════════════════════════════════════════════════════════════
-# #7 / E274 — TAX-VS-STATE
+# #7 / E275 — TAX-VS-STATE
 # ══════════════════════════════════════════════════════════════════════════
 
-# The flat NY default that leaked onto non-NY claims (the E274 signature).
+# The flat NY default that leaked onto non-NY claims (the E275 signature).
 _NY_DEFAULT_TAX_RATE = 0.08
 
 
 def check_tax_vs_state(config: dict) -> list[str]:
     """The Doc-02 estimate ``financials.tax_rate`` must match the claim's state.
 
-    The sharp, non-brittle invariant (the E274 signature): a NON-NY claim must
+    The sharp, non-brittle invariant (the E275 signature): a NON-NY claim must
     never carry the flat NY 8% default. NY itself is exempt (its modeled rate IS
     0.08). For non-NY states we additionally check the rate against the modeled
     state rate from ``building_codes.lookup.get_sales_tax`` (the production
@@ -291,16 +297,16 @@ def check_tax_vs_state(config: dict) -> list[str]:
     try:
         rate = float(rate)
     except (TypeError, ValueError):
-        return [f"#7/E274 TAX-VS-STATE: non-numeric tax_rate {rate!r} for {state}"]
+        return [f"#7/E275 TAX-VS-STATE: non-numeric tax_rate {rate!r} for {state}"]
 
     if state.upper() == "NY":
         return []  # NY's real rate is the 8% default — exempt
 
     violations = []
-    # (1) The exact E274 signature: the flat NY default on a non-NY claim.
+    # (1) The exact E275 signature: the flat NY default on a non-NY claim.
     if abs(rate - _NY_DEFAULT_TAX_RATE) < 1e-9:
         violations.append(
-            f"#7/E274 TAX-VS-STATE: non-NY claim ({state}) carries the flat NY "
+            f"#7/E275 TAX-VS-STATE: non-NY claim ({state}) carries the flat NY "
             f"8% default tax_rate (0.08) — sales tax is not state-aware"
         )
         return violations  # the 8% leak is the headline; one message is enough
@@ -309,7 +315,7 @@ def check_tax_vs_state(config: dict) -> list[str]:
     state_base = _bc_lookup.get_sales_tax(state)
     if rate > state_base + 0.03 + 1e-9:
         violations.append(
-            f"#7/E274 TAX-VS-STATE: {state} tax_rate {rate:.4f} far exceeds the "
+            f"#7/E275 TAX-VS-STATE: {state} tax_rate {rate:.4f} far exceeds the "
             f"modeled state base {state_base:.4f} (+local) — likely a wrong-state rate"
         )
     return violations

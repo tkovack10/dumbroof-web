@@ -60,8 +60,8 @@ NEW_FIXTURE_DIR = os.path.join(_HERE, "fixtures", "invariant_corpus")
 #
 # Discovered empirically (see test_report_corpus_violations, which prints the
 # full ledger). The dominant class is the pre-state-aware NY-8%-default tax leak
-# (#7/E274) on non-NY fixtures captured before that fix shipped.
-_TAG_TAX = "#7/E274"
+# (#7/E275) on non-NY fixtures captured before that fix shipped.
+_TAG_TAX = "#7/E275"
 _TAG_CLIMATE = "E269"
 _TAG_TENANT = "E272"
 _TAG_MATERIAL = "#4"
@@ -259,7 +259,7 @@ class TestCorpusBattery(unittest.TestCase):
                 f"{fid[:8]}: boilerplate-only hail mention must not fire #6")
 
     def test_tax_vs_state_latent_violations_are_exactly_the_known_set(self):
-        """#7/E274 — the tax-vs-state invariant DOES fire on the pre-fix fixtures
+        """#7/E275 — the tax-vs-state invariant DOES fire on the pre-fix fixtures
         (proving the latent bug is real and the invariant is live). We assert the
         firing set is exactly the non-NY fixtures carrying the flat NY 8% default,
         so a NEW tax-leak fixture (or a silently-fixed one) trips the gate.
@@ -344,7 +344,7 @@ class TestNewDiverseFixtures(unittest.TestCase):
         cfg["financials"]["tax_rate"] = 0.08
         v = inv.check_tax_vs_state(cfg)
         self.assertTrue(v)
-        self.assertIn("#7/E274", v[0])
+        self.assertIn("#7/E275", v[0])
 
     def test_broken_metal_fixture_trips_material_invariant(self):
         """Flip the metal fixture's human label to asphalt while the enum stays
@@ -447,7 +447,7 @@ class TestNegativeTaxVsState(unittest.TestCase):
                           financials={"tax_rate": 0.08, "price_list": "TXHO26", "deductible": 0})
         v = inv.check_tax_vs_state(cfg)
         self.assertTrue(v, "must FIRE: flat NY 8% default on a TX claim")
-        self.assertIn("#7/E274", v[0])
+        self.assertIn("#7/E275", v[0])
 
     def test_fires_on_fl_with_ny_default_rate(self):
         cfg = _min_config(property={"address": "x", "city": "Miami", "state": "FL", "zip": "33101"},
