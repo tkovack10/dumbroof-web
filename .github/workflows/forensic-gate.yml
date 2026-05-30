@@ -23,6 +23,9 @@ jobs:
       - name: Golden forensic corpus — must be byte-identical (no silent report drift)
         working-directory: backend
         run: python3 tests/test_golden_forensic_corpus.py
+      - name: Claim invariants — cross-claim bug-class gate (tenant/climate/tax/underscope/material/hail)
+        working-directory: backend
+        run: python3 tests/test_claim_invariants.py
       - name: Forensic prevalence flags (medium-only, non-blocking)
         working-directory: backend
         run: python3 tests/test_forensic_prevalence_flags.py
