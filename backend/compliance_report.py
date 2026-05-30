@@ -1855,20 +1855,27 @@ def _build_property_diagram(config: dict, annotations: list) -> str:
     footprint from the claim's EagleView/Vision facet geometry. If
     render_roof_footprint returns an SVG (usable polygon geometry), use it inside
     the annotated footprint frame, with the same section header the house used
-    plus the code-zone legend. If it returns None (no geometry — incl. the siding
-    NY fixture and the ~40% synthesized-skeleton claims), FALL BACK to the existing
-    generic house diagram, unchanged.
+    plus the code-zone legend.
+
+    If it returns None (no geometry):
+      * SIDING-ONLY report → SUPPRESS the diagram (return ""). The generic
+        parametric house adds nothing for a siding-only claim — the corner
+        plan-section in the Installation Visual Reference is the real siding
+        illustration. The caller drops the whole property-diagram page.
+      * ROOFING / mixed report → FALL BACK to the generic annotated house,
+        unchanged (the only roof illustration a no-geometry roofing claim has).
     """
     payload = _extract_roof_facets_payload(config)
     footprint_svg = render_roof_footprint(payload) if payload is not None else None
 
     if footprint_svg:
-        legend = _footprint_legend_html(footprint_svg)
+        # NOTE: the footprint SVG already carries its own in-image code-zone legend
+        # (roof_geometry_svg._legend_svg). We intentionally do NOT add the HTML twin
+        # legend here — a single legend reads cleaner and avoids the duplicate key.
         return f'''<div class="rendering-section">
         <div class="rendering-title">Overhead Roof Footprint — Code Requirement Zones</div>
         <div class="roof-footprint-frame" data-real-footprint="true">
             {footprint_svg}
-            {legend}
             <div class="rff-cap">
                 <b>Real overhead roof footprint</b> derived from the measured facet
                 geometry. Each roof edge is colored by the building-code zone it
@@ -1879,7 +1886,13 @@ def _build_property_diagram(config: dict, annotations: list) -> str:
         </div>
     </div>'''
 
-    # No usable geometry → existing generic annotated house, unchanged.
+    # No usable geometry. For a SIDING-ONLY report the generic parametric house
+    # is noise — suppress it; the corner plan-section is the real siding diagram.
+    if _report_is_siding(config):
+        return ""
+
+    # ROOFING / mixed report with no geometry → existing generic annotated house,
+    # unchanged (its only roof illustration).
     house_svg = generate_house_svg(config, annotations)
     return f'''<div class="rendering-section">
         <div class="rendering-title">Annotated Property Diagram — Code Requirement Zones</div>
@@ -1908,8 +1921,19 @@ def build_compliance_report(config: dict) -> str:
         return ""
 
     # 2. Generate the property diagram — REAL overhead roof footprint when facet
-    #    geometry is available, else the generic annotated house (fallback).
+    #    geometry is available, the generic annotated house when a ROOFING claim
+    #    lacks geometry, and NOTHING for a siding-only no-geometry claim (the
+    #    generic house adds nothing there). The whole page is dropped when empty.
     property_diagram = _build_property_diagram(config, annotations)
+    if property_diagram.strip():
+        property_diagram_page = (
+            _run_head(config, "Property Diagram · Code Requirement Zones")
+            + property_diagram
+            + _run_foot(config, "Building Code Compliance Report")
+            + '<div class="page-break"></div>'
+        )
+    else:
+        property_diagram_page = ""
 
     # 3. Build sections
     cover_html = _build_cover_page(config, jurisdiction, len(annotations))
@@ -1963,12 +1987,7 @@ def build_compliance_report(config: dict) -> str:
 <body>
     {cover_html}
     <div class="page-break"></div>
-
-    {_run_head(config, "Property Diagram · Code Requirement Zones")}
-    {property_diagram}
-    {_run_foot(config, "Building Code Compliance Report")}
-    <div class="page-break"></div>
-
+    {property_diagram_page}
     {_run_head(config, "Code Requirement Details")}
     <div class="sec-eyebrow">Applicable Provisions</div>
     <h2>Code Requirement Details</h2>

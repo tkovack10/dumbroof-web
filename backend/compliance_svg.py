@@ -530,7 +530,7 @@ def _build_measurement_string(zone: str, measurements: dict, line_item: dict) ->
         "valley": f"Valley: {measurements.get('valley', 0):.0f} LF",
         "wall-front": f"Wall: {qty:.0f} {unit}",
         "wall-side": f"Wall: {qty:.0f} {unit}",
-        "corner": "Wrap min 12\" around corners",
+        "corner": "Wrap min 6 in. around corners",
         "roof-field": f"Roof: {measurements.get('total_area', 0):.0f} SF",
     }
 

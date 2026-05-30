@@ -80,6 +80,11 @@ _BACKGROUND = "var(--roof-bg, #ffffff)"
 _EDGE_STROKE_WIDTH = 6
 _NEUTRAL_TYPES = {"hip", "unknown"}
 
+# Uniform inner margin (viewBox units) left around the fitted footprint so the
+# edges/strokes never touch the frame. The footprint is scaled+translated to
+# fill the remaining box while preserving aspect ratio (see _fit_transform).
+_FIT_MARGIN = 60
+
 
 # ── Geometry helpers — ported from roof-photo-map.tsx ──
 
@@ -251,6 +256,53 @@ def _legend_svg(present_zones: Iterable[str]) -> str:
     return "\n  ".join(parts)
 
 
+def _bbox(points_lists: Iterable[list[tuple[float, float]]]) -> Optional[tuple[float, float, float, float]]:
+    """Bounding box (min_x, min_y, max_x, max_y) of every point across facets."""
+    xs: list[float] = []
+    ys: list[float] = []
+    for pts in points_lists:
+        for x, y in pts:
+            xs.append(x)
+            ys.append(y)
+    if not xs or not ys:
+        return None
+    return (min(xs), min(ys), max(xs), max(ys))
+
+
+def _fit_transform(bbox: tuple[float, float, float, float]) -> Optional[str]:
+    """SVG transform that scales+translates the footprint bbox to FILL the viewBox.
+
+    Computes a single uniform scale (preserving aspect ratio) so the longer axis
+    of the footprint fills (viewBox - 2*margin), then centers it. Returns an SVG
+    `transform="translate(...) scale(...)"` string applied to the drawing groups,
+    or None when the footprint already maps 1:1 (degenerate / zero-span bbox).
+    """
+    min_x, min_y, max_x, max_y = bbox
+    span_x = max_x - min_x
+    span_y = max_y - min_y
+    if span_x <= 0 and span_y <= 0:
+        return None
+
+    avail_w = VIEWBOX_W - 2 * _FIT_MARGIN
+    avail_h = VIEWBOX_H - 2 * _FIT_MARGIN
+    # Uniform scale: the binding axis fills its available extent; a zero-span axis
+    # doesn't constrain the scale (avoid div-by-zero).
+    scale_candidates = []
+    if span_x > 0:
+        scale_candidates.append(avail_w / span_x)
+    if span_y > 0:
+        scale_candidates.append(avail_h / span_y)
+    scale = min(scale_candidates)
+
+    # Center the scaled footprint inside the viewBox.
+    scaled_w = span_x * scale
+    scaled_h = span_y * scale
+    tx = _FIT_MARGIN + (avail_w - scaled_w) / 2.0 - min_x * scale
+    ty = _FIT_MARGIN + (avail_h - scaled_h) / 2.0 - min_y * scale
+
+    return f'translate({_fmt(tx)},{_fmt(ty)}) scale({_fmt(scale)})'
+
+
 def render_roof_footprint(roof_facets_payload: Any) -> Optional[str]:
     """Render the real overhead roof footprint from facet geometry.
 
@@ -306,14 +358,25 @@ def render_roof_footprint(roof_facets_payload: Any) -> Optional[str]:
 
     legend = _legend_svg(present_zones)
 
+    # Scale+translate the raw normalized facet coords so the footprint FILLS the
+    # viewBox (uniform margin, aspect ratio preserved) instead of rendering small
+    # in a big frame. The legend stays in absolute viewBox coords (drawn outside
+    # the fit group) so it keeps its fixed, readable corner.
+    fit_bbox = _bbox([f["points"] for f in renderable])
+    transform = _fit_transform(fit_bbox) if fit_bbox else None
+    fit_open = f'<g class="roof-fit" transform="{transform}">' if transform else ""
+    fit_close = "</g>" if transform else ""
+
     svg_parts = [
         f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {VIEWBOX_W} {VIEWBOX_H}" '
         f'width="100%" style="max-width: 900px; margin: 0 auto; display: block;" '
         f'role="img" aria-label="Overhead roof footprint">',
         f'  <rect class="roof-bg" width="{VIEWBOX_W}" height="{VIEWBOX_H}" fill="{_BACKGROUND}"/>',
-        "  <!-- Facet footprints (union = real overhead roof outline) -->",
-        f'  <g class="roof-footprint" stroke-linejoin="round">',
     ]
+    if fit_open:
+        svg_parts.append(f"  {fit_open}")
+    svg_parts.append("  <!-- Facet footprints (union = real overhead roof outline) -->")
+    svg_parts.append('  <g class="roof-footprint" stroke-linejoin="round">')
     for poly in facet_polys:
         svg_parts.append(f"    {poly}")
     svg_parts.append("  </g>")
@@ -322,6 +385,8 @@ def render_roof_footprint(roof_facets_payload: Any) -> Optional[str]:
     for edge in facet_edges:
         svg_parts.append(f"    {edge}")
     svg_parts.append("  </g>")
+    if fit_close:
+        svg_parts.append(f"  {fit_close}")
     if legend:
         svg_parts.append("  <!-- Legend -->")
         svg_parts.append(f"  {legend}")
