@@ -45,6 +45,7 @@ def estimate_wall_area_geometric(roof: dict) -> dict:
     measured perimeter when present; it only falls back to a square-footprint
     assumption (from roof_area_sq) when no eave/rake LF is available.
     """
+    roof = roof if isinstance(roof, dict) else {}
     eave = _num(roof.get("eave_lf"))
     rake = _num(roof.get("rake_lf"))
     stories = max(1.0, _num(roof.get("stories"), default=1.0))

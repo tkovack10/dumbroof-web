@@ -272,6 +272,10 @@ export function RetailEstimateClient() {
       const est = (data.estimate || {}) as {
         wall_area_sf?: number; window_count?: number; door_count?: number; stories?: number; confidence?: string; source?: string;
       };
+      if (est.wall_area_sf == null) {
+        setStatusMsg({ kind: "err", text: "Couldn't read a wall area from those photos — enter it manually below." });
+        return;
+      }
       setSidingEstimate(est);
       setMeasurements((m) => ({
         ...m,
@@ -810,7 +814,7 @@ export function RetailEstimateClient() {
                       step="0.01"
                       min="0"
                       value={effectiveBasePrice}
-                      onChange={(e) => setBaseUnitPrice(parseFloat(e.target.value) || 0)}
+                      onChange={(e) => setBaseUnitPrice(Math.max(0, parseFloat(e.target.value) || 0))}
                       title="Your price — set what your company charges"
                       className="w-16 px-1 py-0.5 text-[11px] rounded bg-white/[0.05] border border-white/15 text-[var(--white)] focus:outline-none focus:border-[var(--cyan)] font-mono"
                     />
