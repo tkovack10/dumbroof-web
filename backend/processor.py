@@ -4084,7 +4084,8 @@ def build_claim_config(
         line_items = build_multi_structure_line_items(measurements, photo_analysis, state, user_notes=user_notes or "",
                                                       estimate_request=claim.get("estimate_request"),
                                                       roof_sections=claim.get("roof_sections"),
-                                                      zip_code=_zip, city=_city, market_code=market_code)
+                                                      zip_code=_zip, city=_city, market_code=market_code,
+                                                      carrier_scope=carrier_data)
 
     # Enrich line items with Xactimate codes, IRC citations, supplement arguments (METADATA ONLY).
     # Ship 3: this loop no longer touches unit_price — build_line_items froze the relational price.
@@ -4570,6 +4571,15 @@ def build_claim_config(
     else:
         config["roof_material_confidence"] = None
     config["roof_material_conflict"] = bool(photo_analysis.get("material_conflict"))
+    # E271: durable signal for the GRADE_PREMIUM_UNCORROBORATED QA flag. True when a
+    # premium grade was explicitly selected but nothing corroborates it (so pricing
+    # was gated down to standard laminate). Re-derived from the SAME corroboration
+    # function the gate uses → the flag and the price can never disagree. Reversible:
+    # add the product to notes / upload a high-grade carrier scope → reprocess → clears.
+    config["roof_grade_premium_uncorroborated"] = bool(
+        _premium_grade_requested(claim.get("estimate_request"))
+        and not _premium_grade_corroborated(photo_analysis, user_notes, carrier_data)
+    )
     if config.get("structures"):
         if len(config["structures"]) > 1:
             # Multi-structure: preserve per-structure shingle_type from extraction,
@@ -4813,6 +4823,63 @@ def _aggregate_material_confidence(conf_votes: list, photo_tags: dict):
     return claim_confidence, conflict
 
 
+# ── E271 — shingle GRADE evidence-gate ────────────────────────────────────────
+# "laminated_premium" (the high-grade pricing tier — Xactimate "Laminated - High
+# grd", ~$306/SQ vs standard ~$269/SQ) is produced ONLY by an explicit frontend
+# selection (estimate_request roof_type="high_grade_laminate" / roof_material=
+# "Premium Grade Laminate Comp Shingle"). A dropdown click alone is NOT a
+# defensible basis to bill a carrier the premium grade — carriers pay like-kind &
+# quality, and a grade upcharge requires evidence (a named designer/premium
+# product, or the carrier's own scope listing high-grade). Per
+# scope-vs-price-maximization, GRADE is a unit-price upgrade → it must be
+# evidence-gated. So premium prices premium ONLY when corroborated; otherwise we
+# price the defensible standard laminate and flag it (GRADE_PREMIUM_UNCORROBORATED,
+# reversible — name the product in notes + reprocess to restore premium).
+# NOTE: plain "architectural"/"dimensional"/"laminate" are STANDARD, not premium —
+# they must never corroborate. Future: a Vision premium-profile classifier so
+# photos can corroborate grade directly (today only an explicit product mention does).
+_PREMIUM_GRADE_SIGNALS = (
+    # generic premium / designer / luxury tier language
+    "designer shingle", "luxury shingle", "premium shingle", "premium laminate",
+    "premium grade", "premium architectural", "high grade", "high-grade", "high grd",
+    "shake look", "shake-look", "presidential",
+    # named premium / designer / luxury product lines
+    "grand sequoia", "grand canyon", "camelot", "glenwood", "woodland",                # GAF
+    "grand manor", "carriage house", "highland slate", "belmont", "centennial slate",  # CertainTeed
+    "berkshire", "woodcrest", "woodmoor", "devonshire",                                # Owens Corning
+    "heritage premium", "heritage vintage",                                            # TAMKO
+    "stormmaster slate",                                                               # Atlas
+    "davinci", "brava", "synthetic slate", "synthetic shake", "composite slate",       # synthetic premium
+)
+
+
+def _premium_grade_requested(estimate_request: Optional[dict]) -> bool:
+    """True if the frontend explicitly selected the premium/high-grade laminate tier."""
+    if not estimate_request:
+        return False
+    return (estimate_request.get("roof_type") == "high_grade_laminate"
+            or estimate_request.get("roof_material") == "Premium Grade Laminate Comp Shingle")
+
+
+def _premium_grade_corroborated(photo_analysis: dict, user_notes: str = "",
+                                carrier_scope: dict = None) -> bool:
+    """True when there is evidence the roof is genuinely a premium/designer shingle
+    (beyond a bare dropdown selection): a premium product line / grade term named in
+    the photos' material read, the user notes, or the carrier's own scope line items.
+    """
+    parts = [
+        (photo_analysis or {}).get("shingle_type", "") or "",
+        (photo_analysis or {}).get("damage_summary", "") or "",
+        user_notes or "",
+    ]
+    if carrier_scope and carrier_scope.get("carrier_line_items"):
+        for it in carrier_scope["carrier_line_items"]:
+            if isinstance(it, dict):
+                parts.append(" ".join(str(it.get(k, "")) for k in ("item", "carrier_desc", "description")))
+    text = " ".join(parts).lower()
+    return any(sig in text for sig in _PREMIUM_GRADE_SIGNALS)
+
+
 def _detect_roof_material(photo_analysis: dict, user_notes: str = "",
                           carrier_scope: dict = None, estimate_request: dict = None) -> str:
     """Detect roofing material type using triple verification with weighted voting.
@@ -4841,6 +4908,9 @@ def _detect_roof_material(photo_analysis: dict, user_notes: str = "",
             "tpo": "flat",
         }
         mapped = roof_type_map.get(estimate_request["roof_type"])
+        if mapped == "laminated_premium" and not _premium_grade_corroborated(photo_analysis, user_notes, carrier_scope):
+            print(f"[MATERIAL] premium-grade roof_type selected but uncorroborated → standard laminated (E271 evidence-gate)")
+            mapped = "laminated"
         if mapped:
             print(f"[MATERIAL] Using estimate_request.roof_type: {estimate_request['roof_type']} → {mapped}")
             return mapped
@@ -4859,6 +4929,9 @@ def _detect_roof_material(photo_analysis: dict, user_notes: str = "",
             "Cedar": "laminated",  # Cedar shake uses laminated pricing as closest
         }
         mapped = material_map.get(estimate_request["roof_material"])
+        if mapped == "laminated_premium" and not _premium_grade_corroborated(photo_analysis, user_notes, carrier_scope):
+            print(f"[MATERIAL] premium-grade roof_material selected but uncorroborated → standard laminated (E271 evidence-gate)")
+            mapped = "laminated"
         if mapped:
             print(f"[MATERIAL] Using estimate request override: {estimate_request['roof_material']} → {mapped}")
             return mapped
@@ -5214,7 +5287,7 @@ def build_roof_sections(measurements: dict, photo_analysis: dict = None, provide
 def build_multi_structure_line_items(measurements: dict, photo_analysis: dict, state: str,
                                       user_notes: str = "", estimate_request: dict = None,
                                       roof_sections: dict = None, zip_code: str = "", city: str = "",
-                                      market_code: str = "") -> list:
+                                      market_code: str = "", carrier_scope: dict = None) -> list:
     """Build complete line item sections per structure. Never combines structures.
 
     For single-structure claims (most claims), passes through to build_line_items().
@@ -5239,7 +5312,7 @@ def build_multi_structure_line_items(measurements: dict, photo_analysis: dict, s
                 slope_overrides.setdefault(si, {})[section.get("pitch", "")] = section["user_material_override"]
 
     if len(structs) <= 1 and not slope_overrides:
-        return build_line_items(measurements, photo_analysis, state, user_notes, estimate_request, zip_code=zip_code, city=city, market_code=market_code)
+        return build_line_items(measurements, photo_analysis, state, user_notes, estimate_request, zip_code=zip_code, city=city, market_code=market_code, carrier_scope=carrier_scope)
 
     # For single-structure claims with slope overrides, treat as multi-structure
     if len(structs) <= 1 and slope_overrides:
@@ -5301,7 +5374,7 @@ def build_multi_structure_line_items(measurements: dict, photo_analysis: dict, s
                 mat_er = {"roof_material": mat}
                 sub_notes = f"{mat}. {user_notes}" if user_notes else mat
 
-                items = build_line_items(sub_meas, photo_analysis, state, sub_notes, mat_er, zip_code=zip_code, city=city, market_code=market_code)
+                items = build_line_items(sub_meas, photo_analysis, state, sub_notes, mat_er, zip_code=zip_code, city=city, market_code=market_code, carrier_scope=carrier_scope)
                 if len(structs) > 1:
                     for item in items:
                         item["structure"] = struct_name  # metadata for PDF sectioning
@@ -5336,7 +5409,7 @@ def build_multi_structure_line_items(measurements: dict, photo_analysis: dict, s
                 elif struct_note and _classify_from_text(struct_note):
                     struct_er = None
 
-            items = build_line_items(struct_measurements, photo_analysis, state, combined_notes, struct_er, zip_code=zip_code, city=city, market_code=market_code)
+            items = build_line_items(struct_measurements, photo_analysis, state, combined_notes, struct_er, zip_code=zip_code, city=city, market_code=market_code, carrier_scope=carrier_scope)
 
             if len(structs) > 1:
                 for item in items:
@@ -5594,7 +5667,7 @@ def _notes_pair_siding_with_damage(notes: str) -> bool:
     return False
 
 
-def build_line_items(measurements: dict, photo_analysis: dict, state: str, user_notes: str = "", estimate_request: dict = None, zip_code: str = "", city: str = "", market_code: str = "") -> list:
+def build_line_items(measurements: dict, photo_analysis: dict, state: str, user_notes: str = "", estimate_request: dict = None, zip_code: str = "", city: str = "", market_code: str = "", carrier_scope: dict = None) -> list:
     """Build Xactimate line items from measurements, analysis, and user context.
 
     market_code: resolved Xactimate market for this claim. When passed, all unit_price
@@ -5673,7 +5746,7 @@ def build_line_items(measurements: dict, photo_analysis: dict, state: str, user_
             _cornice_returns = int(_crm.group(1)) if _crm else 2
             print(f"[NOTES BRIDGE] {_cornice_returns} gable cornice return(s)")
 
-    material = _detect_roof_material(photo_analysis, user_notes, estimate_request=estimate_request)
+    material = _detect_roof_material(photo_analysis, user_notes, carrier_scope=carrier_scope, estimate_request=estimate_request)
 
     # Pitch correction: pre-pitch EagleView reports give 2D (flat) area at 0/12.
     # Apply pitch factor to get true area. Slate/tile roofs are typically 8/12+.
