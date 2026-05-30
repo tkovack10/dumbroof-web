@@ -5310,6 +5310,63 @@ def _extract_damage_triggers(photo_analysis: dict) -> dict:
     return triggers
 
 
+# Real (non-cosmetic) siding damage types in photo_tags — overview/none/general
+# are NOT damage. Kept tight so a roofing-only claim that merely PHOTOGRAPHS a
+# wall (elevation context shots) never trips the siding-damage signal.
+_SIDING_DAMAGE_TYPES = {
+    "hail_dent", "crack", "missing", "wind_crease", "corrosion",
+    "granule_loss", "lifted_tab", "chalk_test",
+}
+_SIDING_MATERIAL_TOKENS = (
+    "aluminum_siding", "vinyl_siding", "cedar_siding", "fiber_cement_siding",
+    "siding",
+)
+
+
+def detect_siding_damage_signal(photo_analysis: dict, user_notes: str = "") -> bool:
+    """CONSERVATIVE forensic siding-DAMAGE signal — the trigger for auto-enabling
+    the full-siding scope (Phase 3b). Returns True ONLY on a CLEAR storm-damage
+    signal to a siding/cladding surface; an overview wall photo, a roofing-only
+    claim, or a bare "siding present" mention never trips it.
+
+    A signal requires BOTH (a) a siding/cladding surface AND (b) a real damage
+    type — never material-presence alone. Sources, any one sufficient:
+      1. A photo_tag whose trade is 'siding' (or material is a siding material)
+         AND whose damage_type is a real damage type (not overview/none/general).
+      2. user_notes that explicitly pair siding with damage
+         (e.g. "cracked siding", "hail damage to the vinyl siding").
+    `trades_identified` containing 'siding' is NOT sufficient on its own — that
+    only means siding was photographed, not that it is damaged.
+    """
+    if not isinstance(photo_analysis, dict):
+        photo_analysis = {}
+
+    # (1) Per-photo tags: a siding surface WITH a real damage type.
+    for tag_val in (photo_analysis.get("photo_tags") or {}).values():
+        if not isinstance(tag_val, dict):
+            continue
+        trade = str(tag_val.get("trade", "")).lower()
+        material = str(tag_val.get("material", "")).lower()
+        dmg = str(tag_val.get("damage_type", "")).lower()
+        is_siding_surface = (trade == "siding") or any(
+            tok in material for tok in _SIDING_MATERIAL_TOKENS
+        )
+        if is_siding_surface and dmg in _SIDING_DAMAGE_TYPES:
+            return True
+
+    # (2) user_notes: siding + a damage word within the same note (tight pairing).
+    notes = (user_notes or "").lower()
+    if "siding" in notes and any(
+        w in notes for w in (
+            "damage", "damaged", "cracked", "crack", "hail", "dent", "dented",
+            "broken", "shatter", "impact", "storm-damaged",
+        )
+    ):
+        return True
+
+    return False
+
+
 def build_line_items(measurements: dict, photo_analysis: dict, state: str, user_notes: str = "", estimate_request: dict = None, zip_code: str = "", city: str = "", market_code: str = "") -> list:
     """Build Xactimate line items from measurements, analysis, and user context.
 
@@ -5824,19 +5881,45 @@ def build_line_items(measurements: dict, photo_analysis: dict, state: str, user_
         downspout_count = max(2, round(eave / 35))
         items.append({"category": "GUTTERS", "description": "Downspout extension - aluminum", "qty": downspout_count, "unit": "EA", "unit_price": _priced(PRICING, "downspout_extension", 22.00)})
 
-    # ===================== SIDING (opt-in via estimate_request only) =====================
-    # ALWAYS includes house wrap when siding is scoped (R703.2 — continuous
-    # weather-resistant exterior wall envelope required per IRC-based code).
-    # House wrap corner rule forces full replacement when carrier approves partial.
-    # Two opt-in shapes:
+    # ===================== SIDING (default-on-damage; opt-in is an override) =====================
+    # ALWAYS includes house wrap + wall flashing when siding is scoped (R703.2
+    # continuous WRB + R703.4 wall flashing — the IRC-based exterior-wall envelope).
+    # The house-wrap corner rule forces full replacement when a carrier approves
+    # partial siding (the SIDING flagship — see Doc 06 siding section).
+    #
+    # Phase 3b — DEFAULT FULL SIDING ON DAMAGE: when there is a genuine forensic
+    # SIDING-DAMAGE signal (detect_siding_damage_signal) AND wall measurements
+    # exist to scope it, auto-enable the siding scope rather than requiring the
+    # estimate_request opt-in. The builder already bills the whole house via
+    # total_wall_area_sf, so the corner rule is honored automatically. The
+    # explicit opt-in is PRESERVED as an override (it still turns siding on even
+    # with no damage signal, and an explicit "na"/masonry selection still wins —
+    # see _siding_excluded below). Conservative: fires only on a CLEAR siding-
+    # damage signal, so roofing-only claims are UNAFFECTED.
+    #
+    # Opt-in shapes:
     #   siding: bool        — legacy estimate-request wizard
     #   siding_type: string — /instant-supplement funnel; "na" / brick_veneer /
-    #                          stone_veneer all exclude siding work.
+    #                          stone_veneer all EXCLUDE siding work.
     _siding_type_opt = _est_req.get("siding_type")
-    _siding_requested = bool(
+    _siding_opt_in = bool(
         _est_req.get("siding")
         or (_siding_type_opt and _siding_type_opt not in ("na", "brick_veneer", "stone_veneer"))
     )
+    # Explicit exclusion: the user chose a non-siding cladding (masonry) or "na".
+    # An explicit opt-OUT must beat the damage default (don't bill vinyl on brick).
+    _siding_excluded = _siding_type_opt in ("na", "brick_veneer", "stone_veneer")
+    # Wall measurements present? (the builder needs an area to scope the whole house)
+    _walls_meas = measurements.get("walls", {}) or {}
+    _has_wall_meas = float(_walls_meas.get("total_wall_area_sf", 0) or 0) > 0 or area_sf > 0
+    _siding_damage = detect_siding_damage_signal(photo_analysis, user_notes)
+    _siding_default_on = (
+        _siding_damage and _has_wall_meas and not _siding_excluded and not _siding_opt_in
+    )
+    _siding_requested = _siding_opt_in or _siding_default_on
+    if _siding_default_on:
+        print("[LINE ITEMS] Siding scope AUTO-ENABLED — forensic siding-damage signal + wall "
+              "measurements present (no estimate_request opt-in needed; corner rule bills whole house)")
     if _siding_requested:
         walls = measurements.get("walls", {})
         wall_area = walls.get("total_wall_area_sf", 0)
@@ -5878,6 +5961,20 @@ def build_line_items(measurements: dict, photo_analysis: dict, state: str, user_
             # corners — cannot terminate at a corner joint. Forces full replacement.
             _code_prefix = _STATE_CODE_PREFIX.get(state, "IRC")
             items.append({"category": "SIDING", "description": f"House wrap / Tyvek (code-required per {_code_prefix} R703.2)", "qty": wall_area, "unit": "SF", "unit_price": _priced(PRICING, "house_wrap", 0.64)})
+
+            # Wall flashing — ALWAYS included with siding (R703.4). CLAUDE.md
+            # critical rule: siding ALWAYS includes house wrap + wall flashing.
+            # Flashing at openings/penetrations is disturbed when siding is removed
+            # and must be replaced to keep the water-resistant seal to the WRB; the
+            # #1 siding item carriers omit. qty derived from openings across all
+            # elevations (≈8 LF perimeter per opening), with a footprint fallback so
+            # a wall-area-only claim still scopes flashing.
+            _elevs = (measurements.get("walls", {}) or {}).get("elevations", []) or []
+            _openings = sum(int(e.get("openings", 0) or 0) for e in _elevs)
+            if _openings <= 0:
+                _openings = max(1, round(wall_area / 200))  # ≈1 opening / 200 SF wall
+            _wall_flashing_lf = _openings * 8  # ≈8 LF flashing perimeter per opening
+            items.append({"category": "SIDING", "description": f"Wall flashing - aluminum (code-required per {_code_prefix} R703.4)", "qty": _wall_flashing_lf, "unit": "LF", "unit_price": _priced(PRICING, "wall_flashing", 4.85)})
 
             # Fanfold insulation (under siding, standard on re-side jobs)
             items.append({"category": "SIDING", "description": "Fanfold insulation board", "qty": wall_area, "unit": "SF", "unit_price": _priced(PRICING, "fanfold_insulation", 1.23)})
