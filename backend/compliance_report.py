@@ -662,34 +662,87 @@ def _build_installation_diagrams(annotations: list[dict], config: dict) -> str:
     return "\n".join(diagrams)
 
 
-def _code_section_carrier_status(config: dict) -> dict:
-    """WS-7 — map a code SECTION (e.g. 'R905.1.2') → carrier coverage state, by
-    joining the per-line carrier status (from carrier.carrier_line_items) onto
-    the code_citation.section of each code-cited line item. Lets the summary
-    table show the REAL carrier-omission status that was previously computed but
-    dropped."""
+def _section_items_with_status(config: dict) -> dict:
+    """Map a code SECTION → list of {desc, title, status} for every code line item
+    under that section, where ``status`` is the SAME per-item carrier resolution
+    the priced supplement table renders (from _carrier_status_map). Facet
+    duplicates are de-duplicated by description so a section that appears once per
+    facet is collapsed to its distinct items."""
     status_map = _carrier_status_map(config)
-    out = {}
+    out: dict = {}
     for li in _code_line_items(config):
         cc = li.get("code_citation") or {}
         section = (cc.get("section") or "").strip()
         if not section:
             continue
-        # WS-7 FIX 1: NO positive carrier match → NEUTRAL (None), never a default
-        # 'omitted'. Precedence per section: omitted > included > neutral, so a
-        # genuinely-absent line dominates, but an unmatched line never fabricates
-        # an omission.
-        state = status_map.get((li.get("description") or "").strip().lower())  # None when unmatched
-        prev = out.get(section)
-        if prev == "omitted":
-            continue
-        if state == "omitted":
-            out[section] = "omitted"
-        elif state == "included" and prev != "included":
-            out[section] = "included"
-        elif section not in out:
-            out[section] = state  # may be None → neutral
+        desc = (li.get("description") or "").strip()
+        bucket = out.setdefault(section, [])
+        if any(b["desc"].lower() == desc.lower() for b in bucket):
+            continue  # de-dup facet repeats
+        bucket.append({
+            "desc": desc,
+            "title": cc.get("title") or "",
+            "status": status_map.get(desc.lower()),  # None when unmatched
+        })
     return out
+
+
+def _summary_status_for_annotation(section: str, ann_title: str,
+                                   section_items: dict) -> str | None:
+    """PHASE 2 FIX 2 — RECONCILE the pg-6 summary table with the priced table.
+
+    The summary table is built from code ANNOTATIONS (one per code requirement),
+    but a single code SECTION can cover MULTIPLE distinct line items with
+    DIFFERENT carrier statuses — e.g. R905.1.2 covers both the Ice & Water
+    Barrier (carrier Included) AND the felt underlayment (carrier OMITTED). The
+    old section-level worst-case aggregation ('omitted > included') made the
+    summary say "Ice & Water Barrier — OMITTED" while the priced line for the
+    actual I&W item said Included — a within-document contradiction.
+
+    This resolves the summary status from the SAME per-item resolution the priced
+    table uses, MATCHED to the specific item the annotation names:
+
+      1. Token-match the annotation title to each item under the section. If one
+         item matches strictly better than the rest, return ITS status — so the
+         summary agrees with that item's priced row by construction (the I&W
+         annotation matches the I&W item → Included, not the felt's OMITTED).
+      2. If items tie or none token-overlaps the title, fall back to a
+         NON-CONTRADICTING consensus: if every item under the section shares one
+         status, use it; if they disagree, return None (neutral '—'). We NEVER
+         surface OMITTED for a section whose annotation-matched item is Included.
+
+    Returns 'omitted' | 'included' | None (neutral)."""
+    items = section_items.get((section or "").strip())
+    if not items:
+        return None
+
+    tt = _cr_tokens(ann_title)
+    best, best_ov = None, -1.0
+    tie = False
+    if tt:
+        for it in items:
+            td = _cr_tokens(it["desc"]) | _cr_tokens(it.get("title") or "")
+            ov = len(tt & td) / max(1, min(len(tt), len(td))) if td else 0.0
+            if ov > best_ov:
+                best, best_ov, tie = it, ov, False
+            elif ov == best_ov:
+                tie = True
+
+    # Clear single best match with real overlap → use ITS status (matches the
+    # priced row for that exact item; resolves the I&W contradiction).
+    if best is not None and best_ov > 0 and not tie:
+        return best["status"]
+
+    # No discriminating title match (no overlap, or a genuine tie). Fall back to
+    # a consensus that can never contradict a priced Included row.
+    statuses = {it["status"] for it in items}
+    if statuses == {"included"}:
+        return "included"
+    if statuses == {"omitted"}:
+        return "omitted"
+    # Mixed or all-neutral → neutral (assert nothing; the itemized priced
+    # supplement carries the per-item truth).
+    return None
 
 
 def _build_summary_table(annotations: list[dict], config: dict) -> str:
@@ -700,7 +753,11 @@ def _build_summary_table(annotations: list[dict], config: dict) -> str:
     OMITTED) instead of the old "VERIFY" placeholder."""
     jurisdiction = _get_jurisdiction(config.get("property", {}).get("state", "NY"))
     carrier_present = carrier_scope_present(config)
-    section_status = _code_section_carrier_status(config) if carrier_present else {}
+    # PHASE 2 FIX 2 — resolve the summary's carrier status from the SAME per-item
+    # resolution the priced table uses, MATCHED to the specific item each
+    # annotation names (so a section spanning an Included item AND an OMITTED item
+    # never shows the wrong one against its own priced line).
+    section_items = _section_items_with_status(config) if carrier_present else {}
 
     rows = []
     for ann in annotations:
@@ -711,9 +768,12 @@ def _build_summary_table(annotations: list[dict], config: dict) -> str:
 
         carrier_cell = ""
         if carrier_present:
-            # Join on the bare section (strip the jurisdiction prefix off code_tag).
             section = (cc.get("section") or "").strip()
-            state = section_status.get(section)
+            # Match the annotation to its specific item; status == the priced
+            # row's status for that item (no within-document contradiction).
+            state = _summary_status_for_annotation(
+                section, ann.get("title", ""), section_items
+            )
             if state == "omitted":
                 # WS-7 FIX 1: only OMITTED on a positive carrier-absence match.
                 carrier_cell = '<td class="status-missing">OMITTED</td>'
@@ -772,6 +832,60 @@ def _code_section(li: dict) -> str:
     return cc.get("code_tag") or cc.get("section") or ""
 
 
+def _aggregate_facet_rows(items: list) -> list:
+    """PHASE 2 FIX 1 — collapse the per-facet line-item rows of ONE code item into
+    a single display row, preserving the subset invariant EXACTLY.
+
+    Today each code line item is emitted once per roof facet (the generator
+    splits area by facet), so 'Remove laminated comp shingle roofing' appears 3–4
+    times. Group those facet rows by (code_section, description, unit, unit_price)
+    — the identity tuple that makes two facet rows "the same item at the same
+    price" — and SUM the quantity.
+
+    The displayed Line Total is the SUM of each facet's own
+    ``round(qty*unit_price, 2)`` (i.e. the identical per-item rounding Doc 02
+    applies), NOT ``round(sum(qty)*unit_price, 2)``. Those two differ by up to a
+    cent per group under banker's-cent rounding; using the per-facet sum keeps the
+    aggregated subtotal byte-for-byte equal to the sum of the SAME line_items as
+    Doc 02 computes them (the non-negotiable subset invariant) while the Qty
+    column still shows the true total quantity. We aggregate the DISPLAY, never
+    the math.
+
+    Grouping is STABLE (first-seen order preserved) so the table order matches the
+    pre-aggregation order minus the duplicates. Returns a list of dicts:
+    {section, requirement, desc, unit, unit_price, qty, line_total}.
+    """
+    order: list = []
+    groups: dict = {}
+    for li in items:
+        qty = float(li.get("qty", 0) or 0)
+        unit_price = float(li.get("unit_price", 0) or 0)
+        desc = li.get("description", "")
+        unit = li.get("unit", "")
+        section = _code_section(li)
+        cc = li.get("code_citation") or {}
+        requirement = cc.get("requirement") or cc.get("title") or ""
+        # Identity tuple: same item, same code section, same unit, same price.
+        key = (section, desc, unit, round(unit_price, 6))
+        grp = groups.get(key)
+        if grp is None:
+            grp = {
+                "section": section,
+                "requirement": requirement,
+                "desc": desc,
+                "unit": unit,
+                "unit_price": unit_price,
+                "qty": 0.0,
+                "line_total": 0.0,
+            }
+            groups[key] = grp
+            order.append(grp)
+        grp["qty"] += qty
+        # Σ of the per-facet rounded extension — identical to Doc 02's running sum.
+        grp["line_total"] = round(grp["line_total"] + round(qty * unit_price, 2), 2)
+    return order
+
+
 def build_priced_supplement(config: dict) -> dict:
     """WS-7 — build the PRICED code-compliance supplement: a FILTERED VIEW of
     Doc 02's code-required line items.
@@ -797,6 +911,7 @@ def build_priced_supplement(config: dict) -> dict:
 
     subtotal = 0.0
     omitted_count = 0
+    aggregated_row_count = 0
     body_rows = []
 
     # Column count drives colspans (carrier column only when a scope is present).
@@ -808,21 +923,37 @@ def build_priced_supplement(config: dict) -> dict:
             f'<tr class="trade-header"><td colspan="{n_cols}">{_h(trade)}</td></tr>'
         )
         trade_subtotal = 0.0
-        for li in items:
-            qty = float(li.get("qty", 0) or 0)
-            unit_price = float(li.get("unit_price", 0) or 0)
-            line_total = round(qty * unit_price, 2)
+
+        # PHASE 2 FIX 1 — AGGREGATE THE DISPLAY BY ITEM. The same code item
+        # repeats once per roof facet (e.g. 'Remove laminated comp shingle' ×4
+        # facets), bloating the table to 25 rows / 3 pages. Group the facet rows
+        # of a single item and show it ONCE with the summed qty. CRITICAL: we
+        # aggregate the DISPLAY, never the math — the displayed Line Total is the
+        # SUM of each facet's own round(qty*price,2) (exactly how Doc 02 sums),
+        # NOT round(sum(qty)*price,2). Those can differ by a cent under rounding;
+        # using the per-facet sum keeps the subtotal byte-for-byte equal to the
+        # Doc-02 subset (the subset invariant) while the qty column still shows
+        # the true total quantity.
+        agg = _aggregate_facet_rows(items)
+        aggregated_row_count += len(agg)
+        for grp in agg:
+            qty = grp["qty"]                       # summed across facets
+            unit_price = grp["unit_price"]
+            line_total = grp["line_total"]         # Σ round(facet_qty*price,2)
             subtotal += line_total
             trade_subtotal += line_total
 
-            cc = li.get("code_citation") or {}
-            section = _code_section(li)
-            requirement = cc.get("requirement") or cc.get("title") or ""
-            desc = li.get("description", "")
-            unit = li.get("unit", "")
+            section = grp["section"]
+            requirement = grp["requirement"]
+            desc = grp["desc"]
+            unit = grp["unit"]
 
             carrier_cell = ""
             if carrier_present:
+                # Carrier status per AGGREGATED row = the row's resolved per-item
+                # status (all facets of one item share a description, so they
+                # share a status; the contradiction guard in _carrier_status_map
+                # already defaults disagreement to the conservative neutral).
                 state = status_map.get((desc or "").strip().lower())
                 if state == "omitted":
                     # WS-7 FIX 1: only count/label OMITTED when a carrier row
@@ -916,7 +1047,13 @@ def build_priced_supplement(config: dict) -> dict:
     return {
         "html": html,
         "subtotal": round(subtotal, 2),
+        # row_count = the UNDERLYING code line-item subset (one per facet); this
+        # is what the subset-invariant + scope-timing tests reason about and must
+        # NOT change when the DISPLAY is aggregated.
         "row_count": len(code_items),
+        # aggregated_row_count = the number of DISPLAY rows actually rendered
+        # after collapsing per-facet duplicates (PHASE 2 FIX 1).
+        "aggregated_row_count": aggregated_row_count,
         "omitted_count": omitted_count,
         "is_attribution_view": True,
         "carrier_present": carrier_present,

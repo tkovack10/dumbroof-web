@@ -248,29 +248,38 @@ class TestCarrierCrossRef(unittest.TestCase):
         )
 
     def test_true_omitted_count_not_inflated(self):
-        # FIX 1 + FIX A (contradiction guard): the OMITTED count must be the TRUE
-        # number of genuinely-absent code rows — NOT the old 24/25 that fell out
-        # of the default-to-OMITTED bug, and NOT the interim 9 that still counted
-        # the self-contradictory ridge-cap rows.
+        # FIX 1 + FIX A (contradiction guard) + PHASE 2 FIX 1 (aggregate-by-item):
+        # the OMITTED count must be the TRUE number of genuinely-absent code
+        # items — NOT the old 24/25 that fell out of the default-to-OMITTED bug,
+        # and NOT the interim 9 that still counted the self-contradictory
+        # ridge-cap rows.
         #
-        # This TX fixture genuinely omits 2 distinct items with NO contradicting
-        # present match (underlayment felt 15#, ridge vent), each across 3 facets
-        # → 6 OMITTED rows. The 3 ridge-cap facet rows moved OMITTED → NEUTRAL by
-        # FIX A (they match BOTH a missing[5] and an equal-strength present[21]
-        # carrier line). 13 rows are Included.
+        # This TX fixture's 25 code line items are emitted once PER FACET. PHASE 2
+        # aggregates the DISPLAY by (section, item, unit, price) → 9 display rows.
+        # The underlying subset is unchanged (row_count==25), but the rendered
+        # carrier cells are now de-duplicated to the 9 distinct items:
+        #   * 2 OMITTED  — underlayment felt 15#, ridge vent (genuinely absent,
+        #                  no contradicting present match),
+        #   * 2 NEUTRAL  — ridge cap (FIX A self-contradiction guard) + starter
+        #                  (no positive carrier match),
+        #   * 5 Included — remove-laminated, laminated-install, ice & water,
+        #                  drip edge, step flashing.
+        # omitted_count now counts DISTINCT omitted items (2), not facet rows (6).
         cfg = _priced_cfg()
         sup = CR.build_priced_supplement(cfg)
+        # Underlying subset is untouched by the display aggregation.
         self.assertEqual(sup["row_count"], 25)
-        self.assertEqual(sup["omitted_count"], 6)
-        # Rendered OMITTED cells equal the counted omissions (no neutral row is
-        # mislabeled, no Included row is mislabeled).
-        self.assertEqual(sup["html"].count('class="carrier-omitted">OMITTED'), 6)
-        # The 3 ridge-cap rows now render the NEUTRAL dash, not OMITTED.
-        self.assertEqual(sup["html"].count('color:#95a5a6;">&mdash;</td>'), 6)
-        # And the formerly-omitted-but-actually-included items render Included.
-        self.assertEqual(sup["html"].count('class="carrier-included">Included'), 13)
-        # Total cells across the three carrier states equals the row count.
-        self.assertEqual(6 + 6 + 13, sup["row_count"])
+        # Aggregated display = 9 distinct items.
+        self.assertEqual(sup["aggregated_row_count"], 9)
+        self.assertEqual(sup["omitted_count"], 2)
+        # Rendered OMITTED cells equal the counted (distinct) omissions.
+        self.assertEqual(sup["html"].count('class="carrier-omitted">OMITTED'), 2)
+        # Ridge cap (contradiction guard) + starter (no match) render NEUTRAL.
+        self.assertEqual(sup["html"].count('color:#95a5a6;">&mdash;</td>'), 2)
+        # The actually-included items render Included.
+        self.assertEqual(sup["html"].count('class="carrier-included">Included'), 5)
+        # Total carrier cells across the three states equals the DISPLAY row count.
+        self.assertEqual(2 + 2 + 5, sup["aggregated_row_count"])
 
     def test_unmatched_rows_render_neutral_not_omitted(self):
         # FIX 1: a code item with NO positive carrier match renders a NEUTRAL
@@ -290,6 +299,152 @@ class TestCarrierCrossRef(unittest.TestCase):
         smap = CR._carrier_status_map(cfg)
         # At least one row in this fixture is a carrier 'missing' (NOT INCLUDED).
         self.assertIn("omitted", set(smap.values()))
+
+
+class TestAggregateByItem(unittest.TestCase):
+    """PHASE 2 FIX 1 — the priced table is AGGREGATED BY ITEM: a code item that
+    repeats once per roof facet renders ONCE with the summed qty, not N times."""
+
+    def setUp(self):
+        self.cfg = _priced_cfg()
+        self.sup = CR.build_priced_supplement(self.cfg)
+        self.html = self.sup["html"]
+
+    def test_display_rows_collapse_facet_dupes(self):
+        # The TX fixture's 25 code line items (one per facet) collapse to 9
+        # distinct (section, item, unit, price) display rows.
+        self.assertEqual(self.sup["row_count"], 25)         # underlying subset unchanged
+        self.assertEqual(self.sup["aggregated_row_count"], 9)
+        # Exactly 9 item data rows are rendered (a data row opens '<tr>\n...<td><b>').
+        data_rows = len(re.findall(r"<tr>\s*<td><b>", self.html))
+        self.assertEqual(data_rows, 9)
+
+    def test_repeated_item_appears_once(self):
+        # 'Remove laminated comp shingle roofing' is one item across 3 facets →
+        # exactly ONE rendered row (was 3).
+        needle = "Remove laminated comp shingle roofing"
+        self.assertEqual(self.html.count(needle), 1)
+
+    def test_aggregated_qty_is_facet_sum(self):
+        # The single 'Remove laminated' row shows the SUMMED qty (53.9), not a
+        # per-facet slice.
+        items = [li for li in CR._code_line_items(self.cfg)
+                 if li["description"] == "Remove laminated comp shingle roofing"]
+        self.assertGreater(len(items), 1)  # genuinely multi-facet
+        total_qty = sum(float(li["qty"]) for li in items)
+        agg = CR._aggregate_facet_rows(items)
+        self.assertEqual(len(agg), 1)
+        self.assertAlmostEqual(agg[0]["qty"], total_qty, places=4)
+
+    def test_aggregation_preserves_subset_invariant_exactly(self):
+        # The keystone: aggregating the DISPLAY must NOT move the subtotal. It
+        # must still byte-equal the Doc-02 per-item rounded sum of the SAME code
+        # line_items (the subset invariant). This is the case that fails if the
+        # display row used round(sum(qty)*price,2) instead of Σ per-facet rounds.
+        doc02_subset = round(
+            sum(round(float(li["qty"]) * float(li["unit_price"]), 2)
+                for li in CR._code_line_items(self.cfg)), 2
+        )
+        self.assertAlmostEqual(self.sup["subtotal"], doc02_subset, places=2)
+        # And the SUM of the rendered (aggregated) line totals equals the subtotal.
+        agg_line_totals = 0.0
+        for trade_items in self._groups_by_trade().values():
+            for grp in CR._aggregate_facet_rows(trade_items):
+                agg_line_totals += grp["line_total"]
+        self.assertAlmostEqual(round(agg_line_totals, 2), doc02_subset, places=2)
+
+    def _groups_by_trade(self):
+        from collections import defaultdict
+        g = defaultdict(list)
+        for li in CR._code_line_items(self.cfg):
+            g[CR._trade_of(li)].append(li)
+        return g
+
+    def test_aggregated_rounding_can_diverge_from_naive_qty_times_price(self):
+        # Guard the exact rounding choice: at least one aggregated group's
+        # Σ-per-facet line total differs from round(Σqty * price, 2) by a cent on
+        # this fixture — proving the per-facet-sum choice (not naive) is what
+        # keeps the subset invariant exact.
+        diverged = 0
+        for li_group in self._groups_by_trade().values():
+            for grp in CR._aggregate_facet_rows(li_group):
+                naive = round(grp["qty"] * grp["unit_price"], 2)
+                if abs(naive - grp["line_total"]) > 0.0:
+                    diverged += 1
+        self.assertGreaterEqual(diverged, 1,
+            "expected ≥1 group where naive round(Σqty*price) diverges from the "
+            "subset-exact Σ-per-facet line total")
+
+
+class TestSummaryPricedReconciliation(unittest.TestCase):
+    """PHASE 2 FIX 2 — the pg-6 summary table and the priced table must AGREE on
+    carrier status for the same code item. No within-document contradiction."""
+
+    def setUp(self):
+        self.cfg = _priced_cfg()
+        from compliance_svg import collect_annotations_from_config
+        self.anns = collect_annotations_from_config(self.cfg)
+        self.summary = CR._build_summary_table(self.anns, self.cfg)
+        self.smap = CR._carrier_status_map(self.cfg)
+        self.section_items = CR._section_items_with_status(self.cfg)
+
+    def test_ice_water_summary_agrees_with_priced_included(self):
+        # THE bug: summary said 'Ice & Water Barrier — OMITTED' (poisoned by the
+        # felt-underlayment OMITTED under the SAME R905.1.2 section) while the
+        # priced I&W line said Included. Now they agree: summary = Included.
+        state = CR._summary_status_for_annotation(
+            "R905.1.2", "Ice & Water Barrier", self.section_items
+        )
+        self.assertEqual(state, "included")
+        # And the priced I&W item is Included (the row the summary must match).
+        iw = next(k for k in self.smap if "ice & water barrier" in k)
+        self.assertEqual(self.smap[iw], "included")
+        # The rendered I&W summary row carries no OMITTED.
+        m = re.search(r"<tr>.*?Ice &amp; Water Barrier.*?</tr>", self.summary, re.S)
+        self.assertIsNotNone(m)
+        self.assertNotIn("OMITTED", m.group(0))
+        self.assertIn("Included", m.group(0))
+
+    def test_no_summary_annotation_contradicts_its_priced_item(self):
+        # GENERAL invariant: for every summary annotation, the summary's resolved
+        # carrier status must NOT be the OPPOSITE of the priced status of the item
+        # it names. Specifically: the summary may never say Included for an item
+        # the priced table OMITTED, nor OMITTED for an item the priced table
+        # Included. (Neutral on either side is always allowed.)
+        for ann in self.anns:
+            cc = ann.get("full_citation", {})
+            section = (cc.get("section") or "").strip()
+            title = ann.get("title", "")
+            summary_state = CR._summary_status_for_annotation(
+                section, title, self.section_items
+            )
+            if summary_state is None:
+                continue  # neutral never contradicts
+            # The set of per-item priced statuses under this section.
+            priced_states = {it["status"] for it in self.section_items.get(section, [])}
+            if summary_state == "included":
+                # There must be at least one Included item, and the summary must
+                # not be asserting Included while the matched item is the OMITTED
+                # one — which the resolver guarantees by matching title-to-item.
+                self.assertIn("included", priced_states,
+                    f"{title!r}: summary Included but no priced Included item under {section}")
+            elif summary_state == "omitted":
+                self.assertIn("omitted", priced_states,
+                    f"{title!r}: summary OMITTED but no priced OMITTED item under {section}")
+
+    def test_summary_neutral_when_section_items_disagree_without_title_match(self):
+        # R806 (Ridge Ventilation) covers ridge vent (OMITTED) + ridge cap
+        # (NEUTRAL, contradiction-guarded). The annotation title ties between them
+        # → the summary must be NEUTRAL, never picking OMITTED unilaterally.
+        state = CR._summary_status_for_annotation(
+            "R806", "Ridge Ventilation", self.section_items
+        )
+        self.assertIsNone(state)
+
+    def test_summary_has_no_verify_placeholder(self):
+        # The old 'VERIFY' placeholder is gone; the column is the real status.
+        self.assertIn("Carrier Scope", self.summary)
+        self.assertNotIn("VERIFY", self.summary)
 
 
 class TestRequirementsOnlyMode(unittest.TestCase):
