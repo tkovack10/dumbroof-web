@@ -593,6 +593,16 @@ def compute_code_supplement_pricing_flags(config: dict, claim: dict) -> list[dic
         # 'relational' (and any source string that STARTS with 'relational') is
         # the only native per-market provenance. A missing _price_source is
         # treated as fallback — we cannot positively assert it's a native rate.
+        #
+        # FIX B (panel): processor.apply_price_provenance stamps key-IMPRECISE
+        # rows (composite/derived/manual price, or a desc not in the reverse map)
+        # with the CLAIM-LEVEL source — which is usually 'relational' — and sets
+        # _price_source_inferred=True. Those rows are NOT a positively-verified
+        # native per-market key rate, so they ARE coarse-pricing exposure. Count
+        # an inferred row as fallback so we never UNDER-report. Still MEDIUM-only;
+        # never blocks; never alters the rendered price.
+        if li.get("_price_source_inferred") is True:
+            return True
         src = (li.get("_price_source") or "").strip().lower()
         return not src.startswith("relational")
 
@@ -601,9 +611,15 @@ def compute_code_supplement_pricing_flags(config: dict, claim: dict) -> list[dic
         return flags
 
     # Break the fallback count down by source for the human-readable detail.
+    # An inferred row (FIX B) is bucketed under a distinct '<source>-inferred'
+    # label so a human sees it was claim-level/key-imprecise attribution, not a
+    # native per-market key rate, even when its raw _price_source reads
+    # 'relational'.
     by_source: dict[str, int] = {}
     for li in fallback_rows:
         src = (li.get("_price_source") or "(unstamped)").strip() or "(unstamped)"
+        if li.get("_price_source_inferred") is True:
+            src = f"{src}-inferred"
         by_source[src] = by_source.get(src, 0) + 1
     breakdown = ", ".join(f"{src}×{n}" for src, n in sorted(by_source.items()))
 

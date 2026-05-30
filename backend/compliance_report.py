@@ -162,17 +162,59 @@ def _cr_match(usarm_desc: str, candidates: list) -> dict | None:
     return None
 
 
+# Match strength tiers (LOWER == STRONGER). 1 exact, 2 contains, 3 token-overlap,
+# 0 no match. Used by the WS-7 contradiction guard so a weak coincidental token
+# overlap can never outvote a strong exact/contains match on the opposite side.
+_CR_TIER_EXACT = 1
+_CR_TIER_CONTAINS = 2
+_CR_TIER_TOKEN = 3
+_CR_TIER_NONE = 0
+
+
+def _cr_match_tier(usarm_desc: str, cand: dict) -> int:
+    """Strength of the single best relationship between ``usarm_desc`` and one
+    candidate carrier row, using the SAME ladder as ``_cr_match``:
+      1 exact normalized equality, 2 normalized contains (either direction),
+      3 significant-token overlap ≥ 0.6 of the smaller token set, 0 no match."""
+    nu = _cr_normalize(usarm_desc)
+    if not nu:
+        return _CR_TIER_NONE
+    nc = cand.get("norm") or ""
+    if nc == nu:
+        return _CR_TIER_EXACT
+    if nc and (nu in nc or nc in nu):
+        return _CR_TIER_CONTAINS
+    tu = _cr_tokens(usarm_desc)
+    tc = cand.get("tokens") or set()
+    if tc and tu:
+        ov = len(tu & tc) / max(1, min(len(tu), len(tc)))
+        if ov >= 0.6:
+            return _CR_TIER_TOKEN
+    return _CR_TIER_NONE
+
+
 def _carrier_candidates(config: dict) -> list:
-    """Pre-normalize every carrier comparison row that carries a usarm_desc into
-    {"norm", "tokens", "row"} for matching."""
+    """Pre-normalize every carrier comparison row into {"norm", "tokens", "row"}
+    for matching.
+
+    WS-7 contradiction guard: a PRESENT carrier row (e.g. a 'carrier_only' line
+    the carrier put in scope) frequently has NO usarm_desc/checklist_desc — only
+    a carrier_desc. We MUST still surface it as a candidate so the guard can see
+    when the carrier scope is self-contradictory (the SAME item appears both as a
+    'missing' line AND as a present 'carrier_only' line). So the description
+    source falls back usarm_desc → checklist_desc → carrier_desc. Rows whose only
+    text is the placeholder 'NOT INCLUDED' carry no item identity and are
+    skipped (they still anchor their own missing-status via the usarm_desc/
+    checklist_desc path above when one exists)."""
     cands = []
     if not carrier_scope_present(config):
         return cands
     for row in config["carrier"]["carrier_line_items"]:
         if not isinstance(row, dict):
             continue
-        desc = (row.get("usarm_desc") or row.get("checklist_desc") or "").strip()
-        if not desc:
+        desc = (row.get("usarm_desc") or row.get("checklist_desc")
+                or row.get("carrier_desc") or "").strip()
+        if not desc or desc.upper() == "NOT INCLUDED":
             continue
         cands.append({
             "norm": _cr_normalize(desc),
@@ -192,20 +234,61 @@ def _row_is_omitted(row: dict) -> bool:
 
 
 def _carrier_status_for(usarm_desc: str, candidates: list) -> str | None:
-    """WS-7 FIX 1: resolve a single USARM description against the carrier rows.
+    """WS-7 FIX 1 (+ contradiction guard): resolve a USARM description against
+    ALL carrier rows, not just the single best match.
 
     Returns:
-      'included' — positively matched a carrier row the carrier DID include,
-      'omitted'  — positively matched a carrier row that indicates ABSENCE
-                   (status missing / NOT INCLUDED),
-      None       — NO positive match. The caller renders a NEUTRAL status and
-                   MUST NOT claim the carrier omitted the item. This is the
-                   credibility-critical half of the fix: we never assert an
-                   omission we did not positively observe."""
-    cand = _cr_match(usarm_desc, candidates)
-    if cand is None:
-        return None
-    return "omitted" if _row_is_omitted(cand["row"]) else "included"
+      'included' — positively matches a carrier row the carrier DID include,
+      'omitted'  — positively matches a carrier row that indicates ABSENCE
+                   (status missing / NOT INCLUDED) AND does NOT also positively
+                   match, at equal-or-stronger strength, any carrier row that is
+                   PRESENT,
+      None       — NO positive match, OR a SELF-CONTRADICTORY carrier scope
+                   (the item is matched, at the same match strength, both as a
+                   missing carrier line AND as a present carrier line). The
+                   caller renders a NEUTRAL '—' and asserts nothing.
+
+    Precedence (completing Blocker 1): a code row may render OMITTED ONLY when it
+    positively matches a MISSING carrier line AND does NOT also positively match
+    a PRESENT carrier line of equal-or-greater match strength. If both a missing
+    and an equally-strong present match exist (the carrier scope is
+    self-contradictory for that item — e.g. the same item appears as both a
+    'missing' line and a present 'carrier_only' line), we assert NOTHING (NEUTRAL
+    '—'), never a disputable OMITTED. A weaker coincidental token overlap on the
+    opposite side NEVER overturns a strictly-stronger match — so a genuine
+    omission with an exact missing match and only a weak present token-overlap
+    (e.g. felt 15# underlayment vs the carrier's 'Roofing felt - 15 lb.' line)
+    still renders OMITTED. Symmetrically, a strictly-stronger present match wins
+    as Included."""
+    best_missing = _CR_TIER_NONE
+    best_present = _CR_TIER_NONE
+    for c in candidates:
+        tier = _cr_match_tier(usarm_desc, c)
+        if tier == _CR_TIER_NONE:
+            continue
+        if _row_is_omitted(c["row"]):
+            if best_missing == _CR_TIER_NONE or tier < best_missing:
+                best_missing = tier
+        else:
+            if best_present == _CR_TIER_NONE or tier < best_present:
+                best_present = tier
+
+    has_missing = best_missing != _CR_TIER_NONE
+    has_present = best_present != _CR_TIER_NONE
+
+    if not has_missing and not has_present:
+        return None                      # no positive match → neutral
+    if has_present and not has_missing:
+        return "included"
+    if has_missing and not has_present:
+        return "omitted"
+    # Both sides matched. Strictly-stronger side wins; equal strength is a
+    # genuine self-contradiction → neutral (assert nothing).
+    if best_missing < best_present:      # missing strictly stronger
+        return "omitted"
+    if best_present < best_missing:      # present strictly stronger
+        return "included"
+    return None                          # equal strength → contradiction
 
 
 def _carrier_status_map(config: dict) -> dict:

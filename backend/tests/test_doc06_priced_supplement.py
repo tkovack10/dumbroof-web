@@ -207,9 +207,14 @@ class TestCarrierCrossRef(unittest.TestCase):
             ("laminated comp shingle roofing - w/out felt", "included"),
             ("r&r drip edge", "included"),
             ("r&r step flashing", "included"),
-            # genuinely-absent (carrier status 'missing' / NOT INCLUDED):
+            # GENUINE omissions (carrier status 'missing' / NOT INCLUDED) that have
+            # NO contradicting present match — must STILL render OMITTED:
+            #   - ridge vent: the carrier scope has no present ridge-vent line.
+            #   - felt 15# underlayment: matches the 'missing' Underlayment-felt-15#
+            #     lines EXACTLY (tier 1) and only WEAKLY (token overlap, tier 3) to
+            #     the present 'Roofing felt - 15 lb.' line, so the strictly-stronger
+            #     missing match wins → OMITTED is preserved (NOT masked to neutral).
             ("underlayment - felt 15#", "omitted"),
-            ("r&r ridge cap - laminated", "omitted"),
             ("r&r ridge vent - shingle over", "omitted"),
         ]:
             matches = {k: v for k, v in smap.items() if desc_substr in k}
@@ -217,20 +222,55 @@ class TestCarrierCrossRef(unittest.TestCase):
             for k, v in matches.items():
                 self.assertEqual(v, expected, f"{k!r} should be {expected}, got {v}")
 
+    def test_contradiction_guard_ridge_cap_renders_neutral(self):
+        # FIX A (completion of Blocker 1) — CONTRADICTION GUARD.
+        # USARM 'R&R Ridge cap - laminated' positively matches BOTH a MISSING
+        # carrier line (carrier_line_items[5] 'R&R Hip / Ridge cap ...', status
+        # missing / NOT INCLUDED) AND a PRESENT carrier line at EQUAL strength
+        # (carrier_line_items[21], same normalized desc, status 'carrier_only').
+        # The carrier scope is self-contradictory for that item, so asserting
+        # OMITTED on a carrier-facing appeal is disputable → it must render
+        # NEUTRAL '—' (assert nothing), NOT OMITTED, NOT Included.
+        cfg = _priced_cfg()
+        smap = CR._carrier_status_map(cfg)
+        # Resolves to neither omitted nor included → ABSENT from the status map.
+        ridge_cap_keys = [k for k in smap if "r&r ridge cap - laminated" in k]
+        self.assertEqual(
+            ridge_cap_keys, [],
+            "ridge cap matches BOTH a missing and an equal-strength present "
+            "carrier line → must be NEUTRAL (absent from the status map), not OMITTED",
+        )
+        # And the resolver itself returns None for that description.
+        cands = CR._carrier_candidates(cfg)
+        self.assertIsNone(
+            CR._carrier_status_for("R&R Ridge cap - laminated", cands),
+            "self-contradictory scope must resolve to None (neutral)",
+        )
+
     def test_true_omitted_count_not_inflated(self):
-        # FIX 1: the OMITTED count must be the TRUE number of genuinely-absent
-        # code rows — NOT the old 24/25 that fell out of the default-to-OMITTED
-        # bug. This TX fixture genuinely omits 3 distinct items (underlayment
-        # felt, ridge cap, ridge vent), each repeated across 3 facets → 9 rows.
+        # FIX 1 + FIX A (contradiction guard): the OMITTED count must be the TRUE
+        # number of genuinely-absent code rows — NOT the old 24/25 that fell out
+        # of the default-to-OMITTED bug, and NOT the interim 9 that still counted
+        # the self-contradictory ridge-cap rows.
+        #
+        # This TX fixture genuinely omits 2 distinct items with NO contradicting
+        # present match (underlayment felt 15#, ridge vent), each across 3 facets
+        # → 6 OMITTED rows. The 3 ridge-cap facet rows moved OMITTED → NEUTRAL by
+        # FIX A (they match BOTH a missing[5] and an equal-strength present[21]
+        # carrier line). 13 rows are Included.
         cfg = _priced_cfg()
         sup = CR.build_priced_supplement(cfg)
         self.assertEqual(sup["row_count"], 25)
-        self.assertEqual(sup["omitted_count"], 9)
+        self.assertEqual(sup["omitted_count"], 6)
         # Rendered OMITTED cells equal the counted omissions (no neutral row is
         # mislabeled, no Included row is mislabeled).
-        self.assertEqual(sup["html"].count('class="carrier-omitted">OMITTED'), 9)
-        # And the formerly-omitted-but-actually-included items now render Included.
-        self.assertGreaterEqual(sup["html"].count('class="carrier-included">Included'), 1)
+        self.assertEqual(sup["html"].count('class="carrier-omitted">OMITTED'), 6)
+        # The 3 ridge-cap rows now render the NEUTRAL dash, not OMITTED.
+        self.assertEqual(sup["html"].count('color:#95a5a6;">&mdash;</td>'), 6)
+        # And the formerly-omitted-but-actually-included items render Included.
+        self.assertEqual(sup["html"].count('class="carrier-included">Included'), 13)
+        # Total cells across the three carrier states equals the row count.
+        self.assertEqual(6 + 6 + 13, sup["row_count"])
 
     def test_unmatched_rows_render_neutral_not_omitted(self):
         # FIX 1: a code item with NO positive carrier match renders a NEUTRAL
@@ -372,6 +412,35 @@ class TestPerRowProvenance(unittest.TestCase):
         sup = CR.build_priced_supplement(cfg)
         self.assertNotIn("_price_source", sup["html"])
         self.assertNotIn("hardcoded-fallback", sup["html"])
+
+    def test_provenance_tokens_absent_from_full_report_html(self):
+        # FIX C (panel) — strengthen the leak guard to the FULL rendered Doc 06
+        # HTML (build_compliance_report), not just the supplement fragment.
+        # Stamp every line item with the WORST-CASE provenance, including the
+        # FIX-B inferred flag, then assert ALL FIVE provenance tokens are absent
+        # from the entire document. The bare provenance label 'relational' is
+        # safe to assert on here: it never appears in the Doc 06 prose or CSS
+        # (verified — compliance_report.py contains no 'relational' literal), so
+        # there is no legitimate use to exclude.
+        cfg = _priced_cfg()
+        for li in cfg["line_items"]:
+            li["_price_source"] = "hardcoded-fallback"   # worst case
+            li["_price_source_inferred"] = True          # FIX B path too
+        path = CR.build_compliance_report(cfg)
+        self.assertTrue(path)
+        with open(path) as f:
+            html = f.read()
+        for tok in (
+            "_price_source",
+            "hardcoded-fallback",
+            "state-json-fallback",
+            "json-fallback",
+            "relational",
+        ):
+            self.assertNotIn(
+                tok, html,
+                f"provenance token {tok!r} leaked onto the carrier-facing Doc 06 HTML",
+            )
 
 
 class TestCosmeticFixes(unittest.TestCase):
