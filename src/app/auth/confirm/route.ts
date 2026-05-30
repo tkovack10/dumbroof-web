@@ -42,8 +42,8 @@ export async function GET(request: Request) {
     }
 
     // Notify Tom on new signups (type=signup means email confirmation)
-    // Also redirect new users (no claims yet) straight to /dashboard/new-claim
-    // so they don't land on an empty dashboard and bounce.
+    // Also redirect new users (no claims yet) straight to /welcome so they
+    // don't land on an empty dashboard and bounce.
     if (type === "signup" || type === "email") {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
@@ -69,9 +69,12 @@ export async function GET(request: Request) {
           },
         }).catch(() => {});
 
+        // New signup → Richard onboarding (/welcome), where Richard creates their
+        // first claim conversationally. Activation is the bottleneck — 86% of
+        // signups never made a claim from the old /dashboard/new-claim form.
         const hasClaims = await userHasClaims(supabase, user.id);
         if (!hasClaims) {
-          return NextResponse.redirect(`${origin}/dashboard/new-claim`);
+          return NextResponse.redirect(`${origin}/welcome`);
         }
       }
     }

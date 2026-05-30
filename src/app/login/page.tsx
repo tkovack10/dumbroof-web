@@ -95,7 +95,7 @@ function LoginPageContent() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ email, eventId, source: "login_page" }),
         }).catch(() => {});
-        window.location.href = "/dashboard/new-claim";
+        window.location.href = "/welcome";
       } else {
         const { eventId } = firePixelSignup({ email, source: "login_page" });
         window.fbq?.("track", "StartTrial");
