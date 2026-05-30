@@ -328,89 +328,280 @@ def _ahj_header(config: dict) -> dict:
         "adopted_year": row.get("adopted_year", ""),
     }
 
-# ── CSS ──
+# ── CSS — "Spectral serif-authority" design system (owner-approved, locked) ──
+#
+# Per-company theming lives ENTIRELY in the :root token block at the top. A
+# company swaps its whole color scheme in a SINGLE edit there — every component
+# below reads the tokens, no literal palette value is repeated downstream.
+# Default scheme = deep navy + confident brick red on a warm off-white sheet.
+#
+# Type system (loaded via the Google Fonts <link> in the document head):
+#   • Spectral       — serif, the authority voice: titles, headings, callouts
+#   • Libre Franklin — sans, labels + body copy
+#   • IBM Plex Mono  — claim numbers, code sections, prices, all tabular data
+#
+# The .cite-chip component renders the SPECIFIC code source + citation number as
+# an unmistakable bold anchor on every code element (cover, requirement detail,
+# every priced row, every argument step). The exact citation is the load-bearing
+# credibility, so it is styled to read as a hard, legal-grade reference token.
 
 COMPLIANCE_CSS = """
-@page { size: letter; margin: 0.5in 0.6in; }
-body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; color: #1a1a2e; line-height: 1.5; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+/* ============================================================
+   :root — SWAPPABLE PER-COMPANY THEME (edit ONLY this block to
+   re-skin the entire document for another contractor's brand).
+   ============================================================ */
+:root {
+    /* — brand palette — */
+    --c-navy:        #0d1b3e;   /* deep navy — primary authority color  */
+    --c-navy-deep:   #091230;   /* darker navy — cover gradient floor   */
+    --c-navy-soft:   #16284f;   /* lifted navy — gradient ceiling/bands */
+    --c-brick:       #9a2b2f;   /* confident brick red — the accent     */
+    --c-brick-bright:#b8383c;   /* brighter brick — hairlines/markers   */
+    --c-brick-warm:  #c98f6d;   /* warm clay — on-navy accent (legible) */
+
+    /* — sheet / neutrals — */
+    --c-paper:       #faf8f3;   /* warm off-white sheet                 */
+    --c-paper-warm:  #f3efe5;   /* warmer panel fill                    */
+    --c-ink:         #1a1f29;   /* near-black body ink                  */
+    --c-slate:       #4a5568;   /* secondary text                       */
+    --c-mute:        #8a93a3;   /* tertiary / labels                    */
+    --c-line:        #d8d2c5;   /* warm hairline                        */
+    --c-line-soft:   #e7e2d6;   /* lighter hairline                     */
+    --c-gold:        #b08a3e;   /* attribution / non-additive marker    */
+
+    /* — COMPLIANCE STATUS ONLY (forest green / red are reserved for the
+         Included vs OMITTED carrier signal — never decorative) — */
+    --c-included:    #1f6b4a;   /* forest green — carrier Included      */
+    --c-included-bg: #e6efe8;
+    --c-included-bd: #bcd6c6;
+    --c-omitted:     #9a2b2f;   /* red — carrier OMITTED                */
+    --c-omitted-bg:  #f5dede;
+    --c-omitted-bd:  #e2b9b9;
+
+    /* — type tokens — */
+    --f-serif: 'Spectral', Georgia, 'Times New Roman', serif;
+    --f-sans:  'Libre Franklin', -apple-system, Helvetica, Arial, sans-serif;
+    --f-mono:  'IBM Plex Mono', 'SFMono-Regular', Menlo, monospace;
+}
+
+@page { size: letter; margin: 0.5in 0.55in; }
+* { box-sizing: border-box; }
+body {
+    font-family: var(--f-sans);
+    color: var(--c-ink);
+    background: var(--c-paper);
+    line-height: 1.5;
+    font-size: 13px;
+    -webkit-print-color-adjust: exact; print-color-adjust: exact;
+}
 .page-break { page-break-after: always; }
-h1 { font-size: 26px; font-weight: 700; color: #0d2137; margin: 0 0 8px 0; }
-h2 { font-size: 20px; font-weight: 700; color: #0d2137; margin: 30px 0 12px 0; border-bottom: 2px solid #c0392b; padding-bottom: 6px; }
-h3 { font-size: 16px; font-weight: 600; color: #2c3e50; margin: 20px 0 8px 0; }
 
-.cover-header { background: linear-gradient(135deg, #0d2137 0%, #1a3a5c 100%); color: white; padding: 40px 35px; border-radius: 8px; margin-bottom: 30px; }
-.cover-header h1 { color: white; font-size: 30px; margin-bottom: 4px; }
-.cover-header .subtitle { font-size: 16px; opacity: 0.9; margin-top: 6px; }
-.cover-header .law-text { font-size: 13px; background: rgba(255,255,255,0.15); padding: 10px 15px; border-radius: 6px; margin-top: 18px; border-left: 4px solid #e74c3c; }
+h1 { font-family: var(--f-serif); font-size: 30px; font-weight: 600; color: var(--c-navy); margin: 0 0 8px 0; letter-spacing: -0.01em; }
+h2 {
+    font-family: var(--f-serif); font-size: 25px; font-weight: 600; color: var(--c-navy);
+    margin: 30px 0 14px 0; padding-bottom: 8px; letter-spacing: -0.01em;
+    border-bottom: 2px solid var(--c-navy);
+}
+h3 { font-family: var(--f-serif); font-size: 17px; font-weight: 600; color: var(--c-navy); margin: 18px 0 8px 0; }
 
-.property-block { background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 8px; padding: 20px 25px; margin: 20px 0; }
-.property-block table { width: 100%; border-collapse: collapse; }
-.property-block td { padding: 5px 10px; font-size: 13px; }
-.property-block td:first-child { font-weight: 600; color: #5d6d7e; width: 160px; }
+/* section eyebrow above an h2 */
+.sec-eyebrow {
+    font-family: var(--f-sans); font-size: 9px; font-weight: 700; letter-spacing: 0.26em;
+    text-transform: uppercase; color: var(--c-brick); margin: 26px 0 2px 0;
+}
 
-.rendering-section { text-align: center; margin: 10px 0; }
-.rendering-title { font-size: 14px; color: #5d6d7e; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px; }
+/* ── THE CITATION CHIP — used everywhere a code source appears ──
+   Renders the exact code + citation number as a hard, legal-grade anchor.
+   .cite-chip.neutral = a non-code reference (e.g. a standard-of-indemnity tag). */
+.cite-chip {
+    display: inline-block; font-family: var(--f-mono); font-weight: 700;
+    font-size: 10px; letter-spacing: 0.02em; line-height: 1.3;
+    color: var(--c-brick); background: var(--c-omitted-bg);
+    border: 1px solid var(--c-omitted-bd); border-radius: 3px;
+    padding: 2px 8px; white-space: nowrap; vertical-align: baseline;
+}
+.cite-chip.neutral { color: var(--c-slate); background: var(--c-paper-warm); border-color: var(--c-line); }
+.cite-chip.on-navy { color: #fff; background: rgba(184,56,60,0.92); border-color: rgba(255,255,255,0.25); }
 
-.code-card { border: 1px solid #dee2e6; border-radius: 8px; padding: 18px 22px; margin: 16px 0; break-inside: avoid; background: #fafbfc; }
-.code-card.critical { border-left: 5px solid #c0392b; background: #fdf8f8; }
-.code-card .code-tag { font-size: 12px; font-weight: 700; color: #c0392b; text-transform: uppercase; letter-spacing: 0.5px; }
-.code-card .code-title { font-size: 16px; font-weight: 600; color: #0d2137; margin: 4px 0 8px 0; }
-.code-card .requirement { font-size: 13px; color: #2c3e50; background: #f0f4f8; padding: 10px 14px; border-radius: 6px; margin: 8px 0; border-left: 3px solid #2c3e50; }
-.code-card .measurement { font-size: 13px; color: #1a5276; font-weight: 600; margin: 8px 0; }
-.code-card .supplement { font-size: 12px; color: #5d6d7e; margin-top: 8px; }
+/* ── COVER (full-bleed navy) ── */
+.cover {
+    position: relative;
+    background: linear-gradient(180deg, var(--c-navy-deep) 0%, var(--c-navy) 48%, var(--c-navy-soft) 100%);
+    color: #eef1f5; margin: -0.5in -0.55in 0 -0.55in; padding: 0.62in 0.6in 0.5in;
+    min-height: 10in;
+}
+.cover .cover-frame { position: absolute; inset: 0.26in; border: 1px solid rgba(255,255,255,0.16); pointer-events: none; }
+.cover-top { display: flex; justify-content: space-between; align-items: flex-start; position: relative; z-index: 2; }
+.cover-wordmark { font-family: var(--f-sans); font-weight: 800; font-size: 14px; letter-spacing: 0.15em; color: #fff; }
+.cover-wordmark .wm-sub { display: block; font-size: 7px; letter-spacing: 0.32em; font-weight: 600; color: var(--c-brick-warm); text-transform: uppercase; margin-top: 4px; }
+.cover-tab {
+    font-family: var(--f-sans); font-size: 8px; font-weight: 700; letter-spacing: 0.24em; text-transform: uppercase;
+    color: #fff; border: 1px solid rgba(255,255,255,0.3); padding: 6px 12px; border-radius: 2px;
+}
+.cover-hero { position: relative; z-index: 2; margin-top: 0.7in; }
+.cover-kicker { font-family: var(--f-sans); font-weight: 700; font-size: 9px; letter-spacing: 0.38em; text-transform: uppercase; color: var(--c-brick-warm); margin-bottom: 18px; }
+.cover h1 { font-family: var(--f-serif); font-weight: 600; font-size: 52px; line-height: 0.99; color: #fff; margin: 0; letter-spacing: -0.015em; }
+.cover .cover-subtitle { font-family: var(--f-serif); font-style: italic; font-weight: 300; font-size: 16px; line-height: 1.45; color: #aeb9cb; margin-top: 22px; max-width: 5.6in; border-left: 2px solid var(--c-brick-bright); padding-left: 18px; }
+.cover .lead-callout { margin-top: 30px; background: rgba(255,255,255,0.045); border: 1px solid rgba(255,255,255,0.12); border-left: 3px solid var(--c-brick-bright); padding: 18px 22px; max-width: 6in; }
+.cover .lead-callout .lc-label { font-family: var(--f-sans); font-size: 7.5px; letter-spacing: 0.3em; text-transform: uppercase; color: var(--c-brick-warm); font-weight: 700; margin-bottom: 9px; }
+.cover .lead-callout p { font-size: 12px; line-height: 1.62; color: #d4dae4; }
+.cover .lead-callout p b { color: #fff; font-weight: 700; }
+.cover .lead-callout .lc-cite { margin-top: 12px; }
 
-.mfr-spec { background: #fff8e1; border: 1px solid #ffd54f; border-radius: 6px; padding: 10px 14px; margin: 8px 0; break-inside: avoid; }
-.mfr-spec .mfr-name { font-weight: 700; font-size: 12px; color: #f57f17; }
-.mfr-spec .warranty-void { color: #c0392b; font-weight: 600; font-size: 12px; margin-top: 4px; }
+.cover-meta { position: relative; z-index: 2; margin-top: 34px; display: grid; grid-template-columns: 1fr 1fr 1fr; border-top: 1px solid rgba(255,255,255,0.16); }
+.cover-meta .cell { padding: 16px 18px 14px 0; border-right: 1px solid rgba(255,255,255,0.1); }
+.cover-meta .cell:nth-child(3n) { border-right: 0; }
+.cover-meta .k { font-family: var(--f-sans); font-size: 7px; letter-spacing: 0.24em; text-transform: uppercase; color: #8ea0bd; margin-bottom: 7px; }
+.cover-meta .v { font-size: 11.5px; color: #eef1f5; line-height: 1.4; font-weight: 600; }
+.cover-meta .v.serif { font-family: var(--f-serif); font-weight: 500; font-size: 14px; }
+.cover-meta .v.mono { font-family: var(--f-mono); font-weight: 600; font-size: 12px; letter-spacing: 0.01em; }
+.cover-meta .k.stacked { margin-top: 14px; }
 
-.diagram-box { border: 1px solid #dee2e6; border-radius: 8px; padding: 16px; margin: 12px 0; break-inside: avoid; background: white; }
-.diagram-box .diagram-title { font-size: 14px; font-weight: 600; color: #0d2137; margin-bottom: 10px; }
-.diagram-correct { color: #27ae60; }
-.diagram-incorrect { color: #c0392b; }
+.cover-foot { position: relative; z-index: 2; margin-top: 30px; padding-top: 16px; border-top: 1px solid rgba(255,255,255,0.16); display: flex; justify-content: space-between; align-items: flex-end; }
+.cover-foot .prep .pl { font-family: var(--f-sans); font-size: 7px; letter-spacing: 0.28em; text-transform: uppercase; color: #8ea0bd; margin-bottom: 6px; }
+.cover-foot .prep .pv { font-family: var(--f-serif); font-size: 15px; color: #fff; }
+.cover-foot .ahj-stamp { text-align: right; }
+.cover-foot .ahj-stamp .pl { font-family: var(--f-sans); font-size: 7px; letter-spacing: 0.24em; text-transform: uppercase; color: #8ea0bd; margin-bottom: 6px; }
+.cover-foot .ahj-stamp .pv { font-family: var(--f-serif); font-size: 13px; color: #fff; }
+.cover-foot .ahj-stamp .pv-sub { font-family: var(--f-mono); font-size: 9px; color: #8ea0bd; margin-top: 4px; }
 
-.summary-table { width: 100%; border-collapse: collapse; margin: 15px 0; font-size: 12px; }
-.summary-table th { background: #0d2137; color: white; padding: 10px 12px; text-align: left; font-weight: 600; }
-.summary-table td { padding: 8px 12px; border-bottom: 1px solid #dee2e6; }
-.summary-table tr:nth-child(even) { background: #f8f9fa; }
-.status-missing { color: #c0392b; font-weight: 700; }
-.status-included { color: #27ae60; font-weight: 600; }
+/* ── interior sheet chrome ── */
+.run-head { display: flex; justify-content: space-between; align-items: flex-start; padding-bottom: 12px; border-bottom: 2px solid var(--c-navy); margin-bottom: 4px; }
+.run-head .rh-mark { font-family: var(--f-sans); font-weight: 800; font-size: 12px; letter-spacing: 0.12em; color: var(--c-navy); }
+.run-head .rh-mark .rh-sub { display: block; font-family: var(--f-sans); font-weight: 600; font-size: 6.5px; letter-spacing: 0.22em; text-transform: uppercase; color: var(--c-brick); margin-top: 3px; }
+.run-head .rh-r { text-align: right; }
+.run-head .rh-r .rh-doc { font-family: var(--f-sans); font-size: 8px; letter-spacing: 0.22em; text-transform: uppercase; color: var(--c-slate); font-weight: 700; }
+.run-head .rh-r .rh-claim { font-family: var(--f-mono); font-size: 11px; color: var(--c-navy); margin-top: 4px; }
 
-.footer { text-align: center; font-size: 10px; color: #95a5a6; margin-top: 30px; padding-top: 10px; border-top: 1px solid #dee2e6; }
+.rendering-section { text-align: center; margin: 14px 0; }
+.rendering-title { font-family: var(--f-sans); font-size: 11px; color: var(--c-slate); text-transform: uppercase; letter-spacing: 0.18em; font-weight: 700; margin-bottom: 12px; }
+
+/* ── code detail cards ── */
+.code-card { border: 1px solid var(--c-line); border-radius: 4px; padding: 18px 22px; margin: 16px 0; break-inside: avoid; background: #fff; }
+.code-card.critical { border-left: 4px solid var(--c-brick); }
+.code-card .cc-top { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+.code-card .code-title { font-family: var(--f-serif); font-size: 18px; font-weight: 600; color: var(--c-navy); margin: 0; }
+.code-card .requirement { font-size: 13px; color: var(--c-ink); background: var(--c-paper-warm); padding: 11px 15px; border-radius: 3px; margin: 10px 0; border-left: 3px solid var(--c-navy); line-height: 1.55; }
+.code-card .measurement { font-family: var(--f-mono); font-size: 11.5px; color: var(--c-navy); font-weight: 600; margin: 9px 0; letter-spacing: 0.01em; }
+.code-card .supplement { font-size: 12px; color: var(--c-slate); margin-top: 8px; line-height: 1.5; }
+
+.mfr-spec { background: var(--c-paper-warm); border: 1px solid var(--c-line); border-left: 3px solid var(--c-gold); border-radius: 3px; padding: 11px 15px; margin: 9px 0; break-inside: avoid; }
+.mfr-spec .mfr-name { font-family: var(--f-sans); font-weight: 700; font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--c-gold); }
+.mfr-spec .warranty-void { color: var(--c-brick); font-weight: 700; font-size: 12px; margin-top: 5px; }
+
+/* ── plan-section diagrams ── */
+.diagram-box { border: 1px solid var(--c-line); border-radius: 4px; padding: 16px 18px; margin: 14px 0; break-inside: avoid; background: #fff; }
+.diagram-box .diagram-title { font-family: var(--f-serif); font-size: 15px; font-weight: 600; color: var(--c-navy); margin-bottom: 12px; }
+.diagram-caption { font-size: 12px; color: var(--c-slate); margin-top: 10px; line-height: 1.55; }
+.diagram-correct { color: var(--c-included); font-weight: 700; }
+.diagram-incorrect { color: var(--c-brick); font-weight: 700; }
+.plate-legend { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 18px; margin-top: 12px; }
+.plate-legend .leg { display: flex; gap: 9px; align-items: flex-start; }
+.plate-legend .leg .chip { flex: none; width: 13px; height: 13px; border-radius: 2px; margin-top: 2px; }
+.plate-legend .leg .chip.ok { background: var(--c-included); }
+.plate-legend .leg .chip.bad { background: var(--c-brick); }
+.plate-legend .leg .lt { font-size: 10px; line-height: 1.4; color: var(--c-slate); }
+.plate-legend .leg .lt b { display: block; font-family: var(--f-sans); font-size: 9px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--c-ink); margin-bottom: 2px; }
+
+/* ── summary table ── */
+.summary-table { width: 100%; border-collapse: collapse; margin: 14px 0; font-size: 11.5px; }
+.summary-table th { background: var(--c-navy); color: #dfe5ee; padding: 10px 12px; text-align: left; font-family: var(--f-sans); font-weight: 700; font-size: 8px; letter-spacing: 0.12em; text-transform: uppercase; border-bottom: 2px solid var(--c-brick); }
+.summary-table td { padding: 9px 12px; border-bottom: 1px solid var(--c-line-soft); vertical-align: middle; color: var(--c-slate); }
+.summary-table tr:nth-child(even) { background: var(--c-paper-warm); }
+.status-missing { color: var(--c-omitted); font-weight: 700; }
+.status-included { color: var(--c-included); font-weight: 700; }
+
+.footer { display: flex; justify-content: space-between; align-items: center; font-family: var(--f-sans); font-size: 8px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--c-mute); margin-top: 26px; padding-top: 10px; border-top: 1px solid var(--c-line-soft); }
+.footer .fl { font-weight: 700; color: var(--c-slate); }
 
 /* ── WS-7 priced code-compliance supplement ── */
-.ahj-header { background: #0d2137; color: white; border-radius: 8px; padding: 14px 20px; margin: 18px 0 6px 0; }
-.ahj-header .ahj-title { font-size: 13px; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase; opacity: 0.85; }
-.ahj-header .ahj-body { font-size: 15px; font-weight: 600; margin-top: 4px; }
-.non-additive-banner { background: #fff8e1; border: 1px solid #ffd54f; border-left: 5px solid #f57f17; border-radius: 6px; padding: 12px 16px; margin: 12px 0 18px 0; font-size: 12px; color: #5d4037; }
-.non-additive-banner b { color: #c0392b; }
-.supplement-table { width: 100%; border-collapse: collapse; margin: 10px 0; font-size: 11px; }
-.supplement-table th { background: #0d2137; color: white; padding: 9px 8px; text-align: left; font-weight: 600; }
-.supplement-table td { padding: 7px 8px; border-bottom: 1px solid #e3e8ee; vertical-align: top; }
-.supplement-table td.num { text-align: right; white-space: nowrap; }
-.supplement-table tr.trade-header td { background: #1a3a5c; color: white; font-weight: 700; font-size: 11px; letter-spacing: 0.5px; text-transform: uppercase; }
-.supplement-table tr.trade-subtotal td { background: #f0f4f8; font-weight: 700; border-top: 1.5px solid #0d2137; }
-.supplement-table tr.grand-subtotal td { background: #0d2137; color: white; font-weight: 700; font-size: 13px; }
-.carrier-omitted { color: #c0392b; font-weight: 700; }
-.carrier-included { color: #27ae60; font-weight: 600; }
-.req-only-notice { background: #eef2f7; border: 1px dashed #93a4b8; border-radius: 8px; padding: 16px 20px; margin: 18px 0; font-size: 13px; color: #2c3e50; }
-.req-only-list { width: 100%; border-collapse: collapse; margin: 10px 0; font-size: 12px; }
-.req-only-list th { background: #0d2137; color: white; padding: 9px 10px; text-align: left; font-weight: 600; }
-.req-only-list td { padding: 7px 10px; border-bottom: 1px solid #e3e8ee; }
+.ahj-header { display: flex; align-items: stretch; border: 1px solid var(--c-line); border-radius: 4px; overflow: hidden; margin: 16px 0 6px 0; }
+.ahj-header .ahj-l { background: var(--c-navy); color: #fff; padding: 12px 18px; display: flex; flex-direction: column; justify-content: center; min-width: 1.3in; }
+.ahj-header .ahj-title { font-family: var(--f-sans); font-size: 7px; font-weight: 700; letter-spacing: 0.24em; text-transform: uppercase; color: var(--c-brick-warm); }
+.ahj-header .ahj-l .ahj-prefix { font-family: var(--f-serif); font-size: 20px; margin-top: 5px; color: #fff; }
+.ahj-header .ahj-r { padding: 12px 18px; display: flex; flex-direction: column; justify-content: center; background: #fff; flex: 1; }
+.ahj-header .ahj-body { font-size: 12.5px; font-weight: 500; color: var(--c-ink); line-height: 1.4; }
+
+.non-additive-banner { display: flex; gap: 14px; align-items: flex-start; background: var(--c-paper-warm); border: 1px solid var(--c-line); border-left: 4px solid var(--c-gold); border-radius: 3px; padding: 13px 18px; margin: 12px 0 18px 0; font-size: 12px; color: var(--c-slate); line-height: 1.55; }
+.non-additive-banner .na-badge { flex: none; font-family: var(--f-sans); font-size: 9px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: #fff; background: var(--c-gold); padding: 5px 11px; border-radius: 2px; margin-top: 1px; }
+.non-additive-banner b { color: var(--c-ink); font-weight: 700; }
+
+.supplement-table { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 11px; }
+.supplement-table th { background: var(--c-navy); color: #dfe5ee; padding: 10px 9px; text-align: left; font-family: var(--f-sans); font-weight: 700; font-size: 7.5px; letter-spacing: 0.12em; text-transform: uppercase; border-bottom: 2px solid var(--c-brick); }
+.supplement-table td { padding: 9px 9px; border-bottom: 1px solid var(--c-line-soft); vertical-align: top; color: var(--c-slate); }
+.supplement-table tr:nth-child(even) td { background: var(--c-paper-warm); }
+.supplement-table td.num { text-align: right; white-space: nowrap; font-family: var(--f-mono); color: var(--c-ink); }
+.supplement-table td.line-total { text-align: right; white-space: nowrap; font-family: var(--f-mono); color: var(--c-navy); font-weight: 700; }
+.supplement-table .item-desc { color: var(--c-ink); font-weight: 600; line-height: 1.35; }
+.supplement-table td.unit-cell { font-family: var(--f-sans); font-size: 9px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--c-mute); }
+.supplement-table tr.trade-header td { background: var(--c-navy-soft); color: #fff; font-family: var(--f-sans); font-weight: 700; font-size: 9px; letter-spacing: 0.14em; text-transform: uppercase; }
+.supplement-table tr.trade-subtotal td { background: var(--c-paper-warm); font-family: var(--f-sans); font-weight: 700; font-size: 9px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--c-slate); border-top: 1.5px solid var(--c-navy); }
+.supplement-table tr.trade-subtotal td.num { font-family: var(--f-mono); color: var(--c-navy); }
+.supplement-table tr.grand-subtotal td { background: var(--c-navy); color: #fff; border-top: 2px solid var(--c-brick); }
+.supplement-table tr.grand-subtotal td.stl { font-family: var(--f-sans); font-weight: 700; font-size: 9px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--c-brick-warm); padding: 13px 9px; }
+.supplement-table tr.grand-subtotal td.num { font-family: var(--f-serif); font-weight: 600; font-size: 19px; color: #fff; padding: 13px 9px; }
+
+/* carrier status — the ONLY place forest-green / red carry meaning */
+.carrier-omitted { display: inline-block; font-family: var(--f-sans); font-size: 8px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--c-omitted); background: var(--c-omitted-bg); border: 1px solid var(--c-omitted-bd); border-radius: 20px; padding: 3px 9px; }
+.carrier-included { display: inline-block; font-family: var(--f-sans); font-size: 8px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--c-included); background: var(--c-included-bg); border: 1px solid var(--c-included-bd); border-radius: 20px; padding: 3px 9px; }
+.supplement-gap-note { font-size: 12px; color: var(--c-slate); margin-top: 10px; display: flex; gap: 10px; align-items: center; }
+.supplement-gap-note .gap-dot { flex: none; width: 9px; height: 9px; border-radius: 50%; background: var(--c-brick); }
+.supplement-gap-note b { color: var(--c-omitted); }
+
+.req-only-notice { background: var(--c-paper-warm); border: 1px solid var(--c-line); border-left: 4px solid var(--c-navy); border-radius: 3px; padding: 16px 20px; margin: 18px 0; font-size: 13px; color: var(--c-ink); line-height: 1.55; }
+.req-only-list { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 12px; }
+.req-only-list th { background: var(--c-navy); color: #dfe5ee; padding: 10px 12px; text-align: left; font-family: var(--f-sans); font-weight: 700; font-size: 8px; letter-spacing: 0.12em; text-transform: uppercase; border-bottom: 2px solid var(--c-brick); }
+.req-only-list td { padding: 9px 12px; border-bottom: 1px solid var(--c-line-soft); color: var(--c-slate); }
 
 /* ── PHASE 3 siding argument (corner-rule flagship) ── */
 .siding-argument { margin: 24px 0 10px 0; }
-.siding-arg-intro { font-size: 13px; color: #2c3e50; background: #f0f4f8; padding: 12px 16px; border-radius: 6px; border-left: 4px solid #0d2137; }
-.siding-arg-mode { display: inline-block; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 4px; margin-left: 6px; }
-.siding-arg-mode.contractor { background: #eef2f7; color: #5d6d7e; }
-.siding-arg-mode.advocate { background: #fdecea; color: #c0392b; }
-.siding-arg-layer { border: 1px solid #dee2e6; border-radius: 8px; padding: 14px 18px; margin: 12px 0; break-inside: avoid; background: #fafbfc; }
-.siding-arg-layer.hero { border-left: 5px solid #c0392b; background: #fdf8f8; }
-.siding-arg-h { font-size: 15px; font-weight: 700; color: #0d2137; margin-bottom: 6px; }
-.siding-arg-num { display: inline-block; width: 22px; height: 22px; line-height: 22px; text-align: center; background: #0d2137; color: white; border-radius: 50%; font-size: 12px; margin-right: 6px; }
-.siding-arg-layer p { font-size: 13px; color: #2c3e50; margin: 6px 0; }
-.siding-arg-note { font-size: 12px; color: #5d6d7e; font-style: italic; }
-.siding-corner-hero { font-size: 13px; color: #0d2137; background: #fff8e1; border: 1px solid #ffd54f; border-left: 4px solid #f57f17; border-radius: 6px; padding: 12px 16px; margin: 10px 0; font-weight: 500; }
+.siding-arg-intro { font-family: var(--f-serif); font-style: italic; font-size: 14px; color: var(--c-slate); line-height: 1.55; padding: 4px 0 6px 0; max-width: 6.2in; }
+.siding-arg-intro b { font-style: normal; color: var(--c-navy); font-weight: 600; }
+.siding-arg-mode { display: inline-block; font-family: var(--f-sans); font-size: 8px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; padding: 3px 9px; border-radius: 20px; margin-left: 4px; vertical-align: middle; }
+.siding-arg-mode.contractor { background: var(--c-paper-warm); color: var(--c-slate); border: 1px solid var(--c-line); }
+.siding-arg-mode.advocate { background: var(--c-omitted-bg); color: var(--c-brick); border: 1px solid var(--c-omitted-bd); }
+.siding-arg-steps { margin-top: 16px; border-top: 1px solid var(--c-line); }
+.siding-arg-layer { display: grid; grid-template-columns: 0.56in 1fr; gap: 22px; padding: 22px 0; border-bottom: 1px solid var(--c-line); break-inside: avoid; }
+.siding-arg-layer:last-child { border-bottom: 0; }
+.siding-arg-layer.hero { background: var(--c-paper-warm); border-radius: 4px; border-bottom: 0; padding: 22px 22px 22px 18px; margin: 4px 0; box-shadow: inset 4px 0 0 var(--c-brick); }
+.siding-arg-idx { padding-top: 2px; }
+.siding-arg-num { display: inline-block; font-family: var(--f-serif); font-weight: 300; font-size: 44px; line-height: 0.9; color: var(--c-navy); position: relative; }
+.siding-arg-num::after { content: ""; display: block; width: 28px; height: 2px; background: var(--c-brick); margin-top: 6px; }
+.siding-arg-h { font-family: var(--f-serif); font-size: 18px; font-weight: 600; color: var(--c-navy); margin-bottom: 8px; display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; letter-spacing: -0.005em; }
+.siding-arg-layer p { font-size: 12px; color: var(--c-slate); margin: 7px 0; line-height: 1.62; max-width: 6in; }
+.siding-arg-layer p b { color: var(--c-ink); font-weight: 700; }
+.siding-arg-note { font-size: 11px; color: var(--c-mute); font-style: italic; }
+.siding-corner-hero { font-family: var(--f-serif); font-size: 13px; font-style: italic; color: var(--c-navy); background: #fff; border: 1px solid var(--c-line); border-left: 3px solid var(--c-gold); border-radius: 3px; padding: 12px 16px; margin: 10px 0; line-height: 1.55; }
 """
+
+# Google Fonts link for the three families (Spectral / Libre Franklin / IBM Plex
+# Mono). Lives in the document <head>; print engines that ignore web fonts fall
+# back to the var()-declared local serif/sans/mono stacks.
+COMPLIANCE_FONTS_LINK = (
+    '<link rel="preconnect" href="https://fonts.googleapis.com">'
+    '<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>'
+    '<link href="https://fonts.googleapis.com/css2?'
+    'family=Spectral:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400&'
+    'family=Libre+Franklin:wght@400;500;600;700;800&'
+    'family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">'
+)
+
+
+def _cite_chip(citation: str, *, neutral: bool = False, on_navy: bool = False) -> str:
+    """Render the SPECIFIC code source + citation number as the load-bearing
+    .cite-chip anchor used on EVERY code element (cover, requirement detail,
+    every priced-table row, every argument step). ``neutral`` = a non-code
+    reference (e.g. a standard-of-indemnity tag); ``on_navy`` = placed on a dark
+    band. Empty/blank citation renders nothing."""
+    text = (citation or "").strip()
+    if not text:
+        return ""
+    cls = "cite-chip"
+    if neutral:
+        cls += " neutral"
+    if on_navy:
+        cls += " on-navy"
+    return f'<span class="{cls}">{_h(text)}</span>'
 
 
 def _get_jurisdiction(state: str) -> dict:
@@ -493,40 +684,109 @@ def _lead_code_basis(config: dict) -> dict:
     }
 
 
+def _company_name(config: dict) -> str:
+    """Display company name, neutral default so a missing/empty company_name
+    doesn't leak USARM branding onto another contractor's PDF (E182)."""
+    return (config.get("company", {}) or {}).get("name") or "Your Roofing Company"
+
+
+def _run_head(config: dict, doc_label: str) -> str:
+    """Running header on every interior sheet: company wordmark (left) + the
+    document-tab + claim number (right). Keeps the report navigable across pages
+    with no stranded captions."""
+    company_name = _h(_company_name(config))
+    claim_number = _h(config.get("carrier", {}).get("claim_number", "") or "")
+    return f'''
+    <div class="run-head">
+        <div class="rh-mark">{company_name}<span class="rh-sub">Building Code Compliance Report</span></div>
+        <div class="rh-r">
+            <div class="rh-doc">{_h(doc_label)}</div>
+            <div class="rh-claim">{claim_number}</div>
+        </div>
+    </div>'''
+
+
+def _run_foot(config: dict, page_label: str) -> str:
+    """Running footer on every interior sheet."""
+    company_name = _h(_company_name(config))
+    return f'''
+    <div class="footer">
+        <div class="fl">{company_name} &middot; Building Code Compliance Report</div>
+        <div>{_h(page_label)}</div>
+    </div>'''
+
+
 def _build_cover_page(config: dict, jurisdiction: dict, annotation_count: int) -> str:
-    """Build the cover page HTML."""
+    """Build the full-bleed navy cover page: wordmark + carrier-exhibit tab, big
+    serif title, full claim-data grid, and the lead-provision callout with the
+    load-bearing phrase emphasized and its citation rendered as a chip."""
     prop = config.get("property", {})
     address = _h(_format_property_address(prop))
     claim_number = _h(config.get("carrier", {}).get("claim_number", ""))
-    company = config.get("company", {})
-    # Default kept neutral so a missing/empty company_name doesn't leak USARM
-    # branding onto another contractor's PDF (E182).
-    company_name = _h(company.get("name") or "Your Roofing Company")
+    company_name = _h(_company_name(config))
     date_of_loss = _h(config.get("dates", {}).get("date_of_loss", ""))
     trades = _h(", ".join(config.get("scope", {}).get("trades") or ["Roofing"]))
+    ahj = _ahj_header(config)
+    base_code = _h(ahj.get("base_code", ""))
+    adopted = ahj.get("adopted_year")
+    ahj_sub = f"{_h(ahj.get('prefix',''))} &mdash; base code {base_code}" + (f" (adopted {adopted})" if adopted else "")
     # TRADE-AWARE lead: a siding report cites R703.3, a roofing/mixed report R905.1.
     basis = _lead_code_basis(config)
+    lead_cite = _cite_chip(f'{jurisdiction["abbrev"]} {basis["section"]}', on_navy=True)
+    # Spell out the count so it reads as authored, not auto-generated.
+    code_count = f'{annotation_count} applicable code{"s" if annotation_count != 1 else ""}'
 
     return f'''
-    <div class="cover-header">
-        <h1>BUILDING CODE COMPLIANCE REPORT</h1>
-        <div class="subtitle">Jurisdiction-Specific Installation Requirements &amp; Manufacturer Specifications</div>
-        <div class="law-text">
-            Per <b>{jurisdiction["abbrev"]} {basis["section"]}</b>: "{basis["law_quote"]}" Manufacturer instructions carry the
-            <b>force of building code</b> — they are not optional upgrades.
+    <div class="cover">
+        <div class="cover-frame"></div>
+        <div class="cover-top">
+            <div class="cover-wordmark">{company_name}<span class="wm-sub">Forensic Claims Division</span></div>
+            <div class="cover-tab">Document 06 &middot; Carrier Exhibit</div>
         </div>
-    </div>
 
-    <div class="property-block">
-        <table>
-            <tr><td>Property:</td><td><b>{address}</b></td></tr>
-            <tr><td>Claim Number:</td><td>{claim_number}</td></tr>
-            <tr><td>Date of Loss:</td><td>{date_of_loss}</td></tr>
-            <tr><td>Jurisdiction:</td><td><b>{jurisdiction["name"]}</b></td></tr>
-            <tr><td>Trades Scoped:</td><td>{trades}</td></tr>
-            <tr><td>Code Requirements:</td><td><b>{annotation_count} applicable codes identified</b></td></tr>
-            <tr><td>Prepared by:</td><td>{company_name}</td></tr>
-        </table>
+        <div class="cover-hero">
+            <div class="cover-kicker">Forensic Code Analysis</div>
+            <h1>Building Code<br>Compliance Report</h1>
+            <div class="cover-subtitle">Jurisdiction-Specific Installation Requirements &amp; Manufacturer Specifications</div>
+
+            <div class="lead-callout">
+                <div class="lc-label">Governing Provision</div>
+                <p>Per {_h(jurisdiction["abbrev"])} {_h(basis["section"])}, governing {basis["noun"]}: "{basis["law_quote"]}"
+                Manufacturer instructions carry the <b>force of building code</b> &mdash; they are not optional upgrades.</p>
+                <div class="lc-cite">{lead_cite}</div>
+            </div>
+        </div>
+
+        <div class="cover-meta">
+            <div class="cell">
+                <div class="k">Property</div>
+                <div class="v serif">{address}</div>
+            </div>
+            <div class="cell">
+                <div class="k">Claim Number</div>
+                <div class="v mono">{claim_number}</div>
+                <div class="k stacked">Date of Loss</div>
+                <div class="v">{date_of_loss}</div>
+            </div>
+            <div class="cell">
+                <div class="k">Trades Scoped</div>
+                <div class="v">{trades}</div>
+                <div class="k stacked">Code Requirements</div>
+                <div class="v serif">{code_count}</div>
+            </div>
+        </div>
+
+        <div class="cover-foot">
+            <div class="ahj-stamp">
+                <div class="pl">Authority Having Jurisdiction</div>
+                <div class="pv">{_h(jurisdiction["name"])}</div>
+                <div class="pv-sub">{ahj_sub}</div>
+            </div>
+            <div class="prep">
+                <div class="pl">Prepared by</div>
+                <div class="pv">{company_name}</div>
+            </div>
+        </div>
     </div>
     '''
 
@@ -541,16 +801,17 @@ def _build_code_detail_cards(annotations: list[dict], config: dict) -> str:
         is_critical = ann.get("is_critical", False)
 
         card_class = "code-card critical" if is_critical else "code-card"
-        code_tag = _h(ann.get("code_tag", ""))
+        code_tag = ann.get("code_tag", "")
         title = _h(ann.get("title", ""))
         requirement = _h(cc.get("requirement", ""))
         supplement = _h(cc.get("supplement_argument", ""))
         meas = _h(ann.get("measurement", ""))
+        # The exact code source rendered as the load-bearing citation chip.
+        cite = _cite_chip(code_tag)
 
         card = f'''
         <div class="{card_class}">
-            <div class="code-tag">{code_tag}</div>
-            <div class="code-title">{title}</div>
+            <div class="cc-top">{cite}<div class="code-title">{title}</div></div>
             <div class="requirement">{requirement}</div>
             <div class="measurement">EagleView measurement: {meas}</div>
         '''
@@ -558,16 +819,16 @@ def _build_code_detail_cards(annotations: list[dict], config: dict) -> str:
         # Manufacturer specs
         mfr_specs = cc.get("manufacturer_specs", [])
         for spec in mfr_specs[:3]:
-            mfr_name = spec.get("manufacturer", "")
-            doc_name = spec.get("document", "")
-            mfr_req = spec.get("requirement", "")
-            warranty = spec.get("warranty_text", "")
+            mfr_name = _h(spec.get("manufacturer", ""))
+            doc_name = _h(spec.get("document", ""))
+            mfr_req = _h(spec.get("requirement", ""))
+            warranty = _h(spec.get("warranty_text", ""))
             is_void = spec.get("warranty_void", False)
 
             card += f'''
             <div class="mfr-spec">
-                <div class="mfr-name">{mfr_name} — {doc_name}</div>
-                <div style="font-size:12px; margin-top:4px;">{mfr_req}</div>
+                <div class="mfr-name">{mfr_name} &mdash; {doc_name}</div>
+                <div style="font-size:12px; margin-top:5px; color:var(--c-slate);">{mfr_req}</div>
             '''
             if is_void and warranty:
                 card += f'<div class="warranty-void">WARRANTY VOID: {warranty}</div>'
@@ -590,139 +851,166 @@ def _build_installation_diagrams(annotations: list[dict], config: dict) -> str:
     # Determine which diagrams apply based on annotations
     zone_set = {a["zone"] for a in annotations}
 
-    # Ice & Water Barrier diagram
+    # Ice & Water Barrier — plan-section (correct layering, 24" dimension callout)
     if "eave-front" in zone_set:
         eave_lf = config.get("measurements", {}).get("eave", 0)
         diagrams.append(f'''
         <div class="diagram-box">
-            <div class="diagram-title">Ice &amp; Water Barrier — Correct Installation</div>
-            <svg viewBox="0 0 600 180" width="100%" style="max-width:580px;" xmlns="http://www.w3.org/2000/svg">
-                <defs><marker id="arr" markerWidth="6" markerHeight="4" refX="5" refY="2" orient="auto"><polygon points="0 0, 6 2, 0 4" fill="#c0392b"/></marker></defs>
-                <!-- Cross-section of eave -->
-                <rect x="20" y="100" width="560" height="60" fill="#e8d5b0" stroke="#8b7355" stroke-width="1.5" rx="2"/>
-                <text x="300" y="138" text-anchor="middle" font-size="11" fill="#8b7355" font-weight="600">ROOF DECK (Plywood/OSB)</text>
-                <!-- I&W layer -->
-                <rect x="20" y="80" width="350" height="18" fill="#4a90d9" opacity="0.7" stroke="#2c6fbb" stroke-width="1.5" rx="2"/>
-                <text x="195" y="93" text-anchor="middle" font-size="10" fill="white" font-weight="700">ICE &amp; WATER BARRIER</text>
-                <!-- Shingles on top -->
-                <rect x="20" y="62" width="560" height="16" fill="#6b7b8d" stroke="#4a5568" stroke-width="1" rx="1"/>
-                <text x="300" y="74" text-anchor="middle" font-size="9" fill="white">SHINGLES</text>
-                <!-- Wall line -->
-                <rect x="350" y="20" width="12" height="140" fill="#bdc3c7" stroke="#7f8c8d" stroke-width="1"/>
-                <text x="380" y="90" font-size="10" fill="#7f8c8d">Interior Wall</text>
-                <!-- Dimension arrow (single line with both markers) -->
-                <line x1="20" y1="45" x2="375" y2="45" stroke="#c0392b" stroke-width="1.5" marker-start="url(#arr)" marker-end="url(#arr)"/>
-                <text x="197" y="40" text-anchor="middle" font-size="11" fill="#c0392b" font-weight="700">24" past interior wall line</text>
-                <!-- Eave edge label -->
-                <text x="10" y="25" font-size="10" fill="#2c3e50" font-weight="600">Eave Edge ({eave_lf:.0f} LF)</text>
+            <div class="diagram-title">Ice &amp; Water Barrier &mdash; Eave Section</div>
+            <svg viewBox="0 0 600 184" width="100%" style="max-width:560px;" xmlns="http://www.w3.org/2000/svg">
+                <defs><marker id="arrIW" markerWidth="8" markerHeight="6" refX="6" refY="3" orient="auto"><path d="M0 0 L8 3 L0 6 Z" fill="#9a2b2f"/></marker></defs>
+                <rect x="0" y="0" width="600" height="184" fill="#ffffff"/>
+                <!-- Roof deck -->
+                <rect x="20" y="104" width="560" height="56" fill="#efe9dd" stroke="#c9bfa8" stroke-width="1.2"/>
+                <text x="300" y="138" text-anchor="middle" font-size="9.5" fill="#8a7a55" font-weight="600" letter-spacing="1">ROOF DECK · PLYWOOD / OSB</text>
+                <!-- I&W membrane -->
+                <rect x="20" y="86" width="350" height="16" fill="#16284f" stroke="#0d1b3e" stroke-width="1.2"/>
+                <text x="195" y="98" text-anchor="middle" font-size="9" fill="#ffffff" font-weight="700" letter-spacing="0.5">ICE &amp; WATER BARRIER</text>
+                <!-- Shingles -->
+                <rect x="20" y="70" width="560" height="14" fill="#b9b2a3" stroke="#9a9182" stroke-width="0.8"/>
+                <text x="300" y="81" text-anchor="middle" font-size="8" fill="#3a3528" letter-spacing="1">SHINGLE COURSE</text>
+                <!-- Interior wall line -->
+                <rect x="350" y="20" width="10" height="140" fill="#d8d2c5" stroke="#9a9182" stroke-width="1"/>
+                <text x="368" y="92" font-size="9" fill="#8a93a3" font-style="italic">interior wall</text>
+                <!-- 24in dimension -->
+                <line x1="22" y1="50" x2="368" y2="50" stroke="#9a2b2f" stroke-width="1.4" marker-start="url(#arrIW)" marker-end="url(#arrIW)"/>
+                <text x="195" y="44" text-anchor="middle" font-size="10.5" fill="#9a2b2f" font-weight="700">24&quot; past the interior wall line</text>
+                <text x="22" y="34" font-size="9" fill="#0d1b3e" font-weight="600">Eave edge ({eave_lf:.0f} LF)</text>
             </svg>
-            <div style="font-size:12px; color:#5d6d7e; margin-top:8px;">
-                <span class="diagram-correct">CORRECT:</span> I&amp;W extends from eave edge to minimum 24" past the interior face of the exterior wall.
-                <span class="diagram-incorrect">COMMON ERROR:</span> Carrier omits I&amp;W entirely or limits to eave edge only.
+            <div class="diagram-caption">
+                <span class="diagram-correct">Compliant:</span> I&amp;W extends from the eave edge to a minimum 24&quot; past the interior face of the exterior wall.
+                <span class="diagram-incorrect">Common omission:</span> the carrier drops I&amp;W entirely or limits it to the eave edge only.
             </div>
         </div>''')
 
-    # House Wrap Corner Detail
+    # House Wrap Corner Detail — clean PLAN-SECTION (compliant vs non-compliant,
+    # leader-line callouts, 6" wrap dimension). The flagship corner-rule plate.
     if "corner" in zone_set or "wall-front" in zone_set:
         diagrams.append('''
         <div class="diagram-box">
-            <div class="diagram-title">House Wrap (WRB) — Corner Wrap Detail (DuPont Tyvek)</div>
-            <svg viewBox="0 0 600 200" width="100%" style="max-width:580px;">
-                <!-- Two walls meeting at corner -->
-                <rect x="40" y="40" width="200" height="140" fill="#e4e8ed" stroke="#2c3e50" stroke-width="2"/>
-                <rect x="240" y="40" width="150" height="140" fill="#ccd3dc" stroke="#2c3e50" stroke-width="2" transform="skewY(-10)"/>
-                <text x="140" y="120" text-anchor="middle" font-size="11" fill="#5d6d7e">WALL A</text>
-                <text x="330" y="100" text-anchor="middle" font-size="11" fill="#5d6d7e">WALL B</text>
+            <div class="diagram-title">House Wrap (WRB) &mdash; Outside-Corner Plan Section (DuPont Tyvek)</div>
+            <svg viewBox="0 0 600 300" width="100%" style="max-width:560px;" xmlns="http://www.w3.org/2000/svg">
+                <defs>
+                    <pattern id="hatchOk" width="7" height="7" patternTransform="rotate(45)" patternUnits="userSpaceOnUse">
+                        <rect width="7" height="7" fill="#e6efe8"/><line x1="0" y1="0" x2="0" y2="7" stroke="#1f6b4a" stroke-width="1"/>
+                    </pattern>
+                    <pattern id="hatchBad" width="7" height="7" patternTransform="rotate(45)" patternUnits="userSpaceOnUse">
+                        <rect width="7" height="7" fill="#f5dede"/><line x1="0" y1="0" x2="0" y2="7" stroke="#9a2b2f" stroke-width="1"/>
+                    </pattern>
+                    <marker id="arrOx" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0 0 L9 4.5 L0 9 Z" fill="#9a2b2f"/></marker>
+                    <marker id="arrNv" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0 0 L9 4.5 L0 9 Z" fill="#0d1b3e"/></marker>
+                </defs>
+                <rect x="0" y="0" width="600" height="300" fill="#ffffff"/>
+                <line x1="300" y1="34" x2="300" y2="278" stroke="#d8d2c5" stroke-width="1" stroke-dasharray="3 3"/>
+                <text x="150" y="24" text-anchor="middle" font-size="10.5" font-weight="800" letter-spacing="2" fill="#1f6b4a">COMPLIANT</text>
+                <text x="150" y="35" text-anchor="middle" font-size="7.5" letter-spacing="1.5" fill="#4a5568">CONTINUOUS WRAP</text>
+                <text x="450" y="24" text-anchor="middle" font-size="10.5" font-weight="800" letter-spacing="2" fill="#9a2b2f">NON-COMPLIANT</text>
+                <text x="450" y="35" text-anchor="middle" font-size="7.5" letter-spacing="1.5" fill="#4a5568">TERMINATES AT CORNER</text>
 
-                <!-- House wrap wrapping around corner (CORRECT) -->
-                <rect x="30" y="35" width="222" height="150" fill="#2ecc71" opacity="0.2" stroke="#27ae60" stroke-width="2" stroke-dasharray="6,3" rx="3"/>
-                <path d="M 252 35 L 252 185 L 300 155 L 300 15 Z" fill="#2ecc71" opacity="0.2" stroke="#27ae60" stroke-width="2" stroke-dasharray="6,3"/>
+                <!-- LEFT: COMPLIANT plan of outside corner -->
+                <g>
+                    <rect x="60" y="110" width="120" height="22" fill="#efe9dd" stroke="#c9bfa8" stroke-width="1"/>
+                    <rect x="158" y="110" width="22" height="120" fill="#efe9dd" stroke="#c9bfa8" stroke-width="1"/>
+                    <text x="100" y="105" font-size="7" fill="#8a93a3" letter-spacing="1">SHEATHING</text>
+                    <!-- WRB hatch band turning the corner continuously -->
+                    <path d="M60 100 L176 100 Q184 100 184 108 L184 232 L177 232 L177 112 Q177 108 173 108 L60 108 Z" fill="url(#hatchOk)" stroke="#1f6b4a" stroke-width="0.8"/>
+                    <path d="M60 104 L173 104 Q177 104 177 108 L177 232" fill="none" stroke="#1f6b4a" stroke-width="3" stroke-linecap="round"/>
+                    <!-- corner post over the wrap -->
+                    <path d="M153 80 L189 80 L189 116 L177 116 L177 92 L165 92 L165 80 Z" fill="#0d1b3e" opacity="0.92"/>
+                    <text x="205" y="76" font-size="7.5" fill="#0d1b3e" font-weight="700">CORNER POST</text>
+                    <line x1="203" y1="78" x2="183" y2="92" stroke="#0d1b3e" stroke-width="1" marker-end="url(#arrNv)"/>
+                    <!-- 6in wrap callout -->
+                    <path d="M124 140 A 30 30 0 0 1 154 170" fill="none" stroke="#9a2b2f" stroke-width="1.2" stroke-dasharray="2 2"/>
+                    <text x="86" y="192" font-size="9" fill="#9a2b2f" font-weight="800">Min 6 in. wrap</text>
+                    <line x1="120" y1="188" x2="140" y2="168" stroke="#9a2b2f" stroke-width="1" marker-end="url(#arrOx)"/>
+                    <text x="66" y="262" font-size="7.5" fill="#1f6b4a" font-weight="700">WATER SHEDS OUTWARD</text>
+                    <line x1="40" y1="278" x2="220" y2="278" stroke="#c9bfa8" stroke-width="1.4"/>
+                </g>
 
-                <!-- 6 in. minimum wrap indicator (DuPont Tyvek spec) -->
-                <line x1="252" y1="50" x2="300" y2="35" stroke="#c0392b" stroke-width="2"/>
-                <text x="285" y="28" font-size="10" fill="#c0392b" font-weight="700">Min 6 in. wrap</text>
-
-                <!-- Corner highlight -->
-                <line x1="240" y1="38" x2="240" y2="182" stroke="#c0392b" stroke-width="4"/>
-                <text x="240" y="196" text-anchor="middle" font-size="10" fill="#c0392b" font-weight="700">OUTSIDE CORNER</text>
-
-                <!-- Labels -->
-                <rect x="380" y="40" width="200" height="70" rx="4" fill="#f0f4f8" stroke="#2c3e50" stroke-width="1"/>
-                <text x="390" y="60" font-size="11" fill="#27ae60" font-weight="700">CORRECT:</text>
-                <text x="390" y="76" font-size="10" fill="#2c3e50">WRB wraps 6 in.+ around</text>
-                <text x="390" y="90" font-size="10" fill="#2c3e50">corner UNDER corner post.</text>
-                <text x="390" y="104" font-size="10" fill="#c0392b" font-weight="600">Requires adjacent wall</text>
-                <text x="390" y="118" font-size="10" fill="#c0392b" font-weight="600">siding removal.</text>
-
-                <rect x="380" y="125" width="200" height="55" rx="4" fill="#fdf2f2" stroke="#c0392b" stroke-width="1"/>
-                <text x="390" y="145" font-size="11" fill="#c0392b" font-weight="700">INCORRECT:</text>
-                <text x="390" y="161" font-size="10" fill="#2c3e50">WRB terminated at corner</text>
-                <text x="390" y="175" font-size="10" fill="#2c3e50">edge — moisture infiltration.</text>
+                <!-- RIGHT: NON-COMPLIANT -->
+                <g>
+                    <rect x="360" y="110" width="120" height="22" fill="#efe9dd" stroke="#c9bfa8" stroke-width="1"/>
+                    <rect x="458" y="110" width="22" height="120" fill="#efe9dd" stroke="#c9bfa8" stroke-width="1"/>
+                    <path d="M360 100 L478 100 L478 108 L360 108 Z" fill="url(#hatchBad)" stroke="#9a2b2f" stroke-width="0.8"/>
+                    <path d="M360 104 L478 104" fill="none" stroke="#9a2b2f" stroke-width="3" stroke-linecap="round"/>
+                    <path d="M478 108 L478 232" fill="none" stroke="#9a2b2f" stroke-width="1.5" stroke-dasharray="4 3"/>
+                    <circle cx="478" cy="146" r="12" fill="none" stroke="#9a2b2f" stroke-width="1.4"/>
+                    <text x="494" y="143" font-size="7.5" fill="#9a2b2f" font-weight="800">BARE</text>
+                    <text x="494" y="153" font-size="7.5" fill="#9a2b2f" font-weight="800">CORNER JOINT</text>
+                    <path d="M453 80 L489 80 L489 116 L478 116 L478 92 L466 92 L466 80 Z" fill="#0d1b3e" opacity="0.55"/>
+                    <line x1="516" y1="196" x2="482" y2="172" stroke="#9a2b2f" stroke-width="2" marker-end="url(#arrOx)"/>
+                    <text x="494" y="210" font-size="8" fill="#9a2b2f" font-weight="800">MOISTURE</text>
+                    <text x="494" y="221" font-size="8" fill="#9a2b2f" font-weight="800">INFILTRATION</text>
+                    <text x="368" y="262" font-size="7.5" fill="#9a2b2f" font-weight="700">WATER ENTERS WALL CAVITY</text>
+                    <line x1="340" y1="278" x2="520" y2="278" stroke="#c9bfa8" stroke-width="1.4"/>
+                </g>
+                <text x="40" y="294" font-size="6.5" fill="#8a93a3" letter-spacing="1.5">PLAN VIEW · OUTSIDE CORNER · NOT TO SCALE</text>
             </svg>
-            <div style="font-size:12px; color:#5d6d7e; margin-top:8px;">
+            <div class="plate-legend">
+                <div class="leg"><span class="chip ok"></span><span class="lt"><b>Compliant</b>WRB turns the corner under the post &mdash; one continuous membrane sheds water outward.</span></div>
+                <div class="leg"><span class="chip bad"></span><span class="lt"><b>Non-Compliant</b>WRB stops at the corner edge &mdash; the joint is bare and water enters the cavity.</span></div>
+            </div>
+            <div class="diagram-caption">
                 Per <b>R703.2</b>: Weather-resistive barrier (WRB) must be continuous. At outside corners,
                 house wrap must extend a <b>minimum of 6 in.</b> around the corner (DuPont Tyvek installation
                 instructions) and be installed <b>under</b> the corner post. This requires removal of adjacent
-                wall siding — a single-wall repair is <b>not code-compliant</b>.
+                wall siding &mdash; a single-wall repair is <b>not code-compliant</b>.
             </div>
         </div>''')
 
-    # Drip Edge diagram
+    # Drip Edge — eaves vs rakes plan-section
     if "rake-left" in zone_set or "rake-right" in zone_set:
         diagrams.append('''
         <div class="diagram-box">
-            <div class="diagram-title">Drip Edge — Installation at Eaves vs Rakes</div>
-            <svg viewBox="0 0 600 160" width="100%" style="max-width:580px;">
+            <div class="diagram-title">Drip Edge &mdash; Eaves vs. Rakes</div>
+            <svg viewBox="0 0 600 168" width="100%" style="max-width:560px;" xmlns="http://www.w3.org/2000/svg">
+                <rect x="0" y="0" width="600" height="168" fill="#ffffff"/>
+                <line x1="300" y1="14" x2="300" y2="120" stroke="#d8d2c5" stroke-width="1" stroke-dasharray="3 3"/>
                 <!-- Eave detail (left) -->
-                <text x="130" y="20" text-anchor="middle" font-size="12" fill="#0d2137" font-weight="700">AT EAVES</text>
-                <rect x="30" y="60" width="200" height="12" fill="#e8d5b0" stroke="#8b7355" stroke-width="1"/>
-                <text x="130" y="70" text-anchor="middle" font-size="8" fill="#8b7355">DECK</text>
-                <rect x="25" y="55" width="210" height="4" fill="#c0392b" stroke="#8b1a1a" stroke-width="0.5"/>
-                <text x="130" y="50" text-anchor="middle" font-size="9" fill="#c0392b" font-weight="700">DRIP EDGE (under I&amp;W)</text>
-                <rect x="30" y="40" width="200" height="14" fill="#4a90d9" opacity="0.6" stroke="#2c6fbb" stroke-width="1"/>
-                <text x="130" y="51" text-anchor="middle" font-size="8" fill="white" font-weight="600">I&amp;W</text>
-                <rect x="30" y="28" width="200" height="11" fill="#6b7b8d" stroke="#4a5568" stroke-width="0.5"/>
-                <text x="130" y="37" text-anchor="middle" font-size="7" fill="white">SHINGLES</text>
-                <text x="130" y="100" text-anchor="middle" font-size="10" fill="#27ae60" font-weight="600">Drip edge UNDER I&amp;W</text>
-
+                <text x="135" y="24" text-anchor="middle" font-size="11" fill="#0d1b3e" font-weight="700" letter-spacing="1">AT EAVES</text>
+                <rect x="35" y="64" width="200" height="12" fill="#efe9dd" stroke="#c9bfa8" stroke-width="1"/>
+                <text x="135" y="74" text-anchor="middle" font-size="7.5" fill="#8a7a55">DECK</text>
+                <rect x="30" y="59" width="210" height="4" fill="#9a2b2f"/>
+                <text x="135" y="53" text-anchor="middle" font-size="8.5" fill="#9a2b2f" font-weight="700">DRIP EDGE (under I&amp;W)</text>
+                <rect x="35" y="44" width="200" height="14" fill="#16284f"/>
+                <text x="135" y="54" text-anchor="middle" font-size="7.5" fill="white" font-weight="600">I&amp;W</text>
+                <rect x="35" y="32" width="200" height="11" fill="#b9b2a3"/>
+                <text x="135" y="40" text-anchor="middle" font-size="6.5" fill="#3a3528">SHINGLES</text>
+                <text x="135" y="104" text-anchor="middle" font-size="9.5" fill="#1f6b4a" font-weight="700">Drip edge UNDER I&amp;W</text>
                 <!-- Rake detail (right) -->
-                <text x="440" y="20" text-anchor="middle" font-size="12" fill="#0d2137" font-weight="700">AT RAKES</text>
-                <rect x="340" y="60" width="200" height="12" fill="#e8d5b0" stroke="#8b7355" stroke-width="1"/>
-                <text x="440" y="70" text-anchor="middle" font-size="8" fill="#8b7355">DECK</text>
-                <rect x="340" y="40" width="200" height="14" fill="#a0b4c8" opacity="0.6" stroke="#7a8fa3" stroke-width="1"/>
-                <text x="440" y="51" text-anchor="middle" font-size="8" fill="#2c3e50">UNDERLAYMENT</text>
-                <rect x="335" y="35" width="210" height="4" fill="#c0392b" stroke="#8b1a1a" stroke-width="0.5"/>
-                <text x="440" y="30" text-anchor="middle" font-size="9" fill="#c0392b" font-weight="700">DRIP EDGE (over underlayment)</text>
-                <rect x="340" y="24" width="200" height="11" fill="#6b7b8d" stroke="#4a5568" stroke-width="0.5"/>
-                <text x="440" y="33" text-anchor="middle" font-size="7" fill="white">SHINGLES</text>
-                <text x="440" y="100" text-anchor="middle" font-size="10" fill="#27ae60" font-weight="600">Drip edge OVER underlayment</text>
-
-                <!-- Note -->
-                <text x="300" y="140" text-anchor="middle" font-size="10" fill="#5d6d7e">Per R905.2.8.5: Drip edge shall be provided at eaves AND gable rake edges.</text>
-                <text x="300" y="155" text-anchor="middle" font-size="10" fill="#c0392b" font-weight="600">Carriers commonly omit drip edge at rakes — this is a code violation.</text>
+                <text x="450" y="24" text-anchor="middle" font-size="11" fill="#0d1b3e" font-weight="700" letter-spacing="1">AT RAKES</text>
+                <rect x="350" y="64" width="200" height="12" fill="#efe9dd" stroke="#c9bfa8" stroke-width="1"/>
+                <text x="450" y="74" text-anchor="middle" font-size="7.5" fill="#8a7a55">DECK</text>
+                <rect x="350" y="44" width="200" height="14" fill="#cbc3b2"/>
+                <text x="450" y="54" text-anchor="middle" font-size="7.5" fill="#3a3528">UNDERLAYMENT</text>
+                <rect x="345" y="39" width="210" height="4" fill="#9a2b2f"/>
+                <text x="450" y="33" text-anchor="middle" font-size="8.5" fill="#9a2b2f" font-weight="700">DRIP EDGE (over underlayment)</text>
+                <rect x="350" y="28" width="200" height="11" fill="#b9b2a3"/>
+                <text x="450" y="36" text-anchor="middle" font-size="6.5" fill="#3a3528">SHINGLES</text>
+                <text x="450" y="104" text-anchor="middle" font-size="9.5" fill="#1f6b4a" font-weight="700">Drip edge OVER underlayment</text>
+                <text x="300" y="146" text-anchor="middle" font-size="9.5" fill="#4a5568">Per R905.2.8.5: Drip edge shall be provided at eaves AND gable rake edges.</text>
+                <text x="300" y="161" text-anchor="middle" font-size="9.5" fill="#9a2b2f" font-weight="600">Carriers commonly omit drip edge at rakes — a code violation.</text>
             </svg>
         </div>''')
 
-    # Starter strip at rakes
+    # Starter strip at eaves AND rakes
     if "eave-front" in zone_set:
         diagrams.append('''
         <div class="diagram-box">
-            <div class="diagram-title">Starter Course — Required at Eaves AND Rakes</div>
-            <svg viewBox="0 0 600 140" width="100%" style="max-width:580px;">
-                <!-- Roof surface -->
-                <polygon points="300,15 50,120 550,120" fill="#8b9bb0" stroke="#2c3e50" stroke-width="2"/>
-                <!-- Starter at eave (green = correct) -->
-                <line x1="60" y1="118" x2="540" y2="118" stroke="#27ae60" stroke-width="6"/>
-                <text x="300" y="135" text-anchor="middle" font-size="10" fill="#27ae60" font-weight="700">STARTER AT EAVE (carriers usually include)</text>
-                <!-- Starter at rakes (red = commonly omitted) -->
-                <line x1="60" y1="118" x2="295" y2="18" stroke="#c0392b" stroke-width="6" stroke-dasharray="8,4"/>
-                <line x1="540" y1="118" x2="305" y2="18" stroke="#c0392b" stroke-width="6" stroke-dasharray="8,4"/>
-                <text x="140" y="55" font-size="10" fill="#c0392b" font-weight="700" transform="rotate(-35, 140, 55)">STARTER AT RAKE</text>
-                <text x="460" y="55" font-size="10" fill="#c0392b" font-weight="700" transform="rotate(35, 460, 55)">STARTER AT RAKE</text>
+            <div class="diagram-title">Starter Course &mdash; Required at Eaves AND Rakes</div>
+            <svg viewBox="0 0 600 148" width="100%" style="max-width:560px;" xmlns="http://www.w3.org/2000/svg">
+                <rect x="0" y="0" width="600" height="148" fill="#ffffff"/>
+                <polygon points="300,18 55,122 545,122" fill="#eef0f4" stroke="#0d1b3e" stroke-width="1.6"/>
+                <line x1="62" y1="120" x2="538" y2="120" stroke="#1f6b4a" stroke-width="6"/>
+                <text x="300" y="139" text-anchor="middle" font-size="9.5" fill="#1f6b4a" font-weight="700">STARTER AT EAVE (carriers usually include)</text>
+                <line x1="62" y1="120" x2="295" y2="21" stroke="#9a2b2f" stroke-width="6" stroke-dasharray="8,4"/>
+                <line x1="538" y1="120" x2="305" y2="21" stroke="#9a2b2f" stroke-width="6" stroke-dasharray="8,4"/>
+                <text x="142" y="58" font-size="9.5" fill="#9a2b2f" font-weight="700" transform="rotate(-35, 142, 58)">STARTER AT RAKE</text>
+                <text x="458" y="58" font-size="9.5" fill="#9a2b2f" font-weight="700" transform="rotate(35, 458, 58)">STARTER AT RAKE</text>
             </svg>
-            <div style="font-size:12px; color:#5d6d7e; margin-top:8px;">
+            <div class="diagram-caption">
                 Per manufacturer installation instructions (force of law under R905.1): Starter course is required
-                at <b>both eaves AND rakes</b>. Carriers commonly only include starter at eaves — omitting rakes
+                at <b>both eaves AND rakes</b>. Carriers commonly only include starter at eaves &mdash; omitting rakes
                 is a <b>code violation</b> that voids the manufacturer warranty.
             </div>
         </div>''')
@@ -819,7 +1107,6 @@ def _build_summary_table(annotations: list[dict], config: dict) -> str:
     WS-7: when a carrier scope is present, the previously-dropped carrier-
     omission status is wired into a real "Carrier Scope" column (INCLUDED vs
     OMITTED) instead of the old "VERIFY" placeholder."""
-    jurisdiction = _get_jurisdiction(config.get("property", {}).get("state", "NY"))
     carrier_present = carrier_scope_present(config)
     # PHASE 2 FIX 2 — resolve the summary's carrier status from the SAME per-item
     # resolution the priced table uses, MATCHED to the specific item each
@@ -853,17 +1140,18 @@ def _build_summary_table(annotations: list[dict], config: dict) -> str:
 
         rows.append(f'''
         <tr>
-            <td><b>{_h(ann.get("code_tag", ""))}</b></td>
+            <td>{_cite_chip(ann.get("code_tag", ""))}</td>
             <td>{_h(ann.get("title", ""))}</td>
-            <td>{_h(ann.get("measurement", ""))}</td>
+            <td style="font-family:var(--f-mono); color:var(--c-ink);">{_h(ann.get("measurement", ""))}</td>
             <td>{_h(mfr_names)}</td>
-            <td>{"WARRANTY VOID" if has_void else "—"}</td>
+            <td>{"WARRANTY VOID" if has_void else "&mdash;"}</td>
             {carrier_cell}
         </tr>''')
 
     carrier_th = "<th>Carrier Scope</th>" if carrier_present else ""
 
     return f'''
+    <div class="sec-eyebrow">Schedule of Applicable Codes</div>
     <h2>Code Requirements Summary</h2>
     <table class="summary-table">
         <thead>
@@ -879,11 +1167,7 @@ def _build_summary_table(annotations: list[dict], config: dict) -> str:
         <tbody>
             {"".join(rows)}
         </tbody>
-    </table>
-    <div class="footer">
-        Jurisdiction: {jurisdiction["name"]} | Report generated by {_h(config.get("company", {}).get("name") or "Your Roofing Company")}
-    </div>
-    '''
+    </table>'''
 
 
 def _trade_of(li: dict) -> str:
@@ -1037,14 +1321,17 @@ def build_priced_supplement(config: dict) -> dict:
                     # here would be a carrier-facing falsehood (the old bug).
                     carrier_cell = '<td style="color:#95a5a6;">&mdash;</td>'
 
+            # Code Section cell: keep the literal `<td><b>` opening (the
+            # data-row marker the aggregation tests count) and render the EXACT
+            # code source inside it as the load-bearing citation chip.
             body_rows.append(f'''<tr>
-                <td><b>{_h(section)}</b></td>
+                <td><b>{_cite_chip(section)}</b></td>
                 <td>{_h(requirement)}</td>
-                <td>{_h(desc)}</td>
+                <td class="item-desc">{_h(desc)}</td>
                 <td class="num">{qty:g}</td>
-                <td>{_h(unit)}</td>
+                <td class="unit-cell">{_h(unit)}</td>
                 <td class="num">{_money(unit_price)}</td>
-                <td class="num">{_money(line_total)}</td>
+                <td class="num line-total">{_money(line_total)}</td>
                 {carrier_cell}
             </tr>''')
 
@@ -1059,12 +1346,12 @@ def build_priced_supplement(config: dict) -> dict:
     # Grand subtotal row.
     if carrier_present:
         body_rows.append(
-            f'<tr class="grand-subtotal"><td colspan="{n_cols-2}">CODE-COMPLIANCE SUPPLEMENT SUBTOTAL</td>'
+            f'<tr class="grand-subtotal"><td class="stl" colspan="{n_cols-2}">CODE-COMPLIANCE SUPPLEMENT SUBTOTAL</td>'
             f'<td class="num">{_money(subtotal)}</td><td></td></tr>'
         )
     else:
         body_rows.append(
-            f'<tr class="grand-subtotal"><td colspan="{n_cols-1}">CODE-COMPLIANCE SUPPLEMENT SUBTOTAL</td>'
+            f'<tr class="grand-subtotal"><td class="stl" colspan="{n_cols-1}">CODE-COMPLIANCE SUPPLEMENT SUBTOTAL</td>'
             f'<td class="num">{_money(subtotal)}</td></tr>'
         )
 
@@ -1072,18 +1359,26 @@ def build_priced_supplement(config: dict) -> dict:
     adopted = f" (adopted {ahj['adopted_year']})" if ahj.get("adopted_year") else ""
 
     html = f'''
+    <div class="sec-eyebrow">Attribution Schedule</div>
     <h2>Code-Compliance Supplement &mdash; Priced</h2>
 
     <div class="ahj-header" data-ahj="true">
-        <div class="ahj-title">Authority Having Jurisdiction &amp; Code Edition</div>
-        <div class="ahj-body">{_h(ahj['jurisdiction'])} ({_h(ahj['prefix'])}) &mdash; base code {_h(ahj['base_code'])}{_h(adopted)}</div>
+        <div class="ahj-l">
+            <div class="ahj-title">Authority</div>
+            <div class="ahj-prefix">{_h(ahj['prefix'])}</div>
+        </div>
+        <div class="ahj-r">
+            <div class="ahj-title" style="color:var(--c-slate); margin-bottom:5px;">Authority Having Jurisdiction &amp; Code Edition</div>
+            <div class="ahj-body">{_h(ahj['jurisdiction'])} ({_h(ahj['prefix'])}) &mdash; base code {_h(ahj['base_code'])}{_h(adopted)}</div>
+        </div>
     </div>
 
     <div class="non-additive-banner" data-attribution-view="true">
-        <b>These items are already included in the Xactimate estimate (Document #2).</b>
+        <span class="na-badge">Not Additive</span>
+        <p><b>These items are already included in the Xactimate estimate (Document #2).</b>
         This supplement isolates the code-mandated subset of that estimate &mdash; it is an
         <b>attribution view, not additional money</b>. The subtotal below equals the sum of these same
-        line items in the Xactimate estimate and must never be added to it.
+        line items in the Xactimate estimate and must never be added to it.</p>
     </div>
 
     <table class="supplement-table" data-attribution-view="true">
@@ -1107,9 +1402,9 @@ def build_priced_supplement(config: dict) -> dict:
 
     if carrier_present:
         html += (
-            f'<p style="font-size:12px; color:#5d6d7e; margin-top:8px;">'
-            f'<b class="carrier-omitted">{omitted_count}</b> code-mandated item(s) are '
-            f'<b>omitted from the carrier scope</b> &mdash; these are the supplement gap.</p>'
+            f'<div class="supplement-gap-note"><span class="gap-dot"></span><div>'
+            f'<b>{omitted_count} code-mandated item(s)</b> are '
+            f'omitted from the carrier scope &mdash; these are the supplement gap.</div></div>'
         )
 
     # PHASE 3 — the siding argument is NARRATIVE; it does NOT touch the priced
@@ -1243,9 +1538,11 @@ def _build_siding_argument(config: dict) -> str:
     )
     layer_damage = (
         f'<div class="siding-arg-layer" data-arg-order="1" data-arg-layer="damage">'
-        f'<div class="siding-arg-h"><span class="siding-arg-num">1</span> Storm Damage &mdash; The Covered Peril</div>'
+        f'<div class="siding-arg-idx"><span class="siding-arg-num">1</span></div>'
+        f'<div class="siding-arg-body">'
+        f'<div class="siding-arg-h">Storm Damage {_cite_chip("The Covered Peril", neutral=True)}</div>'
         f'<p>{_h(damage_anchor)} This is the loss that triggers coverage; {damage_followon}</p>'
-        f'</div>'
+        f'</div></div>'
     )
 
     # ── Layer 2 — CODE COMPLIANCE (the corner-rule HERO). Verb-gated by role. ──
@@ -1284,11 +1581,14 @@ def _build_siding_argument(config: dict) -> str:
     )
     layer_code = (
         f'<div class="siding-arg-layer hero" data-arg-order="2" data-arg-layer="code">'
-        f'<div class="siding-arg-h"><span class="siding-arg-num">2</span> Code Compliance &mdash; The Corner Rule ({corner_sec} / {wrb_sec})</div>'
+        f'<div class="siding-arg-idx"><span class="siding-arg-num">2</span></div>'
+        f'<div class="siding-arg-body">'
+        f'<div class="siding-arg-h">Code Compliance &mdash; The Corner Rule '
+        f'{_cite_chip(corner_sec)} {_cite_chip(wrb_sec)}</div>'
         f'<p>{code_lead}</p>'
         f'{hero_sentence}'
         f'<p>{code_close}</p>'
-        f'</div>'
+        f'</div></div>'
     )
 
     # ── Layers 3 & 4 are ADVOCACY-ONLY (UPPA, owner-mandated) ──
@@ -1328,11 +1628,14 @@ def _build_siding_argument(config: dict) -> str:
         layer_appearance = (
             f'<div class="siding-arg-layer" data-arg-order="3" data-arg-layer="appearance" '
             f'data-matching-statute="{"true" if has_statute else "false"}">'
-            f'<div class="siding-arg-h"><span class="siding-arg-num">3</span> Reasonable &amp; Uniform Appearance</div>'
+            f'<div class="siding-arg-idx"><span class="siding-arg-num">3</span></div>'
+            f'<div class="siding-arg-body">'
+            f'<div class="siding-arg-h">Reasonable &amp; Uniform Appearance '
+            f'{_cite_chip(naic_ref, neutral=True)}</div>'
             f'<p>{match_lead}</p>'
             f'<p>{_h(match_framing)}</p>'
             f'<p class="siding-arg-note">{match_note}</p>'
-            f'</div>'
+            f'</div></div>'
         )
 
         # ── Layer 4 — DIMINISHED VALUE (indemnity). Advocacy-only. ──
@@ -1346,9 +1649,12 @@ def _build_siding_argument(config: dict) -> str:
         )
         layer_dv = (
             f'<div class="siding-arg-layer" data-arg-order="4" data-arg-layer="diminished_value">'
-            f'<div class="siding-arg-h"><span class="siding-arg-num">4</span> Diminished Value &amp; Indemnity</div>'
+            f'<div class="siding-arg-idx"><span class="siding-arg-num">4</span></div>'
+            f'<div class="siding-arg-body">'
+            f'<div class="siding-arg-h">Diminished Value &amp; Indemnity '
+            f'{_cite_chip("Standard of Indemnity", neutral=True)}</div>'
             f'<p>{dv_body}</p>'
-            f'</div>'
+            f'</div></div>'
         )
 
     role_badge = (
@@ -1385,9 +1691,12 @@ def _build_siding_argument(config: dict) -> str:
     return (
         f'<div class="siding-argument" data-siding-argument="true" '
         f'data-user-role="{_h(role)}" data-can-advocate="{"true" if advocate else "false"}">'
+        f'<div class="sec-eyebrow">The Forensic Sequence</div>'
         f'<h2>{heading}</h2>'
         f'{intro}'
+        f'<div class="siding-arg-steps">'
         f'{layer_damage}{layer_code}{layer_appearance}{layer_dv}'
+        f'</div>'
         f'</div>'
     )
 
@@ -1422,7 +1731,7 @@ def build_requirements_only_supplement(config: dict) -> str:
             continue
         seen.add(key)
         rows.append(f'''<tr>
-            <td><b>{_h(tag)}</b></td>
+            <td><b>{_cite_chip(tag)}</b></td>
             <td>{_h(title)}</td>
             <td>{_h(requirement)}</td>
         </tr>''')
@@ -1437,11 +1746,18 @@ def build_requirements_only_supplement(config: dict) -> str:
         </table>'''
 
     return f'''
+    <div class="sec-eyebrow">Attribution Schedule</div>
     <h2>Code-Compliance Supplement &mdash; Requirements Only</h2>
 
     <div class="ahj-header" data-ahj="true">
-        <div class="ahj-title">Authority Having Jurisdiction &amp; Code Edition</div>
-        <div class="ahj-body">{_h(ahj['jurisdiction'])} ({_h(ahj['prefix'])}) &mdash; base code {_h(ahj['base_code'])}{_h(adopted)}</div>
+        <div class="ahj-l">
+            <div class="ahj-title">Authority</div>
+            <div class="ahj-prefix">{_h(ahj['prefix'])}</div>
+        </div>
+        <div class="ahj-r">
+            <div class="ahj-title" style="color:var(--c-slate); margin-bottom:5px;">Authority Having Jurisdiction &amp; Code Edition</div>
+            <div class="ahj-body">{_h(ahj['jurisdiction'])} ({_h(ahj['prefix'])}) &mdash; base code {_h(ahj['base_code'])}{_h(adopted)}</div>
+        </div>
     </div>
 
     <div class="req-only-notice" data-requirements-only="true">
@@ -1515,41 +1831,56 @@ def build_compliance_report(config: dict) -> str:
               f"(role={(config.get('compliance') or {}).get('user_role', 'contractor')}, "
               f"advocate={_can_advocate(config)})")
 
-    # 4. Assemble full HTML
+    # 4. Assemble full HTML — interior sheets carry a running header + footer so
+    #    nothing strands across page breaks; the lead citation renders as a chip.
+    lead_cite = _cite_chip(f'{jurisdiction["abbrev"]} {_lead_code_basis(config)["section"]}')
     html = f'''<!DOCTYPE html>
 <html>
 <head>
     <meta charset="utf-8">
+    {COMPLIANCE_FONTS_LINK}
     <style>{COMPLIANCE_CSS}</style>
 </head>
 <body>
     {cover_html}
     <div class="page-break"></div>
 
+    {_run_head(config, "Property Diagram · Code Requirement Zones")}
     <div class="rendering-section">
         <div class="rendering-title">Annotated Property Diagram — Code Requirement Zones</div>
         {house_svg}
     </div>
+    {_run_foot(config, "Building Code Compliance Report")}
     <div class="page-break"></div>
 
+    {_run_head(config, "Code Requirement Details")}
+    <div class="sec-eyebrow">Applicable Provisions</div>
     <h2>Code Requirement Details</h2>
     {detail_cards}
+    {_run_foot(config, "Building Code Compliance Report")}
     <div class="page-break"></div>
 
+    {_run_head(config, "Installation — Visual Reference")}
+    <div class="sec-eyebrow">Plan-Section Reference</div>
     <h2>Installation Requirements — Visual Reference</h2>
-    <p style="font-size:13px; color:#5d6d7e;">
-        The following diagrams illustrate correct vs. incorrect installation methods
+    <p style="font-size:12.5px; color:var(--c-slate); line-height:1.55; margin-bottom:4px;">
+        The following plates illustrate compliant vs. non-compliant installation methods
         for code-required components. These represent manufacturer installation
-        instructions which carry the <b>force of building code</b> per {jurisdiction["abbrev"]} {_lead_code_basis(config)["section"]}.
+        instructions which carry the <b>force of building code</b> per {lead_cite}.
     </p>
     {diagrams}
+    {_run_foot(config, "Building Code Compliance Report")}
     <div class="page-break"></div>
 
+    {_run_head(config, "Code Requirements Summary")}
     {summary}
+    {_run_foot(config, "Building Code Compliance Report")}
     <div class="page-break"></div>
 
+    {_run_head(config, "Priced Supplement · Attribution View")}
     {supplement_html}
-    {("<div class='page-break'></div>" + siding_argument_html) if siding_argument_html else ""}
+    {_run_foot(config, "Building Code Compliance Report")}
+    {(("<div class='page-break'></div>" + _run_head(config, "Forensic Sequence · The Reasoning") + siding_argument_html + _run_foot(config, "Building Code Compliance Report")) if siding_argument_html else "")}
 </body>
 </html>'''
 
