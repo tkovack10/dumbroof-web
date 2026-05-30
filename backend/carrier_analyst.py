@@ -12,6 +12,7 @@ from __future__ import annotations
 from model_config import MODEL  # unified model knob (see model_config.py)
 
 import json
+import re
 from typing import Optional
 
 from date_utils import format_date_human
@@ -62,6 +63,7 @@ def analyze_carrier_scope(
         return {"analyzed": False, "reason": f"api error: {str(e)[:200]}"}
 
     parsed = _parse_response(raw)
+    _apply_area_sanity_guard(parsed, ground_truth)  # E273: catch phantom additive-area findings
     parsed["analyzed"] = True
     parsed["carrier_name"] = carrier_name
     parsed["carrier_rcv"] = carrier_rcv
@@ -70,11 +72,29 @@ def analyze_carrier_scope(
 
 def _build_ground_truth(measurements: dict, config: dict, carrier_name: str, carrier_rcv: float, carrier_items: list) -> dict:
     m = measurements or {}
-    total_area = m.get("total_area_sq", 0) or m.get("total_area", 0)
-    eave_lf = m.get("eave_lf", 0)
-    valley_lf = m.get("valley_lf", 0)
-    ridge_lf = m.get("ridge_lf", 0)
-    rake_lf = m.get("rake_lf", 0)
+    _inner = m.get("measurements", {}) or {}
+    _structs = [s for s in (m.get("structures") or []) if isinstance(s, dict)]
+    # Roof area in SF. The normal EagleView extraction writes top-level
+    # total_roof_area_sf/_sq (processor.py:1560); the carrier-reconstruction
+    # fallback writes NO top-level total — only structures[0].roof_area_sf
+    # (processor.py:4993). The OLD read used m.get("total_area_sq") (squares!)
+    # mislabeled as SF and missed BOTH → roof area resolved to 0, which is WHY
+    # the model had no denominator and summed line items (E273). Read canonical
+    # first, then the per-structure sum (covers the fallback + multi-structure).
+    total_area = (
+        m.get("total_roof_area_sf")
+        or (m.get("total_roof_area_sq") or 0) * 100
+        or sum(s.get("roof_area_sf", 0) for s in _structs)
+        or sum(s.get("roof_area_sq", 0) for s in _structs) * 100
+        or m.get("total_area_sf")
+        or (m.get("total_area_sq") or 0) * 100
+    )
+    # Linear measurements are nested under measurements["measurements"] with
+    # bare keys (eave/valley/ridge/rake), not *_lf at the top level.
+    eave_lf = _inner.get("eave", 0) or m.get("eave_lf", 0)
+    valley_lf = _inner.get("valley", 0) or m.get("valley_lf", 0)
+    ridge_lf = _inner.get("ridge", 0) or m.get("ridge_lf", 0)
+    rake_lf = _inner.get("rake", 0) or m.get("rake_lf", 0)
 
     trades = set()
     for li in config.get("line_items", []):
@@ -103,6 +123,9 @@ def _build_ground_truth(measurements: dict, config: dict, carrier_name: str, car
         "carrier_name": carrier_name,
         "carrier_rcv": carrier_rcv,
         "total_roof_area_sf": total_area,
+        # E273: roof area ALSO in squares so the model compares apples-to-apples
+        # against the SQ-unit line items (it was summing SQ items vs an SF roof).
+        "total_roof_area_sq": round((total_area or 0) / 100.0, 2),
         "eave_lf": eave_lf,
         "valley_lf": valley_lf,
         "ridge_lf": ridge_lf,
@@ -117,12 +140,15 @@ def _build_ground_truth(measurements: dict, config: dict, carrier_name: str, car
 
 def _build_analysis_prompt(gt: dict) -> str:
     gt_json = json.dumps(gt, indent=2)
+    roof_sq = gt.get("total_roof_area_sq", 0)
     return f"""You are the DumbRoof Carrier Intelligence Analyst. Analyze this carrier scope for underpayment tactics.
 
 GROUND TRUTH (our measurements + scope):
 ```json
 {gt_json}
 ```
+
+CRITICAL — the roof is a SINGLE surface of {roof_sq} squares (total_roof_area_sf ÷ 100). Tear-off/removal, new shingles, underlayment/felt, and ice & water barrier ALL cover that SAME roof — their quantities are NOT additive. NEVER sum line-item quantities to claim a larger scope (17.43 SQ tear-off + 19.52 SQ shingle + 6.29 SQ felt is NOT 43 SQ of roof — it is one ~17.4 SQ roof). Measure any roofing-AREA underpayment against total_roof_area_sq ONLY; a carrier roof area at or above total_roof_area_sq is NOT an area underscope. (Underpayment can still exist via pricing, omitted accessory items, O&P, grade, etc. — just not phantom roof area.)
 
 Identify EVERY underpayment tactic present. Common patterns:
 1. Partial elevation siding (1-2 of 4 walls)
@@ -185,3 +211,76 @@ def _parse_response(raw: str) -> dict:
     parsed.setdefault("overall_assessment", "")
     parsed.setdefault("estimated_variance_pct", 0)
     return parsed
+
+
+def _implausible_area(text: str, roof_sq: float, roof_sf: float):
+    """Return (value, unit, limit) for the first roofing area in `text` that
+    exceeds ~1.3x the measured roof (waste/overlap tolerance), else None.
+    Scans BOTH squares and square-feet so an SF-unit phantom can't slip past.
+    Skips $-prefixed figures (a unit price like "$43 SQ" is not an area)."""
+    if not text:
+        return None
+    checks = (
+        (r"(\d+(?:,\d{3})*(?:\.\d+)?)\s*(?:SQ|squares)\b", roof_sq, "SQ"),
+        (r"(\d+(?:,\d{3})*(?:\.\d+)?)\s*(?:SF|sq\.?\s*ft|square\s*feet)\b", roof_sf, "SF"),
+    )
+    for pattern, limit, unit in checks:
+        if not limit or limit <= 0:
+            continue
+        max_plausible = limit * 1.3
+        for mt in re.finditer(pattern, text, re.IGNORECASE):
+            if mt.start() > 0 and text[mt.start() - 1] == "$":
+                continue  # unit price (e.g. "$43 SQ"), not an area
+            try:
+                val = float(mt.group(1).replace(",", ""))
+            except (TypeError, ValueError):
+                continue
+            if val > max_plausible:
+                return (val, unit, round(limit, 2))
+    return None
+
+
+def _apply_area_sanity_guard(parsed: dict, gt: dict) -> None:
+    """E273 defense-in-depth: the model sometimes sums distinct same-surface
+    roofing line items (tear-off + shingle + felt + I&W) as if they were
+    additive roof area, inventing a phantom over-large 'our scope' and a false
+    area underscope (observed: 17.43+19.52+6.29 = '43.24 SQ vs carrier 17.3 SQ,
+    60% underscoped'). The prompt now forbids this; we ALSO catch it here so a
+    stray phantom can't masquerade as a real finding. Scans every output text
+    surface (each tactic's detail/counter_argument AND the free-text
+    overall_assessment + supplement_priority) in both SQ and SF. Non-destructive:
+    attaches _area_sanity_flag / _sanity_warnings; never deletes a finding.
+    Known limitation: a phantom expressed with NO unit can't be distinguished
+    from a legitimate number and is not flagged (the prompt normalizes to SQ)."""
+    roof_sq = gt.get("total_roof_area_sq") or 0
+    roof_sf = gt.get("total_roof_area_sf") or 0
+    if roof_sq <= 0 and roof_sf <= 0:
+        return
+    flagged = []
+    for tactic in parsed.get("tactics_found", []):
+        if not isinstance(tactic, dict):
+            continue
+        hit = _implausible_area(
+            f"{tactic.get('detail', '')} {tactic.get('counter_argument', '')}",
+            roof_sq, roof_sf,
+        )
+        if hit:
+            val, unit, limit = hit
+            tactic["_area_sanity_flag"] = (
+                f"cites {val} {unit} but the measured roof is only {limit} {unit} — "
+                "likely summed distinct same-surface line items "
+                "(tear-off + shingle + felt); NOT a real area underscope"
+            )
+            flagged.append(tactic.get("tactic", "area finding"))
+    # The model can also park a phantom in the free-text summary fields.
+    summary = str(parsed.get("overall_assessment", "")) + " " + " ".join(
+        str(x) for x in (parsed.get("supplement_priority") or [])
+    )
+    summary_hit = _implausible_area(summary, roof_sq, roof_sf)
+    if summary_hit:
+        val, unit, limit = summary_hit
+        flagged.append(
+            f"summary cites {val} {unit} > measured roof {limit} {unit} (likely summed line items)"
+        )
+    if flagged:
+        parsed["_sanity_warnings"] = flagged
