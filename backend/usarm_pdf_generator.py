@@ -1947,8 +1947,11 @@ def build_forensic_report(config):
             if "usa roof masters" in company_name_lower or "usarm" in company_name_lower:
                 raw_inspector = "Zach Roberts, HAAG Certified Inspector (#PENDING)"
             else:
-                # Portal users: use insured name or company contact as fallback
-                raw_inspector = ins.get("name", company.get("ceo_name", ""))
+                # Portal/external tenants: fall back to the CONTRACTOR's own
+                # identity (their contact, else their company name) — never the
+                # homeowner (the insured is not the inspector) and never a USARM
+                # person. Part of E272 multi-tenancy inspector-name hygiene.
+                raw_inspector = company.get("ceo_name") or company.get("name", "")
         inspector_lines = f"{raw_inspector} — {inspectors_cfg.get('usarm_title', '')}"
 
     # Inspection date — handle single or list
