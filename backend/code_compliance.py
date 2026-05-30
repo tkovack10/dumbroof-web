@@ -443,12 +443,43 @@ def get_code_citation(xact_code: str, action: str, state: str, description: str 
             })
 
     section = citation_data["section"]
+    title = citation_data["title"]
+    requirement = citation_data["requirement"]
+    supplement_argument = citation_data["supplement_argument"]
+
+    # ── CLIMATE GATE (E269) ──────────────────────────────────────────────
+    # The ice-barrier citation (RFG IWS / R905.1.2) carries an implicit
+    # cold-climate "ice barrier at eaves / ice-dam" justification that is FALSE
+    # in warm states. Where the ice-barrier is NOT a climate code-mandate
+    # (warm states: TX/AZ/SC/FL/…), reframe the SAME requirement onto the
+    # manufacturer-installation-as-code basis (R905.1 adopts the
+    # manufacturer's installation instructions) — which IS true everywhere —
+    # and cite the I&W at valleys + roof penetrations rather than as a
+    # cold-eave ice-dam mandate. The citation is STILL emitted (the I&W line
+    # stays in scope; only the justification text differs), so no scope or
+    # line item is dropped.
+    if section == "R905.1.2" and not _bc_lookup.is_ice_barrier_code_mandated(state):
+        section = "R905.1"
+        title = "Ice & Water Barrier (Manufacturer Installation Spec)"
+        requirement = (
+            "Ice & water barrier required at valleys and roof penetrations per "
+            "the shingle manufacturer's installation instructions"
+        )
+        supplement_argument = (
+            "Ice & water barrier is required at valleys and around all roof "
+            "penetrations per the manufacturer's installation instructions. "
+            "Under R905.1 the manufacturer's installation instructions are "
+            "adopted as a code requirement, so this is not an optional upgrade "
+            "— it is a mandatory component of a code-compliant, warranty-valid "
+            "installation."
+        )
+
     return {
         "code_tag": f"{prefix} {section}",
         "section": section,
-        "title": citation_data["title"],
-        "requirement": citation_data["requirement"],
-        "supplement_argument": citation_data["supplement_argument"],
+        "title": title,
+        "requirement": requirement,
+        "supplement_argument": supplement_argument,
         "manufacturer_specs": mfr_specs,
         "has_warranty_void": any(s.get("warranty_void") for s in mfr_specs),
         "jurisdiction": jurisdiction["name"],

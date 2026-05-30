@@ -238,7 +238,18 @@ def _evaluate_tearoff(config: dict, forensic: dict) -> int:
 
 
 def _evaluate_iw_shield(config: dict, forensic: dict) -> int:
-    """Evaluate ice & water shield trigger (0-3)."""
+    """Evaluate ice & water shield trigger (0-3).
+
+    CLIMATE-GATE INVARIANT (E269): this score is derived ONLY from whether I&W
+    is present in scope (line items) and the absence/presence cues in forensic
+    text — it does NOT read the ice-barrier requirement/justification TEXT or
+    its code section. The climate-gate ship reframes that text for warm states
+    (cold-climate mandate → manufacturer-installation basis under R905.2.2) but
+    KEEPS the I&W requirement/line item in scope. Therefore this trigger fires
+    identically in cold and warm states and the damage_score is UNCHANGED.
+    Likewise the CT5 `other_code_violations` tally in evaluate_code_triggers
+    counts len(code_violations); the I&W violation is reframed, not removed, so
+    the count — and the score — are preserved."""
     line_items = config.get("line_items", [])
     li_text = str(line_items).lower()
     forensic_text = str(forensic).lower()

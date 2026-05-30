@@ -1,9 +1,10 @@
 {
   "_meta": {
     "description": "Single source of truth for state-specific residential building codes. Resolved per-claim by the property address's state. Loaded by building_codes/lookup.py. Adding a new state = add one row here, no code changes elsewhere.",
-    "schema_version": 1,
+    "schema_version": 2,
     "default_fallback_key": "IRC",
-    "note": "States without a state-adopted code that diverges meaningfully from IRC get the IRC default row. Enrich any state's row as needed — the lookup module merges over the default."
+    "note": "States without a state-adopted code that diverges meaningfully from IRC get the IRC default row. Enrich any state's row as needed — the lookup module merges over the default.",
+    "ice_barrier_code_mandated_note": "ice_barrier.code_mandated = true ONLY where the ice-barrier is genuinely code-mandated by climate (IRC Climate Zone 5A+ / states whose populated zones see average January temps <=25F and a history of eave ice-damming). Set false (IRC default) for warm states — there, ice & water barrier is still REQUIRED at valleys and roof penetrations as a MANUFACTURER installation instruction enforceable under R905.2.2, NOT as a cold-climate code mandate. Climate-gate: code_compliance.py + scope_comparison/rules.py + processor._build_code_violations all branch on this flag. State-level cold/warm is a v1 approximation (e.g. high-elevation Flagstaff AZ legitimately needs ice barrier); refine to ZIP/county later if needed."
   },
   "IRC": {
     "prefix": "IRC",
@@ -13,6 +14,7 @@
     "adopted_year": 2021,
     "ice_barrier": {
       "code_ref": "IRC R905.1.2",
+      "code_mandated": false,
       "description": "Ice barrier consisting of at least two layers of underlayment cemented together or of self-adhering polymer-modified bitumen sheet shall extend from the eave edge to a point at least 24 inches inside the exterior wall line of the building. Required in Climate Zones 5 and above.",
       "eave_courses": 2,
       "valley_width_ft": 3,
@@ -36,6 +38,7 @@
     "adopted_year": 2020,
     "ice_barrier": {
       "code_ref": "RCNYS R905.1.2",
+      "code_mandated": true,
       "description": "Ice barrier required from eave edge extending \u226524 inches inside exterior wall line. Valleys require full I&W coverage.",
       "eave_courses": 2,
       "valley_width_ft": 3,
@@ -59,6 +62,7 @@
     "adopted_year": 2024,
     "ice_barrier": {
       "code_ref": "RCO R905.1.2",
+      "code_mandated": true,
       "description": "Ice barrier consisting of at least two layers of underlayment cemented together or of self-adhering polymer-modified bitumen sheet shall extend from the eave edge to a point at least 24 inches inside the exterior wall line of the building. Valleys require full I&W coverage.",
       "eave_courses": 2,
       "valley_width_ft": 3,
@@ -82,6 +86,7 @@
     "adopted_year": 2022,
     "ice_barrier": {
       "code_ref": "UCC R905.1.2",
+      "code_mandated": true,
       "description": "Ice barrier from eave edge extending \u226524 inches past interior wall line.",
       "eave_courses": 2,
       "valley_width_ft": 3,
@@ -105,6 +110,7 @@
     "adopted_year": 2022,
     "ice_barrier": {
       "code_ref": "NJUCC R905.1.2",
+      "code_mandated": true,
       "description": "Ice barrier required in areas where average January temperature \u226425\u00b0F.",
       "eave_courses": 2,
       "valley_width_ft": 3,
@@ -126,6 +132,7 @@
     "full_name": "Connecticut State Building Code (IRC 2021 with amendments)",
     "base_code": "IRC 2021",
     "adopted_year": 2022,
+    "ice_barrier": { "code_mandated": true },
     "sales_tax": 0.0635,
     "sales_tax_notes": "CT state base rate."
   },
@@ -151,6 +158,7 @@
     "full_name": "Massachusetts State Building Code \u2014 780 CMR Residential (IRC 2021 base, 9th Ed.)",
     "base_code": "IRC 2021",
     "adopted_year": 2023,
+    "ice_barrier": { "code_mandated": true },
     "sales_tax": 0.0625
   },
   "ME": {
@@ -159,6 +167,7 @@
     "full_name": "Maine Uniform Building and Energy Code (IRC 2021)",
     "base_code": "IRC 2021",
     "adopted_year": 2023,
+    "ice_barrier": { "code_mandated": true },
     "sales_tax": 0.055
   },
   "NH": {
@@ -167,6 +176,7 @@
     "full_name": "New Hampshire State Building Code (IRC 2018)",
     "base_code": "IRC 2018",
     "adopted_year": 2019,
+    "ice_barrier": { "code_mandated": true },
     "sales_tax": 0.0
   },
   "VT": {
@@ -175,6 +185,7 @@
     "full_name": "Vermont Residential Building Energy Standards (IRC 2021 base)",
     "base_code": "IRC 2021",
     "adopted_year": 2024,
+    "ice_barrier": { "code_mandated": true },
     "sales_tax": 0.06
   },
   "RI": {
@@ -183,6 +194,7 @@
     "full_name": "Rhode Island State Building Code 2 \u2014 Residential (IRC 2018)",
     "base_code": "IRC 2018",
     "adopted_year": 2021,
+    "ice_barrier": { "code_mandated": true },
     "sales_tax": 0.07
   },
   "VA": {
@@ -199,6 +211,7 @@
     "full_name": "West Virginia State Building Code (IRC 2018)",
     "base_code": "IRC 2018",
     "adopted_year": 2020,
+    "ice_barrier": { "code_mandated": true },
     "sales_tax": 0.06
   },
   "NC": {
@@ -264,6 +277,7 @@
     "full_name": "Indiana Residential Code (IRC 2018 with state amendments)",
     "base_code": "IRC 2018",
     "adopted_year": 2020,
+    "ice_barrier": { "code_mandated": true },
     "sales_tax": 0.07
   },
   "IL": {
@@ -272,6 +286,7 @@
     "full_name": "Illinois Residential Code (IRC 2021; jurisdictional adoption varies)",
     "base_code": "IRC 2021",
     "adopted_year": 2023,
+    "ice_barrier": { "code_mandated": true },
     "sales_tax": 0.0625,
     "sales_tax_notes": "Home-rule municipalities add 0.25-4.75%; not modeled."
   },
@@ -281,6 +296,7 @@
     "full_name": "Michigan Residential Code (IRC 2015 with state amendments)",
     "base_code": "IRC 2015",
     "adopted_year": 2015,
+    "ice_barrier": { "code_mandated": true },
     "sales_tax": 0.06
   },
   "WI": {
@@ -289,6 +305,7 @@
     "full_name": "Wisconsin Uniform Dwelling Code \u2014 SPS 320-325 (IRC 2018 base)",
     "base_code": "IRC 2018",
     "adopted_year": 2022,
+    "ice_barrier": { "code_mandated": true },
     "sales_tax": 0.05
   },
   "MN": {
@@ -297,6 +314,7 @@
     "full_name": "Minnesota Residential Code (IRC 2018 with state amendments)",
     "base_code": "IRC 2018",
     "adopted_year": 2020,
+    "ice_barrier": { "code_mandated": true },
     "sales_tax": 0.06875
   },
   "IA": {
@@ -305,6 +323,7 @@
     "full_name": "Iowa IRC 2015 (state adoption; home-rule cities may amend)",
     "base_code": "IRC 2015",
     "adopted_year": 2016,
+    "ice_barrier": { "code_mandated": true },
     "sales_tax": 0.06
   },
   "MO": {
@@ -313,6 +332,7 @@
     "full_name": "Missouri \u2014 no statewide residential code; most jurisdictions adopt IRC 2018 or 2021",
     "base_code": "IRC 2018",
     "adopted_year": 2020,
+    "ice_barrier": { "code_mandated": true },
     "sales_tax": 0.04225
   },
   "AR": {
@@ -361,6 +381,7 @@
     "full_name": "Kansas \u2014 no statewide code; most municipalities adopt IRC",
     "base_code": "IRC 2018",
     "adopted_year": 2020,
+    "ice_barrier": { "code_mandated": true },
     "sales_tax": 0.065
   },
   "NE": {
@@ -369,6 +390,7 @@
     "full_name": "Nebraska Energy Code \u2014 IRC 2018 base for residential",
     "base_code": "IRC 2018",
     "adopted_year": 2020,
+    "ice_barrier": { "code_mandated": true },
     "sales_tax": 0.055
   },
   "SD": {
@@ -377,6 +399,7 @@
     "full_name": "South Dakota \u2014 no statewide code; jurisdictional IRC adoption",
     "base_code": "IRC 2018",
     "adopted_year": 2020,
+    "ice_barrier": { "code_mandated": true },
     "sales_tax": 0.042
   },
   "ND": {
@@ -385,6 +408,7 @@
     "full_name": "North Dakota State Building Code (IRC 2018)",
     "base_code": "IRC 2018",
     "adopted_year": 2020,
+    "ice_barrier": { "code_mandated": true },
     "sales_tax": 0.05
   },
   "CO": {
@@ -393,6 +417,7 @@
     "full_name": "Colorado \u2014 no statewide code; most jurisdictions adopt IRC 2021",
     "base_code": "IRC 2021",
     "adopted_year": 2023,
+    "ice_barrier": { "code_mandated": true },
     "sales_tax": 0.029
   },
   "WY": {
@@ -401,6 +426,7 @@
     "full_name": "Wyoming \u2014 no statewide residential code; jurisdictional IRC adoption",
     "base_code": "IRC 2018",
     "adopted_year": 2020,
+    "ice_barrier": { "code_mandated": true },
     "sales_tax": 0.04
   },
   "MT": {
@@ -409,6 +435,7 @@
     "full_name": "Montana State Building Codes \u2014 IRC 2021 residential",
     "base_code": "IRC 2021",
     "adopted_year": 2023,
+    "ice_barrier": { "code_mandated": true },
     "sales_tax": 0.0
   },
   "ID": {
@@ -417,6 +444,7 @@
     "full_name": "Idaho Residential Code (IRC 2018)",
     "base_code": "IRC 2018",
     "adopted_year": 2021,
+    "ice_barrier": { "code_mandated": true },
     "sales_tax": 0.06
   },
   "UT": {
@@ -425,6 +453,7 @@
     "full_name": "Utah Residential Code (IRC 2021)",
     "base_code": "IRC 2021",
     "adopted_year": 2023,
+    "ice_barrier": { "code_mandated": true },
     "sales_tax": 0.061
   },
   "AZ": {
@@ -482,6 +511,7 @@
     "full_name": "Alaska \u2014 no statewide residential code; jurisdictional adoption",
     "base_code": "IRC 2018",
     "adopted_year": 2019,
+    "ice_barrier": { "code_mandated": true },
     "sales_tax": 0.0
   },
   "HI": {
