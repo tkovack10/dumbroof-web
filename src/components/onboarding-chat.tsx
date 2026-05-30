@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { getRichardAuthHeaders } from "@/lib/richard-auth";
 import { RichardIcon } from "@/components/richard-icon";
 import { MarkdownContent } from "@/components/markdown-content";
+import { trackBoth, FunnelEvent } from "@/lib/track";
 
 // Richard ONBOARDING surface (/welcome). A brand-new, signed-in user's first
 // experience: Richard creates their first claim conversationally. Files stage to
@@ -171,6 +172,11 @@ export function OnboardingChat({ userId, firstName }: { userId: string; firstNam
                   // set on real activations. Fire-and-forget — never blocks the UI.
                   const capiEventId = `claim_${claimSlug}_starttrial`;
                   window.fbq?.("track", "StartTrial", { value: 499, currency: "USD" }, { eventID: capiEventId });
+                  // GA4 activation conversion, dual-fired with the Meta StartTrial above.
+                  // Onboarding IS the user's first claim, so this is the clean
+                  // signup→first-claim activation. (beacon transport in trackBoth survives
+                  // the redirect to the claim page that follows.)
+                  trackBoth(FunnelEvent.FIRST_CLAIM_ACTIVATED, { source: "onboarding", report_mode: String(ta.data.report_mode || "") });
                   fetch("/api/capi-event", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },

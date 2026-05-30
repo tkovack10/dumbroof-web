@@ -29,6 +29,10 @@ const GA4_STANDARD_MIRROR: Record<string, { name: string; params?: Record<string
   pricing_page_viewed: { name: "view_item_list", params: { item_list_name: "pricing_tiers" } },
   new_claim_form_started: { name: "begin_checkout" },
   new_claim_form_submitted: { name: "purchase", params: { transaction_id: "claim_created" } },
+  // Activation = signup→first claim. Mirror to GA4's standard `generate_lead`
+  // conversion so the Generate-Leads report lights up; also mark `first_claim_activated`
+  // a Key Event in GA4 so Google Ads / Meta (via GA4 export) can optimize on it.
+  first_claim_activated: { name: "generate_lead" },
 };
 
 /**
@@ -77,10 +81,14 @@ export function trackBoth(event: string, properties?: EventProperties): void {
   // GA4 dataLayer (gtag is wired in src/app/layout.tsx)
   if (typeof window !== "undefined" && typeof window.gtag === "function") {
     try {
-      window.gtag("event", event, properties || {});
+      // transport_type:'beacon' → uses navigator.sendBeacon, surviving the immediate
+      // navigation that follows many funnel events (signup→/welcome, claim-created→
+      // /dashboard/claim). Without it GA4 silently drops the event when the page
+      // unloads first — a chunk of the sign_up GA-vs-internal undercount.
+      window.gtag("event", event, { ...(properties || {}), transport_type: "beacon" });
       const mirror = GA4_STANDARD_MIRROR[event];
       if (mirror) {
-        window.gtag("event", mirror.name, { ...(mirror.params || {}), ...(properties || {}) });
+        window.gtag("event", mirror.name, { ...(mirror.params || {}), ...(properties || {}), transport_type: "beacon" });
       }
     } catch {
       // Non-fatal
@@ -133,6 +141,9 @@ export const FunnelEvent = {
   NEW_CLAIM_FORM_STARTED: "new_claim_form_started",
   NEW_CLAIM_FORM_SUBMITTED: "new_claim_form_submitted",
   NEW_CLAIM_UPLOAD_FAILED: "new_claim_upload_failed",
+  // The activation conversion — fired once when a user creates their FIRST claim via
+  // the signup→first-claim funnels (Richard onboarding /welcome + the instant funnel).
+  FIRST_CLAIM_ACTIVATED: "first_claim_activated",
   SCROLL_DEPTH: "scroll_depth",
   SAMPLE_PAGE_VIEWED: "sample_page_viewed",
 } as const;
