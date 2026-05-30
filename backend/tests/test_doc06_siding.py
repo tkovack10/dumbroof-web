@@ -918,6 +918,132 @@ class TestCornerWrapReconciled(unittest.TestCase):
         self.assertNotIn("12 in", sent)
 
 
+class TestSidingWallAreaUsesRealPerimeter(unittest.TestCase):
+    """SHIP — the no-walls-report fallback now delegates to the SHARED wall-area
+    brain (wall_area_estimator.estimate_wall_area_geometric) instead of an inline
+    sqrt(footprint) guess. That estimator uses the REAL measured eave+rake
+    perimeter when present (strictly better) and only falls back to a square-
+    footprint assumption (sqrt of roof_area_sq) when no eave/rake LF exists.
+
+    Three cases, mirroring the task spec:
+      (a) eave+rake present, NO walls report → wall area from the real perimeter
+          (DIFFERS from the old sqrt value; MATCHES the shared estimator);
+      (b) NEITHER walls report NOR eave/rake → still a sane sqrt-based wall area
+          (no crash, > 0);
+      (c) walls report present (total_wall_area_sf > 0) → UNCHANGED (real walls win).
+    """
+
+    @staticmethod
+    def _siding_qty(items):
+        """The R&R siding row qty == the wall area the builder scoped (SF)."""
+        rr = [i for i in items if i.get("category") == "SIDING"
+              and "siding -" in i["description"].lower()
+              and "house wrap" not in i["description"].lower()]
+        assert rr, "no R&R siding row emitted"
+        return float(rr[0]["qty"])
+
+    def _photo(self):
+        # A genuine siding-damage signal so the scope AUTO-enables (no opt-in needed).
+        return {"trades_identified": ["roofing", "siding"], "siding_type": "vinyl",
+                "photo_tags": {"p01": {"trade": "siding", "material": "vinyl_siding",
+                                       "damage_type": "crack", "severity": "moderate"}}}
+
+    def _old_sqrt_wall_area(self, area_sf, stories):
+        """Reproduce the REMOVED inline sqrt(footprint) heuristic so case (a) can
+        prove the new real-perimeter value DIFFERS from the old guess."""
+        import math
+        _footprint = area_sf / max(1, stories)
+        _perimeter = round(math.sqrt(_footprint) * 4)
+        _wall_height = max(1, stories) * 9
+        return round(_perimeter * _wall_height)
+
+    def test_a_uses_real_eave_rake_perimeter_not_sqrt(self):
+        import processor as P
+        from wall_area_estimator import estimate_wall_area_geometric
+        eave, rake, stories, area_sf = 100, 80, 2, 2500
+        meas = {
+            "measurements": {"eave": eave, "rake": rake},
+            "structures": [{"roof_area_sq": area_sf / 100, "roof_area_sf": area_sf,
+                            "facets": 4, "predominant_pitch": "6/12"}],
+            "stories": stories,
+            # NO walls report — this is the fallback path under test.
+        }
+        items = P.build_line_items(meas, self._photo(), "NY", user_notes="",
+                                   estimate_request=None, market_code="")
+        scoped = self._siding_qty(items)
+
+        # It MATCHES the shared geometric estimator fed the real eave+rake perimeter.
+        expected = estimate_wall_area_geometric({
+            "eave_lf": eave, "rake_lf": rake, "stories": stories,
+            "roof_area_sq": area_sf / 100.0,
+        })["wall_area_sf"]
+        self.assertEqual(scoped, expected,
+                         "builder must scope the shared real-perimeter wall area")
+        # The real perimeter is eave+rake = 180 LF (not 4*sqrt(footprint)).
+        self.assertEqual(expected, (eave + rake) * 9 * stories)
+        # And it DIFFERS from the old sqrt(footprint) guess (proof we stopped using it).
+        self.assertNotEqual(scoped, self._old_sqrt_wall_area(area_sf, stories))
+
+    def test_b_no_walls_no_measured_perimeter_still_sane(self):
+        import processor as P
+        from wall_area_estimator import estimate_wall_area_geometric
+        # NO walls report AND no MEASURED eave/rake in the input. Through the real
+        # builder this still produces a sane, positive wall area and never crashes:
+        # the roofing path derives eave/rake from roof area first, so the geometric
+        # estimator gets a (derived) perimeter to work from. The point of case (b) is
+        # the NO-CRASH / SANE-AREA guarantee on a perimeter-less claim — verified two
+        # ways: (1) end-to-end through build_line_items, and (2) the estimator's own
+        # square-footprint sqrt fallback when eave/rake are genuinely absent.
+        stories, area_sf = 2, 2500
+        meas = {
+            "measurements": {},  # no eave / rake supplied
+            "structures": [{"roof_area_sq": area_sf / 100, "roof_area_sf": area_sf,
+                            "facets": 4, "predominant_pitch": "6/12"}],
+            "stories": stories,
+        }
+        items = P.build_line_items(meas, self._photo(), "NY", user_notes="",
+                                   estimate_request=None, market_code="")
+        siding = [i for i in items if i.get("category") == "SIDING"]
+        self.assertTrue(siding, "fallback must still scope siding (no crash)")
+        self.assertGreater(self._siding_qty(items), 0, "wall area must be sane (> 0)")
+
+        # (2) The estimator's TRUE sqrt-footprint fallback (eave/rake genuinely 0):
+        # sane, positive, and flagged low-confidence so the builder logs it as the
+        # sqrt fallback rather than a real-perimeter estimate.
+        fb = estimate_wall_area_geometric({
+            "eave_lf": 0, "rake_lf": 0, "stories": stories,
+            "roof_area_sq": area_sf / 100.0,
+        })
+        self.assertGreater(fb["wall_area_sf"], 0)
+        self.assertEqual(fb["confidence"], "low")
+        # = (4 * sqrt(roof_area_sf)) perimeter * 9 ft/story * stories — a square-
+        # footprint guess from roof_area_sq alone (no measured perimeter).
+        side = area_sf ** 0.5
+        self.assertEqual(fb["wall_area_sf"], round(side * 4.0 * 9.0 * stories))
+
+    def test_c_walls_report_path_unchanged(self):
+        import processor as P
+        # total_wall_area_sf > 0 → the REAL walls report wins; the fallback is never
+        # reached and the scoped wall area is the report value verbatim (unchanged).
+        wall_report_sf = 2280
+        meas = {
+            "measurements": {"eave": 100, "rake": 80},
+            "structures": [{"roof_area_sq": 25, "roof_area_sf": 2500, "facets": 4,
+                            "predominant_pitch": "6/12"}],
+            "stories": 2,
+            "walls": {"total_wall_area_sf": wall_report_sf, "window_count": 8,
+                      "door_count": 2,
+                      "elevations": [{"name": "Front", "openings": 4},
+                                     {"name": "Right", "openings": 3},
+                                     {"name": "Left", "openings": 3},
+                                     {"name": "Rear", "openings": 4}]},
+        }
+        items = P.build_line_items(meas, self._photo(), "NY", user_notes="",
+                                   estimate_request=None, market_code="")
+        self.assertEqual(self._siding_qty(items), float(wall_report_sf),
+                         "walls report must win — fallback must not touch it")
+
+
 class TestGoldenCorpusUntouched(unittest.TestCase):
     """Doc 06 (and this siding fixture) are NOT in the WS-0 forensic corpus →
     Doc 01 must stay 23/23 byte-identical."""
