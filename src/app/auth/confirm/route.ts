@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { type EmailOtpType } from "@supabase/supabase-js";
 import { sendCapiEvent, CapiEventName, extractMetaTracking } from "@/lib/meta-conversions-api";
+import { userHasClaims } from "@/lib/user-status";
 
 /**
  * Notify team + send welcome email via the unified /api/notify-signup endpoint.
@@ -68,11 +69,8 @@ export async function GET(request: Request) {
           },
         }).catch(() => {});
 
-        const { count } = await supabase
-          .from("claims")
-          .select("id", { count: "exact", head: true })
-          .eq("user_id", user.id);
-        if (count === 0) {
+        const hasClaims = await userHasClaims(supabase, user.id);
+        if (!hasClaims) {
           return NextResponse.redirect(`${origin}/dashboard/new-claim`);
         }
       }
