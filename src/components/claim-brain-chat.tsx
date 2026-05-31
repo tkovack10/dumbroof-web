@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useI18n } from "@/lib/i18n";
 import { directUpload } from "@/lib/upload-utils";
-import { getRichardAuthHeaders } from "@/lib/richard-auth";
+import { getRichardAuthHeaders, SESSION_EXPIRED_MESSAGE, goToLogin } from "@/lib/richard-auth";
 import { RichardIcon } from "@/components/richard-icon";
 import { MarkdownContent } from "@/components/markdown-content";
 
@@ -1224,6 +1224,10 @@ export function ClaimBrainChat({
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [bulkApproving, setBulkApproving] = useState(false);
   const [listening, setListening] = useState(false);
+  // Set when a backend call 401s (token already auto-refreshed in
+  // getRichardAuthHeaders) → show a re-login prompt instead of a silent
+  // empty reply.
+  const [sessionExpired, setSessionExpired] = useState(false);
   const recognitionRef = useRef<unknown>(null);
   const chatAreaRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -1463,6 +1467,7 @@ export function ClaimBrainChat({
     // Add placeholder for assistant
     const assistantIndex = newMessages.length;
     setMessages([...newMessages, { role: "assistant", content: "", toolActions: [] }]);
+    setSessionExpired(false);
 
     try {
       const authHeaders = await getRichardAuthHeaders();
@@ -1479,6 +1484,25 @@ export function ClaimBrainChat({
           }),
         }
       );
+
+      // A non-OK response is JSON (e.g. 401 {detail:"Authentication required"}),
+      // NOT an SSE stream. The old code fed it straight to the SSE reader, which
+      // matched no "data:" lines and left Richard's reply BLANK — that's the
+      // "I tell the brain what I need and it doesn't do it" report. Surface it.
+      if (!res.ok) {
+        const content =
+          res.status === 401
+            ? SESSION_EXPIRED_MESSAGE
+            : `Richard is temporarily unavailable (HTTP ${res.status}). Please try again in a moment.`;
+        if (res.status === 401) setSessionExpired(true);
+        setMessages((prev) => {
+          const updated = [...prev];
+          updated[assistantIndex] = { role: "assistant", content, toolActions: [] };
+          return updated;
+        });
+        setIsStreaming(false);
+        return;
+      }
 
       const reader = res.body?.getReader();
       if (!reader) throw new Error("No reader");
@@ -1906,6 +1930,21 @@ export function ClaimBrainChat({
                 </button>
               </div>
             ))}
+          </div>
+        </div>
+      )}
+
+      {/* Session expired — backend rejected the token even after a refresh */}
+      {sessionExpired && (
+        <div className="px-3 pt-2 border-t border-white/10 bg-[#0a0f1e]">
+          <div className="flex items-center justify-between gap-2 bg-amber-500/10 border border-amber-500/30 text-amber-200 text-xs rounded-lg px-3 py-2">
+            <span>{SESSION_EXPIRED_MESSAGE}</span>
+            <button
+              onClick={goToLogin}
+              className="flex-shrink-0 px-3 py-1 rounded-md bg-amber-500/20 hover:bg-amber-500/30 text-amber-100 font-semibold transition-colors"
+            >
+              Log in again
+            </button>
           </div>
         </div>
       )}
