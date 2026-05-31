@@ -6,6 +6,7 @@ import { INSTALL_SUPPLEMENT_CATALOG, CATALOG_CATEGORIES } from "@/lib/install-su
 import { FileUploadZone } from "@/components/file-upload-zone";
 import { directUpload } from "@/lib/upload-utils";
 import { CrmImportModal } from "@/components/crm-import-modal";
+import { installOpener, signOff } from "@/lib/email-voice";
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000";
 
@@ -585,7 +586,9 @@ export function InstallSupplementBuilder({ claimId, claimAddress, carrierName, u
                       const itemLines = draftItems.map(
                         (i) => `<tr><td style="padding:4px 8px;border:1px solid #ddd;">${i.description}</td><td style="padding:4px 8px;border:1px solid #ddd;">${i.qty} ${i.unit}</td><td style="padding:4px 8px;border:1px solid #ddd;">$${(i.qty * i.unit_price).toFixed(2)}</td><td style="padding:4px 8px;border:1px solid #ddd;">${i.reason || ""}</td></tr>`
                       ).join("");
-                      const emailBody = `<p>Please find the install supplement for <strong>${claimAddress}</strong>.</p><table style="border-collapse:collapse;width:100%;margin:16px 0;"><thead><tr><th style="padding:4px 8px;border:1px solid #ddd;text-align:left;">Description</th><th style="padding:4px 8px;border:1px solid #ddd;text-align:left;">Qty</th><th style="padding:4px 8px;border:1px solid #ddd;text-align:left;">Total</th><th style="padding:4px 8px;border:1px solid #ddd;text-align:left;">Reason</th></tr></thead><tbody>${itemLines}</tbody></table><p><strong>Total: $${draftItems.reduce((s, i) => s + i.qty * i.unit_price, 0).toFixed(2)}</strong></p>${allPhotoPaths.length > 0 ? `<p>${allPhotoPaths.length} evidence photo${allPhotoPaths.length !== 1 ? "s" : ""} attached.</p>` : ""}`;
+                      const seed = claimNum?.trim() || claimAddress || "install";
+                      const photoNote = allPhotoPaths.length > 0 ? `<p>${allPhotoPaths.length} evidence photo${allPhotoPaths.length !== 1 ? "s" : ""} attached.</p>` : "";
+                      const emailBody = `<p>Hi there,</p><p>${installOpener(seed, claimAddress)}</p><table style="border-collapse:collapse;width:100%;margin:16px 0;"><thead><tr><th style="padding:4px 8px;border:1px solid #ddd;text-align:left;">Description</th><th style="padding:4px 8px;border:1px solid #ddd;text-align:left;">Qty</th><th style="padding:4px 8px;border:1px solid #ddd;text-align:left;">Total</th><th style="padding:4px 8px;border:1px solid #ddd;text-align:left;">Reason</th></tr></thead><tbody>${itemLines}</tbody></table><p><strong>Total: $${draftItems.reduce((s, i) => s + i.qty * i.unit_price, 0).toFixed(2)}</strong></p>${photoNote}<p>Let me know if you need anything else on these.</p><p>${signOff(seed)}</p>`;
                       await fetch(`${BACKEND_URL}/api/supplement-email/send`, {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },

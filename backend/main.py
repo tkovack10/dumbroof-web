@@ -16,6 +16,7 @@ import os
 import json
 import asyncio
 import hashlib
+import email_voice  # shared human email voice + AI-tell linter
 import urllib.parse
 import urllib.request
 from contextlib import asynccontextmanager
@@ -1343,6 +1344,16 @@ Use "supplement" or "scope clarification" — never "appeal".
 - **Subject line: CLAIM NUMBER ONLY.** Every email to a carrier MUST have ONLY the claim number as the subject. Nothing else. Not "Supplement Request — 77 Cook St". Just the claim number: "0820085561". This is how carriers route emails internally.
 - If you don't know the claim number, ASK the user before sending.
 - Always use the adjuster email from the claim details. If unknown, ask the user.
+
+## EMAIL VOICE — WRITE LIKE A HUMAN, NOT AN AI (CRITICAL)
+Adjusters read dozens of these a day. If an email smells AI-written, it gets trusted less. Write like a busy contractor firing off a quick note between roofs — warm, plain, specific.
+- **Greeting:** "Hi <first name>," (or "Hi there," if unknown). NEVER "Dear So-and-so," / "Dear Claims Department," / "To Whom It May Concern,".
+- **Length:** short. 2–4 sentences plus a quick sign-off. No five-paragraph letters.
+- **Sound:** contractions (we've, didn't, I'll), one clear ask, conversational. It's fine to start with "Quick one on…", "Wanted to get this to you…", "Following up on…".
+- **Sign-off:** "Thanks," / "Appreciate it," / "Best," — then the rep + company. Never "Sincerely," / "Respectfully," / "Warm regards,".
+- **BANNED PHRASES (never write these):** "I hope this email finds you well", "I wanted to reach out", "Please don't hesitate to contact us", "We are writing to inform/regarding", "Furthermore"/"Moreover"/"Additionally"/"In conclusion", "rest assured", "it is important to note", "please find attached", "as per", "leverage", "utilize", "seamless", "robust", "navigate the process". Say it the way a person would instead.
+- **Punctuation:** at most one em-dash; don't stack three parallel adjectives ("thorough, comprehensive, and detailed"). Vary your sentence openings.
+- These rules apply to EVERY carrier email you draft (send_custom_email, send_to_carrier, and any body you write yourself). Outbound drafts are auto-scanned for these tells before the user sees them — but write them clean to begin with.
 
 ## YOUR CORE BEHAVIORS
 1. Be specific, not general. Say "the carrier missed valley flashing at $14.72/LF" not "check the documentation."
@@ -3332,8 +3343,10 @@ def _build_cadence_body_html(
     # read differently. Contractor mode: nudge for a status update, no advocacy
     # language (no "demand"/"appeal"/statutes).
     prop = f"<strong>{address}</strong>"
-    seed = f"{claim_number}|{address}|{followup_number}"
-    pick = lambda opts: opts[int(hashlib.sha256(seed.encode("utf-8")).hexdigest(), 16) % len(opts)]
+    # Shared deterministic picker (was an inline sha256 lambda) so cadence
+    # rotates from the same engine as the supplement/forensic/AOB pools.
+    pick = lambda opts: opts[email_voice.variant_index(
+        claim_number, address, n=len(opts), salt=f"cadence|{followup_number}")]
 
     if followup_number <= 1:
         top = pick([
@@ -3353,6 +3366,16 @@ def _build_cadence_body_html(
                 f"<p>Checking in on {prop}. Could you confirm you received the file and let me know "
                 f"the next step on your end? Glad to send more detail if it helps.</p>"
             ),
+            (
+                f"<p>Hi there,</p>"
+                f"<p>Quick one on {prop} — just want to make sure the package landed with you. "
+                f"Whenever you get a minute, a note that it's in your queue would be great.</p>"
+            ),
+            (
+                f"<p>Hi there,</p>"
+                f"<p>Touching base on {prop}. No urgency — just checking the documentation came "
+                f"through and seeing if there's anything else you need from me on it.</p>"
+            ),
         ])
     elif followup_number == 2:
         top = pick([
@@ -3366,6 +3389,16 @@ def _build_cadence_body_html(
                 f"<p>Hi there,</p>"
                 f"<p>Just bumping {prop} back up. I want to make sure nothing fell through the cracks — "
                 f"a quick note on the status would be a big help. Thanks for staying on it.</p>"
+            ),
+            (
+                f"<p>Hi there,</p>"
+                f"<p>Circling back on {prop} — it's been about {days} days. Could you let me know where "
+                f"it stands so I can update the homeowner? Appreciate you keeping it moving.</p>"
+            ),
+            (
+                f"<p>Hi there,</p>"
+                f"<p>Following up again on {prop}. Haven't seen a reply yet and it's been roughly {days} "
+                f"days — a quick status would help me plan the next step. Thanks for your time.</p>"
             ),
         ])
     elif followup_number == 3:
@@ -3381,6 +3414,18 @@ def _build_cadence_body_html(
                 f"<p>Following up on {prop} again. It's been roughly {days} days and the delay is "
                 f"holding up the repair. A status update whenever you can would really help — happy "
                 f"to jump on a call if that's easier.</p>"
+            ),
+            (
+                f"<p>Hi there,</p>"
+                f"<p>Checking in on {prop} once more. We're {days} days out now and the homeowner's "
+                f"getting anxious. Can you tell me where the file sits, or who else I should loop in "
+                f"to get it moving?</p>"
+            ),
+            (
+                f"<p>Hi there,</p>"
+                f"<p>I don't want this one to stall — {prop} has been open about {days} days without "
+                f"a response. Even a quick line on the status would help me keep the homeowner in the "
+                f"loop. Thanks for your help.</p>"
             ),
         ])
     else:
@@ -3398,7 +3443,24 @@ def _build_cadence_body_html(
                 f"still open on our side. Whatever you can share on where it stands would be "
                 f"appreciated, and I'm glad to resend anything that didn't come through.</p>"
             ),
+            (
+                f"<p>Hi there,</p>"
+                f"<p>Last note from me on {prop} for now. We've reached out a few times over the past "
+                f"{days} days and I'd really like to close the loop with you. Could you point me to the "
+                f"status, or the right person to talk to? Happy to resend anything.</p>"
+            ),
+            (
+                f"<p>Hi there,</p>"
+                f"<p>Still hoping to connect on {prop} — it's been about {days} days. I'd rather sort "
+                f"this out with you directly than keep emailing, so a quick reply on where it stands "
+                f"would mean a lot. Thanks for sticking with it.</p>"
+            ),
         ])
+
+    # Run the assembled follow-up copy through the AI-tell linter before it's
+    # stored/sent. Scrub only the new note — leave the quoted prior email (added
+    # below) untouched since it's our own already-sent content.
+    top, _ = email_voice.scrub_tells(top)
 
     if previous_body_html:
         import html as _html

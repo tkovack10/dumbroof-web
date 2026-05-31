@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import type { ScopeComparisonRow, CodeCitation } from "@/types/scope-comparison";
+import { supplementOpener, supplementCloser, signOff, scrubTells } from "@/lib/email-voice";
 
 interface SupplementItem {
   id: string;
@@ -164,21 +165,25 @@ export function SupplementComposer({ claimId, claimAddress, carrierName, compari
     const underItems = selectedItems.filter((i) => i.type === "under");
     const codeSelections = selectedItems.filter((i) => i.type === "code");
 
+    // Seed variant selection on the claim so the same claim is reproducible
+    // but different claims read differently.
+    const seed = claimNumber || claimAddress || "supplement";
+    const money = (n: number) =>
+      n.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+
     let email = `Subject: ${claimNumber || "CLAIM NUMBER NEEDED"}\n\n`;
-    email += `Dear ${carrierName} Claims Department,\n\n`;
-    email += `We are writing regarding the above-referenced property to request a supplement to the current scope of repairs. `;
-    email += `After thorough inspection and review of the EagleView certified measurements, we have identified the following discrepancies between the carrier's approved scope and the documented conditions.\n\n`;
+    email += `Hi there,\n\n`;
+    email += `${supplementOpener(seed, claimAddress)}\n\n`;
 
     if (missingItems.length > 0) {
-      email += `MISSING ITEMS — NOT INCLUDED IN CARRIER SCOPE\n`;
-      email += `${"=".repeat(50)}\n\n`;
+      email += `Items missing from the current scope:\n`;
       for (const item of missingItems) {
-        email += `• ${item.label} — $${item.amount.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}\n`;
+        email += `• ${item.label} — $${money(item.amount)}\n`;
         email += `  ${item.detail}\n`;
         if (item.codeCitation) {
-          email += `  Code Authority: ${item.codeCitation.code_tag} — ${item.codeCitation.title}\n`;
+          email += `  Code: ${item.codeCitation.code_tag} — ${item.codeCitation.title}\n`;
           if (item.codeCitation.has_warranty_void) {
-            email += `  WARNING: Manufacturer warranty VOID without this item.\n`;
+            email += `  Note: the manufacturer warranty is voided without this item.\n`;
           }
         }
         email += `\n`;
@@ -186,23 +191,21 @@ export function SupplementComposer({ claimId, claimAddress, carrierName, compari
     }
 
     if (underItems.length > 0) {
-      email += `UNDER-SCOPED ITEMS — QUANTITY/PRICING DISCREPANCIES\n`;
-      email += `${"=".repeat(50)}\n\n`;
+      email += `Items that came in short on quantity or price:\n`;
       for (const item of underItems) {
-        email += `• ${item.label} — Underscoped $${item.amount.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}\n`;
+        email += `• ${item.label} — short by $${money(item.amount)}\n`;
         email += `  ${item.detail}\n`;
         if (item.codeCitation) {
-          email += `  Code Authority: ${item.codeCitation.code_tag}\n`;
+          email += `  Code: ${item.codeCitation.code_tag}\n`;
         }
         email += `\n`;
       }
     }
 
     if (codeSelections.length > 0) {
-      email += `APPLICABLE BUILDING CODE REQUIREMENTS\n`;
-      email += `${"=".repeat(50)}\n\n`;
+      email += `Building code that applies here:\n`;
       for (const item of codeSelections) {
-        email += `${item.label}\n`;
+        email += `• ${item.label}\n`;
         if (item.detail) {
           email += `  ${item.detail}\n`;
         }
@@ -210,7 +213,7 @@ export function SupplementComposer({ claimId, claimAddress, carrierName, compari
           for (const spec of item.codeCitation.manufacturer_specs) {
             email += `  • ${spec.manufacturer}: ${spec.requirement}\n`;
             if (spec.warranty_void) {
-              email += `    WARRANTY VOID: ${spec.warranty_text}\n`;
+              email += `    (warranty is voided without this: ${spec.warranty_text})\n`;
             }
           }
         }
@@ -219,20 +222,17 @@ export function SupplementComposer({ claimId, claimAddress, carrierName, compari
     }
 
     const totalSupplement = missingItems.reduce((s, i) => s + i.amount, 0) + underItems.reduce((s, i) => s + i.amount, 0);
-    email += `SUPPLEMENT SUMMARY\n`;
-    email += `${"=".repeat(50)}\n`;
-    email += `Total Missing Items: $${missingItems.reduce((s, i) => s + i.amount, 0).toLocaleString()}\n`;
-    email += `Total Under-Scoped: $${underItems.reduce((s, i) => s + i.amount, 0).toLocaleString()}\n`;
-    email += `Total Supplement Request: $${totalSupplement.toLocaleString()}\n\n`;
+    if (totalSupplement > 0) {
+      email += `Altogether that's about $${money(totalSupplement)} we're asking to add back to the scope — all of it tied to the EagleView measurements and code.\n\n`;
+    }
 
-    email += `We request that these items be added to the approved scope of repairs. All quantities are derived from EagleView certified measurements and verified against applicable building codes.\n\n`;
-    email += `Please contact us at your earliest convenience to discuss.\n\n`;
-    email += `Respectfully,\n`;
+    email += `${supplementCloser(seed)}\n\n`;
+    email += `${signOff(seed)}\n`;
     email += `${userName || "Your Name"}\n`;
     email += `${companyName || "Company Name"}\n`;
     if (companyPhone) email += `${companyPhone}\n`;
 
-    return email;
+    return scrubTells(email);
   }
 
   if (allItems.length === 0) return null;
