@@ -604,28 +604,75 @@ def generate_supplement_cover_pdf(
         story.append(Paragraph("<b>Supplemental Items:</b>", bold_style))
         story.append(Spacer(1, 4))
 
-        header = ["Item", "Description", "Amount"]
+        # The items come from _install_supplement_items() as {description, amount} —
+        # there is no "item" key, so the old first column rendered the literal word
+        # "Item" on every row. Lead with a 1-based sequence number, then the
+        # description and amount, and close with a bold SUBTOTAL row.
+        header = ["#", "Description", "Amount"]
         rows = [header]
-        for item in supplement_items:
+        subtotal = 0.0
+        for idx, item in enumerate(supplement_items, 1):
+            try:
+                subtotal += float(item.get("amount") or 0)
+            except (ValueError, TypeError):
+                pass
             rows.append([
-                _safe(item.get("item"), "Item"),
+                str(idx),
                 _safe(item.get("description"), ""),
                 _fmt_currency(item.get("amount", 0)),
             ])
+        rows.append(["", "Subtotal", _fmt_currency(subtotal)])
 
-        items_table = Table(rows, colWidths=[2*inch, 3*inch, 1.3*inch])
+        _subtotal_row = len(rows) - 1
+        items_table = Table(rows, colWidths=[0.5*inch, 4.5*inch, 1.3*inch])
         items_table.setStyle(TableStyle([
             ("BACKGROUND", (0, 0), (-1, 0), navy),
             ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
             ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
             ("FONTSIZE", (0, 0), (-1, -1), 9),
+            ("ALIGN", (0, 0), (0, -1), "CENTER"),
             ("ALIGN", (2, 0), (2, -1), "RIGHT"),
             ("GRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#e0e0e0")),
-            ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.HexColor("#f5f5f5")]),
+            ("ROWBACKGROUNDS", (0, 1), (-1, _subtotal_row - 1), [colors.white, colors.HexColor("#f5f5f5")]),
             ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
             ("TOPPADDING", (0, 0), (-1, -1), 5),
+            # Bold, right-aligned SUBTOTAL row separated from the body by a rule.
+            ("FONTNAME", (1, _subtotal_row), (-1, _subtotal_row), "Helvetica-Bold"),
+            ("ALIGN", (1, _subtotal_row), (1, _subtotal_row), "RIGHT"),
+            ("LINEABOVE", (0, _subtotal_row), (-1, _subtotal_row), 0.75, navy),
+            ("BACKGROUND", (0, _subtotal_row), (-1, _subtotal_row), colors.HexColor("#f0f2f7")),
         ]))
         story.append(items_table)
+        story.append(Spacer(1, 4))
+
+        # Caption — clarifies these are post-tear-off discoveries, ADDITIONAL to the
+        # initial estimate (so the carrier doesn't read them as a double-count).
+        story.append(Paragraph(
+            "These items were discovered during installation and are ADDITIONAL to the initial estimate.",
+            ParagraphStyle("SuppCaption", parent=normal, fontSize=8,
+                           textColor=colors.gray, leading=11),
+        ))
+
+        # Price-list / market provenance — mirrors the Doc 02 "Priced from ..."
+        # footer style. Only rendered when the claim_config carries a market_code.
+        _fin = {}
+        if isinstance(claim_data, dict):
+            _cfg = claim_data.get("claim_config")
+            if isinstance(_cfg, dict) and isinstance(_cfg.get("financials"), dict):
+                _fin = _cfg["financials"]
+            elif isinstance(claim_data.get("financials"), dict):
+                _fin = claim_data["financials"]
+        _market_code = _safe(_fin.get("market_code"))
+        if _market_code:
+            _price_list = _safe(_fin.get("price_list"))
+            _prov = f"Priced from {_market_code}"
+            if _price_list and _price_list != _market_code:
+                _prov += f" — Xactimate {_price_list}"
+            story.append(Paragraph(
+                _prov,
+                ParagraphStyle("SuppProvenance", parent=normal, fontSize=7,
+                               textColor=colors.gray, leading=10),
+            ))
         story.append(Spacer(1, 8))
 
     # ── Enclosed documents ──
