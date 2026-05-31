@@ -1178,6 +1178,8 @@ td { padding: 7pt 10pt; border-bottom: 1px solid var(--c-line-soft); vertical-al
 td strong { color: var(--c-ink); }
 tr:nth-child(even) td { background: var(--c-paper-warm); }
 .amt { text-align: right; font-family: var(--f-mono); color: var(--c-ink); }
+/* mono utility — every measurement / numeric data cell reads as data, not copy */
+td.mono, .mono { font-family: var(--f-mono); color: var(--c-ink); letter-spacing: 0.01em; }
 
 /* ── THE CITATION CHIP — every code / standard reference ── */
 .cite-chip {
@@ -2236,14 +2238,15 @@ def _build_noaa_citation(weather):
         return ""
 
     html = '<h3>NOAA Storm Data (Official U.S. Government Source)</h3>\n'
+    html += '<p style="margin-top:4pt;">' + _cite_chip("NOAA SWDI", neutral=True) + '</p>\n'
     html += '<table>\n'
     html += '<tr><th style="width:35%">Parameter</th><th>Detail</th></tr>\n'
 
     if noaa.get("max_hail_inches", 0) > 0:
-        html += f'<tr><td><strong>Maximum Hail Size</strong></td><td style="color:#c8102e;font-weight:700;">{noaa["max_hail_inches"]}" diameter</td></tr>\n'
+        html += f'<tr><td><strong>Maximum Hail Size</strong></td><td class="obs-no">{noaa["max_hail_inches"]}" diameter</td></tr>\n'
     if noaa.get("max_wind_mph", 0) > 0:
-        html += f'<tr><td><strong>Maximum Wind Speed</strong></td><td>{noaa["max_wind_mph"]} mph</td></tr>\n'
-    html += f'<tr><td><strong>Events Found</strong></td><td>{noaa.get("event_count", 0)} storm events within {noaa.get("search_radius_miles", 10)} miles</td></tr>\n'
+        html += f'<tr><td><strong>Maximum Wind Speed</strong></td><td class="mono">{noaa["max_wind_mph"]} mph</td></tr>\n'
+    html += f'<tr><td><strong>Events Found</strong></td><td><span class="mono">{noaa.get("event_count", 0)}</span> storm events within <span class="mono">{noaa.get("search_radius_miles", 10)}</span> miles</td></tr>\n'
     _raw_qdate = noaa.get("query_date", "")
     try:
         from datetime import datetime as _dt
@@ -2278,16 +2281,16 @@ def _build_noaa_citation(weather):
             mag = f'{raw_mag}"' if mag_type == "hail_inches" else f'{raw_mag} mph'
             dist = f'{evt.get("distance_miles", 0):.1f} mi'
             detail = evt.get("source_detail", "")[:50]
-            color = 'color:#c8102e;font-weight:700;' if mag_type == "hail_inches" else ''
-            html += f'<tr><td>{src}</td><td>{evt.get("event_type", "")}</td><td style="{color}">{mag}</td><td>{dist}</td><td>{detail}</td></tr>\n'
+            mag_cls = "obs-no" if mag_type == "hail_inches" else "mono"
+            html += f'<tr><td>{src}</td><td>{evt.get("event_type", "")}</td><td class="{mag_cls}">{mag}</td><td class="mono">{dist}</td><td>{detail}</td></tr>\n'
         html += '</table>\n'
 
     # Verification URLs
     urls = noaa.get("query_urls", [])
     clean_urls = [u for u in urls if "error" not in u]
     if clean_urls:
-        html += '<p style="font-size:8pt;color:#6b7280;">NOAA verification: '
-        html += " | ".join(f'<a href="{u}" style="color:#0d2137;">[{i+1}]</a>' for i, u in enumerate(clean_urls))
+        html += '<p style="font-size:8pt;color:var(--c-mute);">NOAA verification: '
+        html += " | ".join(f'<a href="{u}">[{i+1}]</a>' for i, u in enumerate(clean_urls))
         html += '</p>\n'
 
     return html
@@ -2704,7 +2707,7 @@ def build_forensic_report(config):
     corroborating = weather.get("corroborating_reports", [])
     if corroborating:
         corroborating_html += '<h3>Corroborating Weather Reports</h3>\n'
-        corroborating_html += '<p style="font-size:9pt;color:#4b5563;">Independent sources confirming storm activity at or near the property on the date of loss:</p>\n'
+        corroborating_html += '<p style="font-size:9pt;color:var(--c-slate);">Independent sources confirming storm activity at or near the property on the date of loss:</p>\n'
         # Separate news media from other sources
         media_reports = [r for r in corroborating if "news" in r.get("source_type", "").lower() or "media" in r.get("source_type", "").lower()]
         other_reports = [r for r in corroborating if r not in media_reports]
@@ -2715,7 +2718,7 @@ def build_forensic_report(config):
             url = rpt.get("url", "")
             corroborating_html += f'<div class="media-quote">&ldquo;{snippet}&rdquo;<div class="source">&mdash; {station}'
             if url:
-                corroborating_html += f' (<a href="{url}" style="color:#0d2137;">source</a>)'
+                corroborating_html += f' (<a href="{url}">source</a>)'
             corroborating_html += '</div></div>\n'
         # Render other sources as table
         if other_reports:
@@ -2725,7 +2728,7 @@ def build_forensic_report(config):
                 url = rpt.get("url", "")
                 snippet = rpt.get("snippet", "")
                 source_type = rpt.get("source_type", "Web Report")
-                link_html = f'<a href="{url}" style="color:#0d2137;">{title[:80]}</a>' if url else title[:80]
+                link_html = f'<a href="{url}">{title[:80]}</a>' if url else title[:80]
                 corroborating_html += f'<tr><td><strong>{source_type}</strong></td><td>{link_html}</td><td style="font-size:8.5pt;">{snippet[:150]}</td></tr>\n'
             corroborating_html += '</table>\n'
 
@@ -2739,23 +2742,33 @@ def build_forensic_report(config):
     # parameter table entirely. The verified branch is byte-identical to the
     # prior unconditional markup.
     if _ws5_wx:
+        # Storm-evidence values (hail size, coordinates) render mono = data;
+        # the NOAA SWDI / NWS LSR provenance renders as .neutral cite-chips.
+        _storm_chips = (
+            '<p style="margin-top:8pt;">'
+            + _cite_chip("NOAA SWDI", neutral=True)
+            + " "
+            + _cite_chip("NWS LSR", neutral=True)
+            + "</p>"
+        )
         storm_overview_html = (
             '<div class="success-box">\n'
             f"<strong>Storm Verified:</strong> {weather.get('storm_description', '')}\n"
             '</div>\n\n'
             '<table>\n'
             '    <tr><th style="width:35%">Parameter</th><th>Detail</th></tr>\n'
-            f"    <tr><td><strong>Storm Date</strong></td><td>{weather['storm_date']}</td></tr>\n"
-            f"    <tr><td><strong>Hail Size (Algorithm)</strong></td><td>{weather.get('hail_size_algorithm', '')}</td></tr>\n"
-            f"    <tr><td><strong>Hail Size (Meteorologist)</strong></td><td>{weather.get('hail_size_meteorologist', weather.get('hail_size_algorithm', ''))}</td></tr>\n"
+            f"    <tr><td><strong>Storm Date</strong></td><td class=\"mono\">{weather['storm_date']}</td></tr>\n"
+            f"    <tr><td><strong>Hail Size (Algorithm)</strong></td><td class=\"mono\">{weather.get('hail_size_algorithm', '')}</td></tr>\n"
+            f"    <tr><td><strong>Hail Size (Meteorologist)</strong></td><td class=\"mono\">{weather.get('hail_size_meteorologist', weather.get('hail_size_algorithm', ''))}</td></tr>\n"
             f"    <tr><td><strong>Verification</strong></td><td>{weather.get('verification_method', '')}</td></tr>\n"
             f"    <tr><td><strong>HailTrace Report</strong></td><td>ID: {weather.get('hailtrace_id', '')} — {weather.get('hailtrace_url', '')}</td></tr>\n"
-            f"    <tr><td><strong>Coordinates</strong></td><td>{weather.get('coordinates', '')}</td></tr>\n"
-            '</table>'
+            f"    <tr><td><strong>Coordinates</strong></td><td class=\"mono\">{weather.get('coordinates', '')}</td></tr>\n"
+            '</table>\n'
+            + _storm_chips
         )
     else:
         storm_overview_html = (
-            '<div class="success-box" style="background:#f8f9fa;border-color:#c8d6e5;">\n'
+            '<div class="info-box">\n'
             '<strong>Weather verification pending:</strong> Independent storm '
             'verification (NOAA/NWS storm data, hail-size confirmation) has not '
             'yet been attached to this claim. The damage documented in this '
@@ -2773,8 +2786,15 @@ def build_forensic_report(config):
         for dt in damage_thresholds:
             material = dt.get("material", dt.get("component", ""))
             confirmed = dt.get("confirmed_size", dt.get("storm_actual", ""))
-            color = 'color:#c8102e;font-weight:700;' if 'EXCEEDS' in dt.get('result','') or 'EXCEEDED' in dt.get('result','') else ''
-            thresholds_html += f'<tr><td>{material}</td><td>{dt["threshold"]}</td><td>{confirmed}</td><td style="{color}">{dt["result"]}</td></tr>\n'
+            # The Result cell is the load-bearing color signal — brick (via the
+            # .obs-no semantic class) when the storm EXCEEDED the threshold.
+            result_cls = ' class="obs-no"' if ('EXCEEDS' in dt.get('result', '') or 'EXCEEDED' in dt.get('result', '')) else ''
+            thresholds_html += (
+                f'<tr><td>{material}</td>'
+                f'<td class="mono">{dt["threshold"]}</td>'
+                f'<td class="mono">{confirmed}</td>'
+                f'<td{result_cls}>{dt["result"]}</td></tr>\n'
+            )
         thresholds_html += '</table>\n'
 
     # --- FieldAssist section (6 Avon — conditional) ---
@@ -2800,7 +2820,7 @@ def build_forensic_report(config):
 <table>
     <tr><th>Finding</th><th>Detail</th></tr>
     <tr><td><strong>Got on Roof</strong></td><td>{"Yes" if fa.get("got_on_roof") else "No"}</td></tr>
-    <tr><td><strong>Potentially Covered Damage</strong></td><td style="color:#c8102e;font-weight:700;">{"YES" if fa.get("potentially_covered_damage") else "No"}</td></tr>
+    <tr><td><strong>Potentially Covered Damage</strong></td><td class="obs-no">{"YES" if fa.get("potentially_covered_damage") else "No"}</td></tr>
     <tr><td><strong>Slopes with Granular Loss</strong></td><td>{slopes}</td></tr>
     <tr><td><strong>Wind-Damaged Shingles</strong></td><td>Facet {wind_info.get("facet","")}: {wind_info.get("count",0)} shingles</td></tr>
     <tr><td><strong>Damaged Exhaust Vents</strong></td><td>{vent_info.get("location","")}: {vent_info.get("count",0)}</td></tr>
@@ -2823,22 +2843,25 @@ def build_forensic_report(config):
         diff_html += '<h3>Damage Differentiation Analysis</h3>\n<table style="font-size:9pt;">\n'
         diff_html += '<tr><th>Potential Cause</th><th>Expected Characteristics</th><th>Observed?</th><th>Conclusion</th></tr>\n'
         for row in findings["differentiation_table"]:
-            # Bold conclusion: green for CONSISTENT, red for NOT CONSISTENT/INCONSISTENT
+            # Conclusion + Observed are the load-bearing semantic cells — the one
+            # place forest/brick carry meaning. Route through Spectral semantic
+            # classes (.concl-consistent / .concl-inconsistent / .obs-yes /
+            # .obs-no) instead of inline hex.
             conclusion_val = row["conclusion"]
             if conclusion_val.upper() == "CONSISTENT":
-                conclusion_cell = f'<strong style="color:#2e7d32;">{conclusion_val}</strong>'
+                conclusion_cell = f'<strong class="concl-consistent">{conclusion_val}</strong>'
             elif "NOT" in conclusion_val.upper() or "INCONSISTENT" in conclusion_val.upper():
-                conclusion_cell = f'<strong style="color:#c8102e;">{conclusion_val}</strong>'
+                conclusion_cell = f'<strong class="concl-inconsistent">{conclusion_val}</strong>'
             else:
                 conclusion_cell = conclusion_val
             # Bold cause column
             cause_cell = f'<strong>{row["cause"]}</strong>'
-            # Bold observed: Yes=green, No=red
+            # Bold observed: Yes=forest, No=brick
             observed_val = row["observed"]
             if observed_val.lower().startswith("yes"):
-                observed_cell = f'<strong style="color:#2e7d32;">{observed_val}</strong>'
+                observed_cell = f'<strong class="obs-yes">{observed_val}</strong>'
             elif observed_val.lower().startswith("no"):
-                observed_cell = f'<strong style="color:#c8102e;">{observed_val}</strong>'
+                observed_cell = f'<strong class="obs-no">{observed_val}</strong>'
             else:
                 observed_cell = observed_val
             # Bold key forensic terms in characteristics
@@ -2856,10 +2879,32 @@ def build_forensic_report(config):
         for obs in findings["critical_observations"]:
             crit_obs_html += f'<h3>{obs["title"]}</h3>\n<p>{obs["content"]}</p>\n'
 
-    # --- Code violations ---
-    code_rows = ""
+    # --- Code violations → Spectral .code-card stack ---
+    # One card per code requirement (replaces the plain {code, requirement,
+    # status} table): a cite-chip carrying the code section, a serif title, a
+    # warm-paper requirement inset, and a slate status line. A status that
+    # indicates omission/non-compliance flags the card .critical (brick
+    # left-border) and bolds the status. Content (code, requirement, status
+    # strings) is preserved verbatim so the substance fingerprint is unchanged.
+    code_cards = ""
     for cv in findings.get("code_violations", []):
-        code_rows += f'<tr><td>{cv["code"]}</td><td>{cv["requirement"]}</td><td style="color:#c8102e;font-weight:700;">{cv["status"]}</td></tr>\n'
+        code = cv.get("code", "")
+        requirement = cv.get("requirement", "")
+        status = cv.get("status", "")
+        _is_critical = any(
+            kw in status.lower()
+            for kw in ("omit", "not included", "missing", "non-compliant",
+                       "noncompliant", "not in", "absent", "violation", "exclud")
+        )
+        crit_cls = " critical" if _is_critical else ""
+        status_html = f"<b>{status}</b>" if _is_critical else status
+        code_cards += (
+            f'<div class="code-card{crit_cls}">\n'
+            f'  <div class="cc-top">{_cite_chip(code)}</div>\n'
+            f'  <div class="requirement">{requirement}</div>\n'
+            f'  <div class="supplement">Status in carrier scope: {status_html}</div>\n'
+            f'</div>\n'
+        )
 
     # --- Key arguments ---
     arguments_html = ""
@@ -3077,10 +3122,7 @@ def build_forensic_report(config):
 <div style="margin-top:24pt;"></div>
 <h2>{code_sec_num}. Code Compliance Requirements</h2>
 <p>{_get_code_intro(config)}</p>
-<table>
-    <tr><th>Code Section</th><th>Requirement</th><th>Status in Carrier Scope</th></tr>
-    {code_rows}
-</table>
+{code_cards}
 
 <!-- CONCLUSION -->
 <div class="page-break"></div>
