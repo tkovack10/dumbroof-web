@@ -1137,6 +1137,12 @@ FORENSIC_SPECTRAL_CSS = """
 }
 
 @page { size: letter; margin: 0.55in 0.6in; }
+/* Named zero-margin page for the navy cover so it FULL-BLEEDS to the paper edge.
+   Chrome --print-to-pdf clips negative-margin content to the page content box, so
+   the prior `.cover { margin: -0.55in -0.6in }` bleed trick left a white frame
+   around the navy (reps' "white outline" report). page: cover gives the cover
+   its own 0-margin sheet. */
+@page cover { size: letter; margin: 0; }
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body {
     font-family: var(--f-sans);
@@ -1200,10 +1206,11 @@ td.mono, .mono { font-family: var(--f-mono); color: var(--c-ink); letter-spacing
 
 /* ── COVER (full-bleed navy authority field, logo-leads) ── */
 .cover {
+    page: cover;
     position: relative;
     background: var(--c-navy);
-    color: #eef1f5; margin: -0.55in -0.6in 0 -0.6in; padding: 0.62in 0.6in 0.5in;
-    min-height: 10in;
+    color: #eef1f5; margin: 0; padding: 0.9in 0.85in 0.7in;
+    min-height: 11in;
 }
 .cover .cover-frame { position: absolute; inset: 0.26in; border: 1px solid rgba(255,255,255,0.16); pointer-events: none; }
 .cover-top { display: flex; justify-content: space-between; align-items: flex-start; position: relative; z-index: 2; }
@@ -1213,17 +1220,19 @@ td.mono, .mono { font-family: var(--f-mono); color: var(--c-ink); letter-spacing
     font-family: var(--f-sans); font-size: 7pt; font-weight: 700; letter-spacing: 0.24em; text-transform: uppercase;
     color: #fff; border: 1px solid rgba(255,255,255,0.3); padding: 5pt 11pt; border-radius: 2px;
 }
-/* knockout company-logo hero in a hairline ring */
+/* company-logo hero on a clean white card (works for ANY logo — transparent
+   PNG or white-background JPG. The prior brightness(0)+invert(1) knockout turned
+   a white-bg JPG into a solid white rectangle — the "empty box" reps reported). */
 .cover-logo-hero { position: relative; z-index: 2; margin-top: 0.5in; text-align: center; }
 .cover-logo-hero .logo-ring {
     display: inline-flex; align-items: center; justify-content: center;
-    padding: 18pt 26pt; border: 1px solid rgba(255,255,255,0.24); border-radius: 4px;
-    background: rgba(255,255,255,0.03);
+    padding: 16pt 24pt; border-radius: 5px;
+    background: #fff; box-shadow: 0 0 0 1px rgba(255,255,255,0.5);
 }
-.cover-logo-hero .logo-ring img { height: 84pt; width: auto; max-width: 320pt; object-fit: contain;
-    filter: brightness(0) invert(1); }
+.cover-logo-hero .logo-ring img { height: 70pt; width: auto; max-width: 300pt; object-fit: contain; }
 .cover-logo-hero .logo-ring .logo-text-fallback {
-    color: #fff; border-bottom-color: var(--c-brick-bright); font-family: var(--f-sans);
+    color: var(--c-navy); border-bottom: 0; font-family: var(--f-sans); font-weight: 800;
+    font-size: 17pt; letter-spacing: 0.04em;
 }
 .cover-hero { position: relative; z-index: 2; margin-top: 0.45in; }
 .cover-kicker { font-family: var(--f-sans); font-weight: 700; font-size: 8pt; letter-spacing: 0.38em; text-transform: uppercase; color: var(--c-brick-warm); margin-bottom: 14pt; }
