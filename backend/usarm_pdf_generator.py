@@ -4298,6 +4298,190 @@ storm-related damage observed during the field inspection.
 # DOCUMENT 3: SUPPLEMENT REPORT
 # ===================================================================
 
+def _build_negotiation_history_spectral(config):
+    """Render the Doc 03 'Negotiation History' section from config['scope_revisions'].
+
+    ADDITIVE + GATED: returns "" when scope_revisions is empty/absent, so the
+    common first-pass supplement is byte-identical to before. When present it
+    renders a revision timeline (carrier RCV movement per round) plus the
+    argument-mapping — the USARM argument / code-spec that drove each movement —
+    using the Spectral classes already defined in XSTYLE_SPECTRAL_CSS
+    (.spectral, .num, .var-pos, .success-box, .info-box, .status-pill).
+
+    Defensive across the several real-world scope_revisions shapes:
+      * date key:        revision_date | date
+      * RCV keys:        previous_rcv|old_rcv , new_rcv|rcv
+      * movement keys:   movement|movement_amount|delta_from_previous , movement_pct
+      * items_added:     list of strings OR list of {description, new_amount, qty, unit}
+      * argument_mapping entries: {change, likely_argument, confidence} OR {argument, outcome}
+      * legacy fields:   arguments_that_worked / arguments_that_didnt / items_still_missing
+    """
+    revisions = config.get("scope_revisions")
+    if not revisions or not isinstance(revisions, list):
+        return ""
+
+    def _num(v):
+        try:
+            return float(v)
+        except (TypeError, ValueError):
+            return None
+
+    def _money(v):
+        n = _num(v)
+        return fmt_money(n) if n is not None else "&mdash;"
+
+    rows_html = ""
+    detail_blocks = ""
+    rendered_any = False
+
+    for idx, rev in enumerate(revisions, 1):
+        if not isinstance(rev, dict):
+            continue
+        rendered_any = True
+        date = rev.get("revision_date") or rev.get("date") or f"Revision {idx}"
+
+        prev_rcv = _num(rev.get("previous_rcv"))
+        if prev_rcv is None:
+            prev_rcv = _num(rev.get("old_rcv"))
+        new_rcv = _num(rev.get("new_rcv"))
+        if new_rcv is None:
+            new_rcv = _num(rev.get("rcv"))
+
+        movement = _num(rev.get("movement"))
+        if movement is None:
+            movement = _num(rev.get("movement_amount"))
+        if movement is None:
+            movement = _num(rev.get("delta_from_previous"))
+        if movement is None and prev_rcv is not None and new_rcv is not None:
+            movement = new_rcv - prev_rcv
+
+        pct = _num(rev.get("movement_pct"))
+        pct_str = f"+{pct:.1f}%" if (pct is not None and pct >= 0) else (f"{pct:.1f}%" if pct is not None else "")
+        if pct is None and movement is not None and prev_rcv:
+            pct_str = f"+{(movement / prev_rcv * 100):.1f}%" if movement >= 0 else f"{(movement / prev_rcv * 100):.1f}%"
+
+        mv_cell = ""
+        if movement is not None:
+            sign = "+" if movement >= 0 else ""
+            mv_cls = ' class="num var-pos"' if movement > 0 else ' class="num"'
+            mv_cell = f'{sign}{fmt_money(movement)}' + (f' ({pct_str})' if pct_str else '')
+        else:
+            mv_cls = ' class="num"'
+            mv_cell = "&mdash;"
+
+        # Count of items added (strings or dicts both count)
+        items_added = rev.get("items_added") or []
+        added_n = rev.get("items_added_count")
+        if not isinstance(added_n, int):
+            added_n = len(items_added)
+
+        rows_html += (
+            f'<tr><td class="num">{idx}</td>'
+            f'<td>{date}</td>'
+            f'<td class="num">{_money(prev_rcv)}</td>'
+            f'<td class="num">{_money(new_rcv)}</td>'
+            f'<td{mv_cls}>{mv_cell}</td>'
+            f'<td class="num">{added_n}</td></tr>\n'
+        )
+
+        # ── Per-revision detail block: items added + argument mapping ──
+        block = ""
+        if items_added:
+            block += "<p style=\"margin:6pt 0 3pt;\"><strong>Items the carrier added / expanded:</strong></p>\n<ul>\n"
+            for it in items_added[:12]:
+                if isinstance(it, dict):
+                    desc = it.get("description", "")
+                    amt = _num(it.get("new_amount"))
+                    qty = it.get("qty")
+                    unit = it.get("unit", "")
+                    extra = []
+                    if qty is not None and unit:
+                        extra.append(f"{qty} {unit}")
+                    if amt is not None and amt > 0:
+                        extra.append(fmt_money(amt))
+                    suffix = f" ({', '.join(extra)})" if extra else ""
+                    block += f"<li>{desc}{suffix}</li>\n"
+                else:
+                    block += f"<li>{it}</li>\n"
+            block += "</ul>\n"
+
+        # Argument mapping — what moved the carrier (two known entry shapes).
+        mappings = rev.get("argument_mapping") or []
+        mapping_rows = ""
+        for m in mappings:
+            if not isinstance(m, dict):
+                continue
+            if "likely_argument" in m or "change" in m:
+                change = m.get("change", "")
+                arg = m.get("likely_argument", "")
+                conf = (m.get("confidence") or "").strip().lower()
+                conf_pill = ""
+                if conf in ("high", "medium", "low"):
+                    pill_cls = "included" if conf == "high" else "omitted" if conf == "low" else "included"
+                    conf_pill = f' <span class="status-pill {pill_cls}">{conf.title()}</span>'
+                mapping_rows += f"<tr><td>{change}</td><td>{arg}{conf_pill}</td></tr>\n"
+            else:  # {argument, outcome}
+                arg = m.get("argument", "")
+                outcome = m.get("outcome", "")
+                mapping_rows += f"<tr><td>{arg}</td><td>{outcome}</td></tr>\n"
+        if mapping_rows:
+            block += (
+                '<p style="margin:6pt 0 3pt;"><strong>What moved the carrier '
+                '(argument &rarr; result):</strong></p>\n'
+                '<table class="spectral" style="font-size:8pt;">\n'
+                '<tr><th style="width:50%">USARM Argument / Change</th>'
+                '<th>Code / Spec Justification &amp; Outcome</th></tr>\n'
+                f'{mapping_rows}</table>\n'
+            )
+
+        # Legacy narrative fields (hand-authored revisions).
+        worked = rev.get("arguments_that_worked") or []
+        if worked:
+            block += "<p style=\"margin:6pt 0 3pt;\"><strong>Arguments that worked:</strong></p>\n<ul>\n"
+            for a in worked[:10]:
+                block += f"<li>{a}</li>\n"
+            block += "</ul>\n"
+        didnt = rev.get("arguments_that_didnt") or []
+        if didnt:
+            block += "<p style=\"margin:6pt 0 3pt;\"><strong>Still outstanding (arguments not yet conceded):</strong></p>\n<ul>\n"
+            for a in didnt[:10]:
+                block += f"<li>{a}</li>\n"
+            block += "</ul>\n"
+        still_missing = rev.get("items_still_missing") or []
+        if still_missing:
+            block += "<p style=\"margin:6pt 0 3pt;\"><strong>Items still missing from the carrier scope:</strong></p>\n<ul>\n"
+            for a in still_missing[:12]:
+                block += f"<li>{a}</li>\n"
+            block += "</ul>\n"
+
+        if block:
+            adjuster = rev.get("adjuster", "")
+            adj_str = f" &middot; {adjuster}" if adjuster else ""
+            detail_blocks += (
+                f'<div class="info-box" style="margin-bottom:14pt;">\n'
+                f'<h3 style="margin-top:0;">Revision {idx} &mdash; {date}{adj_str}</h3>\n'
+                f'{block}</div>\n'
+            )
+
+    if not rendered_any:
+        return ""
+
+    html = (
+        '\n<div style="margin-top:24pt;"></div>\n'
+        '<h2>Negotiation History</h2>\n'
+        '<p>This claim has been revised through one or more carrier scope rounds. '
+        'The timeline below records each movement in the carrier&rsquo;s approved RCV '
+        'and the documented argument that drove it.</p>\n'
+        '<table class="spectral">\n'
+        '<tr><th class="num" style="width:4%">#</th><th>Date</th>'
+        '<th class="num">Carrier RCV (Before)</th><th class="num">Carrier RCV (After)</th>'
+        '<th class="num">Movement</th><th class="num">Items Added</th></tr>\n'
+        f'{rows_html}</table>\n'
+        f'{detail_blocks}'
+    )
+    return html
+
+
 def build_supplement_report(config):
     """Build supplement/scope comparison report — carrier scope cross-reference.
 
@@ -4442,6 +4626,70 @@ def build_supplement_report(config):
             <td{var_class}>{note_cell}</td>
         </tr>\n"""
 
+    # ── Per-category variance rollup (additive) ──────────────────────────────
+    # `supplement_variance_summary` is consumed below to render a richer
+    # per-category (Roofing / Gutters / Siding / Paint / …) carrier-vs-USARM
+    # table. It is computed nowhere upstream for most claims, so the 2-row
+    # fallback renders. Build it here by REGROUPING the figures already in
+    # comparison_rows — no dollar is invented. Each row's category is taken from
+    # its `category` field when present, else classified from its description
+    # text (persisted rows often drop the category key). Only used when
+    # comparison_rows is non-empty AND no upstream summary was supplied; the
+    # empty-rows path stays byte-identical to before.
+    def _doc3_category_of(row):
+        cat = (row.get("category") or row.get("trade") or "").strip()
+        blob = (
+            f"{cat} "
+            + str(row.get("usarm_desc") or row.get("checklist_desc") or "")
+            + " " + str(row.get("item") or "")
+            + " " + str(row.get("carrier_desc") or "")
+        ).lower()
+        # Order matters — most specific first.
+        if "gutter" in blob or "downspout" in blob or "leader" in blob:
+            return "Gutters"
+        if ("siding" in blob or "house wrap" in blob or "housewrap" in blob
+                or "clapboard" in blob or "fiber cement" in blob or "hardie" in blob):
+            return "Siding"
+        if "paint" in blob:
+            return "Paint"
+        if "window" in blob and "wrap" not in blob:
+            return "Windows"
+        if "fascia" in blob or "soffit" in blob:
+            return "Fascia & Soffit"
+        if "debris" in blob or "dumpster" in blob or "haul" in blob:
+            return "Debris"
+        cu = cat.upper()
+        if cu.startswith("ROOF") or "roof" in blob or "shingle" in blob or "flashing" in blob:
+            return "Roofing"
+        if cat:
+            # Title-case a meaningful explicit category we didn't special-case.
+            return cat.title()
+        return "Other"
+
+    computed_variance_summary = None
+    if comparison_rows:
+        from collections import OrderedDict
+        _cat_order = ["Roofing", "Gutters", "Siding", "Fascia & Soffit",
+                      "Windows", "Paint", "Debris", "Other"]
+        _rollup = OrderedDict()
+        for row in comparison_rows:
+            _c = _doc3_category_of(row)
+            agg = _rollup.setdefault(_c, {"carrier": 0.0, "usarm": 0.0})
+            agg["carrier"] += float(row.get("carrier_amount") or 0)
+            agg["usarm"] += float(row.get("usarm_amount") or 0)
+        # Stable display order: known categories first, then any extras alphabetically.
+        _ordered = [c for c in _cat_order if c in _rollup]
+        _ordered += sorted(c for c in _rollup if c not in _cat_order)
+        computed_variance_summary = [
+            {
+                "category": c,
+                "carrier": round(_rollup[c]["carrier"], 2),
+                "usarm": round(_rollup[c]["usarm"], 2),
+                "variance": round(_rollup[c]["usarm"] - _rollup[c]["carrier"], 2),
+            }
+            for c in _ordered
+        ]
+
     # Code violations section (below comparison table)
     code_violations_html = ""
     code_violations = findings.get("code_violations", [])
@@ -4477,12 +4725,20 @@ def build_supplement_report(config):
         wear_tear_html = "<h2>Wear and Aging Do Not Negate Covered Storm Damage</h2>\n"
         wear_tear_html += _build_wear_tear_rebuttal(config)
 
-    # Variance summary table (94 Theron has pre-computed, we use if available)
+    # Variance summary table. Source order: an upstream-supplied
+    # supplement_variance_summary (94 Theron pre-computes one) takes precedence;
+    # NOTE: the per-category rollup (computed_variance_summary) is DISABLED pending a
+    # comparison_rows de-dup fix — on claims whose comparison_rows duplicate a USARM
+    # line across multiple carrier rows (e.g. 77-cook-st-ny), the category rows
+    # double-count and no longer reconcile with the TOTAL/claim RCV (a carrier-visible
+    # "parts exceed the whole"). Until the rows are de-duped, only an explicitly
+    # supplied summary is used; otherwise the byte-identical 2-row fallback renders.
+    _variance_summary_data = config.get("supplement_variance_summary")
     variance_summary_html = ""
-    if config.get("supplement_variance_summary"):
+    if _variance_summary_data:
         variance_summary_html += '<h2>Variance Summary</h2>\n<table class="spectral">\n'
         variance_summary_html += f'<tr><th>Category</th><th class="num">Carrier RCV</th><th class="num">{company["name"]} RCV</th><th class="num">Variance</th></tr>\n'
-        for vs in config["supplement_variance_summary"]:
+        for vs in _variance_summary_data:
             var_amt = vs.get("variance", 0)
             var_class = ' class="num var-pos"' if var_amt > 0 else ' class="num"'
             variance_summary_html += f'<tr><td>{vs["category"]}</td><td class="num">{fmt_money(vs.get("carrier",0))}</td><td class="num">{fmt_money(vs.get("usarm",0))}</td><td{var_class}>{"+" if var_amt > 0 else ""}{fmt_money(var_amt)}</td></tr>\n'
@@ -4496,6 +4752,16 @@ def build_supplement_report(config):
     <tr class="section-total"><td><strong>RCV</strong></td><td class="num"><strong>{fmt_money(fin['carrier_rcv'])}</strong></td><td class="num"><strong>{fmt_money(fin['total_with_op'])}</strong></td><td class="num variance-positive"><strong>+{fmt_money(fin['variance'])}</strong></td></tr>
 </table>
 """
+
+    # ── Negotiation History (additive) ───────────────────────────────────────
+    # config['scope_revisions'] records each carrier scope movement (the diff +
+    # the USARM argument that drove it). The data is computed upstream but was
+    # never rendered. When present, render a revision timeline + the
+    # argument-mapping (code/spec justification per revision) in the Spectral
+    # style already used by this doc. GATED on a NON-EMPTY list — when absent
+    # (the common first-pass case) negotiation_history_html stays "" and the
+    # surrounding body is BYTE-IDENTICAL to before.
+    negotiation_history_html = _build_negotiation_history_spectral(config)
 
     # Key arguments — structured narrative with argument weighting
     key_args = findings.get("key_arguments", [])
@@ -4607,7 +4873,7 @@ def build_supplement_report(config):
 
 <div style="margin-top:24pt;"></div>
 
-{variance_summary_html}
+{variance_summary_html}{negotiation_history_html}
 
 <h2>Overhead &amp; Profit Note</h2>
 <p>{"Overhead & Profit (10% + 11%) is included — " + str(len(scope.get('trades',[]))) + " trades involved (" + trades_str + ")." if fin['o_and_p'] else "Overhead & Profit (O&P) is <strong>not included</strong>. " + o_and_p_note}</p>

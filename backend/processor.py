@@ -708,6 +708,124 @@ def derive_price_list_label(market_code: str, state: str = "") -> str:
     return STATE_PRICE_LIST.get((state or "").upper(), "NYBI26")
 
 
+def _forensic_components_asserted(config: dict) -> set:
+    """Return the set of trade components the forensic findings ASSERT damage to.
+
+    v1 scope: SIDING + GUTTERS only (the trades most often documented in the
+    forensic report but then dropped from the priced estimate). Pure read of the
+    text the forensic renderer already surfaces — `key_arguments`, `damage_summary`,
+    `critical_observations`, and `differentiation_table` — NOT a model call.
+
+    Conservative by design: a component is only asserted when a component keyword
+    co-occurs with a damage/storm cue in the SAME text fragment, so a passing
+    mention ("…unlike the gutters, the roof shows…") does not trip the flag.
+    Returns a subset of {"siding", "gutters"}; empty when nothing is clearly
+    asserted (the default-to-NOT-flag posture).
+    """
+    findings = config.get("forensic_findings", {}) or {}
+
+    # Component keyword sets (lowercased). Kept tight to avoid bleed: "gutter"
+    # also catches "gutters/downspout"; siding includes the common substrates.
+    COMPONENTS = {
+        "gutters": ("gutter", "downspout", "leader"),
+        "siding": ("siding", "house wrap", "housewrap", "clapboard", "vinyl siding",
+                   "aluminum siding", "fiber cement", "hardie"),
+    }
+    # Damage / causation cues — at least one must co-occur with the component
+    # keyword in the same fragment for it to count as an ASSERTION of damage.
+    DAMAGE_CUES = (
+        "damag", "dent", "dented", "denting", "impact", "hail", "wind", "crack",
+        "puncture", "torn", "tear", "displaced", "loosen", "loose", "bent",
+        "broken", "destroyed", "compromis", "replace", "missing", "granule",
+        "storm", "struck", "scuff", "fracture",
+    )
+
+    def _fragments():
+        # damage_summary — a single string
+        ds = findings.get("damage_summary")
+        if isinstance(ds, str) and ds:
+            yield ds
+        # key_arguments — list of strings
+        for a in (findings.get("key_arguments") or []):
+            if isinstance(a, str) and a:
+                yield a
+        # critical_observations — list of {title, content}
+        for obs in (findings.get("critical_observations") or []):
+            if isinstance(obs, dict):
+                yield " ".join(str(obs.get(k, "")) for k in ("title", "content"))
+        # differentiation_table — list of {cause, characteristics, observed, conclusion}
+        for dt in (findings.get("differentiation_table") or []):
+            if isinstance(dt, dict):
+                yield " ".join(str(dt.get(k, "")) for k in
+                               ("cause", "characteristics", "observed", "conclusion"))
+
+    # Negation cues — if the component keyword is preceded (within a short window)
+    # by one of these, the sentence is DENYING the component ("no siding cladding",
+    # "without gutters") and must NOT count as an assertion. This keeps the
+    # default-to-NOT-flag posture and avoids the brick-masonry false positive.
+    NEGATIONS = ("no ", "not ", "without ", "absent", "lacks", "lack of", "n't ",
+                 "never ", "free of ", "rather than", "instead of")
+    # Sentence-level negation openers — a sentence that STARTS by denying evidence
+    # ("No roofing surfaces, ..., siding, ... is present") lists the component
+    # inside the negation's scope even when it's far from the opener.
+    SENTENCE_NEG_OPENERS = ("no ", "none ", "neither ", "without ")
+    # Investigatory / requirement context — a sentence describing what photos or
+    # documentation are REQUIRED/NEEDED to complete the assessment is not asserting
+    # damage ("a photo set containing ... siding ... is required"). Disqualify it.
+    REQUIREMENT_CUES = ("required", "is needed", "are needed", "to complete",
+                        "additional photo", "photo set", "documentation is",
+                        "request the following", "following photo", "must be provided")
+
+    import re as _re
+    asserted = set()
+    for frag in _fragments():
+        # Sentence-scope the test so a damage cue elsewhere in a long paragraph
+        # doesn't "borrow" relevance for an unrelated component mention.
+        for sentence in _re.split(r"[.;\n]|\s—\s|\s-\s", frag):
+            low = sentence.lower()
+            if not any(cue in low for cue in DAMAGE_CUES):
+                continue  # no damage cue in this sentence → not an assertion
+            if any(rc in low for rc in REQUIREMENT_CUES):
+                continue  # "photos required to complete…" — not an assertion of damage
+            sentence_negated = low.lstrip().startswith(SENTENCE_NEG_OPENERS)
+            for comp, kws in COMPONENTS.items():
+                if comp in asserted:
+                    continue
+                for kw in kws:
+                    pos = low.find(kw)
+                    if pos == -1:
+                        continue
+                    if sentence_negated:
+                        continue  # component sits inside a sentence-initial denial
+                    # Local negation guard: the ~24 chars immediately before the
+                    # keyword for a denial ("no traditional siding").
+                    prefix = low[max(0, pos - 24):pos]
+                    if any(neg in prefix for neg in NEGATIONS):
+                        continue
+                    asserted.add(comp)
+                    break
+    return asserted
+
+
+def _line_item_trades_present(config: dict) -> set:
+    """Lowercased set of trades represented in the priced line_items.
+
+    Reads each line's `trade`/`category` and also classifies by description so a
+    siding/gutter line is recognized even when its category label is generic.
+    """
+    present = set()
+    for li in (config.get("line_items") or []):
+        cat = (li.get("trade") or li.get("category") or "").lower()
+        desc = (li.get("description") or "").lower()
+        blob = f"{cat} {desc}"
+        if "gutter" in blob or "downspout" in blob or "leader" in blob:
+            present.add("gutters")
+        if ("siding" in blob or "house wrap" in blob or "housewrap" in blob
+                or "clapboard" in blob or "fiber cement" in blob or "hardie" in blob):
+            present.add("siding")
+    return present
+
+
 def pricing_qa_flags(config: dict, market_reason: str = "") -> list:
     """Ship 0.2/0.3/0.5 — pricing anomalies as QA flags.
 
@@ -874,6 +992,37 @@ def pricing_qa_flags(config: dict, market_reason: str = "") -> list:
                 "mismatches": mismatched[:10],  # cap payload size; full list available via re-query
                 "total_mismatched": len(mismatched),
             })
+
+    # Forensic↔estimate coupling — the forensic report documents damage to a trade
+    # but the priced estimate carries NO line item for it (under-billing / a dropped
+    # trade). v1 scope: SIDING + GUTTERS only — the trades most often documented
+    # then omitted. Detection ONLY: never adds/removes/alters a line item or dollar.
+    # MEDIUM (review), and defaults to NOT flagging when uncertain (the asserter
+    # requires a component keyword to co-occur with a damage cue, so passing
+    # mentions don't trip it). See [[feedback-detection-superset-principle]].
+    try:
+        _asserted = _forensic_components_asserted(config)
+        if _asserted:
+            _present = _line_item_trades_present(config)
+            _unpriced = sorted(_asserted - _present)
+            if _unpriced:
+                flags.append({
+                    "issue": "UNPRICED_FORENSIC_FINDING",
+                    "severity": "medium",
+                    "field": "line_items",
+                    "components": _unpriced,
+                    "detail": (
+                        f"The forensic report asserts storm damage to "
+                        f"{', '.join(_unpriced)}, but the estimate carries no line item "
+                        f"for {'that trade' if len(_unpriced) == 1 else 'those trades'}. "
+                        f"Either price the documented {'/'.join(_unpriced)} scope or "
+                        f"confirm the forensic finding does not warrant a repair before "
+                        f"shipping (forensic↔estimate coupling)."
+                    ),
+                })
+    except Exception as _e:
+        # Detection must never break the pipeline — log and continue.
+        print(f"[QA] UNPRICED_FORENSIC_FINDING check skipped (non-fatal): {_e}")
 
     return flags
 
