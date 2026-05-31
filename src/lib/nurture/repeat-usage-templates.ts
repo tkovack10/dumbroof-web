@@ -42,12 +42,26 @@ export interface RepeatUsageEmail {
 }
 
 /**
- * Action CTA target. Uses the proven `/dashboard/new-claim` route (the same URL
- * the completion + nurture emails use — it opens the claim flow and is known to
- * work). Upgrade to the `?richard=new` deep-link once that handler merges
- * (origin/richard-new-deeplink) so the CTA auto-opens Richard in create mode.
+ * Action CTA target — the `?richard=new` deep-link (#97) auto-opens Richard in
+ * create mode on the dashboard, dropping the contractor straight into "start the
+ * next claim." The completion email's CTA points here too.
  */
-export const START_CLAIM_URL = "https://www.dumbroof.ai/dashboard/new-claim";
+export const START_CLAIM_URL = "https://www.dumbroof.ai/dashboard?richard=new";
+
+/**
+ * Done-for-you reply CTA — the HIGHEST-response pattern in DumbRoof's own email
+ * data: a reply-to-a-human mailto ("Email me your claim → we'll run it for you")
+ * out-pulled every app-link CTA on reply rate, and generic one-way blasts got ~0%.
+ * Routes to claims@dumbroof.ai with a prefilled skeleton so a slammed contractor
+ * can just reply + attach files. Offered alongside the self-serve Richard CTA.
+ */
+export const REPLY_MAILTO =
+  "mailto:claims@dumbroof.ai?subject=Build%20my%20next%20claim&body=Address%3A%0ACarrier%3A%0AWhat%20I%20have%20(photos%20%2F%20carrier%20scope%20%2F%20EagleView)%3A%0A%0A(You%20can%20attach%20files%20to%20this%20reply.)";
+
+/** Secondary "or just reply, we'll build it for you" line — the done-for-you option under the primary CTA. */
+function replyLine(): string {
+  return `<p style="margin:-10px 0 0;font-size:14px;color:#6b7280;">Too slammed to do it yourself? Just <a href="${REPLY_MAILTO}" style="color:#0d2137;font-weight:600;">reply with the address + carrier</a> and my team builds it for you, end-to-end.</p>`;
+}
 
 /** Average net supplement we cite in the "money" touch. Conservative; update from Supabase. */
 export const AVG_SUPPLEMENT = "9,400";
@@ -92,7 +106,9 @@ export function reuse_d3(input: RepeatUsageInput): RepeatUsageEmail {
 
 <p>Got another roof in the pipe?</p>
 
-${cta(START_CLAIM_URL, "Start the next claim →")}`);
+${cta(START_CLAIM_URL, "Start the next claim →")}
+
+${replyLine()}`);
   return { subject, html };
 }
 
@@ -111,7 +127,9 @@ export function reuse_d7(input: RepeatUsageInput): RepeatUsageEmail {
 
 ${cta(START_CLAIM_URL, "Build a supplement →")}
 
-<p>Drop the carrier scope into the chat and Richard writes the whole thing — line-item comparison, code citations, the letter. You review it and send.</p>`);
+${replyLine()}
+
+<p>Drop the carrier scope into the chat and Richard writes the whole thing — line-item comparison, code citations, the letter. You review it and send. Or just forward me the scope and we'll do it for you.</p>`);
   return { subject, html };
 }
 
@@ -162,7 +180,9 @@ export function reuse_d25(input: RepeatUsageInput): RepeatUsageEmail {
 
 <p>Which means your next claim is basically pre-built. Drop in photos, get the package. That's it.</p>
 
-${cta(START_CLAIM_URL, "Pick up where you left off →")}`);
+${cta(START_CLAIM_URL, "Pick up where you left off →")}
+
+${replyLine()}`);
   return { subject, html };
 }
 
