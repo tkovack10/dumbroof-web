@@ -4154,7 +4154,6 @@ def build_xactimate_estimate(config):
     # WS-5 GUARD 4 — assemble the estimate body. The verified/priced branch is
     # byte-identical to the prior inline markup; the estimate-pending branch
     # replaces the $0 line-item + summary + comparison tables with a notice.
-    _eagleview_no = measurements.get('eagleview_report_number', '')
     if _ws5_estimate_pending:
         estimate_body = '''<h2>Line Items</h2>
 <div class="critical-box">
@@ -4217,16 +4216,15 @@ storm-related damage observed during the field inspection.
 
 <div class="non-additive-banner">
 <div class="na-head">Pricing Note</div>
-{_provenance + ". " if _provenance else ""}All line items priced per Xactimate — {financials.get('price_list', '')} pricing region. Quantities from EagleView Report #{_eagleview_no}. Final scope may be adjusted based on conditions discovered during tear-off and installation.
+{_provenance + ". " if _provenance else ""}All line items priced per Xactimate — {financials.get('price_list', '')} pricing region. Quantities derived from the attached roof measurement report. Final scope may be adjusted based on conditions discovered during tear-off and installation.
 </div>"""
 
-    # WS-5 GUARD 4 — property block "EagleView Report" row. In the estimate-
-    # pending posture show an honest "pending" instead of a bare "#"; otherwise
-    # preserve the prior "#<number-or-empty>" rendering exactly (byte-identical).
-    if _ws5_estimate_pending:
-        eagleview_row_html = '    <tr><td><strong>EagleView Report</strong></td><td>Pending — measurements not yet uploaded</td></tr>'
-    else:
-        eagleview_row_html = f'    <tr><td><strong>EagleView Report</strong></td><td>#{_eagleview_no}</td></tr>'
+    # DumbRoof accepts ANY measurement source (EagleView, HOVER, carrier scope,
+    # contractor field measurements), so the estimate no longer singles out an
+    # "EagleView Report" line in the property block — the pricing note cites the
+    # measurement basis source-agnostically, and the estimate-pending posture is
+    # already surfaced by the prominent "ESTIMATE PENDING — measurements required"
+    # body banner (WS-5 GUARD 4). (Tom, 2026-05-31.)
 
     # Price-list region → .neutral cite-chip (non-code reference, so it doesn't
     # stack brick-on-brick), exactly as the brief specifies. Falls back to the
@@ -4269,7 +4267,6 @@ storm-related damage observed during the field inspection.
 {doc2_identity_rows}    <tr><td><strong>Price List</strong></td><td>{price_list_cell}</td></tr>
     <tr><td><strong>Date of Loss</strong></td><td>{dates['date_of_loss']}</td></tr>
     <tr><td><strong>Scope</strong></td><td>{scope_display_str}</td></tr>
-{eagleview_row_html}
 </table>
 
 {estimate_body}
