@@ -472,6 +472,59 @@ def check_material_self_consistency(config: dict, rendered_html: str = "") -> li
 
 
 # ══════════════════════════════════════════════════════════════════════════
+# #17 — MEMBRANE/EPDM HAIL SIGNATURE ON A SLOPED ROOF
+# ══════════════════════════════════════════════════════════════════════════
+
+# The flat/low-slope sink in the canonical enum is 'other' (TPO/EPDM/mod-bit/BUR
+# and anything unclassifiable). Every OTHER resolved enum is a SLOPED covering on
+# which an EPDM/membrane HAIL SIGNATURE is fabricated.
+_FLAT_ROOF_ENUM = "other"
+
+# Constructions that ASSERT a flat-roof hail signature about the inspected
+# surface — distinct from generic standards prose that merely MENTIONS membranes
+# ("membrane roofs use different criteria"), which must NOT trip the check.
+_MEMBRANE_HAIL_SIGNATURE_PATTERNS = [
+    r"\b(?:epdm|tpo|membrane|rubber)\b[^.<>]{0,40}\bpunctur",
+    r"\bpunctur[a-z]*\b[^.<>]{0,40}\b(?:epdm|tpo|membrane|rubber)\b",
+    r"\b(?:epdm|tpo|membrane|rubber)\b[^.<>]{0,30}\bhail\b[^.<>]{0,20}(?:damage|impact|signature|punctur|strike)",
+    r"\bhail\b[^.<>]{0,40}\b(?:epdm|tpo|membrane|rubber)\b",
+]
+
+
+def check_material_membrane_on_sloped(config: dict, rendered_html: str) -> list[str]:
+    """#17 (regression-LOCK damage_detective #17): a SLOPED roof must not be
+    reported with EPDM/membrane/rubber/TPO HAIL SIGNATURES — those belong to flat
+    (low-slope) roofs only. #17 was fixed in prod by WS-3 (#82): the analyze_photos
+    prompt carries an EPDM negative example and the synthesis path gates EPDM
+    puncture language behind a real flat-roof signal. This LOCKS it.
+
+    Anchored on the canonical roof enum (the WS-3 / production source of truth via
+    _gen.material_enum), NOT raw prose: fires only when the resolved enum is a real
+    sloped class (i.e. anything except the flat 'other' sink) AND the rendered HTML
+    asserts a membrane *hail signature* (e.g. "EPDM puncture marks", "hail
+    punctured the membrane"). Generic HAAG-style standards boilerplate that merely
+    mentions membranes/flat systems does NOT trip it — the same prose-co-occurrence
+    false-positive class that #4 (check_material_self_consistency) is deliberately
+    built to avoid."""
+    violations: list[str] = []
+    enum = _gen.material_enum(config, None)
+    if not enum:
+        structures = config.get("structures") or []
+        if len(structures) == 1 and isinstance(structures[0], dict):
+            enum = _gen.material_enum(config, structures[0])
+    if enum and enum != _FLAT_ROOF_ENUM:
+        for pattern in _MEMBRANE_HAIL_SIGNATURE_PATTERNS:
+            if re.search(pattern, rendered_html or "", re.I):
+                violations.append(
+                    f"#17 MEMBRANE-ON-SLOPED: sloped roof (enum '{enum}') cites a "
+                    f"membrane/EPDM hail signature matching /{pattern}/ "
+                    f"(damage_detective #17)"
+                )
+                break  # one violation per claim is enough signal
+    return violations
+
+
+# ══════════════════════════════════════════════════════════════════════════
 # #6 — HAIL-ONLY-WITH-NOAA
 # ══════════════════════════════════════════════════════════════════════════
 
@@ -553,6 +606,7 @@ CONFIG_PLUS_DOC_CHECKS = (
     check_tenant_identity_leak,
     check_climate_text_vs_state,
     check_material_self_consistency,
+    check_material_membrane_on_sloped,
     check_hail_only_with_noaa,
 )
 
