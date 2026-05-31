@@ -6,6 +6,8 @@ import { useRouter } from "next/navigation";
 import { getRichardAuthHeaders } from "@/lib/richard-auth";
 import { RichardIcon } from "@/components/richard-icon";
 import { MarkdownContent } from "@/components/markdown-content";
+import { trackBoth, FunnelEvent } from "@/lib/track";
+import { createClient } from "@/lib/supabase/client";
 
 interface Message {
   role: "user" | "assistant";
@@ -430,6 +432,22 @@ export function AdminBrainChat({ userId, scope = "user" }: AdminBrainChatProps) 
                       customData: { value: 499, currency: "USD", content_name: "Claim Package", content_category: "dashboard" },
                     }),
                   }).catch(() => {});
+                  // GA4 activation conversion — but the dashboard Richard creates REPEAT
+                  // claims too, so fire only on the user's FIRST claim (covers a logged-in
+                  // user who skipped /welcome onboarding). The new row is committed before
+                  // `complete`, so a total of 1 (scoped to user_id) means this is their first.
+                  // Skip on error → never count a repeat claim as an activation.
+                  (async () => {
+                    try {
+                      const { count } = await createClient()
+                        .from("claims")
+                        .select("id", { count: "exact", head: true })
+                        .eq("user_id", userId);
+                      if (count === 1) {
+                        trackBoth(FunnelEvent.FIRST_CLAIM_ACTIVATED, { source: "dashboard_richard" });
+                      }
+                    } catch { /* count check failed — skip to avoid a false activation */ }
+                  })();
                   setFiles([]);
                   setSlug(makeSlug());
                 }
