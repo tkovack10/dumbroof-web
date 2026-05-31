@@ -7,6 +7,7 @@ import {
   REPEAT_USAGE_TOUCH_SPECS,
   type RepeatUsageTouchKey,
 } from "@/lib/nurture/repeat-usage-templates";
+import { personalizeUnsubLinks, listUnsubscribeHeaders } from "@/lib/unsubscribe";
 
 export const maxDuration = 300;
 
@@ -193,7 +194,10 @@ async function handle(req: NextRequest): Promise<NextResponse> {
         continue;
       }
 
-      const { subject, html } = spec.build(input);
+      const built = spec.build(input);
+      const subject = built.subject;
+      const unsub = { uid: userId, e: recipientEmail };
+      const html = personalizeUnsubLinks(built.html, unsub);
       try {
         const { data: sent, error: sendErr } = await resend.emails.send({
           from: FROM,
@@ -201,6 +205,7 @@ async function handle(req: NextRequest): Promise<NextResponse> {
           replyTo: REPLY_TO,
           subject,
           html,
+          headers: listUnsubscribeHeaders(unsub),
           tags: [
             { name: "type", value: "repeat-usage" },
             { name: "touch", value: spec.key },
