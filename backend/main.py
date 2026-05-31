@@ -23,7 +23,7 @@ from contextlib import asynccontextmanager
 from typing import Optional
 
 from dotenv import load_dotenv
-from fastapi import FastAPI, BackgroundTasks, HTTPException, Body, Request, Header
+from fastapi import FastAPI, BackgroundTasks, HTTPException, Body, Request, Header, UploadFile, File, Form
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
@@ -3704,6 +3704,13 @@ DASHBOARD_TOOL_NAMES = {
     "create_claim_from_minimal_input",
     "list_company_claims",
     "get_company_portfolio_summary",
+    # CompanyCam photo import: list projects + pull a project's photos INTO a claim.
+    # import_companycam_photos REQUIRES an explicit claim_id here (dashboard runs the
+    # "admin" sentinel claim_id), which the tool enforces. Needs a connected
+    # CompanyCam key (handler degrades gracefully when absent → tells the user to
+    # connect it). See project_richard_activation.
+    "list_companycam_projects",
+    "import_companycam_photos",
 }
 
 
@@ -5475,49 +5482,48 @@ async def companycam_photos(
         })
 
 
-@app.post("/api/integrations/companycam/projects/{project_id}/import")
-async def companycam_import(
+async def companycam_import_photos_core(
+    auth_user_id: str,
     project_id: str,
-    slug: str = Body(...),
-    user_id: Optional[str] = Body(None),
-    selected_indices: list[int] | None = Body(None),
-    target_path: str | None = Body(None),
-    target_folder: str | None = Body(None),
-    authorization: Optional[str] = Header(default=None),
+    *,
+    slug: str | None = None,
+    selected_indices: list[int] | None = None,
+    target_path: str | None = None,
+    target_folder: str | None = None,
 ):
-    """Download photos from CompanyCam and upload to Supabase storage.
+    """Shared CompanyCam import core — pull a project's photos into Supabase storage.
 
-    If selected_indices is provided, only those photos are imported.
-    Otherwise imports up to 100 photos.
-    target_path: override full storage base path (e.g., "user_id/claim-slug/")
-    target_folder: subfolder within target_path (e.g., "install-photos", "completion-photos")
+    Single source of truth for the download → upload → EXIF-sidecar pipeline,
+    reused by BOTH the HTTP endpoint (``companycam_import``) and the Richard tool
+    handler (``import_companycam_photos`` in claim_brain_tools.py). The caller is
+    responsible for resolving + authorizing ``auth_user_id`` (verified JWT for the
+    endpoint; bound chat user for the tool) BEFORE calling this — this function does
+    NO auth of its own, it trusts the id it's handed.
 
-    Auth: caller identity is derived from the verified Supabase JWT, NOT the
-    legacy user_id body param (which let any caller import into / read from
-    another tenant's CompanyCam + storage path). Missing/invalid token → 401;
-    a supplied user_id must match.
+    Storage path: ``{target_path}/{target_folder or "photos"}/{fname}`` when
+    ``target_path`` is supplied, else ``{auth_user_id}/{slug}/photos/{fname}`` —
+    identical to the endpoint's prior behavior. ``slug`` is required when
+    ``target_path`` is not given.
+
+    Returns one of:
+      * ``{"uploaded": [...], "count": N, "paths": [...], "failed": [...], "requested": N}``
+        on success (possibly partial — ``failed`` lists per-photo errors), or
+      * ``{"error": "companycam_auth_failed"|"companycam_unavailable", "message": ...}``
+        when CompanyCam itself is unreachable/unauthorized (the caller maps this to
+        the right HTTP status / chat message).
     """
-    auth_user_id = _resolve_brain_user_id(authorization, None)
-    if not auth_user_id:
-        raise HTTPException(status_code=401, detail="Authentication required")
-    if user_id and user_id != auth_user_id:
-        raise HTTPException(status_code=403, detail="user_id mismatch with verified token")
     from integrations.companycam import CompanyCamClient, CompanyCamAuthError, CompanyCamUnavailableError
+
+    if not target_path and not slug:
+        return {"error": "bad_request", "message": "slug or target_path is required"}
 
     try:
         client = await _get_user_integration_client(auth_user_id, "companycam")
         photos = await client.get_all_project_photos(project_id)
     except CompanyCamAuthError as e:
-        return JSONResponse(status_code=401, content={
-            "error": "companycam_auth_failed",
-            "message": str(e),
-            "action": "reconnect",
-        })
+        return {"error": "companycam_auth_failed", "message": str(e), "action": "reconnect"}
     except CompanyCamUnavailableError as e:
-        return JSONResponse(status_code=503, content={
-            "error": "companycam_unavailable",
-            "message": str(e),
-        })
+        return {"error": "companycam_unavailable", "message": str(e)}
 
     # Filter to selected photos if indices provided
     if selected_indices is not None:
@@ -5641,6 +5647,186 @@ async def companycam_import(
         "paths": [u["path"] for u in uploaded],
         "failed": failed,
         "requested": len(photos),
+    }
+
+
+@app.post("/api/integrations/companycam/projects/{project_id}/import")
+async def companycam_import(
+    project_id: str,
+    slug: str = Body(...),
+    user_id: Optional[str] = Body(None),
+    selected_indices: list[int] | None = Body(None),
+    target_path: str | None = Body(None),
+    target_folder: str | None = Body(None),
+    authorization: Optional[str] = Header(default=None),
+):
+    """Download photos from CompanyCam and upload to Supabase storage.
+
+    If selected_indices is provided, only those photos are imported.
+    Otherwise imports up to 100 photos.
+    target_path: override full storage base path (e.g., "user_id/claim-slug/")
+    target_folder: subfolder within target_path (e.g., "install-photos", "completion-photos")
+
+    Auth: caller identity is derived from the verified Supabase JWT, NOT the
+    legacy user_id body param (which let any caller import into / read from
+    another tenant's CompanyCam + storage path). Missing/invalid token → 401;
+    a supplied user_id must match. The actual download/upload pipeline lives in
+    the shared ``companycam_import_photos_core`` (reused by the Richard tool).
+    """
+    auth_user_id = _resolve_brain_user_id(authorization, None)
+    if not auth_user_id:
+        raise HTTPException(status_code=401, detail="Authentication required")
+    if user_id and user_id != auth_user_id:
+        raise HTTPException(status_code=403, detail="user_id mismatch with verified token")
+
+    result = await companycam_import_photos_core(
+        auth_user_id,
+        project_id,
+        slug=slug,
+        selected_indices=selected_indices,
+        target_path=target_path,
+        target_folder=target_folder,
+    )
+    # Map the shared core's error envelope back onto the endpoint's HTTP contract.
+    err = result.get("error") if isinstance(result, dict) else None
+    if err == "companycam_auth_failed":
+        return JSONResponse(status_code=401, content=result)
+    if err == "companycam_unavailable":
+        return JSONResponse(status_code=503, content=result)
+    if err:
+        raise HTTPException(status_code=400, detail=result.get("message") or err)
+    return result
+
+
+# Allowed storage_path prefixes for /api/classify-intake reads:
+#   anon-instant-intake/<uuid>/...  — the anonymous instant funnel's staging area
+#   <auth_user_id>/...              — the caller's OWN area (authed dashboard/onboarding)
+_ANON_INTAKE_PREFIX = "anon-instant-intake/"
+import re as _re_classify
+_ANON_TOKEN_RE = _re_classify.compile(r"^anon-instant-intake/[A-Za-z0-9_-]{8,64}/")
+_IMAGE_MIME_PREFIX = "image/"
+
+
+def _classify_intake_path_allowed(storage_path: str, auth_user_id: Optional[str]) -> bool:
+    """True if storage_path is one the caller may read for classification.
+
+    Anonymous funnel paths (anon-instant-intake/<token>/...) are always allowed —
+    the token IS the capability (unguessable UUID, same model the Next.js funnel
+    routes use). Authed callers may additionally read anything under their own
+    "<user_id>/" prefix. Anything else is rejected so this endpoint can't be turned
+    into an arbitrary cross-tenant file reader.
+    """
+    if not storage_path:
+        return False
+    # Defense against traversal/absolute paths.
+    if ".." in storage_path or storage_path.startswith("/"):
+        return False
+    if _ANON_TOKEN_RE.match(storage_path):
+        return True
+    if auth_user_id and storage_path.startswith(f"{auth_user_id}/"):
+        return True
+    return False
+
+
+@app.post("/api/classify-intake")
+async def classify_intake(request: Request, authorization: Optional[str] = Header(default=None)):
+    """Server-side intake classifier so a single drop box can self-sort.
+
+    Runs the SAME Vision logic as Richard's classify_uploaded_file (shared via
+    claim_brain_tools.classify_intake_file), WITHOUT needing a claim_id. Works for:
+      * the ANONYMOUS instant funnel — pass a storage_path under
+        anon-instant-intake/<token>/... (no JWT required; the token is the cap), and
+      * authed dashboard/onboarding uploads — pass a multipart file, or a
+        storage_path under the caller's own "<user_id>/" area.
+
+    Request — one of:
+      A) multipart/form-data with field ``file`` (the upload); optional ``filename``.
+      B) JSON ``{"storage_path": "...", "filename"?: "..."}`` referencing a file
+         already in the claim-documents bucket.
+
+    Response (always 200 unless the path is unauthorized → 403):
+      ``{"category": "photos"|"measurements"|"scope"|"other",
+         "label": "<fine Vision label>", "confidence": <0-1 float>}``
+
+    GUARDRAIL: classification NEVER blocks the upload — on any error/timeout/low
+    confidence the classifier returns "other" (or "photos" when the file is clearly
+    an image by MIME/extension) so the file is still kept and the frontend lets the
+    user correct the detected type. Failures are logged, not raised.
+    """
+    auth_user_id = _resolve_brain_user_id(authorization, None)
+    content_type = (request.headers.get("content-type") or "").lower()
+
+    file_bytes: Optional[bytes] = None
+    filename = ""
+    storage_path: Optional[str] = None
+    upload_mime: Optional[str] = None
+
+    try:
+        if content_type.startswith("multipart/form-data"):
+            form = await request.form()
+            up = form.get("file")
+            if up is not None and hasattr(up, "read"):
+                file_bytes = await up.read()
+                filename = getattr(up, "filename", "") or ""
+                upload_mime = getattr(up, "content_type", None)
+            # A multipart caller may alternatively reference an existing path.
+            sp = form.get("storage_path")
+            if isinstance(sp, str) and sp.strip():
+                storage_path = sp.strip()
+            fn = form.get("filename")
+            if isinstance(fn, str) and fn.strip():
+                filename = fn.strip()
+        else:
+            # Treat anything else as JSON {storage_path, filename}.
+            try:
+                body = await request.json()
+            except Exception:
+                body = {}
+            if isinstance(body, dict):
+                sp = body.get("storage_path")
+                if isinstance(sp, str) and sp.strip():
+                    storage_path = sp.strip()
+                fn = body.get("filename")
+                if isinstance(fn, str) and fn.strip():
+                    filename = fn.strip()
+    except Exception as e:
+        # Even request parsing failures must not 500 the upload flow — keep it.
+        print(f"[CLASSIFY-INTAKE] request parse failed: {e}", flush=True)
+        return {"category": "other", "label": "OTHER", "confidence": 0.0}
+
+    # Must have SOMETHING to classify.
+    if file_bytes is None and not storage_path:
+        raise HTTPException(status_code=400, detail="Provide a file (multipart) or a storage_path.")
+
+    sb = None
+    if storage_path is not None:
+        # Authorize the path before reading anything from storage.
+        if not _classify_intake_path_allowed(storage_path, auth_user_id):
+            raise HTTPException(status_code=403, detail="storage_path is not in an allowed area.")
+        if not filename:
+            filename = storage_path.rsplit("/", 1)[-1]
+        sb = get_supabase_client()
+
+    from claim_brain_tools import classify_intake_file
+    try:
+        result = classify_intake_file(
+            file_bytes=file_bytes,
+            filename=filename,
+            storage_path=storage_path if file_bytes is None else None,
+            content_type=upload_mime,
+            sb=sb,
+        )
+    except Exception as e:
+        # classify_intake_file already fails open, but belt-and-suspenders here so
+        # the endpoint NEVER 500s on a classification problem.
+        print(f"[CLASSIFY-INTAKE] classify_intake_file raised (kept as other): {e}", flush=True)
+        is_img = bool(upload_mime and upload_mime.lower().startswith(_IMAGE_MIME_PREFIX))
+        return {"category": "photos" if is_img else "other", "label": "OTHER", "confidence": 0.0}
+
+    return {
+        "category": result.get("category", "other"),
+        "label": result.get("label", "OTHER"),
+        "confidence": result.get("confidence", 0.0),
     }
 
 

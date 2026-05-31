@@ -486,6 +486,47 @@ CLAIM_BRAIN_TOOLS = [
             "required": ["service"],
         },
     },
+    # ─── CompanyCam photo import ──────────────────
+    {
+        "name": "list_companycam_projects",
+        "description": (
+            "List the user's CompanyCam projects so they can pick one to pull photos from. "
+            "Use when the user says things like 'import my CompanyCam photos', 'grab the photos "
+            "from CompanyCam', or 'which CompanyCam job has the roof shots'. Requires the user to "
+            "have CompanyCam connected (a saved API key). If they are NOT connected, the tool says "
+            "so — then guide them to connect it first (save_integration_key for the API key). "
+            "Returns up to ~20 projects per page with their id + address; show the list and ask "
+            "which one to import, then call import_companycam_photos with the chosen project_id."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "query": {"type": "string", "description": "Optional address/name filter to narrow the project list."},
+                "page": {"type": "integer", "description": "Page of results (1-based). Default 1.", "default": 1},
+            },
+            "required": [],
+        },
+    },
+    {
+        "name": "import_companycam_photos",
+        "description": (
+            "Import the photos from a chosen CompanyCam project INTO a claim. Call this AFTER "
+            "list_companycam_projects when the user has picked which project to pull. Downloads the "
+            "CompanyCam originals and stores them on the claim's photos so they flow into the report. "
+            "Requires CompanyCam connected. The claim is the one currently open in chat by default; "
+            "on the dashboard (no claim open) you MUST pass claim_id for the target claim. Imports up "
+            "to 100 photos. This is a real write but is non-destructive (only adds photos) — it runs "
+            "without a separate approval gate."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "project_id": {"type": "string", "description": "CompanyCam project id chosen from list_companycam_projects."},
+                "claim_id": {"type": "string", "description": "Target claim id to import into. Optional in a per-claim chat (defaults to the open claim); REQUIRED from the dashboard where no claim is open."},
+            },
+            "required": ["project_id"],
+        },
+    },
     # ─── Company-scope (admin/owner only) ─────────
     {
         "name": "list_company_claims",
@@ -1425,6 +1466,11 @@ async def execute_tool(
             result = _handle_connect_crm(sb, user_id, tool_input)
         elif tool_name == "disconnect_integration":
             result = _handle_preview_disconnect_integration(sb, user_id, tool_input)
+        # ─── CompanyCam photo import ──────────────
+        elif tool_name == "list_companycam_projects":
+            result = await _handle_list_companycam_projects(sb, user_id, tool_input)
+        elif tool_name == "import_companycam_photos":
+            result = await _handle_import_companycam_photos(sb, claim_id, user_id, tool_input)
         # ─── Company-scope (owner/admin only) ─────
         elif tool_name == "list_company_claims":
             result = _handle_list_company_claims(sb, user_id, tool_input)
@@ -2588,93 +2634,110 @@ def _handle_get_slope_damage(claim_data: dict, tool_input: dict) -> dict:
 # R2 — CLASSIFY UPLOADED FILE
 # ═══════════════════════════════════════════
 
-async def _handle_classify_uploaded_file(sb: Client, claim_id: str, tool_input: dict) -> dict:
-    """
-    Claude Vision classifies a user-uploaded file into one of:
-      AOB, COC, CARRIER_SCOPE, EAGLEVIEW, SUPPLEMENT_RESPONSE, CONTRACT, PHOTO, OTHER
-    """
-    storage_path = (tool_input.get("storage_path") or "").strip()
-    filename = tool_input.get("filename") or storage_path.rsplit("/", 1)[-1] if storage_path else ""
-    if not storage_path:
-        return {"action": "error", "message": "storage_path is required"}
+# ─────────────────────────────────────────────────────────────────────
+# Shared Vision classifier core
+#
+# The prompt + Vision call + JSON parse below is the SINGLE source of truth
+# for "what kind of insurance document is this file?". It is reused by:
+#   * _handle_classify_uploaded_file — the claim_id-bound Richard tool, and
+#   * classify_intake_file           — the claim-LESS intake classifier used by
+#                                       POST /api/classify-intake (instant funnel +
+#                                       authed drop boxes).
+# Keep the prompt/labels here only — never fork them into a second copy.
+# ─────────────────────────────────────────────────────────────────────
 
-    # Download file from Supabase Storage
-    try:
-        file_bytes = sb.storage.from_("claim-documents").download(storage_path)
-    except Exception as e:
-        return {"action": "error", "message": f"Failed to download file: {e}"}
+# Fine Vision labels (what the prompt asks the model to emit).
+_VISION_CLASSIFY_LABELS = ("AOB", "COC", "CARRIER_SCOPE", "EAGLEVIEW",
+                           "SUPPLEMENT_RESPONSE", "CONTRACT", "PHOTO", "OTHER")
 
-    if not file_bytes:
-        return {"action": "error", "message": "Empty file downloaded."}
+_VISION_CLASSIFY_PROMPT = (
+    "You are classifying a document for an insurance claim workflow. "
+    "Identify which ONE of these categories this document is:\n\n"
+    "- AOB: Assignment of Benefits (signed or unsigned)\n"
+    "- COC: Certificate of Completion / Completion certificate\n"
+    "- CARRIER_SCOPE: Insurance carrier's estimate or adjuster report (Xactimate/ESX/PDF)\n"
+    "- EAGLEVIEW: EagleView / Hover measurement report\n"
+    "- SUPPLEMENT_RESPONSE: A carrier email or letter responding to a prior supplement\n"
+    "- CONTRACT: Homeowner/contractor agreement (scope of work)\n"
+    "- PHOTO: A damage photograph\n"
+    "- OTHER: Anything else\n\n"
+    "Respond with ONLY a JSON object, no prose. Schema:\n"
+    "{\"classification\": \"<CATEGORY>\", \"confidence\": 0.0-1.0, "
+    "\"signals\": [\"short evidence 1\", \"short evidence 2\"], "
+    "\"suggested_action\": \"one-sentence next step\"}"
+)
 
-    # Determine media type from extension
-    lower = (filename or storage_path).lower()
+
+def _vision_doc_block(file_bytes: bytes, filename_or_path: str) -> Optional[dict]:
+    """Build the multimodal content block for a file, or None if the file type
+    is not Vision-supported (caller falls back to filename heuristics)."""
+    lower = (filename_or_path or "").lower()
     is_pdf = lower.endswith(".pdf")
     is_image = any(lower.endswith(ext) for ext in (".jpg", ".jpeg", ".png", ".webp", ".heic", ".heif"))
+    b64 = base64.standard_b64encode(file_bytes).decode("utf-8")
+    if is_pdf:
+        return {"type": "document",
+                "source": {"type": "base64", "media_type": "application/pdf", "data": b64}}
+    if is_image:
+        media = "image/jpeg"
+        if lower.endswith(".png"):
+            media = "image/png"
+        elif lower.endswith(".webp"):
+            media = "image/webp"
+        return {"type": "image",
+                "source": {"type": "base64", "media_type": media, "data": b64}}
+    return None
+
+
+def _run_vision_classification(
+    file_bytes: bytes,
+    filename_or_path: str,
+    *,
+    sb: Optional[Client] = None,
+    claim_id: Optional[str] = None,
+    step_name: str = "classify_uploaded_file",
+) -> dict:
+    """Run the shared Vision classifier on raw file bytes.
+
+    Returns a dict ``{classification, confidence, signals, suggested_action}``
+    (classification is one of _VISION_CLASSIFY_LABELS, UPPER). On any failure
+    (unsupported type, Vision error, unparseable response) returns a low-confidence
+    OTHER rather than raising — callers decide how to surface that. ``sb``+``claim_id``
+    are optional: when present the call is metered through telemetry; when absent
+    (claim-less intake) it goes straight to the Anthropic client.
+    """
+    doc_block = _vision_doc_block(file_bytes, filename_or_path)
+    if doc_block is None:
+        # Unsupported file type for Vision — caller handles the filename fallback.
+        return {"classification": None, "confidence": 0.0, "signals": [], "suggested_action": ""}
 
     import anthropic
     client = anthropic.Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
-
-    # Build multimodal content for Vision
-    b64 = base64.standard_b64encode(file_bytes).decode("utf-8")
-    if is_pdf:
-        doc_block = {
-            "type": "document",
-            "source": {"type": "base64", "media_type": "application/pdf", "data": b64},
-        }
-    elif is_image:
-        media = "image/jpeg"
-        if lower.endswith(".png"): media = "image/png"
-        elif lower.endswith(".webp"): media = "image/webp"
-        doc_block = {
-            "type": "image",
-            "source": {"type": "base64", "media_type": media, "data": b64},
-        }
-    else:
-        # Unsupported file — classify by filename only
-        return _classify_by_filename(filename or storage_path, storage_path)
-
-    classify_prompt = (
-        "You are classifying a document for an insurance claim workflow. "
-        "Identify which ONE of these categories this document is:\n\n"
-        "- AOB: Assignment of Benefits (signed or unsigned)\n"
-        "- COC: Certificate of Completion / Completion certificate\n"
-        "- CARRIER_SCOPE: Insurance carrier's estimate or adjuster report (Xactimate/ESX/PDF)\n"
-        "- EAGLEVIEW: EagleView / Hover measurement report\n"
-        "- SUPPLEMENT_RESPONSE: A carrier email or letter responding to a prior supplement\n"
-        "- CONTRACT: Homeowner/contractor agreement (scope of work)\n"
-        "- PHOTO: A damage photograph\n"
-        "- OTHER: Anything else\n\n"
-        "Respond with ONLY a JSON object, no prose. Schema:\n"
-        "{\"classification\": \"<CATEGORY>\", \"confidence\": 0.0-1.0, "
-        "\"signals\": [\"short evidence 1\", \"short evidence 2\"], "
-        "\"suggested_action\": \"one-sentence next step\"}"
-    )
 
     # Matches the model used elsewhere in this backend (processor, carrier_analyst,
     # repair_processor, main.py chat) so billing/quota behave predictably.
     primary_model = os.environ.get("CLAIM_BRAIN_VISION_MODEL", MODEL)
     fallback_model = os.environ.get("CLAIM_BRAIN_VISION_FALLBACK_MODEL", MODEL)
 
-    # Telemetry: route the vision call through call_claude_logged so its tokens/cost/latency
-    # land in processing_logs (Ship 0.5 — this site previously hit client.messages.create
-    # directly = invisible vision spend). sb + claim_id are in scope here.
-    from telemetry import call_claude_logged
+    messages = [{
+        "role": "user",
+        "content": [doc_block, {"type": "text", "text": _VISION_CLASSIFY_PROMPT}],
+    }]
 
     def _call_vision(model_name: str):
-        return call_claude_logged(
-            client, sb, claim_id,
-            step_name="classify_uploaded_file",
-            model=model_name,
-            max_tokens=512,
-            messages=[{
-                "role": "user",
-                "content": [
-                    doc_block,
-                    {"type": "text", "text": classify_prompt},
-                ],
-            }],
-        )
+        # Meter through telemetry ONLY when we have a claim to attribute spend to
+        # (Ship 0.5). The claim-less intake path has no claim_id → call the client
+        # directly (still our spend, but not attributable to a claim row).
+        if sb is not None and claim_id:
+            from telemetry import call_claude_logged
+            return call_claude_logged(
+                client, sb, claim_id,
+                step_name=step_name,
+                model=model_name,
+                max_tokens=512,
+                messages=messages,
+            )
+        return client.messages.create(model=model_name, max_tokens=512, messages=messages)
 
     try:
         msg = _call_vision(primary_model)
@@ -2682,10 +2745,16 @@ async def _handle_classify_uploaded_file(sb: Client, claim_id: str, tool_input: 
         try:
             msg = _call_vision(fallback_model)
         except Exception as e_fallback:
-            return {
-                "action": "error",
-                "message": f"Vision classification failed. Primary ({primary_model}): {e_primary}. Fallback ({fallback_model}): {e_fallback}",
-            }
+            # Fail open — never raise out of the classifier. OTHER + 0 confidence.
+            # The `error` key lets the claim-bound handler preserve its original
+            # error-surfacing contract; the claim-LESS intake path ignores it and
+            # keeps the file (its whole job is to never block an upload).
+            print(f"[CLASSIFY] Vision failed (primary={primary_model}: {e_primary}; "
+                  f"fallback={fallback_model}: {e_fallback})", flush=True)
+            return {"classification": "OTHER", "confidence": 0.0,
+                    "signals": ["vision_error"], "suggested_action": "",
+                    "error": (f"Vision classification failed. Primary ({primary_model}): "
+                              f"{e_primary}. Fallback ({fallback_model}): {e_fallback}")}
 
     raw_text = ""
     for block in msg.content:
@@ -2714,9 +2783,50 @@ async def _handle_classify_uploaded_file(sb: Client, claim_id: str, tool_input: 
                 parsed = {}
 
     classification = (parsed.get("classification") or "OTHER").upper()
-    confidence = float(parsed.get("confidence") or 0.0)
-    signals = parsed.get("signals") or []
-    suggested_action = parsed.get("suggested_action") or ""
+    try:
+        confidence = float(parsed.get("confidence") or 0.0)
+    except (TypeError, ValueError):
+        confidence = 0.0
+    return {
+        "classification": classification,
+        "confidence": confidence,
+        "signals": parsed.get("signals") or [],
+        "suggested_action": parsed.get("suggested_action") or "",
+    }
+
+
+async def _handle_classify_uploaded_file(sb: Client, claim_id: str, tool_input: dict) -> dict:
+    """
+    Claude Vision classifies a user-uploaded file into one of:
+      AOB, COC, CARRIER_SCOPE, EAGLEVIEW, SUPPLEMENT_RESPONSE, CONTRACT, PHOTO, OTHER
+    """
+    storage_path = (tool_input.get("storage_path") or "").strip()
+    filename = tool_input.get("filename") or storage_path.rsplit("/", 1)[-1] if storage_path else ""
+    if not storage_path:
+        return {"action": "error", "message": "storage_path is required"}
+
+    # Download file from Supabase Storage
+    try:
+        file_bytes = sb.storage.from_("claim-documents").download(storage_path)
+    except Exception as e:
+        return {"action": "error", "message": f"Failed to download file: {e}"}
+
+    if not file_bytes:
+        return {"action": "error", "message": "Empty file downloaded."}
+
+    # Unsupported file type for Vision → classify by filename only.
+    if _vision_doc_block(file_bytes, filename or storage_path) is None:
+        return _classify_by_filename(filename or storage_path, storage_path)
+
+    vc = _run_vision_classification(file_bytes, filename or storage_path, sb=sb, claim_id=claim_id)
+    # Preserve this tool's original contract: a hard Vision failure surfaces as an
+    # error (the intake path, by contrast, fails open and keeps the file).
+    if vc.get("error"):
+        return {"action": "error", "message": vc["error"]}
+    classification = vc["classification"] or "OTHER"
+    confidence = vc["confidence"]
+    signals = vc["signals"]
+    suggested_action = vc["suggested_action"]
 
     return {
         "action": "complete",
@@ -2735,6 +2845,122 @@ async def _handle_classify_uploaded_file(sb: Client, claim_id: str, tool_input: 
             f"({int(confidence * 100)}% confidence)."
         ),
     }
+
+
+# ─────────────────────────────────────────────────────────────────────
+# Intake classifier (claim-LESS) — powers POST /api/classify-intake
+#
+# A single drop box on the instant/onboarding/dashboard funnel can self-sort:
+# this maps the fine Vision label onto one of the three intake FOLDERS the
+# create-claim path infers report type from ("photos" | "measurements" |
+# "scope"), plus "other" for the leftovers. It NEVER raises — on any
+# failure it returns "other" (or "photos" when MIME says it's clearly an
+# image) so the file is always kept and the user can correct the guess.
+# ─────────────────────────────────────────────────────────────────────
+
+# Fine Vision label  ->  intake FOLDER ("photos" | "measurements" | "scope")
+_FINE_LABEL_TO_INTAKE_CATEGORY = {
+    "PHOTO": "photos",
+    "EAGLEVIEW": "measurements",       # measurement / aerial reports
+    "CARRIER_SCOPE": "scope",          # carrier estimate / adjuster report
+    "AOB": "scope",                    # claim docs ride with the scope bucket
+    "COC": "scope",
+    "SUPPLEMENT_RESPONSE": "scope",
+    "CONTRACT": "scope",
+    "OTHER": "other",
+}
+
+_IMAGE_EXTS = (".jpg", ".jpeg", ".png", ".webp", ".heic", ".heif", ".gif", ".bmp", ".tif", ".tiff")
+
+
+def _intake_category_for_label(label: Optional[str]) -> str:
+    return _FINE_LABEL_TO_INTAKE_CATEGORY.get((label or "").upper(), "other")
+
+
+def _looks_like_image(filename: str, content_type: Optional[str] = None) -> bool:
+    if content_type and content_type.lower().startswith("image/"):
+        return True
+    lower = (filename or "").lower()
+    return any(lower.endswith(ext) for ext in _IMAGE_EXTS)
+
+
+def classify_intake_file(
+    *,
+    file_bytes: Optional[bytes] = None,
+    filename: str = "",
+    storage_path: Optional[str] = None,
+    content_type: Optional[str] = None,
+    sb: Optional[Client] = None,
+) -> dict:
+    """Classify an intake file into an intake CATEGORY without needing a claim.
+
+    Inputs (provide one of file_bytes OR storage_path):
+      * ``file_bytes`` + ``filename``  — bytes already in hand (multipart upload), or
+      * ``storage_path``               — a path in the ``claim-documents`` bucket the
+                                         caller has already authorized; ``sb`` must be
+                                         passed so we can download it.
+
+    Returns ``{"category", "label", "confidence"}`` where:
+      * ``category`` ∈ {"photos","measurements","scope","other"} — the intake folder, and
+      * ``label``    is the fine Vision label (PHOTO/EAGLEVIEW/CARRIER_SCOPE/...), and
+      * ``confidence`` is a 0-1 float.
+
+    GUARDRAILS: this function NEVER raises. On download failure, unsupported type,
+    Vision error, or unparseable output it falls back to a filename heuristic, then
+    to "photos" if the file is clearly an image by extension/MIME, else "other".
+    """
+    name = filename or (storage_path.rsplit("/", 1)[-1] if storage_path else "")
+
+    # Resolve bytes if only a storage path was given.
+    if file_bytes is None and storage_path and sb is not None:
+        try:
+            file_bytes = sb.storage.from_("claim-documents").download(storage_path)
+        except Exception as e:
+            print(f"[CLASSIFY-INTAKE] download failed for {storage_path}: {e}", flush=True)
+            file_bytes = None
+
+    # No bytes to inspect → best-effort from the name/MIME alone (never raise).
+    if not file_bytes:
+        if _looks_like_image(name, content_type):
+            return {"category": "photos", "label": "PHOTO", "confidence": 0.4}
+        fb = _classify_by_filename(name or (storage_path or ""), storage_path or "")
+        flabel = (fb.get("data", {}).get("classification") or "OTHER")
+        return {
+            "category": _intake_category_for_label(flabel),
+            "label": flabel,
+            "confidence": float(fb.get("data", {}).get("confidence") or 0.0),
+        }
+
+    # Unsupported-for-Vision file type → filename heuristic (still never raises).
+    if _vision_doc_block(file_bytes, name) is None:
+        if _looks_like_image(name, content_type):
+            return {"category": "photos", "label": "PHOTO", "confidence": 0.4}
+        fb = _classify_by_filename(name or (storage_path or ""), storage_path or "")
+        flabel = (fb.get("data", {}).get("classification") or "OTHER")
+        return {
+            "category": _intake_category_for_label(flabel),
+            "label": flabel,
+            "confidence": float(fb.get("data", {}).get("confidence") or 0.0),
+        }
+
+    try:
+        vc = _run_vision_classification(file_bytes, name, step_name="classify_intake_file")
+    except Exception as e:  # defense-in-depth — _run_vision_classification already fails open
+        print(f"[CLASSIFY-INTAKE] classify failed for {name}: {e}", flush=True)
+        return {
+            "category": "photos" if _looks_like_image(name, content_type) else "other",
+            "label": "OTHER",
+            "confidence": 0.0,
+        }
+
+    label = vc.get("classification") or "OTHER"
+    confidence = float(vc.get("confidence") or 0.0)
+    category = _intake_category_for_label(label)
+    # Low-confidence backstop: if Vision wasn't sure but the file is obviously an
+    # image, keep it as a photo rather than dumping it in "other".
+    if category == "other" and confidence < 0.5 and _looks_like_image(name, content_type):
+        return {"category": "photos", "label": "PHOTO", "confidence": confidence}
+    return {"category": category, "label": label, "confidence": confidence}
 
 
 # ═══════════════════════════════════════════
@@ -3662,6 +3888,187 @@ def _handle_connect_crm(sb: Client, user_id: str, tool_input: dict) -> dict:
             f"Click to authorize {service.replace('_', ' ').title()}." if configured
             else f"OAuth not yet configured for {service}. Set {client_id_env} on the backend, then retry."
         ),
+    }
+
+
+def _companycam_connected(sb: Client, user_id: str) -> bool:
+    """True if the user (or a company admin via the shared-key fallback) has a
+    CompanyCam API key on file. Mirrors the resolution order in main's
+    _get_user_integration_client (own profile → company admin), but only checks
+    presence — it never returns the key itself."""
+    if not user_id:
+        return False
+    try:
+        res = sb.table("company_profiles").select(
+            "companycam_api_key, company_id"
+        ).eq("user_id", user_id).limit(1).execute()
+        prof = (res.data or [{}])[0] if res.data else {}
+    except Exception:
+        return False
+    if prof.get("companycam_api_key"):
+        return True
+    company_id = prof.get("company_id")
+    if company_id:
+        try:
+            admin = sb.table("company_profiles").select("companycam_api_key").eq(
+                "company_id", company_id).eq("is_admin", True).execute()
+            return any(a.get("companycam_api_key") for a in (admin.data or []))
+        except Exception:
+            return False
+    return False
+
+
+_COMPANYCAM_NOT_CONNECTED = {
+    "action": "error",
+    "message": (
+        "CompanyCam isn't connected yet. Ask the user for their CompanyCam API key "
+        "(CompanyCam → Account → Integrations → Access Tokens), then save it with "
+        "save_integration_key(service='companycam', api_key=...) — or have their "
+        "company admin connect it — and try again."
+    ),
+}
+
+
+async def _handle_list_companycam_projects(sb: Client, user_id: str, tool_input: dict) -> dict:
+    """List the user's CompanyCam projects (read-only). Requires a connected key."""
+    if not _companycam_connected(sb, user_id):
+        return _COMPANYCAM_NOT_CONNECTED
+
+    query = (tool_input.get("query") or "").strip()
+    try:
+        page = int(tool_input.get("page") or 1)
+    except (TypeError, ValueError):
+        page = 1
+    if page < 1:
+        page = 1
+
+    # Reuse main's resolver (own key → company-admin fallback) + the CompanyCam client.
+    from main import _get_user_integration_client  # type: ignore
+    from integrations.companycam import CompanyCamAuthError, CompanyCamUnavailableError
+    try:
+        client = await _get_user_integration_client(user_id, "companycam")
+        projects = await client.search_projects(query=query, page=page)
+    except CompanyCamAuthError as e:
+        return {"action": "error", "message": f"CompanyCam rejected the saved key — ask the user to reconnect it. ({e})"}
+    except CompanyCamUnavailableError as e:
+        return {"action": "error", "message": f"CompanyCam is unreachable right now — try again shortly. ({e})"}
+    except Exception as e:
+        return {"action": "error", "message": f"Couldn't list CompanyCam projects: {type(e).__name__}: {e}"}
+
+    # Trim each project to the fields the chat needs to present a pick-list.
+    slim = []
+    for p in (projects or []):
+        addr = p.get("address") if isinstance(p.get("address"), dict) else {}
+        addr_str = ", ".join(
+            str(addr.get(k)) for k in ("street_address_1", "city", "state") if addr.get(k)
+        ) if isinstance(addr, dict) else ""
+        slim.append({
+            "project_id": p.get("id"),
+            "name": p.get("name"),
+            "address": addr_str or (p.get("name") or ""),
+            "photo_count": p.get("photo_count"),
+            "status": p.get("status"),
+        })
+
+    return {
+        "action": "complete",
+        "type": "companycam_projects",
+        "data": {"projects": slim, "page": page, "count": len(slim)},
+        "message": (
+            f"Found {len(slim)} CompanyCam project(s)"
+            + (f" matching '{query}'" if query else "")
+            + ". Ask the user which one to import, then call import_companycam_photos with its project_id."
+            if slim else
+            "No CompanyCam projects found"
+            + (f" matching '{query}'" if query else "")
+            + ". Try a different search, or confirm the project exists in CompanyCam."
+        ),
+    }
+
+
+async def _handle_import_companycam_photos(
+    sb: Client, bound_claim_id: str, user_id: str, tool_input: dict
+) -> dict:
+    """Import a CompanyCam project's photos into a claim.
+
+    Target claim = explicit ``claim_id`` arg if given, else the chat's bound
+    claim_id. The dashboard/onboarding Richard runs with the sentinel
+    ``"admin"`` claim_id, so it MUST pass claim_id explicitly. Cross-tenant safe:
+    the caller must own the claim or share its company_id (_user_can_access_claim).
+    Photos land in the CLAIM's own storage area (claim.file_path/photos), not the
+    chatting user's, so a teammate import writes to the right place.
+    """
+    project_id = (tool_input.get("project_id") or "").strip()
+    if not project_id:
+        return {"action": "error", "message": "project_id is required (get it from list_companycam_projects)."}
+
+    if not _companycam_connected(sb, user_id):
+        return _COMPANYCAM_NOT_CONNECTED
+
+    # Resolve the target claim id (explicit arg wins; else the bound chat claim).
+    target_claim_id = (tool_input.get("claim_id") or "").strip() or (bound_claim_id or "")
+    if not target_claim_id or target_claim_id == "admin":
+        return {
+            "action": "error",
+            "message": (
+                "No claim to import into. From the dashboard, pass claim_id for the "
+                "claim you want the photos on (or open the claim and run this inside it)."
+            ),
+        }
+
+    # Load + authorize the claim (owner OR same company_id).
+    try:
+        cres = sb.table("claims").select("id, user_id, company_id, file_path, slug").eq(
+            "id", target_claim_id).limit(1).execute()
+        claim_row = (cres.data or [{}])[0] if cres.data else {}
+    except Exception as e:
+        return {"action": "error", "message": f"Couldn't load that claim: {type(e).__name__}: {e}"}
+    if not claim_row.get("id"):
+        return {"action": "error", "message": f"Claim {target_claim_id} not found."}
+
+    from main import _user_can_access_claim, companycam_import_photos_core  # type: ignore
+    if not _user_can_access_claim(sb, user_id, claim_row):
+        return {"action": "error", "message": "You don't have access to that claim."}
+
+    # Import INTO the claim's own storage area so shared-company teammates land
+    # photos in the right place (file_path = "{owner_user_id}/{slug}").
+    target_path = claim_row.get("file_path") or f"{claim_row.get('user_id')}/{claim_row.get('slug')}"
+
+    result = await companycam_import_photos_core(
+        user_id,
+        project_id,
+        target_path=target_path,
+        target_folder="photos",
+    )
+
+    err = result.get("error") if isinstance(result, dict) else None
+    if err == "companycam_auth_failed":
+        return {"action": "error", "message": f"CompanyCam rejected the saved key — ask the user to reconnect it. ({result.get('message')})"}
+    if err == "companycam_unavailable":
+        return {"action": "error", "message": f"CompanyCam is unreachable right now — try again shortly. ({result.get('message')})"}
+    if err:
+        return {"action": "error", "message": result.get("message") or "CompanyCam import failed."}
+
+    count = result.get("count", 0)
+    failed = result.get("failed") or []
+    requested = result.get("requested", count)
+    msg = f"Imported {count} photo(s) from CompanyCam into the claim."
+    if failed:
+        msg += f" {len(failed)} of {requested} couldn't be pulled (skipped)."
+    msg += " They'll appear on the claim and flow into the report on the next reprocess."
+
+    return {
+        "action": "complete",
+        "type": "companycam_import",
+        "data": {
+            "claim_id": target_claim_id,
+            "project_id": project_id,
+            "imported": count,
+            "requested": requested,
+            "failed_count": len(failed),
+            "paths": result.get("paths") or [],
+        },
+        "message": msg,
     }
 
 
