@@ -1,7 +1,11 @@
 import type { Metadata } from "next";
 import { Footer } from "@/components/footer";
+import { JsonLd } from "@/components/json-ld";
+import { breadcrumbList } from "@/lib/seo/schema";
+import { absoluteUrl } from "@/lib/seo/site";
 
 export const metadata: Metadata = {
+  alternates: { canonical: absoluteUrl("/learn/how-to-file-roof-insurance-claim") },
   title:
     "How to File a Roof Insurance Claim After a Storm (Step-by-Step Guide)",
   description:
@@ -88,17 +92,18 @@ const articleSchema = {
     "Step-by-step guide to filing a roof insurance claim after storm damage. Learn what to document, what to say to your carrier, how to handle the adjuster, when to supplement, and mistakes that kill claims.",
 };
 
+const breadcrumbSchema = breadcrumbList([
+  { name: "Home", path: "/" },
+  { name: "Learn", path: "/learn" },
+  { name: "How to File a Claim", path: "/learn/how-to-file-roof-insurance-claim" },
+]);
+
 export default function HowToFileRoofInsuranceClaim() {
   return (
     <>
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }}
-      />
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(articleSchema) }}
-      />
+      <JsonLd data={faqSchema} />
+      <JsonLd data={articleSchema} />
+      <JsonLd data={breadcrumbSchema} />
 
       <main className="min-h-screen">
         <article className="max-w-3xl mx-auto px-6 pt-12 pb-20">

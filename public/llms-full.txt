@@ -1,0 +1,145 @@
+# DumbRoof
+
+> DumbRoof is AI-powered insurance claim supplement software for roofing contractors — turn roof inspection photos and carrier scopes into forensic causation reports, Xactimate-style estimates, and supplement packages in minutes.
+
+## Product
+DumbRoof is an AI platform that converts the raw inputs of a storm-damage roof claim — the carrier's scope/estimate, roof measurements (EagleView, HOVER), and inspection photos (including CompanyCam) — into a complete, defensible claim package in about 15 minutes.
+
+The package centers on a forensic causation report: annotated damage photos, measurements, weather correlation, material specifications, and building-code citations that establish the cause, extent, and date of loss. Alongside it, DumbRoof produces an Xactimate-style estimate with correct regional pricing, a side-by-side comparison against the carrier's scope showing the variance, and supplement documentation for the line items carriers most often omit (drip edge, starter strip, ice & water shield, step flashing, ridge cap/vent, code upgrades, overhead & profit).
+
+It serves roofing contractors processing storm claims, restoration companies scaling supplement operations, and public adjusters and attorneys preparing denial appeals. Compliance behavior adapts to the user's role so contractors stay within unauthorized-practice-of-public-adjusting (UPPA) boundaries while PAs and attorneys get full advocacy language.
+
+## Guides
+
+### [What Is Hail Damage? Identification, Insurance Claims & Documentation](https://www.dumbroof.ai/learn/what-is-hail-damage)
+What hail damage is, how it shows up on shingles, metal, slate, and membrane roofs, and how to document it for a claim.
+
+### [What Is Wind Damage? How to Identify, Document & File Insurance Claims](https://www.dumbroof.ai/learn/what-is-wind-damage)
+How to recognize creased, lifted, and missing shingles from wind, and document the loss carriers respect.
+
+### [What Does Hail Damage Look Like on Asphalt Shingles?](https://www.dumbroof.ai/learn/hail-damage-to-asphalt-shingles)
+Identifying circular bruises, granule loss, and exposed mat on asphalt shingles, with real claim photos.
+
+### [Hail Damage to Metal Roofing: Identification & Insurance Claims](https://www.dumbroof.ai/learn/hail-damage-to-metal-roofing)
+The functional-vs-cosmetic debate on metal roofs, how to document dents, and how to win the claim.
+
+### [Hail Damage to Slate Roofs: Identification, Repair & Insurance Claims](https://www.dumbroof.ai/learn/hail-damage-to-slate-roofs)
+Why slate fractures rather than bruises, how to spot fresh breaks, and the unique insurance challenges.
+
+### [Hail Damage to TPO Roofing: Identification Signs & Commercial Claim Guide](https://www.dumbroof.ai/learn/hail-damage-to-tpo-roofing)
+Reading concentric fractures and star cracks in TPO membrane and supplementing commercial claims.
+
+### [Hail Damage to EPDM Roofing: Detection, Documentation & Insurance Claims](https://www.dumbroof.ai/learn/hail-damage-to-epdm-roofing)
+Detecting hidden EPDM membrane and insulation damage and building the commercial claim.
+
+### [How to File a Roof Insurance Claim After a Storm (Step-by-Step)](https://www.dumbroof.ai/learn/how-to-file-roof-insurance-claim)
+A step-by-step path from documenting damage to meeting the adjuster to collecting your check.
+
+### [How Long Do I Have to File a Roof Insurance Claim?](https://www.dumbroof.ai/learn/how-long-to-file-roof-insurance-claim)
+Filing windows by state and carrier, exceptions, and how to avoid deadline-related denials.
+
+### [What Is a Roofing Supplement and Why Do I Need One?](https://www.dumbroof.ai/learn/what-is-a-roofing-supplement)
+What a supplement is, why first estimates run low, what gets missed, and how to file one.
+
+### [My Insurance Company Denied My Roof Claim — Now What?](https://www.dumbroof.ai/learn/insurance-denied-my-roof-claim)
+How to read the denial, gather evidence, and reopen a claim with documentation the carrier can't ignore.
+
+### [Insurance Didn't Pay Enough to Replace My Roof — What to Do](https://www.dumbroof.ai/learn/insurance-didnt-pay-enough-for-roof)
+Supplements, missing line items, and code upgrades to recover what an underpaid roof claim owes you.
+
+### [Adjuster Missed Damage on My Roof — What to Do Next](https://www.dumbroof.ai/learn/adjuster-missed-damage-on-my-roof)
+What adjusters commonly miss, how to request a re-inspection, and how to document overlooked damage.
+
+### [Contractor Says I Have Hail Damage But I Don't See It](https://www.dumbroof.ai/learn/contractor-says-hail-damage-but-i-dont-see-it)
+What inspectors look for that's invisible from the ground, and how independent analysis confirms damage.
+
+### [What Is an AOB (Assignment of Benefits) for Roofing?](https://www.dumbroof.ai/learn/what-is-aob-assignment-of-benefits-roofing)
+How AOBs work, the pros and cons, state laws, and how digital signing streamlines them.
+
+### [How to Automate Insurance Invoicing for Roofing Contractors](https://www.dumbroof.ai/learn/how-to-automate-insurance-invoicing)
+Automating insurance invoicing with CRM integrations, QuickBooks syncing, and AI documentation.
+
+## Comparisons
+
+High-intent, head-to-head comparisons of DumbRoof against other approaches and tools roofers use. The honest theme across them: DumbRoof is insurance-SUPPLEMENT software, and many of these tools are complementary rather than competitive — aerial/3D measurements (EagleView, Hover) and job-site photos (CompanyCam) feed INTO DumbRoof; a CRM or field-service platform (AccuLynx, JobNimbus, ServiceTitan) runs the business while DumbRoof builds the claim; Xactimate and Symbility are the carrier-side estimating standards that DumbRoof produces a recognizable response to.
+
+### [DumbRoof Comparisons (hub)](https://www.dumbroof.ai/compare)
+The hub linking every comparison below, grouped by approaches vs tools.
+
+### [DumbRoof vs Hiring a Public Adjuster](https://www.dumbroof.ai/compare/dumbroof-vs-hiring-a-public-adjuster)
+Software you run yourself (flat cost, you keep the recovery, documentation only) vs a licensed professional you hire on contingency (advocacy and direct carrier negotiation). They can also be used together — a PA can submit DumbRoof-built documentation.
+
+### [DumbRoof vs DIY Roof Claim Supplement](https://www.dumbroof.ai/compare/dumbroof-vs-diy-roof-claim-supplement)
+Hand-building a supplement in spreadsheets and Word (2-4 hours per claim, easy to omit drip edge / starter / I&W / O&P) vs AI-generating a forensic, code-cited package in minutes with omissions flagged automatically.
+
+### [Best Xactimate Alternative for Roofers](https://www.dumbroof.ai/compare/best-xactimate-alternative-for-roofers)
+Xactimate is the carrier-side estimating standard and isn't going away; DumbRoof produces Xactimate-style supplement estimates (plus a forensic report and scope comparison) without the steep learning curve or a full-time license.
+
+### [DumbRoof vs Roofr](https://www.dumbroof.ai/compare/dumbroof-vs-roofr)
+Roofr is a roofing sales/measurement and proposal platform (the front of the job, homeowner-facing); DumbRoof is insurance-supplement software (the claim, carrier-facing). Complementary across the lifecycle of a job.
+
+### [DumbRoof vs AccuLynx](https://www.dumbroof.ai/compare/dumbroof-vs-acculynx)
+AccuLynx is a roofing CRM that runs the whole business (leads, jobs, production, accounting); DumbRoof builds the carrier-ready supplement a CRM isn't designed to author. Most shops keep the CRM and add DumbRoof.
+
+### [DumbRoof vs JobNimbus](https://www.dumbroof.ai/compare/dumbroof-vs-jobnimbus)
+JobNimbus is a roofing CRM and visual pipeline; DumbRoof generates the forensic supplement. The job moves through the pipeline while DumbRoof handles the claim side.
+
+### [DumbRoof vs CompanyCam](https://www.dumbroof.ai/compare/dumbroof-vs-companycam)
+CompanyCam is a photo-documentation app (capture, tag, organize), not an estimate or supplement generator; DumbRoof turns those photos plus the carrier scope into the supplement. Photos in, supplement out.
+
+### [DumbRoof vs EagleView](https://www.dumbroof.ai/compare/dumbroof-vs-eagleview)
+EagleView delivers trusted aerial roof measurements; DumbRoof consumes measurements (from EagleView or elsewhere) to build the estimate and supplement. Measurements in, supplement out.
+
+### [DumbRoof vs Hover](https://www.dumbroof.ai/compare/dumbroof-vs-hover)
+Hover builds interactive 3D measurement models (roof and exterior) from phone photos; DumbRoof consumes those measurements to generate the forensic supplement — especially useful for siding/windows claims.
+
+### [DumbRoof vs Symbility](https://www.dumbroof.ai/compare/dumbroof-vs-symbility)
+Symbility is a claims-estimating platform used mainly on the carrier/adjuster side; DumbRoof is contractor-side software that reads the carrier's estimate (Symbility or Xactimate) and builds the supplement to send back.
+
+### [DumbRoof vs ServiceTitan](https://www.dumbroof.ai/compare/dumbroof-vs-servicetitan)
+ServiceTitan is a broad, multi-trade field-service management platform (generalist); DumbRoof is a roofing-claims specialist. Breadth vs depth — run the platform for operations and add DumbRoof for claims.
+
+## Locations
+
+State-by-state roof insurance claim guides for the top storm, hail, and wind states in the U.S. Each guide is general information for homeowners and contractors, NOT legal advice — deadlines and coverage depend on the specific policy and current state law. Per-state legal facts were verified against authoritative sources (state statutes, Departments of Insurance, building-code authorities) at the time of writing; where a fact could not be verified to current detail, the guide stays general and true rather than risk being specific and wrong. DumbRoof is AI software (operated by USA Roof Masters) that serves nationally; it is not a per-state office, public adjuster, or law firm.
+
+Hub: [Roof Insurance Claim Help by State](https://www.dumbroof.ai/roof-insurance-claim-help)
+
+### Hail Alley
+- [Texas](https://www.dumbroof.ai/roof-insurance-claim-help/texas): Among the top states for hail; also Gulf hurricanes. General breach-of-written-contract limitations is four years, but policies use shorter suit-limitation clauses (Texas minimum two years and one day). Percentage windstorm/hail and named-storm/hurricane deductibles are common. IRC-based local codes. Regulator: Texas Department of Insurance (TDI).
+- [Oklahoma](https://www.dumbroof.ai/roof-insurance-claim-help/oklahoma): Core hail-alley and tornado country. Written-contract limitations generally five years; the standard fire policy can limit suit to one year from the loss. Separate wind/hail deductibles common. IRC adopted statewide (OUBCC) with local enforcement. Regulator: Oklahoma Insurance Department.
+- [Kansas](https://www.dumbroof.ai/roof-insurance-claim-help/kansas): Center of hail alley. Written-contract limitations generally five years; policies may shorten to one or two years. IRC adoption largely local. Regulator: Kansas Insurance Department.
+- [Nebraska](https://www.dumbroof.ai/roof-insurance-claim-help/nebraska): Northern hail alley plus derecho wind. Written-contract limitations generally five years; Nebraska law bars policies from setting a shorter period than state law, so a property loss generally runs five years. IRC-based. Regulator: Nebraska Department of Insurance.
+- [Colorado](https://www.dumbroof.ai/roof-insurance-claim-help/colorado): Front Range is one of the most hail-prone corridors in the U.S. Has a statutory matching protection (C.R.S. 10-4-110.8) requiring insurers to consider matching to undamaged adjacent areas for certain residential claims. IRC adoption largely local. Regulator: Colorado Division of Insurance.
+
+### Gulf & Hurricane Coast
+- [Florida](https://www.dumbroof.ai/roof-insurance-claim-help/florida): Most hurricane-exposed state; statewide Florida Building Code (HVHZ in Miami-Dade/Broward). 2022 reforms (SB 2-A) shortened claim deadlines under Fla. Stat. 627.70132 — one year to report a claim, 18 months for a supplemental claim. Separate hurricane deductibles (e.g., 2%/5%/10%). Regulators: Department of Financial Services (DFS) and Office of Insurance Regulation (OIR).
+- [Louisiana](https://www.dumbroof.ai/roof-insurance-claim-help/louisiana): Heavily hurricane-exposed; uses 'prescription' deadlines. Under La. R.S. 22:868 a property policy cannot limit a first-party claimant to less than 24 months from the inception of the loss (two-year floor). Louisiana State Uniform Construction Code (IRC-based with wind amendments). Annual named-storm deductibles. Regulator: Louisiana Department of Insurance (LDI).
+- [Alabama](https://www.dumbroof.ai/roof-insurance-claim-help/alabama): Gulf-coast hurricanes plus inland 'Dixie Alley' tornado/wind. Written-contract limitations six years; Alabama generally voids policy terms shortening it (bad-faith claims: two years). Coastal wind/hail deductibles common. IRC-based. Regulator: Alabama Department of Insurance.
+
+### Southeast
+- [Georgia](https://www.dumbroof.ai/roof-insurance-claim-help/georgia): Frequent severe storms plus coastal hurricane exposure. Georgia State Minimum Standard Codes adopt the IRC with state amendments (2024 IRC effective Jan 1, 2026). Breach-of-insurance-contract period six years, but policies may shorten the suit deadline to no less than two years. Regulator: Georgia Office of Insurance and Safety Fire Commissioner.
+- [North Carolina](https://www.dumbroof.ai/roof-insurance-claim-help/north-carolina): Coastal hurricanes plus inland storms. Three-year limitations period for a policy (fire policy runs from date of loss); courts generally do not enforce shorter policy deadlines. NC State Building Code (IRC-based residential code). Coastal wind/hail deductibles common. Regulator: North Carolina Department of Insurance.
+- [South Carolina](https://www.dumbroof.ai/roof-insurance-claim-help/south-carolina): Atlantic hurricane exposure plus inland storms. Three-year limitations period for an action on a policy (S.C. Code 15-3-530). IRC with state amendments and coastal wind provisions. Regulated coastal wind/hail/hurricane deductibles with mandated disclosures. Regulator: South Carolina Department of Insurance.
+- [Tennessee](https://www.dumbroof.ai/roof-insurance-claim-help/tennessee): Active severe-storm and 'Dixie Alley' wind/hail risk. Breach-of-insurance-contract period generally six years (Tenn. Code Ann. 28-3-109); policies may set a shorter reasonable suit-limitation. IRC-based. Regulator: Tennessee Department of Commerce and Insurance.
+
+### Midwest & Great Lakes
+- [Missouri](https://www.dumbroof.ai/roof-insurance-claim-help/missouri): Severe hail and wind. Claims-settlement regulation (20 CSR 100-1.050) addresses repaired areas reasonably matching adjacent areas. Written-contract limitations generally ten years (RSMo 516.110(1)); shorter policy deadlines contrary to the statute are treated as against public policy. IRC adoption largely local. Regulator: Missouri Department of Commerce and Insurance (DCI).
+- [Minnesota](https://www.dumbroof.ai/roof-insurance-claim-help/minnesota): Severe hail. Strong statutory matching protection (Minn. Stat. 65A.10) requiring replacement in adjacent areas so the property reasonably matches. Minnesota State Building Code (IRC-based with cold-climate amendments). General contract period six years; policies may include a shorter reasonable suit-limitation. Regulator: Minnesota Department of Commerce.
+- [Illinois](https://www.dumbroof.ai/roof-insurance-claim-help/illinois): Severe storms and hail. Written-contract limitations generally ten years (735 ILCS 5/13-206); policies may shorten to a reasonable period, and the clock tolls between proof of loss and denial. IRC adoption largely local (Chicago has its own code). Regulator: Illinois Department of Insurance.
+- [Ohio](https://www.dumbroof.ai/roof-insurance-claim-help/ohio): Severe storms and hail. General written-contract period six years, but Ohio allows policies to shorten the time to sue and the Ohio Supreme Court has upheld a one-year suit-limitation from the date of loss. Residential Code of Ohio (IRC-based). Regulator: Ohio Department of Insurance.
+
+### Northeast
+- [New York](https://www.dumbroof.ai/roof-insurance-claim-help/new-york): Wind, hail, nor'easters, coastal storms. The standard fire policy includes a two-year suit-limitation provision; courts generally enforce reasonable clauses. Residential Code of New York State (RCNYS, IRC-based); NYC has its own Construction Codes. Some downstate/coastal policies use windstorm/hurricane deductibles. Regulator: New York State Department of Financial Services (DFS).
+- [Pennsylvania](https://www.dumbroof.ai/roof-insurance-claim-help/pennsylvania): Wind, hail, and tropical-storm remnants. Written-contract limitations four years; policies may shorten by agreement (42 Pa.C.S. 5501) if not manifestly unreasonable, running from the loss. Pennsylvania Uniform Construction Code (IRC-based statewide, with some municipal opt-out of enforcement). Regulator: Pennsylvania Insurance Department.
+
+## Company
+DumbRoof is the product brand operated by USA Roof Masters (Dumb Roof Technologies). It was founded by Tom Kovack Jr. (CEO). The company is based at 3070 Bristol Pike, Building 1, Suite 122, Bensalem, PA 19020, US.
+
+## Contact
+- Email: TKovack@USARoofMasters.com
+- Website: https://www.dumbroof.ai
+- Pricing: https://www.dumbroof.ai/pricing
+- Sample report: https://www.dumbroof.ai/sample
+- Learn hub: https://www.dumbroof.ai/learn
+- Comparisons hub: https://www.dumbroof.ai/compare

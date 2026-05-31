@@ -1,8 +1,12 @@
 import type { Metadata } from "next";
 import { LearnPhotoGallery } from "@/components/learn-photo-gallery";
 import { Footer } from "@/components/footer";
+import { JsonLd } from "@/components/json-ld";
+import { breadcrumbList } from "@/lib/seo/schema";
+import { absoluteUrl } from "@/lib/seo/site";
 
 export const metadata: Metadata = {
+  alternates: { canonical: absoluteUrl("/learn/what-is-wind-damage") },
   title: "What Is Wind Damage? How to Identify, Document & File Insurance Claims",
   description:
     "Wind damage to roofing occurs when sustained or gusting winds exceed the material's uplift resistance rating. Learn the key differences from hail damage, documentation methods, and how to file insurance claims with dumbroof.ai.",
@@ -94,17 +98,18 @@ const ArticleSchema = {
   dateModified: "2026-03-22",
 };
 
+const breadcrumbSchema = breadcrumbList([
+  { name: "Home", path: "/" },
+  { name: "Learn", path: "/learn" },
+  { name: "Wind Damage", path: "/learn/what-is-wind-damage" },
+]);
+
 export default function WindDamagePage() {
   return (
     <main className="min-h-screen">
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(FAQSchema) }}
-      />
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(ArticleSchema) }}
-      />
+      <JsonLd data={FAQSchema} />
+      <JsonLd data={ArticleSchema} />
+      <JsonLd data={breadcrumbSchema} />
 
       {/* Breadcrumb */}
       <section className="px-6 py-4 border-b border-white/10">

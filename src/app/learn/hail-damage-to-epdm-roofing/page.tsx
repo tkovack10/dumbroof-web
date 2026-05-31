@@ -1,8 +1,12 @@
 import type { Metadata } from "next";
 import { LearnPhotoGallery } from "@/components/learn-photo-gallery";
 import { Footer } from "@/components/footer";
+import { JsonLd } from "@/components/json-ld";
+import { breadcrumbList } from "@/lib/seo/schema";
+import { absoluteUrl } from "@/lib/seo/site";
 
 export const metadata: Metadata = {
+  alternates: { canonical: absoluteUrl("/learn/hail-damage-to-epdm-roofing") },
   title: "Hail Damage to EPDM Roofing: Detection, Documentation & Insurance Claims",
   description:
     "EPDM rubber membranes hide hail damage beneath the surface as crushed insulation. Learn core cut testing, delayed inspection timing, ASTM D4637 standards, and claim-building techniques. Real photos included.",
@@ -87,17 +91,18 @@ const articleSchema = {
   description: "Complete guide to detecting hidden EPDM roofing hail damage and building strong insurance claims with professional documentation.",
 };
 
+const breadcrumbSchema = breadcrumbList([
+  { name: "Home", path: "/" },
+  { name: "Learn", path: "/learn" },
+  { name: "Hail Damage: EPDM", path: "/learn/hail-damage-to-epdm-roofing" },
+]);
+
 export default function EPDMHailDamagePage() {
   return (
     <>
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }}
-      />
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(articleSchema) }}
-      />
+      <JsonLd data={faqSchema} />
+      <JsonLd data={articleSchema} />
+      <JsonLd data={breadcrumbSchema} />
 
       <main className="min-h-screen">
         <article className="max-w-3xl mx-auto px-6 pt-12 pb-20">

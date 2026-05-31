@@ -1,7 +1,11 @@
 import type { Metadata } from "next";
 import { Footer } from "@/components/footer";
+import { JsonLd } from "@/components/json-ld";
+import { breadcrumbList } from "@/lib/seo/schema";
+import { absoluteUrl } from "@/lib/seo/site";
 
 export const metadata: Metadata = {
+  alternates: { canonical: absoluteUrl("/learn/how-to-automate-insurance-invoicing") },
   title: "How to Automate Insurance Invoicing for Roofing Contractors",
   description:
     "Learn how to automate insurance invoicing with AccuLynx, QuickBooks, and AI documentation. Reduce manual paperwork by 15-20 hours per week. Step-by-step guide from dumbroof.ai.",
@@ -83,17 +87,18 @@ const articleSchema = {
     "Learn how to automate insurance invoicing with AccuLynx, QuickBooks, and AI documentation. Reduce manual paperwork by 15-20 hours per week.",
 };
 
+const breadcrumbSchema = breadcrumbList([
+  { name: "Home", path: "/" },
+  { name: "Learn", path: "/learn" },
+  { name: "Automate Insurance Invoicing", path: "/learn/how-to-automate-insurance-invoicing" },
+]);
+
 export default function AutomateInsuranceInvoicing() {
   return (
     <>
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }}
-      />
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(articleSchema) }}
-      />
+      <JsonLd data={faqSchema} />
+      <JsonLd data={articleSchema} />
+      <JsonLd data={breadcrumbSchema} />
 
       <main className="min-h-screen">
         <article className="max-w-3xl mx-auto px-6 pt-12 pb-20">

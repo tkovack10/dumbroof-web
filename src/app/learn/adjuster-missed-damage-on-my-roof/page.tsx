@@ -1,7 +1,11 @@
 import type { Metadata } from "next";
 import { Footer } from "@/components/footer";
+import { JsonLd } from "@/components/json-ld";
+import { breadcrumbList } from "@/lib/seo/schema";
+import { absoluteUrl } from "@/lib/seo/site";
 
 export const metadata: Metadata = {
+  alternates: { canonical: absoluteUrl("/learn/adjuster-missed-damage-on-my-roof") },
   title: "Insurance Adjuster Missed Damage on My Roof — What Now?",
   description:
     "Your insurance adjuster missed damage on your roof. Learn why adjusters overlook hail and wind damage, how to request a re-inspection, your right to an independent inspection, and how to supplement for every missed line item. Step-by-step guide from dumbroof.ai.",
@@ -86,17 +90,18 @@ const articleSchema = {
     "Your insurance adjuster missed damage on your roof. Learn why adjusters overlook damage, how to request a re-inspection, and how to supplement for every missed line item.",
 };
 
+const breadcrumbSchema = breadcrumbList([
+  { name: "Home", path: "/" },
+  { name: "Learn", path: "/learn" },
+  { name: "Adjuster Missed Damage", path: "/learn/adjuster-missed-damage-on-my-roof" },
+]);
+
 export default function AdjusterMissedDamageOnMyRoof() {
   return (
     <>
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }}
-      />
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(articleSchema) }}
-      />
+      <JsonLd data={faqSchema} />
+      <JsonLd data={articleSchema} />
+      <JsonLd data={breadcrumbSchema} />
 
       <main className="min-h-screen">
         <article className="max-w-3xl mx-auto px-6 pt-12 pb-20">

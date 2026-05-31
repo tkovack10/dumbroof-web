@@ -1,11 +1,13 @@
 import { HomeNav } from "@/components/home-nav";
 import { Footer } from "@/components/footer";
 import type { Metadata } from "next";
+import { absoluteUrl } from "@/lib/seo/site";
 
 export const metadata: Metadata = {
   title: "Integrations | dumbroof.ai",
   description:
     "Connect AccuLynx, CompanyCam, JobNimbus, and EagleView to dumbroof.ai. Import photos, measurements, and job data directly from your CRM.",
+  alternates: { canonical: absoluteUrl("/integrations") },
 };
 
 const INTEGRATIONS = [

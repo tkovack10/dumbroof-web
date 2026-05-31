@@ -11,6 +11,8 @@ export function Footer() {
             <div className="space-y-2">
               <Link href="/pricing" className="block text-sm text-[var(--gray-muted)] hover:text-white transition-colors">Pricing</Link>
               <Link href="/integrations" className="block text-sm text-[var(--gray-muted)] hover:text-white transition-colors">Integrations</Link>
+              <Link href="/compare" className="block text-sm text-[var(--gray-muted)] hover:text-white transition-colors">Compare</Link>
+              <Link href="/roof-insurance-claim-help" className="block text-sm text-[var(--gray-muted)] hover:text-white transition-colors">Claim Help by State</Link>
               <Link href="/inspection-club" className="block text-sm text-[var(--gray-muted)] hover:text-white transition-colors">Inspection Club</Link>
             </div>
           </div>
@@ -24,6 +26,7 @@ export function Footer() {
               <Link href="/learn/hail-damage-to-slate-roofs" className="block text-sm text-[var(--gray-muted)] hover:text-white transition-colors">Slate Roof Hail Damage</Link>
               <Link href="/learn/hail-damage-to-tpo-roofing" className="block text-sm text-[var(--gray-muted)] hover:text-white transition-colors">TPO Roof Hail Damage</Link>
               <Link href="/learn/hail-damage-to-epdm-roofing" className="block text-sm text-[var(--gray-muted)] hover:text-white transition-colors">EPDM Roof Hail Damage</Link>
+              <Link href="/compare" className="block text-sm text-[var(--gray-muted)] hover:text-white transition-colors">Comparisons</Link>
             </div>
           </div>
 

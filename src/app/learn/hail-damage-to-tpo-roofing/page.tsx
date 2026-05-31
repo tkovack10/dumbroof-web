@@ -1,8 +1,12 @@
 import type { Metadata } from "next";
 import { LearnPhotoGallery } from "@/components/learn-photo-gallery";
 import { Footer } from "@/components/footer";
+import { JsonLd } from "@/components/json-ld";
+import { breadcrumbList } from "@/lib/seo/schema";
+import { absoluteUrl } from "@/lib/seo/site";
 
 export const metadata: Metadata = {
+  alternates: { canonical: absoluteUrl("/learn/hail-damage-to-tpo-roofing") },
   title: "Hail Damage to TPO Roofing: Identification Signs & Commercial Claim Guide",
   description:
     "TPO single-ply membranes show hail damage as concentric circular fractures and star-shaped cracks. Learn identification, FM 4470/UL 2218 standards, and how to fight patch-repair denials. Real claim photos included.",
@@ -87,17 +91,18 @@ const articleSchema = {
   description: "Complete guide to identifying and documenting hail damage on TPO roofing membranes for commercial insurance claims.",
 };
 
+const breadcrumbSchema = breadcrumbList([
+  { name: "Home", path: "/" },
+  { name: "Learn", path: "/learn" },
+  { name: "Hail Damage: TPO", path: "/learn/hail-damage-to-tpo-roofing" },
+]);
+
 export default function TPOHailDamagePage() {
   return (
     <>
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }}
-      />
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(articleSchema) }}
-      />
+      <JsonLd data={faqSchema} />
+      <JsonLd data={articleSchema} />
+      <JsonLd data={breadcrumbSchema} />
 
       <main className="min-h-screen">
         <article className="max-w-3xl mx-auto px-6 pt-12 pb-20">

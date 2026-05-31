@@ -1,9 +1,11 @@
 import { Metadata } from "next";
 import { Footer } from "@/components/footer";
+import { absoluteUrl } from "@/lib/seo/site";
 
 export const metadata: Metadata = {
   title: "Terms of Service — DumbRoof.ai",
   description: "Terms of service for the DumbRoof.ai claim processing platform.",
+  alternates: { canonical: absoluteUrl("/terms") },
 };
 
 export default function TermsPage() {
