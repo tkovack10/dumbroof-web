@@ -15,7 +15,6 @@ import { Confetti } from "@/components/confetti";
 import { useCountUp } from "@/hooks/use-count-up";
 import { InviteTeammateModal } from "@/components/invite-teammate-modal";
 import { ReferCompanyModal } from "@/components/refer-company-modal";
-import { RichardLauncher } from "@/components/richard-launcher";
 import { OnboardingChecklist } from "@/components/onboarding-checklist";
 import { PhoneNagModal } from "@/components/phone-nag-modal";
 import { CommBadges, EMPTY_COMM, type CommStatus } from "@/components/comm-badges";
@@ -70,16 +69,14 @@ export function DashboardContent({ user }: { user: User }) {
   const [isAdmin, setIsAdmin] = useState(false);
   const [hasCompanyProfile, setHasCompanyProfile] = useState(false);
   const [inviteOpen, setInviteOpen] = useState(false);
-  // Deep-link targets: ?invite=open auto-opens the invite modal; ?richard=new
-  // auto-opens the dashboard Richard so re-engagement CTAs (the completion email,
-  // future repeat-usage nudges) land users straight into starting their next claim.
-  // We strip the param after consuming so back/refresh doesn't re-trigger.
+  // Deep-link target: ?invite=open auto-opens the invite modal. (?richard=new
+  // auto-opens the floating Richard and is now handled globally in
+  // GlobalRichard, mounted by the dashboard layout — so it works on every page,
+  // not just this one.) We strip the param after consuming so back/refresh
+  // doesn't re-trigger.
   const searchParams = useSearchParams();
   const router = useRouter();
   const pathname = usePathname();
-  // Computed at render (NOT in the effect): RichardLauncher reads initiallyOpen
-  // only at mount, so it must already be true on the first render.
-  const richardOpen = searchParams.get("richard") === "new";
   useEffect(() => {
     const fresh = new URLSearchParams(searchParams.toString());
     let changed = false;
@@ -1390,7 +1387,6 @@ export function DashboardContent({ user }: { user: User }) {
           </>
         )}
       </div>
-      <RichardLauncher userId={user.id} scope="dashboard" initiallyOpen={richardOpen} />
       <PhoneNagModal userId={user.id} />
     </main>
   );
