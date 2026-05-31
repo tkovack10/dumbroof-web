@@ -1,8 +1,12 @@
 import type { Metadata } from "next";
 import { LearnPhotoGallery } from "@/components/learn-photo-gallery";
 import { Footer } from "@/components/footer";
+import { JsonLd } from "@/components/json-ld";
+import { breadcrumbList } from "@/lib/seo/schema";
+import { absoluteUrl } from "@/lib/seo/site";
 
 export const metadata: Metadata = {
+  alternates: { canonical: absoluteUrl("/learn/hail-damage-to-slate-roofs") },
   title: "Hail Damage to Slate Roofs: Identification, Repair & Insurance Claims",
   description:
     "Slate roofs react to hail differently than asphalt—fractures are often linear rather than circular. Learn how to identify slate hail damage, navigate repair costs, and manage insurance claim disputes with dumbroof.ai.",
@@ -94,17 +98,18 @@ const ArticleSchema = {
   dateModified: "2026-03-22",
 };
 
+const breadcrumbSchema = breadcrumbList([
+  { name: "Home", path: "/" },
+  { name: "Learn", path: "/learn" },
+  { name: "Hail Damage: Slate", path: "/learn/hail-damage-to-slate-roofs" },
+]);
+
 export default function SlateHailDamagePage() {
   return (
     <main className="min-h-screen">
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(FAQSchema) }}
-      />
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(ArticleSchema) }}
-      />
+      <JsonLd data={FAQSchema} />
+      <JsonLd data={ArticleSchema} />
+      <JsonLd data={breadcrumbSchema} />
 
       {/* Breadcrumb */}
       <section className="px-6 py-4 border-b border-white/10">

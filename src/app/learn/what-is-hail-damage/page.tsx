@@ -1,8 +1,12 @@
 import type { Metadata } from "next";
 import { LearnPhotoGallery } from "@/components/learn-photo-gallery";
 import { Footer } from "@/components/footer";
+import { JsonLd } from "@/components/json-ld";
+import { breadcrumbList } from "@/lib/seo/schema";
+import { absoluteUrl } from "@/lib/seo/site";
 
 export const metadata: Metadata = {
+  alternates: { canonical: absoluteUrl("/learn/what-is-hail-damage") },
   title: "What Is Hail Damage? Identification, Insurance Claims & Documentation Guide",
   description:
     "Hail damage is physical deterioration caused by frozen precipitation striking roofing materials at high velocity. Learn to identify hail damage across all roof types, document it for insurance claims, and understand what carriers look for. Real claim photos included.",
@@ -87,17 +91,18 @@ const articleSchema = {
   description: "Hail damage is physical deterioration caused by frozen precipitation striking roofing materials at high velocity. Complete identification and insurance claim guide with real photos.",
 };
 
+const breadcrumbSchema = breadcrumbList([
+  { name: "Home", path: "/" },
+  { name: "Learn", path: "/learn" },
+  { name: "Hail Damage", path: "/learn/what-is-hail-damage" },
+]);
+
 export default function WhatIsHailDamage() {
   return (
     <>
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }}
-      />
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(articleSchema) }}
-      />
+      <JsonLd data={faqSchema} />
+      <JsonLd data={articleSchema} />
+      <JsonLd data={breadcrumbSchema} />
 
       <main className="min-h-screen">
         <article className="max-w-3xl mx-auto px-6 pt-12 pb-20">

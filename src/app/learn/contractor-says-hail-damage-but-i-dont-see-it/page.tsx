@@ -1,8 +1,12 @@
 import type { Metadata } from "next";
 import { LearnPhotoGallery } from "@/components/learn-photo-gallery";
 import { Footer } from "@/components/footer";
+import { JsonLd } from "@/components/json-ld";
+import { breadcrumbList } from "@/lib/seo/schema";
+import { absoluteUrl } from "@/lib/seo/site";
 
 export const metadata: Metadata = {
+  alternates: { canonical: absoluteUrl("/learn/contractor-says-hail-damage-but-i-dont-see-it") },
   title: "My Contractor Says I Have Hail Damage But I Don't See It | Homeowner Guide",
   description:
     "Your contractor says you have hail damage but you can't see it from the ground. Learn why hail damage is nearly invisible to untrained eyes, what professionals look for up close, and how to verify the diagnosis independently with AI analysis.",
@@ -87,17 +91,18 @@ const articleSchema = {
   description: "Why hail damage is nearly invisible from the ground, what contractors look for up close, and how to verify the diagnosis independently.",
 };
 
+const breadcrumbSchema = breadcrumbList([
+  { name: "Home", path: "/" },
+  { name: "Learn", path: "/learn" },
+  { name: "Hail Damage Not Visible", path: "/learn/contractor-says-hail-damage-but-i-dont-see-it" },
+]);
+
 export default function ContractorSaysHailDamage() {
   return (
     <>
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }}
-      />
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(articleSchema) }}
-      />
+      <JsonLd data={faqSchema} />
+      <JsonLd data={articleSchema} />
+      <JsonLd data={breadcrumbSchema} />
 
       <main className="min-h-screen">
         <article className="max-w-3xl mx-auto px-6 pt-12 pb-20">

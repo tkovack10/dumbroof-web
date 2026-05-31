@@ -1,148 +1,32 @@
-import type { MetadataRoute } from 'next'
+import type { MetadataRoute } from "next";
+import { statSync } from "node:fs";
+import path from "node:path";
+import { SITE, PUBLIC_ROUTES, absoluteUrl } from "@/lib/seo/site";
 
+const APP_DIR = path.join(process.cwd(), "src", "app");
+
+/**
+ * Resolve a public route to its source page file and return its mtime.
+ * Falls back to build time if the file can't be stat'd, so a future route
+ * layout change can never break the sitemap build.
+ */
+function lastModified(routePath: string): Date {
+  const segment = routePath === "/" ? "" : routePath.replace(/^\//, "");
+  const file = path.join(APP_DIR, segment, "page.tsx");
+  try {
+    return statSync(file).mtime;
+  } catch {
+    return new Date();
+  }
+}
+
+// Data-driven from the shared PUBLIC_ROUTES registry (src/lib/seo/site.ts) so
+// the sitemap, llms.txt, and canonicals all read ONE source of truth.
 export default function sitemap(): MetadataRoute.Sitemap {
-  const baseUrl = 'https://www.dumbroof.ai'
-
-  const staticPages: MetadataRoute.Sitemap = [
-    {
-      url: baseUrl,
-      lastModified: new Date(),
-      changeFrequency: 'weekly',
-      priority: 1,
-    },
-    {
-      url: `${baseUrl}/pricing`,
-      lastModified: new Date(),
-      changeFrequency: 'monthly',
-      priority: 0.9,
-    },
-    {
-      url: `${baseUrl}/inspection-club`,
-      lastModified: new Date(),
-      changeFrequency: 'monthly',
-      priority: 0.8,
-    },
-    {
-      url: `${baseUrl}/pa-club`,
-      lastModified: new Date(),
-      changeFrequency: 'monthly',
-      priority: 0.8,
-    },
-    {
-      url: `${baseUrl}/learn`,
-      lastModified: new Date(),
-      changeFrequency: 'weekly',
-      priority: 0.8,
-    },
-    {
-      url: `${baseUrl}/learn/what-is-hail-damage`,
-      lastModified: new Date(),
-      changeFrequency: 'monthly',
-      priority: 0.7,
-    },
-    {
-      url: `${baseUrl}/learn/what-is-wind-damage`,
-      lastModified: new Date(),
-      changeFrequency: 'monthly',
-      priority: 0.7,
-    },
-    {
-      url: `${baseUrl}/learn/hail-damage-to-slate-roofs`,
-      lastModified: new Date(),
-      changeFrequency: 'monthly',
-      priority: 0.7,
-    },
-    {
-      url: `${baseUrl}/learn/hail-damage-to-tpo-roofing`,
-      lastModified: new Date(),
-      changeFrequency: 'monthly',
-      priority: 0.7,
-    },
-    {
-      url: `${baseUrl}/learn/hail-damage-to-epdm-roofing`,
-      lastModified: new Date(),
-      changeFrequency: 'monthly',
-      priority: 0.7,
-    },
-    {
-      url: `${baseUrl}/learn/how-to-automate-insurance-invoicing`,
-      lastModified: new Date(),
-      changeFrequency: 'monthly',
-      priority: 0.7,
-    },
-    {
-      url: `${baseUrl}/learn/insurance-denied-my-roof-claim`,
-      lastModified: new Date(),
-      changeFrequency: 'monthly',
-      priority: 0.7,
-    },
-    {
-      url: `${baseUrl}/learn/insurance-didnt-pay-enough-for-roof`,
-      lastModified: new Date(),
-      changeFrequency: 'monthly',
-      priority: 0.7,
-    },
-    {
-      url: `${baseUrl}/learn/contractor-says-hail-damage-but-i-dont-see-it`,
-      lastModified: new Date(),
-      changeFrequency: 'monthly',
-      priority: 0.7,
-    },
-    {
-      url: `${baseUrl}/learn/hail-damage-to-asphalt-shingles`,
-      lastModified: new Date(),
-      changeFrequency: 'monthly',
-      priority: 0.7,
-    },
-    {
-      url: `${baseUrl}/learn/hail-damage-to-metal-roofing`,
-      lastModified: new Date(),
-      changeFrequency: 'monthly',
-      priority: 0.7,
-    },
-    {
-      url: `${baseUrl}/learn/how-to-file-roof-insurance-claim`,
-      lastModified: new Date(),
-      changeFrequency: 'monthly',
-      priority: 0.7,
-    },
-    {
-      url: `${baseUrl}/learn/what-is-a-roofing-supplement`,
-      lastModified: new Date(),
-      changeFrequency: 'monthly',
-      priority: 0.7,
-    },
-    {
-      url: `${baseUrl}/learn/adjuster-missed-damage-on-my-roof`,
-      lastModified: new Date(),
-      changeFrequency: 'monthly',
-      priority: 0.7,
-    },
-    {
-      url: `${baseUrl}/learn/how-long-to-file-roof-insurance-claim`,
-      lastModified: new Date(),
-      changeFrequency: 'monthly',
-      priority: 0.7,
-    },
-    {
-      url: `${baseUrl}/learn/what-is-aob-assignment-of-benefits-roofing`,
-      lastModified: new Date(),
-      changeFrequency: 'monthly',
-      priority: 0.7,
-    },
-    {
-      url: `${baseUrl}/privacy`,
-      lastModified: new Date(),
-      changeFrequency: 'yearly',
-      priority: 0.3,
-    },
-    {
-      url: `${baseUrl}/terms`,
-      lastModified: new Date(),
-      changeFrequency: 'yearly',
-      priority: 0.3,
-    },
-  ]
-
-  return staticPages
+  return PUBLIC_ROUTES.map((route) => ({
+    url: route.path === "/" ? SITE.url : absoluteUrl(route.path),
+    lastModified: lastModified(route.path),
+    changeFrequency: route.changeFrequency,
+    priority: route.priority,
+  }));
 }

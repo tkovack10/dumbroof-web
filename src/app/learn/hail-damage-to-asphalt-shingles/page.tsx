@@ -1,8 +1,12 @@
 import type { Metadata } from "next";
 import { LearnPhotoGallery } from "@/components/learn-photo-gallery";
 import { Footer } from "@/components/footer";
+import { JsonLd } from "@/components/json-ld";
+import { breadcrumbList } from "@/lib/seo/schema";
+import { absoluteUrl } from "@/lib/seo/site";
 
 export const metadata: Metadata = {
+  alternates: { canonical: absoluteUrl("/learn/hail-damage-to-asphalt-shingles") },
   title:
     "What Does Hail Damage Look Like on Asphalt Shingles? The Definitive Identification Guide",
   description:
@@ -96,17 +100,18 @@ const articleSchema = {
     "The definitive guide to identifying hail damage on asphalt shingles — America's most common roofing material. Covers 3-tab and architectural shingles, the chalk test, bruise test, granule patterns, impact ratings, Xactimate codes, and AI photo analysis.",
 };
 
+const breadcrumbSchema = breadcrumbList([
+  { name: "Home", path: "/" },
+  { name: "Learn", path: "/learn" },
+  { name: "Hail Damage: Asphalt Shingles", path: "/learn/hail-damage-to-asphalt-shingles" },
+]);
+
 export default function AsphaltShingleHailDamagePage() {
   return (
     <>
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }}
-      />
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(articleSchema) }}
-      />
+      <JsonLd data={faqSchema} />
+      <JsonLd data={articleSchema} />
+      <JsonLd data={breadcrumbSchema} />
 
       <main className="min-h-screen">
         <article className="max-w-3xl mx-auto px-6 pt-12 pb-20">

@@ -1,7 +1,11 @@
 import type { Metadata } from "next";
 import { Footer } from "@/components/footer";
+import { JsonLd } from "@/components/json-ld";
+import { breadcrumbList } from "@/lib/seo/schema";
+import { absoluteUrl } from "@/lib/seo/site";
 
 export const metadata: Metadata = {
+  alternates: { canonical: absoluteUrl("/learn/what-is-a-roofing-supplement") },
   title:
     "What Is a Roofing Supplement? The Definitive Guide for Homeowners & Contractors",
   description:
@@ -92,17 +96,18 @@ const articleSchema = {
     "A roofing supplement is a request for additional money from your insurance carrier when the original estimate missed legitimate repair costs. Learn the full supplement process, common denied items, and how to write a supplement letter that gets approved.",
 };
 
+const breadcrumbSchema = breadcrumbList([
+  { name: "Home", path: "/" },
+  { name: "Learn", path: "/learn" },
+  { name: "Roofing Supplement", path: "/learn/what-is-a-roofing-supplement" },
+]);
+
 export default function WhatIsARoofingSupplement() {
   return (
     <>
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }}
-      />
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(articleSchema) }}
-      />
+      <JsonLd data={faqSchema} />
+      <JsonLd data={articleSchema} />
+      <JsonLd data={breadcrumbSchema} />
 
       <main className="min-h-screen">
         <article className="max-w-3xl mx-auto px-6 pt-12 pb-20">

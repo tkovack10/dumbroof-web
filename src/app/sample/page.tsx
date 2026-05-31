@@ -1,6 +1,15 @@
+import type { Metadata } from "next";
 import { HomeNav } from "@/components/home-nav";
 import { Footer } from "@/components/footer";
 import { getDeviceContext } from "@/lib/device-detection";
+import { absoluteUrl } from "@/lib/seo/site";
+
+export const metadata: Metadata = {
+  title: "Sample Forensic Report — DumbRoof",
+  description:
+    "See a real DumbRoof claim package — the forensic causation report, Xactimate-style estimate, and supplement documentation — before you sign up.",
+  alternates: { canonical: absoluteUrl("/sample") },
+};
 
 // MUST be dynamic — UA-based CTA at the bottom (mobile vs desktop link).
 // ISR would cache the first request's HTML for everyone.

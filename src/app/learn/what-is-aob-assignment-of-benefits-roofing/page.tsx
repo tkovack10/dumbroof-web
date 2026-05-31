@@ -1,7 +1,11 @@
 import type { Metadata } from "next";
 import { Footer } from "@/components/footer";
+import { JsonLd } from "@/components/json-ld";
+import { breadcrumbList } from "@/lib/seo/schema";
+import { absoluteUrl } from "@/lib/seo/site";
 
 export const metadata: Metadata = {
+  alternates: { canonical: absoluteUrl("/learn/what-is-aob-assignment-of-benefits-roofing") },
   title: "What Is an AOB (Assignment of Benefits) for Roofing?",
   description:
     "Learn what an Assignment of Benefits (AOB) means for roofing contractors, how it differs from a contingency agreement, state laws like Florida's AOB reform, and how dumbroof.ai automates AOB workflows with e-signatures.",
@@ -84,17 +88,18 @@ const articleSchema = {
     "Learn what an Assignment of Benefits (AOB) means for roofing contractors, how it differs from a contingency agreement, and how to automate AOB workflows with e-signatures.",
 };
 
+const breadcrumbSchema = breadcrumbList([
+  { name: "Home", path: "/" },
+  { name: "Learn", path: "/learn" },
+  { name: "AOB Explained", path: "/learn/what-is-aob-assignment-of-benefits-roofing" },
+]);
+
 export default function WhatIsAOBRoofing() {
   return (
     <>
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }}
-      />
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(articleSchema) }}
-      />
+      <JsonLd data={faqSchema} />
+      <JsonLd data={articleSchema} />
+      <JsonLd data={breadcrumbSchema} />
 
       <main className="min-h-screen">
         <article className="max-w-3xl mx-auto px-6 pt-12 pb-20">

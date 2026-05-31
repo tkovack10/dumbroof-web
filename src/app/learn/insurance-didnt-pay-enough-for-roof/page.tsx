@@ -1,7 +1,11 @@
 import type { Metadata } from "next";
 import { Footer } from "@/components/footer";
+import { JsonLd } from "@/components/json-ld";
+import { breadcrumbList } from "@/lib/seo/schema";
+import { absoluteUrl } from "@/lib/seo/site";
 
 export const metadata: Metadata = {
+  alternates: { canonical: absoluteUrl("/learn/insurance-didnt-pay-enough-for-roof") },
   title: "Insurance Didn't Pay Enough for My Roof — What To Do Next",
   description:
     "Your insurance estimate is too low to replace your roof. Learn why carriers underpay, how to read your estimate, file a supplement, recover depreciation, and get every dollar owed for drip edge, starter strip, ice & water shield, ridge cap, O&P, and code upgrades.",
@@ -90,17 +94,18 @@ const articleSchema = {
     "Step-by-step guide to fighting roof claim underpayment. File supplements, recover depreciation, and capture every missing line item carriers skip.",
 };
 
+const breadcrumbSchema = breadcrumbList([
+  { name: "Home", path: "/" },
+  { name: "Learn", path: "/learn" },
+  { name: "Underpaid Roof Claim", path: "/learn/insurance-didnt-pay-enough-for-roof" },
+]);
+
 export default function InsuranceDidntPayEnoughForRoof() {
   return (
     <>
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }}
-      />
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(articleSchema) }}
-      />
+      <JsonLd data={faqSchema} />
+      <JsonLd data={articleSchema} />
+      <JsonLd data={breadcrumbSchema} />
 
       <main className="min-h-screen">
         <article className="max-w-3xl mx-auto px-6 pt-12 pb-20">

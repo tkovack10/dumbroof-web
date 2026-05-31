@@ -1,10 +1,14 @@
 import type { Metadata } from "next";
 import { Footer } from "@/components/footer";
+import { JsonLd } from "@/components/json-ld";
+import { breadcrumbList, webPage } from "@/lib/seo/schema";
+import { absoluteUrl } from "@/lib/seo/site";
 
 export const metadata: Metadata = {
   title: "Learn — Roofing Insurance Claims & AI Technology",
   description:
     "Expert guides on roofing insurance claims, supplement strategies, hail damage identification, wind damage documentation, and AI-powered claim technology. Free educational resources from dumbroof.ai.",
+  alternates: { canonical: absoluteUrl("/learn") },
   keywords: [
     "roofing insurance claims guide",
     "hail damage identification",
@@ -120,9 +124,26 @@ const articles = [
   },
 ];
 
+const collectionSchema = {
+  ...webPage({
+    name: "DumbRoof Learn",
+    description:
+      "Expert guides on roofing insurance claims, damage identification, building codes, and AI technology.",
+    path: "/learn",
+  }),
+  "@type": "CollectionPage",
+};
+
+const breadcrumbSchema = breadcrumbList([
+  { name: "Home", path: "/" },
+  { name: "Learn", path: "/learn" },
+]);
+
 export default function LearnIndex() {
   return (
     <main className="min-h-screen">
+      <JsonLd data={collectionSchema} />
+      <JsonLd data={breadcrumbSchema} />
       <section className="pt-16 pb-10 px-6 text-center">
         <h1 className="text-4xl sm:text-5xl font-bold text-[var(--white)] mb-4">
           Learn

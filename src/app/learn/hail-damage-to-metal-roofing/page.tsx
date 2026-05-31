@@ -1,7 +1,11 @@
 import type { Metadata } from "next";
 import { Footer } from "@/components/footer";
+import { JsonLd } from "@/components/json-ld";
+import { breadcrumbList } from "@/lib/seo/schema";
+import { absoluteUrl } from "@/lib/seo/site";
 
 export const metadata: Metadata = {
+  alternates: { canonical: absoluteUrl("/learn/hail-damage-to-metal-roofing") },
   title: "Hail Damage to Metal Roofing: Identification & Insurance Claims",
   description:
     "Metal roofs dent rather than crack under hail impact, but carriers routinely deny claims as cosmetic. Learn how to identify functional damage on standing seam, corrugated, and stone-coated steel panels, prove paint and coating compromise, and win your insurance claim with dumbroof.ai.",
@@ -86,17 +90,18 @@ const articleSchema = {
     "Complete guide to identifying hail damage on metal roofing, proving functional damage beyond cosmetic dents, and building insurance claims that overcome carrier denials.",
 };
 
+const breadcrumbSchema = breadcrumbList([
+  { name: "Home", path: "/" },
+  { name: "Learn", path: "/learn" },
+  { name: "Hail Damage: Metal", path: "/learn/hail-damage-to-metal-roofing" },
+]);
+
 export default function MetalRoofHailDamagePage() {
   return (
     <>
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }}
-      />
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(articleSchema) }}
-      />
+      <JsonLd data={faqSchema} />
+      <JsonLd data={articleSchema} />
+      <JsonLd data={breadcrumbSchema} />
 
       <main className="min-h-screen">
         <article className="max-w-3xl mx-auto px-6 pt-12 pb-20">

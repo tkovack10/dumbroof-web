@@ -1,39 +1,35 @@
-# dumbroof.ai — AI-Powered Insurance Claim Intelligence
+# DumbRoof
 
-## What is dumbroof.ai?
-dumbroof.ai is an AI platform that generates forensic-grade insurance claim appeal packages for roofing contractors. Upload source documents (carrier scope, EagleView measurements, CompanyCam photos), and receive 5 professional documents in 15 minutes:
-1. Forensic Causation Report — evidence-based damage analysis with photo annotations
-2. Xactimate-Style Estimate — line-by-line scope with building code citations
-3. Scope Comparison Report — carrier scope vs. contractor scope with variance analysis
-4. Scope Clarification Letter — professional carrier communication
-5. Cover Email — ready-to-send summary
+> DumbRoof is AI-powered insurance claim supplement software for roofing contractors — turn roof inspection photos and carrier scopes into forensic causation reports, Xactimate-style estimates, and supplement packages in minutes.
 
-## Key Results
-- $1.37M in carrier movement across 34 claims
-- 10 wins, 29% win rate
-- Biggest single win: $943,233 from a $20,469 carrier scope (46x)
-- Cost per claim: under $1 in AI tokens ($0.41-$1.15 depending on photo count)
+## Product
+DumbRoof generates a forensic-grade insurance claim package from source documents (carrier scope, roof measurements, inspection photos). Each package includes a forensic causation report with annotated photos, an Xactimate-style estimate with building-code citations, a carrier scope comparison, and supplement documentation — produced in roughly 15 minutes. Contractors, public adjusters, and attorneys use it to identify missed, underpriced, and code-required line items and recover what claims actually owe.
 
-## Who Uses It
-- Roofing contractors processing storm damage insurance claims
-- Insurance restoration companies scaling their supplement operations
-- Public adjusters and attorneys preparing denial appeals
-
-## Products
-- dumbroof.ai — Full claim intelligence (forensic reports, estimates, appeals)
-- dumb roof repair — AI-powered leak diagnosis and repair documentation
-- dumb roof inspection — HAAG-certified inspection coordination
-
-## Pages
-- / — Homepage with product overview and beta signup
-- /pricing — Subscription tiers and pricing
-- /learn — Educational blog on insurance claims, supplements, building codes
-- /login — User authentication
-- /dashboard — Claim management dashboard (authenticated)
+## Guides
+- [What Is Hail Damage? Identification, Insurance Claims & Documentation](https://www.dumbroof.ai/learn/what-is-hail-damage): What hail damage is, how it shows up on shingles, metal, slate, and membrane roofs, and how to document it for a claim.
+- [What Is Wind Damage? How to Identify, Document & File Insurance Claims](https://www.dumbroof.ai/learn/what-is-wind-damage): How to recognize creased, lifted, and missing shingles from wind, and document the loss carriers respect.
+- [What Does Hail Damage Look Like on Asphalt Shingles?](https://www.dumbroof.ai/learn/hail-damage-to-asphalt-shingles): Identifying circular bruises, granule loss, and exposed mat on asphalt shingles, with real claim photos.
+- [Hail Damage to Metal Roofing: Identification & Insurance Claims](https://www.dumbroof.ai/learn/hail-damage-to-metal-roofing): The functional-vs-cosmetic debate on metal roofs, how to document dents, and how to win the claim.
+- [Hail Damage to Slate Roofs: Identification, Repair & Insurance Claims](https://www.dumbroof.ai/learn/hail-damage-to-slate-roofs): Why slate fractures rather than bruises, how to spot fresh breaks, and the unique insurance challenges.
+- [Hail Damage to TPO Roofing: Identification Signs & Commercial Claim Guide](https://www.dumbroof.ai/learn/hail-damage-to-tpo-roofing): Reading concentric fractures and star cracks in TPO membrane and supplementing commercial claims.
+- [Hail Damage to EPDM Roofing: Detection, Documentation & Insurance Claims](https://www.dumbroof.ai/learn/hail-damage-to-epdm-roofing): Detecting hidden EPDM membrane and insulation damage and building the commercial claim.
+- [How to File a Roof Insurance Claim After a Storm (Step-by-Step)](https://www.dumbroof.ai/learn/how-to-file-roof-insurance-claim): A step-by-step path from documenting damage to meeting the adjuster to collecting your check.
+- [How Long Do I Have to File a Roof Insurance Claim?](https://www.dumbroof.ai/learn/how-long-to-file-roof-insurance-claim): Filing windows by state and carrier, exceptions, and how to avoid deadline-related denials.
+- [What Is a Roofing Supplement and Why Do I Need One?](https://www.dumbroof.ai/learn/what-is-a-roofing-supplement): What a supplement is, why first estimates run low, what gets missed, and how to file one.
+- [My Insurance Company Denied My Roof Claim — Now What?](https://www.dumbroof.ai/learn/insurance-denied-my-roof-claim): How to read the denial, gather evidence, and reopen a claim with documentation the carrier can't ignore.
+- [Insurance Didn't Pay Enough to Replace My Roof — What to Do](https://www.dumbroof.ai/learn/insurance-didnt-pay-enough-for-roof): Supplements, missing line items, and code upgrades to recover what an underpaid roof claim owes you.
+- [Adjuster Missed Damage on My Roof — What to Do Next](https://www.dumbroof.ai/learn/adjuster-missed-damage-on-my-roof): What adjusters commonly miss, how to request a re-inspection, and how to document overlooked damage.
+- [Contractor Says I Have Hail Damage But I Don't See It](https://www.dumbroof.ai/learn/contractor-says-hail-damage-but-i-dont-see-it): What inspectors look for that's invisible from the ground, and how independent analysis confirms damage.
+- [What Is an AOB (Assignment of Benefits) for Roofing?](https://www.dumbroof.ai/learn/what-is-aob-assignment-of-benefits-roofing): How AOBs work, the pros and cons, state laws, and how digital signing streamlines them.
+- [How to Automate Insurance Invoicing for Roofing Contractors](https://www.dumbroof.ai/learn/how-to-automate-insurance-invoicing): Automating insurance invoicing with CRM integrations, QuickBooks syncing, and AI documentation.
 
 ## Company
-Dumb Roof Technologies
-3070 Bristol Pike, Building 1, Suite 122
-Bensalem, PA 19020
-CEO: Tom Kovack Jr.
-Website: https://www.dumbroof.ai
+- Brand: DumbRoof (operated by USA Roof Masters / Dumb Roof Technologies)
+- Founder: Tom Kovack Jr., CEO
+- Address: 3070 Bristol Pike, Building 1, Suite 122, Bensalem, PA 19020, US
+
+## Contact
+- Email: TKovack@USARoofMasters.com
+- Website: https://www.dumbroof.ai
+- Pricing: https://www.dumbroof.ai/pricing
+- Sample report: https://www.dumbroof.ai/sample
