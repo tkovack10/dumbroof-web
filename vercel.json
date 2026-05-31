@@ -62,6 +62,14 @@
       "schedule": "0 19 * * *"
     },
     {
+      "path": "/api/cron/storm-ingest",
+      "schedule": "15 13 * * *"
+    },
+    {
+      "path": "/api/cron/storm-alerts",
+      "schedule": "30 15 * * *"
+    },
+    {
       "path": "/api/cron/homeowner-sequences",
       "schedule": "0 13 * * *"
     },
