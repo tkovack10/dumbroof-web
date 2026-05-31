@@ -1,28 +1,18 @@
 import type { ReactNode } from "react";
-import { createClient } from "@/lib/supabase/server";
-import { GlobalRichard } from "@/components/global-richard";
 
 /**
- * Authenticated app layout. Wraps every /dashboard/* route (claim detail,
- * settings, new-claim, quick-report, the nested /dashboard/admin tree, …) and
- * mounts the floating Richard launcher so Richard is reachable from ANY page,
- * not just the dashboard home. Resolving the user server-side avoids a
- * client-side auth flash before the FAB appears.
+ * Authenticated /dashboard/* layout — pass-through.
+ *
+ * ROLLED BACK (Tom, 2026-05-31): the "Richard everywhere" GlobalRichard launcher
+ * mounted here rendered a broken/transparent panel overlapping the dashboard on
+ * desktop ("richard chat screen impossible to see"). The dashboard's own Richard
+ * FAB is restored in dashboard-content, and the per-claim "Ask Richard" stays;
+ * #113's session-auth (stale-token 401) fix is kept untouched.
  */
-export default async function DashboardLayout({
+export default function DashboardLayout({
   children,
 }: {
   children: ReactNode;
 }) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  return (
-    <>
-      {children}
-      {user && <GlobalRichard userId={user.id} />}
-    </>
-  );
+  return <>{children}</>;
 }
