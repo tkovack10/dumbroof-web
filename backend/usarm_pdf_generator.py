@@ -1070,6 +1070,381 @@ tr:nth-child(even) td { background: #f8f9fa; }
 
 
 # ===================================================================
+# SPECTRAL DESIGN SYSTEM — DOC 01 FORENSIC CAUSATION REPORT
+# ===================================================================
+# Lifted VERBATIM from the shipped Doc-06 gold standard
+# (compliance_report.py :root tokens, fonts, cite-chip, run-head,
+# code-card, summary-table, cover). Doc 01 gets its OWN stylesheet so
+# Docs 02-05 stay byte-identical (they keep CSS_COMMON). The forensic
+# report re-styles EVERY utility class it uses — including the carry-over
+# .photo-grid / .photo-card / .caption / .toc-item / .info-box /
+# .media-quote / .footer-sig / .confidential / .cover-assoc-logos —
+# in Spectral, never deleting them. No literal palette hex appears
+# downstream of the :root block; every rule reads var(--token).
+
+# Google Fonts <link> for Spectral / Libre Franklin / IBM Plex Mono.
+# Lives in the <head>; print engines that ignore web fonts fall back to
+# the var()-declared local serif/sans/mono stacks (so the look degrades
+# gracefully to Georgia/Helvetica/Menlo rather than breaking).
+FORENSIC_FONTS_LINK = (
+    '<link rel="preconnect" href="https://fonts.googleapis.com">'
+    '<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>'
+    '<link href="https://fonts.googleapis.com/css2?'
+    'family=Spectral:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400&'
+    'family=Libre+Franklin:wght@400;500;600;700;800&'
+    'family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">'
+)
+
+FORENSIC_SPECTRAL_CSS = """
+/* ============================================================
+   :root — SWAPPABLE PER-COMPANY THEME (edit ONLY this block to
+   re-skin the entire forensic report for another contractor's
+   brand). Every component below reads var(--token); no literal
+   palette value is repeated downstream.
+   ============================================================ */
+:root {
+    /* — brand palette — */
+    --c-navy:        #0d1b3e;
+    --c-navy-deep:   #091230;
+    --c-navy-soft:   #16284f;
+    --c-brick:       #9a2b2f;
+    --c-brick-bright:#b8383c;
+    --c-brick-warm:  #c98f6d;
+
+    /* — sheet / neutrals — */
+    --c-paper:       #faf8f3;
+    --c-paper-warm:  #f3efe5;
+    --c-ink:         #1a1f29;
+    --c-slate:       #4a5568;
+    --c-mute:        #8a93a3;
+    --c-line:        #d8d2c5;
+    --c-line-soft:   #e7e2d6;
+    --c-gold:        #b08a3e;
+
+    /* — SEMANTIC STATUS ONLY (forest / red carry the verified-vs-
+         omitted signal — never decorative) — */
+    --c-included:    #1f6b4a;
+    --c-included-bg: #e6efe8;
+    --c-included-bd: #bcd6c6;
+    --c-omitted:     #9a2b2f;
+    --c-omitted-bg:  #f5dede;
+    --c-omitted-bd:  #e2b9b9;
+
+    /* — type tokens — */
+    --f-serif: 'Spectral', Georgia, 'Times New Roman', serif;
+    --f-sans:  'Libre Franklin', -apple-system, Helvetica, Arial, sans-serif;
+    --f-mono:  'IBM Plex Mono', 'SFMono-Regular', Menlo, monospace;
+}
+
+@page { size: letter; margin: 0.55in 0.6in; }
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+    font-family: var(--f-sans);
+    color: var(--c-ink);
+    background: var(--c-paper);
+    line-height: 1.5;
+    font-size: 10pt;
+    -webkit-print-color-adjust: exact; print-color-adjust: exact;
+}
+
+h1 { font-family: var(--f-serif); font-size: 20pt; font-weight: 600; color: var(--c-navy); margin: 16pt 0 8pt 0; letter-spacing: -0.01em; }
+h2 {
+    font-family: var(--f-serif); font-size: 16pt; font-weight: 600; color: var(--c-navy);
+    margin: 22pt 0 10pt 0; padding-bottom: 6pt; letter-spacing: -0.01em;
+    border-bottom: 2px solid var(--c-navy);
+}
+h3 {
+    font-family: var(--f-serif); font-size: 12.5pt; font-weight: 600; color: var(--c-navy);
+    margin: 16pt 0 7pt 0; letter-spacing: -0.005em; position: relative;
+}
+h3::after { content: ""; display: block; width: 26px; height: 2px; background: var(--c-brick); margin-top: 5pt; }
+p { margin: 6pt 0; }
+ul, ol { margin: 6pt 0 6pt 24pt; }
+li { margin: 3pt 0; }
+a { color: var(--c-navy); }
+strong, b { font-weight: 700; }
+
+/* base table → Spectral summary-table treatment (navy header, brick
+   keyline, warm zebra). All evidence numbers go mono. */
+table {
+    width: 100%; border-collapse: collapse; margin: 12pt 0; font-size: 9.5pt;
+}
+th {
+    background: var(--c-navy); color: #dfe5ee; padding: 8pt 10pt; text-align: left;
+    font-family: var(--f-sans); font-weight: 700; font-size: 8pt; letter-spacing: 0.12em;
+    text-transform: uppercase; border-bottom: 2px solid var(--c-brick);
+}
+td { padding: 7pt 10pt; border-bottom: 1px solid var(--c-line-soft); vertical-align: middle; color: var(--c-slate); }
+td strong { color: var(--c-ink); }
+tr:nth-child(even) td { background: var(--c-paper-warm); }
+.amt { text-align: right; font-family: var(--f-mono); color: var(--c-ink); }
+
+/* ── THE CITATION CHIP — every code / standard reference ── */
+.cite-chip {
+    display: inline-block; font-family: var(--f-mono); font-weight: 700;
+    font-size: 9pt; letter-spacing: 0.02em; line-height: 1.3;
+    color: var(--c-brick); background: var(--c-omitted-bg);
+    border: 1px solid var(--c-omitted-bd); border-radius: 3px;
+    padding: 1.5pt 7pt; white-space: nowrap; vertical-align: baseline;
+}
+.cite-chip.neutral { color: var(--c-slate); background: var(--c-paper-warm); border-color: var(--c-line); }
+.cite-chip.on-navy { color: #fff; background: rgba(184,56,60,0.92); border-color: rgba(255,255,255,0.25); }
+
+/* section eyebrow */
+.sec-eyebrow {
+    font-family: var(--f-sans); font-size: 8pt; font-weight: 700; letter-spacing: 0.26em;
+    text-transform: uppercase; color: var(--c-brick); margin: 22pt 0 1pt 0;
+}
+
+/* ── COVER (full-bleed navy authority field, logo-leads) ── */
+.cover {
+    position: relative;
+    background: var(--c-navy);
+    color: #eef1f5; margin: -0.55in -0.6in 0 -0.6in; padding: 0.62in 0.6in 0.5in;
+    min-height: 10in;
+}
+.cover .cover-frame { position: absolute; inset: 0.26in; border: 1px solid rgba(255,255,255,0.16); pointer-events: none; }
+.cover-top { display: flex; justify-content: space-between; align-items: flex-start; position: relative; z-index: 2; }
+.cover-wordmark { font-family: var(--f-sans); font-weight: 800; font-size: 12pt; letter-spacing: 0.15em; color: #fff; }
+.cover-wordmark .wm-sub { display: block; font-size: 6pt; letter-spacing: 0.32em; font-weight: 600; color: var(--c-brick-warm); text-transform: uppercase; margin-top: 4pt; }
+.cover-tab {
+    font-family: var(--f-sans); font-size: 7pt; font-weight: 700; letter-spacing: 0.24em; text-transform: uppercase;
+    color: #fff; border: 1px solid rgba(255,255,255,0.3); padding: 5pt 11pt; border-radius: 2px;
+}
+/* knockout company-logo hero in a hairline ring */
+.cover-logo-hero { position: relative; z-index: 2; margin-top: 0.5in; text-align: center; }
+.cover-logo-hero .logo-ring {
+    display: inline-flex; align-items: center; justify-content: center;
+    padding: 18pt 26pt; border: 1px solid rgba(255,255,255,0.24); border-radius: 4px;
+    background: rgba(255,255,255,0.03);
+}
+.cover-logo-hero .logo-ring img { height: 84pt; width: auto; max-width: 320pt; object-fit: contain;
+    filter: brightness(0) invert(1); }
+.cover-logo-hero .logo-ring .logo-text-fallback {
+    color: #fff; border-bottom-color: var(--c-brick-bright); font-family: var(--f-sans);
+}
+.cover-hero { position: relative; z-index: 2; margin-top: 0.45in; }
+.cover-kicker { font-family: var(--f-sans); font-weight: 700; font-size: 8pt; letter-spacing: 0.38em; text-transform: uppercase; color: var(--c-brick-warm); margin-bottom: 14pt; }
+.cover h1 { font-family: var(--f-serif); font-weight: 600; font-size: 40pt; line-height: 1.0; color: #fff; margin: 0; letter-spacing: -0.015em; border: 0; padding: 0; }
+.cover .cover-subtitle { font-family: var(--f-serif); font-style: italic; font-weight: 300; font-size: 13pt; line-height: 1.45; color: #aeb9cb; margin-top: 18pt; max-width: 5.6in; border-left: 2px solid var(--c-brick-bright); padding-left: 16pt; }
+
+.cover-meta { position: relative; z-index: 2; margin-top: 28pt; display: grid; grid-template-columns: 1fr 1fr 1fr; border-top: 1px solid rgba(255,255,255,0.16); }
+.cover-meta .cell { padding: 13pt 16pt 11pt 0; border-right: 1px solid rgba(255,255,255,0.1); border-bottom: 1px solid rgba(255,255,255,0.1); }
+.cover-meta .cell:nth-child(3n) { border-right: 0; }
+.cover-meta .k { font-family: var(--f-sans); font-size: 6.5pt; letter-spacing: 0.24em; text-transform: uppercase; color: #8ea0bd; margin-bottom: 6pt; }
+.cover-meta .v { font-size: 10pt; color: #eef1f5; line-height: 1.4; font-weight: 600; }
+.cover-meta .v.serif { font-family: var(--f-serif); font-weight: 500; font-size: 12pt; }
+.cover-meta .v.mono { font-family: var(--f-mono); font-weight: 600; font-size: 10.5pt; letter-spacing: 0.01em; }
+
+.cover-foot { position: relative; z-index: 2; margin-top: 26pt; padding-top: 14pt; border-top: 1px solid rgba(255,255,255,0.16); display: flex; justify-content: space-between; align-items: flex-end; }
+.cover-foot .prep .pl { font-family: var(--f-sans); font-size: 6.5pt; letter-spacing: 0.28em; text-transform: uppercase; color: #8ea0bd; margin-bottom: 5pt; }
+.cover-foot .prep .pv { font-family: var(--f-serif); font-size: 13pt; color: #fff; }
+/* credential logo row on the navy foot */
+.cover-assoc-logos {
+    display: flex; justify-content: flex-end; align-items: center; gap: 18pt;
+    margin: 0; position: relative; z-index: 2;
+}
+.cover-assoc-logos img { height: 26pt; width: auto; opacity: 0.78; filter: grayscale(1) brightness(1.6); }
+
+/* ── INTERIOR CHROME — .run-head (chain-of-custody masthead) ── */
+.run-head { display: flex; justify-content: space-between; align-items: flex-start; padding-bottom: 10pt; border-bottom: 2px solid var(--c-navy); margin-bottom: 6pt; }
+.run-head .rh-mark { font-family: var(--f-sans); font-weight: 800; font-size: 11pt; letter-spacing: 0.12em; color: var(--c-navy); }
+.run-head .rh-mark .rh-sub { display: block; font-family: var(--f-sans); font-weight: 600; font-size: 6pt; letter-spacing: 0.22em; text-transform: uppercase; color: var(--c-brick); margin-top: 3pt; }
+.run-head .rh-r { text-align: right; }
+.run-head .rh-r .rh-doc { font-family: var(--f-sans); font-size: 7pt; letter-spacing: 0.22em; text-transform: uppercase; color: var(--c-slate); font-weight: 700; }
+.run-head .rh-r .rh-claim { font-family: var(--f-mono); font-size: 10pt; color: var(--c-navy); margin-top: 4pt; }
+
+/* ── TOC (dotted leaders) ── */
+.toc-item {
+    display: flex; justify-content: space-between; padding: 6pt 0;
+    border-bottom: 1px dotted var(--c-line); font-size: 10pt; color: var(--c-slate);
+    font-family: var(--f-sans);
+}
+
+/* ── callout boxes (re-styled in Spectral) ── */
+.success-box {
+    background: var(--c-included-bg); border-left: 4px solid var(--c-included);
+    padding: 11pt 15pt; margin: 11pt 0; border-radius: 3px; font-size: 9.5pt; color: var(--c-ink);
+}
+.success-box strong { color: var(--c-included); }
+.critical-box {
+    background: var(--c-omitted-bg); border-left: 4px solid var(--c-brick);
+    padding: 11pt 15pt; margin: 11pt 0; border-radius: 3px; font-size: 9.5pt; color: var(--c-ink);
+}
+.critical-box strong { color: var(--c-brick); }
+.highlight-box {
+    background: var(--c-paper-warm); border-left: 4px solid var(--c-gold);
+    padding: 11pt 15pt; margin: 11pt 0; border-radius: 3px; font-size: 9.5pt; color: var(--c-ink);
+}
+.highlight-box strong { color: var(--c-ink); }
+.info-box {
+    background: var(--c-paper-warm); border-left: 4px solid var(--c-navy);
+    padding: 11pt 15pt; margin: 11pt 0; border-radius: 3px; font-size: 9.5pt; color: var(--c-ink);
+}
+.info-box strong { color: var(--c-navy); }
+.info-box em { font-family: var(--f-serif); font-style: italic; color: var(--c-navy); }
+
+/* ── media quote (corroborating reports) ── */
+.media-quote {
+    background: #fff; border: 1px solid var(--c-line); border-left: 3px solid var(--c-slate);
+    padding: 11pt 15pt; margin: 11pt 0; border-radius: 3px; font-size: 9.5pt;
+    font-family: var(--f-serif); font-style: italic; color: var(--c-slate); line-height: 1.55;
+}
+.media-quote .source {
+    font-family: var(--f-mono); font-style: normal; font-weight: 600;
+    color: var(--c-navy); font-size: 8pt; margin-top: 5pt;
+}
+.media-quote .source a { color: var(--c-navy); }
+
+/* ── PHOTO EVIDENCE — .photo-grid / evidence plate ── */
+.photo-grid {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 10pt; margin: 12pt 0;
+}
+/* .photo-card kept (the forensic photo core) — re-styled as the
+   evidence plate: brick top-keyline, warm-paper caption, no shadow. */
+.photo-card {
+    break-inside: avoid; page-break-inside: avoid;
+    border: 1px solid var(--c-line); border-radius: 4px; overflow: hidden;
+    background: #fff; border-top: 2px solid var(--c-brick);
+}
+.photo-card img { width: 100%; height: auto; display: block; }
+.photo-card .caption {
+    padding: 8pt 10pt; font-size: 8pt; color: var(--c-slate);
+    background: var(--c-paper-warm); line-height: 1.4; font-family: var(--f-sans);
+}
+.photo-card .caption strong { color: var(--c-ink); }
+
+/* ── DAMAGE DIFFERENTIATION / causation semantic cells ── */
+.obs-yes, .concl-consistent { color: var(--c-included); font-weight: 700; }
+.obs-no, .concl-inconsistent { color: var(--c-brick); font-weight: 700; }
+
+/* ── code-compliance .code-card stack ── */
+.code-card { border: 1px solid var(--c-line); border-radius: 4px; padding: 14pt 18pt; margin: 12pt 0; break-inside: avoid; background: #fff; }
+.code-card.critical { border-left: 4px solid var(--c-brick); }
+.code-card .cc-top { display: flex; align-items: center; gap: 10pt; margin-bottom: 7pt; flex-wrap: wrap; }
+.code-card .code-title { font-family: var(--f-serif); font-size: 14pt; font-weight: 600; color: var(--c-navy); margin: 0; }
+.code-card .requirement { font-size: 9.5pt; color: var(--c-ink); background: var(--c-paper-warm); padding: 9pt 13pt; border-radius: 3px; margin: 8pt 0; border-left: 3px solid var(--c-navy); line-height: 1.55; }
+.code-card .supplement { font-size: 9pt; color: var(--c-slate); margin-top: 7pt; line-height: 1.5; }
+.code-card .supplement b { color: var(--c-omitted); }
+
+/* ── mfr-spec block ── */
+.mfr-spec { background: var(--c-paper-warm); border: 1px solid var(--c-line); border-left: 3px solid var(--c-gold); border-radius: 3px; padding: 9pt 13pt; margin: 9pt 0; break-inside: avoid; }
+.mfr-spec .mfr-name { font-family: var(--f-sans); font-weight: 700; font-size: 9pt; letter-spacing: 0.06em; text-transform: uppercase; color: var(--c-gold); }
+.mfr-spec .warranty-void { color: var(--c-brick); font-weight: 700; font-size: 9.5pt; margin-top: 4pt; }
+
+/* ── threshold-vs-age chart (Spectral idiom) ── */
+.threshold-chart {
+    border: 1px solid var(--c-line); border-radius: 4px; padding: 14pt; margin: 12pt 0;
+    background: #fff; break-inside: avoid;
+}
+.threshold-chart .chart-title {
+    font-family: var(--f-sans); font-size: 8.5pt; font-weight: 700; color: var(--c-navy);
+    margin-bottom: 10pt; text-transform: uppercase; letter-spacing: 0.14em;
+}
+.threshold-chart .bar-row { display: flex; align-items: center; margin: 4pt 0; font-size: 9pt; }
+.threshold-chart .bar-label { width: 70pt; font-weight: 600; color: var(--c-slate); }
+.threshold-chart .bar-value { width: 50pt; font-family: var(--f-mono); font-weight: 600; color: var(--c-navy); text-align: right; padding-right: 8pt; }
+.threshold-chart .bar-fill { height: 13pt; background: var(--c-navy); border-radius: 2px; }
+.threshold-chart .bar-fill.property { background: var(--c-brick); }
+.threshold-chart .property-indicator {
+    margin-top: 10pt; padding: 8pt 12pt; background: var(--c-paper-warm);
+    border: 1px solid var(--c-line); border-left: 3px solid var(--c-navy); border-radius: 3px;
+    font-size: 9pt; color: var(--c-ink); font-weight: 600;
+}
+.threshold-chart .property-indicator strong { font-family: var(--f-mono); color: var(--c-navy); }
+.threshold-chart .exceeds-line {
+    margin-top: 8pt; padding: 8pt 12pt; background: var(--c-omitted-bg);
+    border-left: 4px solid var(--c-brick); border-radius: 3px; font-size: 9.5pt;
+    font-weight: 700; color: var(--c-brick);
+}
+.threshold-chart .exceeds-line strong { font-family: var(--f-mono); }
+
+/* ── THE ONE SERIF-ON-NAVY CREDIBILITY CLIMAX ── */
+.credibility-climax {
+    background: var(--c-navy); border-top: 2px solid var(--c-brick);
+    padding: 16pt 22pt; margin: 18pt 0; break-inside: avoid; text-align: left;
+}
+.credibility-climax .cc-label {
+    font-family: var(--f-sans); font-size: 8pt; font-weight: 700; letter-spacing: 0.2em;
+    text-transform: uppercase; color: var(--c-brick-warm); margin-bottom: 8pt;
+}
+.credibility-climax .cc-figure {
+    font-family: var(--f-serif); font-weight: 600; font-size: 19pt; color: #fff; line-height: 1.1;
+}
+.credibility-climax .cc-sub { font-family: var(--f-sans); font-size: 9pt; color: #aeb9cb; margin-top: 7pt; line-height: 1.5; }
+
+/* ── total / variance helpers ── */
+.total-row td { font-weight: 700; background: var(--c-paper-warm) !important; border-top: 2px solid var(--c-navy); color: var(--c-ink); }
+.grand-total td { font-weight: 700; font-size: 11pt; background: var(--c-navy) !important; color: #fff; }
+.section-total td { font-weight: 700; background: var(--c-paper-warm) !important; border-top: 2px solid var(--c-navy); }
+.variance-positive, .var-pos { color: var(--c-brick); font-weight: 700; }
+
+/* ── footer signature ── */
+.footer-sig { margin-top: 22pt; padding-top: 10pt; border-top: 1px solid var(--c-line); font-size: 10pt; color: var(--c-slate); }
+.footer-sig .name { font-family: var(--f-serif); font-weight: 600; font-size: 13pt; color: var(--c-navy); }
+.footer-sig .title { font-weight: 600; color: var(--c-slate); }
+
+/* ── confidential footer ── */
+.confidential { margin-top: 22pt; padding-top: 8pt; border-top: 1px solid var(--c-line-soft); font-size: 7pt; color: var(--c-mute); text-align: center; font-family: var(--f-sans); letter-spacing: 0.04em; }
+
+/* ── integrity / authenticity seal (navy concentric rings) ── */
+.integrity-seal-wrap { margin-top: 26pt; break-inside: avoid; text-align: center; }
+.integrity-seal { display: inline-block; width: 210px; height: 210px; border-radius: 50%; position: relative; }
+.integrity-seal .ring-outer { width: 210px; height: 210px; border-radius: 50%; border: 4px solid var(--c-navy); position: absolute; inset: 0; }
+.integrity-seal.flagged .ring-outer { border-color: var(--c-brick); }
+.integrity-seal .ring-inner { position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); width: 182px; height: 182px; border-radius: 50%; border: 2px solid var(--c-navy); display: flex; flex-direction: column; align-items: center; justify-content: center; }
+.integrity-seal.flagged .ring-inner { border-color: var(--c-brick); }
+.integrity-seal .seal-legend { font-family: var(--f-sans); font-size: 6pt; font-weight: 700; color: var(--c-navy); letter-spacing: 0.14em; text-transform: uppercase; }
+.integrity-seal.flagged .seal-legend { color: var(--c-brick); }
+.integrity-seal .seal-sub { font-family: var(--f-sans); font-size: 5.5pt; font-weight: 700; color: var(--c-navy); letter-spacing: 0.12em; text-transform: uppercase; margin-bottom: 5pt; }
+.integrity-seal.flagged .seal-sub { color: var(--c-brick); }
+.integrity-seal .seal-rule { width: 46px; height: 2px; background: var(--c-brick); margin: 5pt 0; }
+.integrity-seal .seal-score { font-family: var(--f-mono); font-size: 26pt; font-weight: 600; color: var(--c-navy); line-height: 1; }
+.integrity-seal.flagged .seal-score { color: var(--c-brick); }
+.integrity-seal .seal-status { font-family: var(--f-sans); font-size: 6pt; font-weight: 700; color: var(--c-navy); letter-spacing: 0.1em; text-transform: uppercase; margin-top: 4pt; }
+.integrity-seal.flagged .seal-status { color: var(--c-brick); }
+.integrity-seal .seal-result { font-family: var(--f-sans); font-size: 5.5pt; color: var(--c-mute); font-weight: 600; margin-top: 2pt; }
+.integrity-seal .seal-attr { font-family: var(--f-sans); font-size: 5pt; color: var(--c-gold); letter-spacing: 0.14em; margin-top: 5pt; text-transform: uppercase; font-weight: 700; }
+
+/* ── cert + disclaimer ── */
+.cert-card { margin-top: 20pt; padding: 12pt 16pt; border: 1px solid var(--c-navy); border-radius: 4px; break-inside: avoid; font-size: 9.5pt; color: var(--c-ink); }
+.cert-card strong { color: var(--c-navy); }
+.uppa-disclaimer { margin-top: 12pt; padding: 10pt 14pt; background: var(--c-paper-warm); border-radius: 3px; font-size: 8pt; color: var(--c-slate); }
+.uppa-disclaimer em { font-family: var(--f-serif); font-style: italic; }
+
+/* ── lead callout (serif-italic carrier-contradiction line) ── */
+.lead-callout {
+    background: var(--c-paper-warm); border-left: 3px solid var(--c-brick);
+    padding: 13pt 18pt; margin: 12pt 0; border-radius: 3px; break-inside: avoid;
+}
+.lead-callout .lc-label { font-family: var(--f-sans); font-size: 7pt; letter-spacing: 0.3em; text-transform: uppercase; color: var(--c-brick); font-weight: 700; margin-bottom: 7pt; }
+.lead-callout p { font-family: var(--f-serif); font-style: italic; font-size: 11.5pt; line-height: 1.6; color: var(--c-ink); margin: 0; }
+.lead-callout p b { font-style: normal; color: var(--c-navy); font-weight: 700; }
+
+/* page break utility */
+.page-break { page-break-after: always; }
+"""
+
+
+def _cite_chip(citation, *, neutral=False, on_navy=False):
+    """Render a code / standard reference as the load-bearing .cite-chip
+    anchor (mono, brick on paper) — never bold inline text. ``neutral`` =
+    a non-code reference (HAAG, ASTM, NOAA, NWS); ``on_navy`` = placed on a
+    dark band. Empty/blank citation renders nothing. The chip TEXT is the
+    citation verbatim, so the stripped-text substance fingerprint (golden
+    bridge) is preserved."""
+    text = (citation or "").strip()
+    if not text:
+        return ""
+    cls = "cite-chip"
+    if neutral:
+        cls += " neutral"
+    if on_navy:
+        cls += " on-navy"
+    return f'<span class="{cls}">{text}</span>'
+
+
+# ===================================================================
 # DOCUMENT 1: FORENSIC CAUSATION REPORT
 # ===================================================================
 
