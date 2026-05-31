@@ -12,6 +12,7 @@ export function Footer() {
               <Link href="/pricing" className="block text-sm text-[var(--gray-muted)] hover:text-white transition-colors">Pricing</Link>
               <Link href="/integrations" className="block text-sm text-[var(--gray-muted)] hover:text-white transition-colors">Integrations</Link>
               <Link href="/compare" className="block text-sm text-[var(--gray-muted)] hover:text-white transition-colors">Compare</Link>
+              <Link href="/roof-insurance-claim-help" className="block text-sm text-[var(--gray-muted)] hover:text-white transition-colors">Claim Help by State</Link>
               <Link href="/inspection-club" className="block text-sm text-[var(--gray-muted)] hover:text-white transition-colors">Inspection Club</Link>
             </div>
           </div>

@@ -39,6 +39,28 @@ How DumbRoof compares to other approaches and tools roofers use. Many are comple
 - [DumbRoof vs Symbility](https://www.dumbroof.ai/compare/dumbroof-vs-symbility): Symbility is a claims-estimating platform used carrier-side; DumbRoof is contractor-side software that builds the supplement to send back.
 - [DumbRoof vs ServiceTitan](https://www.dumbroof.ai/compare/dumbroof-vs-servicetitan): ServiceTitan is a broad field-service platform; DumbRoof is purpose-built for roofing insurance supplements.
 
+## Locations
+State-by-state roof insurance claim guides for the top storm, hail, and wind states. Each page covers the state's storm profile, building-code basis, claim-deadline norms, any matching rule, hurricane/wind deductibles, and the Department of Insurance complaint path. General information, not legal advice.
+- [Roof Insurance Claim Help by State (hub)](https://www.dumbroof.ai/roof-insurance-claim-help): Index of all state guides, grouped by region.
+- [Texas](https://www.dumbroof.ai/roof-insurance-claim-help/texas): Hail, wind, Gulf hurricanes; suit-limitation deadlines; hurricane deductibles; TDI.
+- [Oklahoma](https://www.dumbroof.ai/roof-insurance-claim-help/oklahoma): Core hail-alley hail and tornadic wind; Oklahoma Insurance Department.
+- [Kansas](https://www.dumbroof.ai/roof-insurance-claim-help/kansas): Central hail-alley hail and wind; Kansas Insurance Department.
+- [Nebraska](https://www.dumbroof.ai/roof-insurance-claim-help/nebraska): Northern hail-alley hail and derecho wind; Nebraska Department of Insurance.
+- [Colorado](https://www.dumbroof.ai/roof-insurance-claim-help/colorado): Front Range hail; statutory matching protection (C.R.S. 10-4-110.8); Division of Insurance.
+- [Florida](https://www.dumbroof.ai/roof-insurance-claim-help/florida): Hurricanes; Florida Building Code; tightened 2022 claim-notice deadlines (1 yr report / 18 mo supplemental); hurricane deductibles; DFS/OIR.
+- [Louisiana](https://www.dumbroof.ai/roof-insurance-claim-help/louisiana): Gulf hurricanes; two-year minimum prescriptive period (R.S. 22:868); annual named-storm deductibles; LDI.
+- [Alabama](https://www.dumbroof.ai/roof-insurance-claim-help/alabama): Gulf coast + inland tornado/wind; six-year contract period; Alabama Department of Insurance.
+- [Georgia](https://www.dumbroof.ai/roof-insurance-claim-help/georgia): Severe storms + coastal wind; IRC w/ Georgia amendments; Georgia Office of Insurance and Safety Fire Commissioner.
+- [North Carolina](https://www.dumbroof.ai/roof-insurance-claim-help/north-carolina): Coastal hurricanes + inland storms; three-year limitations period; NC Department of Insurance.
+- [South Carolina](https://www.dumbroof.ai/roof-insurance-claim-help/south-carolina): Atlantic hurricanes; regulated coastal wind/hail deductibles; three-year period; SC Department of Insurance.
+- [Tennessee](https://www.dumbroof.ai/roof-insurance-claim-help/tennessee): 'Dixie Alley' wind and hail; six-year contract period; Tennessee Department of Commerce and Insurance.
+- [Missouri](https://www.dumbroof.ai/roof-insurance-claim-help/missouri): Severe hail; matching regulation (20 CSR 100-1.050); ten-year written-contract period; Department of Commerce and Insurance.
+- [Minnesota](https://www.dumbroof.ai/roof-insurance-claim-help/minnesota): Severe hail; statutory matching protection (Minn. Stat. 65A.10); Department of Commerce.
+- [Illinois](https://www.dumbroof.ai/roof-insurance-claim-help/illinois): Severe storms and hail; ten-year written-contract period; Illinois Department of Insurance.
+- [Ohio](https://www.dumbroof.ai/roof-insurance-claim-help/ohio): Severe storms/hail; short (often 1-year) policy suit-limitation clauses; Ohio Department of Insurance.
+- [New York](https://www.dumbroof.ai/roof-insurance-claim-help/new-york): Wind/hail/coastal storms; two-year standard-fire-policy suit-limitation; RCNYS; DFS.
+- [Pennsylvania](https://www.dumbroof.ai/roof-insurance-claim-help/pennsylvania): Wind/hail/remnant storms; four-year contract period; PA Uniform Construction Code; Pennsylvania Insurance Department.
+
 ## Company
 - Brand: DumbRoof (operated by USA Roof Masters / Dumb Roof Technologies)
 - Founder: Tom Kovack Jr., CEO

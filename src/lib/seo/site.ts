@@ -9,6 +9,7 @@
  */
 
 import { COMPARISONS } from "./comparisons";
+import { allLocationSlugs, LOCATIONS_BASE_PATH } from "./locations";
 
 export const SITE = {
   url: "https://www.dumbroof.ai",
@@ -221,6 +222,12 @@ export const PUBLIC_ROUTES: RouteEntry[] = [
   { path: "/compare", changeFrequency: "weekly", priority: 0.8 },
   ...COMPARISONS.map((c) => ({
     path: `/compare/${c.slug}`,
+    changeFrequency: "monthly" as ChangeFreq,
+    priority: 0.7,
+  })),
+  { path: LOCATIONS_BASE_PATH, changeFrequency: "weekly", priority: 0.8 },
+  ...allLocationSlugs().map((slug) => ({
+    path: `${LOCATIONS_BASE_PATH}/${slug}`,
     changeFrequency: "monthly" as ChangeFreq,
     priority: 0.7,
   })),
