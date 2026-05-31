@@ -680,5 +680,111 @@ class TestNegativeHailOnlyWithNoaa(unittest.TestCase):
         self.assertIn("#6", v[0])
 
 
+class TestNegativeMembraneOnSloped(unittest.TestCase):
+    """#17 — feed a SLOPED roof with an EPDM/membrane hail signature; assert it
+    FIRES. Feed a real flat roof, HAAG boilerplate, and the grounded "dark mat is
+    NOT EPDM" phrasing; assert it HOLDS (anchored on the enum, not prose)."""
+
+    def test_fires_on_slate_with_epdm_puncture(self):
+        cfg = {"roof_material_enum": "slate"}
+        html = "<p>The slope shows EPDM puncture marks consistent with hail.</p>"
+        out = inv.check_material_membrane_on_sloped(cfg, html)
+        self.assertTrue(any("#17" in v for v in out))
+
+    def test_fires_on_laminate_with_hail_punctured_membrane(self):
+        cfg = {"roof_material_enum": "laminate"}
+        html = "<p>Hail punctured the membrane across the field.</p>"
+        out = inv.check_material_membrane_on_sloped(cfg, html)
+        self.assertTrue(any("#17" in v for v in out))
+
+    def test_fires_on_metal_with_rubber_hail_damage(self):
+        cfg = {"roof_material_enum": "metal"}
+        html = "<p>The rubber roof exhibits hail damage with punctures.</p>"
+        self.assertTrue(inv.check_material_membrane_on_sloped(cfg, html))
+
+    def test_fires_via_lone_structure_enum(self):
+        cfg = {"structures": [{"roof_material_enum": "tile"}]}
+        html = "<p>EPDM membrane punctures noted.</p>"
+        self.assertTrue(inv.check_material_membrane_on_sloped(cfg, html))
+
+    def test_holds_on_flat_other_roof(self):
+        # A real flat ('other') roof legitimately carries EPDM hail signatures.
+        cfg = {"roof_material_enum": "other"}
+        html = "<p>The flat roof's EPDM membrane shows hail punctures.</p>"
+        self.assertEqual(inv.check_material_membrane_on_sloped(cfg, html), [])
+
+    def test_holds_on_haag_boilerplate(self):
+        # HAAG-style standards prose that merely MENTIONS membranes must NOT fire.
+        cfg = {"roof_material_enum": "laminate"}
+        html = (
+            "<p>Per HAAG, membrane (EPDM/TPO) roofs and flat systems are evaluated "
+            "under different functional-damage criteria than steep-slope shingles.</p>"
+        )
+        self.assertEqual(inv.check_material_membrane_on_sloped(cfg, html), [])
+
+    def test_holds_on_dark_mat_not_epdm(self):
+        # The grounded WS-3 phrasing (dark mat is NOT EPDM) must not trip it.
+        cfg = {"roof_material_enum": "3tab"}
+        html = "<p>The dark patch is exposed mat / underlayment, not an EPDM membrane.</p>"
+        self.assertEqual(inv.check_material_membrane_on_sloped(cfg, html), [])
+
+    def test_holds_when_no_membrane_language(self):
+        cfg = {"roof_material_enum": "slate"}
+        html = "<p>Slate tiles fractured by hail impact across the field.</p>"
+        self.assertEqual(inv.check_material_membrane_on_sloped(cfg, html), [])
+
+
+class TestNegativeGradeNotInflated(unittest.TestCase):
+    """#19 — feed a PREMIUM grade with an EXPLICIT low confidence and no evidence;
+    assert it FIRES. Feed high confidence, explicit evidence, ABSENT confidence,
+    and non-premium enums; assert it HOLDS (absence of the field is not a hit)."""
+
+    def test_fires_on_laminate_explicit_low_conf(self):
+        cfg = {"roof_material_enum": "laminate", "material_confidence": 0.2}
+        out = inv.check_grade_not_inflated_without_evidence(cfg, "")
+        self.assertTrue(any("#19" in v for v in out))
+
+    def test_fires_on_slate_explicit_low_conf(self):
+        cfg = {"roof_material_enum": "slate", "material_confidence": 0.3}
+        self.assertTrue(inv.check_grade_not_inflated_without_evidence(cfg, ""))
+
+    def test_fires_on_tile_explicit_low_conf(self):
+        cfg = {"roof_material_enum": "tile", "material_confidence": 0.1}
+        self.assertTrue(inv.check_grade_not_inflated_without_evidence(cfg, ""))
+
+    def test_fires_via_lone_structure_enum(self):
+        cfg = {"structures": [{"roof_material_enum": "laminate"}],
+               "material_confidence": 0.2}
+        self.assertTrue(inv.check_grade_not_inflated_without_evidence(cfg, ""))
+
+    def test_holds_on_high_confidence(self):
+        cfg = {"roof_material_enum": "laminate", "material_confidence": 0.9}
+        self.assertEqual(inv.check_grade_not_inflated_without_evidence(cfg, ""), [])
+
+    def test_holds_on_explicit_evidence_overrides_low_conf(self):
+        cfg = {"roof_material_enum": "laminate", "material_confidence": 0.2,
+               "grade_evidence": "wide shot shows staggered laminate tabs"}
+        self.assertEqual(inv.check_grade_not_inflated_without_evidence(cfg, ""), [])
+
+    def test_holds_on_absent_confidence(self):
+        # ABSENCE of material_confidence is NOT inflation — the committed-fixture
+        # case (the field was never populated). Must HOLD, else the corpus battery
+        # floods with false positives.
+        cfg = {"roof_material_enum": "laminate"}
+        self.assertEqual(inv.check_grade_not_inflated_without_evidence(cfg, ""), [])
+
+    def test_holds_on_non_premium_3tab(self):
+        cfg = {"roof_material_enum": "3tab", "material_confidence": 0.2}
+        self.assertEqual(inv.check_grade_not_inflated_without_evidence(cfg, ""), [])
+
+    def test_holds_on_other_no_signal_sink(self):
+        cfg = {"roof_material_enum": "other", "material_confidence": 0.2}
+        self.assertEqual(inv.check_grade_not_inflated_without_evidence(cfg, ""), [])
+
+    def test_holds_on_metal_low_conf(self):
+        cfg = {"roof_material_enum": "metal", "material_confidence": 0.2}
+        self.assertEqual(inv.check_grade_not_inflated_without_evidence(cfg, ""), [])
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

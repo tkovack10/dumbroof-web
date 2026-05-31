@@ -472,6 +472,113 @@ def check_material_self_consistency(config: dict, rendered_html: str = "") -> li
 
 
 # ══════════════════════════════════════════════════════════════════════════
+# #17 — MEMBRANE/EPDM HAIL SIGNATURE ON A SLOPED ROOF
+# ══════════════════════════════════════════════════════════════════════════
+
+# The flat/low-slope sink in the canonical enum is 'other' (TPO/EPDM/mod-bit/BUR
+# and anything unclassifiable). Every OTHER resolved enum is a SLOPED covering on
+# which an EPDM/membrane HAIL SIGNATURE is fabricated.
+_FLAT_ROOF_ENUM = "other"
+
+# Constructions that ASSERT a flat-roof hail signature about the inspected
+# surface — distinct from generic standards prose that merely MENTIONS membranes
+# ("membrane roofs use different criteria"), which must NOT trip the check.
+_MEMBRANE_HAIL_SIGNATURE_PATTERNS = [
+    r"\b(?:epdm|tpo|membrane|rubber)\b[^.<>]{0,40}\bpunctur",
+    r"\bpunctur[a-z]*\b[^.<>]{0,40}\b(?:epdm|tpo|membrane|rubber)\b",
+    r"\b(?:epdm|tpo|membrane|rubber)\b[^.<>]{0,30}\bhail\b[^.<>]{0,20}(?:damage|impact|signature|punctur|strike)",
+    r"\bhail\b[^.<>]{0,40}\b(?:epdm|tpo|membrane|rubber)\b",
+]
+
+
+def check_material_membrane_on_sloped(config: dict, rendered_html: str) -> list[str]:
+    """#17 (regression-LOCK damage_detective #17): a SLOPED roof must not be
+    reported with EPDM/membrane/rubber/TPO HAIL SIGNATURES — those belong to flat
+    (low-slope) roofs only. #17 was fixed in prod by WS-3 (#82): the analyze_photos
+    prompt carries an EPDM negative example and the synthesis path gates EPDM
+    puncture language behind a real flat-roof signal. This LOCKS it.
+
+    Anchored on the canonical roof enum (the WS-3 / production source of truth via
+    _gen.material_enum), NOT raw prose: fires only when the resolved enum is a real
+    sloped class (i.e. anything except the flat 'other' sink) AND the rendered HTML
+    asserts a membrane *hail signature* (e.g. "EPDM puncture marks", "hail
+    punctured the membrane"). Generic HAAG-style standards boilerplate that merely
+    mentions membranes/flat systems does NOT trip it — the same prose-co-occurrence
+    false-positive class that #4 (check_material_self_consistency) is deliberately
+    built to avoid."""
+    violations: list[str] = []
+    enum = _gen.material_enum(config, None)
+    if not enum:
+        structures = config.get("structures") or []
+        if len(structures) == 1 and isinstance(structures[0], dict):
+            enum = _gen.material_enum(config, structures[0])
+    if enum and enum != _FLAT_ROOF_ENUM:
+        for pattern in _MEMBRANE_HAIL_SIGNATURE_PATTERNS:
+            if re.search(pattern, rendered_html or "", re.I):
+                violations.append(
+                    f"#17 MEMBRANE-ON-SLOPED: sloped roof (enum '{enum}') cites a "
+                    f"membrane/EPDM hail signature matching /{pattern}/ "
+                    f"(damage_detective #17)"
+                )
+                break  # one violation per claim is enough signal
+    return violations
+
+
+# ══════════════════════════════════════════════════════════════════════════
+# #19 / E271 — PREMIUM GRADE NOT INFLATED WITHOUT EVIDENCE
+# ══════════════════════════════════════════════════════════════════════════
+
+# PREMIUM coverings a low-confidence guess must not DEFAULT to (the
+# damage_detective #19 / E271 class). In the canonical material_enum vocabulary
+# ({3tab, laminate, slate, tile, metal, other}), 'laminate' / 'slate' / 'tile'
+# are the expensive grades; '3tab' is the safe low-confidence fallback per the
+# WS-3 decision tree, 'metal' is its own signature, and 'other' is the honest
+# no-signal sink. (The legacy comp_shingle_laminated alias maps to 'laminate'.)
+_PREMIUM_ROOF_ENUMS = {"laminate", "slate", "tile"}
+
+# The confidence floor the analyze_photos decision tree uses to force 'other'
+# (a low-confidence honest 'other' beats a confident wrong premium guess).
+_GRADE_CONFIDENCE_FLOOR = 0.5
+
+
+def check_grade_not_inflated_without_evidence(config: dict, rendered_html: str) -> list[str]:
+    """#19 (regression-LOCK damage_detective #19): a PREMIUM roof grade
+    (laminate / slate / tile) must not be resolved when material confidence is
+    EXPLICITLY low AND there is no corroborating evidence — the "default to the
+    expensive grade when unsure" failure. #19 was fixed in prod by WS-3 (#82): the
+    analyze_photos decision tree forbids reflexively emitting laminate as a
+    fallback and forces material 'other' at confidence < 0.49. This LOCKS it.
+
+    Fires ONLY on a POSITIVE low-confidence signal: a premium enum with
+    ``material_confidence`` PRESENT and < 0.5 and NO ``grade_evidence``. The
+    ABSENCE of material_confidence is NOT a violation — a committed historical
+    fixture that simply never populated the field is not an inflation (verified:
+    treating absence as a hit fires on 11/23 golden fixtures; the strict
+    present-and-low rule fires on 0). Anchored on the canonical enum (production
+    source of truth via _gen.material_enum), not prose; does NOT re-implement any
+    pricing/grade resolution. ``rendered_html`` is accepted for battery-uniform
+    calling but unused (the signal is structural)."""
+    violations: list[str] = []
+    enum = _gen.material_enum(config, None)
+    if not enum:
+        structures = config.get("structures") or []
+        if len(structures) == 1 and isinstance(structures[0], dict):
+            enum = _gen.material_enum(config, structures[0])
+    if enum not in _PREMIUM_ROOF_ENUMS:
+        return violations
+    if config.get("grade_evidence"):
+        return violations
+    conf = config.get("material_confidence")
+    if isinstance(conf, (int, float)) and conf < _GRADE_CONFIDENCE_FLOOR:
+        violations.append(
+            f"#19 GRADE-NOT-INFLATED: premium roof grade '{enum}' resolved on "
+            f"explicit low material confidence ({conf}) with no grade evidence "
+            f"(damage_detective #19)"
+        )
+    return violations
+
+
+# ══════════════════════════════════════════════════════════════════════════
 # #6 — HAIL-ONLY-WITH-NOAA
 # ══════════════════════════════════════════════════════════════════════════
 
@@ -553,6 +660,8 @@ CONFIG_PLUS_DOC_CHECKS = (
     check_tenant_identity_leak,
     check_climate_text_vs_state,
     check_material_self_consistency,
+    check_material_membrane_on_sloped,
+    check_grade_not_inflated_without_evidence,
     check_hail_only_with_noaa,
 )
 

@@ -2161,6 +2161,26 @@ EPDM / FLAT-ROOF NEGATIVE EXAMPLE (top correction pattern — damage_detective #
   are sloped-shingle components, not a flat roof. Calling them EPDM is a fabricated material.
 - A dark patch on a SLOPED shingle roof is exposed mat / underlayment / I&W — NOT EPDM.
 
+GROUNDING — DESCRIBE WHAT YOU SEE, NOT WHEN/WHY IT HAPPENED (top correction pattern — damage_detective #18):
+A photo proves WHAT is on the roof, not WHEN it happened or over how long. State only what the
+pixels show. Do NOT state unsupported causal or temporal inferences as fact:
+- BANNED — ungrounded DATES or named storms ("damaged in the April 12 storm", "from the 2023 hail
+  event"). A photo cannot date itself. Reference a date ONLY if it comes from the claim's date of
+  loss / user notes, and attribute it ("the reported date of loss").
+- BANNED — DURATION / progression claims ("over multiple seasons", "deteriorated over several years",
+  "long-term wear", "aged over time", "accumulated over many storms"). You cannot see elapsed time.
+- BANNED — ABSENCE-OF-DEGRADATION forensic VERDICTS ("no adhesive degradation visible", "no thermal
+  cracking present", "no manufacturing defect", "no granule loss from aging"). You cannot rule a
+  condition OUT from a single still — absence of a cue at this resolution is not proof it is absent.
+- BANNED — conditions NOT discernible at the photo's resolution / scale (sub-surface condition,
+  sealant chemistry, mat-fracture depth you cannot actually resolve in the image).
+ALLOWED (these are grounded — KEEP using them):
+- RECENCY tied to a VISIBLE indicator: "no rust on the exposed mat confirms a recent loss", "bright
+  un-oxidized fracture face indicates recent impact", "fresh splatter marks" — the cue is in frame.
+- CAUSE qualified as consistent-with: "consistent with hail impact", "the pattern is consistent with
+  wind uplift". Say "consistent with X", NOT "this WAS caused by the X storm on DATE".
+Rule of thumb: if a claim depends on a clock or a calendar the camera cannot see, do not state it.
+
 PER-PHOTO material_confidence (REQUIRED on every photo_tag):
 - Output a "material_confidence" float 0.0-1.0 in EACH photo_tag reflecting how sure you are
   of THAT photo's material.
@@ -3365,6 +3385,86 @@ def _strip_weasel_advocacy(paragraphs: list) -> list:
     return out
 
 
+# ───────────────────────────────────────────────────────────────────
+# Grounding scrub (damage_detective #18) — FLAG ungrounded causal/temporal
+# inferences in synthesized prose. We FLAG (log) rather than silently delete a
+# whole paragraph, so a real authoring regression is visible without nuking a
+# legitimate finding. Conservative by design: it must NOT trip on grounded
+# recency tied to a visible cue ("no rust confirms recent loss") or on
+# "consistent with X" cause language — both are legitimate forensic indicators.
+# ───────────────────────────────────────────────────────────────────
+
+# Ungrounded DURATION / progression — the camera cannot see elapsed time.
+_GROUNDING_DURATION_PATTERNS = [
+    r"over (?:multiple|several|many)\s+(?:seasons|years|winters|storms)",
+    r"(?:deteriorated|aged|degraded|worn|weathered)\s+over\s+(?:time|(?:several|many)\s+years|the\s+years)",
+    r"long[-\s]term\s+(?:wear|deterioration|aging|exposure)",
+    r"accumulated\s+over\s+(?:many|several|multiple)\s+(?:storms|seasons|years)",
+]
+
+# Absence-of-degradation forensic VERDICTS — you cannot rule a condition OUT
+# from a single still. (Distinct from grounded "no rust confirms recent loss",
+# which AFFIRMS a finding from a visible cue rather than denying degradation.)
+_GROUNDING_VERDICT_PATTERNS = [
+    r"no\s+(?:adhesive|sealant)\s+degradation\s+(?:visible|present|observed)",
+    r"no\s+(?:thermal|aging|age[-\s]related)\s+(?:cracking|crazing|degradation)",
+    r"no\s+manufacturing\s+(?:defect|flaw)",
+    r"no\s+granule\s+loss\s+from\s+aging",
+    r"no\s+signs?\s+of\s+(?:wear|aging|deterioration)",
+]
+
+# Ungrounded named-storm / bare DATE attribution stated as fact ("the April 12
+# storm", "the 2023 hail event"). A photo cannot date itself. We do NOT flag
+# "consistent with" cause language or a generic month with no causal claim.
+_GROUNDING_DATE_PATTERNS = [
+    r"the\s+(?:january|february|march|april|may|june|july|august|september|october|november|december)\s+\d{1,2}(?:st|nd|rd|th)?\s+storm",
+    r"the\s+\d{4}\s+(?:hail|wind|storm|hailstorm)\s+(?:event|storm)",
+    r"(?:damaged|caused|occurred)\s+(?:in|on|during)\s+the\s+(?:january|february|march|april|may|june|july|august|september|october|november|december)\s+\d{1,2}",
+]
+
+_GROUNDING_FLAG_PATTERNS = (
+    [("duration", p) for p in _GROUNDING_DURATION_PATTERNS]
+    + [("verdict", p) for p in _GROUNDING_VERDICT_PATTERNS]
+    + [("date", p) for p in _GROUNDING_DATE_PATTERNS]
+)
+
+
+def _find_ungrounded_inferences(text: str) -> list:
+    """Return a list of (category, matched_phrase) for each ungrounded
+    causal/temporal inference found in `text`. Empty list = grounded/clean.
+    Conservative: anchors on specific banned constructions, leaving grounded
+    recency-via-visible-cue and 'consistent with' cause language untouched."""
+    found = []
+    for category, pattern in _GROUNDING_FLAG_PATTERNS:
+        for m in re.finditer(pattern, text or "", flags=re.I):
+            found.append((category, m.group(0)))
+    return found
+
+
+def _flag_ungrounded_inference(text: str) -> str:
+    """Post-synthesis grounding scrub (damage_detective #18). Logs any
+    ungrounded date/duration/verdict phrasing for visibility; returns the text
+    UNCHANGED (FLAG, do not silently delete a whole paragraph)."""
+    found = _find_ungrounded_inferences(text)
+    if found:
+        summary = "; ".join(f"{cat}:'{phrase}'" for cat, phrase in found)
+        print(
+            f"[GROUNDING-FLAG] {len(found)} ungrounded inference(s) in synthesized prose: {summary}",
+            flush=True,
+        )
+    return text
+
+
+def _flag_ungrounded_paragraphs(paragraphs: list) -> list:
+    """Run the grounding FLAG scrub over a list of synthesized paragraphs
+    (damage_detective #18). Returns the list UNCHANGED — it only logs."""
+    if paragraphs:
+        _flag_ungrounded_inference(
+            "\n\n".join(p for p in paragraphs if isinstance(p, str))
+        )
+    return paragraphs
+
+
 def synthesize_executive_summary(
     client: anthropic.Anthropic,
     damage_summary: str,
@@ -3503,6 +3603,7 @@ RULES:
 - Reference specific evidence (chalk testing, fracture patterns, code requirements) without being exhaustive
 - CRITICAL UPPA COMPLIANCE: This is written for a CONTRACTOR (not a public adjuster or attorney). NEVER use "on behalf of," "demand," "appeal," cite 11 NYCRR, § 2601, or any advocacy/regulatory language. Contractors document and recommend — they do NOT advocate or negotiate.
 - CRITICAL — NO ADVOCACY STATISTICS: This is a customer/carrier-facing document. NEVER cite carrier history, historical claim patterns, prior-claim data for this property, average underpayment percentages, win rates, or phrases like "consistent undervaluation", "significant underpayment", "pattern of", "averaging X%", or "undervalued". The CARRIER INTELLIGENCE block above is internal context to steer your argument quality — it is NOT source material to quote. Ground every statement in THIS property's documented evidence only.
+- CRITICAL — GROUNDING (damage_detective #18): a photo proves WHAT, not WHEN/WHY. Do NOT state ungrounded dates or named storms, durations ("over multiple seasons", "aged over years"), or absence-of-degradation verdicts ("no adhesive degradation visible", "no manufacturing defect"). Reference a date ONLY if it is the reported date of loss above. State cause as "consistent with" (e.g. "consistent with hail impact"), never as a specific dated event. Grounded recency tied to a visible cue ("no rust confirms recent loss") is allowed.
 - CRITICAL: This is a SINGLE property at a single address. Multiple structures (main dwelling, garage, shed, porch) are all part of ONE property. NEVER reference "two properties", "both properties", or "multiple properties."
 - The inspection documented exactly {photo_count} photographs. Do NOT fabricate photo counts. If you reference photo counts, use exactly {photo_count}.
 
@@ -3590,6 +3691,7 @@ RULES:
 - Do NOT pad with filler or repeat minor wear details
 - CRITICAL UPPA COMPLIANCE: This is written for a CONTRACTOR. NEVER use "on behalf of," "demand," "appeal," cite 11 NYCRR, § 2601, or any advocacy language. Use factual documentation language — "our analysis identifies," "the documented damage requires," NOT "we demand" or "the carrier must."
 - CRITICAL — NO ADVOCACY STATISTICS: This is a customer/carrier-facing document. NEVER cite carrier history, historical claim patterns, prior-claim data for this property, average underpayment percentages, win rates, or phrases like "consistent undervaluation", "significant underpayment", "pattern of", "averaging X%", or "undervalued". The CARRIER INTELLIGENCE block above is internal context to steer your argument quality — it is NOT source material to quote. Ground every statement in THIS property's documented evidence only.
+- CRITICAL — GROUNDING (damage_detective #18): a photo proves WHAT, not WHEN/WHY. Do NOT state ungrounded dates or named storms, durations ("over multiple seasons", "deteriorated over years"), or absence-of-degradation verdicts ("no manufacturing defect", "no aging-related cracking"). Reference a date ONLY if it is the reported date of loss above. State cause as "consistent with", never as a specific dated event. Grounded recency tied to a visible cue ("no rust confirms recent loss") is allowed.
 - CRITICAL: This is a SINGLE property at ONE address. Multiple structures (main dwelling, garage, shed, porch) are all part of ONE property. NEVER say "two properties", "both properties", or "multiple properties."
 
 Return ONLY a JSON array of paragraph strings: ["paragraph 1...", "paragraph 2...", ...]"""
@@ -8443,6 +8545,9 @@ async def process_claim(claim_id: str, refresh_prices: bool = False):
                 exec_paragraphs = _enforce_property_address(exec_paragraphs, exec_address)
                 exec_paragraphs = _scrub_wrong_state_codes(exec_paragraphs, config.get("property", {}).get("state", "") or state)
                 exec_paragraphs = _strip_weasel_advocacy(exec_paragraphs)
+                # damage_detective #18 grounding scrub — FLAG (log, don't delete)
+                # any ungrounded date/duration/verdict phrasing that slipped through.
+                exec_paragraphs = _flag_ungrounded_paragraphs(exec_paragraphs)
             config["forensic_findings"]["executive_summary"] = exec_paragraphs
         except Exception as e:
             print(f"[PROCESS] Executive summary synthesis failed (non-fatal): {e}")
@@ -8473,6 +8578,8 @@ async def process_claim(claim_id: str, refresh_prices: bool = False):
                 conclusion_paragraphs = _enforce_property_address(conclusion_paragraphs, address)
                 conclusion_paragraphs = _scrub_wrong_state_codes(conclusion_paragraphs, config.get("property", {}).get("state", "") or state)
                 conclusion_paragraphs = _strip_weasel_advocacy(conclusion_paragraphs)
+                # damage_detective #18 grounding scrub — FLAG (log, don't delete)
+                conclusion_paragraphs = _flag_ungrounded_paragraphs(conclusion_paragraphs)
                 config["forensic_findings"]["conclusion_paragraphs"] = conclusion_paragraphs
             else:
                 print(f"[PROCESS] Conclusion synthesis returned {type(conclusion_paragraphs)} — skipping placeholder replacement")
