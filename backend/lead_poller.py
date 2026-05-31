@@ -142,6 +142,46 @@ def _opt_out_nurture(sb: Client, user_id: str, email: str) -> None:
         print(f"[LEAD POLLER] opt-out failed for {user_id}: {e}", flush=True)
 
 
+def _guess_touch(subject: Optional[str]) -> Optional[str]:
+    """Best-effort tag of which sequence/touch a reply is to, from the subject
+    (replies arrive as 'Re: <original subject>'). Lets the /admin Leads tab show
+    WHAT the contractor is responding to instead of an untagged blob. Substring
+    match against the subjects in src/lib/nurture/templates.ts +
+    repeat-usage-templates.ts; returns None when nothing matches."""
+    s = (subject or "").lower()
+    if not s:
+        return None
+    # Repeat-usage (existing contractors — the "build another" re-engagement drip).
+    if "build my next claim" in s:
+        return "reuse_cta"
+    if "hard part" in s:
+        return "reuse_d3"
+    if "supplement adds" in s or "average dumbroof supplement" in s or "$9,400" in s:
+        return "reuse_d7"
+    if "roof to write up" in s:
+        return "reuse_d12"
+    if "stack of claims" in s:
+        return "reuse_d18"
+    if "settings are still warm" in s or "settings are warm" in s:
+        return "reuse_d25"
+    if "whenever the next one lands" in s:
+        return "reuse_d35"
+    if "i'll be here" in s or "ill be here" in s:
+        return "reuse_d50"
+    # Onboarding nurture (signups who haven't created a first claim).
+    if "60-second first claim" in s or "you're in" in s or "youre in" in s:
+        return "day_0_welcome"
+    if "dominic" in s or "xpro" in s:
+        return "day_3_proof"
+    if "photos yet" in s or "don't have photos" in s or "dont have photos" in s:
+        return "day_7_objection"
+    if "15 min with tom" in s or "first claim live" in s:
+        return "day_10_demo_invite"
+    if "closing your invite" in s:
+        return "day_14_lastcall"
+    return None
+
+
 def _log_lead(sb: Client, from_email: str, subject: str, body: str, gmail_id: str, user: Optional[dict]) -> None:
     try:
         sb.table("nurture_replies").insert({
@@ -150,7 +190,7 @@ def _log_lead(sb: Client, from_email: str, subject: str, body: str, gmail_id: st
             "subject": subject,
             "body_excerpt": (body or "")[:2000],
             "raw_payload": {"gmail_id": gmail_id, "source": "lead_poller", "inbox": LEAD_INBOX_USER},
-            "matched_touch": None,
+            "matched_touch": _guess_touch(subject),
             "opted_out": bool(user),
         }).execute()
     except Exception as e:
