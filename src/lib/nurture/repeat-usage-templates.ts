@@ -63,11 +63,16 @@ export const START_CLAIM_URL = "https://www.dumbroof.ai/dashboard?richard=new";
  * Done-for-you reply CTA — the HIGHEST-response pattern in DumbRoof's own email
  * data: a reply-to-a-human mailto ("Email me your claim → we'll run it for you")
  * out-pulled every app-link CTA on reply rate, and generic one-way blasts got ~0%.
- * Routes to claims@dumbroof.ai with a prefilled skeleton so a slammed contractor
- * can just reply + attach files. Offered alongside the self-serve Richard CTA.
+ * Routes to tom@dumbroof.ai (NOT claims@) on purpose: the lead poller
+ * (backend/lead_poller.py) watches tom@dumbroof.ai and surfaces EVERY inbound in
+ * the /admin/leads dashboard — so a done-for-you CTA click lands the contractor in
+ * the admin lead dashboard exactly like a plain reply does (the emails' reply-to is
+ * tom@ too). Not cc'ing claims@ — that poller would try to ingest it as a claim and
+ * create noise; Tom/team triages from the dashboard (incl. forwarding to claims@).
+ * Prefilled skeleton so a slammed contractor can just reply + attach files.
  */
 export const REPLY_MAILTO =
-  "mailto:claims@dumbroof.ai?subject=Build%20my%20next%20claim&body=Address%3A%0ACarrier%3A%0AWhat%20I%20have%20(photos%20%2F%20carrier%20scope%20%2F%20EagleView)%3A%0A%0A(You%20can%20attach%20files%20to%20this%20reply.)";
+  "mailto:tom@dumbroof.ai?subject=Build%20my%20next%20claim&body=Address%3A%0ACarrier%3A%0AWhat%20I%20have%20(photos%20%2F%20carrier%20scope%20%2F%20EagleView)%3A%0A%0A(You%20can%20attach%20files%20to%20this%20reply.)";
 
 /** Secondary "or just reply, we'll build it for you" line — the done-for-you option under the primary CTA. */
 function replyLine(): string {
