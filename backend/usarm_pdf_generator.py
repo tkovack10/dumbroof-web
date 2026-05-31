@@ -1446,6 +1446,331 @@ def _cite_chip(citation, *, neutral=False, on_navy=False):
     return f'<span class="{cls}">{text}</span>'
 
 
+def _line_item_cite_chip(item):
+    """Return the inline IRC cite-chip for a CODE-REQUIRED line item, or "".
+
+    Source of truth = the SAME canonical fields the live pipeline writes via
+    code_compliance.enrich_line_items_with_citations() (called in processor.py
+    before the generator runs): a per-item ``code_citation`` dict carrying a
+    ``code_tag`` (e.g. "RCNYS R905.1.2", "IRC R905.2.8.5"), with ``irc_code`` as
+    the backward-compatible flat string. No new flag is invented — a line item
+    is "code-required" iff it carries one of those. If neither is present (a raw
+    pre-enrichment config), nothing renders and the row is NOT marked, so the
+    substance fingerprint is unchanged on un-enriched data."""
+    cit = item.get("code_citation")
+    code_tag = ""
+    if isinstance(cit, dict):
+        code_tag = (cit.get("code_tag") or "").strip()
+    if not code_tag:
+        code_tag = (item.get("irc_code") or "").strip()
+    if not code_tag:
+        return ""
+    return _cite_chip(code_tag)
+
+
+def _is_code_required(item):
+    """True iff a line item carries a building-code citation (same source of
+    truth as _line_item_cite_chip). Drives the quiet brick row-marker."""
+    cit = item.get("code_citation")
+    if isinstance(cit, dict) and (cit.get("code_tag") or "").strip():
+        return True
+    return bool((item.get("irc_code") or "").strip())
+
+
+# ===================================================================
+# DOC 02 / DOC 03 — SPECTRAL STYLESHEET (the priced + comparison twins
+# of the Doc 01 forensic flagship). Reuses the EXACT :root token block,
+# three-voice type system, and the .cite-chip atom from
+# FORENSIC_SPECTRAL_CSS so the three docs read as ONE package, then adds
+# the Doc-02/03 components: navy letterhead bar, claim-meta panel, the
+# line-item table (navy header + 2px brick keyline, trade bands, trade
+# subtotals, mono tabular numerics, brick cite-chips on line codes, a
+# 3px brick row-marker on code-required rows), the financial roll-up, the
+# ONE serif-on-navy grand-total climax, gold non-additive O&P/pricing
+# banners, and the carrier-comparison strip (variance in brick).
+# Docs 04/05 deliberately stay on CSS_COMMON (byte-identical).
+# ===================================================================
+XSTYLE_FONTS_LINK = FORENSIC_FONTS_LINK
+
+XSTYLE_SPECTRAL_CSS = """
+/* ============================================================
+   :root — SWAPPABLE PER-COMPANY THEME (identical token block to the
+   Doc 01 forensic report so the priced estimate + scope comparison
+   read as one instrument. Edit ONLY this block to re-skin.)
+   ============================================================ */
+:root {
+    /* — brand palette — */
+    --c-navy:        #0d1b3e;
+    --c-navy-deep:   #091230;
+    --c-navy-soft:   #16284f;
+    --c-brick:       #9a2b2f;
+    --c-brick-bright:#b8383c;
+    --c-brick-warm:  #c98f6d;
+
+    /* — sheet / neutrals — */
+    --c-paper:       #faf8f3;
+    --c-paper-warm:  #f3efe5;
+    --c-ink:         #1a1f29;
+    --c-slate:       #4a5568;
+    --c-mute:        #8a93a3;
+    --c-line:        #d8d2c5;
+    --c-line-soft:   #e7e2d6;
+    --c-gold:        #b08a3e;
+
+    /* — SEMANTIC STATUS ONLY (forest=included, red=omitted) — */
+    --c-included:    #1f6b4a;
+    --c-included-bg: #e6efe8;
+    --c-included-bd: #bcd6c6;
+    --c-omitted:     #9a2b2f;
+    --c-omitted-bg:  #f5dede;
+    --c-omitted-bd:  #e2b9b9;
+
+    /* — type tokens — */
+    --f-serif: 'Spectral', Georgia, 'Times New Roman', serif;
+    --f-sans:  'Libre Franklin', -apple-system, Helvetica, Arial, sans-serif;
+    --f-mono:  'IBM Plex Mono', 'SFMono-Regular', Menlo, monospace;
+}
+
+@page { size: letter; margin: 0; }
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+    font-family: var(--f-sans);
+    color: var(--c-ink);
+    background: var(--c-paper);
+    line-height: 1.5;
+    font-size: 10pt;
+    -webkit-print-color-adjust: exact; print-color-adjust: exact;
+}
+
+h1 { font-family: var(--f-serif); font-size: 20pt; font-weight: 600; color: var(--c-navy); margin: 16pt 0 8pt 0; letter-spacing: -0.01em; }
+h2 {
+    font-family: var(--f-serif); font-size: 15pt; font-weight: 600; color: var(--c-navy);
+    margin: 22pt 0 10pt 0; padding-bottom: 6pt; letter-spacing: -0.01em;
+    border-bottom: 2px solid var(--c-navy);
+}
+h3 {
+    font-family: var(--f-serif); font-size: 12.5pt; font-weight: 600; color: var(--c-navy);
+    margin: 16pt 0 7pt 0; letter-spacing: -0.005em; position: relative;
+}
+h3::after { content: ""; display: block; width: 26px; height: 2px; background: var(--c-brick); margin-top: 5pt; }
+p { margin: 6pt 0; }
+ul, ol { margin: 6pt 0 6pt 24pt; }
+li { margin: 3pt 0; }
+a { color: var(--c-navy); }
+strong, b { font-weight: 700; }
+
+/* ── THE CITATION CHIP — every code / standard reference (load-bearing) ── */
+.cite-chip {
+    display: inline-block; font-family: var(--f-mono); font-weight: 700;
+    font-size: 8pt; letter-spacing: 0.02em; line-height: 1.3;
+    color: var(--c-brick); background: var(--c-omitted-bg);
+    border: 1px solid var(--c-omitted-bd); border-radius: 3px;
+    padding: 1pt 6pt; white-space: nowrap; vertical-align: baseline;
+}
+.cite-chip.neutral { color: var(--c-slate); background: var(--c-paper-warm); border-color: var(--c-line); }
+.cite-chip.on-navy { color: #fff; background: rgba(184,56,60,0.92); border-color: rgba(255,255,255,0.25); }
+
+/* ── FULL-BLEED NAVY LETTERHEAD BAR (mirrors Doc 01 run-head for package
+      coherence; logo knocked out to white in a hairline ring) ── */
+.header-bar {
+    background: var(--c-navy); color: #eef1f5; width: 100%;
+    padding: 26pt 0.6in 24pt 0.6in; display: flex; align-items: center; gap: 20pt;
+}
+.header-bar .logo-ring {
+    flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center;
+    padding: 9pt 14pt; border: 1px solid rgba(255,255,255,0.24); border-radius: 4px;
+    background: rgba(255,255,255,0.03);
+}
+.header-bar .logo-ring img { height: 40pt; width: auto; max-width: 180pt; object-fit: contain; filter: brightness(0) invert(1); }
+.header-bar .logo-ring .logo-text-fallback { color: #fff; font-family: var(--f-sans); font-weight: 800; font-size: 11pt; letter-spacing: 0.08em; }
+.header-bar .header-text { flex: 1; }
+.header-bar .company { font-family: var(--f-sans); font-weight: 800; font-size: 11pt; letter-spacing: 0.15em; color: #fff; margin-bottom: 8pt; }
+.header-bar .kicker { font-family: var(--f-sans); font-weight: 700; font-size: 7.5pt; letter-spacing: 0.26em; text-transform: uppercase; color: var(--c-brick-warm); margin-bottom: 6pt; }
+.header-bar h1 { font-family: var(--f-serif); font-weight: 600; font-size: 23pt; color: #fff; margin: 0; line-height: 1.05; letter-spacing: -0.015em; border: 0; padding: 0; }
+.header-bar .subtitle { font-family: var(--f-mono); font-size: 8.5pt; color: #dfe5ee; margin-top: 7pt; letter-spacing: 0.01em; }
+.header-bar .doc-stamp {
+    align-self: flex-start; font-family: var(--f-sans); font-size: 7pt; font-weight: 700;
+    letter-spacing: 0.22em; text-transform: uppercase; color: #fff;
+    border: 1px solid rgba(255,255,255,0.3); padding: 5pt 11pt; border-radius: 2px; white-space: nowrap;
+}
+
+.content { padding: 18pt 0.6in 0.55in 0.6in; }
+
+/* ── CLAIM-META PANEL (warm-paper card, hairline, NO shadow). Works with the
+      shared ws5_identity_table_rows() output: <td><strong>Label</strong></td>
+      <td>value</td> — the first cell becomes the tracked micro-label, the
+      second the mono value. ── */
+table.meta-panel {
+    width: 100%; border-collapse: collapse; margin: 0 0 14pt 0; font-size: 9.5pt;
+    background: var(--c-paper-warm); border: 1px solid var(--c-line); border-radius: 4px; overflow: hidden;
+}
+table.meta-panel td { padding: 7pt 12pt; border-bottom: 1px solid var(--c-line-soft); vertical-align: middle; }
+table.meta-panel tr:last-child td { border-bottom: 0; }
+table.meta-panel td:first-child {
+    width: 35%; font-family: var(--f-sans); font-size: 7pt; font-weight: 700;
+    letter-spacing: 0.18em; text-transform: uppercase; color: var(--c-mute);
+}
+table.meta-panel td:first-child strong { font-weight: 700; color: var(--c-mute); }
+table.meta-panel td:nth-child(2) { font-family: var(--f-mono); color: var(--c-ink); letter-spacing: 0.01em; }
+table.meta-panel td:nth-child(2) .cite-chip { letter-spacing: 0.02em; }
+
+/* ── THE LINE-ITEM / COMPARISON TABLE ── */
+table.spectral {
+    width: 100%; border-collapse: collapse; margin: 12pt 0; font-size: 9pt;
+    break-inside: auto;
+}
+table.spectral th {
+    background: var(--c-navy); color: #dfe5ee; padding: 8pt 9pt; text-align: left;
+    font-family: var(--f-sans); font-weight: 700; font-size: 7.5pt; letter-spacing: 0.12em;
+    text-transform: uppercase; border-bottom: 2px solid var(--c-brick);  /* the signature keyline */
+}
+table.spectral td { padding: 6pt 9pt; border-bottom: 1px solid var(--c-line-soft); vertical-align: top; color: var(--c-slate); }
+table.spectral td strong { color: var(--c-ink); }
+table.spectral tr:nth-child(even) td { background: var(--c-paper-warm); }
+/* mono tabular numerics — every qty / unit-price / extension reads as data */
+table.spectral .num, table.spectral th.num { text-align: right; }
+table.spectral td.num { font-family: var(--f-mono); font-variant-numeric: tabular-nums; color: var(--c-ink); letter-spacing: 0.01em; }
+table.spectral td.code { font-family: var(--f-mono); white-space: nowrap; }
+
+/* trade-header band */
+table.spectral tr.trade-band td {
+    background: var(--c-navy-soft); color: var(--c-brick-warm);
+    font-family: var(--f-sans); font-weight: 700; font-size: 8.5pt;
+    letter-spacing: 0.2em; text-transform: uppercase; padding: 6pt 9pt; border-bottom: 0;
+}
+/* trade-subtotal row */
+table.spectral tr.trade-subtotal td {
+    background: var(--c-paper-warm); border-top: 1px solid var(--c-navy); border-bottom: 1px solid var(--c-line);
+    font-family: var(--f-sans); font-weight: 600; font-size: 8.5pt; color: var(--c-navy);
+}
+table.spectral tr.trade-subtotal td.num { font-family: var(--f-mono); font-weight: 700; color: var(--c-navy); }
+/* structure band (multi-structure claims) */
+table.spectral tr.struct-band td {
+    background: var(--c-navy); color: #fff; font-family: var(--f-sans);
+    font-weight: 700; font-size: 9pt; letter-spacing: 0.16em; text-transform: uppercase; padding: 7pt 9pt;
+}
+table.spectral tr.struct-subtotal td {
+    background: #e3e7ef; border-top: 2px solid var(--c-navy); font-family: var(--f-sans);
+    font-weight: 700; font-size: 9pt; color: var(--c-navy);
+}
+table.spectral tr.struct-subtotal td.num { font-family: var(--f-mono); font-weight: 700; color: var(--c-navy); }
+/* line-item total row */
+table.spectral tr.line-total td {
+    background: var(--c-paper-warm); border-top: 2px solid var(--c-navy);
+    font-family: var(--f-sans); font-weight: 700; color: var(--c-ink); font-size: 9.5pt;
+}
+table.spectral tr.line-total td.num { font-family: var(--f-mono); font-weight: 700; color: var(--c-ink); }
+
+/* ── CODE-REQUIRED ROW MARKER — quiet 3px brick left keyline. Applied ONLY
+      to rows whose line item carries a code_citation (the canonical source). ── */
+table.spectral tr.code-required td:first-child { box-shadow: inset 3px 0 0 var(--c-brick); }
+.desc-chip { margin-left: 6pt; }
+
+/* ── FINANCIAL ROLL-UP (compact summary; hairline rows, mono figures) ── */
+table.rollup { width: 60%; min-width: 3.4in; margin: 12pt 0; border-collapse: collapse; font-size: 10pt; }
+table.rollup td { padding: 7pt 12pt; border-bottom: 1px solid var(--c-line-soft); color: var(--c-slate); }
+table.rollup td.lbl { font-family: var(--f-sans); }
+table.rollup td.amt { text-align: right; font-family: var(--f-mono); font-variant-numeric: tabular-nums; color: var(--c-ink); }
+table.rollup tr.rcv td { border-top: 1px solid var(--c-line); font-weight: 600; color: var(--c-ink); }
+
+/* ── THE ONE SERIF-ON-NAVY MONEY CLIMAX (grand total) ── */
+.grand-climax {
+    background: var(--c-navy); border-top: 2px solid var(--c-brick);
+    padding: 14pt 20pt; margin: 14pt 0; break-inside: avoid;
+    display: flex; justify-content: space-between; align-items: center;
+}
+.grand-climax .gc-label {
+    font-family: var(--f-sans); font-size: 8pt; font-weight: 700; letter-spacing: 0.2em;
+    text-transform: uppercase; color: var(--c-brick-warm);
+}
+.grand-climax .gc-figure {
+    font-family: var(--f-serif); font-weight: 600; font-size: 19pt; color: #fff; line-height: 1.0; letter-spacing: -0.01em;
+}
+
+/* ── CARRIER-COMPARISON STRIP (variance in brick; subordinate to climax) ── */
+.compare-strip {
+    display: flex; margin: 12pt 0; border: 1px solid var(--c-line); border-radius: 4px; overflow: hidden; break-inside: avoid;
+}
+.compare-strip .cs-cell { flex: 1; padding: 11pt 14pt; border-right: 1px solid var(--c-line); }
+.compare-strip .cs-cell:last-child { border-right: 0; }
+.compare-strip .cs-k { font-family: var(--f-sans); font-size: 6.5pt; font-weight: 700; letter-spacing: 0.2em; text-transform: uppercase; color: var(--c-mute); margin-bottom: 5pt; }
+.compare-strip .cs-v { font-family: var(--f-mono); font-variant-numeric: tabular-nums; font-size: 12pt; font-weight: 700; color: var(--c-ink); }
+.compare-strip .cs-cell.variance { background: var(--c-omitted-bg); }
+.compare-strip .cs-cell.variance .cs-k { color: var(--c-omitted); }
+.compare-strip .cs-cell.variance .cs-v { color: var(--c-omitted); }
+
+/* ── VARIANCE SUMMARY (Doc 03 roll-up table) ── */
+.var-pos, .variance-positive { color: var(--c-omitted); font-weight: 700; }
+table.spectral tr.section-total td { background: var(--c-paper-warm); border-top: 2px solid var(--c-navy); font-weight: 700; color: var(--c-ink); }
+table.spectral tr.section-total td.num { font-family: var(--f-mono); font-weight: 700; }
+table.spectral tr.section-total td.variance-positive { color: var(--c-omitted); }
+
+/* ── STATUS PILLS (Doc 03 included / omitted) ── */
+.status-pill {
+    display: inline-block; font-family: var(--f-sans); font-weight: 700; font-size: 7pt;
+    letter-spacing: 0.1em; text-transform: uppercase; padding: 2pt 8pt; border-radius: 10px; white-space: nowrap;
+}
+.status-pill.included { color: var(--c-included); background: var(--c-included-bg); border: 1px solid var(--c-included-bd); }
+.status-pill.omitted { color: var(--c-omitted); background: var(--c-omitted-bg); border: 1px solid var(--c-omitted-bd); }
+
+/* ── GOLD NON-ADDITIVE BANNERS (O&P / pricing attribution) ── */
+.non-additive-banner {
+    background: var(--c-paper-warm); border-left: 3px solid var(--c-gold);
+    padding: 11pt 16pt; margin: 11pt 0; border-radius: 3px; font-size: 9.5pt; color: var(--c-ink); break-inside: avoid;
+}
+.non-additive-banner .na-head {
+    font-family: var(--f-sans); font-weight: 700; font-size: 7.5pt; letter-spacing: 0.2em;
+    text-transform: uppercase; color: var(--c-gold); margin-bottom: 5pt;
+}
+
+/* ── callout boxes (shared idiom, Spectral tokens) ── */
+.highlight-box { background: var(--c-paper-warm); border-left: 4px solid var(--c-gold); padding: 11pt 15pt; margin: 11pt 0; border-radius: 3px; font-size: 9.5pt; color: var(--c-ink); }
+.critical-box { background: var(--c-omitted-bg); border-left: 4px solid var(--c-brick); padding: 11pt 15pt; margin: 11pt 0; border-radius: 3px; font-size: 9.5pt; color: var(--c-ink); }
+.critical-box strong { color: var(--c-brick); }
+.success-box { background: var(--c-included-bg); border-left: 4px solid var(--c-included); padding: 11pt 15pt; margin: 11pt 0; border-radius: 3px; font-size: 9.5pt; color: var(--c-ink); }
+.success-box strong { color: var(--c-included); }
+.info-box { background: var(--c-paper-warm); border-left: 4px solid var(--c-navy); padding: 11pt 15pt; margin: 11pt 0; border-radius: 3px; font-size: 9.5pt; color: var(--c-ink); }
+.info-box strong { color: var(--c-navy); }
+.info-box em { font-family: var(--f-serif); font-style: italic; color: var(--c-navy); }
+.info-box h3 { margin-top: 0; }
+
+/* ── threshold chart (Doc 03 carry-over from the shared idiom) ── */
+.threshold-chart { border: 1px solid var(--c-line); border-radius: 4px; padding: 14pt; margin: 12pt 0; background: #fff; break-inside: avoid; }
+
+/* ── footer signature / disclaimer / assoc logos ── */
+.footer-sig { margin-top: 22pt; padding-top: 10pt; border-top: 1px solid var(--c-line); font-size: 10pt; color: var(--c-slate); }
+.footer-sig .name { font-family: var(--f-serif); font-weight: 600; font-size: 13pt; color: var(--c-navy); }
+.footer-sig .title { font-weight: 600; color: var(--c-slate); }
+.uppa-disclaimer { margin-top: 12pt; padding: 10pt 14pt; background: var(--c-paper-warm); border-radius: 3px; font-size: 8pt; color: var(--c-slate); }
+.uppa-disclaimer em { font-family: var(--f-serif); font-style: italic; }
+.cert-card { margin-top: 20pt; padding: 12pt 16pt; border: 1px solid var(--c-navy); border-radius: 4px; break-inside: avoid; font-size: 9.5pt; color: var(--c-ink); }
+.cert-card strong { color: var(--c-navy); }
+
+/* ── integrity / authenticity seal (navy concentric rings) — reused from the
+      Doc 01 _build_integrity_stamp_spectral helper for package coherence ── */
+.integrity-seal-wrap { margin-top: 26pt; break-inside: avoid; text-align: center; }
+.integrity-seal { display: inline-block; width: 210px; height: 210px; border-radius: 50%; position: relative; }
+.integrity-seal .ring-outer { width: 210px; height: 210px; border-radius: 50%; border: 4px solid var(--c-navy); position: absolute; inset: 0; }
+.integrity-seal.flagged .ring-outer { border-color: var(--c-brick); }
+.integrity-seal .ring-inner { position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); width: 182px; height: 182px; border-radius: 50%; border: 2px solid var(--c-navy); display: flex; flex-direction: column; align-items: center; justify-content: center; }
+.integrity-seal.flagged .ring-inner { border-color: var(--c-brick); }
+.integrity-seal .seal-legend { font-family: var(--f-sans); font-size: 6pt; font-weight: 700; color: var(--c-navy); letter-spacing: 0.14em; text-transform: uppercase; }
+.integrity-seal.flagged .seal-legend { color: var(--c-brick); }
+.integrity-seal .seal-sub { font-family: var(--f-sans); font-size: 5.5pt; font-weight: 700; color: var(--c-navy); letter-spacing: 0.12em; text-transform: uppercase; margin-bottom: 5pt; }
+.integrity-seal.flagged .seal-sub { color: var(--c-brick); }
+.integrity-seal .seal-rule { width: 46px; height: 2px; background: var(--c-brick); margin: 5pt 0; }
+.integrity-seal .seal-score { font-family: var(--f-mono); font-size: 26pt; font-weight: 600; color: var(--c-navy); line-height: 1; }
+.integrity-seal.flagged .seal-score { color: var(--c-brick); }
+.integrity-seal .seal-status { font-family: var(--f-sans); font-size: 6pt; font-weight: 700; color: var(--c-navy); letter-spacing: 0.1em; text-transform: uppercase; margin-top: 4pt; }
+.integrity-seal.flagged .seal-status { color: var(--c-brick); }
+.integrity-seal .seal-result { font-family: var(--f-sans); font-size: 5.5pt; color: var(--c-mute); font-weight: 600; margin-top: 2pt; }
+.integrity-seal .seal-attr { font-family: var(--f-sans); font-size: 5pt; color: var(--c-gold); letter-spacing: 0.14em; margin-top: 5pt; text-transform: uppercase; font-weight: 700; }
+
+/* page break utility */
+.page-break { page-break-after: always; }
+"""
+
+
 # ── Doc-01 Spectral variants of the shared seal/cert/disclaimer blocks ──
 # These emit Spectral-token markup (class-driven, no inline hex) and are used
 # ONLY by the forensic report. The shared _build_integrity_stamp /
@@ -3759,11 +4084,15 @@ def build_xactimate_estimate(config):
                 if re.search(r'\b(?:remove|tear)', it.get("description", "").lower()) and it.get("unit", "") == "SQ":
                     roof_sq = f" ({it['qty']} SQ)"
                     break
-            line_rows += f"""<tr style="background:#0d2137;color:white;">
-                <td colspan="6" style="font-weight:700;font-size:10pt;padding:8pt 6pt;">{struct_name.upper()}{roof_sq}</td>
+            line_rows += f"""<tr class="struct-band">
+                <td colspan="6">{struct_name.upper()}{roof_sq}</td>
             </tr>\n"""
 
-        # Render items by category with subtotals
+        # Render items by category as Spectral trade bands + subtotals. Each
+        # trade opens with a navy-soft trade-band; closes with a trade-subtotal.
+        # Code-required rows (those carrying a code_citation — the canonical
+        # source) get an inline IRC cite-chip in the Description cell + a quiet
+        # 3px brick row-marker.
         current_cat = ""
         cat_subtotal = 0.0
         for idx, item in enumerate(struct_items):
@@ -3777,32 +4106,42 @@ def build_xactimate_estimate(config):
 
             next_cat = struct_items[idx + 1].get("category", "") if idx + 1 < len(struct_items) else ""
 
-            cat_cell = f'<td style="font-weight:700;color:#0d2137;">{cat}</td>' if cat != current_cat else '<td></td>'
+            # Open a trade-header band whenever the trade changes.
             if cat != current_cat:
                 cat_subtotal = 0.0
+                if cat:
+                    line_rows += f'<tr class="trade-band"><td colspan="6">{cat}</td></tr>\n'
             current_cat = cat
             cat_subtotal += ext
 
-            line_rows += f"""<tr>
-                {cat_cell}
-                <td>{code + " — " if code else ""}{desc}</td>
-                <td class="amt">{qty}</td>
+            # Line code → brick cite-chip (the price-list region lives once in the
+            # meta panel, never per-row).
+            code_cell = _cite_chip(code) if code else ""
+            # Code-required IRC cite-chip (inline, in the description cell) + row marker.
+            irc_chip = _line_item_cite_chip(item)
+            desc_cell = desc + (f'<span class="desc-chip">{irc_chip}</span>' if irc_chip else "")
+            row_cls = ' class="code-required"' if _is_code_required(item) else ""
+
+            line_rows += f"""<tr{row_cls}>
+                <td class="code">{code_cell}</td>
+                <td>{desc_cell}</td>
+                <td class="num">{qty}</td>
                 <td>{unit}</td>
-                <td class="amt">{fmt_money(price)}</td>
-                <td class="amt">{fmt_money(ext)}</td>
+                <td class="num">{fmt_money(price)}</td>
+                <td class="num">{fmt_money(ext)}</td>
             </tr>\n"""
 
             if next_cat != cat:
-                line_rows += f"""<tr style="background:#e8edf2;border-top:1px solid #0d2137;">
-                <td colspan="5" style="text-align:right;padding-right:12pt;font-weight:600;font-size:9pt;color:#0d2137;">{cat} SUBTOTAL</td>
-                <td class="amt" style="font-weight:700;color:#0d2137;">{fmt_money(cat_subtotal)}</td>
+                line_rows += f"""<tr class="trade-subtotal">
+                <td colspan="5" style="text-align:right;">{cat} SUBTOTAL</td>
+                <td class="num">{fmt_money(cat_subtotal)}</td>
             </tr>\n"""
 
         # Structure subtotal (only for multi-structure)
         if has_multiple_structures and struct_name:
-            line_rows += f"""<tr style="background:#c8d6e5;border-top:2px solid #0d2137;">
-                <td colspan="5" style="text-align:right;padding-right:12pt;font-weight:700;font-size:10pt;color:#0d2137;">{struct_name.upper()} SUBTOTAL</td>
-                <td class="amt" style="font-weight:700;font-size:10pt;color:#0d2137;">{fmt_money(struct_total)}</td>
+            line_rows += f"""<tr class="struct-subtotal">
+                <td colspan="5" style="text-align:right;">{struct_name.upper()} SUBTOTAL</td>
+                <td class="num">{fmt_money(struct_total)}</td>
             </tr>\n"""
 
     # Summary
@@ -3817,8 +4156,8 @@ def build_xactimate_estimate(config):
     # replaces the $0 line-item + summary + comparison tables with a notice.
     _eagleview_no = measurements.get('eagleview_report_number', '')
     if _ws5_estimate_pending:
-        estimate_body = '''<h2>LINE ITEMS</h2>
-<div class="highlight-box" style="border-left:4px solid #c8102e;">
+        estimate_body = '''<h2>Line Items</h2>
+<div class="critical-box">
 <strong>ESTIMATE PENDING — measurements required.</strong> No roof measurements
 (EagleView/HOVER) or carrier-scope quantities have been attached to this claim
 yet, so a line-item replacement-cost estimate cannot be priced. Upload an
@@ -3828,42 +4167,57 @@ applicable region. The enclosed Forensic Causation Report documents the
 storm-related damage observed during the field inspection.
 </div>'''
     else:
-        estimate_body = f"""<h2>LINE ITEMS</h2>
-<table>
-    <tr><th>Category</th><th>Description</th><th class="amt">Qty</th><th>Unit</th><th class="amt">Unit Price</th><th class="amt">Extension</th></tr>
+        # Carrier-comparison strip — kept BELOW / subordinate to the grand-total
+        # climax so there is only one money climax; variance in brick (the
+        # carrier-omitted dollars). Rendered unconditionally to preserve the
+        # exact three comparison figures the prior comparison table emitted
+        # (carrier RCV, our RCV, variance) — substance-faithful even on a
+        # $0.00-carrier (pre-scope) posture.
+        compare_strip = f"""<div class="compare-strip">
+    <div class="cs-cell"><div class="cs-k">{carrier['name']} RCV</div><div class="cs-v">{fmt_money(fin['carrier_rcv'])}</div></div>
+    <div class="cs-cell"><div class="cs-k">{company['name']}</div><div class="cs-v">{fmt_money(fin['total_with_op'])}</div></div>
+    <div class="cs-cell variance"><div class="cs-k">Variance</div><div class="cs-v">+{fmt_money(fin['variance'])}</div></div>
+</div>
+"""
+
+        op_rollup_row = (
+            f'    <tr><td class="lbl">Overhead &amp; Profit (10% + 11%)</td><td class="amt">{fmt_money(fin["o_and_p_amount"])}</td></tr>\n'
+            if fin['o_and_p'] else ""
+        )
+
+        estimate_body = f"""<h2>Line Items</h2>
+<table class="spectral">
+    <tr><th>Code</th><th>Description</th><th class="num">Qty</th><th>Unit</th><th class="num">Unit Price</th><th class="num">Total</th></tr>
     {line_rows}
-    <tr class="total-row">
-        <td colspan="5"><strong>LINE ITEM TOTAL</strong></td>
-        <td class="amt"><strong>{fmt_money(fin['line_total'])}</strong></td>
+    <tr class="line-total">
+        <td colspan="5">LINE ITEM TOTAL</td>
+        <td class="num">{fmt_money(fin['line_total'])}</td>
     </tr>
 </table>
 
 <div class="page-break"></div>
 
-<h2>ESTIMATE SUMMARY</h2>
-<table>
-    <tr><th>Item</th><th class="amt">Amount</th></tr>
-    <tr><td>Line Item Total</td><td class="amt">{fmt_money(fin['line_total'])}</td></tr>
-    <tr><td>Tax ({fin['tax_rate']*100:g}%)</td><td class="amt">{fmt_money(fin['tax'])}</td></tr>
-    {"<tr><td>Overhead & Profit (10% + 11%)</td><td class='amt'>" + fmt_money(fin['o_and_p_amount']) + "</td></tr>" if fin['o_and_p'] else ""}
-    <tr class="grand-total">
-        <td><strong>TOTAL RCV</strong></td>
-        <td class="amt" style="font-size:14pt;"><strong>{fmt_money(fin['total_with_op'])}</strong></td>
-    </tr>
-</table>
+<h2>Estimate Summary</h2>
+<table class="rollup">
+    <tr><td class="lbl">Line Item Total</td><td class="amt">{fmt_money(fin['line_total'])}</td></tr>
+    <tr><td class="lbl">Sales Tax ({fin['tax_rate']*100:g}%)</td><td class="amt">{fmt_money(fin['tax'])}</td></tr>
+    <tr class="rcv"><td class="lbl">Replacement Cost Value (RCV)</td><td class="amt">{fmt_money(fin['rcv'])}</td></tr>
+{op_rollup_row}</table>
 
-<h3>{lang['comparison_header']}</h3>
-<table>
-    <tr><th></th><th class="amt">{carrier['name']}</th><th class="amt">{company['name']}</th><th class="amt">Variance</th></tr>
-    <tr class="section-total"><td><strong>RCV</strong></td><td class="amt"><strong>{fmt_money(fin['carrier_rcv'])}</strong></td><td class="amt"><strong>{fmt_money(fin['total_with_op'])}</strong></td><td class="amt variance-positive"><strong>+{fmt_money(fin['variance'])}</strong></td></tr>
-</table>
-
-<div class="highlight-box">
-<strong>NOTE ON OVERHEAD &amp; PROFIT:</strong> {"O&P (10% + 11%) is included — " + str(len(scope.get('trades',[]))) + " trades involved (" + trades_str + ")." if fin['o_and_p'] else (o_and_p_note or "O&P (10% + 11%) is not applied — this scope involves fewer than 3 trades.")}
+<div class="grand-climax">
+    <div class="gc-label">Grand Total &mdash; Replacement Cost</div>
+    <div class="gc-figure">{fmt_money(fin['total_with_op'])}</div>
 </div>
 
-<div class="highlight-box">
-<strong>PRICING NOTE:</strong> {_provenance + ". " if _provenance else ""}All line items priced per Xactimate — {financials.get('price_list', '')} pricing region. Quantities from EagleView Report #{_eagleview_no}. Final scope may be adjusted based on conditions discovered during tear-off and installation.
+{compare_strip}
+<div class="non-additive-banner">
+<div class="na-head">Overhead &amp; Profit</div>
+{"O&amp;P (10% overhead + 11% profit) is included — this estimate spans " + str(len(scope.get('trades',[]))) + " trades (" + trades_str + "), meeting the industry standard of three or more trades for general-contractor coordination." if fin['o_and_p'] else (o_and_p_note or "O&amp;P (10% + 11%) is not applied — this scope involves fewer than 3 trades.")}
+</div>
+
+<div class="non-additive-banner">
+<div class="na-head">Pricing Note</div>
+{_provenance + ". " if _provenance else ""}All line items priced per Xactimate — {financials.get('price_list', '')} pricing region. Quantities from EagleView Report #{_eagleview_no}. Final scope may be adjusted based on conditions discovered during tear-off and installation.
 </div>"""
 
     # WS-5 GUARD 4 — property block "EagleView Report" row. In the estimate-
@@ -3874,42 +4228,45 @@ storm-related damage observed during the field inspection.
     else:
         eagleview_row_html = f'    <tr><td><strong>EagleView Report</strong></td><td>#{_eagleview_no}</td></tr>'
 
+    # Price-list region → .neutral cite-chip (non-code reference, so it doesn't
+    # stack brick-on-brick), exactly as the brief specifies. Falls back to the
+    # plain price_list string when no provenance market is resolved.
+    if _prov_market_code:
+        price_list_cell = (
+            _cite_chip(_prov_market_code, neutral=True)
+            + (f" &mdash; {_prov_market_name}" if _prov_market_name else "")
+            + (f" &middot; {financials.get('price_list', '')}" if financials.get('price_list') else "")
+        )
+    else:
+        price_list_cell = financials.get('price_list', '')
+
     html = f"""<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>X Style Build Scope -- {prop['address']}</title>
+<title>X-Style Build Scope -- {prop['address']}</title>
+{XSTYLE_FONTS_LINK}
 <style>
-{CSS_COMMON}
-/* CRITICAL: @page margin:0 override for full-bleed header bar */
-@page {{ margin: 0; }}
-body {{ margin: 0; padding: 0; }}
-.header-bar {{
-    margin: 0;
-    width: 100%;
-    padding: 24pt 0.85in;
-}}
-.content {{
-    padding: 0 0.85in 0.75in 0.85in;
-}}
+{XSTYLE_SPECTRAL_CSS}
 </style>
 </head>
 <body>
 
 <div class="header-bar">
-    {render_logo_block(logo_b64, company['name'], css_class='logo-img')}
+    <div class="logo-ring">{render_logo_block(logo_b64, company['name'], css_class='logo-img')}</div>
     <div class="header-text">
         <div class="company">{company['name']}</div>
-        <h1>X STYLE BUILD SCOPE</h1>
+        <div class="kicker">Xactimate-Style Priced Estimate</div>
+        <h1>X-Style Build Scope</h1>
         <div class="subtitle">Line-Item Scope of Repairs &mdash; {prop['address']}</div>
     </div>
+    <div class="doc-stamp">Doc 02 &middot; Estimate</div>
 </div>
 
 <div class="content">
 
-<table>
-    <tr><th style="width:35%">Field</th><th>Detail</th></tr>
-{doc2_identity_rows}    <tr><td><strong>Price List</strong></td><td>{financials.get('price_list', '')}{f" &mdash; {_prov_market_name} ({_prov_market_code})" if _prov_market_name else ""}</td></tr>
+<table class="meta-panel">
+{doc2_identity_rows}    <tr><td><strong>Price List</strong></td><td>{price_list_cell}</td></tr>
     <tr><td><strong>Date of Loss</strong></td><td>{dates['date_of_loss']}</td></tr>
     <tr><td><strong>Scope</strong></td><td>{scope_display_str}</td></tr>
 {eagleview_row_html}
@@ -3917,10 +4274,10 @@ body {{ margin: 0; padding: 0; }}
 
 {estimate_body}
 
-{_build_integrity_stamp(config)}
+{_build_integrity_stamp_spectral(config)}
 
-{_build_contractor_cert(config)}
-{_build_uppa_disclaimer(config)}
+{_build_contractor_cert_spectral(config)}
+{_build_uppa_disclaimer_spectral(config)}
 
 {_build_assoc_logos_footer()}
 
@@ -4035,45 +4392,67 @@ def build_supplement_report(config):
         if trick and trick not in note:
             note = f"{note}. {trick}" if note else trick
 
-        # Status-based styling
+        # The governing code citation for this row (same canonical source as
+        # Doc 02 + Doc 06): code_citation.code_tag with irc_code fallback. When
+        # present it renders as the brick cite-chip — never bold inline text.
+        _row_cc = row.get("code_citation")
+        _row_code_tag = ""
+        if isinstance(_row_cc, dict):
+            _row_code_tag = (_row_cc.get("code_tag") or "").strip()
+        if not _row_code_tag:
+            _row_code_tag = (row.get("irc_code") or "").strip()
+        _row_chip = _cite_chip(_row_code_tag) if _row_code_tag else ""
+
+        # Status-based styling → a forest .included / brick .omitted pill. A
+        # row whose item carries a code citation gets the quiet brick row-marker
+        # so a carrier sees code-MANDATED vs standard scope at a glance.
+        status_pill = ""
+        row_marker_cls = ' class="code-required"' if _row_code_tag else ""
         if status == "missing":
             var_class = ' class="var-pos"'
+            status_pill = '<span class="status-pill omitted">Omitted</span>'
             if not note:
                 note = "NOT INCLUDED by carrier"
-                code_cit = row.get("code_citation")
-                irc = row.get("irc_code", "")
-                if code_cit and isinstance(code_cit, dict):
-                    note += f" — required per {code_cit.get('code_tag', '')}"
-                elif irc:
-                    note += f" — required per {irc}"
+                if _row_code_tag:
+                    note += " — required per "
         elif status == "under":
             var_class = ' class="var-pos"'
+            status_pill = '<span class="status-pill omitted">Under</span>'
         elif status == "carrier_only":
             var_class = ''
             contractor_col = "&mdash;"
             usarm_amt_str = "&mdash;"
             note = row.get("note", "Carrier-only item")
+            status_pill = '<span class="status-pill included">Carrier</span>'
         else:
             var_class = ""
+            status_pill = '<span class="status-pill included">Included</span>'
 
-        variance_rows += f"""<tr>
-            <td>{row_num}</td>
+        # The governing IRC code renders ONCE as the brick cite-chip — in the
+        # justification cell (where the prior build surfaced "required per
+        # <code>"), preserving that phrasing while upgrading the bare code to a
+        # chip. The row-marker (not a second chip) flags the line-item name.
+        note_cell = note + (f' {_row_chip}' if _row_chip else "")
+
+        variance_rows += f"""<tr{row_marker_cls}>
+            <td class="num">{row_num}</td>
             <td><strong>{item_desc}</strong></td>
             <td>{carrier_col}</td>
-            <td class="amt">{carrier_amt_str}</td>
+            <td class="num">{carrier_amt_str}</td>
             <td>{contractor_col}</td>
-            <td class="amt">{usarm_amt_str}</td>
-            <td{var_class}>{note}</td>
+            <td class="num">{usarm_amt_str}</td>
+            <td>{status_pill}</td>
+            <td{var_class}>{note_cell}</td>
         </tr>\n"""
 
     # Code violations section (below comparison table)
     code_violations_html = ""
     code_violations = findings.get("code_violations", [])
     if code_violations:
-        code_violations_html = '<h2>CODE VIOLATIONS IDENTIFIED</h2>\n<table style="font-size:8pt;">\n'
+        code_violations_html = '<h2>Code Violations Identified</h2>\n<table class="spectral" style="font-size:8pt;">\n'
         code_violations_html += '<tr><th>Code</th><th>Requirement</th><th>Status</th></tr>\n'
         for cv in code_violations:
-            code_violations_html += f'<tr><td>{cv["code"]}</td><td>{cv["requirement"]}</td><td style="color:#c8102e;font-weight:700;">{cv["status"]}</td></tr>\n'
+            code_violations_html += f'<tr class="code-required"><td class="code">{_cite_chip(cv["code"])}</td><td>{cv["requirement"]}</td><td class="var-pos">{cv["status"]}</td></tr>\n'
         code_violations_html += '</table>\n'
 
     # Material damage threshold section
@@ -4081,12 +4460,12 @@ def build_supplement_report(config):
     weather = config.get("weather", {})
     damage_thresholds = weather.get("damage_thresholds") or findings.get("damage_thresholds", [])
     if damage_thresholds:
-        damage_threshold_html = '<h2>MATERIAL DAMAGE THRESHOLDS</h2>\n<table style="font-size:8pt;">\n'
-        damage_threshold_html += '<tr><th>Component</th><th>Hail Size Threshold</th><th>Reported Hail</th><th>Result</th></tr>\n'
+        damage_threshold_html = '<h2>Material Damage Thresholds</h2>\n<table class="spectral" style="font-size:8pt;">\n'
+        damage_threshold_html += '<tr><th>Component</th><th class="num">Hail Size Threshold</th><th class="num">Reported Hail</th><th>Result</th></tr>\n'
         for dt in damage_thresholds:
             result = dt.get("result", "")
-            result_style = ' style="color:#c8102e;font-weight:700;"' if "exceed" in result.lower() or "damage" in result.lower() else ''
-            damage_threshold_html += f'<tr><td>{dt.get("component", dt.get("material", ""))}</td><td>{dt.get("threshold", "")}</td><td>{dt.get("reported", dt.get("hail_size", ""))}</td><td{result_style}>{result}</td></tr>\n'
+            result_cls = ' class="var-pos"' if ("exceed" in result.lower() or "damage" in result.lower()) else ''
+            damage_threshold_html += f'<tr><td>{dt.get("component", dt.get("material", ""))}</td><td class="num">{dt.get("threshold", "")}</td><td class="num">{dt.get("reported", dt.get("hail_size", ""))}</td><td{result_cls}>{result}</td></tr>\n'
         damage_threshold_html += '</table>\n'
 
     # Carrier arguments / position summary
@@ -4098,26 +4477,26 @@ def build_supplement_report(config):
     # Wear & tear rebuttal (conditional — after carrier position, before variance table)
     wear_tear_html = ""
     if _has_wear_tear_argument(config):
-        wear_tear_html = "<h2>WEAR AND AGING DO NOT NEGATE COVERED STORM DAMAGE</h2>\n"
+        wear_tear_html = "<h2>Wear and Aging Do Not Negate Covered Storm Damage</h2>\n"
         wear_tear_html += _build_wear_tear_rebuttal(config)
 
     # Variance summary table (94 Theron has pre-computed, we use if available)
     variance_summary_html = ""
     if config.get("supplement_variance_summary"):
-        variance_summary_html += '<h2>VARIANCE SUMMARY</h2>\n<table>\n'
-        variance_summary_html += f'<tr><th>Category</th><th class="amt">Carrier RCV</th><th class="amt">{company["name"]} RCV</th><th class="amt">Variance</th></tr>\n'
+        variance_summary_html += '<h2>Variance Summary</h2>\n<table class="spectral">\n'
+        variance_summary_html += f'<tr><th>Category</th><th class="num">Carrier RCV</th><th class="num">{company["name"]} RCV</th><th class="num">Variance</th></tr>\n'
         for vs in config["supplement_variance_summary"]:
             var_amt = vs.get("variance", 0)
-            var_class = ' class="amt var-pos"' if var_amt > 0 else ' class="amt"'
-            variance_summary_html += f'<tr><td>{vs["category"]}</td><td class="amt">{fmt_money(vs.get("carrier",0))}</td><td class="amt">{fmt_money(vs.get("usarm",0))}</td><td{var_class}>{"+" if var_amt > 0 else ""}{fmt_money(var_amt)}</td></tr>\n'
-        variance_summary_html += f'<tr class="section-total"><td><strong>TOTAL</strong></td><td class="amt"><strong>{fmt_money(fin["carrier_rcv"])}</strong></td><td class="amt"><strong>{fmt_money(fin["total_with_op"])}</strong></td><td class="amt" style="color:#c8102e;font-size:12pt;"><strong>+{fmt_money(fin["variance"])}</strong></td></tr>\n'
+            var_class = ' class="num var-pos"' if var_amt > 0 else ' class="num"'
+            variance_summary_html += f'<tr><td>{vs["category"]}</td><td class="num">{fmt_money(vs.get("carrier",0))}</td><td class="num">{fmt_money(vs.get("usarm",0))}</td><td{var_class}>{"+" if var_amt > 0 else ""}{fmt_money(var_amt)}</td></tr>\n'
+        variance_summary_html += f'<tr class="section-total"><td><strong>TOTAL</strong></td><td class="num"><strong>{fmt_money(fin["carrier_rcv"])}</strong></td><td class="num"><strong>{fmt_money(fin["total_with_op"])}</strong></td><td class="num variance-positive"><strong>+{fmt_money(fin["variance"])}</strong></td></tr>\n'
         variance_summary_html += '</table>\n'
     else:
         # Build a simple variance summary
-        variance_summary_html += f"""<h2>VARIANCE SUMMARY</h2>
-<table>
-    <tr><th></th><th class="amt">{carrier['name']}</th><th class="amt">{company['name']}</th><th class="amt">Variance</th></tr>
-    <tr class="section-total"><td><strong>RCV</strong></td><td class="amt"><strong>{fmt_money(fin['carrier_rcv'])}</strong></td><td class="amt"><strong>{fmt_money(fin['total_with_op'])}</strong></td><td class="amt variance-positive"><strong>+{fmt_money(fin['variance'])}</strong></td></tr>
+        variance_summary_html += f"""<h2>Variance Summary</h2>
+<table class="spectral">
+    <tr><th></th><th class="num">{carrier['name']}</th><th class="num">{company['name']}</th><th class="num">Variance</th></tr>
+    <tr class="section-total"><td><strong>RCV</strong></td><td class="num"><strong>{fmt_money(fin['carrier_rcv'])}</strong></td><td class="num"><strong>{fmt_money(fin['total_with_op'])}</strong></td><td class="num variance-positive"><strong>+{fmt_money(fin['variance'])}</strong></td></tr>
 </table>
 """
 
@@ -4163,38 +4542,28 @@ def build_supplement_report(config):
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Supplement Report -- {prop['address']}</title>
+<title>{lang['doc3_title'].title()} -- {prop['address']}</title>
+{XSTYLE_FONTS_LINK}
 <style>
-{CSS_COMMON}
-/* CRITICAL: @page margin:0 override for full-bleed header bar */
-@page {{ margin: 0; }}
-body {{ margin: 0; padding: 0; }}
-.header-bar {{
-    margin: 0;
-    width: 100%;
-    padding: 24pt 0.85in;
-}}
-.content {{
-    padding: 0 0.85in 0.75in 0.85in;
-}}
-td.var-pos {{ color: #c8102e; font-weight: 700; }}
+{XSTYLE_SPECTRAL_CSS}
 </style>
 </head>
 <body>
 
 <div class="header-bar">
-    {render_logo_block(logo_b64, company['name'], css_class='logo-img')}
+    <div class="logo-ring">{render_logo_block(logo_b64, company['name'], css_class='logo-img')}</div>
     <div class="header-text">
         <div class="company">{company['name']}</div>
-        <h1>{lang['doc3_title']}</h1>
+        <div class="kicker">Carrier Scope vs Documented Scope</div>
+        <h1>{lang['doc3_title'].title()}</h1>
         <div class="subtitle">{lang['doc3_subtitle']}</div>
     </div>
+    <div class="doc-stamp">Doc 03 &middot; Comparison</div>
 </div>
 
 <div class="content">
 
-<table>
-    <tr><th style="width:35%">Field</th><th>Detail</th></tr>
+<table class="meta-panel">
 {doc3_owner_row}    <tr><td><strong>Property</strong></td><td>{prop['address']}</td></tr>
 {doc3_carrier_row}    <tr><td><strong>Date of Loss</strong></td><td>{dates['date_of_loss']}</td></tr>
     <tr><td><strong>Adjuster</strong></td><td>{adjuster_info}</td></tr>
@@ -4202,14 +4571,25 @@ td.var-pos {{ color: #c8102e; font-weight: 700; }}
     <tr><td><strong>Supplement Date</strong></td><td>{dates['report_date']}</td></tr>
 </table>
 
-<h2>PURPOSE</h2>
+<h2>Purpose</h2>
 <p>{lang['doc3_purpose'].format(carrier=carrier['name'], company=company['name'])}</p>
+
+<div class="compare-strip">
+    <div class="cs-cell"><div class="cs-k">{carrier['name']} Approved</div><div class="cs-v">{fmt_money(fin['carrier_rcv'])}</div></div>
+    <div class="cs-cell"><div class="cs-k">{company['name']} Documented</div><div class="cs-v">{fmt_money(fin['total_with_op'])}</div></div>
+    <div class="cs-cell variance"><div class="cs-k">{lang['variance_label']}</div><div class="cs-v">+{fmt_money(fin['variance'])}</div></div>
+</div>
+
+<div class="grand-climax">
+    <div class="gc-label">{lang['variance_label']}</div>
+    <div class="gc-figure">{fmt_money(fin['variance'])}</div>
+</div>
 
 <div class="{lang['carrier_scope_box']}">
 <strong>{carrier['name']}'s scope totals {fmt_money(fin['carrier_rcv'])} RCV. Our scope totals {fmt_money(fin['total_with_op'])} RCV &mdash; a {lang['variance_label'].lower()} of {fmt_money(fin['variance'])}.</strong>
 </div>
 
-<h2>{lang['doc3_carrier_header']}</h2>
+<h2>{lang['doc3_carrier_header'].title()}</h2>
 <p>{lang['doc3_carrier_intro'].format(carrier=carrier['name'])}</p>
 <ol>
 {carrier_args_html}
@@ -4219,9 +4599,9 @@ td.var-pos {{ color: #c8102e; font-weight: 700; }}
 
 <div style="margin-top:24pt;"></div>
 
-<h2>LINE-BY-LINE VARIANCE</h2>
-<table style="font-size:8pt;">
-    <tr><th style="width:3%">#</th><th style="width:16%">Line Item</th><th style="width:20%">{carrier['name']}</th><th style="width:8%" class="amt">{carrier['name']} $</th><th style="width:20%">{company['name']}</th><th style="width:8%" class="amt">{company['name']} $</th><th style="width:25%">Variance &amp; Justification</th></tr>
+<h2>Line-by-Line Variance</h2>
+<table class="spectral" style="font-size:8pt;">
+    <tr><th style="width:3%" class="num">#</th><th style="width:15%">Line Item</th><th style="width:18%">{carrier['name']}</th><th style="width:8%" class="num">{carrier['name']} $</th><th style="width:18%">{company['name']}</th><th style="width:8%" class="num">{company['name']} $</th><th style="width:8%">Status</th><th style="width:22%">Variance &amp; Justification</th></tr>
     {variance_rows}
 </table>
 
@@ -4232,13 +4612,13 @@ td.var-pos {{ color: #c8102e; font-weight: 700; }}
 
 {variance_summary_html}
 
-<h2>O&amp;P NOTE</h2>
+<h2>Overhead &amp; Profit Note</h2>
 <p>{"Overhead & Profit (10% + 11%) is included — " + str(len(scope.get('trades',[]))) + " trades involved (" + trades_str + ")." if fin['o_and_p'] else "Overhead & Profit (O&P) is <strong>not included</strong>. " + o_and_p_note}</p>
 
-<h2>KEY ARGUMENTS</h2>
+<h2>Key Arguments</h2>
 {key_args_html}
 
-{_build_uppa_disclaimer(config)}
+{_build_uppa_disclaimer_spectral(config)}
 
 {_build_assoc_logos_footer()}
 
