@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
+import { AgenticDropZone, type DropItem, type IntakeCategory } from "@/components/agentic-drop-zone";
 
 // Shared 3-state funnel UI used by /instant-forensic + /instant-supplement.
 // Mirrors the Perplexity Computer FB-ad pattern Tom screenshot'd:
@@ -90,7 +91,11 @@ export function InstantFunnel({
   collectsMaterials,
 }: InstantFunnelProps) {
   const [phase, setPhase] = useState<Phase>("idle");
-  const [files, setFiles] = useState<Record<string, File[]>>({});
+  // One agentic drop box replaces the old per-folder FunnelDropZone list. Each
+  // item carries the file + its (auto-detected, user-correctable) category; we
+  // stage them at unlock time so a category correction never leaves a stale
+  // copy in the wrong folder.
+  const [items, setItems] = useState<DropItem[]>([]);
   const [dol, setDol] = useState("");
   const [storm, setStorm] = useState<Storm>("");
   const [roofType, setRoofType] = useState<RoofType>("");
@@ -104,14 +109,29 @@ export function InstantFunnel({
 
   const today = new Date().toISOString().slice(0, 10);
 
-  const setFolderFiles = (folder: string, picked: File[]) => {
-    setFiles((prev) => ({ ...prev, [folder]: picked }));
-  };
+  // Which folders this funnel needs at least one file in (derived from the
+  // page's input config so the single drop box keeps the same gating the
+  // typed boxes had: forensic → photos; supplement → measurements + scope).
+  const requiredFolders = inputs
+    .filter((cfg) => cfg.required)
+    .map((cfg) => cfg.folder) as IntakeCategory[];
+
+  const readyItems = items.filter((it) => it.status === "ready");
+  const presentFolders = new Set(readyItems.map((it) => it.category));
+  const allRequiredFoldersPresent =
+    requiredFolders.length > 0
+      ? requiredFolders.every((f) => presentFolders.has(f))
+      : readyItems.length > 0;
 
   const allRequiredPresent =
-    inputs.every((cfg) => !cfg.required || (files[cfg.folder]?.length ?? 0) > 0) &&
+    allRequiredFoldersPresent &&
     (!collectsDolStormType || (dol && storm)) &&
     (!collectsMaterials || (roofType && gutterType && sidingType));
+
+  // A human-readable list of what the funnel still needs, shown under the box
+  // so the user knows why the CTA is disabled (was previously implicit in the
+  // separate "Required" drop zones).
+  const missingFolders = requiredFolders.filter((f) => !presentFolders.has(f));
 
   const fireBrowserPixel = (eventId: string) => {
     try {
@@ -122,9 +142,14 @@ export function InstantFunnel({
   };
 
   const uploadAll = async () => {
-    const allFiles = inputs.flatMap((cfg) =>
-      (files[cfg.folder] || []).map((f) => ({ folder: cfg.folder, file: f }))
-    );
+    // Stage each dropped file into its FINAL (auto-detected or user-corrected)
+    // category. "other" has no claim-side column, so route it to the funnel's
+    // most useful bucket: photos for forensic, scope for supplement.
+    const otherFallback: IntakeCategory = funnel === "supplement" ? "scope" : "photos";
+    const allFiles = readyItems.map((it) => ({
+      folder: (it.category === "other" ? otherFallback : it.category) as IntakeCategory,
+      file: it.file,
+    }));
     if (allFiles.length === 0) {
       throw new Error("No files selected");
     }
@@ -334,15 +359,32 @@ export function InstantFunnel({
               </div>
             )}
 
-            <div className="space-y-4">
-              {inputs.map((cfg) => (
-                <FunnelDropZone
-                  key={cfg.folder}
-                  config={cfg}
-                  files={files[cfg.folder] || []}
-                  onFilesChange={(picked) => setFolderFiles(cfg.folder, picked)}
-                />
-              ))}
+            <div className="space-y-2">
+              <AgenticDropZone
+                deferStaging
+                onItemsChange={setItems}
+                title="Drop your files — Richard sorts them"
+                hint={
+                  funnel === "supplement"
+                    ? "Your measurement report and the carrier's estimate. Richard detects which is which — fix it if he's wrong."
+                    : "Roof photos, a measurement report, or the carrier's estimate. Richard figures out what each one is — you can correct it."
+                }
+              />
+              {missingFolders.length > 0 && readyItems.length > 0 && (
+                <p className="text-xs text-[var(--gray-muted)]">
+                  Still need:{" "}
+                  {missingFolders
+                    .map((f) =>
+                      f === "photos"
+                        ? "roof photos"
+                        : f === "measurements"
+                          ? "a measurement report"
+                          : "the carrier's scope"
+                    )
+                    .join(" and ")}
+                  .
+                </p>
+              )}
             </div>
 
             {error && (
@@ -522,104 +564,6 @@ function CustomerQuotes() {
         ))}
       </div>
     </section>
-  );
-}
-
-function FunnelDropZone({
-  config,
-  files,
-  onFilesChange,
-}: {
-  config: DropConfig;
-  files: File[];
-  onFilesChange: (picked: File[]) => void;
-}) {
-  const [dragging, setDragging] = useState(false);
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    setDragging(false);
-    const dropped = Array.from(e.dataTransfer.files);
-    onFilesChange(config.multiple ? [...files, ...dropped] : dropped.slice(0, 1));
-  };
-  const handleSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const picked = Array.from(e.target.files || []);
-    onFilesChange(config.multiple ? [...files, ...picked] : picked.slice(0, 1));
-    e.target.value = "";
-  };
-  const removeAt = (i: number) => onFilesChange(files.filter((_, idx) => idx !== i));
-
-  return (
-    <div>
-      <div className="flex items-baseline gap-2 mb-1">
-        <label className="block text-sm font-semibold">{config.label}</label>
-        {config.required ? (
-          <span className="text-xs text-[var(--red)] font-medium">Required</span>
-        ) : (
-          <span className="text-xs text-[var(--gray-dim)]">Optional</span>
-        )}
-      </div>
-      <p className="text-xs text-[var(--gray-muted)] mb-2">{config.description}</p>
-      <div
-        onDragOver={(e) => {
-          e.preventDefault();
-          setDragging(true);
-        }}
-        onDragLeave={() => setDragging(false)}
-        onDrop={handleDrop}
-        className={`relative border-2 border-dashed rounded-xl p-6 text-center transition-colors cursor-pointer ${
-          dragging
-            ? "border-[var(--red)] bg-[var(--pink)]/10"
-            : files.length > 0
-              ? "border-green-300/60 bg-green-500/10"
-              : "border-[var(--border-glass)] bg-[var(--bg-glass)]"
-        }`}
-      >
-        <input
-          type="file"
-          accept={config.accept}
-          multiple={config.multiple}
-          onChange={handleSelect}
-          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-        />
-        {files.length === 0 ? (
-          <div>
-            <svg className="w-8 h-8 text-[var(--gray-dim)] mx-auto mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
-            </svg>
-            <p className="text-sm text-[var(--gray-muted)]">
-              Tap to choose, or drop a file here
-            </p>
-          </div>
-        ) : (
-          <div className="space-y-2 text-left">
-            {files.map((file, i) => (
-              <div key={`${file.name}-${i}`} className="flex items-center justify-between bg-[var(--bg-glass)] border border-white/[0.04] rounded-lg px-3 py-2">
-                <div className="flex items-center gap-2 min-w-0">
-                  <svg className="w-4 h-4 text-green-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4" />
-                  </svg>
-                  <span className="text-sm truncate">{file.name}</span>
-                  <span className="text-xs text-[var(--gray-dim)] shrink-0">{(file.size / 1024 / 1024).toFixed(1)} MB</span>
-                </div>
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    removeAt(i);
-                  }}
-                  className="text-[var(--gray-dim)] hover:text-red-400 ml-2 shrink-0"
-                  aria-label="Remove file"
-                >
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-    </div>
   );
 }
 

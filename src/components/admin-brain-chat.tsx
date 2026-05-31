@@ -56,6 +56,7 @@ function makeSlug(): string {
 
 const QUICK_DASHBOARD_ACTIONS = [
   { label: "Start a new claim", prompt: "I want to start a new claim." },
+  { label: "Import from CompanyCam", prompt: "Import photos from CompanyCam — show me my CompanyCam projects so I can pick one." },
   { label: "Portfolio summary", prompt: "Give me a quick portfolio summary." },
   { label: "Open claims by carrier", prompt: "Break down my open claims by carrier." },
   { label: "Biggest variance", prompt: "Which of my claims has the biggest unrecovered variance?" },
@@ -263,6 +264,31 @@ function ApprovalCard({
           <button onClick={handleDiscard} className="px-3 bg-white/5 hover:bg-white/10 text-white/50 text-[11px] py-1.5 rounded-lg transition-colors">Discard</button>
         </div>
       )}
+    </div>
+  );
+}
+
+function CompanyCamImportCard({ data, message }: { data: Record<string, unknown>; message?: string }) {
+  const imported = Number(data.imported ?? 0);
+  const requested = Number(data.requested ?? imported);
+  const failed = Number(data.failed_count ?? 0);
+  const project = data.project ? String(data.project) : data.project_id ? `project ${String(data.project_id)}` : "CompanyCam";
+  return (
+    <div className="bg-emerald-500/5 border border-emerald-500/20 rounded-lg p-3 my-2">
+      <div className="flex items-center gap-2 mb-1">
+        <span className="text-base">📷</span>
+        <div className="text-xs text-emerald-300 font-medium">
+          Imported {imported} photo{imported === 1 ? "" : "s"} from {project}
+        </div>
+      </div>
+      {failed > 0 && (
+        <div className="text-[11px] text-amber-300">
+          {failed} of {requested} couldn&apos;t be pulled and were skipped.
+        </div>
+      )}
+      <div className="text-[11px] text-white/55 mt-0.5">
+        {message || "They'll flow into the report on the next reprocess."}
+      </div>
     </div>
   );
 }
@@ -568,8 +594,9 @@ export function AdminBrainChat({ userId, scope = "user" }: AdminBrainChatProps) 
                       if (a.type === "integrations_status" && a.data) return <IntegrationsStatusCard key={j} data={a.data} />;
                       if (a.type === "integration_setup_guide" && a.data) return <SetupGuideCard key={j} data={a.data} />;
                       if (a.type === "oauth_redirect" && a.data) return <OAuthRedirectCard key={j} data={a.data} />;
+                      if (a.type === "companycam_import" && a.data) return <CompanyCamImportCard key={j} data={a.data} message={a.message} />;
                       if (a.action === "preview") return <ApprovalCard key={j} action={a} userId={userId} backendUrl={BACKEND_URL} onStatusUpdate={handleToolStatusUpdate} />;
-                      if (a.action === "complete" && a.data?.claim_id) return <ClaimCreatedCard key={j} data={a.data} />;
+                      if (a.action === "complete" && a.data?.claim_id && a.type !== "companycam_import") return <ClaimCreatedCard key={j} data={a.data} />;
                       return null;
                     })}
                   </>
