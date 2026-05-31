@@ -708,24 +708,48 @@ def check_report_content(claim: dict, config: dict) -> list[dict]:
             ),
         })
 
-    # ---- 2. Placeholder / merge-field leak (CRITICAL for real leaks) ----
-    leak_excerpts: list[str] = []
-    m = _PLACEHOLDER_RE.search(text)
-    if m:
-        leak_excerpts.append(_excerpt(text, m.start(), m.end()))
+    # ---- 2. Placeholder / merge-field leak ----
+    # A double-brace `{{ }}` OR a template-ish single-brace token (snake_case or
+    # dotted — e.g. {homeowner_name}, {prop.address}) is an unambiguous merge-field
+    # leak -> CRITICAL (blocks delivery; validated 0 false-fires on 23 real reports).
+    # A bare single-word brace token `{word}` could *in theory* appear in
+    # legitimate prose, so it is MEDIUM only — flagged for /admin review, never an
+    # auto-block. (2026-05-31 adversarial review: a delivery gate must not block a
+    # good report on a single-word brace that real merge-fields almost never take.)
+    crit_excerpts: list[str] = []
+    med_excerpts: list[str] = []
     m2 = _DOUBLE_BRACE_RE.search(text)
     if m2:
-        leak_excerpts.append(_excerpt(text, m2.start(), m2.end()))
-    if leak_excerpts:
+        crit_excerpts.append(_excerpt(text, m2.start(), m2.end()))
+    for m in _PLACEHOLDER_RE.finditer(text):
+        inner = m.group(0)[1:-1]  # strip the braces
+        if "_" in inner or "." in inner:
+            crit_excerpts.append(_excerpt(text, m.start(), m.end()))
+        else:
+            med_excerpts.append(_excerpt(text, m.start(), m.end()))
+    if crit_excerpts:
         flags.append({
             "issue": "TEMPLATE_PLACEHOLDER_LEAK",
             "severity": "critical",
             "check": "check_report_content",
             "file": pdf_filename,
-            "found": leak_excerpts[0].strip(),
+            "found": crit_excerpts[0].strip(),
             "detail": (
                 "Rendered forensic report contains an unrendered template "
-                f"merge-field — customer-visible scaffolding. Excerpt(s): {leak_excerpts}"
+                f"merge-field — customer-visible scaffolding. Excerpt(s): {crit_excerpts}"
+            ),
+        })
+    if med_excerpts:
+        flags.append({
+            "issue": "POSSIBLE_PLACEHOLDER_TOKEN",
+            "severity": "medium",
+            "check": "check_report_content",
+            "file": pdf_filename,
+            "found": med_excerpts[0].strip(),
+            "detail": (
+                "Rendered forensic report contains a bare {word} brace token — "
+                "usually a merge-field leak but occasionally legitimate prose; "
+                f"flagged for review, not blocked. Excerpt(s): {med_excerpts}"
             ),
         })
 

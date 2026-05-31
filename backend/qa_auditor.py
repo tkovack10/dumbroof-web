@@ -1201,11 +1201,16 @@ def _parse_proofread_response(raw: str) -> dict:
 
     # Issue labels that are ALLOWED to stay critical — a hard whitelist so a
     # model that ignores the severity instruction can't escalate a subjective
-    # contradiction/typo into a delivery block.
+    # call into a delivery block. ONLY unrendered template scaffolding qualifies:
+    # that's objectively a defect with no judgment call. Cross-tenant NAME leaks
+    # are deliberately NOT here — the deterministic check_pdf_brand_text already
+    # owns CRITICAL brand/name-leak blocking against company_profiles ground
+    # truth, and an LLM name judgment is too subjective to auto-block a good
+    # report (a sub-contractor, second adjuster, or referenced engineer would
+    # false-fire). LLM name-leaks surface as MEDIUM for /admin review.
+    # (2026-05-31 adversarial review of the delivery gate.)
     _CRITICAL_OK = {
         "TEMPLATE_PLACEHOLDER_LEAK", "PLACEHOLDER_LEAK", "MERGE_FIELD_LEAK",
-        "NAME_LEAK", "LEAKED_NAME", "THIRD_PARTY_NAME", "CROSS_TENANT_NAME",
-        "NAME_INCONSISTENCY", "PARTY_INCONSISTENCY", "WRONG_NAME",
     }
     out = {"critical": [], "medium": [], "low": []}
     for sev in ("critical", "medium", "low"):
