@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { FileUploadZone } from "@/components/file-upload-zone";
+import { AgenticDropZone, type DropItem } from "@/components/agentic-drop-zone";
 import { AddressAutocomplete } from "@/components/address-autocomplete";
 import { useBillingQuota } from "@/hooks/use-billing-quota";
 import { uploadFilesBatched } from "@/lib/upload-utils";
@@ -97,6 +98,28 @@ export default function NewClaimPage() {
     const files = Array.from(e.target.files || []);
     if (files.length > 0) setPhotoFiles((prev) => [...prev, ...files]);
     e.target.value = "";
+  }, []);
+
+  // Single agentic drop box (desktop) — replaces the 3 separate typed
+  // FileUploadZone boxes. The zone auto-classifies each dropped file (and lets
+  // the user correct it); on every change we re-bucket the READY items into the
+  // existing photoFiles / measurementFiles / scopeFiles arrays the submit
+  // handler already reads, so the rest of the form is unchanged. "other" routes
+  // to photos (sensible default). Staging is deferred — the form uploads at
+  // submit time as it always has.
+  const handleAgenticItems = useCallback((items: DropItem[]) => {
+    const ready = items.filter((it) => it.status === "ready");
+    const photos: File[] = [];
+    const measurements: File[] = [];
+    const scope: File[] = [];
+    for (const it of ready) {
+      if (it.category === "measurements") measurements.push(it.file);
+      else if (it.category === "scope") scope.push(it.file);
+      else photos.push(it.file); // photos + other
+    }
+    setPhotoFiles(photos);
+    setMeasurementFiles(measurements);
+    setScopeFiles(scope);
   }, []);
 
   const BACKEND_URL =
@@ -1268,40 +1291,23 @@ export default function NewClaimPage() {
               )}
             </div>
           ) : (
-          <div className="space-y-6">
-            <h3 className="text-sm font-semibold text-[var(--gray-dim)] uppercase tracking-wider">
-              Documents
-            </h3>
+          <div className="space-y-4">
+            <div>
+              <h3 className="text-sm font-semibold text-[var(--gray-dim)] uppercase tracking-wider">
+                Documents
+              </h3>
+              <p className="text-xs text-[var(--gray-muted)] mt-1">
+                Drop everything in one place — photos, your EagleView / HOVER, and the carrier&apos;s
+                estimate. Richard detects what each file is. Click the type on any file to correct it.
+              </p>
+            </div>
 
-            <FileUploadZone
-              label="Measurements"
-              description="EagleView, HOVER, GAF QuickMeasure, or any roof measurement report. You can upload multiple reports (e.g. separate roof and siding EagleViews). PDFs or email files (.eml) with attachments."
-              accept=".pdf,.eml"
-              multiple
-              required
-              files={measurementFiles}
-              onFilesChange={setMeasurementFiles}
-            />
+            <AgenticDropZone onItemsChange={handleAgenticItems} deferStaging />
 
-            <FileUploadZone
-              label="Inspection Photos"
-              description="Upload from camera roll, CompanyCam, JobNimbus, Acculynx, or any source. ZIP archives, PDFs, and email files (.eml) with photo attachments are also supported."
-              accept="image/*,.pdf,.zip,.eml"
-              multiple
-              required
-              files={photoFiles}
-              onFilesChange={setPhotoFiles}
-            />
-
-            <FileUploadZone
-              label="Carrier Scope"
-              description="The insurance company's estimate or scope of loss. PDF preferred — you can also upload a photo/screenshot of the scope or forward the email (.eml). Upload multiple if you have revised scopes. If you don't have one yet, skip this — we'll generate a pre-scope package."
-              accept=".pdf,.eml,image/*,.heic,.heif"
-              multiple
-              files={scopeFiles}
-              onFilesChange={setScopeFiles}
-            />
-
+            <p className="text-xs text-[var(--gray-dim)]">
+              Photos are all you need to start. Add a measurement report to unlock the Xactimate
+              estimate, and the carrier scope for the full supplement package.
+            </p>
           </div>
           )}
 

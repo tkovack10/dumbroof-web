@@ -690,6 +690,35 @@ function ToolActionCard({
   }
 
   // R2 — File classification
+  if (action.action === "complete" && action.type === "companycam_import" && action.data) {
+    const d = action.data as {
+      imported?: number;
+      requested?: number;
+      failed_count?: number;
+      project?: string;
+      project_id?: string;
+    };
+    const imported = Number(d.imported ?? 0);
+    const requested = Number(d.requested ?? imported);
+    const failed = Number(d.failed_count ?? 0);
+    const project = d.project ? String(d.project) : d.project_id ? `project ${String(d.project_id)}` : "CompanyCam";
+    return (
+      <div className="bg-emerald-500/5 border border-emerald-500/20 rounded-lg p-3 my-2">
+        <div className="text-xs text-emerald-300 font-medium">
+          📷 Imported {imported} photo{imported === 1 ? "" : "s"} from {project}
+        </div>
+        {failed > 0 && (
+          <div className="text-[11px] text-amber-300 mt-0.5">
+            {failed} of {requested} couldn&apos;t be pulled and were skipped.
+          </div>
+        )}
+        <div className="text-[11px] text-white/55 mt-0.5">
+          {action.message || "They'll flow into the report on the next reprocess."}
+        </div>
+      </div>
+    );
+  }
+
   if (action.action === "complete" && action.type === "file_classification" && action.data) {
     const d = action.data as {
       filename?: string;

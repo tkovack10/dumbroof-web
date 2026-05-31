@@ -16,9 +16,40 @@ import { trackBoth, FunnelEvent } from "@/lib/track";
 
 type Folder = "photos" | "scope" | "measurements";
 interface Msg { role: "user" | "assistant"; content: string; }
-interface StagedFile { key: string; name: string; folder: Folder; status: "uploading" | "done" | "error"; previewUrl?: string; }
+interface StagedFile { key: string; name: string; folder: Folder; status: "classifying" | "uploading" | "done" | "error"; previewUrl?: string; file?: File; }
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000";
+
+// Map a classify-intake category to one of the onboarding folders. The chat
+// pipeline only knows photos / scope / measurements (the create tool reads
+// those counts), so "other" routes to photos (sensible default for an image,
+// harmless for a stray doc the user can re-drop).
+function folderForCategory(category: string): Folder {
+  if (category === "measurements") return "measurements";
+  if (category === "scope") return "scope";
+  return "photos"; // photos + other
+}
+
+// Classify a dropped file (multipart, anonymous-safe) so the "+ Attach files"
+// menu can auto-sort instead of asking the user to pick a destination. Never
+// blocks: any failure falls back to the caller's filename/MIME guess.
+async function classifyOnboardingFile(file: File): Promise<Folder | null> {
+  try {
+    const fd = new FormData();
+    fd.append("file", file);
+    fd.append("filename", file.name);
+    const res = await fetch(`${BACKEND_URL}/api/classify-intake`, { method: "POST", body: fd });
+    if (!res.ok) return null;
+    const data = (await res.json()) as { category?: string };
+    return data.category ? folderForCategory(data.category) : null;
+  } catch {
+    return null;
+  }
+}
+
+function guessFolder(file: File): Folder {
+  return file.type.startsWith("image/") ? "photos" : "scope";
+}
 
 function makeSlug(): string {
   const rnd =
@@ -61,9 +92,7 @@ export function OnboardingChat({ userId, firstName }: { userId: string; firstNam
   const [created, setCreated] = useState<{ claimId: string; label: string } | null>(null);
 
   const chatRef = useRef<HTMLDivElement>(null);
-  const photoInputRef = useRef<HTMLInputElement>(null);
-  const scopeInputRef = useRef<HTMLInputElement>(null);
-  const measInputRef = useRef<HTMLInputElement>(null);
+  const attachInputRef = useRef<HTMLInputElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
   const heroMode = messages.length <= 1 && files.length === 0 && !created;
@@ -81,16 +110,23 @@ export function OnboardingChat({ userId, firstName }: { userId: string; firstNam
     };
   }, [files]);
 
+  // Auto-classify each file, then stage it into the detected folder. The "+"
+  // menu no longer asks the user to pick a destination — Richard figures it out
+  // and the chip below shows what he chose, with a dropdown to correct it.
   const uploadFiles = useCallback(
-    async (list: File[], folder: Folder) => {
+    async (list: File[]) => {
       for (const file of list) {
-        const key = `${folder}-${file.name}-${file.size}-${Math.random().toString(36).slice(2, 7)}`;
+        const key = `att-${file.name}-${file.size}-${Math.random().toString(36).slice(2, 7)}`;
         const previewUrl = file.type.startsWith("image/") ? URL.createObjectURL(file) : undefined;
-        setFiles((prev) => [...prev, { key, name: file.name, folder, status: "uploading", previewUrl }]);
+        const initialFolder = guessFolder(file);
+        setFiles((prev) => [...prev, { key, name: file.name, folder: initialFolder, status: "classifying", previewUrl, file }]);
+
+        const detected = (await classifyOnboardingFile(file)) ?? initialFolder;
+        setFiles((prev) => prev.map((f) => (f.key === key ? { ...f, folder: detected, status: "uploading" } : f)));
         try {
           const fd = new FormData();
           fd.append("file", file);
-          fd.append("folder", folder);
+          fd.append("folder", detected);
           fd.append("slug", slug);
           const res = await fetch("/api/onboarding/upload", { method: "POST", body: fd });
           setFiles((prev) => prev.map((f) => (f.key === key ? { ...f, status: res.ok ? "done" : "error" } : f)));
@@ -102,9 +138,30 @@ export function OnboardingChat({ userId, firstName }: { userId: string; firstNam
     [slug]
   );
 
-  const onPick = (folder: Folder) => (e: ChangeEvent<HTMLInputElement>) => {
+  // Correct a file's detected type — re-stage into the chosen folder. The old
+  // copy stays in its folder until claim creation; the create tool reads the
+  // latest counts, and a stray duplicate is harmless (re-drop is rare).
+  const correctFolder = useCallback(
+    async (key: string, folder: Folder, file?: File) => {
+      setFiles((prev) => prev.map((f) => (f.key === key ? { ...f, folder, status: file ? "uploading" : "done" } : f)));
+      if (!file) return;
+      try {
+        const fd = new FormData();
+        fd.append("file", file);
+        fd.append("folder", folder);
+        fd.append("slug", slug);
+        const res = await fetch("/api/onboarding/upload", { method: "POST", body: fd });
+        setFiles((prev) => prev.map((f) => (f.key === key ? { ...f, status: res.ok ? "done" : "error" } : f)));
+      } catch {
+        setFiles((prev) => prev.map((f) => (f.key === key ? { ...f, status: "error" } : f)));
+      }
+    },
+    [slug]
+  );
+
+  const onPick = (e: ChangeEvent<HTMLInputElement>) => {
     const list = Array.from(e.target.files || []);
-    if (list.length) uploadFiles(list, folder);
+    if (list.length) uploadFiles(list);
     e.target.value = "";
     setAttachOpen(false);
   };
@@ -113,10 +170,7 @@ export function OnboardingChat({ userId, firstName }: { userId: string; firstNam
     e.preventDefault();
     setDragOver(false);
     const dropped = Array.from(e.dataTransfer.files || []);
-    const images = dropped.filter((f) => f.type.startsWith("image/"));
-    const pdfs = dropped.filter((f) => !f.type.startsWith("image/"));
-    if (images.length) uploadFiles(images, "photos");
-    if (pdfs.length) uploadFiles(pdfs, "scope");
+    if (dropped.length) uploadFiles(dropped);
   };
 
   const sendMessage = useCallback(
@@ -222,12 +276,14 @@ export function OnboardingChat({ userId, firstName }: { userId: string; firstNam
   );
 
   const hiddenInputs = (
-    <>
-      <input ref={photoInputRef} type="file" accept="image/*" multiple className="hidden" onChange={onPick("photos")} />
-      <input ref={scopeInputRef} type="file" accept="application/pdf,.pdf" multiple className="hidden" onChange={onPick("scope")} />
-      <input ref={measInputRef} type="file" accept="application/pdf,.pdf" multiple className="hidden" onChange={onPick("measurements")} />
-    </>
+    <input ref={attachInputRef} type="file" multiple className="hidden" onChange={onPick} />
   );
+
+  const FOLDER_META: Record<Folder, { label: string; icon: string }> = {
+    photos: { label: "Roof photos", icon: "📷" },
+    scope: { label: "Carrier scope", icon: "📄" },
+    measurements: { label: "Measurements", icon: "📐" },
+  };
 
   // ── Success hand-off ───────────────────────────────────────────────
   if (created) {
@@ -266,18 +322,31 @@ export function OnboardingChat({ userId, firstName }: { userId: string; firstNam
       {files.length > 0 && (
         <div className="flex flex-wrap gap-1.5 mb-2.5 px-0.5">
           {files.map((f) => (
-            <div key={f.key} className="flex items-center gap-2 rounded-lg border border-white/[0.08] bg-white/[0.03] pl-1 pr-2.5 py-1" title={f.name}>
+            <div key={f.key} className="flex items-center gap-2 rounded-lg border border-white/[0.08] bg-white/[0.03] pl-1 pr-2 py-1" title={f.name}>
               {f.previewUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={f.previewUrl} alt="" className="w-6 h-6 rounded object-cover" />
               ) : (
-                <span className="w-6 h-6 rounded bg-violet-500/15 flex items-center justify-center text-[11px]">{f.folder === "scope" ? "📄" : "📐"}</span>
+                <span className="w-6 h-6 rounded bg-violet-500/15 flex items-center justify-center text-[11px]">{FOLDER_META[f.folder].icon}</span>
               )}
-              <span className="text-[11px] text-white/55 max-w-[110px] truncate">{f.name}</span>
-              {f.status === "uploading" ? (
-                <span className="w-2.5 h-2.5 rounded-full border border-white/20 border-t-violet-400 animate-spin" />
+              <span className="text-[11px] text-white/55 max-w-[100px] truncate">{f.name}</span>
+              {f.status === "classifying" || f.status === "uploading" ? (
+                <span className="inline-flex items-center gap-1">
+                  <span className="w-2.5 h-2.5 rounded-full border border-white/20 border-t-violet-400 animate-spin" />
+                  <span className="text-[10px] text-white/40">{f.status === "classifying" ? "reading…" : "saving…"}</span>
+                </span>
               ) : f.status === "done" ? (
-                <span className="text-violet-400 text-[11px]">✓</span>
+                // Detected type — visible + correctable via the dropdown.
+                <select
+                  value={f.folder}
+                  onChange={(e) => correctFolder(f.key, e.target.value as Folder, f.file)}
+                  aria-label={`File type for ${f.name}`}
+                  className="text-[10px] bg-[#0e0c14] border border-white/10 rounded px-1 py-0.5 text-white/70 outline-none focus:border-violet-400/50"
+                >
+                  {(["photos", "measurements", "scope"] as Folder[]).map((c) => (
+                    <option key={c} value={c}>{FOLDER_META[c].icon} {FOLDER_META[c].label}</option>
+                  ))}
+                </select>
               ) : (
                 <span className="text-rose-400 text-[11px]">!</span>
               )}
@@ -292,24 +361,17 @@ export function OnboardingChat({ userId, firstName }: { userId: string; firstNam
           {attachOpen && (
             <>
               <div className="fixed inset-0 z-10" onClick={() => setAttachOpen(false)} />
-              <div className="absolute bottom-12 left-0 z-20 w-52 rounded-xl border border-white/[0.1] bg-[#111016]/95 backdrop-blur-xl p-1 shadow-2xl">
-                {[
-                  { icon: "📷", label: "Roof photos", hint: "→ forensic report", ref: photoInputRef },
-                  { icon: "📄", label: "Carrier's estimate", hint: "→ instant supplement", ref: scopeInputRef },
-                  { icon: "📐", label: "Measurement report", hint: "EagleView / HOVER", ref: measInputRef },
-                ].map((o) => (
-                  <button
-                    key={o.label}
-                    onClick={() => { o.ref.current?.click(); }}
-                    className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg hover:bg-white/[0.06] transition-colors text-left"
-                  >
-                    <span className="text-base">{o.icon}</span>
-                    <span className="min-w-0">
-                      <span className="block text-[13px] text-white/85 leading-tight">{o.label}</span>
-                      <span className="block text-[11px] text-white/35 leading-tight">{o.hint}</span>
-                    </span>
-                  </button>
-                ))}
+              <div className="absolute bottom-12 left-0 z-20 w-56 rounded-xl border border-white/[0.1] bg-[#111016]/95 backdrop-blur-xl p-1 shadow-2xl">
+                <button
+                  onClick={() => { attachInputRef.current?.click(); setAttachOpen(false); }}
+                  className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg hover:bg-white/[0.06] transition-colors text-left"
+                >
+                  <span className="text-base">📎</span>
+                  <span className="min-w-0">
+                    <span className="block text-[13px] text-white/85 leading-tight">Attach files</span>
+                    <span className="block text-[11px] text-white/35 leading-tight">Photos, measurements, or carrier scope — Richard sorts them</span>
+                  </span>
+                </button>
               </div>
             </>
           )}
