@@ -2033,11 +2033,15 @@ def _build_wind_amplification_chart(config):
     hail threshold aging chart in structure and styling.
 
     Inputs:
-        weather.noaa.max_wind_mph — NOAA ground-level wind speed
+        weather.noaa.max_wind_mph — NOAA ground-level wind speed (DRIVES inclusion)
         estimate_request.roof_material — maps to ASTM wind rating
-        estimate_request.damage_type — "wind" or "combined" triggers this chart
+        estimate_request.damage_type — label only: wind/combined/unspecified show
+            down to the 40 mph floor; a "hail" label shows once max_wind >= 58 mph
+            (NWS severe-thunderstorm threshold) so the same storm's high winds are
+            still documented as a corroborating peril.
 
-    Returns empty string if no wind data or if damage_type is hail-only.
+    Returns empty string when there is no wind data, max_wind < 40 mph, or the
+    claim is hail-labeled AND max_wind < 58 mph (the NWS severe-wind threshold).
     """
     weather = config.get("weather", {})
     noaa = weather.get("noaa", {})
@@ -2053,11 +2057,18 @@ def _build_wind_amplification_chart(config):
     if max_wind < 40:
         return ""
 
-    # Only show for wind or combined claims. If damage_type isn't set, show
-    # whenever we have wind data (the AI may have detected wind damage).
+    # Wind analysis is gated on the STORM DATA, not the user's damage-type label
+    # (Tom, 2026-05-31). The same storm cell that drops hail commonly produces
+    # damaging straight-line winds; when the NOAA record shows high winds, the
+    # report should document them as a contributing peril even on a hail-labeled
+    # claim. For a hail-labeled claim we auto-surface the wind amplification
+    # analysis only once the recorded peak gust reaches the NWS severe-thunderstorm
+    # criterion (58 mph / 50 kt) — unambiguously "high winds" and citable. Declared
+    # wind/combined claims (and unspecified) keep the lower 40 mph damage floor.
     damage_type = estimate_req.get("damage_type", "")
-    if damage_type == "hail":
-        return ""  # Hail-only claim — skip the wind chart
+    NWS_SEVERE_WIND_MPH = 58
+    if damage_type == "hail" and max_wind < NWS_SEVERE_WIND_MPH:
+        return ""  # hail-labeled AND winds below the high-wind threshold
 
     # Map roof material to ASTM wind rating (mph)
     roof_material = (estimate_req.get("roof_material", "") or "").lower()
@@ -2153,13 +2164,13 @@ def _build_wind_amplification_chart(config):
     bar_rows = ""
     for label, mult, vel in zone_multipliers:
         if vel > shingle_rating:
-            bar_color = "#c8102e"  # Red — exceeds rating
+            bar_color = "var(--c-brick)"  # brick — exceeds rating (Spectral semantic)
             status = "EXCEEDS"
         elif vel > shingle_rating * 0.9:
-            bar_color = "#f59e0b"  # Amber — marginal
+            bar_color = "var(--c-gold)"  # gold — marginal
             status = "MARGINAL"
         else:
-            bar_color = "#2e7d32"  # Green — below rating
+            bar_color = "var(--c-included)"  # forest — below rating
             status = ""
 
         # `mult` is the ASCE 7 zone PRESSURE ratio; the velocity shown is its
@@ -2179,19 +2190,19 @@ def _build_wind_amplification_chart(config):
 
     html = f'''<div class="threshold-chart">
 <div class="chart-title">Wind Velocity Amplification &mdash; ASCE 7 Roof Zone Analysis</div>
-<p style="font-size:8.5pt;color:#6b7280;margin:3pt 0 8pt 0;">
+<p style="font-size:8.5pt;color:var(--c-slate);margin:3pt 0 8pt 0;">
 Wind accelerates over the roof due to building geometry (Bernoulli effect). ASCE 7 defines roof-zone
 amplification as PRESSURE coefficients &mdash; eaves, rakes, and corners experience roughly 1.35&ndash;2&times; the field
 <em>pressure</em>. Because dynamic pressure scales with the square of velocity, those zones equate to about
 1.16&ndash;1.41&times; the field <em>wind speed</em> (the &radic; of the pressure ratio), shown below as equivalent velocity.
 </p>
 {bar_rows}
-<div class="bar-row" style="margin-top:4pt;border-top:1.5pt dashed #0d47a1;padding-top:4pt;">
-    <div class="bar-label" style="color:#0d47a1;font-weight:700;">&#9650; Shingle Rating</div>
-    <div class="bar-value" style="color:#0d47a1;font-weight:700;">{shingle_rating} mph</div>
-    <div style="flex:1;"><div class="bar-fill" style="width:{rating_pct}%;background:#0d47a1;height:4pt;opacity:0.4;"></div></div>
+<div class="bar-row" style="margin-top:4pt;border-top:1.5pt dashed var(--c-navy);padding-top:4pt;">
+    <div class="bar-label" style="color:var(--c-navy);font-weight:700;">&#9650; Shingle Rating</div>
+    <div class="bar-value" style="color:var(--c-navy);font-weight:700;">{shingle_rating} mph</div>
+    <div style="flex:1;"><div class="bar-fill" style="width:{rating_pct}%;background:var(--c-navy);height:4pt;opacity:0.4;"></div></div>
 </div>
-<p style="font-size:7.5pt;color:#0d47a1;margin:2pt 0 0 0;text-align:right;">{rating_label}</p>
+<p style="font-size:7.5pt;color:var(--c-navy);margin:2pt 0 0 0;text-align:right;">{rating_label}</p>
 '''
 
     # Build the exceeds/marginal summary — skip the styled div entirely if
@@ -2201,24 +2212,60 @@ amplification as PRESSURE coefficients &mdash; eaves, rakes, and corners experie
     exceeds_lines = []
     if zone3_vel > shingle_rating:
         delta = zone3_vel - shingle_rating
-        exceeds_lines.append(f'<span style="color:#c8102e;font-weight:700;">Zone 3 (corners): {zone3_vel} mph &mdash; EXCEEDS shingle rating by {delta} mph</span>')
+        exceeds_lines.append(f'<span style="color:var(--c-brick);font-weight:700;">Zone 3 (corners): {zone3_vel} mph &mdash; EXCEEDS shingle rating by {delta} mph</span>')
     if zone2_vel > shingle_rating:
         delta = zone2_vel - shingle_rating
-        exceeds_lines.append(f'<span style="color:#c8102e;font-weight:700;">Zone 2 (edges): {zone2_vel} mph &mdash; EXCEEDS shingle rating by {delta} mph</span>')
+        exceeds_lines.append(f'<span style="color:var(--c-brick);font-weight:700;">Zone 2 (edges): {zone2_vel} mph &mdash; EXCEEDS shingle rating by {delta} mph</span>')
     elif zone2_vel > shingle_rating * 0.9:
-        exceeds_lines.append(f'<span style="color:#f59e0b;font-weight:700;">Zone 2 (edges): {zone2_vel} mph &mdash; MARGINAL (within 10% of rating)</span>')
+        exceeds_lines.append(f'<span style="color:var(--c-gold);font-weight:700;">Zone 2 (edges): {zone2_vel} mph &mdash; MARGINAL (within 10% of rating)</span>')
 
     if exceeds_lines:
         html += '<div class="exceeds-line" style="margin-top:10pt;">' + "<br/>".join(exceeds_lines) + '</div>\n'
     else:
-        html += '<p style="font-size:8.5pt;color:#2e7d32;margin-top:10pt;font-weight:600;">All zones below shingle rating &mdash; wind amplification may not explain observed damage at this wind speed.</p>\n'
+        html += '<p style="font-size:8.5pt;color:var(--c-included);margin-top:10pt;font-weight:600;">All zones below shingle rating &mdash; wind amplification may not explain observed damage at this wind speed.</p>\n'
 
+    # Conclusion framing adapts to the claim's primary peril. On a hail-led claim
+    # the chart is auto-surfaced as a CORROBORATING peril (the same storm's high
+    # winds), so it does NOT assert an observed wind-damage pattern — it presents
+    # the wind as additional, citable storm severity. On a wind/combined (or
+    # unspecified) claim the observed eaves/rakes/corners pattern is the point.
+    if damage_type == "hail":
+        # Two honest sub-cases, gated on whether the amplified corner wind actually
+        # reaches the covering's rating — never overstate corroboration. When it
+        # exceeds, wind is a corroborating peril; when it does not, the wind is
+        # documented as storm severity / combined-loading context only (consistent
+        # with the "all zones below" note above and the lab-vs-field fastener point).
+        if zone3_vel > shingle_rating:
+            _conclusion = (
+                f'This same storm system also produced a <strong style="font-family:var(--f-mono);">{max_wind} mph</strong> '
+                f'peak gust at the property (NOAA Storm Events). In the ASCE 7 amplified roof zones that gust exceeds the '
+                f'<strong style="font-family:var(--f-mono);">{shingle_rating} mph</strong> rated wind capacity of the '
+                f'covering &mdash; a laboratory value that degrades further with age and fastener condition &mdash; '
+                f'establishing high wind as a corroborating peril of the same storm event, alongside the documented '
+                f'hail. Presented for completeness of the storm&rsquo;s damage potential; it does not assert wind as '
+                f'the primary observed cause.'
+            )
+        else:
+            _conclusion = (
+                f'This same storm system also produced a <strong style="font-family:var(--f-mono);">{max_wind} mph</strong> '
+                f'peak gust at the property (NOAA Storm Events), reaching roughly <strong style="font-family:var(--f-mono);">'
+                f'{zone3_vel} mph</strong> equivalent velocity in the ASCE 7 corner zones. While below the covering&rsquo;s '
+                f'{shingle_rating} mph laboratory rating, it documents the storm&rsquo;s severity and the combined '
+                f'wind-and-hail loading environment; lab wind ratings degrade with age, fastener condition, and thermal '
+                f'cycling. Presented for completeness of the storm&rsquo;s damage potential; it does not assert wind as '
+                f'the primary observed cause.'
+            )
+    else:
+        _conclusion = (
+            f'The observed damage pattern &mdash; concentrated at eaves, rakes, and corners &mdash; is '
+            f'engineering-consistent with ASCE 7 Zone 2&ndash;3 wind amplification from the {max_wind} mph peak gust '
+            f'recorded at this property.'
+        )
     html += f'''
-<p style="font-size:8.5pt;color:#374151;margin-top:8pt;">
-The observed damage pattern &mdash; concentrated at eaves, rakes, and corners &mdash; is engineering-consistent
-with ASCE 7 Zone 2&ndash;3 wind amplification from the {max_wind} mph peak gust recorded at this property.
+<p style="font-size:8.5pt;color:var(--c-slate);margin-top:8pt;">
+{_conclusion}
 </p>
-<table style="font-size:7.5pt;color:#6b7280;margin-top:8pt;border:none;">
+<table style="font-size:7.5pt;color:var(--c-slate);margin-top:8pt;border:none;">
     <tr style="border:none;"><td style="border:none;padding:2pt 6pt;"><strong>Engineering basis:</strong></td><td style="border:none;padding:2pt 6pt;">ASCE 7-22, Chapters 26&ndash;30 &mdash; external pressure coefficients (GCp) by roof zone</td></tr>
     <tr style="border:none;"><td style="border:none;padding:2pt 6pt;"></td><td style="border:none;padding:2pt 6pt;">HAAG Engineering Research &amp; Education Foundation &mdash; Residential wind amplification studies</td></tr>
     <tr style="border:none;"><td style="border:none;padding:2pt 6pt;"></td><td style="border:none;padding:2pt 6pt;">IBHS (Institute for Business &amp; Home Safety) &mdash; Full-scale wind testing facility data</td></tr>
