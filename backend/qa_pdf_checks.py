@@ -537,6 +537,232 @@ def check_dol_noaa(claim: dict, config: dict) -> list[dict]:
     return flags
 
 
+# --------------------------------------------------------------------------
+# check_report_content — deterministic content-integrity scan of the rendered
+# FORENSIC PDF. Runs for ALL claims (USARM + external), because a missing hail
+# table, an absent wind chart, or a leaked template merge-field is a
+# report-QUALITY defect, not a cross-tenant brand-isolation defect — and USARM
+# is the primary user whose own reports must be proofed too. (The is_usarm
+# short-circuit in run_pdf_checks was skipping ALL content checks on USARM's own
+# pipeline; this check is deliberately NOT behind that gate.)
+# --------------------------------------------------------------------------
+
+# A clear, unrendered f-string/format placeholder: `{some_field}` or
+# `{obj.attr}`. The leading identifier char rule ([A-Za-z_]) is what keeps this
+# from matching a JSON object / CSS rule / numeric set that legitimately starts
+# with a digit or brace-space. A customer-visible match here is an unambiguous
+# render bug, so it's the one content check that goes CRITICAL.
+_PLACEHOLDER_RE = re.compile(r"\{[A-Za-z_][A-Za-z0-9_\.]*\}")
+# Jinja/handlebars-style double braces are an even more unambiguous template leak.
+_DOUBLE_BRACE_RE = re.compile(r"\{\{|\}\}")
+
+# Softer sentinel tokens that indicate a value didn't render. Word-boundaried
+# and case-SENSITIVE for the code-ish ones ("None"/"undefined"/"nan"/"null")
+# so we don't trip on legitimate lowercase prose ("none of the shingles...").
+# "nan" carries a trailing boundary that forbids a following letter so it can't
+# fire inside "Nantucket"/"financial". These are MEDIUM (review, don't block).
+_SENTINEL_RES = {
+    "None": re.compile(r"(?<![A-Za-z0-9])None(?![A-Za-z0-9])"),
+    "undefined": re.compile(r"(?<![A-Za-z0-9])undefined(?![A-Za-z0-9])"),
+    "nan": re.compile(r"(?<![A-Za-z0-9])nan(?![A-Za-z0-9])"),
+    "null": re.compile(r"(?<![A-Za-z0-9])null(?![A-Za-z0-9])"),
+    "[code unverified]": re.compile(r"\[code unverified\]"),
+    "TODO": re.compile(r"(?<![A-Za-z0-9])TODO(?![A-Za-z0-9])"),
+    "FIXME": re.compile(r"(?<![A-Za-z0-9])FIXME(?![A-Za-z0-9])"),
+    "XXX": re.compile(r"(?<![A-Za-z0-9])XXX(?![A-Za-z0-9])"),
+}
+
+
+def _wind_chart_would_render(config: dict) -> bool:
+    """Mirror usarm_pdf_generator._build_wind_amplification_chart's INCLUSION gate.
+
+    We must require the wind analysis ONLY when the generator would actually
+    emit it, or we false-flag a legitimately-absent chart. The generator gate
+    (2026-05-31, usarm_pdf_generator.py:2046-2071):
+        * no max_wind / max_wind <= 0          → no chart
+        * max_wind < 40                        → no chart (below damage floor)
+        * damage_type == "hail" AND max_wind < 58 (NWS severe-wind) → no chart
+        * otherwise (wind/combined/unspecified ≥40, hail ≥58) → chart renders
+    Read the SAME inputs (weather.noaa.max_wind_mph + estimate_request.damage_type)
+    so this stays a true mirror, not a re-derivation that can drift.
+    """
+    weather = config.get("weather", {}) or {}
+    noaa = weather.get("noaa", {}) or {}
+    try:
+        max_wind = float(noaa.get("max_wind_mph") or 0)
+    except (TypeError, ValueError):
+        max_wind = 0.0
+    if max_wind <= 0 or max_wind < 40:
+        return False
+    estimate_req = config.get("estimate_request", {}) or {}
+    damage_type = (estimate_req.get("damage_type", "") or "").strip().lower()
+    if damage_type == "hail" and max_wind < 58:
+        return False
+    return True
+
+
+def _claim_involves_hail(config: dict, forensic_text: str) -> bool:
+    """True if the report SHOULD carry the hail damage-threshold analysis.
+
+    Three independent signals (any one suffices): confirmed NOAA hail, a
+    hail-labeled estimate request, or 'hail' actually appearing in the rendered
+    forensic narrative. The text signal is what catches a hail report whose
+    estimate_request label drifted to 'combined'/'' but whose prose is all hail.
+    """
+    weather = config.get("weather", {}) or {}
+    noaa = weather.get("noaa", {}) or {}
+    try:
+        if (float(noaa.get("max_hail_inches") or 0) or 0) > 0:
+            return True
+    except (TypeError, ValueError):
+        pass
+    estimate_req = config.get("estimate_request", {}) or {}
+    if "hail" in (estimate_req.get("damage_type", "") or "").lower():
+        return True
+    # Forensic peril: 'hail' present in the rendered prose. Word-boundaried so a
+    # token like 'hailstorm' still counts but a stray substring does not falsely
+    # widen it.
+    if re.search(r"(?<![A-Za-z])hail", forensic_text or "", re.IGNORECASE):
+        return True
+    return False
+
+
+def check_report_content(claim: dict, config: dict) -> list[dict]:
+    """Scan the rendered FORENSIC PDF text for content-integrity defects.
+
+    Three classes, all read from the SAME rendered surface the customer sees
+    (the forensic PDF), so we catch what survived to the page — not just what
+    the config promised:
+
+      1. REQUIRED-ELEMENT presence (MEDIUM, never critical — false-positive
+         risk): a hail claim must carry the "Damage Threshold" analysis; a
+         high-wind claim (gated EXACTLY as the generator gates the chart) must
+         carry "Wind Velocity Amplification". Missing → the analysis silently
+         dropped during render.
+      2. TEMPLATE PLACEHOLDER LEAK (CRITICAL for a real `{field}`/`{{ }}` leak —
+         unambiguous, customer-visible scaffolding; MEDIUM for the softer
+         None/undefined/TODO sentinels which have prose false-positive risk).
+      3. (download/parse failure → ONE low degraded flag; fail-open.)
+
+    Runs for USARM + external owners alike: USARM is the primary user and its
+    own reports must be proofed too. This is a quality check, not a brand check.
+    """
+    flags: list[dict] = []
+    file_path_root = claim.get("file_path") or ""
+    output_files = claim.get("output_files") or []
+    if not file_path_root or not output_files:
+        return flags
+
+    sb_url = os.environ.get("SUPABASE_URL", "").rstrip("/")
+    sk = os.environ.get("SUPABASE_SERVICE_KEY", "")
+    if not sb_url or not sk:
+        return [{"issue": "QA_CHECK_SKIPPED", "severity": "low",
+                 "check": "check_report_content",
+                 "detail": "SUPABASE_URL or SUPABASE_SERVICE_KEY missing"}]
+
+    forensic_files = [f for f in output_files if "FORENSIC" in f.upper()]
+    if not forensic_files:
+        # No forensic doc to scan — degraded, fail-open (don't block on a check
+        # that has nothing to read).
+        return [{"issue": "QA_CHECK_DEGRADED", "severity": "low",
+                 "check": "check_report_content",
+                 "detail": "No FORENSIC output file present to content-scan."}]
+
+    pdf_filename = forensic_files[0]
+    storage_path = f"{file_path_root}/output/{pdf_filename}"
+    # Full forensic body: threshold table + wind chart live well past page 2,
+    # so read deep. 40 pages covers even the largest forensic packages.
+    text, err = _download_pdf_text(sb_url, sk, storage_path, first_n_pages=40)
+    if err or not text:
+        return [{"issue": "QA_CHECK_DEGRADED", "severity": "low",
+                 "check": "check_report_content",
+                 "file": pdf_filename,
+                 "detail": f"{pdf_filename}: forensic content scan unavailable ({err or 'empty text'})."}]
+
+    # ---- 1. Required-element presence (MEDIUM only) ----
+    if _claim_involves_hail(config, text) and "damage threshold" not in text.lower():
+        flags.append({
+            "issue": "HAIL_THRESHOLD_TABLE_MISSING",
+            "severity": "medium",
+            "check": "check_report_content",
+            "file": pdf_filename,
+            "detail": (
+                "Claim involves hail (NOAA hail / hail damage_type / hail in the "
+                "forensic prose) but the rendered forensic report contains no "
+                "'Damage Threshold' analysis — the hail threshold table likely "
+                "failed to render."
+            ),
+        })
+
+    if _wind_chart_would_render(config) and "wind velocity amplification" not in text.lower():
+        flags.append({
+            "issue": "WIND_ANALYSIS_MISSING",
+            "severity": "medium",
+            "check": "check_report_content",
+            "file": pdf_filename,
+            "detail": (
+                "The generator's wind-chart gate is satisfied (max_wind within "
+                "the chart's emit range for this damage_type) but the rendered "
+                "forensic report contains no 'Wind Velocity Amplification' "
+                "analysis — the ASCE 7 wind chart likely failed to render."
+            ),
+        })
+
+    # ---- 2. Placeholder / merge-field leak (CRITICAL for real leaks) ----
+    leak_excerpts: list[str] = []
+    m = _PLACEHOLDER_RE.search(text)
+    if m:
+        leak_excerpts.append(_excerpt(text, m.start(), m.end()))
+    m2 = _DOUBLE_BRACE_RE.search(text)
+    if m2:
+        leak_excerpts.append(_excerpt(text, m2.start(), m2.end()))
+    if leak_excerpts:
+        flags.append({
+            "issue": "TEMPLATE_PLACEHOLDER_LEAK",
+            "severity": "critical",
+            "check": "check_report_content",
+            "file": pdf_filename,
+            "found": leak_excerpts[0].strip(),
+            "detail": (
+                "Rendered forensic report contains an unrendered template "
+                f"merge-field — customer-visible scaffolding. Excerpt(s): {leak_excerpts}"
+            ),
+        })
+
+    # ---- 2b. Softer sentinels (MEDIUM only — prose false-positive risk) ----
+    sentinel_hits: list[str] = []
+    for token, rx in _SENTINEL_RES.items():
+        sm = rx.search(text)
+        if sm:
+            sentinel_hits.append(f"{token!r} @ …{_excerpt(text, sm.start(), sm.end()).strip()}…")
+    if sentinel_hits:
+        flags.append({
+            "issue": "REPORT_SENTINEL_TOKEN",
+            "severity": "medium",
+            "check": "check_report_content",
+            "file": pdf_filename,
+            "found": sentinel_hits,
+            "detail": (
+                "Rendered forensic report contains value-position sentinel "
+                "token(s) that usually mean a field didn't render "
+                f"(None/undefined/nan/null/[code unverified]/TODO): {sentinel_hits}"
+            ),
+        })
+
+    return flags
+
+
+def _excerpt(text: str, start: int, end: int, pad: int = 40) -> str:
+    """Return a short context window around [start, end) for flag detail.
+
+    Single-lined (newlines→spaces) so the excerpt reads cleanly in an alert
+    email / JSON blob.
+    """
+    lo = max(0, start - pad)
+    hi = min(len(text), end + pad)
+    return " ".join(text[lo:hi].split())
+
+
 def run_pdf_checks(claim: dict, config: dict) -> dict:
     """Run all deterministic checks. Each check is wrapped so a single failure
     can't crash the audit. Returns a dict with critical/medium/low arrays.
@@ -544,14 +770,22 @@ def run_pdf_checks(claim: dict, config: dict) -> dict:
     Hoists the owner-profile lookup so check_brand_match and
     check_pdf_brand_text don't both fetch the same row.
 
-    USARM SHORT-CIRCUIT: If the owner is a USARM internal user (is_usarm=true),
-    skip the brand checks entirely. USARM claims rotate among team members
-    (Devon Allen, BR Scittarelli, KS Collon, etc.) — each has their own
-    company_profiles row but the canonical PDF brand is "USA Roof Masters".
-    The per-assignee mismatch is by design, not a brand leak. The is_usarm
-    forbidden-list exclusion in _build_forbidden_brands already protects
-    EXTERNAL claims from picking up USARM branding; we don't need a per-claim
-    brand audit on USARM's own internal pipeline.
+    USARM SHORT-CIRCUIT (BRAND checks ONLY): If the owner is a USARM internal
+    user (is_usarm=true), skip the cross-tenant BRAND checks — check_brand_match
+    and check_pdf_brand_text. USARM claims rotate among team members (Devon
+    Allen, BR Scittarelli, KS Collon, etc.) — each has their own company_profiles
+    row but the canonical PDF brand is "USA Roof Masters", so the per-assignee
+    mismatch is by design, not a brand leak. The is_usarm forbidden-list
+    exclusion in _build_forbidden_brands already protects EXTERNAL claims from
+    picking up USARM branding; we don't need a per-claim brand audit on USARM's
+    own internal pipeline.
+
+    CONTENT/LOGO/NOAA checks ALWAYS run (USARM + external). Previously the
+    is_usarm gate skipped EVERYTHING but check_dol_noaa — so USARM, the PRIMARY
+    user, got NO logo / hail-table / wind-chart / placeholder-leak QA on its own
+    reports. That's the gap this restructure closes: only the two BRAND checks
+    are tenant-isolation checks; logo presence, hail/wind required elements, and
+    placeholder leaks are report-QUALITY checks that must run on every report.
     """
     all_flags: list[dict] = []
 
@@ -580,49 +814,36 @@ def run_pdf_checks(claim: dict, config: dict) -> dict:
     else:
         owner_profile = None
 
-    # Skip brand + PDF text checks for USARM internal claims (see docstring).
-    # NOAA cross-check still runs because it's storm-evidence about the
-    # claim address, not brand-isolation about the owner.
-    if is_usarm_owner:
+    # BRAND checks (cross-tenant isolation) — gated behind the USARM skip.
+    # These are the ONLY two checks that the is_usarm_owner short-circuit
+    # suppresses; every content/logo/NOAA check below runs for USARM too.
+    if not is_usarm_owner:
+        # Run brand_match using the pre-fetched profile
         try:
-            all_flags.extend(check_dol_noaa(claim, config))
+            all_flags.extend(_check_brand_match_with_profile(claim, config, owner_profile))
         except Exception as e:
             all_flags.append({
                 "issue": "QA_CHECK_EXCEPTION", "severity": "low",
-                "check": "check_dol_noaa",
+                "check": "check_brand_match",
                 "detail": f"{type(e).__name__}: {str(e)[:200]}",
             })
-        return {
-            "critical": [f for f in all_flags if f.get("severity") == "critical"],
-            "medium": [f for f in all_flags if f.get("severity") == "medium"],
-            "low": [f for f in all_flags if f.get("severity") == "low"],
-        }
 
-    # Run brand_match using the pre-fetched profile
-    try:
-        all_flags.extend(_check_brand_match_with_profile(claim, config, owner_profile))
-    except Exception as e:
-        all_flags.append({
-            "issue": "QA_CHECK_EXCEPTION", "severity": "low",
-            "check": "check_brand_match",
-            "detail": f"{type(e).__name__}: {str(e)[:200]}",
-        })
-
-    # Run pdf_brand_text passing the company name to skip its own profile fetch
-    try:
-        all_flags.extend(check_pdf_brand_text(
-            claim, config, owner_company_name=owner_company_name
-        ))
-    except Exception as e:
-        all_flags.append({
-            "issue": "QA_CHECK_EXCEPTION", "severity": "low",
-            "check": "check_pdf_brand_text",
-            "detail": f"{type(e).__name__}: {str(e)[:200]}",
-        })
+        # Run pdf_brand_text passing the company name to skip its own profile fetch
+        try:
+            all_flags.extend(check_pdf_brand_text(
+                claim, config, owner_company_name=owner_company_name
+            ))
+        except Exception as e:
+            all_flags.append({
+                "issue": "QA_CHECK_EXCEPTION", "severity": "low",
+                "check": "check_pdf_brand_text",
+                "detail": f"{type(e).__name__}: {str(e)[:200]}",
+            })
 
     # Logo-present positive check — catches the empty-img-src failure mode
     # that check_pdf_brand_text can't see (text content is "correct" but the
     # logo image is missing or non-raster). E203 / Team Builders 2026-05-05.
+    # Runs for USARM too: USARM's OWN logo can fail to embed just the same.
     try:
         all_flags.extend(check_logo_present(claim, config))
     except Exception as e:
@@ -632,7 +853,19 @@ def run_pdf_checks(claim: dict, config: dict) -> dict:
             "detail": f"{type(e).__name__}: {str(e)[:200]}",
         })
 
-    # NOAA cross-check — independent
+    # Content-integrity scan — hail table / wind chart presence + template
+    # placeholder leaks. Report-QUALITY check, runs for USARM + external alike.
+    try:
+        all_flags.extend(check_report_content(claim, config))
+    except Exception as e:
+        all_flags.append({
+            "issue": "QA_CHECK_EXCEPTION", "severity": "low",
+            "check": "check_report_content",
+            "detail": f"{type(e).__name__}: {str(e)[:200]}",
+        })
+
+    # NOAA cross-check — independent; storm-evidence about the claim address,
+    # not brand isolation, so it always ran (USARM included) and still does.
     try:
         all_flags.extend(check_dol_noaa(claim, config))
     except Exception as e:
