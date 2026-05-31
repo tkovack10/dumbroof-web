@@ -91,9 +91,12 @@ export function TabBar({ active, onChange, badges }: TabBarProps) {
                 >
                   {V2_TAB_ICONS[k]}
                 </span>
+                {/* ALWAYS show the label on mobile. It was active-only (an
+                    icon-only bar), so reps couldn't find the Scope tab / supplement
+                    composer. Labels make the mobile nav match desktop's clarity. */}
                 <span
-                  className={`overflow-hidden transition-all duration-200 leading-none ${
-                    isActive ? "max-h-[14px] opacity-100 text-[10px] font-semibold mt-0.5" : "max-h-0 opacity-0 text-[0px]"
+                  className={`leading-none text-[10px] mt-0.5 transition-opacity duration-200 ${
+                    isActive ? "opacity-100 font-semibold" : "opacity-75 font-medium"
                   }`}
                 >
                   {V2_TAB_LABELS[k]}
