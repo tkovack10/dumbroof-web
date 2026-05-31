@@ -70,18 +70,29 @@ export function DashboardContent({ user }: { user: User }) {
   const [isAdmin, setIsAdmin] = useState(false);
   const [hasCompanyProfile, setHasCompanyProfile] = useState(false);
   const [inviteOpen, setInviteOpen] = useState(false);
-  // Deep-link target: /dashboard?invite=open auto-opens the modal so the
-  // onboarding-checklist CTA (and any future link) lands users straight on
-  // the invite form. We strip the param after consuming it so a back/refresh
-  // doesn't re-open the modal involuntarily.
+  // Deep-link targets: ?invite=open auto-opens the invite modal; ?richard=new
+  // auto-opens the dashboard Richard so re-engagement CTAs (the completion email,
+  // future repeat-usage nudges) land users straight into starting their next claim.
+  // We strip the param after consuming so back/refresh doesn't re-trigger.
   const searchParams = useSearchParams();
   const router = useRouter();
   const pathname = usePathname();
+  // Computed at render (NOT in the effect): RichardLauncher reads initiallyOpen
+  // only at mount, so it must already be true on the first render.
+  const richardOpen = searchParams.get("richard") === "new";
   useEffect(() => {
+    const fresh = new URLSearchParams(searchParams.toString());
+    let changed = false;
     if (searchParams.get("invite") === "open") {
       setInviteOpen(true);
-      const fresh = new URLSearchParams(searchParams.toString());
       fresh.delete("invite");
+      changed = true;
+    }
+    if (searchParams.get("richard") === "new") {
+      fresh.delete("richard");
+      changed = true;
+    }
+    if (changed) {
       const qs = fresh.toString();
       router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
     }
@@ -1379,7 +1390,7 @@ export function DashboardContent({ user }: { user: User }) {
           </>
         )}
       </div>
-      <RichardLauncher userId={user.id} scope="dashboard" />
+      <RichardLauncher userId={user.id} scope="dashboard" initiallyOpen={richardOpen} />
       <PhoneNagModal userId={user.id} />
     </main>
   );
