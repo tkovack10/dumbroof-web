@@ -1444,6 +1444,88 @@ def _cite_chip(citation, *, neutral=False, on_navy=False):
     return f'<span class="{cls}">{text}</span>'
 
 
+# ── Doc-01 Spectral variants of the shared seal/cert/disclaimer blocks ──
+# These emit Spectral-token markup (class-driven, no inline hex) and are used
+# ONLY by the forensic report. The shared _build_integrity_stamp /
+# _build_contractor_cert / _build_uppa_disclaimer are left UNTOUCHED so Docs
+# 02–05 (which still use CSS_COMMON) stay byte-identical. Content (score,
+# status text, cert/disclaimer prose) is preserved verbatim.
+
+def _build_integrity_stamp_spectral(config):
+    """Spectral authenticity seal — the ONE serif/mono-on-navy credibility
+    climax of Doc 01. Navy concentric rings (brick if a photo is flagged), a
+    large mono score, gold DUMBROOF.AI attribution. Same content/score as the
+    shared stamp; only the chrome is re-skinned via .integrity-seal tokens."""
+    integrity = config.get("photo_integrity")
+    if not integrity or not integrity.get("total_analyzed"):
+        return ""
+    total = integrity["total_analyzed"]
+    flagged = integrity["flagged"]
+    score = integrity["score"]
+
+    if flagged == 0:
+        flagged_cls = ""
+        status_line = "NO MANIPULATED PHOTOS FOUND"
+        result_text = f"All {total} photos verified authentic"
+    else:
+        flagged_cls = " flagged"
+        status_line = f"{flagged} PHOTO(S) FLAGGED FOR REVIEW"
+        result_text = f"{flagged} of {total} photos require review"
+
+    return f'''
+<div class="integrity-seal-wrap">
+  <div class="integrity-seal{flagged_cls}">
+    <div class="ring-outer"></div>
+    <div class="ring-inner">
+      <div class="seal-legend">MAN-MADE DAMAGE &amp; MANIPULATION</div>
+      <div class="seal-sub">IP DETECTION TECHNOLOGY</div>
+      <div class="seal-rule"></div>
+      <div class="seal-score">{score}</div>
+      <div class="seal-rule"></div>
+      <div class="seal-status">{status_line}</div>
+      <div class="seal-result">{result_text}</div>
+      <div class="seal-attr">DUMBROOF.AI</div>
+    </div>
+  </div>
+</div>'''
+
+
+def _build_contractor_cert_spectral(config):
+    """Spectral contractor certification card (Doc 01 only). Same gated
+    content + name-hygiene guards as the shared helper; .cert-card chrome."""
+    lang = get_language(config)
+    if not lang["contractor_cert"]:
+        return ""
+    compliance = config.get("compliance", {})
+    inspectors_cfg = config.get("inspectors", {})
+    company = config["company"]
+    name = inspectors_cfg.get("usarm_inspector", company["ceo_name"])
+    if any(w in name.lower() for w in ["dumb roof", "ai analysis", "automated", "bot"]):
+        name = company["ceo_name"]
+    if not name or any(w in name.lower() for w in ["dumb roof", "ai analysis", "automated", "bot"]):
+        name = company.get("name", "Contractor")
+    license_num = compliance.get("license_number", "")
+    license_text = f" ({license_num})" if license_num else ""
+    return f'''
+<div class="cert-card">
+<p style="margin:0;"><strong>Contractor Certification:</strong> I, {name}, a licensed roofing contractor{license_text}, certify that this report reflects my professional assessment of the scope required to restore this property to a complete, code-compliant condition.</p>
+</div>'''
+
+
+def _build_uppa_disclaimer_spectral(config):
+    """Spectral UPPA disclaimer (Doc 01 only). Same gated content as the
+    shared helper; .uppa-disclaimer chrome (slate italic on warm paper)."""
+    lang = get_language(config)
+    if not lang.get("disclaimer"):
+        return ""
+    company = config["company"]
+    text = lang["disclaimer"].format(company=company["name"])
+    return f'''
+<div class="uppa-disclaimer">
+<p style="margin:0;"><em>{text}</em></p>
+</div>'''
+
+
 # ===================================================================
 # DOCUMENT 1: FORENSIC CAUSATION REPORT
 # ===================================================================
@@ -2842,40 +2924,85 @@ def build_forensic_report(config):
         code_sec_num = str(n + 2)
         conclusion_sec_num = str(n + 3)
 
+    # --- Spectral cover-meta owner cell (serif name) ---
+    # Suppress the owner cell entirely on a placeholder-owner posture, mirroring
+    # the WS-5 cover_owner_line guard so a no-data claim never prints
+    # "Owner: Property Owner".
+    if _ws5_owner_ph:
+        cover_meta_owner_cell = ""
+    else:
+        cover_meta_owner_cell = (
+            '<div class="cell"><div class="k">Homeowner</div>'
+            f'<div class="v serif">{ins["name"]}</div></div>'
+        )
+
+    # --- Interior masthead (.run-head) — repeats on each interior page as
+    # chain-of-custody chrome. Claim # in mono. ---
+    _rh_claim = carrier.get("claim_number", "")
+    run_head_html = (
+        '<div class="run-head">'
+        f'<div class="rh-mark">{company["name"]}'
+        '<span class="rh-sub">Forensic Causation Report</span></div>'
+        '<div class="rh-r"><div class="rh-doc">Doc 01 &middot; Forensic</div>'
+        f'<div class="rh-claim">{_rh_claim}</div></div>'
+        '</div>'
+    )
+
     html = f"""<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
 <title>Forensic Causation Report -- {prop['address']}</title>
+{FORENSIC_FONTS_LINK}
 <style>
-{CSS_COMMON}
+{FORENSIC_SPECTRAL_CSS}
 </style>
 </head>
 <body>
 
-<!-- COVER PAGE -->
-<div class="cover-page">
-    {render_logo_block(logo_b64, company['name'], css_class='cover-logo')}
-    <div class="cover-company">{company['name']}</div>
-    <div class="cover-tagline">{company.get('tagline', '')}</div>
-    <div style="width:60%; border-top:3px solid #c8102e; margin:0 auto 24pt;"></div>
-    <div class="cover-title">FORENSIC CAUSATION REPORT</div>
-    <div class="cover-subtitle">Proprietary Damage Assessment &amp; Causation Analysis</div>
-    <div class="cover-info">
-        <strong>Property:</strong> {prop['address']}<br>
-        {cover_owner_line}<strong>Date of Loss:</strong> {dates['date_of_loss']}<br>
-        <strong>Inspection:</strong> {insp_dates_str}<br>
-        <strong>Report Date:</strong> {dates['report_date']}
+<!-- COVER PAGE (logo-leads navy authority field) -->
+<div class="cover">
+    <div class="cover-frame"></div>
+    <div class="cover-top">
+        <div class="cover-wordmark">{company['name']}
+            <span class="wm-sub">Forensic Roofing Assessment</span>
+        </div>
+        <div class="cover-tab">DOC 01 &middot; FORENSIC</div>
     </div>
-    {"<div class='cover-assoc-logos'>" + ('<img src="' + apa_logo_b64 + '" alt="APA">' if apa_logo_b64 else '') + ('<img src="' + haag_logo_b64 + '" alt="HAAG">' if haag_logo_b64 else '') + ('<img src="' + nrca_logo_b64 + '" alt="NRCA">' if nrca_logo_b64 else '') + ('<img src="' + gaf_logo_b64 + '" alt="GAF Master Elite">' if gaf_logo_b64 else '') + ('<img src="' + oc_logo_b64 + '" alt="Owens Corning Platinum">' if oc_logo_b64 else '') + "</div>" if (apa_logo_b64 or nrca_logo_b64 or haag_logo_b64 or gaf_logo_b64 or oc_logo_b64) else ""}
+    <div class="cover-logo-hero">
+        <div class="logo-ring">
+            {render_logo_block(logo_b64, company['name'], css_class='cover-logo')}
+        </div>
+    </div>
+    <div class="cover-hero">
+        <div class="cover-kicker">Certified Storm-Damage Causation Analysis</div>
+        <h1>Forensic Causation Report</h1>
+        <div class="cover-subtitle">An independent determination of storm causation, damage severity, and the code-compliant scope of repair for the property identified below.</div>
+    </div>
+    <div class="cover-meta">
+        <div class="cell"><div class="k">Property</div><div class="v serif">{prop['address']}</div></div>
+        {cover_meta_owner_cell}<div class="cell"><div class="k">Carrier</div><div class="v serif">{carrier['name']}</div></div>
+        <div class="cell"><div class="k">Claim No.</div><div class="v mono">{carrier.get('claim_number','')}</div></div>
+        <div class="cell"><div class="k">Date of Loss</div><div class="v mono">{dates['date_of_loss']}</div></div>
+        <div class="cell"><div class="k">Report Date</div><div class="v mono">{dates['report_date']}</div></div>
+    </div>
+    <div class="cover-foot">
+        <div class="prep">
+            <div class="pl">Prepared by</div>
+            <div class="pv">{inspector_lines}</div>
+        </div>
+        {"<div class='cover-assoc-logos'>" + ('<img src="' + apa_logo_b64 + '" alt="APA">' if apa_logo_b64 else '') + ('<img src="' + haag_logo_b64 + '" alt="HAAG">' if haag_logo_b64 else '') + ('<img src="' + nrca_logo_b64 + '" alt="NRCA">' if nrca_logo_b64 else '') + ('<img src="' + gaf_logo_b64 + '" alt="GAF Master Elite">' if gaf_logo_b64 else '') + ('<img src="' + oc_logo_b64 + '" alt="Owens Corning Platinum">' if oc_logo_b64 else '') + "</div>" if (apa_logo_b64 or nrca_logo_b64 or haag_logo_b64 or gaf_logo_b64 or oc_logo_b64) else ""}
+    </div>
 </div>
 <div class="page-break"></div>
 
+{run_head_html}
 <!-- TABLE OF CONTENTS -->
 <h2>Table of Contents</h2>
 {toc_html}
 <div class="page-break"></div>
 
+{run_head_html}
 <!-- SECTION 1: PROPERTY & CLAIM INFO -->
 <h2>1. Property &amp; Claim Information</h2>
 <table>
@@ -2931,6 +3058,7 @@ def build_forensic_report(config):
 
 <!-- PHOTO SECTIONS -->
 <div class="page-break"></div>
+{run_head_html}
 <h2>{photo_sec_num}. Damage Findings &amp; Photo Analysis</h2>
 <p>{_photo_intro_text(config)} Below is the complete photographic documentation organized by damage category.</p>
 
@@ -2956,13 +3084,14 @@ def build_forensic_report(config):
 
 <!-- CONCLUSION -->
 <div class="page-break"></div>
+{run_head_html}
 <h2>{conclusion_sec_num}. Conclusions &amp; Recommendations</h2>
 {_build_conclusion_section(findings, arguments_html, conclusion_html, rec_scope_html)}
 
-{_build_integrity_stamp(config)}
+{_build_integrity_stamp_spectral(config)}
 
-{_build_contractor_cert(config)}
-{_build_uppa_disclaimer(config)}
+{_build_contractor_cert_spectral(config)}
+{_build_uppa_disclaimer_spectral(config)}
 
 <div class="footer-sig">
     <div class="name">{company['ceo_name']}</div>
