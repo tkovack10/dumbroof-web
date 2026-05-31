@@ -990,6 +990,251 @@ def audit_forensic_prose(
     return result
 
 
+def _build_legitimate_parties(config: dict, claim: dict) -> dict:
+    """Ground-truth parties the proofreader treats as ALLOWED names.
+
+    A person/company name in the prose that isn't one of these (and isn't an
+    obvious public figure / standards body) is a possible cross-tenant leak —
+    the same E196 class the deterministic PDF brand scan guards, but caught in
+    the NARRATIVE here. Empty values are dropped so the model isn't told to
+    match against "".
+    """
+    carrier = config.get("carrier", {}) or {}
+    insured = config.get("insured", {}) or {}
+    company = config.get("company", {}) or {}
+    dates = config.get("dates", {}) or {}  # noqa: F841 — reserved, kept for parity
+    parties = {
+        "owner_company": company.get("name", "") or claim.get("company_name", ""),
+        "owner_contact": company.get("ceo_name", ""),
+        "homeowner": insured.get("name", "") or claim.get("contact_name", ""),
+        "carrier": carrier.get("name", "") or claim.get("carrier", ""),
+        "adjuster": carrier.get("adjuster_name", "") or claim.get("adjuster_name", ""),
+        # The inspector is, by policy, the owner contact / a company employee —
+        # surfaced explicitly so the model doesn't flag the legitimate signer.
+        "inspector": company.get("ceo_name", ""),
+    }
+    return {k: v for k, v in parties.items() if isinstance(v, str) and v.strip()}
+
+
+def _build_proofread_prompt(parties: dict, prose: dict, peril: dict) -> str:
+    """Prompt the model to proofread the forensic narrative.
+
+    WHY a separate pass from audit_forensic_prose: that auditor compares facts
+    to a CLOSED list of ground-truth fields (address/date/carrier/...). This one
+    reads the prose as a careful human editor would — catching the defects no
+    field-comparison can see: a sentence that contradicts an earlier sentence, a
+    truncated/garbled clause, a doubled word, mojibake, a units error, or a name
+    that belongs to nobody on this claim. Kept deliberately conservative on
+    severity (see the SEVERITY block) so it never false-BLOCKS a good report.
+    """
+    parties_json = json.dumps(parties, indent=2)
+    prose_json = json.dumps(prose, indent=2)
+    peril_json = json.dumps(peril, indent=2)
+    return f"""You are a meticulous proofreader and consistency editor for a forensic insurance report that is about to be sent to an insurance carrier. Read the report prose below and find defects a careful human editor would catch. Be precise and conservative — this gate can BLOCK delivery, and a false block on a good report is worse than a missed nitpick.
+
+LEGITIMATE PARTIES on this claim (these names are ALL allowed to appear):
+```json
+{parties_json}
+```
+
+PERIL CONTEXT (what the claim is about, for the missing-element check):
+```json
+{peril_json}
+```
+
+REPORT PROSE (executive summary + conclusion paragraphs):
+```json
+{prose_json}
+```
+
+Find issues in these categories ONLY:
+1. INTERNAL CONTRADICTION — two statements in the prose that cannot both be true. Examples: "all roof zones remain below the shingle's wind rating" in one place and "wind speeds exceeded the shingle's rating" in another; the same quantity stated two different ways (e.g. "22 squares" then "26 squares" for the same roof); a peril affirmed in one sentence and denied in another.
+2. PROOFREADING — typos, clear grammar errors, broken or truncated sentences (a sentence that ends mid-clause), doubled words ("the the"), wrong or mismatched units (sq ft vs sq yds, mph vs mm), or mojibake / encoding garbage (Ã, â€, ï¿½, stray replacement characters).
+3. PLACEHOLDER / MERGE-FIELD LEFTOVER — literal template scaffolding that should have been filled in: `{{field_name}}`, `{{{{ field }}}}`, "TODO", "FIXME", "[code unverified]", or a value rendered as the literal word "None"/"undefined"/"null" where a real value belongs.
+4. NAME / PARTY INCONSISTENCY — a person or company name that does NOT match any of the LEGITIMATE PARTIES above and is not an obvious public reference (a standards body like ASTM/HAAG/NOAA/ASCE, a shingle manufacturer like GAF/CertainTeed/Owens Corning, or a published code). A stray third-party contractor, homeowner, or carrier name that belongs to a DIFFERENT claim is a possible cross-tenant leak.
+5. MISSING EXPECTED ELEMENT — given the PERIL CONTEXT: if `involves_hail` is true, the narrative should reference a hail damage-threshold analysis; if `involves_wind` is true, it should reference the wind (velocity amplification) analysis. Only note this if the element is genuinely absent from the prose.
+
+SEVERITY DISCIPLINE (read carefully — this gates customer delivery):
+- DEFAULT every finding to "medium".
+- Mark "critical" ONLY for an UNAMBIGUOUS, customer-facing defect: (a) a literal template merge-field still in the text (`{{something}}` / `{{{{ something }}}}`), or (b) a clearly WRONG or LEAKED third-party NAME (a real person/company name that matches none of the legitimate parties and is not a public reference).
+- A subjective contradiction, any grammar/typo/style call, a units question, or a "this might be missing" note is "medium" AT MOST — NEVER critical.
+- When you are unsure whether something is a defect, DOWNGRADE it (low) or omit it. Zero false blocks of good reports is the goal.
+
+Return ONLY valid JSON with this exact shape (no prose outside the JSON):
+```json
+{{
+  "critical": [{{"issue": "TEMPLATE_PLACEHOLDER_LEAK", "detail": "..."}}],
+  "medium": [{{"issue": "INTERNAL_CONTRADICTION", "detail": "..."}}],
+  "low": [{{"issue": "TYPO", "detail": "..."}}]
+}}
+```
+Each item is `{{"issue": "<SHORT_UPPER_SNAKE_LABEL>", "detail": "<what and where, with a short quote>"}}`. Empty arrays are fine. If the prose is clean, return all three arrays empty."""
+
+
+def audit_proofread_integrity(
+    config: dict,
+    claim: dict,
+    claude: anthropic.Anthropic,
+    call_claude_fn=None,
+    report_text=None,
+) -> dict:
+    """LLM proofread + contradiction + name-leak pass over the forensic prose.
+
+    Complements audit_forensic_prose (closed ground-truth fact compare) with the
+    open-ended human-editor pass: internal contradictions, typos/grammar/units,
+    placeholder leftovers, stray third-party names, and missing peril elements.
+
+    Returns {"critical":[], "medium":[], "low":[]} (the merge surface
+    audit_claim consumes). NEVER raises — any API/parse error fails open to a
+    single low "audit unavailable" flag so it can't break the pipeline.
+
+    Severity is deliberately conservative (see _build_proofread_prompt): only a
+    literal merge-field or a clearly-leaked third-party name is allowed critical.
+    """
+    empty = {"critical": [], "medium": [], "low": []}
+
+    # Prefer the in-memory prose the existing audit already uses — do NOT add a
+    # second PDF download here (qa_pdf_checks.check_report_content owns the
+    # rendered-text scan). If a caller hands us report_text, fold it in.
+    prose = _build_prose_bundle(config)
+    if report_text and isinstance(report_text, str) and report_text.strip():
+        prose = dict(prose)
+        prose["rendered_text_excerpt"] = report_text[:8000]
+    has_prose = bool(
+        prose.get("executive_summary")
+        or prose.get("conclusion_paragraphs")
+        or prose.get("rendered_text_excerpt")
+    )
+    if not has_prose:
+        return empty  # Nothing to audit — benign empty result.
+
+    parties = _build_legitimate_parties(config, claim)
+
+    weather = config.get("weather", {}) or {}
+    noaa = weather.get("noaa", {}) or {}
+    try:
+        _hail = float(noaa.get("max_hail_inches") or 0)
+    except (TypeError, ValueError):
+        _hail = 0.0
+    try:
+        _wind = float(noaa.get("max_wind_mph") or 0)
+    except (TypeError, ValueError):
+        _wind = 0.0
+    damage_type = ((config.get("estimate_request", {}) or {}).get("damage_type", "") or "").lower()
+    peril = {
+        "involves_hail": _hail > 0 or "hail" in damage_type,
+        "involves_wind": _wind >= 58 or damage_type in ("wind", "combined"),
+        "damage_type": damage_type or "unspecified",
+    }
+
+    prompt = _build_proofread_prompt(parties, prose, peril)
+
+    try:
+        if call_claude_fn is not None:
+            response = call_claude_fn(
+                claude,
+                _step_name="qa_proofread",
+                model=MODEL,
+                max_tokens=2048,
+                messages=[{"role": "user", "content": prompt}],
+            )
+        else:
+            response = claude.messages.create(
+                model=MODEL,
+                max_tokens=2048,
+                messages=[{"role": "user", "content": prompt}],
+            )
+        raw = response.content[0].text
+    except Exception as e:
+        return {
+            "critical": [], "medium": [],
+            "low": [{
+                "issue": "PROOFREAD_AUDIT_UNAVAILABLE", "severity": "low",
+                "check": "proofread_integrity",
+                "detail": f"proofread audit unavailable (api error: {str(e)[:160]})",
+            }],
+        }
+
+    parsed = _parse_proofread_response(raw)
+    return parsed
+
+
+def _parse_proofread_response(raw: str) -> dict:
+    """Defensive JSON extraction for the proofread pass.
+
+    Reuses the same brace-extraction posture as _parse_audit_response. On any
+    parse failure returns a benign result with ONE low "audit unavailable" flag
+    — never raises, never invents a critical. Also normalizes each item to carry
+    severity + check so the merge in audit_claim is uniform, and DOWNGRADES any
+    over-eager critical that isn't a placeholder/name leak (belt-and-suspenders
+    on the prompt's severity discipline).
+    """
+    benign = {
+        "critical": [], "medium": [],
+        "low": [{
+            "issue": "PROOFREAD_AUDIT_UNAVAILABLE", "severity": "low",
+            "check": "proofread_integrity",
+            "detail": "proofread audit returned no parseable JSON — passed through.",
+        }],
+    }
+    if not raw:
+        return benign
+    text = raw.strip()
+    if "```" in text:
+        for part in text.split("```"):
+            clean = part.strip()
+            if clean.startswith("json"):
+                clean = clean[4:].strip()
+            if clean.startswith("{"):
+                text = clean
+                break
+    start = text.find("{")
+    end = text.rfind("}")
+    if start < 0 or end < 0 or end < start:
+        return benign
+    try:
+        obj = json.loads(text[start:end + 1])
+    except json.JSONDecodeError:
+        return benign
+    if not isinstance(obj, dict):
+        return benign
+
+    # Issue labels that are ALLOWED to stay critical — a hard whitelist so a
+    # model that ignores the severity instruction can't escalate a subjective
+    # call into a delivery block. ONLY unrendered template scaffolding qualifies:
+    # that's objectively a defect with no judgment call. Cross-tenant NAME leaks
+    # are deliberately NOT here — the deterministic check_pdf_brand_text already
+    # owns CRITICAL brand/name-leak blocking against company_profiles ground
+    # truth, and an LLM name judgment is too subjective to auto-block a good
+    # report (a sub-contractor, second adjuster, or referenced engineer would
+    # false-fire). LLM name-leaks surface as MEDIUM for /admin review.
+    # (2026-05-31 adversarial review of the delivery gate.)
+    _CRITICAL_OK = {
+        "TEMPLATE_PLACEHOLDER_LEAK", "PLACEHOLDER_LEAK", "MERGE_FIELD_LEAK",
+    }
+    out = {"critical": [], "medium": [], "low": []}
+    for sev in ("critical", "medium", "low"):
+        for item in (obj.get(sev) or []):
+            if not isinstance(item, dict):
+                continue
+            issue = str(item.get("issue", "PROOFREAD_ISSUE")).strip() or "PROOFREAD_ISSUE"
+            entry = {
+                "issue": issue,
+                "severity": sev,
+                "check": "proofread_integrity",
+                "detail": str(item.get("detail", ""))[:500],
+            }
+            if sev == "critical" and issue.upper() not in _CRITICAL_OK:
+                # Downgrade an out-of-whitelist "critical" to medium so a
+                # subjective call can never block delivery.
+                entry["severity"] = "medium"
+                entry["detail"] = "[downgraded from critical] " + entry["detail"]
+                out["medium"].append(entry)
+            else:
+                out[entry["severity"]].append(entry)
+    return out
+
+
 def audit_claim(
     config: dict,
     claim: dict,
@@ -1052,6 +1297,31 @@ def audit_claim(
     else:
         prose_result = audit_forensic_prose(config, claim, claude, call_claude_fn=call_claude_fn)
 
+    # Proofread / contradiction / name-leak pass — one extra LLM call that reads
+    # the narrative as a human editor (catches what the field-compare audit
+    # can't: internal contradictions, typos/units, placeholder leftovers, stray
+    # third-party names, missing peril element). Conservative severity: only a
+    # literal merge-field or a clearly-leaked name can be critical. Skipped when
+    # the deterministic PDF/brand check already short-circuited (the doc is about
+    # to be regenerated, so proofing it is wasted spend) and wrapped so it can
+    # NEVER break the pipeline.
+    proofread_result = {"critical": [], "medium": [], "low": []}
+    if not prose_skipped:
+        try:
+            proofread_result = audit_proofread_integrity(
+                config, claim, claude, call_claude_fn=call_claude_fn
+            )
+        except Exception as e:  # noqa: BLE001 — proofread must never break the audit
+            print(f"[QA] audit_proofread_integrity crashed (ignored): {e}")
+            proofread_result = {
+                "critical": [], "medium": [],
+                "low": [{
+                    "issue": "PROOFREAD_AUDIT_UNAVAILABLE", "severity": "low",
+                    "check": "proofread_integrity",
+                    "detail": f"proofread audit crashed: {type(e).__name__}: {str(e)[:160]}",
+                }],
+            }
+
     # WS-0 forensic prevalence flags — MEDIUM-only detection layer. Computed
     # unconditionally (cheap, no API cost, no DB read) and merged into MEDIUM
     # ONLY. By construction these can never be critical, so they cannot affect
@@ -1104,7 +1374,11 @@ def audit_claim(
     # Merge flag arrays. Order: prose flags first (carries the LLM's narrative
     # summary), then deterministic — keeps the human-readable audit summary
     # focused on prose issues with brand/NOAA flags appended below.
-    merged_critical = list(prose_result.get("critical") or []) + pdf_result.get("critical", [])
+    merged_critical = (
+        list(prose_result.get("critical") or [])
+        + pdf_result.get("critical", [])
+        + list(proofread_result.get("critical") or [])
+    )
     merged_medium = (
         list(prose_result.get("medium") or [])
         + pdf_result.get("medium", [])
@@ -1113,8 +1387,13 @@ def audit_claim(
         + material_conf_flags
         + code_supplement_pricing_flags
         + grade_conf_flags
+        + list(proofread_result.get("medium") or [])
     )
-    merged_low = list(prose_result.get("low") or []) + pdf_result.get("low", [])
+    merged_low = (
+        list(prose_result.get("low") or [])
+        + pdf_result.get("low", [])
+        + list(proofread_result.get("low") or [])
+    )
 
     passed = len(merged_critical) == 0
     summary = prose_result.get("summary", "") or ""
@@ -1162,6 +1441,11 @@ def audit_claim(
             "material_confidence_medium": len(material_conf_flags),
             # WS-7 code-supplement pricing-provenance flags (always MEDIUM, never blocking).
             "code_supplement_pricing_medium": len(code_supplement_pricing_flags),
+            # Proofread / contradiction / name-leak pass. Null when short-circuited
+            # (never ran) vs 0 (ran clean) so dashboards can distinguish them.
+            "proofread_critical": None if prose_skipped else len(proofread_result.get("critical") or []),
+            "proofread_medium": None if prose_skipped else len(proofread_result.get("medium") or []),
+            "proofread_low": None if prose_skipped else len(proofread_result.get("low") or []),
         },
     }
 
