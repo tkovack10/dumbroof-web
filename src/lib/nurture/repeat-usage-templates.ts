@@ -30,10 +30,21 @@ export type RepeatUsageTouchKey =
 
 export type Channel = "email" | "sms";
 
+export interface LastClaimInput {
+  carrier?: string | null;
+  address?: string | null;
+  contractor_rcv?: number | null;
+  original_carrier_rcv?: number | null;
+  settlement_amount?: number | null;
+  outcome?: string | null;
+}
+
 export interface RepeatUsageInput {
   first_name: string;
   company_name: string;
   email: string;
+  /** v2 personalization — the contractor's most-recent claim (drives claimAnchor). */
+  last_claim?: LastClaimInput;
 }
 
 export interface RepeatUsageEmail {
@@ -61,6 +72,69 @@ export const REPLY_MAILTO =
 /** Secondary "or just reply, we'll build it for you" line — the done-for-you option under the primary CTA. */
 function replyLine(): string {
   return `<p style="margin:-10px 0 0;font-size:14px;color:#6b7280;">Too slammed to do it yourself? Just <a href="${REPLY_MAILTO}" style="color:#0d2137;font-weight:600;">reply with the address + carrier</a> and my team builds it for you, end-to-end.</p>`;
+}
+
+/** Format a positive dollar amount; null for missing/zero/negative so it never renders "$0"/NaN. */
+function usd(n?: number | null): string | null {
+  if (n == null || !Number.isFinite(n) || n <= 0) return null;
+  return "$" + Math.round(n).toLocaleString("en-US");
+}
+
+/** Escape user/claim-sourced text before it's injected into email HTML. */
+function escapeHtml(s: string): string {
+  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+
+/** First line of an address (drop the ", City, ST ZIP" tail), HTML-escaped. */
+function shortAddr(addr?: string | null): string | null {
+  const a = (addr || "").trim();
+  if (!a) return null;
+  const first = a.split(",")[0].trim();
+  return first ? escapeHtml(first) : null;
+}
+
+/**
+ * v2 personalization — an opening sentence referencing the contractor's OWN
+ * most-recent claim (the data's "specific beats generic" winner). Graceful 4-tier
+ * degrade: (1) a real win, (2) the estimate variance — available at claim creation,
+ * no settlement needed (~24% of recent claims), (3) specific-but-no-$ via address +
+ * carrier (~86%), (4) null → caller uses the generic copy. Every $ tier is gated
+ * (>0 + the right comparison) so it never renders "$0"/NaN; text is HTML-escaped.
+ */
+export function claimAnchor(input: RepeatUsageInput): string | null {
+  const lc = input.last_claim;
+  if (!lc) return null;
+  const addr = shortAddr(lc.address);
+  const carrier = (lc.carrier || "").trim() ? escapeHtml((lc.carrier as string).trim()) : null;
+  // Coerce defensively — Postgres numeric can arrive as a string via PostgREST,
+  // which would break the > comparisons and make usd() reject it (silent no-$).
+  const num = (v: unknown): number | null => {
+    if (v == null) return null;
+    const n = typeof v === "number" ? v : parseFloat(String(v));
+    return Number.isFinite(n) ? n : null;
+  };
+  const orig = num(lc.original_carrier_rcv);
+  const settled = num(lc.settlement_amount);
+  const contractor = num(lc.contractor_rcv);
+
+  // Tier 1 — a real win (settlement beat the carrier's original).
+  if (orig != null && orig > 0 && settled != null && settled > orig) {
+    const where = addr ? ` on ${addr}` : "";
+    return `Last time, we turned ${carrier ? `${carrier}'s ` : ""}${usd(orig)} into <strong>${usd(settled)}</strong>${where} — and you didn't write a word of it.`;
+  }
+  // Tier 2 — the estimate variance (your build vs the carrier's scope).
+  if (orig != null && orig > 0 && contractor != null && contractor > orig) {
+    const v = usd(contractor - orig);
+    if (v) {
+      const where = addr ? ` on ${addr}` : "";
+      return `Last time, your estimate came back <strong>${v}</strong> over ${carrier ? `${carrier}'s` : "the carrier's"} scope${where} — and you didn't write a word of it.`;
+    }
+  }
+  // Tier 3 — specific, no $.
+  if (addr) {
+    return `Your last claim — ${addr}${carrier ? ` with ${carrier}` : ""} — came together fast. That's the hard part done.`;
+  }
+  return null;
 }
 
 /** Average net supplement we cite in the "money" touch. Conservative; update from Supabase. */
@@ -98,9 +172,14 @@ function note(body: string): string {
 export function reuse_d3(input: RepeatUsageInput): RepeatUsageEmail {
   const first = input.first_name || "there";
   const subject = "That was the hard part. (It wasn't.)";
+  // v2: open with the contractor's OWN last claim where we have the data; else generic.
+  const anchor = claimAnchor(input);
+  const lead = anchor
+    ? `<p>${anchor}</p>`
+    : `<p>You just turned a pile of roof photos into a forensic claim package that holds up. That's the hard part done.</p>`;
   const html = shell(`<p>Hey ${first},</p>
 
-<p>You just turned a pile of roof photos into a forensic claim package that holds up. That's the hard part done.</p>
+${lead}
 
 <p>And here's the thing — I kept everything. Your pricing, your templates, your logo, the carrier playbooks. So the next one isn't a fresh start. It's photos in, package out.</p>
 

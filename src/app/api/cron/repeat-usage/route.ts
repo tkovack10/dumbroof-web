@@ -57,13 +57,24 @@ function authorize(req: NextRequest): boolean {
  * correctness: any newer claim (which would disqualify the user) is captured
  * too, so the computed max is the true most-recent claim.
  */
-async function lastClaimByUser(sinceIso: string): Promise<Map<string, string>> {
-  const out = new Map<string, string>();
+/** The most-recent claim per user + the fields the email anchor personalizes on. */
+interface LastClaim {
+  created_at: string;
+  carrier: string | null;
+  address: string | null;
+  contractor_rcv: number | null;
+  original_carrier_rcv: number | null;
+  settlement_amount: number | null;
+  claim_outcome: string | null;
+}
+
+async function lastClaimByUser(sinceIso: string): Promise<Map<string, LastClaim>> {
+  const out = new Map<string, LastClaim>();
   const PAGE = 1000;
   for (let from = 0; ; from += PAGE) {
     const { data, error } = await supabaseAdmin
       .from("claims")
-      .select("user_id, created_at")
+      .select("user_id, created_at, carrier, address, contractor_rcv, original_carrier_rcv, settlement_amount, claim_outcome")
       .gte("created_at", sinceIso)
       .order("created_at", { ascending: false })
       .range(from, from + PAGE - 1);
@@ -71,12 +82,21 @@ async function lastClaimByUser(sinceIso: string): Promise<Map<string, string>> {
       console.error("[repeat-usage] claims fetch failed:", error.message);
       break;
     }
-    const rows = (data || []) as Array<{ user_id: string | null; created_at: string | null }>;
+    const rows = (data || []) as Array<{ user_id: string | null; created_at: string | null } & Partial<LastClaim>>;
     for (const r of rows) {
       if (!r.user_id || !r.created_at) continue;
-      const prev = out.get(r.user_id);
       // Rows arrive newest-first; first one wins as the most-recent claim.
-      if (!prev) out.set(r.user_id, r.created_at);
+      if (!out.has(r.user_id)) {
+        out.set(r.user_id, {
+          created_at: r.created_at,
+          carrier: r.carrier ?? null,
+          address: r.address ?? null,
+          contractor_rcv: r.contractor_rcv ?? null,
+          original_carrier_rcv: r.original_carrier_rcv ?? null,
+          settlement_amount: r.settlement_amount ?? null,
+          claim_outcome: r.claim_outcome ?? null,
+        });
+      }
     }
     if (rows.length < PAGE) break;
   }
@@ -142,8 +162,8 @@ async function handle(req: NextRequest): Promise<NextResponse> {
   // Candidate = most-recent claim aged into [first touch start, last touch end).
   const minAge = REPEAT_USAGE_TOUCH_SPECS[0].windowStartHours;
   const candidateIds: string[] = [];
-  for (const [userId, claimIso] of lastClaim) {
-    const ageHours = (now - Date.parse(claimIso)) / MS_PER_HOUR;
+  for (const [userId, claim] of lastClaim) {
+    const ageHours = (now - Date.parse(claim.created_at)) / MS_PER_HOUR;
     if (ageHours >= minAge && ageHours < MAX_LOOKBACK_HOURS) candidateIds.push(userId);
   }
 
@@ -166,7 +186,8 @@ async function handle(req: NextRequest): Promise<NextResponse> {
     const r: PerTouchResult = { touch: spec.key, count_sent: 0, count_skipped: 0, errors: [] };
 
     for (const userId of candidateIds) {
-      const claimIso = lastClaim.get(userId)!;
+      const claim = lastClaim.get(userId)!;
+      const claimIso = claim.created_at;
       const ageHours = (now - Date.parse(claimIso)) / MS_PER_HOUR;
       if (ageHours < spec.windowStartHours || ageHours >= spec.windowEndHours) continue;
 
@@ -180,7 +201,21 @@ async function handle(req: NextRequest): Promise<NextResponse> {
 
       const firstName = deriveFirstName({ contact_name: profile?.contact_name, email: recipientEmail });
       const companyName = (profile?.company_name || "").trim();
-      const input = { first_name: firstName, company_name: companyName, email: recipientEmail };
+      const input = {
+        first_name: firstName,
+        company_name: companyName,
+        email: recipientEmail,
+        // v2 personalization: the contractor's OWN most-recent claim — the email
+        // anchor (claimAnchor) degrades won → variance → address+carrier → generic.
+        last_claim: {
+          carrier: claim.carrier,
+          address: claim.address,
+          contractor_rcv: claim.contractor_rcv,
+          original_carrier_rcv: claim.original_carrier_rcv,
+          settlement_amount: claim.settlement_amount,
+          outcome: claim.claim_outcome,
+        },
+      };
 
       if (dryRun) {
         plan.push({
