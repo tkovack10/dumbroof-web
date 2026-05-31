@@ -8,6 +8,8 @@
  * are standardized on this host.
  */
 
+import { COMPARISONS } from "./comparisons";
+
 export const SITE = {
   url: "https://www.dumbroof.ai",
   /** Marketing brand name. */
@@ -213,6 +215,12 @@ export const PUBLIC_ROUTES: RouteEntry[] = [
   { path: "/learn", changeFrequency: "weekly", priority: 0.8 },
   ...LEARN_GUIDES.map((g) => ({
     path: `/learn/${g.slug}`,
+    changeFrequency: "monthly" as ChangeFreq,
+    priority: 0.7,
+  })),
+  { path: "/compare", changeFrequency: "weekly", priority: 0.8 },
+  ...COMPARISONS.map((c) => ({
+    path: `/compare/${c.slug}`,
     changeFrequency: "monthly" as ChangeFreq,
     priority: 0.7,
   })),

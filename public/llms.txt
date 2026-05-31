@@ -23,6 +23,22 @@ DumbRoof generates a forensic-grade insurance claim package from source document
 - [What Is an AOB (Assignment of Benefits) for Roofing?](https://www.dumbroof.ai/learn/what-is-aob-assignment-of-benefits-roofing): How AOBs work, the pros and cons, state laws, and how digital signing streamlines them.
 - [How to Automate Insurance Invoicing for Roofing Contractors](https://www.dumbroof.ai/learn/how-to-automate-insurance-invoicing): Automating insurance invoicing with CRM integrations, QuickBooks syncing, and AI documentation.
 
+## Comparisons
+How DumbRoof compares to other approaches and tools roofers use. Many are complementary — measurements (EagleView, Hover) and photos (CompanyCam) feed INTO DumbRoof, and a CRM (AccuLynx, JobNimbus) can sit alongside it.
+
+- [DumbRoof Comparisons (hub)](https://www.dumbroof.ai/compare): Honest, factual breakdowns of where DumbRoof fits vs public adjusters, DIY supplements, Xactimate, and adjacent roofing/claims software.
+- [DumbRoof vs Hiring a Public Adjuster](https://www.dumbroof.ai/compare/dumbroof-vs-hiring-a-public-adjuster): Software you run yourself vs a licensed professional you hire on contingency — cost, control, and when each makes sense.
+- [DumbRoof vs DIY Roof Claim Supplement](https://www.dumbroof.ai/compare/dumbroof-vs-diy-roof-claim-supplement): Hand-building a supplement in spreadsheets and Word vs AI-generating a forensic, code-cited package in minutes.
+- [Best Xactimate Alternative for Roofers](https://www.dumbroof.ai/compare/best-xactimate-alternative-for-roofers): Xactimate is the carrier-side estimating standard; how roofers produce Xactimate-style supplement estimates without the learning curve.
+- [DumbRoof vs Roofr](https://www.dumbroof.ai/compare/dumbroof-vs-roofr): Roofr is a roofing sales/measurement and proposal platform; DumbRoof is insurance-supplement software. Where each fits and how they overlap.
+- [DumbRoof vs AccuLynx](https://www.dumbroof.ai/compare/dumbroof-vs-acculynx): AccuLynx is a roofing CRM that runs the whole business; DumbRoof builds the carrier-ready supplement. Use them together.
+- [DumbRoof vs JobNimbus](https://www.dumbroof.ai/compare/dumbroof-vs-jobnimbus): JobNimbus is a roofing CRM and pipeline; DumbRoof generates the forensic supplement. How the two complement each other.
+- [DumbRoof vs CompanyCam](https://www.dumbroof.ai/compare/dumbroof-vs-companycam): CompanyCam captures and organizes job-site photos; DumbRoof turns those photos plus the carrier scope into a supplement.
+- [DumbRoof vs EagleView](https://www.dumbroof.ai/compare/dumbroof-vs-eagleview): EagleView delivers aerial roof measurements; DumbRoof uses measurements (from EagleView or elsewhere) to build the supplement.
+- [DumbRoof vs Hover](https://www.dumbroof.ai/compare/dumbroof-vs-hover): Hover builds 3D measurement models from phone photos; DumbRoof consumes measurements to generate the forensic supplement.
+- [DumbRoof vs Symbility](https://www.dumbroof.ai/compare/dumbroof-vs-symbility): Symbility is a claims-estimating platform used carrier-side; DumbRoof is contractor-side software that builds the supplement to send back.
+- [DumbRoof vs ServiceTitan](https://www.dumbroof.ai/compare/dumbroof-vs-servicetitan): ServiceTitan is a broad field-service platform; DumbRoof is purpose-built for roofing insurance supplements.
+
 ## Company
 - Brand: DumbRoof (operated by USA Roof Masters / Dumb Roof Technologies)
 - Founder: Tom Kovack Jr., CEO
@@ -33,3 +49,4 @@ DumbRoof generates a forensic-grade insurance claim package from source document
 - Website: https://www.dumbroof.ai
 - Pricing: https://www.dumbroof.ai/pricing
 - Sample report: https://www.dumbroof.ai/sample
+- Comparisons: https://www.dumbroof.ai/compare

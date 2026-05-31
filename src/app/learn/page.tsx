@@ -152,6 +152,15 @@ export default function LearnIndex() {
           Expert guides on roofing insurance claims, damage identification,
           building codes, and AI technology.
         </p>
+        <p className="text-sm text-[var(--gray-muted)] mt-4">
+          Comparing tools instead?{" "}
+          <a
+            href="/compare"
+            className="text-[var(--cyan)] hover:underline font-medium"
+          >
+            See the DumbRoof comparisons &rarr;
+          </a>
+        </p>
       </section>
 
       <section className="pb-20 px-6">
