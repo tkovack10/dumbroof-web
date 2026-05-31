@@ -161,7 +161,7 @@ export const LOCATIONS: Location[] = [
     codeBasis:
       "Texas residential roofing work is generally governed by the International Residential Code (IRC) as adopted and amended by local jurisdictions; many Texas cities and counties enforce a recent IRC edition. Confirm the exact edition and any local amendments with your municipal building department.",
     deadlineNorms:
-      "Texas's general statute of limitations for breach of a written contract is four years, but property insurance policies typically contain a contractual 'suit-limitation' clause that sets a shorter window — Texas law recognizes a minimum of two years and one day, and many policies use that period measured from the date of loss. Because these vary by policy, read your policy's suit-limitation clause and act promptly.",
+      "Texas's general statute of limitations for breach of a written contract is four years, but property insurance policies typically contain a contractual 'suit-limitation' clause that sets a shorter window — Texas law recognizes a minimum of two years and one day, generally measured from when the claim accrues. Because these vary by policy, read your policy's suit-limitation clause and act promptly.",
     matchingRule:
       "Texas does not have a single, well-known statewide 'matching' statute that guarantees full like-kind-and-quality replacement across undamaged areas; matching outcomes generally turn on your specific policy language and the facts. Document why a partial repair cannot reasonably match the existing roof.",
     deductibleNorms:
@@ -361,13 +361,13 @@ export const LOCATIONS: Location[] = [
     abbr: "CO",
     region: "Hail Alley",
     title:
-      "Roof Insurance Claim Help in Colorado: Hail, Matching Law & Supplements (2026)",
+      "Roof Insurance Claim Help in Colorado: Hail, Deadlines & Supplements (2026)",
     description:
-      "Colorado roof insurance claim guide: Front Range hail, the Colorado matching statute, claim deadlines, the Division of Insurance complaint path, and DumbRoof supplements.",
+      "Colorado roof insurance claim guide: Front Range hail, like-kind-and-quality matching, claim deadlines, the Division of Insurance complaint path, and DumbRoof supplements.",
     summary:
-      "Front Range hail capital with a specific statutory matching protection (C.R.S. 10-4-110.8) for like-kind-and-quality replacement.",
+      "Front Range hail capital where matching turns on your policy's like-kind-and-quality language and the facts, not a statewide statute.",
     intro:
-      "Colorado's Front Range is one of the most hail-battered corridors in the country, and the state has an unusually homeowner-friendly matching statute. Both facts shape how Colorado roof claims should be documented.",
+      "Colorado's Front Range is one of the most hail-battered corridors in the country, so well-documented roof claims matter. Whether a partial repair has to be replaced to match comes down to your policy's like-kind-and-quality language and the facts of the loss.",
     stormProfile:
       "The Colorado Front Range — Denver, Colorado Springs, Fort Collins and the surrounding metro corridor — is among the most hail-prone regions in the United States, frequently producing costly hail seasons in NOAA/SPC climatology. Common roof damage includes hail bruising and fractures on asphalt shingles, heavy granule loss, cracked tiles, and damage to soft metals, vents, and flashing.",
     codeBasis:
@@ -375,7 +375,7 @@ export const LOCATIONS: Location[] = [
     deadlineNorms:
       "Colorado law sets limitations periods for contract actions, and your homeowners policy contains a contractual suit-limitation clause that may be shorter. Read your policy's clause and file promptly rather than relying on the general statutory period.",
     matchingRule:
-      "Colorado has a specific statutory protection: under C.R.S. 10-4-110.8, when replacement of damaged property is necessary, insurers must consider matching of the repaired or replaced items to undamaged adjacent areas for certain residential property claims. This is a meaningful tool when a partial roof repair would not reasonably match — confirm the current statutory language and how it applies to your loss.",
+      "Colorado does not have a single, widely known statewide 'matching' statute that guarantees full like-kind-and-quality replacement across undamaged areas; like-kind-and-quality disputes generally turn on your policy's language and on Colorado case law rather than a matching statute. Document why a partial repair cannot reasonably match the existing roof.",
     deductibleNorms:
       "Many Colorado homeowners policies apply a separate wind/hail deductible, frequently a percentage of dwelling coverage, given the state's hail exposure. Check your declarations page before you file.",
     doi: {
@@ -387,7 +387,7 @@ export const LOCATIONS: Location[] = [
       {
         question: "Does Colorado have a roof 'matching' law?",
         answer:
-          "Yes. Colorado's matching statute (C.R.S. 10-4-110.8) requires insurers to consider matching repaired or replaced items to undamaged adjacent areas for certain residential property claims. It can support a full replacement argument when a partial repair would not reasonably match. Confirm the current language; this is general information, not legal advice.",
+          "Colorado does not have a specific roof-matching statute. Whether a partial repair must be replaced to match turns on your policy's like-kind-and-quality language and the facts, supported by Colorado case law. Document why a partial repair cannot reasonably match the existing roof. This is general information, not legal advice.",
       },
       {
         question: "How long do I have to file a roof claim in Colorado?",
@@ -794,11 +794,11 @@ export const LOCATIONS: Location[] = [
     title:
       "Roof Insurance Claim Help in Missouri: Hail, Matching & Supplements (2026)",
     description:
-      "Missouri roof insurance claim guide: severe hail and wind, the Missouri matching regulation, the ten-year written-contract period, the DCI complaint path, and how DumbRoof builds a supplement.",
+      "Missouri roof insurance claim guide: severe hail and wind, matching case law (Alessi), the ten-year written-contract period, the DCI complaint path, and how DumbRoof builds a supplement.",
     summary:
-      "Severe hail/wind exposure plus a specific insurance matching regulation (20 CSR 100-1.050) and a ten-year written-contract limitations period.",
+      "Severe hail/wind exposure where matching turns on policy language and Missouri case law (Alessi), plus a ten-year written-contract limitations period.",
     intro:
-      "Missouri sees frequent severe hail and wind, and it has a specific insurance regulation addressing matching of repaired areas. Both shape how a roof claim should be documented.",
+      "Missouri sees frequent severe hail and wind, and whether a partial repair must be replaced to match turns on your policy's language and Missouri case law. Both shape how a roof claim should be documented.",
     stormProfile:
       "Missouri lies in an active severe-weather region with frequent large hail, damaging straight-line wind, and tornadoes. NOAA/SPC climatology shows Missouri among the more hail-active states. Common roof damage includes hail bruising and granule loss, fractured shingle mats, wind-lifted and missing shingles, and damage to ridge caps, vents, and flashing.",
     codeBasis:
@@ -806,7 +806,7 @@ export const LOCATIONS: Location[] = [
     deadlineNorms:
       "Missouri's statute of limitations for an action on a written contract for the payment of money or property is generally ten years (Section 516.110(1), RSMo), and Missouri treats policy provisions that try to set a shorter period contrary to that statute as against public policy. Even so, read your policy and file promptly.",
     matchingRule:
-      "Missouri has a specific insurance regulation addressing matching: 20 CSR 100-1.050 (standards for prompt, fair, and equitable settlement) addresses replacing items so a repaired area presents a reasonably uniform appearance with adjacent areas. This can support a fuller replacement when a partial repair would not reasonably match — confirm the current regulatory language and how it applies to your loss.",
+      "Missouri does not have a property-matching statute or regulation that mandates uniform appearance; like-kind-and-quality disputes generally turn on your policy's language (for example, terms like 'equivalent' or like-kind-and-quality) and Missouri case law. Alessi v. Mid-Century Ins. Co. (Mo. App. 2015) read a policy's 'equivalent' as 'equal in value' or 'virtually identical.' Document why a partial repair cannot reasonably match the existing roof.",
     deductibleNorms:
       "Many Missouri homeowners policies apply a separate wind/hail deductible, often a percentage of dwelling coverage, given the state's hail exposure. Check your declarations page before you file.",
     doi: {
@@ -818,7 +818,7 @@ export const LOCATIONS: Location[] = [
       {
         question: "Does Missouri have a roof 'matching' rule?",
         answer:
-          "Missouri's claims-settlement regulation (20 CSR 100-1.050) addresses replacing items so a repaired area reasonably matches adjacent areas. It can support a fuller replacement when a partial repair would not reasonably match. Confirm the current language; this is general information, not legal advice.",
+          "Missouri does not have a property-matching statute or regulation that mandates uniform appearance. Whether a partial repair must be replaced to match turns on your policy's language (such as 'equivalent' or like-kind-and-quality) and Missouri case law — Alessi v. Mid-Century Ins. Co. (Mo. App. 2015) read 'equivalent' as 'equal in value' or 'virtually identical.' Document why a partial repair cannot reasonably match. This is general information, not legal advice.",
       },
       {
         question: "How long do I have to file a roof claim in Missouri?",
@@ -847,19 +847,19 @@ export const LOCATIONS: Location[] = [
     title:
       "Roof Insurance Claim Help in Minnesota: Hail, Matching & Supplements (2026)",
     description:
-      "Minnesota roof insurance claim guide: severe hail, the Minnesota matching statute (65A.10), claim deadlines, the Commerce Department complaint path, and DumbRoof supplements.",
+      "Minnesota roof insurance claim guide: severe hail, matching case law (Cedar Bluff), claim deadlines, the Commerce Department complaint path, and DumbRoof supplements.",
     summary:
-      "Severe hail/wind exposure plus a specific statutory matching protection (Minn. Stat. 65A.10) for replacement-cost claims.",
+      "Severe hail/wind exposure plus notable Minnesota case law (Cedar Bluff) reading 'comparable material and quality' policy language to require a reasonable match.",
     intro:
-      "Minnesota sees major hail and wind events, and it has one of the clearest statutory matching protections in the country. Both shape how a roof claim should be built.",
+      "Minnesota sees major hail and wind events, and Minnesota case law has read policy 'comparable material and quality' language to require a reasonable color and appearance match. Both shape how a roof claim should be built.",
     stormProfile:
       "Minnesota experiences frequent severe thunderstorms with large hail and damaging wind, and it has seen some of the costliest hail events in the Upper Midwest in NOAA/SPC climatology. Common roof damage includes hail bruising and granule loss, fractured shingle mats, wind-lifted and missing shingles, and damage to ridge caps, vents, and flashing.",
     codeBasis:
       "Minnesota residential roofing is governed by the Minnesota State Building Code, which adopts the International Residential Code (IRC) with Minnesota amendments (including cold-climate provisions). Confirm the current edition with your local building department.",
     deadlineNorms:
-      "Minnesota's general statute of limitations for a contract action is six years, and policies commonly include a shorter, reasonable suit-limitation clause. Read your policy's clause and file promptly. Note that Minnesota's matching statute (65A.10) also governs how a replacement-cost loss is settled.",
+      "Minnesota's general statute of limitations for a contract action is six years, and policies commonly include a shorter, reasonable suit-limitation clause. Read your policy's clause and file promptly.",
     matchingRule:
-      "Minnesota has a specific statutory matching protection: Minn. Stat. 65A.10 requires that, when a covered loss requires replacement of items and the replaced items do not match adjacent items in quality, color, or size, the insurer must replace items in adjacent areas so the property reasonably matches. This is a strong tool when a partial repair would not reasonably match — confirm the current statutory language and how it applies.",
+      "Minnesota does not have a single, widely known statewide 'matching' statute that mandates uniform appearance; like-kind-and-quality disputes generally turn on your policy's language and the facts. Notably, Minnesota case law — Cedar Bluff Townhome Condominium Assn. v. American Family Mutual Ins. (Minn. 2014) — has read policy 'comparable material and quality' language to require a reasonable color and appearance match. Document why a partial repair cannot reasonably match the existing roof.",
     deductibleNorms:
       "Many Minnesota homeowners policies apply a separate wind/hail deductible, often a percentage of dwelling coverage, given the state's hail exposure. Check your declarations page before you file.",
     doi: {
@@ -871,7 +871,7 @@ export const LOCATIONS: Location[] = [
       {
         question: "Does Minnesota have a roof 'matching' law?",
         answer:
-          "Yes. Minnesota Statute 65A.10 requires insurers to replace items in adjacent areas so the property reasonably matches when replaced items would not otherwise match in quality, color, or size. It can support a full replacement when a partial repair would not reasonably match. Confirm the current language; this is general information, not legal advice.",
+          "Minnesota does not have a specific roof-matching statute, but it has notable case law: Cedar Bluff Townhome Condominium Assn. v. American Family Mutual Ins. (Minn. 2014) read policy 'comparable material and quality' language to require a reasonable color and appearance match. Whether a partial repair must be replaced to match turns on your policy's language and the facts. Document why a partial repair cannot reasonably match. This is general information, not legal advice.",
       },
       {
         question: "How long do I have to file a roof claim in Minnesota?",
