@@ -7,6 +7,7 @@ import {
   deriveFirstName,
   type NurtureTouchKey,
 } from "@/lib/nurture/templates";
+import { personalizeUnsubLinks, listUnsubscribeHeaders } from "@/lib/unsubscribe";
 
 export const maxDuration = 300;
 
@@ -248,11 +249,14 @@ async function handle(req: NextRequest): Promise<NextResponse> {
         email: recipientEmail,
       });
       const companyName = (profile?.company_name || "").trim();
-      const { subject, html } = spec.build({
+      const built = spec.build({
         first_name: firstName,
         company_name: companyName,
         email: recipientEmail,
       });
+      const subject = built.subject;
+      const unsub = { uid: u.id, e: recipientEmail };
+      const html = personalizeUnsubLinks(built.html, unsub);
 
       try {
         const { error: sendErr } = await resend.emails.send({
@@ -261,6 +265,7 @@ async function handle(req: NextRequest): Promise<NextResponse> {
           replyTo: REPLY_TO,
           subject,
           html,
+          headers: listUnsubscribeHeaders(unsub),
           tags: [
             { name: "type", value: "nurture" },
             { name: "touch", value: spec.key },

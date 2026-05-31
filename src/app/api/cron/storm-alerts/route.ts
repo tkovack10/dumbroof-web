@@ -18,6 +18,7 @@ import { deriveFirstName } from "@/lib/nurture/templates";
 import { stormRadius } from "@/lib/storm/state-adjacency";
 import { parseState } from "@/lib/storm/location";
 import { buildStormEmail } from "@/lib/nurture/repeat-usage-storm-templates";
+import { personalizeUnsubLinks, listUnsubscribeHeaders } from "@/lib/unsubscribe";
 
 export const maxDuration = 300;
 
@@ -206,13 +207,16 @@ async function handle(req: NextRequest): Promise<NextResponse> {
       continue;
     }
 
-    const { subject, html } = buildStormEmail(headline.event_type, {
+    const built = buildStormEmail(headline.event_type, {
       first_name: firstName,
       state: headline.state,
       county: headline.county,
       magnitude: headline.magnitude,
       date: humanDate,
     });
+    const subject = built.subject;
+    const unsub = { uid: userId, e: email };
+    const html = personalizeUnsubLinks(built.html, unsub);
 
     try {
       const { data: sentRes, error: sendErr } = await resend.emails.send({
@@ -221,6 +225,7 @@ async function handle(req: NextRequest): Promise<NextResponse> {
         replyTo: REPLY_TO,
         subject,
         html,
+        headers: listUnsubscribeHeaders(unsub),
         tags: [
           { name: "type", value: "storm-alert" },
           { name: "storm_type", value: headline.event_type },
