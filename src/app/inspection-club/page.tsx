@@ -1,5 +1,14 @@
+import type { Metadata } from "next";
 import { createClient } from "@/lib/supabase/server";
+import { absoluteUrl } from "@/lib/seo/site";
 import { InspectionClubContent } from "./inspection-club-content";
+
+export const metadata: Metadata = {
+  title: "Inspection Club — DumbRoof",
+  description:
+    "DumbRoof's network of roof inspectors. See where inspectors are active and join the club to document storm damage claims.",
+  alternates: { canonical: absoluteUrl("/inspection-club") },
+};
 
 export default async function InspectionClubPage() {
   const supabase = await createClient();

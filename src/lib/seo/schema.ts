@@ -73,6 +73,23 @@ export function softwareApplication(opts?: { offers?: Json }): Json {
   };
 }
 
+export function offerCatalog(opts: {
+  offers: Json[];
+  name?: string;
+  path?: string;
+}): Json {
+  return {
+    "@context": "https://schema.org",
+    "@type": "OfferCatalog",
+    name: opts.name ?? `${SITE.name} Plans`,
+    url: absoluteUrl(opts.path ?? "/pricing"),
+    // Reference the global SoftwareApplication entity by URL instead of
+    // re-declaring a second SoftwareApplication node on the pricing page.
+    itemOffered: { "@type": "SoftwareApplication", name: SITE.name, url: SITE.url },
+    itemListElement: opts.offers,
+  };
+}
+
 export function breadcrumbList(items: { name: string; path: string }[]): Json {
   return {
     "@context": "https://schema.org",

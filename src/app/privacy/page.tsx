@@ -1,9 +1,11 @@
 import { Metadata } from "next";
 import { Footer } from "@/components/footer";
+import { absoluteUrl } from "@/lib/seo/site";
 
 export const metadata: Metadata = {
   title: "Privacy Policy — DumbRoof.ai",
   description: "Privacy policy for DumbRoof.ai claim processing platform.",
+  alternates: { canonical: absoluteUrl("/privacy") },
 };
 
 export default function PrivacyPage() {
