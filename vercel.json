@@ -58,6 +58,10 @@
       "schedule": "0 14 * * *"
     },
     {
+      "path": "/api/cron/repeat-usage",
+      "schedule": "0 19 * * *"
+    },
+    {
       "path": "/api/cron/homeowner-sequences",
       "schedule": "0 13 * * *"
     },
