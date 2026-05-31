@@ -195,6 +195,10 @@ async function handle(req: NextRequest): Promise<NextResponse> {
       const recipientEmail = profile?.email || null;
       if (!recipientEmail) { r.count_skipped++; continue; }
       if (profile?.settings?.nurture_opted_out) { r.count_skipped++; continue; }
+      // Internal/team addresses never get the contractor re-engagement blast — it
+      // targets EXTERNAL customers, not DumbRoof/USARM's own staff (a "Tom: build your
+      // next claim" to tom@usaroofmasters.com is wrong audience + pollutes metrics).
+      if (/@(usaroofmasters\.com|dumbroof\.ai)$/i.test(recipientEmail)) { r.count_skipped++; continue; }
 
       const dedupKey = `${userId}|${spec.key}|${Date.parse(claimIso)}`;
       if (sentKeys.has(dedupKey)) { r.count_skipped++; continue; }
