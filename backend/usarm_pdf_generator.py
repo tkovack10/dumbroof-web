@@ -415,11 +415,29 @@ def html_to_pdf(html_path, pdf_path):
         raise RuntimeError(f"Chrome headless failed to create PDF: {os.path.basename(pdf_path)}")
 
 
+def _to_num(val, default=0.0):
+    """Coerce a possibly-string financial value to float.
+
+    Extracted carrier scopes occasionally deliver dollar/qty fields as STRINGS
+    ("12,345.67", "$12,345") — doing math on or formatting those raised
+    'Unknown format code f for object of type str' and failed the ENTIRE report
+    (the "Error" sales reps hit when generating). Robust-parse instead of crashing.
+    """
+    if val is None or isinstance(val, bool):
+        return default
+    if isinstance(val, (int, float)):
+        return float(val)
+    try:
+        return float(str(val).replace("$", "").replace(",", "").strip() or default)
+    except (ValueError, TypeError):
+        return default
+
+
 def fmt_money(val):
-    """Format a number as $X,XXX.XX."""
+    """Format a number as $X,XXX.XX (robust to string/None inputs — see _to_num)."""
     if val is None:
         return "$0.00"
-    return f"${val:,.2f}"
+    return f"${_to_num(val):,.2f}"
 
 
 def _is_initial_scope(item):
@@ -449,8 +467,8 @@ def compute_financials(config):
     if o_and_p:
         o_and_p_amount = round(line_total * 0.10 + line_total * 0.11, 2)  # 10% overhead + 11% profit (confirmed across 18 gold standard estimates)
 
-    deductible = config.get("carrier", {}).get("deductible", 0)
-    carrier_rcv = config.get("carrier", {}).get("carrier_rcv", 0)
+    deductible = _to_num(config.get("carrier", {}).get("deductible", 0))
+    carrier_rcv = _to_num(config.get("carrier", {}).get("carrier_rcv", 0))
 
     total_with_op = rcv + o_and_p_amount
     net_claim = round(total_with_op - deductible, 2)
