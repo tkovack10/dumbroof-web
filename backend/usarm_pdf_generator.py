@@ -1070,6 +1070,465 @@ tr:nth-child(even) td { background: #f8f9fa; }
 
 
 # ===================================================================
+# SPECTRAL DESIGN SYSTEM — DOC 01 FORENSIC CAUSATION REPORT
+# ===================================================================
+# Lifted VERBATIM from the shipped Doc-06 gold standard
+# (compliance_report.py :root tokens, fonts, cite-chip, run-head,
+# code-card, summary-table, cover). Doc 01 gets its OWN stylesheet so
+# Docs 02-05 stay byte-identical (they keep CSS_COMMON). The forensic
+# report re-styles EVERY utility class it uses — including the carry-over
+# .photo-grid / .photo-card / .caption / .toc-item / .info-box /
+# .media-quote / .footer-sig / .confidential / .cover-assoc-logos —
+# in Spectral, never deleting them. No literal palette hex appears
+# downstream of the :root block; every rule reads var(--token).
+
+# Google Fonts <link> for Spectral / Libre Franklin / IBM Plex Mono.
+# Lives in the <head>; print engines that ignore web fonts fall back to
+# the var()-declared local serif/sans/mono stacks (so the look degrades
+# gracefully to Georgia/Helvetica/Menlo rather than breaking).
+FORENSIC_FONTS_LINK = (
+    '<link rel="preconnect" href="https://fonts.googleapis.com">'
+    '<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>'
+    '<link href="https://fonts.googleapis.com/css2?'
+    'family=Spectral:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400&'
+    'family=Libre+Franklin:wght@400;500;600;700;800&'
+    'family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">'
+)
+
+FORENSIC_SPECTRAL_CSS = """
+/* ============================================================
+   :root — SWAPPABLE PER-COMPANY THEME (edit ONLY this block to
+   re-skin the entire forensic report for another contractor's
+   brand). Every component below reads var(--token); no literal
+   palette value is repeated downstream.
+   ============================================================ */
+:root {
+    /* — brand palette — */
+    --c-navy:        #0d1b3e;
+    --c-navy-deep:   #091230;
+    --c-navy-soft:   #16284f;
+    --c-brick:       #9a2b2f;
+    --c-brick-bright:#b8383c;
+    --c-brick-warm:  #c98f6d;
+
+    /* — sheet / neutrals — */
+    --c-paper:       #faf8f3;
+    --c-paper-warm:  #f3efe5;
+    --c-ink:         #1a1f29;
+    --c-slate:       #4a5568;
+    --c-mute:        #8a93a3;
+    --c-line:        #d8d2c5;
+    --c-line-soft:   #e7e2d6;
+    --c-gold:        #b08a3e;
+
+    /* — SEMANTIC STATUS ONLY (forest / red carry the verified-vs-
+         omitted signal — never decorative) — */
+    --c-included:    #1f6b4a;
+    --c-included-bg: #e6efe8;
+    --c-included-bd: #bcd6c6;
+    --c-omitted:     #9a2b2f;
+    --c-omitted-bg:  #f5dede;
+    --c-omitted-bd:  #e2b9b9;
+
+    /* — type tokens — */
+    --f-serif: 'Spectral', Georgia, 'Times New Roman', serif;
+    --f-sans:  'Libre Franklin', -apple-system, Helvetica, Arial, sans-serif;
+    --f-mono:  'IBM Plex Mono', 'SFMono-Regular', Menlo, monospace;
+}
+
+@page { size: letter; margin: 0.55in 0.6in; }
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+    font-family: var(--f-sans);
+    color: var(--c-ink);
+    background: var(--c-paper);
+    line-height: 1.5;
+    font-size: 10pt;
+    -webkit-print-color-adjust: exact; print-color-adjust: exact;
+}
+
+h1 { font-family: var(--f-serif); font-size: 20pt; font-weight: 600; color: var(--c-navy); margin: 16pt 0 8pt 0; letter-spacing: -0.01em; }
+h2 {
+    font-family: var(--f-serif); font-size: 16pt; font-weight: 600; color: var(--c-navy);
+    margin: 22pt 0 10pt 0; padding-bottom: 6pt; letter-spacing: -0.01em;
+    border-bottom: 2px solid var(--c-navy);
+}
+h3 {
+    font-family: var(--f-serif); font-size: 12.5pt; font-weight: 600; color: var(--c-navy);
+    margin: 16pt 0 7pt 0; letter-spacing: -0.005em; position: relative;
+}
+h3::after { content: ""; display: block; width: 26px; height: 2px; background: var(--c-brick); margin-top: 5pt; }
+p { margin: 6pt 0; }
+ul, ol { margin: 6pt 0 6pt 24pt; }
+li { margin: 3pt 0; }
+a { color: var(--c-navy); }
+strong, b { font-weight: 700; }
+
+/* base table → Spectral summary-table treatment (navy header, brick
+   keyline, warm zebra). All evidence numbers go mono. */
+table {
+    width: 100%; border-collapse: collapse; margin: 12pt 0; font-size: 9.5pt;
+}
+th {
+    background: var(--c-navy); color: #dfe5ee; padding: 8pt 10pt; text-align: left;
+    font-family: var(--f-sans); font-weight: 700; font-size: 8pt; letter-spacing: 0.12em;
+    text-transform: uppercase; border-bottom: 2px solid var(--c-brick);
+}
+td { padding: 7pt 10pt; border-bottom: 1px solid var(--c-line-soft); vertical-align: middle; color: var(--c-slate); }
+td strong { color: var(--c-ink); }
+tr:nth-child(even) td { background: var(--c-paper-warm); }
+.amt { text-align: right; font-family: var(--f-mono); color: var(--c-ink); }
+/* mono utility — every measurement / numeric data cell reads as data, not copy */
+td.mono, .mono { font-family: var(--f-mono); color: var(--c-ink); letter-spacing: 0.01em; }
+
+/* ── THE CITATION CHIP — every code / standard reference ── */
+.cite-chip {
+    display: inline-block; font-family: var(--f-mono); font-weight: 700;
+    font-size: 9pt; letter-spacing: 0.02em; line-height: 1.3;
+    color: var(--c-brick); background: var(--c-omitted-bg);
+    border: 1px solid var(--c-omitted-bd); border-radius: 3px;
+    padding: 1.5pt 7pt; white-space: nowrap; vertical-align: baseline;
+}
+.cite-chip.neutral { color: var(--c-slate); background: var(--c-paper-warm); border-color: var(--c-line); }
+.cite-chip.on-navy { color: #fff; background: rgba(184,56,60,0.92); border-color: rgba(255,255,255,0.25); }
+
+/* section eyebrow */
+.sec-eyebrow {
+    font-family: var(--f-sans); font-size: 8pt; font-weight: 700; letter-spacing: 0.26em;
+    text-transform: uppercase; color: var(--c-brick); margin: 22pt 0 1pt 0;
+}
+
+/* ── COVER (full-bleed navy authority field, logo-leads) ── */
+.cover {
+    position: relative;
+    background: var(--c-navy);
+    color: #eef1f5; margin: -0.55in -0.6in 0 -0.6in; padding: 0.62in 0.6in 0.5in;
+    min-height: 10in;
+}
+.cover .cover-frame { position: absolute; inset: 0.26in; border: 1px solid rgba(255,255,255,0.16); pointer-events: none; }
+.cover-top { display: flex; justify-content: space-between; align-items: flex-start; position: relative; z-index: 2; }
+.cover-wordmark { font-family: var(--f-sans); font-weight: 800; font-size: 12pt; letter-spacing: 0.15em; color: #fff; }
+.cover-wordmark .wm-sub { display: block; font-size: 6pt; letter-spacing: 0.32em; font-weight: 600; color: var(--c-brick-warm); text-transform: uppercase; margin-top: 4pt; }
+.cover-tab {
+    font-family: var(--f-sans); font-size: 7pt; font-weight: 700; letter-spacing: 0.24em; text-transform: uppercase;
+    color: #fff; border: 1px solid rgba(255,255,255,0.3); padding: 5pt 11pt; border-radius: 2px;
+}
+/* knockout company-logo hero in a hairline ring */
+.cover-logo-hero { position: relative; z-index: 2; margin-top: 0.5in; text-align: center; }
+.cover-logo-hero .logo-ring {
+    display: inline-flex; align-items: center; justify-content: center;
+    padding: 18pt 26pt; border: 1px solid rgba(255,255,255,0.24); border-radius: 4px;
+    background: rgba(255,255,255,0.03);
+}
+.cover-logo-hero .logo-ring img { height: 84pt; width: auto; max-width: 320pt; object-fit: contain;
+    filter: brightness(0) invert(1); }
+.cover-logo-hero .logo-ring .logo-text-fallback {
+    color: #fff; border-bottom-color: var(--c-brick-bright); font-family: var(--f-sans);
+}
+.cover-hero { position: relative; z-index: 2; margin-top: 0.45in; }
+.cover-kicker { font-family: var(--f-sans); font-weight: 700; font-size: 8pt; letter-spacing: 0.38em; text-transform: uppercase; color: var(--c-brick-warm); margin-bottom: 14pt; }
+.cover h1 { font-family: var(--f-serif); font-weight: 600; font-size: 40pt; line-height: 1.0; color: #fff; margin: 0; letter-spacing: -0.015em; border: 0; padding: 0; }
+.cover .cover-subtitle { font-family: var(--f-serif); font-style: italic; font-weight: 300; font-size: 13pt; line-height: 1.45; color: #aeb9cb; margin-top: 18pt; max-width: 5.6in; border-left: 2px solid var(--c-brick-bright); padding-left: 16pt; }
+
+.cover-meta { position: relative; z-index: 2; margin-top: 28pt; display: grid; grid-template-columns: 1fr 1fr 1fr; border-top: 1px solid rgba(255,255,255,0.16); }
+.cover-meta .cell { padding: 13pt 16pt 11pt 0; border-right: 1px solid rgba(255,255,255,0.1); border-bottom: 1px solid rgba(255,255,255,0.1); }
+.cover-meta .cell:nth-child(3n) { border-right: 0; }
+.cover-meta .k { font-family: var(--f-sans); font-size: 6.5pt; letter-spacing: 0.24em; text-transform: uppercase; color: #8ea0bd; margin-bottom: 6pt; }
+.cover-meta .v { font-size: 10pt; color: #eef1f5; line-height: 1.4; font-weight: 600; }
+.cover-meta .v.serif { font-family: var(--f-serif); font-weight: 500; font-size: 12pt; }
+.cover-meta .v.mono { font-family: var(--f-mono); font-weight: 600; font-size: 10.5pt; letter-spacing: 0.01em; }
+
+.cover-foot { position: relative; z-index: 2; margin-top: 26pt; padding-top: 14pt; border-top: 1px solid rgba(255,255,255,0.16); display: flex; justify-content: space-between; align-items: flex-end; }
+.cover-foot .prep .pl { font-family: var(--f-sans); font-size: 6.5pt; letter-spacing: 0.28em; text-transform: uppercase; color: #8ea0bd; margin-bottom: 5pt; }
+.cover-foot .prep .pv { font-family: var(--f-serif); font-size: 13pt; color: #fff; }
+/* credential logo row on the navy foot */
+.cover-assoc-logos {
+    display: flex; justify-content: flex-end; align-items: center; gap: 18pt;
+    margin: 0; position: relative; z-index: 2;
+}
+.cover-assoc-logos img { height: 26pt; width: auto; opacity: 0.78; filter: grayscale(1) brightness(1.6); }
+
+/* ── INTERIOR CHROME — .run-head (chain-of-custody masthead) ── */
+.run-head { display: flex; justify-content: space-between; align-items: flex-start; padding-bottom: 10pt; border-bottom: 2px solid var(--c-navy); margin-bottom: 6pt; }
+.run-head .rh-mark { font-family: var(--f-sans); font-weight: 800; font-size: 11pt; letter-spacing: 0.12em; color: var(--c-navy); }
+.run-head .rh-mark .rh-sub { display: block; font-family: var(--f-sans); font-weight: 600; font-size: 6pt; letter-spacing: 0.22em; text-transform: uppercase; color: var(--c-brick); margin-top: 3pt; }
+.run-head .rh-r { text-align: right; }
+.run-head .rh-r .rh-doc { font-family: var(--f-sans); font-size: 7pt; letter-spacing: 0.22em; text-transform: uppercase; color: var(--c-slate); font-weight: 700; }
+.run-head .rh-r .rh-claim { font-family: var(--f-mono); font-size: 10pt; color: var(--c-navy); margin-top: 4pt; }
+
+/* ── TOC (dotted leaders) ── */
+.toc-item {
+    display: flex; justify-content: space-between; padding: 6pt 0;
+    border-bottom: 1px dotted var(--c-line); font-size: 10pt; color: var(--c-slate);
+    font-family: var(--f-sans);
+}
+
+/* ── callout boxes (re-styled in Spectral) ── */
+.success-box {
+    background: var(--c-included-bg); border-left: 4px solid var(--c-included);
+    padding: 11pt 15pt; margin: 11pt 0; border-radius: 3px; font-size: 9.5pt; color: var(--c-ink);
+}
+.success-box strong { color: var(--c-included); }
+.critical-box {
+    background: var(--c-omitted-bg); border-left: 4px solid var(--c-brick);
+    padding: 11pt 15pt; margin: 11pt 0; border-radius: 3px; font-size: 9.5pt; color: var(--c-ink);
+}
+.critical-box strong { color: var(--c-brick); }
+.highlight-box {
+    background: var(--c-paper-warm); border-left: 4px solid var(--c-gold);
+    padding: 11pt 15pt; margin: 11pt 0; border-radius: 3px; font-size: 9.5pt; color: var(--c-ink);
+}
+.highlight-box strong { color: var(--c-ink); }
+.info-box {
+    background: var(--c-paper-warm); border-left: 4px solid var(--c-navy);
+    padding: 11pt 15pt; margin: 11pt 0; border-radius: 3px; font-size: 9.5pt; color: var(--c-ink);
+}
+.info-box strong { color: var(--c-navy); }
+.info-box em { font-family: var(--f-serif); font-style: italic; color: var(--c-navy); }
+
+/* ── media quote (corroborating reports) ── */
+.media-quote {
+    background: #fff; border: 1px solid var(--c-line); border-left: 3px solid var(--c-slate);
+    padding: 11pt 15pt; margin: 11pt 0; border-radius: 3px; font-size: 9.5pt;
+    font-family: var(--f-serif); font-style: italic; color: var(--c-slate); line-height: 1.55;
+}
+.media-quote .source {
+    font-family: var(--f-mono); font-style: normal; font-weight: 600;
+    color: var(--c-navy); font-size: 8pt; margin-top: 5pt;
+}
+.media-quote .source a { color: var(--c-navy); }
+
+/* ── PHOTO EVIDENCE — .photo-grid / evidence plate ── */
+.photo-grid {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 10pt; margin: 12pt 0;
+}
+/* .photo-card kept (the forensic photo core) — re-styled as the
+   evidence plate: brick top-keyline, warm-paper caption, no shadow. */
+.photo-card {
+    break-inside: avoid; page-break-inside: avoid;
+    border: 1px solid var(--c-line); border-radius: 4px; overflow: hidden;
+    background: #fff; border-top: 2px solid var(--c-brick);
+}
+.photo-card img { width: 100%; height: auto; display: block; }
+.photo-card .caption {
+    padding: 8pt 10pt; font-size: 8pt; color: var(--c-slate);
+    background: var(--c-paper-warm); line-height: 1.4; font-family: var(--f-sans);
+}
+.photo-card .caption strong { color: var(--c-ink); }
+
+/* ── DAMAGE DIFFERENTIATION / causation semantic cells ── */
+.obs-yes, .concl-consistent { color: var(--c-included); font-weight: 700; }
+.obs-no, .concl-inconsistent { color: var(--c-brick); font-weight: 700; }
+
+/* ── code-compliance .code-card stack ── */
+.code-card { border: 1px solid var(--c-line); border-radius: 4px; padding: 14pt 18pt; margin: 12pt 0; break-inside: avoid; background: #fff; }
+.code-card.critical { border-left: 4px solid var(--c-brick); }
+.code-card .cc-top { display: flex; align-items: center; gap: 10pt; margin-bottom: 7pt; flex-wrap: wrap; }
+.code-card .code-title { font-family: var(--f-serif); font-size: 14pt; font-weight: 600; color: var(--c-navy); margin: 0; }
+.code-card .requirement { font-size: 9.5pt; color: var(--c-ink); background: var(--c-paper-warm); padding: 9pt 13pt; border-radius: 3px; margin: 8pt 0; border-left: 3px solid var(--c-navy); line-height: 1.55; }
+.code-card .supplement { font-size: 9pt; color: var(--c-slate); margin-top: 7pt; line-height: 1.5; }
+.code-card .supplement b { color: var(--c-omitted); }
+
+/* ── mfr-spec block ── */
+.mfr-spec { background: var(--c-paper-warm); border: 1px solid var(--c-line); border-left: 3px solid var(--c-gold); border-radius: 3px; padding: 9pt 13pt; margin: 9pt 0; break-inside: avoid; }
+.mfr-spec .mfr-name { font-family: var(--f-sans); font-weight: 700; font-size: 9pt; letter-spacing: 0.06em; text-transform: uppercase; color: var(--c-gold); }
+.mfr-spec .warranty-void { color: var(--c-brick); font-weight: 700; font-size: 9.5pt; margin-top: 4pt; }
+
+/* ── threshold-vs-age chart (Spectral idiom) ── */
+.threshold-chart {
+    border: 1px solid var(--c-line); border-radius: 4px; padding: 14pt; margin: 12pt 0;
+    background: #fff; break-inside: avoid;
+}
+.threshold-chart .chart-title {
+    font-family: var(--f-sans); font-size: 8.5pt; font-weight: 700; color: var(--c-navy);
+    margin-bottom: 10pt; text-transform: uppercase; letter-spacing: 0.14em;
+}
+.threshold-chart .bar-row { display: flex; align-items: center; margin: 4pt 0; font-size: 9pt; }
+.threshold-chart .bar-label { width: 70pt; font-weight: 600; color: var(--c-slate); }
+.threshold-chart .bar-value { width: 50pt; font-family: var(--f-mono); font-weight: 600; color: var(--c-navy); text-align: right; padding-right: 8pt; }
+.threshold-chart .bar-fill { height: 13pt; background: var(--c-navy); border-radius: 2px; }
+.threshold-chart .bar-fill.property { background: var(--c-brick); }
+.threshold-chart .property-indicator {
+    margin-top: 10pt; padding: 8pt 12pt; background: var(--c-paper-warm);
+    border: 1px solid var(--c-line); border-left: 3px solid var(--c-navy); border-radius: 3px;
+    font-size: 9pt; color: var(--c-ink); font-weight: 600;
+}
+.threshold-chart .property-indicator strong { font-family: var(--f-mono); color: var(--c-navy); }
+.threshold-chart .exceeds-line {
+    margin-top: 8pt; padding: 8pt 12pt; background: var(--c-omitted-bg);
+    border-left: 4px solid var(--c-brick); border-radius: 3px; font-size: 9.5pt;
+    font-weight: 700; color: var(--c-brick);
+}
+.threshold-chart .exceeds-line strong { font-family: var(--f-mono); }
+
+/* ── THE ONE SERIF-ON-NAVY CREDIBILITY CLIMAX ── */
+.credibility-climax {
+    background: var(--c-navy); border-top: 2px solid var(--c-brick);
+    padding: 16pt 22pt; margin: 18pt 0; break-inside: avoid; text-align: left;
+}
+.credibility-climax .cc-label {
+    font-family: var(--f-sans); font-size: 8pt; font-weight: 700; letter-spacing: 0.2em;
+    text-transform: uppercase; color: var(--c-brick-warm); margin-bottom: 8pt;
+}
+.credibility-climax .cc-figure {
+    font-family: var(--f-serif); font-weight: 600; font-size: 19pt; color: #fff; line-height: 1.1;
+}
+.credibility-climax .cc-sub { font-family: var(--f-sans); font-size: 9pt; color: #aeb9cb; margin-top: 7pt; line-height: 1.5; }
+
+/* ── total / variance helpers ── */
+.total-row td { font-weight: 700; background: var(--c-paper-warm) !important; border-top: 2px solid var(--c-navy); color: var(--c-ink); }
+.grand-total td { font-weight: 700; font-size: 11pt; background: var(--c-navy) !important; color: #fff; }
+.section-total td { font-weight: 700; background: var(--c-paper-warm) !important; border-top: 2px solid var(--c-navy); }
+.variance-positive, .var-pos { color: var(--c-brick); font-weight: 700; }
+
+/* ── footer signature ── */
+.footer-sig { margin-top: 22pt; padding-top: 10pt; border-top: 1px solid var(--c-line); font-size: 10pt; color: var(--c-slate); }
+.footer-sig .name { font-family: var(--f-serif); font-weight: 600; font-size: 13pt; color: var(--c-navy); }
+.footer-sig .title { font-weight: 600; color: var(--c-slate); }
+
+/* ── confidential footer ── */
+.confidential { margin-top: 22pt; padding-top: 8pt; border-top: 1px solid var(--c-line-soft); font-size: 7pt; color: var(--c-mute); text-align: center; font-family: var(--f-sans); letter-spacing: 0.04em; }
+
+/* ── integrity / authenticity seal (navy concentric rings) ── */
+.integrity-seal-wrap { margin-top: 26pt; break-inside: avoid; text-align: center; }
+.integrity-seal { display: inline-block; width: 210px; height: 210px; border-radius: 50%; position: relative; }
+.integrity-seal .ring-outer { width: 210px; height: 210px; border-radius: 50%; border: 4px solid var(--c-navy); position: absolute; inset: 0; }
+.integrity-seal.flagged .ring-outer { border-color: var(--c-brick); }
+.integrity-seal .ring-inner { position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); width: 182px; height: 182px; border-radius: 50%; border: 2px solid var(--c-navy); display: flex; flex-direction: column; align-items: center; justify-content: center; }
+.integrity-seal.flagged .ring-inner { border-color: var(--c-brick); }
+.integrity-seal .seal-legend { font-family: var(--f-sans); font-size: 6pt; font-weight: 700; color: var(--c-navy); letter-spacing: 0.14em; text-transform: uppercase; }
+.integrity-seal.flagged .seal-legend { color: var(--c-brick); }
+.integrity-seal .seal-sub { font-family: var(--f-sans); font-size: 5.5pt; font-weight: 700; color: var(--c-navy); letter-spacing: 0.12em; text-transform: uppercase; margin-bottom: 5pt; }
+.integrity-seal.flagged .seal-sub { color: var(--c-brick); }
+.integrity-seal .seal-rule { width: 46px; height: 2px; background: var(--c-brick); margin: 5pt 0; }
+.integrity-seal .seal-score { font-family: var(--f-mono); font-size: 26pt; font-weight: 600; color: var(--c-navy); line-height: 1; }
+.integrity-seal.flagged .seal-score { color: var(--c-brick); }
+.integrity-seal .seal-status { font-family: var(--f-sans); font-size: 6pt; font-weight: 700; color: var(--c-navy); letter-spacing: 0.1em; text-transform: uppercase; margin-top: 4pt; }
+.integrity-seal.flagged .seal-status { color: var(--c-brick); }
+.integrity-seal .seal-result { font-family: var(--f-sans); font-size: 5.5pt; color: var(--c-mute); font-weight: 600; margin-top: 2pt; }
+.integrity-seal .seal-attr { font-family: var(--f-sans); font-size: 5pt; color: var(--c-gold); letter-spacing: 0.14em; margin-top: 5pt; text-transform: uppercase; font-weight: 700; }
+
+/* ── cert + disclaimer ── */
+.cert-card { margin-top: 20pt; padding: 12pt 16pt; border: 1px solid var(--c-navy); border-radius: 4px; break-inside: avoid; font-size: 9.5pt; color: var(--c-ink); }
+.cert-card strong { color: var(--c-navy); }
+.uppa-disclaimer { margin-top: 12pt; padding: 10pt 14pt; background: var(--c-paper-warm); border-radius: 3px; font-size: 8pt; color: var(--c-slate); }
+.uppa-disclaimer em { font-family: var(--f-serif); font-style: italic; }
+
+/* ── lead callout (serif-italic carrier-contradiction line) ── */
+.lead-callout {
+    background: var(--c-paper-warm); border-left: 3px solid var(--c-brick);
+    padding: 13pt 18pt; margin: 12pt 0; border-radius: 3px; break-inside: avoid;
+}
+.lead-callout .lc-label { font-family: var(--f-sans); font-size: 7pt; letter-spacing: 0.3em; text-transform: uppercase; color: var(--c-brick); font-weight: 700; margin-bottom: 7pt; }
+.lead-callout p { font-family: var(--f-serif); font-style: italic; font-size: 11.5pt; line-height: 1.6; color: var(--c-ink); margin: 0; }
+.lead-callout p b { font-style: normal; color: var(--c-navy); font-weight: 700; }
+
+/* page break utility */
+.page-break { page-break-after: always; }
+"""
+
+
+def _cite_chip(citation, *, neutral=False, on_navy=False):
+    """Render a code / standard reference as the load-bearing .cite-chip
+    anchor (mono, brick on paper) — never bold inline text. ``neutral`` =
+    a non-code reference (HAAG, ASTM, NOAA, NWS); ``on_navy`` = placed on a
+    dark band. Empty/blank citation renders nothing. The chip TEXT is the
+    citation verbatim, so the stripped-text substance fingerprint (golden
+    bridge) is preserved."""
+    text = (citation or "").strip()
+    if not text:
+        return ""
+    cls = "cite-chip"
+    if neutral:
+        cls += " neutral"
+    if on_navy:
+        cls += " on-navy"
+    return f'<span class="{cls}">{text}</span>'
+
+
+# ── Doc-01 Spectral variants of the shared seal/cert/disclaimer blocks ──
+# These emit Spectral-token markup (class-driven, no inline hex) and are used
+# ONLY by the forensic report. The shared _build_integrity_stamp /
+# _build_contractor_cert / _build_uppa_disclaimer are left UNTOUCHED so Docs
+# 02–05 (which still use CSS_COMMON) stay byte-identical. Content (score,
+# status text, cert/disclaimer prose) is preserved verbatim.
+
+def _build_integrity_stamp_spectral(config):
+    """Spectral authenticity seal — the ONE serif/mono-on-navy credibility
+    climax of Doc 01. Navy concentric rings (brick if a photo is flagged), a
+    large mono score, gold DUMBROOF.AI attribution. Same content/score as the
+    shared stamp; only the chrome is re-skinned via .integrity-seal tokens."""
+    integrity = config.get("photo_integrity")
+    if not integrity or not integrity.get("total_analyzed"):
+        return ""
+    total = integrity["total_analyzed"]
+    flagged = integrity["flagged"]
+    score = integrity["score"]
+
+    if flagged == 0:
+        flagged_cls = ""
+        status_line = "NO MANIPULATED PHOTOS FOUND"
+        result_text = f"All {total} photos verified authentic"
+    else:
+        flagged_cls = " flagged"
+        status_line = f"{flagged} PHOTO(S) FLAGGED FOR REVIEW"
+        result_text = f"{flagged} of {total} photos require review"
+
+    return f'''
+<div class="integrity-seal-wrap">
+  <div class="integrity-seal{flagged_cls}">
+    <div class="ring-outer"></div>
+    <div class="ring-inner">
+      <div class="seal-legend">MAN-MADE DAMAGE &amp; MANIPULATION</div>
+      <div class="seal-sub">IP DETECTION TECHNOLOGY</div>
+      <div class="seal-rule"></div>
+      <div class="seal-score">{score}</div>
+      <div class="seal-rule"></div>
+      <div class="seal-status">{status_line}</div>
+      <div class="seal-result">{result_text}</div>
+      <div class="seal-attr">DUMBROOF.AI</div>
+    </div>
+  </div>
+</div>'''
+
+
+def _build_contractor_cert_spectral(config):
+    """Spectral contractor certification card (Doc 01 only). Same gated
+    content + name-hygiene guards as the shared helper; .cert-card chrome."""
+    lang = get_language(config)
+    if not lang["contractor_cert"]:
+        return ""
+    compliance = config.get("compliance", {})
+    inspectors_cfg = config.get("inspectors", {})
+    company = config["company"]
+    name = inspectors_cfg.get("usarm_inspector", company["ceo_name"])
+    if any(w in name.lower() for w in ["dumb roof", "ai analysis", "automated", "bot"]):
+        name = company["ceo_name"]
+    if not name or any(w in name.lower() for w in ["dumb roof", "ai analysis", "automated", "bot"]):
+        name = company.get("name", "Contractor")
+    license_num = compliance.get("license_number", "")
+    license_text = f" ({license_num})" if license_num else ""
+    return f'''
+<div class="cert-card">
+<p style="margin:0;"><strong>Contractor Certification:</strong> I, {name}, a licensed roofing contractor{license_text}, certify that this report reflects my professional assessment of the scope required to restore this property to a complete, code-compliant condition.</p>
+</div>'''
+
+
+def _build_uppa_disclaimer_spectral(config):
+    """Spectral UPPA disclaimer (Doc 01 only). Same gated content as the
+    shared helper; .uppa-disclaimer chrome (slate italic on warm paper)."""
+    lang = get_language(config)
+    if not lang.get("disclaimer"):
+        return ""
+    company = config["company"]
+    text = lang["disclaimer"].format(company=company["name"])
+    return f'''
+<div class="uppa-disclaimer">
+<p style="margin:0;"><em>{text}</em></p>
+</div>'''
+
+
+# ===================================================================
 # DOCUMENT 1: FORENSIC CAUSATION REPORT
 # ===================================================================
 
@@ -1574,11 +2033,15 @@ def _build_wind_amplification_chart(config):
     hail threshold aging chart in structure and styling.
 
     Inputs:
-        weather.noaa.max_wind_mph — NOAA ground-level wind speed
+        weather.noaa.max_wind_mph — NOAA ground-level wind speed (DRIVES inclusion)
         estimate_request.roof_material — maps to ASTM wind rating
-        estimate_request.damage_type — "wind" or "combined" triggers this chart
+        estimate_request.damage_type — label only: wind/combined/unspecified show
+            down to the 40 mph floor; a "hail" label shows once max_wind >= 58 mph
+            (NWS severe-thunderstorm threshold) so the same storm's high winds are
+            still documented as a corroborating peril.
 
-    Returns empty string if no wind data or if damage_type is hail-only.
+    Returns empty string when there is no wind data, max_wind < 40 mph, or the
+    claim is hail-labeled AND max_wind < 58 mph (the NWS severe-wind threshold).
     """
     weather = config.get("weather", {})
     noaa = weather.get("noaa", {})
@@ -1594,11 +2057,18 @@ def _build_wind_amplification_chart(config):
     if max_wind < 40:
         return ""
 
-    # Only show for wind or combined claims. If damage_type isn't set, show
-    # whenever we have wind data (the AI may have detected wind damage).
+    # Wind analysis is gated on the STORM DATA, not the user's damage-type label
+    # (Tom, 2026-05-31). The same storm cell that drops hail commonly produces
+    # damaging straight-line winds; when the NOAA record shows high winds, the
+    # report should document them as a contributing peril even on a hail-labeled
+    # claim. For a hail-labeled claim we auto-surface the wind amplification
+    # analysis only once the recorded peak gust reaches the NWS severe-thunderstorm
+    # criterion (58 mph / 50 kt) — unambiguously "high winds" and citable. Declared
+    # wind/combined claims (and unspecified) keep the lower 40 mph damage floor.
     damage_type = estimate_req.get("damage_type", "")
-    if damage_type == "hail":
-        return ""  # Hail-only claim — skip the wind chart
+    NWS_SEVERE_WIND_MPH = 58
+    if damage_type == "hail" and max_wind < NWS_SEVERE_WIND_MPH:
+        return ""  # hail-labeled AND winds below the high-wind threshold
 
     # Map roof material to ASTM wind rating (mph)
     roof_material = (estimate_req.get("roof_material", "") or "").lower()
@@ -1694,13 +2164,13 @@ def _build_wind_amplification_chart(config):
     bar_rows = ""
     for label, mult, vel in zone_multipliers:
         if vel > shingle_rating:
-            bar_color = "#c8102e"  # Red — exceeds rating
+            bar_color = "var(--c-brick)"  # brick — exceeds rating (Spectral semantic)
             status = "EXCEEDS"
         elif vel > shingle_rating * 0.9:
-            bar_color = "#f59e0b"  # Amber — marginal
+            bar_color = "var(--c-gold)"  # gold — marginal
             status = "MARGINAL"
         else:
-            bar_color = "#2e7d32"  # Green — below rating
+            bar_color = "var(--c-included)"  # forest — below rating
             status = ""
 
         # `mult` is the ASCE 7 zone PRESSURE ratio; the velocity shown is its
@@ -1720,19 +2190,19 @@ def _build_wind_amplification_chart(config):
 
     html = f'''<div class="threshold-chart">
 <div class="chart-title">Wind Velocity Amplification &mdash; ASCE 7 Roof Zone Analysis</div>
-<p style="font-size:8.5pt;color:#6b7280;margin:3pt 0 8pt 0;">
+<p style="font-size:8.5pt;color:var(--c-slate);margin:3pt 0 8pt 0;">
 Wind accelerates over the roof due to building geometry (Bernoulli effect). ASCE 7 defines roof-zone
 amplification as PRESSURE coefficients &mdash; eaves, rakes, and corners experience roughly 1.35&ndash;2&times; the field
 <em>pressure</em>. Because dynamic pressure scales with the square of velocity, those zones equate to about
 1.16&ndash;1.41&times; the field <em>wind speed</em> (the &radic; of the pressure ratio), shown below as equivalent velocity.
 </p>
 {bar_rows}
-<div class="bar-row" style="margin-top:4pt;border-top:1.5pt dashed #0d47a1;padding-top:4pt;">
-    <div class="bar-label" style="color:#0d47a1;font-weight:700;">&#9650; Shingle Rating</div>
-    <div class="bar-value" style="color:#0d47a1;font-weight:700;">{shingle_rating} mph</div>
-    <div style="flex:1;"><div class="bar-fill" style="width:{rating_pct}%;background:#0d47a1;height:4pt;opacity:0.4;"></div></div>
+<div class="bar-row" style="margin-top:4pt;border-top:1.5pt dashed var(--c-navy);padding-top:4pt;">
+    <div class="bar-label" style="color:var(--c-navy);font-weight:700;">&#9650; Shingle Rating</div>
+    <div class="bar-value" style="color:var(--c-navy);font-weight:700;">{shingle_rating} mph</div>
+    <div style="flex:1;"><div class="bar-fill" style="width:{rating_pct}%;background:var(--c-navy);height:4pt;opacity:0.4;"></div></div>
 </div>
-<p style="font-size:7.5pt;color:#0d47a1;margin:2pt 0 0 0;text-align:right;">{rating_label}</p>
+<p style="font-size:7.5pt;color:var(--c-navy);margin:2pt 0 0 0;text-align:right;">{rating_label}</p>
 '''
 
     # Build the exceeds/marginal summary — skip the styled div entirely if
@@ -1742,24 +2212,60 @@ amplification as PRESSURE coefficients &mdash; eaves, rakes, and corners experie
     exceeds_lines = []
     if zone3_vel > shingle_rating:
         delta = zone3_vel - shingle_rating
-        exceeds_lines.append(f'<span style="color:#c8102e;font-weight:700;">Zone 3 (corners): {zone3_vel} mph &mdash; EXCEEDS shingle rating by {delta} mph</span>')
+        exceeds_lines.append(f'<span style="color:var(--c-brick);font-weight:700;">Zone 3 (corners): {zone3_vel} mph &mdash; EXCEEDS shingle rating by {delta} mph</span>')
     if zone2_vel > shingle_rating:
         delta = zone2_vel - shingle_rating
-        exceeds_lines.append(f'<span style="color:#c8102e;font-weight:700;">Zone 2 (edges): {zone2_vel} mph &mdash; EXCEEDS shingle rating by {delta} mph</span>')
+        exceeds_lines.append(f'<span style="color:var(--c-brick);font-weight:700;">Zone 2 (edges): {zone2_vel} mph &mdash; EXCEEDS shingle rating by {delta} mph</span>')
     elif zone2_vel > shingle_rating * 0.9:
-        exceeds_lines.append(f'<span style="color:#f59e0b;font-weight:700;">Zone 2 (edges): {zone2_vel} mph &mdash; MARGINAL (within 10% of rating)</span>')
+        exceeds_lines.append(f'<span style="color:var(--c-gold);font-weight:700;">Zone 2 (edges): {zone2_vel} mph &mdash; MARGINAL (within 10% of rating)</span>')
 
     if exceeds_lines:
         html += '<div class="exceeds-line" style="margin-top:10pt;">' + "<br/>".join(exceeds_lines) + '</div>\n'
     else:
-        html += '<p style="font-size:8.5pt;color:#2e7d32;margin-top:10pt;font-weight:600;">All zones below shingle rating &mdash; wind amplification may not explain observed damage at this wind speed.</p>\n'
+        html += '<p style="font-size:8.5pt;color:var(--c-included);margin-top:10pt;font-weight:600;">All zones below shingle rating &mdash; wind amplification may not explain observed damage at this wind speed.</p>\n'
 
+    # Conclusion framing adapts to the claim's primary peril. On a hail-led claim
+    # the chart is auto-surfaced as a CORROBORATING peril (the same storm's high
+    # winds), so it does NOT assert an observed wind-damage pattern — it presents
+    # the wind as additional, citable storm severity. On a wind/combined (or
+    # unspecified) claim the observed eaves/rakes/corners pattern is the point.
+    if damage_type == "hail":
+        # Two honest sub-cases, gated on whether the amplified corner wind actually
+        # reaches the covering's rating — never overstate corroboration. When it
+        # exceeds, wind is a corroborating peril; when it does not, the wind is
+        # documented as storm severity / combined-loading context only (consistent
+        # with the "all zones below" note above and the lab-vs-field fastener point).
+        if zone3_vel > shingle_rating:
+            _conclusion = (
+                f'This same storm system also produced a <strong style="font-family:var(--f-mono);">{max_wind} mph</strong> '
+                f'peak gust at the property (NOAA Storm Events). In the ASCE 7 amplified roof zones that gust exceeds the '
+                f'<strong style="font-family:var(--f-mono);">{shingle_rating} mph</strong> rated wind capacity of the '
+                f'covering &mdash; a laboratory value that degrades further with age and fastener condition &mdash; '
+                f'establishing high wind as a corroborating peril of the same storm event, alongside the documented '
+                f'hail. Presented for completeness of the storm&rsquo;s damage potential; it does not assert wind as '
+                f'the primary observed cause.'
+            )
+        else:
+            _conclusion = (
+                f'This same storm system also produced a <strong style="font-family:var(--f-mono);">{max_wind} mph</strong> '
+                f'peak gust at the property (NOAA Storm Events), reaching roughly <strong style="font-family:var(--f-mono);">'
+                f'{zone3_vel} mph</strong> equivalent velocity in the ASCE 7 corner zones. While below the covering&rsquo;s '
+                f'{shingle_rating} mph laboratory rating, it documents the storm&rsquo;s severity and the combined '
+                f'wind-and-hail loading environment; lab wind ratings degrade with age, fastener condition, and thermal '
+                f'cycling. Presented for completeness of the storm&rsquo;s damage potential; it does not assert wind as '
+                f'the primary observed cause.'
+            )
+    else:
+        _conclusion = (
+            f'The observed damage pattern &mdash; concentrated at eaves, rakes, and corners &mdash; is '
+            f'engineering-consistent with ASCE 7 Zone 2&ndash;3 wind amplification from the {max_wind} mph peak gust '
+            f'recorded at this property.'
+        )
     html += f'''
-<p style="font-size:8.5pt;color:#374151;margin-top:8pt;">
-The observed damage pattern &mdash; concentrated at eaves, rakes, and corners &mdash; is engineering-consistent
-with ASCE 7 Zone 2&ndash;3 wind amplification from the {max_wind} mph peak gust recorded at this property.
+<p style="font-size:8.5pt;color:var(--c-slate);margin-top:8pt;">
+{_conclusion}
 </p>
-<table style="font-size:7.5pt;color:#6b7280;margin-top:8pt;border:none;">
+<table style="font-size:7.5pt;color:var(--c-slate);margin-top:8pt;border:none;">
     <tr style="border:none;"><td style="border:none;padding:2pt 6pt;"><strong>Engineering basis:</strong></td><td style="border:none;padding:2pt 6pt;">ASCE 7-22, Chapters 26&ndash;30 &mdash; external pressure coefficients (GCp) by roof zone</td></tr>
     <tr style="border:none;"><td style="border:none;padding:2pt 6pt;"></td><td style="border:none;padding:2pt 6pt;">HAAG Engineering Research &amp; Education Foundation &mdash; Residential wind amplification studies</td></tr>
     <tr style="border:none;"><td style="border:none;padding:2pt 6pt;"></td><td style="border:none;padding:2pt 6pt;">IBHS (Institute for Business &amp; Home Safety) &mdash; Full-scale wind testing facility data</td></tr>
@@ -1779,14 +2285,15 @@ def _build_noaa_citation(weather):
         return ""
 
     html = '<h3>NOAA Storm Data (Official U.S. Government Source)</h3>\n'
+    html += '<p style="margin-top:4pt;">' + _cite_chip("NOAA SWDI", neutral=True) + '</p>\n'
     html += '<table>\n'
     html += '<tr><th style="width:35%">Parameter</th><th>Detail</th></tr>\n'
 
     if noaa.get("max_hail_inches", 0) > 0:
-        html += f'<tr><td><strong>Maximum Hail Size</strong></td><td style="color:#c8102e;font-weight:700;">{noaa["max_hail_inches"]}" diameter</td></tr>\n'
+        html += f'<tr><td><strong>Maximum Hail Size</strong></td><td class="obs-no">{noaa["max_hail_inches"]}" diameter</td></tr>\n'
     if noaa.get("max_wind_mph", 0) > 0:
-        html += f'<tr><td><strong>Maximum Wind Speed</strong></td><td>{noaa["max_wind_mph"]} mph</td></tr>\n'
-    html += f'<tr><td><strong>Events Found</strong></td><td>{noaa.get("event_count", 0)} storm events within {noaa.get("search_radius_miles", 10)} miles</td></tr>\n'
+        html += f'<tr><td><strong>Maximum Wind Speed</strong></td><td class="mono">{noaa["max_wind_mph"]} mph</td></tr>\n'
+    html += f'<tr><td><strong>Events Found</strong></td><td><span class="mono">{noaa.get("event_count", 0)}</span> storm events within <span class="mono">{noaa.get("search_radius_miles", 10)}</span> miles</td></tr>\n'
     _raw_qdate = noaa.get("query_date", "")
     try:
         from datetime import datetime as _dt
@@ -1821,16 +2328,16 @@ def _build_noaa_citation(weather):
             mag = f'{raw_mag}"' if mag_type == "hail_inches" else f'{raw_mag} mph'
             dist = f'{evt.get("distance_miles", 0):.1f} mi'
             detail = evt.get("source_detail", "")[:50]
-            color = 'color:#c8102e;font-weight:700;' if mag_type == "hail_inches" else ''
-            html += f'<tr><td>{src}</td><td>{evt.get("event_type", "")}</td><td style="{color}">{mag}</td><td>{dist}</td><td>{detail}</td></tr>\n'
+            mag_cls = "obs-no" if mag_type == "hail_inches" else "mono"
+            html += f'<tr><td>{src}</td><td>{evt.get("event_type", "")}</td><td class="{mag_cls}">{mag}</td><td class="mono">{dist}</td><td>{detail}</td></tr>\n'
         html += '</table>\n'
 
     # Verification URLs
     urls = noaa.get("query_urls", [])
     clean_urls = [u for u in urls if "error" not in u]
     if clean_urls:
-        html += '<p style="font-size:8pt;color:#6b7280;">NOAA verification: '
-        html += " | ".join(f'<a href="{u}" style="color:#0d2137;">[{i+1}]</a>' for i, u in enumerate(clean_urls))
+        html += '<p style="font-size:8pt;color:var(--c-mute);">NOAA verification: '
+        html += " | ".join(f'<a href="{u}">[{i+1}]</a>' for i, u in enumerate(clean_urls))
         html += '</p>\n'
 
     return html
@@ -2247,7 +2754,7 @@ def build_forensic_report(config):
     corroborating = weather.get("corroborating_reports", [])
     if corroborating:
         corroborating_html += '<h3>Corroborating Weather Reports</h3>\n'
-        corroborating_html += '<p style="font-size:9pt;color:#4b5563;">Independent sources confirming storm activity at or near the property on the date of loss:</p>\n'
+        corroborating_html += '<p style="font-size:9pt;color:var(--c-slate);">Independent sources confirming storm activity at or near the property on the date of loss:</p>\n'
         # Separate news media from other sources
         media_reports = [r for r in corroborating if "news" in r.get("source_type", "").lower() or "media" in r.get("source_type", "").lower()]
         other_reports = [r for r in corroborating if r not in media_reports]
@@ -2258,7 +2765,7 @@ def build_forensic_report(config):
             url = rpt.get("url", "")
             corroborating_html += f'<div class="media-quote">&ldquo;{snippet}&rdquo;<div class="source">&mdash; {station}'
             if url:
-                corroborating_html += f' (<a href="{url}" style="color:#0d2137;">source</a>)'
+                corroborating_html += f' (<a href="{url}">source</a>)'
             corroborating_html += '</div></div>\n'
         # Render other sources as table
         if other_reports:
@@ -2268,7 +2775,7 @@ def build_forensic_report(config):
                 url = rpt.get("url", "")
                 snippet = rpt.get("snippet", "")
                 source_type = rpt.get("source_type", "Web Report")
-                link_html = f'<a href="{url}" style="color:#0d2137;">{title[:80]}</a>' if url else title[:80]
+                link_html = f'<a href="{url}">{title[:80]}</a>' if url else title[:80]
                 corroborating_html += f'<tr><td><strong>{source_type}</strong></td><td>{link_html}</td><td style="font-size:8.5pt;">{snippet[:150]}</td></tr>\n'
             corroborating_html += '</table>\n'
 
@@ -2282,23 +2789,33 @@ def build_forensic_report(config):
     # parameter table entirely. The verified branch is byte-identical to the
     # prior unconditional markup.
     if _ws5_wx:
+        # Storm-evidence values (hail size, coordinates) render mono = data;
+        # the NOAA SWDI / NWS LSR provenance renders as .neutral cite-chips.
+        _storm_chips = (
+            '<p style="margin-top:8pt;">'
+            + _cite_chip("NOAA SWDI", neutral=True)
+            + " "
+            + _cite_chip("NWS LSR", neutral=True)
+            + "</p>"
+        )
         storm_overview_html = (
             '<div class="success-box">\n'
             f"<strong>Storm Verified:</strong> {weather.get('storm_description', '')}\n"
             '</div>\n\n'
             '<table>\n'
             '    <tr><th style="width:35%">Parameter</th><th>Detail</th></tr>\n'
-            f"    <tr><td><strong>Storm Date</strong></td><td>{weather['storm_date']}</td></tr>\n"
-            f"    <tr><td><strong>Hail Size (Algorithm)</strong></td><td>{weather.get('hail_size_algorithm', '')}</td></tr>\n"
-            f"    <tr><td><strong>Hail Size (Meteorologist)</strong></td><td>{weather.get('hail_size_meteorologist', weather.get('hail_size_algorithm', ''))}</td></tr>\n"
+            f"    <tr><td><strong>Storm Date</strong></td><td class=\"mono\">{weather['storm_date']}</td></tr>\n"
+            f"    <tr><td><strong>Hail Size (Algorithm)</strong></td><td class=\"mono\">{weather.get('hail_size_algorithm', '')}</td></tr>\n"
+            f"    <tr><td><strong>Hail Size (Meteorologist)</strong></td><td class=\"mono\">{weather.get('hail_size_meteorologist', weather.get('hail_size_algorithm', ''))}</td></tr>\n"
             f"    <tr><td><strong>Verification</strong></td><td>{weather.get('verification_method', '')}</td></tr>\n"
             f"    <tr><td><strong>HailTrace Report</strong></td><td>ID: {weather.get('hailtrace_id', '')} — {weather.get('hailtrace_url', '')}</td></tr>\n"
-            f"    <tr><td><strong>Coordinates</strong></td><td>{weather.get('coordinates', '')}</td></tr>\n"
-            '</table>'
+            f"    <tr><td><strong>Coordinates</strong></td><td class=\"mono\">{weather.get('coordinates', '')}</td></tr>\n"
+            '</table>\n'
+            + _storm_chips
         )
     else:
         storm_overview_html = (
-            '<div class="success-box" style="background:#f8f9fa;border-color:#c8d6e5;">\n'
+            '<div class="info-box">\n'
             '<strong>Weather verification pending:</strong> Independent storm '
             'verification (NOAA/NWS storm data, hail-size confirmation) has not '
             'yet been attached to this claim. The damage documented in this '
@@ -2316,8 +2833,15 @@ def build_forensic_report(config):
         for dt in damage_thresholds:
             material = dt.get("material", dt.get("component", ""))
             confirmed = dt.get("confirmed_size", dt.get("storm_actual", ""))
-            color = 'color:#c8102e;font-weight:700;' if 'EXCEEDS' in dt.get('result','') or 'EXCEEDED' in dt.get('result','') else ''
-            thresholds_html += f'<tr><td>{material}</td><td>{dt["threshold"]}</td><td>{confirmed}</td><td style="{color}">{dt["result"]}</td></tr>\n'
+            # The Result cell is the load-bearing color signal — brick (via the
+            # .obs-no semantic class) when the storm EXCEEDED the threshold.
+            result_cls = ' class="obs-no"' if ('EXCEEDS' in dt.get('result', '') or 'EXCEEDED' in dt.get('result', '')) else ''
+            thresholds_html += (
+                f'<tr><td>{material}</td>'
+                f'<td class="mono">{dt["threshold"]}</td>'
+                f'<td class="mono">{confirmed}</td>'
+                f'<td{result_cls}>{dt["result"]}</td></tr>\n'
+            )
         thresholds_html += '</table>\n'
 
     # --- FieldAssist section (6 Avon — conditional) ---
@@ -2343,7 +2867,7 @@ def build_forensic_report(config):
 <table>
     <tr><th>Finding</th><th>Detail</th></tr>
     <tr><td><strong>Got on Roof</strong></td><td>{"Yes" if fa.get("got_on_roof") else "No"}</td></tr>
-    <tr><td><strong>Potentially Covered Damage</strong></td><td style="color:#c8102e;font-weight:700;">{"YES" if fa.get("potentially_covered_damage") else "No"}</td></tr>
+    <tr><td><strong>Potentially Covered Damage</strong></td><td class="obs-no">{"YES" if fa.get("potentially_covered_damage") else "No"}</td></tr>
     <tr><td><strong>Slopes with Granular Loss</strong></td><td>{slopes}</td></tr>
     <tr><td><strong>Wind-Damaged Shingles</strong></td><td>Facet {wind_info.get("facet","")}: {wind_info.get("count",0)} shingles</td></tr>
     <tr><td><strong>Damaged Exhaust Vents</strong></td><td>{vent_info.get("location","")}: {vent_info.get("count",0)}</td></tr>
@@ -2366,22 +2890,25 @@ def build_forensic_report(config):
         diff_html += '<h3>Damage Differentiation Analysis</h3>\n<table style="font-size:9pt;">\n'
         diff_html += '<tr><th>Potential Cause</th><th>Expected Characteristics</th><th>Observed?</th><th>Conclusion</th></tr>\n'
         for row in findings["differentiation_table"]:
-            # Bold conclusion: green for CONSISTENT, red for NOT CONSISTENT/INCONSISTENT
+            # Conclusion + Observed are the load-bearing semantic cells — the one
+            # place forest/brick carry meaning. Route through Spectral semantic
+            # classes (.concl-consistent / .concl-inconsistent / .obs-yes /
+            # .obs-no) instead of inline hex.
             conclusion_val = row["conclusion"]
             if conclusion_val.upper() == "CONSISTENT":
-                conclusion_cell = f'<strong style="color:#2e7d32;">{conclusion_val}</strong>'
+                conclusion_cell = f'<strong class="concl-consistent">{conclusion_val}</strong>'
             elif "NOT" in conclusion_val.upper() or "INCONSISTENT" in conclusion_val.upper():
-                conclusion_cell = f'<strong style="color:#c8102e;">{conclusion_val}</strong>'
+                conclusion_cell = f'<strong class="concl-inconsistent">{conclusion_val}</strong>'
             else:
                 conclusion_cell = conclusion_val
             # Bold cause column
             cause_cell = f'<strong>{row["cause"]}</strong>'
-            # Bold observed: Yes=green, No=red
+            # Bold observed: Yes=forest, No=brick
             observed_val = row["observed"]
             if observed_val.lower().startswith("yes"):
-                observed_cell = f'<strong style="color:#2e7d32;">{observed_val}</strong>'
+                observed_cell = f'<strong class="obs-yes">{observed_val}</strong>'
             elif observed_val.lower().startswith("no"):
-                observed_cell = f'<strong style="color:#c8102e;">{observed_val}</strong>'
+                observed_cell = f'<strong class="obs-no">{observed_val}</strong>'
             else:
                 observed_cell = observed_val
             # Bold key forensic terms in characteristics
@@ -2399,10 +2926,32 @@ def build_forensic_report(config):
         for obs in findings["critical_observations"]:
             crit_obs_html += f'<h3>{obs["title"]}</h3>\n<p>{obs["content"]}</p>\n'
 
-    # --- Code violations ---
-    code_rows = ""
+    # --- Code violations → Spectral .code-card stack ---
+    # One card per code requirement (replaces the plain {code, requirement,
+    # status} table): a cite-chip carrying the code section, a serif title, a
+    # warm-paper requirement inset, and a slate status line. A status that
+    # indicates omission/non-compliance flags the card .critical (brick
+    # left-border) and bolds the status. Content (code, requirement, status
+    # strings) is preserved verbatim so the substance fingerprint is unchanged.
+    code_cards = ""
     for cv in findings.get("code_violations", []):
-        code_rows += f'<tr><td>{cv["code"]}</td><td>{cv["requirement"]}</td><td style="color:#c8102e;font-weight:700;">{cv["status"]}</td></tr>\n'
+        code = cv.get("code", "")
+        requirement = cv.get("requirement", "")
+        status = cv.get("status", "")
+        _is_critical = any(
+            kw in status.lower()
+            for kw in ("omit", "not included", "missing", "non-compliant",
+                       "noncompliant", "not in", "absent", "violation", "exclud")
+        )
+        crit_cls = " critical" if _is_critical else ""
+        status_html = f"<b>{status}</b>" if _is_critical else status
+        code_cards += (
+            f'<div class="code-card{crit_cls}">\n'
+            f'  <div class="cc-top">{_cite_chip(code)}</div>\n'
+            f'  <div class="requirement">{requirement}</div>\n'
+            f'  <div class="supplement">Status in carrier scope: {status_html}</div>\n'
+            f'</div>\n'
+        )
 
     # --- Key arguments ---
     arguments_html = ""
@@ -2467,40 +3016,85 @@ def build_forensic_report(config):
         code_sec_num = str(n + 2)
         conclusion_sec_num = str(n + 3)
 
+    # --- Spectral cover-meta owner cell (serif name) ---
+    # Suppress the owner cell entirely on a placeholder-owner posture, mirroring
+    # the WS-5 cover_owner_line guard so a no-data claim never prints
+    # "Owner: Property Owner".
+    if _ws5_owner_ph:
+        cover_meta_owner_cell = ""
+    else:
+        cover_meta_owner_cell = (
+            '<div class="cell"><div class="k">Homeowner</div>'
+            f'<div class="v serif">{ins["name"]}</div></div>'
+        )
+
+    # --- Interior masthead (.run-head) — repeats on each interior page as
+    # chain-of-custody chrome. Claim # in mono. ---
+    _rh_claim = carrier.get("claim_number", "")
+    run_head_html = (
+        '<div class="run-head">'
+        f'<div class="rh-mark">{company["name"]}'
+        '<span class="rh-sub">Forensic Causation Report</span></div>'
+        '<div class="rh-r"><div class="rh-doc">Doc 01 &middot; Forensic</div>'
+        f'<div class="rh-claim">{_rh_claim}</div></div>'
+        '</div>'
+    )
+
     html = f"""<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
 <title>Forensic Causation Report -- {prop['address']}</title>
+{FORENSIC_FONTS_LINK}
 <style>
-{CSS_COMMON}
+{FORENSIC_SPECTRAL_CSS}
 </style>
 </head>
 <body>
 
-<!-- COVER PAGE -->
-<div class="cover-page">
-    {render_logo_block(logo_b64, company['name'], css_class='cover-logo')}
-    <div class="cover-company">{company['name']}</div>
-    <div class="cover-tagline">{company.get('tagline', '')}</div>
-    <div style="width:60%; border-top:3px solid #c8102e; margin:0 auto 24pt;"></div>
-    <div class="cover-title">FORENSIC CAUSATION REPORT</div>
-    <div class="cover-subtitle">Proprietary Damage Assessment &amp; Causation Analysis</div>
-    <div class="cover-info">
-        <strong>Property:</strong> {prop['address']}<br>
-        {cover_owner_line}<strong>Date of Loss:</strong> {dates['date_of_loss']}<br>
-        <strong>Inspection:</strong> {insp_dates_str}<br>
-        <strong>Report Date:</strong> {dates['report_date']}
+<!-- COVER PAGE (logo-leads navy authority field) -->
+<div class="cover">
+    <div class="cover-frame"></div>
+    <div class="cover-top">
+        <div class="cover-wordmark">{company['name']}
+            <span class="wm-sub">Forensic Roofing Assessment</span>
+        </div>
+        <div class="cover-tab">DOC 01 &middot; FORENSIC</div>
     </div>
-    {"<div class='cover-assoc-logos'>" + ('<img src="' + apa_logo_b64 + '" alt="APA">' if apa_logo_b64 else '') + ('<img src="' + haag_logo_b64 + '" alt="HAAG">' if haag_logo_b64 else '') + ('<img src="' + nrca_logo_b64 + '" alt="NRCA">' if nrca_logo_b64 else '') + ('<img src="' + gaf_logo_b64 + '" alt="GAF Master Elite">' if gaf_logo_b64 else '') + ('<img src="' + oc_logo_b64 + '" alt="Owens Corning Platinum">' if oc_logo_b64 else '') + "</div>" if (apa_logo_b64 or nrca_logo_b64 or haag_logo_b64 or gaf_logo_b64 or oc_logo_b64) else ""}
+    <div class="cover-logo-hero">
+        <div class="logo-ring">
+            {render_logo_block(logo_b64, company['name'], css_class='cover-logo')}
+        </div>
+    </div>
+    <div class="cover-hero">
+        <div class="cover-kicker">Certified Storm-Damage Causation Analysis</div>
+        <h1>Forensic Causation Report</h1>
+        <div class="cover-subtitle">An independent determination of storm causation, damage severity, and the code-compliant scope of repair for the property identified below.</div>
+    </div>
+    <div class="cover-meta">
+        <div class="cell"><div class="k">Property</div><div class="v serif">{prop['address']}</div></div>
+        {cover_meta_owner_cell}<div class="cell"><div class="k">Carrier</div><div class="v serif">{carrier['name']}</div></div>
+        <div class="cell"><div class="k">Claim No.</div><div class="v mono">{carrier.get('claim_number','')}</div></div>
+        <div class="cell"><div class="k">Date of Loss</div><div class="v mono">{dates['date_of_loss']}</div></div>
+        <div class="cell"><div class="k">Report Date</div><div class="v mono">{dates['report_date']}</div></div>
+    </div>
+    <div class="cover-foot">
+        <div class="prep">
+            <div class="pl">Prepared by</div>
+            <div class="pv">{inspector_lines}</div>
+        </div>
+        {"<div class='cover-assoc-logos'>" + ('<img src="' + apa_logo_b64 + '" alt="APA">' if apa_logo_b64 else '') + ('<img src="' + haag_logo_b64 + '" alt="HAAG">' if haag_logo_b64 else '') + ('<img src="' + nrca_logo_b64 + '" alt="NRCA">' if nrca_logo_b64 else '') + ('<img src="' + gaf_logo_b64 + '" alt="GAF Master Elite">' if gaf_logo_b64 else '') + ('<img src="' + oc_logo_b64 + '" alt="Owens Corning Platinum">' if oc_logo_b64 else '') + "</div>" if (apa_logo_b64 or nrca_logo_b64 or haag_logo_b64 or gaf_logo_b64 or oc_logo_b64) else ""}
+    </div>
 </div>
 <div class="page-break"></div>
 
+{run_head_html}
 <!-- TABLE OF CONTENTS -->
 <h2>Table of Contents</h2>
 {toc_html}
 <div class="page-break"></div>
 
+{run_head_html}
 <!-- SECTION 1: PROPERTY & CLAIM INFO -->
 <h2>1. Property &amp; Claim Information</h2>
 <table>
@@ -2556,6 +3150,7 @@ def build_forensic_report(config):
 
 <!-- PHOTO SECTIONS -->
 <div class="page-break"></div>
+{run_head_html}
 <h2>{photo_sec_num}. Damage Findings &amp; Photo Analysis</h2>
 <p>{_photo_intro_text(config)} Below is the complete photographic documentation organized by damage category.</p>
 
@@ -2574,20 +3169,18 @@ def build_forensic_report(config):
 <div style="margin-top:24pt;"></div>
 <h2>{code_sec_num}. Code Compliance Requirements</h2>
 <p>{_get_code_intro(config)}</p>
-<table>
-    <tr><th>Code Section</th><th>Requirement</th><th>Status in Carrier Scope</th></tr>
-    {code_rows}
-</table>
+{code_cards}
 
 <!-- CONCLUSION -->
 <div class="page-break"></div>
+{run_head_html}
 <h2>{conclusion_sec_num}. Conclusions &amp; Recommendations</h2>
 {_build_conclusion_section(findings, arguments_html, conclusion_html, rec_scope_html)}
 
-{_build_integrity_stamp(config)}
+{_build_integrity_stamp_spectral(config)}
 
-{_build_contractor_cert(config)}
-{_build_uppa_disclaimer(config)}
+{_build_contractor_cert_spectral(config)}
+{_build_uppa_disclaimer_spectral(config)}
 
 <div class="footer-sig">
     <div class="name">{company['ceo_name']}</div>
