@@ -17,6 +17,7 @@ import { InviteTeammateModal } from "@/components/invite-teammate-modal";
 import { ReferCompanyModal } from "@/components/refer-company-modal";
 import { OnboardingChecklist } from "@/components/onboarding-checklist";
 import { PhoneNagModal } from "@/components/phone-nag-modal";
+import { RichardLauncher } from "@/components/richard-launcher";
 import { CommBadges, EMPTY_COMM, type CommStatus } from "@/components/comm-badges";
 import { reportModeLabel } from "@/lib/report-mode";
 
@@ -1388,6 +1389,10 @@ export function DashboardContent({ user }: { user: User }) {
         )}
       </div>
       <PhoneNagModal userId={user.id} />
+      {/* Dashboard Richard FAB — restored here after the "Richard everywhere"
+          layout launcher was rolled back (it overlapped the dashboard on desktop).
+          Keeps Richard on the dashboard + honors the ?richard=new deep-link. */}
+      <RichardLauncher userId={user.id} scope="dashboard" initiallyOpen={searchParams.get("richard") === "new"} />
     </main>
   );
 }
