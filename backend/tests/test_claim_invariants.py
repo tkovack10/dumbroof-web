@@ -734,5 +734,57 @@ class TestNegativeMembraneOnSloped(unittest.TestCase):
         self.assertEqual(inv.check_material_membrane_on_sloped(cfg, html), [])
 
 
+class TestNegativeGradeNotInflated(unittest.TestCase):
+    """#19 — feed a PREMIUM grade with an EXPLICIT low confidence and no evidence;
+    assert it FIRES. Feed high confidence, explicit evidence, ABSENT confidence,
+    and non-premium enums; assert it HOLDS (absence of the field is not a hit)."""
+
+    def test_fires_on_laminate_explicit_low_conf(self):
+        cfg = {"roof_material_enum": "laminate", "material_confidence": 0.2}
+        out = inv.check_grade_not_inflated_without_evidence(cfg, "")
+        self.assertTrue(any("#19" in v for v in out))
+
+    def test_fires_on_slate_explicit_low_conf(self):
+        cfg = {"roof_material_enum": "slate", "material_confidence": 0.3}
+        self.assertTrue(inv.check_grade_not_inflated_without_evidence(cfg, ""))
+
+    def test_fires_on_tile_explicit_low_conf(self):
+        cfg = {"roof_material_enum": "tile", "material_confidence": 0.1}
+        self.assertTrue(inv.check_grade_not_inflated_without_evidence(cfg, ""))
+
+    def test_fires_via_lone_structure_enum(self):
+        cfg = {"structures": [{"roof_material_enum": "laminate"}],
+               "material_confidence": 0.2}
+        self.assertTrue(inv.check_grade_not_inflated_without_evidence(cfg, ""))
+
+    def test_holds_on_high_confidence(self):
+        cfg = {"roof_material_enum": "laminate", "material_confidence": 0.9}
+        self.assertEqual(inv.check_grade_not_inflated_without_evidence(cfg, ""), [])
+
+    def test_holds_on_explicit_evidence_overrides_low_conf(self):
+        cfg = {"roof_material_enum": "laminate", "material_confidence": 0.2,
+               "grade_evidence": "wide shot shows staggered laminate tabs"}
+        self.assertEqual(inv.check_grade_not_inflated_without_evidence(cfg, ""), [])
+
+    def test_holds_on_absent_confidence(self):
+        # ABSENCE of material_confidence is NOT inflation — the committed-fixture
+        # case (the field was never populated). Must HOLD, else the corpus battery
+        # floods with false positives.
+        cfg = {"roof_material_enum": "laminate"}
+        self.assertEqual(inv.check_grade_not_inflated_without_evidence(cfg, ""), [])
+
+    def test_holds_on_non_premium_3tab(self):
+        cfg = {"roof_material_enum": "3tab", "material_confidence": 0.2}
+        self.assertEqual(inv.check_grade_not_inflated_without_evidence(cfg, ""), [])
+
+    def test_holds_on_other_no_signal_sink(self):
+        cfg = {"roof_material_enum": "other", "material_confidence": 0.2}
+        self.assertEqual(inv.check_grade_not_inflated_without_evidence(cfg, ""), [])
+
+    def test_holds_on_metal_low_conf(self):
+        cfg = {"roof_material_enum": "metal", "material_confidence": 0.2}
+        self.assertEqual(inv.check_grade_not_inflated_without_evidence(cfg, ""), [])
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
