@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { getRichardAuthHeaders } from "@/lib/richard-auth";
+import { getRichardAuthHeaders, SESSION_EXPIRED_MESSAGE, goToLogin } from "@/lib/richard-auth";
 
 interface CrmImportModalProps {
   open: boolean;
@@ -64,6 +64,10 @@ export function CrmImportModal({
   const [search, setSearch] = useState("");
   const [searching, setSearching] = useState(false);
   const [error, setError] = useState("");
+  // When the backend 401s (token already auto-refreshed in getRichardAuthHeaders,
+  // so a 401 means the session is truly dead) we show a re-login prompt instead
+  // of the raw "Authentication required" string.
+  const [sessionExpired, setSessionExpired] = useState(false);
 
   // AccuLynx state
   const [jobs, setJobs] = useState<AccuLynxJob[]>([]);
@@ -81,6 +85,16 @@ export function CrmImportModal({
 
   if (!open) return null;
 
+  // Returns true (and flips into the re-login state) when a backend call 401s.
+  const handle401 = (res: Response): boolean => {
+    if (res.status === 401) {
+      setSessionExpired(true);
+      setError(SESSION_EXPIRED_MESSAGE);
+      return true;
+    }
+    return false;
+  };
+
   const generateSlug = (address: string) => {
     return (
       address
@@ -94,6 +108,7 @@ export function CrmImportModal({
   const searchAccuLynx = async () => {
     setSearching(true);
     setError("");
+    setSessionExpired(false);
     try {
       // Send the Supabase JWT — the backend derives the caller's user_id from
       // the verified token (the user_id query param is no longer trusted).
@@ -102,6 +117,7 @@ export function CrmImportModal({
         `${backendUrl}/api/integrations/acculynx/jobs?user_id=${userId}&search=${encodeURIComponent(search)}`,
         { headers: authHeaders }
       );
+      if (handle401(res)) { setJobs([]); setSearching(false); return; }
       const data = await res.json();
       setJobs(data.jobs || []);
       if ((data.jobs || []).length === 0) {
@@ -116,6 +132,7 @@ export function CrmImportModal({
   const searchCompanyCam = async () => {
     setSearching(true);
     setError("");
+    setSessionExpired(false);
     try {
       // Send the Supabase JWT — the backend derives the caller's user_id from
       // the verified token (the user_id query param is no longer trusted).
@@ -124,6 +141,7 @@ export function CrmImportModal({
         `${backendUrl}/api/integrations/companycam/projects?user_id=${userId}&query=${encodeURIComponent(search)}`,
         { headers: authHeaders }
       );
+      if (handle401(res)) { setProjects([]); setSearching(false); return; }
       const data = await res.json();
       if (!res.ok || data.error) {
         setProjects([]);
@@ -171,6 +189,7 @@ export function CrmImportModal({
         `${backendUrl}/api/integrations/companycam/projects/${project.id}/photos?user_id=${userId}`,
         { headers: authHeaders }
       );
+      if (handle401(res)) { setPhotos([]); setLoadingPhotos(false); setStep("photos"); return; }
       const data = await res.json();
       if (!res.ok || data.error) {
         setPhotos([]);
@@ -239,6 +258,7 @@ export function CrmImportModal({
           }),
         }
       );
+      if (handle401(res)) { setStep("preview"); return; }
       const data = await res.json();
       setImportProgress(
         `Imported ${data.photo_count || 0} photos. Populating form...`
@@ -293,6 +313,7 @@ export function CrmImportModal({
         }
       );
 
+      if (handle401(res)) { setStep("photos"); return; }
       // Capture the body whether the response was ok or not — backend often
       // returns 200 with partial results, or a non-200 with { error, message,
       // detail } that the generic catch was hiding.
@@ -368,7 +389,17 @@ export function CrmImportModal({
     setSelectedPhotoIndices(new Set());
     setError("");
     setImportProgress("");
+    setSessionExpired(false);
   };
+
+  const loginAgainButton = sessionExpired ? (
+    <button
+      onClick={goToLogin}
+      className="mt-2 inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-gradient-to-r from-[var(--pink)] via-[var(--purple)] to-[var(--blue)] text-white text-sm font-semibold hover:shadow-lg transition-all"
+    >
+      Log in again
+    </button>
+  ) : null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm px-4">
@@ -472,7 +503,10 @@ export function CrmImportModal({
               </div>
 
               {error && (
-                <p className="text-sm text-[var(--gray-muted)] mb-4">{error}</p>
+                <div className="mb-4">
+                  <p className="text-sm text-[var(--gray-muted)]">{error}</p>
+                  {loginAgainButton}
+                </div>
               )}
 
               {/* AccuLynx Results */}
@@ -561,6 +595,7 @@ export function CrmImportModal({
                 {error && (
                   <div className="bg-red-500/10 border border-red-500/30 text-red-400 text-sm rounded-lg px-4 py-3">
                     {error}
+                    {loginAgainButton}
                   </div>
                 )}
 
@@ -669,6 +704,7 @@ export function CrmImportModal({
               {error && (
                 <div className="bg-red-500/10 border border-red-500/30 text-red-400 text-sm rounded-lg px-4 py-3 mb-4">
                   {error}
+                  {loginAgainButton}
                 </div>
               )}
 
