@@ -27,6 +27,8 @@ from datetime import datetime
 
 from supabase import Client
 
+import email_voice  # AI-tell linter (final pre-send gate for carrier mail)
+
 
 # ───────────────────────────────────────────
 # Gmail OAuth — send via user's Gmail account
@@ -628,6 +630,15 @@ def send_claim_email(
     Send an email for a claim, using the user's configured email method.
     Logs the email to the claim_emails table.
     """
+    # Final pre-send gate: scrub AI tells from carrier-facing bodies. This is
+    # the authoritative catch-all — it covers the two browser-composed UI bodies
+    # (supplement composer + install-supplement builder) and any Richard-written
+    # prose that reaches here, not just the templated pools. Homeowner-facing
+    # types (invoice, aob_signature) are intentionally skipped. Never blocks a
+    # send: scrub_tells is self-defending and returns the input on any error.
+    if email_type in email_voice.CARRIER_EMAIL_TYPES:
+        body_html, _tells = email_voice.scrub_tells(body_html)
+
     # Load user's company profile + email config
     profile_result = sb.table("company_profiles").select("*").eq("user_id", user_id).limit(1).execute()
     profile = (profile_result.data[0] if profile_result.data else {}) or {}

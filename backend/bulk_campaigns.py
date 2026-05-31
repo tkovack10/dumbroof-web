@@ -51,6 +51,8 @@ from typing import Optional, Any
 
 from supabase import Client
 
+import email_voice  # shared human voice picker + AI-tell linter
+
 
 # ═══════════════════════════════════════════════════════════════════════
 # SHARED carrier-intake fallback map (extensible; NOT USARM-specific)
@@ -117,10 +119,10 @@ def _norm_addr(a: Optional[str]) -> str:
 
 
 def _variant_index(claim_id: str, n: int, salt: str = "") -> int:
-    """Deterministic, stable-per-claim variant pick (md5 like the scripts)."""
-    if n <= 1:
-        return 0
-    return int(hashlib.md5(f"{claim_id}|{salt}".encode("utf-8")).hexdigest(), 16) % n
+    """Deterministic, stable-per-claim variant pick. Delegates to the shared
+    email_voice picker so bulk + single-send + cadence all rotate identically
+    (was a separate md5 implementation)."""
+    return email_voice.variant_index(claim_id, n=n, salt=salt)
 
 
 def _valid_claim_number(cn: Optional[str]) -> str:
@@ -523,6 +525,34 @@ def _supplement_body_html(
             f"with the totals; the code report backs the required items. Could you review and revise? Thanks "
             f"for working this with us.<br><br>{sign}"
         ),
+        (
+            f"{greeting}<br><br>Wanted to get a supplement to you on {addr}{claim_ref}. Once the crew was up "
+            f"there, {n_gaps} items turned up that the original scope didn't cover — {glist} among them. These "
+            f"are storm- and code-driven, not upgrades.<br><br>The attached comparison and code report lay out "
+            f"each one with quantities and totals. Could you take a look and get the scope revised? Glad to hop "
+            f"on a call.<br><br>Thanks,<br>{sign}"
+        ),
+        (
+            f"{greeting}<br><br>On {addr}{claim_ref}: comparing our scope to yours, we're short {n_gaps} line "
+            f"items the repair actually needs, including {glist}. Most of it is exterior storm damage the first "
+            f"estimate didn't pick up.<br><br>It's all in the attached scope comparison and code-compliance "
+            f"report — line by line, tied to the measurements. Let me know what you need to get it added.<br><br>"
+            f"Appreciate it,<br>{sign}"
+        ),
+        (
+            f"{greeting}<br><br>Quick note on {addr}{claim_ref}. We're showing {n_missing} items missing and "
+            f"{n_under} underpaid versus the actual scope of repair — {glist} are the notable ones. Nothing out "
+            f"of the ordinary, just making the scope match the work.<br><br>Attached is the full comparison plus "
+            f"the code backup with all the totals. Could you review and revise when you get a chance? Happy to "
+            f"walk through it.<br><br>Thank you,<br>{sign}"
+        ),
+        (
+            f"{greeting}<br><br>Following up on {addr}{claim_ref}. After we walked the roof, the scope is coming "
+            f"up short on {n_gaps} items — {glist} included. I've attached the line-by-line comparison and our "
+            f"code report so it's all transparent, quantities and totals in there.<br><br>Wanted to get this to "
+            f"you so we can keep the homeowner moving. Let me know what you need from us.<br><br>Thanks again,<br>"
+            f"{sign}"
+        ),
     ]
     return "<p>" + variants[_variant_index(claim_id, len(variants), salt="supplement")] + "</p>"
 
@@ -710,6 +740,29 @@ def _forensic_body_html(
             f"{greeting}<br><br>Sending over the causation report for {addr}{cl}. We documented the storm damage "
             f"and its source with dated photos during our inspection — should be useful for the file.{ho_line}"
             f"<br><br>Glad to clarify anything. Thank you,<br>{sign}"
+        ),
+        (
+            f"{greeting}<br><br>We were out at {addr} this week and put together a causation report for the claim"
+            f"{cl}. It's attached — dated photos of the storm damage and where it's coming from, so it's all "
+            f"documented before the estimate's set.{ho_line}<br><br>Happy to talk through any of it.<br><br>"
+            f"Thanks,<br>{sign}"
+        ),
+        (
+            f"{greeting}<br><br>Attached is our causation report for {addr}{clc}. We went over the roof and the "
+            f"photos lay out the storm damage and its cause. Wanted to get it to you early so we're working from "
+            f"the same findings.{ho_line}<br><br>Let me know if anything needs clarifying.<br><br>Appreciate it,"
+            f"<br>{sign}"
+        ),
+        (
+            f"{greeting}<br><br>Following our inspection at {addr}, I've attached the causation report{cl}. It "
+            f"documents what we found up top with dated photos throughout, so the cause is clear for the "
+            f"file.{ho_line}<br><br>Glad to walk you through it whenever works.<br><br>Thank you,<br>{sign}"
+        ),
+        (
+            f"{greeting}<br><br>Quick one — here's our forensic causation report for {addr}{cl}. The storm damage "
+            f"and its source are documented with photos from our roof inspection. Figured it'd help as the "
+            f"estimate comes together.{ho_line}<br><br>Reach out anytime with questions.<br><br>Thanks again,<br>"
+            f"{sign}"
         ),
     ]
     return "<p>" + variants[_variant_index(claim_id, len(variants), salt="forensic")] + "</p>"
