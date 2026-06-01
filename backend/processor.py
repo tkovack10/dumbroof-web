@@ -5535,6 +5535,34 @@ def build_roof_sections(measurements: dict, photo_analysis: dict = None, provide
     }
 
 
+def _dedup_exact_line_items(items: list) -> list:
+    """Collapse byte-identical line-item rows re-emitted by the material-split path.
+
+    When a structure is split by per-slope material override, each material
+    sub-group is handed the FULL structure linear measurements, so build_line_items
+    re-emits the SHARED components (I&W / drip / ridge cap / step + counter flashing
+    / vents) identically once per material — the source of the I&W-x3 over-count.
+
+    Keep-first; drop only full-identity matches. Key includes qty (exact → legit
+    per-material rows with different areas survive), structure (legit identical-qty
+    cross-structure rows are NOT merged) and scope_timing (initial vs supplement
+    never merged). None/'' normalised. Lossless — emission artifacts, not repeated
+    trades. (Mirror of usarm_pdf_generator._dedup_exact_line_items — keep in sync.)"""
+    def _k(x):
+        return str(x if x is not None else "").strip().lower()
+    seen = set()
+    out = []
+    for it in items or []:
+        key = (_k(it.get("description")), it.get("qty"), _k(it.get("unit")),
+               _k(it.get("code")), _k(it.get("category")),
+               _k(it.get("structure")), _k(it.get("scope_timing")))
+        if key in seen:
+            continue
+        seen.add(key)
+        out.append(it)
+    return out
+
+
 def build_multi_structure_line_items(measurements: dict, photo_analysis: dict, state: str,
                                       user_notes: str = "", estimate_request: dict = None,
                                       roof_sections: dict = None, zip_code: str = "", city: str = "",
@@ -5671,6 +5699,15 @@ def build_multi_structure_line_items(measurements: dict, photo_analysis: dict, s
                           else 'weighted voting' if struct_er is None
                           else 'claim-wide override')
             print(f"[LINE ITEMS] {struct_name}: {len(items)} items, {struct.get('roof_area_sq', 0)} SQ, material source = {mat_source}")
+
+    # Collapse exact-duplicate shared-component rows re-emitted once per material
+    # sub-group (a structure split by per-slope material override hands the FULL
+    # structure linear measurements to every group, so I&W/drip/ridge/flashing/vents
+    # come out identical N times). Structure-aware key → legit distinct rows survive.
+    _before_dedup = len(all_items)
+    all_items = _dedup_exact_line_items(all_items)
+    if len(all_items) != _before_dedup:
+        print(f"[LINE ITEMS] Collapsed {_before_dedup - len(all_items)} exact-duplicate shared-component rows (material-split re-emit)")
 
     # Dedup claim-wide items — 1 dumpster, 1 equipment operator, 1 labor minimum per claim
     # Applies to ALL claims (single or multi-structure)

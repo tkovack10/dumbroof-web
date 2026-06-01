@@ -449,12 +449,55 @@ def _is_initial_scope(item):
     return (item.get("scope_timing") or "initial") == "initial"
 
 
+def _dedup_exact_line_items(items):
+    """Collapse byte-identical line-item rows that were re-emitted upstream.
+
+    build_multi_structure_line_items emits a structure's SHARED components
+    (I&W / drip edge / ridge cap / step + counter flashing / vents) ONCE PER
+    material sub-group when a roof is split by per-slope material override —
+    each sub-group is handed the full structure linear measurements, so the
+    shared rows come out identical N times (the source of the I&W-x3 inflation).
+
+    Keep-first; drop only rows whose FULL identity matches. The key includes:
+      - qty (exact) → legit per-material/per-section rows with different areas survive
+      - structure → legit identical-qty rows on different structures are NOT merged
+      - scope_timing → an initial vs install_supplement row is never merged
+    None/'' are normalised so null-code true-duplicates still collapse. Lossless:
+    these are emission artifacts, not legitimately repeated trades. (Mirror of the
+    process-time collapse in processor._dedup_exact_line_items — keep keys in sync.)
+    """
+    def _k(x):
+        return str(x if x is not None else "").strip().lower()
+    seen = set()
+    out = []
+    for it in items or []:
+        key = (_k(it.get("description")), it.get("qty"), _k(it.get("unit")),
+               _k(it.get("code")), _k(it.get("category")),
+               _k(it.get("structure")), _k(it.get("scope_timing")))
+        if key in seen:
+            continue
+        seen.add(key)
+        out.append(it)
+    return out
+
+
+def _dedup_config_line_items(config):
+    """Render-time safety net: collapse exact-duplicate line items in place so
+    already-stored claims render and PRICE correctly without reprocessing.
+    Idempotent — safe to call from every doc builder + compute_financials."""
+    li = config.get("line_items")
+    if li:
+        config["line_items"] = _dedup_exact_line_items(li)
+    return config.get("line_items", [])
+
+
 def compute_financials(config):
     """Compute INITIAL-estimate financial totals from line_items + tax_rate.
 
     Only scope_timing=='initial' items count toward the initial estimate; install-supplement
     items (decking allowance etc.) are filed separately and excluded here (Ship 17 timing model).
     """
+    _dedup_config_line_items(config)  # safety net: never sum re-emitted duplicate rows
     items = [it for it in config.get("line_items", []) if _is_initial_scope(it)]
     line_total = sum(round(it["qty"] * it["unit_price"], 2) for it in items)
     tax_rate = config.get("financials", {}).get("tax_rate", 0.08)
@@ -4030,6 +4073,7 @@ def build_xactimate_estimate(config):
     """Build Xactimate-style line-item estimate with @page margin:0 fix."""
     lang = get_language(config)
     print(f"Building X Style Build Scope... [role: {lang['role']}]")
+    _dedup_config_line_items(config)  # safety net: collapse re-emitted duplicate rows before the table + totals
 
     # Ship 3: resolve the market for the provenance FOOTER only. Prices are already
     # frozen on the line_items by build_line_items (relational, by short_key) — the
@@ -4752,8 +4796,24 @@ def build_supplement_report(config):
             damage_threshold_html += f'<tr><td>{dt.get("component", dt.get("material", ""))}</td><td class="num">{dt.get("threshold", "")}</td><td class="num">{dt.get("reported", dt.get("hail_size", ""))}</td><td{result_cls}>{result}</td></tr>\n'
         damage_threshold_html += '</table>\n'
 
-    # Carrier arguments / position summary
-    carrier_args = carrier.get("carrier_arguments", [])
+    # Carrier arguments / position summary.
+    # Drop generic engineer/IA liability-disclaimer boilerplate ("X assumes no
+    # liability", "X cannot be held responsible", "no expressed or implied
+    # warranties", "should not be used as an indicator...", "reserves the right to
+    # modify"). These carry ZERO scope/approval value and were the only place a
+    # bare third-party engineer firm name (e.g. "Keystone") surfaced under the
+    # carrier-approval header — an unprofessional leak. Substantive carrier content
+    # (loss type, depreciation facts, attributed engineer FINDINGS like "Haag
+    # found...") is preserved untouched.
+    _BOILERPLATE_MARKERS = (
+        "assumes no liability", "cannot be held responsible",
+        "no liability for the misuse", "no expressed or implied warrant",
+        "should not be used as an indicator", "reserves the right to modify",
+    )
+    carrier_args = [
+        a for a in carrier.get("carrier_arguments", [])
+        if not any(m in (a or "").lower() for m in _BOILERPLATE_MARKERS)
+    ]
     carrier_args_html = ""
     for i, arg in enumerate(carrier_args, 1):
         carrier_args_html += f"<li>{arg}</li>\n"
