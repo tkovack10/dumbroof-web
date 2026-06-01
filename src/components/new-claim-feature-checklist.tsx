@@ -74,20 +74,20 @@ interface AdvancedRowProps {
 
 function AdvancedRow({ title, outputs }: AdvancedRowProps) {
   return (
-    <div className="flex items-start gap-3 p-3 rounded-lg border border-white/10 bg-white/[0.02]">
-      <span className="shrink-0 w-5 h-5 rounded-full mt-0.5 border border-white/20 flex items-center justify-center" aria-hidden="true">
-        <span className="w-1.5 h-1.5 rounded-full bg-white/30" />
+    <div className="flex items-start gap-3 p-3 rounded-lg border border-white/10 bg-white/[0.03]">
+      <span className="shrink-0 w-5 h-5 rounded-full mt-0.5 border border-emerald-500/40 flex items-center justify-center" aria-hidden="true">
+        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
       </span>
       <div className="flex-1 min-w-0">
         <div className="flex items-baseline gap-2">
-          <span className="text-sm font-semibold text-white/80">{title}</span>
-          <span className="text-[9px] uppercase tracking-wider px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-300 border border-amber-500/20">
-            Coming soon
+          <span className="text-sm font-semibold text-white/90">{title}</span>
+          <span className="text-[9px] uppercase tracking-wider px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-300 border border-emerald-500/20">
+            Available
           </span>
         </div>
         <ul className="mt-1 space-y-0.5">
           {outputs.map((o, i) => (
-            <li key={i} className="text-xs text-white/40">
+            <li key={i} className="text-xs text-white/55">
               → {o}
             </li>
           ))}
@@ -169,7 +169,8 @@ export function NewClaimFeatureChecklist({
             ]}
           />
 
-          {/* Advanced features — informational for now, wiring lands in Phase C v2 */}
+          {/* Advanced features — all live today; surfaced here so users discover
+              them (you set each up on the claim page once the claim exists). */}
           <div className="pt-3 pb-1 px-2">
             <div className="text-[10px] uppercase tracking-wider text-white/30 font-semibold">
               Advanced features
@@ -188,8 +189,8 @@ export function NewClaimFeatureChecklist({
             outputs={["Auto-schedule COC delivery to homeowner + carrier"]}
           />
           <AdvancedRow
-            title="Day-of-job supplement triggers"
-            outputs={["Real-time supplement detection during the install"]}
+            title="Day-of-job / install supplements"
+            outputs={["Build & send supplements for items found during the install"]}
           />
 
           {/* Customer touchpoints — explains automatic emails */}
