@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { StartChat } from "@/components/start-chat";
+import "./spectral.css";
 
 // Anonymous Richard-chat landing — the Meta-ads destination.
 // Drops a visitor straight into a Richard conversation: greet → single agentic
