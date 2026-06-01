@@ -32,3 +32,6 @@ jobs:
       - name: Code-citation regression (E267 felt mis-citation)
         working-directory: backend
         run: python3 tests/test_code_citation_felt.py
+      - name: Estimate dedup + carrier-args boilerplate strip (Doc 02 I&W-x3 inflation, Doc 03 name leak)
+        working-directory: backend
+        run: python3 tests/test_estimate_dedup.py
