@@ -35,7 +35,7 @@ export function CloseoutTab({ claim, slots }: Props) {
     {
       num: 3,
       title: "Ready to build",
-      status: slots.readyToBuild ? (isWon ? "now" : "locked") : "locked",
+      status: slots.readyToBuild ? "now" : "locked",
       body: slots.readyToBuild,
     },
     {
@@ -53,7 +53,7 @@ export function CloseoutTab({ claim, slots }: Props) {
     {
       num: 6,
       title: "Invoicing",
-      status: slots.invoicing && isWon ? "now" : "locked",
+      status: slots.invoicing ? "now" : "locked",
       body: slots.invoicing ?? slots.lockedInvoice,
     },
   ];

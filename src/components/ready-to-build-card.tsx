@@ -59,10 +59,12 @@ export function ReadyToBuildCard({
   claimId,
   claimOutcome,
   hasForensicWin,
+  unlockedOverride = false,
 }: {
   claimId: string;
   claimOutcome: string | null;
   hasForensicWin: boolean;
+  unlockedOverride?: boolean;
 }) {
   const supabase = createClient();
   const [selections, setSelections] = useState<ClaimSelections>({});
@@ -74,7 +76,7 @@ export function ReadyToBuildCard({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const unlocked = claimOutcome === "won" || hasForensicWin;
+  const unlocked = unlockedOverride || claimOutcome === "won" || hasForensicWin;
 
   const fetchSelections = useCallback(async () => {
     const { data } = await supabase
