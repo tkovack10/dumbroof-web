@@ -4867,6 +4867,41 @@ async def generate_aob_endpoint(body: GenerateAobRequest):
         return {"status": "error", "message": str(e)}
 
 
+class ConvertToPdfRequest(BaseModel):
+    path: str  # storage path within the claim-documents bucket
+
+
+@app.post("/api/convert-to-pdf")
+async def convert_to_pdf_endpoint(body: ConvertToPdfRequest):
+    """Convert an uploaded image in storage (e.g. a photographed AOB) into a real
+    single-page PDF, writing a sibling .pdf. The browser converts images→PDF for
+    most cases (canvas + pdf-lib); this is the server-side path for what it can't
+    decode — HEIC on non-Safari browsers — reusing the photo pipeline's
+    pillow-heif stack. Returns the new .pdf storage path; no-ops (path unchanged)
+    when the file isn't a convertible image."""
+    from image_to_pdf import image_bytes_to_pdf, is_convertible_image
+
+    path = (body.path or "").strip().lstrip("/")
+    if not path or ".." in path or "\n" in path or "\r" in path:
+        return {"status": "error", "message": "invalid path"}
+    if not is_convertible_image(path):
+        # Already a PDF or a non-image — nothing to convert.
+        return {"status": "ok", "pdf_path": path, "converted": False}
+
+    sb = get_supabase_client()
+    try:
+        data = sb.storage.from_("claim-documents").download(path)
+        pdf_bytes = image_bytes_to_pdf(data)
+        pdf_path = path.rsplit(".", 1)[0] + ".pdf"
+        sb.storage.from_("claim-documents").upload(
+            pdf_path, pdf_bytes, {"content-type": "application/pdf"}
+        )
+        return {"status": "ok", "pdf_path": pdf_path, "converted": True}
+    except Exception as e:
+        print(f"[CONVERT-TO-PDF ERROR] {path}: {e}", flush=True)
+        return {"status": "error", "message": str(e)}
+
+
 @app.post("/api/coc/generate")
 async def generate_coc_endpoint(body: CocRequest):
     """Generate a Certificate of Completion PDF and upload to storage."""

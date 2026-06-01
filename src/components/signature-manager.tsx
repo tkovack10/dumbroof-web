@@ -4,6 +4,8 @@ import { useState, useEffect, useCallback } from "react";
 import { FileUploadZone } from "@/components/file-upload-zone";
 import { directUpload, ensurePdfFile } from "@/lib/upload-utils";
 import { UNIVERSAL_UPLOAD_ACCEPT } from "@/lib/claim-constants";
+import { getBackendUrl } from "@/lib/backend-config";
+import { getRichardAuthHeaders } from "@/lib/richard-auth";
 
 interface Props {
   claimId: string;
@@ -519,6 +521,28 @@ export function SignatureManager({ claimId, claimAddress, carrierName, userId, f
                       if (!signRes.ok) throw new Error(signData.error || "Failed to get upload URL");
                       await directUpload(signData.signedUrl, file);
 
+                      // Server-side safety net: if the browser couldn't make a PDF
+                      // (e.g. HEIC on a non-Safari browser), convert in storage so
+                      // the carrier always gets an openable PDF. Best-effort — on
+                      // failure we keep the original uploaded path.
+                      let signedPath = signData.path as string;
+                      if (!isPdfNow) {
+                        try {
+                          const conv = await fetch(`${getBackendUrl()}/api/convert-to-pdf`, {
+                            method: "POST",
+                            headers: {
+                              "Content-Type": "application/json",
+                              ...(await getRichardAuthHeaders()),
+                            },
+                            body: JSON.stringify({ path: signData.path }),
+                          });
+                          const convData = await conv.json();
+                          if (conv.ok && convData.pdf_path) signedPath = convData.pdf_path;
+                        } catch {
+                          /* keep original path */
+                        }
+                      }
+
                       const res = await fetch("/api/signatures", {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
@@ -528,12 +552,12 @@ export function SignatureManager({ claimId, claimAddress, carrierName, userId, f
                           homeowner_name: homeownerName,
                           homeowner_email: homeownerEmail,
                           upload_mode: true,
-                          signed_pdf_path: signData.path,
+                          signed_pdf_path: signedPath,
                         }),
                       });
 
                       if (res.ok) {
-                        const aobFilename = signData.path.split("/").pop() || "";
+                        const aobFilename = signedPath.split("/").pop() || "";
                         if (aobFilename) {
                           fetch("/api/team-claims/update-files", {
                             method: "POST",
