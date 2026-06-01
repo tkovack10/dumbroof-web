@@ -510,7 +510,7 @@ export function StartChat() {
           {/* proof strip — real figures */}
           <div className="mt-6 rounded-[8px] border-t-2 border-[var(--c-brick)] bg-[var(--c-navy-soft)] px-4 py-4 text-center">
             <p className="ss-mono text-[13px] text-[var(--c-on-navy)]">
-              117 claims processed · $6.9M+ recovered for our customers
+              $20M+ in claims processed · $3M+ in approved supplements
             </p>
           </div>
 
