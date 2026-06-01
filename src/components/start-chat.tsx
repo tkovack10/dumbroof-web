@@ -28,22 +28,24 @@ import { RichardIcon } from "@/components/richard-icon";
 //
 // This is ADDITIVE — the homepage and /fb signup landings are untouched.
 
+// Weights trimmed to only what this page renders (ad-landing LCP):
+//   serif 600 (h2) + italic 400 (moat); sans 400/600/700/800; mono 400/600/700.
 const spectral = Spectral({
   subsets: ["latin"],
-  weight: ["300", "400", "500", "600", "700"],
+  weight: ["400", "600"],
   style: ["normal", "italic"],
   variable: "--font-spectral",
   display: "swap",
 });
 const libre = Libre_Franklin({
   subsets: ["latin"],
-  weight: ["400", "500", "600", "700", "800"],
+  weight: ["400", "600", "700", "800"],
   variable: "--font-libre",
   display: "swap",
 });
 const plex = IBM_Plex_Mono({
   subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
+  weight: ["400", "600", "700"],
   variable: "--font-plex",
   display: "swap",
 });
@@ -304,6 +306,7 @@ export function StartChat() {
           }
         }}
         rows={1}
+        aria-label="Tell Richard about your roof"
         placeholder="Type or talk — tell Richard about your roof…"
         className="ss-textarea flex-1 min-h-[40px] max-h-32 py-2 px-1 leading-snug"
       />
@@ -519,8 +522,8 @@ export function StartChat() {
             {WINS.map((w) => (
               <div key={w.note} className="ss-tile p-3 text-center">
                 <p className="ss-mono text-[15px] font-semibold text-[var(--c-brick-warm)]">{w.amount}</p>
-                <p className="ss-mono text-[10px] text-[var(--c-on-navy-mute)] mt-1 leading-tight">{w.pct}</p>
-                <p className="text-[10px] text-[var(--c-on-navy-mute)] mt-0.5 leading-tight">{w.note}</p>
+                <p className="ss-mono text-[11px] text-[var(--c-on-navy-mute)] mt-1 leading-tight">{w.pct}</p>
+                <p className="text-[11px] text-[var(--c-on-navy-mute)] mt-0.5 leading-tight">{w.note}</p>
               </div>
             ))}
           </div>
