@@ -138,6 +138,8 @@
   padding: 6px 0; color: var(--c-slate);
 }
 .start-spectral .ss-feedline .glyph { flex: none; width: 14px; margin-top: 1px; }
+/* let the text shrink + break a long no-space filename instead of overflowing */
+.start-spectral .ss-feedline > span:last-child { min-width: 0; overflow-wrap: anywhere; }
 .start-spectral .ss-feedline--active { color: var(--c-brick); }
 .start-spectral .ss-feedline--done   { color: var(--c-slate); }
 .start-spectral .ss-feedline--done .glyph { color: var(--c-brick); }
