@@ -1154,12 +1154,14 @@ FORENSIC_SPECTRAL_CSS = """
     --f-mono:  'IBM Plex Mono', 'SFMono-Regular', Menlo, monospace;
 }
 
-@page { size: letter; margin: 0.55in 0.6in; }
-/* Named zero-margin page for the navy cover so it FULL-BLEEDS to the paper edge.
-   Chrome --print-to-pdf clips negative-margin content to the page content box, so
-   the prior `.cover { margin: -0.55in -0.6in }` bleed trick left a white frame
-   around the navy (reps' "white outline" report). page: cover gives the cover
-   its own 0-margin sheet. */
+/* FULL-BLEED on every page. Chrome --print-to-pdf paints page background only
+   inside the @page margin box, so a non-zero margin leaves a WHITE FRAME around
+   the warm-paper body on interior pages (reps' "tan pages still have white
+   borders" report). We zero the @page margin so `body { background: paper }`
+   reaches every edge, and move the content inset into the in-flow `.report-body`
+   wrapper (horizontal padding holds across page breaks; top inset rides on the
+   per-section `.run-head` masthead which leads each interior page). */
+@page { size: letter; margin: 0; }
 @page cover { size: letter; margin: 0; }
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body {
@@ -1275,8 +1277,17 @@ td.mono, .mono { font-family: var(--f-mono); color: var(--c-ink); letter-spacing
 }
 .cover-assoc-logos img { height: 26pt; width: auto; opacity: 0.78; filter: grayscale(1) brightness(1.6); }
 
-/* ── INTERIOR CHROME — .run-head (chain-of-custody masthead) ── */
-.run-head { display: flex; justify-content: space-between; align-items: flex-start; padding-bottom: 10pt; border-bottom: 2px solid var(--c-navy); margin-bottom: 6pt; }
+/* ── INTERIOR PAGES — full-bleed warm paper with in-flow inset ──
+   .report-body wraps all post-cover content. Horizontal padding holds on EVERY
+   page (no white side gaps); bottom padding insets the final page. Per-page TOP
+   inset rides on .run-head (below), which leads each interior section. */
+.report-body { padding: 0 0.62in 0.5in; }
+
+/* ── INTERIOR CHROME — .run-head (chain-of-custody masthead) ──
+   padding-top insets the masthead from the page's top edge on every interior
+   page (the run-head leads each section after a page-break, so this is the
+   reliable per-page top inset under @page margin:0). */
+.run-head { display: flex; justify-content: space-between; align-items: flex-start; padding-top: 0.46in; padding-bottom: 10pt; border-bottom: 2px solid var(--c-navy); margin-bottom: 6pt; }
 .run-head .rh-mark { font-family: var(--f-sans); font-weight: 800; font-size: 11pt; letter-spacing: 0.12em; color: var(--c-navy); }
 .run-head .rh-mark .rh-sub { display: block; font-family: var(--f-sans); font-weight: 600; font-size: 6pt; letter-spacing: 0.22em; text-transform: uppercase; color: var(--c-brick); margin-top: 3pt; }
 .run-head .rh-r { text-align: right; }
@@ -3438,8 +3449,8 @@ def build_forensic_report(config):
         {"<div class='cover-assoc-logos'>" + ('<img src="' + apa_logo_b64 + '" alt="APA">' if apa_logo_b64 else '') + ('<img src="' + haag_logo_b64 + '" alt="HAAG">' if haag_logo_b64 else '') + ('<img src="' + nrca_logo_b64 + '" alt="NRCA">' if nrca_logo_b64 else '') + ('<img src="' + gaf_logo_b64 + '" alt="GAF Master Elite">' if gaf_logo_b64 else '') + ('<img src="' + oc_logo_b64 + '" alt="Owens Corning Platinum">' if oc_logo_b64 else '') + "</div>" if (apa_logo_b64 or nrca_logo_b64 or haag_logo_b64 or gaf_logo_b64 or oc_logo_b64) else ""}
     </div>
 </div>
-<div class="page-break"></div>
 
+<div class="report-body">
 {run_head_html}
 <!-- TABLE OF CONTENTS -->
 <h2>Table of Contents</h2>
@@ -3539,6 +3550,7 @@ def build_forensic_report(config):
     <div class="title">{company['ceo_title']}</div>
     <div>{company['cell_phone']} | {company['email']}</div>
 </div>
+</div><!-- /.report-body -->
 
 </body>
 </html>"""
