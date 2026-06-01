@@ -31,10 +31,19 @@ Bug classes codified here (from the live-claim QA + retrospective wmu9udhcr):
   #4    MATERIAL-SELF-CONSIST  check_material_self_consistency
   #6    HAIL-ONLY-WITH-NOAA    check_hail_only_with_noaa
 
-DEFERRED (the other shell is fixing this in processor.py right now — adding the
-invariant now would assert PRE-fix behavior and fight that work):
-  E271  grade-tier (shingle grade -> pricing)
-Add its invariant here once that fix lands.
+E271  grade-tier (shingle grade -> pricing) — RESOLVED, NOT an output invariant.
+  The fix landed in processor.py (#94): _detect_roof_material evidence-gates an
+  explicit premium request — `laminated_premium` is DOWNGRADED to `laminated`
+  unless _premium_grade_corroborated (processor.py ~5162/5183). So a high-grade
+  shingle line in the OUTPUT is always legitimate (corroborated request OR a
+  genuine voting-path detection — verified: golden fixtures 0098256a + eff5889b
+  ship a high-grade line with premium_requested=False via voting). An output
+  invariant is therefore not viable: the corroboration evidence (photo_analysis)
+  is not persisted in the stored config, and firing on "high-grade line + no
+  grade_evidence" false-positives on those historical fixtures. E271 is covered
+  where the evidence lives: the gate (#94) + qa_auditor.GRADE_PREMIUM_UNCORROBORATED
+  (MEDIUM flag, live photo_analysis) + test_grade_gate.py (6 unit tests) + the #19
+  check_grade_not_inflated_without_evidence below (locks the low-confidence default).
 
 NOTE ON E275: the live-QA's E275 turned out to be the sales-tax bug (the
 _tax_rates dict missing TX -> the flat NY 8% default leaked onto non-NY claims),

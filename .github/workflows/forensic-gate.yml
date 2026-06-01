@@ -35,3 +35,6 @@ jobs:
       - name: Estimate dedup + carrier-args boilerplate strip (Doc 02 I&W-x3 inflation, Doc 03 name leak)
         working-directory: backend
         run: python3 tests/test_estimate_dedup.py
+      - name: Doc 03 variance summary reconciles to TOTAL (per-category, no "+-$" sign bug)
+        working-directory: backend
+        run: python3 tests/test_variance_reconcile.py
