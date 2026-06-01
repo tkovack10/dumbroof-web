@@ -4744,34 +4744,54 @@ def build_supplement_report(config):
         cu = cat.upper()
         if cu.startswith("ROOF") or "roof" in blob or "shingle" in blob or "flashing" in blob:
             return "Roofing"
-        if cat:
+        if cat and cat.lower() not in ("unknown", "other", "misc", "miscellaneous"):
             # Title-case a meaningful explicit category we didn't special-case.
             return cat.title()
         return "Other"
 
+    # Per-category variance summary that RECONCILES with the bold TOTAL. The old
+    # rollup summed comparison_rows' usarm_amount, which (a) double-counted a USARM
+    # line matched to several carrier rows and (b) didn't decompose the true total
+    # (carrier-visible "parts exceed the whole" — why it was disabled). Authoritative
+    # sources instead:
+    #   • carrier per-category = sum(carrier_amount) over carrier rows  → totals carrier_rcv
+    #   • our per-category      = sum(qty*unit_price) over our line_items → totals line_total
+    #   • a final "Overhead, Profit & Sales Tax" row carries tax + O&P (which live at
+    #     the claim level, not per line) so OUR categories reach total_with_op. The
+    #     carrier RCV already bakes in its own O&P/depreciation, so its recon ≈ 0.
     computed_variance_summary = None
-    if comparison_rows:
-        from collections import OrderedDict
+    _our_items = [it for it in _dedup_exact_line_items(config.get("line_items") or [])
+                  if _is_initial_scope(it) and it.get("qty")]
+    if comparison_rows or _our_items:
         _cat_order = ["Roofing", "Gutters", "Siding", "Fascia & Soffit",
                       "Windows", "Paint", "Debris", "Other"]
-        _rollup = OrderedDict()
+        _rollup = {}
         for row in comparison_rows:
             _c = _doc3_category_of(row)
-            agg = _rollup.setdefault(_c, {"carrier": 0.0, "usarm": 0.0})
-            agg["carrier"] += float(row.get("carrier_amount") or 0)
-            agg["usarm"] += float(row.get("usarm_amount") or 0)
-        # Stable display order: known categories first, then any extras alphabetically.
+            _rollup.setdefault(_c, {"carrier": 0.0, "usarm": 0.0})["carrier"] += float(row.get("carrier_amount") or 0)
+        for it in _our_items:
+            _c = _doc3_category_of({"category": it.get("category"), "usarm_desc": it.get("description")})
+            _rollup.setdefault(_c, {"carrier": 0.0, "usarm": 0.0})["usarm"] += round(it["qty"] * it["unit_price"], 2)
         _ordered = [c for c in _cat_order if c in _rollup]
         _ordered += sorted(c for c in _rollup if c not in _cat_order)
-        computed_variance_summary = [
-            {
-                "category": c,
-                "carrier": round(_rollup[c]["carrier"], 2),
-                "usarm": round(_rollup[c]["usarm"], 2),
-                "variance": round(_rollup[c]["usarm"] - _rollup[c]["carrier"], 2),
-            }
-            for c in _ordered
+        _rows = [
+            {"category": c, "carrier": round(_rollup[c]["carrier"], 2),
+             "usarm": round(_rollup[c]["usarm"], 2),
+             "variance": round(_rollup[c]["usarm"] - _rollup[c]["carrier"], 2)}
+            for c in _ordered if (round(_rollup[c]["carrier"], 2) or round(_rollup[c]["usarm"], 2))
         ]
+        # Reconciliation row absorbs O&P + tax + any rounding so the category rows add
+        # up EXACTLY to the TOTAL on both columns. Only OUR column carries it.
+        _recon_usarm = round(fin["total_with_op"] - sum(r["usarm"] for r in _rows), 2)
+        _recon_carrier = round(fin["carrier_rcv"] - sum(r["carrier"] for r in _rows), 2)
+        if abs(_recon_usarm) >= 0.01 or abs(_recon_carrier) >= 0.01:
+            _rows.append({"category": "Overhead, Profit &amp; Sales Tax",
+                          "carrier": _recon_carrier, "usarm": _recon_usarm,
+                          "variance": round(_recon_usarm - _recon_carrier, 2)})
+        # Enable only when there's a real multi-category breakdown — a single category
+        # adds nothing over the 2-row RCV fallback.
+        _real_cats = [r for r in _rows if r["category"] != "Overhead, Profit &amp; Sales Tax"]
+        computed_variance_summary = _rows if len(_real_cats) >= 2 else None
 
     # Code violations section (below comparison table)
     code_violations_html = ""
@@ -4826,13 +4846,11 @@ def build_supplement_report(config):
 
     # Variance summary table. Source order: an upstream-supplied
     # supplement_variance_summary (94 Theron pre-computes one) takes precedence;
-    # NOTE: the per-category rollup (computed_variance_summary) is DISABLED pending a
-    # comparison_rows de-dup fix — on claims whose comparison_rows duplicate a USARM
-    # line across multiple carrier rows (e.g. 77-cook-st-ny), the category rows
-    # double-count and no longer reconcile with the TOTAL/claim RCV (a carrier-visible
-    # "parts exceed the whole"). Until the rows are de-duped, only an explicitly
-    # supplied summary is used; otherwise the byte-identical 2-row fallback renders.
-    _variance_summary_data = config.get("supplement_variance_summary")
+    # else the per-category computed_variance_summary built above (authoritative
+    # carrier_amount + line_items sources + an O&P/tax reconciliation row, so the
+    # category rows add up EXACTLY to the TOTAL); else the 2-row RCV fallback for
+    # forensic-only / single-category claims.
+    _variance_summary_data = config.get("supplement_variance_summary") or computed_variance_summary
     variance_summary_html = ""
     if _variance_summary_data:
         variance_summary_html += '<h2>Variance Summary</h2>\n<table class="spectral">\n'
@@ -4840,15 +4858,21 @@ def build_supplement_report(config):
         for vs in _variance_summary_data:
             var_amt = vs.get("variance", 0)
             var_class = ' class="num var-pos"' if var_amt > 0 else ' class="num"'
-            variance_summary_html += f'<tr><td>{vs["category"]}</td><td class="num">{fmt_money(vs.get("carrier",0))}</td><td class="num">{fmt_money(vs.get("usarm",0))}</td><td{var_class}>{"+" if var_amt > 0 else ""}{fmt_money(var_amt)}</td></tr>\n'
-        variance_summary_html += f'<tr class="section-total"><td><strong>TOTAL</strong></td><td class="num"><strong>{fmt_money(fin["carrier_rcv"])}</strong></td><td class="num"><strong>{fmt_money(fin["total_with_op"])}</strong></td><td class="num variance-positive"><strong>+{fmt_money(fin["variance"])}</strong></td></tr>\n'
+            var_sign = "+" if var_amt > 0 else ("&minus;" if var_amt < 0 else "")
+            variance_summary_html += f'<tr><td>{vs["category"]}</td><td class="num">{fmt_money(vs.get("carrier",0))}</td><td class="num">{fmt_money(vs.get("usarm",0))}</td><td{var_class}>{var_sign}{fmt_money(abs(var_amt))}</td></tr>\n'
+        _tv = fin["variance"]
+        _tv_cls = "num variance-positive" if _tv >= 0 else "num"
+        _tv_sign = "+" if _tv >= 0 else "&minus;"
+        variance_summary_html += f'<tr class="section-total"><td><strong>TOTAL</strong></td><td class="num"><strong>{fmt_money(fin["carrier_rcv"])}</strong></td><td class="num"><strong>{fmt_money(fin["total_with_op"])}</strong></td><td class="{_tv_cls}"><strong>{_tv_sign}{fmt_money(abs(_tv))}</strong></td></tr>\n'
         variance_summary_html += '</table>\n'
     else:
         # Build a simple variance summary
+        _fb_sign = "+" if fin['variance'] >= 0 else "&minus;"
+        _fb_cls = "num variance-positive" if fin['variance'] >= 0 else "num"
         variance_summary_html += f"""<h2>Variance Summary</h2>
 <table class="spectral">
     <tr><th></th><th class="num">{carrier['name']}</th><th class="num">{company['name']}</th><th class="num">Variance</th></tr>
-    <tr class="section-total"><td><strong>RCV</strong></td><td class="num"><strong>{fmt_money(fin['carrier_rcv'])}</strong></td><td class="num"><strong>{fmt_money(fin['total_with_op'])}</strong></td><td class="num variance-positive"><strong>+{fmt_money(fin['variance'])}</strong></td></tr>
+    <tr class="section-total"><td><strong>RCV</strong></td><td class="num"><strong>{fmt_money(fin['carrier_rcv'])}</strong></td><td class="num"><strong>{fmt_money(fin['total_with_op'])}</strong></td><td class="{_fb_cls}"><strong>{_fb_sign}{fmt_money(abs(fin['variance']))}</strong></td></tr>
 </table>
 """
 
