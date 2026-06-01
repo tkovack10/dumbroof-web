@@ -1108,7 +1108,10 @@ export default function ClaimDetailPage() {
                 claimId={claim.id}
                 claimOutcome={claim.claim_outcome || null}
                 hasForensicWin={hasForensicWin}
-                unlockedOverride={!isForensicOnly}
+                // Ready-to-Build is always accessible + visible once reports
+                // exist (Tom) — no win/payment gate, and shown even for
+                // forensic-only. Production generation stays validation-gated.
+                unlockedOverride={true}
               />
             ) : null,
             installSupplements: isReady ? (
