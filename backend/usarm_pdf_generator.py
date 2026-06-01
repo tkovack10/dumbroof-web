@@ -1652,18 +1652,21 @@ strong, b { font-weight: 700; }
 .cite-chip.on-navy { color: #fff; background: rgba(184,56,60,0.92); border-color: rgba(255,255,255,0.25); }
 
 /* ── FULL-BLEED NAVY LETTERHEAD BAR (mirrors Doc 01 run-head for package
-      coherence; logo knocked out to white in a hairline ring) ── */
+      coherence; logo on a clean white card — works for ANY logo. The prior
+      brightness(0)+invert(1) knockout turned a white-bg JPG into a solid white
+      box ("missing logo in white box", E279) — identical to the Doc 01 cover
+      bug fixed in #121. Same clean-white-card remedy applied here. ── */
 .header-bar {
     background: var(--c-navy); color: #eef1f5; width: 100%;
     padding: 26pt 0.6in 24pt 0.6in; display: flex; align-items: center; gap: 20pt;
 }
 .header-bar .logo-ring {
     flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center;
-    padding: 9pt 14pt; border: 1px solid rgba(255,255,255,0.24); border-radius: 4px;
-    background: rgba(255,255,255,0.03);
+    padding: 9pt 14pt; border-radius: 4px;
+    background: #fff; box-shadow: 0 0 0 1px rgba(255,255,255,0.5);
 }
-.header-bar .logo-ring img { height: 40pt; width: auto; max-width: 180pt; object-fit: contain; filter: brightness(0) invert(1); }
-.header-bar .logo-ring .logo-text-fallback { color: #fff; font-family: var(--f-sans); font-weight: 800; font-size: 11pt; letter-spacing: 0.08em; }
+.header-bar .logo-ring img { height: 40pt; width: auto; max-width: 180pt; object-fit: contain; }
+.header-bar .logo-ring .logo-text-fallback { color: var(--c-navy); font-family: var(--f-sans); font-weight: 800; font-size: 11pt; letter-spacing: 0.08em; }
 .header-bar .header-text { flex: 1; }
 .header-bar .company { font-family: var(--f-sans); font-weight: 800; font-size: 11pt; letter-spacing: 0.15em; color: #fff; margin-bottom: 8pt; }
 .header-bar .kicker { font-family: var(--f-sans); font-weight: 700; font-size: 7.5pt; letter-spacing: 0.26em; text-transform: uppercase; color: var(--c-brick-warm); margin-bottom: 6pt; }
