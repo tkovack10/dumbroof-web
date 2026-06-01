@@ -146,6 +146,12 @@ export const FunnelEvent = {
   FIRST_CLAIM_ACTIVATED: "first_claim_activated",
   SCROLL_DEPTH: "scroll_depth",
   SAMPLE_PAGE_VIEWED: "sample_page_viewed",
+  // Anonymous /start ad-landing funnel (the Meta-ad activation landing). Lets us
+  // measure within-page drop-off (landing view → file classified+staged →
+  // start-claim click) and compare /start vs /fb/whoops in a landing split test.
+  START_LANDING_VIEW: "start_landing_view",
+  START_INTAKE_READY: "start_intake_ready",
+  START_CLAIM_CLICKED: "start_claim_clicked",
 } as const;
 
 export type FunnelEventName = (typeof FunnelEvent)[keyof typeof FunnelEvent];

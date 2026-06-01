@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Spectral, Libre_Franklin, IBM_Plex_Mono } from "next/font/google";
 import { AgenticDropZone, type DropItem, type IntakeCategory } from "@/components/agentic-drop-zone";
 import { RichardIcon } from "@/components/richard-icon";
+import { trackBoth, FunnelEvent } from "@/lib/track";
 
 // ── Anonymous Richard-chat landing (/start), Spectral skin ─────────────────
 // Ad-pointable route that drops a visitor STRAIGHT into a Richard conversation,
@@ -180,6 +181,13 @@ export function StartChat() {
     return () => clearInterval(t);
   }, []);
 
+  // Funnel: ad-clicker landed on /start. GA4 auto-fires page_view; this is the
+  // NAMED funnel step (GA4 + Vercel + funnel_events DB) so /start can be compared
+  // to /fb/whoops in the landing split test. Once per mount.
+  useEffect(() => {
+    trackBoth(FunnelEvent.START_LANDING_VIEW, { funnel: FUNNEL });
+  }, []);
+
   // Web Speech dictation — progressive enhancement, self-contained (no backend).
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -250,6 +258,16 @@ export function StartChat() {
     if (nextReady.length > prevReadyCount) {
       const cats = new Set<IntakeCategory>();
       for (const it of nextReady) cats.add(it.category);
+      // Funnel: a file finished classify + stage — the core engagement step that
+      // was previously untracked. GA4 + Vercel + funnel_events DB, + a Meta custom
+      // event for mid-funnel visibility.
+      const catList = Array.from(cats).join(",");
+      trackBoth(FunnelEvent.START_INTAKE_READY, { ready_count: nextReady.length, categories: catList });
+      try {
+        window.fbq?.("trackCustom", "StartIntakeReady", { categories: catList, ready_count: nextReady.length });
+      } catch {
+        /* non-fatal — analytics must never break the flow */
+      }
       setTurns((prev) => {
         // Replace a trailing Richard line so the convo stays tight.
         const base = prev[prev.length - 1]?.role === "richard" && prev.length > 1 ? prev.slice(0, -1) : prev;
@@ -287,6 +305,17 @@ export function StartChat() {
       } catch {
         /* non-fatal */
       }
+    }
+    // Funnel: intent-to-activate — the key /start conversion step (clicking
+    // through to signup with files staged). trackBoth uses sendBeacon so it
+    // survives the navigation; a Meta custom event mirrors it for mid-funnel
+    // visibility (the standard StartTrial fires downstream on claim creation).
+    const catList = Array.from(readyCats).join(",");
+    trackBoth(FunnelEvent.START_CLAIM_CLICKED, { ready_count: readyItems.length, categories: catList });
+    try {
+      window.fbq?.("trackCustom", "StartClaimClicked", { categories: catList, ready_count: readyItems.length });
+    } catch {
+      /* non-fatal */
     }
     // Files are already staged anonymously under the instant-intake cookie
     // token. Hand off to the existing signup → /instant/continue pipeline.
