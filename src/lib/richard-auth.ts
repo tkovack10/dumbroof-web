@@ -3,30 +3,47 @@
 import { createClient } from "@/lib/supabase/client";
 
 /**
- * Build the Authorization header for backend Richard endpoints.
+ * Build the Authorization header for backend Richard / integration endpoints.
  *
- * The backend (`backend/main.py`) reads `Authorization: Bearer <jwt>` and
- * derives `user_id` from the verified Supabase auth token. When the env
- * flag `RICHARD_ENFORCE_AUTH=true` is set, missing/invalid tokens are 401d.
- * Soft-fail mode falls back to body.user_id for backwards compat during
- * the rollout — but always send the token when one is available so we
- * can flip the flag without breaking anyone.
+ * The backend (`backend/main.py`) reads `Authorization: Bearer <jwt>`, verifies
+ * it against Supabase `/auth/v1/user`, and 401s any request without a valid one
+ * (auth enforcement is permanent — it closes the cross-tenant IDOR). So every
+ * direct browser→backend call MUST carry the token.
+ *
+ * PRIMARY source = our own same-origin `/api/auth/token` route. The browser
+ * Supabase client's `getSession()` intermittently returns NO token on
+ * long-lived dashboard tabs, so these cross-origin fetches were going out with
+ * no `Authorization` header → backend 401 → "session expired, log in again" —
+ * which re-login never fixed, because the session was actually valid. The
+ * SERVER side reads the session reliably (middleware refreshes the auth cookies
+ * on every dashboard nav), so we ask the server for the token and attach it.
+ * Cookies are sent automatically on the same-origin fetch.
+ *
+ * FALLBACK = the original client-side path, for any edge case where the
+ * same-origin route is unreachable.
  */
 export async function getRichardAuthHeaders(): Promise<Record<string, string>> {
+  // Primary: server-validated token via same-origin route (reliable path).
+  try {
+    const res = await fetch("/api/auth/token", { cache: "no-store" });
+    if (res.ok) {
+      const { access_token } = await res.json();
+      if (access_token) return { Authorization: `Bearer ${access_token}` };
+    }
+  } catch {
+    // Network/route error — fall through to the client-side path below.
+  }
+
+  // Fallback: client Supabase session (the legacy path).
   try {
     const supabase = createClient();
     const { data } = await supabase.auth.getSession();
     let token = data.session?.access_token;
 
-    // Proactively refresh a missing or near-expired access token BEFORE we
-    // send it to the backend. The backend verifies every token against
-    // Supabase /auth/v1/user, so a stale token → 401 "Authentication required"
-    // even though the user is still "logged in" locally. On mobile browsers
-    // the background auto-refresh timer is unreliable (tab suspension), so the
-    // stored access token routinely outlives its ~1h TTL while the refresh
-    // token is still perfectly valid. Without this, reps on a days-old session
-    // get 401d on CompanyCam import AND Richard chat (one root cause, two
-    // symptoms) — see project_usarm_reps_auth_block_2026_05_31.
+    // Proactively refresh a missing or near-expired access token. On mobile
+    // browsers the background auto-refresh timer is unreliable (tab
+    // suspension), so the stored access token can outlive its ~1h TTL while
+    // the refresh token is still valid.
     const expiresAt = data.session?.expires_at; // unix seconds
     const nowSec = Math.floor(Date.now() / 1000);
     const expiringSoon = typeof expiresAt === "number" && expiresAt - nowSec < 120;
