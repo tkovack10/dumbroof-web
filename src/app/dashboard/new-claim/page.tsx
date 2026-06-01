@@ -25,6 +25,11 @@ export default function NewClaimPage() {
   const [insuranceCarrier, setInsuranceCarrier] = useState("");
   const [measurementFiles, setMeasurementFiles] = useState<File[]>([]);
   const [photoFiles, setPhotoFiles] = useState<File[]>([]);
+  // Photos that arrive via the agentic drop zone (desktop + mobile "add more"),
+  // kept separate from `photoFiles` (mobile camera capture) so the two sources
+  // MERGE instead of clobbering. `allPhotos` below is the single source the
+  // submit/quota/validation logic reads.
+  const [zonePhotoFiles, setZonePhotoFiles] = useState<File[]>([]);
   const [crmPhotoCount, setCrmPhotoCount] = useState(0);
   const [crmSlug, setCrmSlug] = useState("");
   const [scopeFiles, setScopeFiles] = useState<File[]>([]);
@@ -86,6 +91,14 @@ export default function NewClaimPage() {
     return () => { photoUrls.forEach((u) => URL.revokeObjectURL(u)); };
   }, [photoUrls]);
 
+  // Single source of truth for "the photos on this claim" — mobile camera
+  // capture (photoFiles) + anything classified as a photo in the agentic drop
+  // zone (zonePhotoFiles). Submit, quota, and validation all read this.
+  const allPhotos = useMemo(
+    () => [...photoFiles, ...zonePhotoFiles],
+    [photoFiles, zonePhotoFiles]
+  );
+
   // Funnel: user reached the new-claim form. This event was DEFINED but never
   // fired — wiring it closes the "reached the form" step so the drop-off between
   // dashboard and a submitted claim becomes visible in funnel_events.
@@ -100,13 +113,14 @@ export default function NewClaimPage() {
     e.target.value = "";
   }, []);
 
-  // Single agentic drop box (desktop) — replaces the 3 separate typed
-  // FileUploadZone boxes. The zone auto-classifies each dropped file (and lets
-  // the user correct it); on every change we re-bucket the READY items into the
-  // existing photoFiles / measurementFiles / scopeFiles arrays the submit
-  // handler already reads, so the rest of the form is unchanged. "other" routes
-  // to photos (sensible default). Staging is deferred — the form uploads at
-  // submit time as it always has.
+  // Single agentic drop box — the ONLY doc intake on desktop, and the
+  // "add measurements / scope" intake on mobile (mobile keeps the dedicated
+  // camera-capture buttons for photos). The zone auto-classifies each dropped
+  // file (and lets the user correct it); on every change we re-bucket the READY
+  // items into zonePhotoFiles / measurementFiles / scopeFiles. Zone photos land
+  // in zonePhotoFiles (NOT photoFiles) so mobile camera photos are preserved and
+  // MERGED via `allPhotos`. "other" routes to photos (sensible default).
+  // Staging is deferred — the form uploads at submit time as it always has.
   const handleAgenticItems = useCallback((items: DropItem[]) => {
     const ready = items.filter((it) => it.status === "ready");
     const photos: File[] = [];
@@ -117,7 +131,7 @@ export default function NewClaimPage() {
       else if (it.category === "scope") scope.push(it.file);
       else photos.push(it.file); // photos + other
     }
-    setPhotoFiles(photos);
+    setZonePhotoFiles(photos);
     setMeasurementFiles(measurements);
     setScopeFiles(scope);
   }, []);
@@ -192,7 +206,7 @@ export default function NewClaimPage() {
   // The overage consent modal is shown lazily inside performSubmit when needed.
   const canSubmit =
     propertyAddress.trim() !== "" &&
-    (photoFiles.length > 0 || crmPhotoCount > 0) &&
+    (allPhotos.length > 0 || crmPhotoCount > 0) &&
     (quota === null || quota.mode !== "blocked");
 
   const scanForStorms = async () => {
@@ -238,7 +252,7 @@ export default function NewClaimPage() {
     trackBoth(FunnelEvent.NEW_CLAIM_FORM_SUBMITTED, {
       phase,
       measurement_count: measurementFiles.length,
-      photo_count: photoFiles.length + crmPhotoCount,
+      photo_count: allPhotos.length + crmPhotoCount,
       scope_count: scopeFiles.length,
       has_carrier_scope: scopeFiles.length > 0,
     });
@@ -316,7 +330,7 @@ export default function NewClaimPage() {
       // merges sidecars into the photos table during EXIF extraction.
       setUploadProgress("Compressing photos...");
       const { photos: compressedPhotos, sidecars: exifSidecars } =
-        await compressImages(photoFiles);
+        await compressImages(allPhotos);
 
       // Upload all file categories with concurrent batching
       const uploadCategory = async (files: File[], folder: string, label: string) => {
@@ -706,18 +720,8 @@ export default function NewClaimPage() {
                     <p className="text-xs text-[var(--gray-muted)] mt-0.5">EagleView, HOVER, GAF QuickMeasure, or any measurement report. Don&apos;t have them yet? That&apos;s fine &mdash; add them anytime.</p>
                   </div>
                 </div>
-                {hasMeasurements && (
-                  <div className="px-4 pb-4 pt-0">
-                    <FileUploadZone
-                      label="Upload Measurements"
-                      description="PDF or email file (.eml) with your EagleView, HOVER, or measurement report."
-                      accept=".pdf,.eml"
-                      multiple
-                      files={measurementFiles}
-                      onFilesChange={setMeasurementFiles}
-                    />
-                  </div>
-                )}
+                {/* Upload moved to the single agentic drop box below — this
+                    checkbox now just guides the "what you'll get" preview. */}
               </div>
 
               <div className="rounded-xl bg-white/[0.04] border border-[var(--border-glass)] overflow-hidden">
@@ -736,18 +740,8 @@ export default function NewClaimPage() {
                     <p className="text-xs text-[var(--gray-muted)] mt-0.5">The carrier&apos;s estimate or scope of loss. Don&apos;t have it yet? That&apos;s fine &mdash; add it once you receive it.</p>
                   </div>
                 </div>
-                {hasCarrierScope && (
-                  <div className="px-4 pb-4 pt-0">
-                    <FileUploadZone
-                      label="Upload Carrier Scope"
-                      description="The carrier's estimate or scope of loss PDF, or forward the email (.eml)."
-                      accept=".pdf,.eml"
-                      multiple
-                      files={scopeFiles}
-                      onFilesChange={setScopeFiles}
-                    />
-                  </div>
-                )}
+                {/* Upload moved to the single agentic drop box below — this
+                    checkbox now just guides the "what you'll get" preview. */}
               </div>
             </div>
 
@@ -926,7 +920,7 @@ export default function NewClaimPage() {
             features (AOB digital signature, COC, day-of-job supplements)
             and automatic customer touchpoints. Phase C of the Apr 26 plan. */}
         <NewClaimFeatureChecklist
-          hasPhotos={photoFiles.length > 0 || crmPhotoCount > 0}
+          hasPhotos={allPhotos.length > 0 || crmPhotoCount > 0}
           hasMeasurements={measurementFiles.length > 0}
           hasCarrierScope={scopeFiles.length > 0}
         />
@@ -1228,6 +1222,21 @@ export default function NewClaimPage() {
                 </div>
               )}
 
+              {/* Add measurements / carrier scope — the single agentic drop
+                  box. Always mounted (NOT inside the collapsible accordion) so
+                  staged files aren't lost on collapse/reopen. Photos still come
+                  from the camera buttons above; the zone merges into allPhotos. */}
+              <div className="space-y-1.5">
+                <p className="text-xs font-semibold text-[var(--white)]">Have a measurement report or the carrier&apos;s scope?</p>
+                <AgenticDropZone
+                  onItemsChange={handleAgenticItems}
+                  deferStaging
+                  compact
+                  title="Drop your EagleView / measurements or the carrier's estimate"
+                  hint="Richard detects what each file is — fix it if he's wrong."
+                />
+              </div>
+
               {/* Optional extras accordion */}
               <button
                 type="button"
@@ -1237,26 +1246,10 @@ export default function NewClaimPage() {
                 <svg className={`w-4 h-4 transition-transform ${showAdvanced ? "rotate-180" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
                 </svg>
-                Add measurements, carrier scope, or notes (optional)
+                Add homeowner, carrier, or notes (optional)
               </button>
               {showAdvanced && (
                 <div className="space-y-4">
-                  <FileUploadZone
-                    label="Measurements"
-                    description="EagleView, HOVER, or any measurement report. Add later if you don't have it yet."
-                    accept=".pdf,.eml"
-                    multiple
-                    files={measurementFiles}
-                    onFilesChange={setMeasurementFiles}
-                  />
-                  <FileUploadZone
-                    label="Carrier Scope"
-                    description="The carrier's estimate or scope of loss. Add later if you don't have it yet."
-                    accept=".pdf,.eml"
-                    multiple
-                    files={scopeFiles}
-                    onFilesChange={setScopeFiles}
-                  />
                   <div>
                     <label className="block text-sm font-semibold text-[var(--white)] mb-1">Homeowner Name</label>
                     <input
@@ -1558,7 +1551,7 @@ export default function NewClaimPage() {
               Still need:{" "}
               {[
                 !propertyAddress.trim() && "property address",
-                photoFiles.length === 0 && crmPhotoCount === 0 && "inspection photos",
+                allPhotos.length === 0 && crmPhotoCount === 0 && "inspection photos",
               ]
                 .filter(Boolean)
                 .join(", ")}
