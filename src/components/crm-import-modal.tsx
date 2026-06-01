@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { getRichardAuthHeaders, SESSION_EXPIRED_MESSAGE, goToLogin } from "@/lib/richard-auth";
+import { SESSION_EXPIRED_MESSAGE, goToLogin } from "@/lib/richard-auth";
 
 interface CrmImportModalProps {
   open: boolean;
@@ -51,22 +51,24 @@ export function CrmImportModal({
   open,
   onClose,
   integrations,
-  backendUrl,
-  userId,
   targetPath,
   targetFolder,
   onPhotoPaths,
   onImport,
 }: CrmImportModalProps) {
+  // NOTE: `backendUrl` / `userId` props are intentionally no longer used.
+  // CompanyCam/AccuLynx calls now go through same-origin /api/integrations/*
+  // proxies that attach the JWT server-side (see integration-proxy.ts). The
+  // props stay in the interface so the 3 call sites don't need to change.
   const defaultTab: Tab = integrations.acculynx ? "acculynx" : "companycam";
   const [tab, setTab] = useState<Tab>(defaultTab);
   const [step, setStep] = useState<Step>("search");
   const [search, setSearch] = useState("");
   const [searching, setSearching] = useState(false);
   const [error, setError] = useState("");
-  // When the backend 401s (token already auto-refreshed in getRichardAuthHeaders,
-  // so a 401 means the session is truly dead) we show a re-login prompt instead
-  // of the raw "Authentication required" string.
+  // A 401 from the same-origin proxy means the SERVER had no live session
+  // (the session is truly dead — not a missing-token glitch), so we show a
+  // re-login prompt instead of the raw "Authentication required" string.
   const [sessionExpired, setSessionExpired] = useState(false);
 
   // AccuLynx state
@@ -126,12 +128,11 @@ export function CrmImportModal({
     setError("");
     setSessionExpired(false);
     try {
-      // Send the Supabase JWT — the backend derives the caller's user_id from
-      // the verified token (the user_id query param is no longer trusted).
-      const authHeaders = await getRichardAuthHeaders();
+      // Same-origin proxy attaches the JWT server-side (the reliable path);
+      // the browser just rides its cookies. No client token handling.
       const res = await fetch(
-        `${backendUrl}/api/integrations/acculynx/jobs?user_id=${userId}&search=${encodeURIComponent(search)}`,
-        { headers: authHeaders }
+        `/api/integrations/acculynx/jobs?search=${encodeURIComponent(search)}`,
+        { cache: "no-store" }
       );
       if (await handle401(res)) { setJobs([]); setSearching(false); return; }
       const data = await res.json();
@@ -150,12 +151,11 @@ export function CrmImportModal({
     setError("");
     setSessionExpired(false);
     try {
-      // Send the Supabase JWT — the backend derives the caller's user_id from
-      // the verified token (the user_id query param is no longer trusted).
-      const authHeaders = await getRichardAuthHeaders();
+      // Same-origin proxy attaches the JWT server-side (the reliable path);
+      // the browser just rides its cookies. No client token handling.
       const res = await fetch(
-        `${backendUrl}/api/integrations/companycam/projects?user_id=${userId}&query=${encodeURIComponent(search)}`,
-        { headers: authHeaders }
+        `/api/integrations/companycam/projects?query=${encodeURIComponent(search)}`,
+        { cache: "no-store" }
       );
       if (await handle401(res)) { setProjects([]); setSearching(false); return; }
       const data = await res.json();
@@ -198,12 +198,11 @@ export function CrmImportModal({
     setLoadingPhotos(true);
     setError("");
     try {
-      // Send the Supabase JWT — the backend derives the caller's user_id from
-      // the verified token (the user_id query param is no longer trusted).
-      const authHeaders = await getRichardAuthHeaders();
+      // Same-origin proxy attaches the JWT server-side (the reliable path);
+      // the browser just rides its cookies. No client token handling.
       const res = await fetch(
-        `${backendUrl}/api/integrations/companycam/projects/${project.id}/photos?user_id=${userId}`,
-        { headers: authHeaders }
+        `/api/integrations/companycam/projects/${project.id}/photos`,
+        { cache: "no-store" }
       );
       if (await handle401(res)) { setPhotos([]); setLoadingPhotos(false); setStep("photos"); return; }
       const data = await res.json();
@@ -259,16 +258,13 @@ export function CrmImportModal({
     const newSlug = generateSlug(addr || "import");
 
     try {
-      // Send the Supabase JWT — the backend derives the caller's user_id from
-      // the verified token (the user_id body param is no longer trusted).
-      const authHeaders = await getRichardAuthHeaders();
+      // Same-origin proxy attaches the JWT server-side (the reliable path).
       const res = await fetch(
-        `${backendUrl}/api/integrations/acculynx/jobs/${selectedJob.id}/import`,
+        `/api/integrations/acculynx/jobs/${selectedJob.id}/import`,
         {
           method: "POST",
-          headers: { "Content-Type": "application/json", ...authHeaders },
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            user_id: userId,
             slug: newSlug,
             ...(targetPath ? { target_path: targetPath, target_folder: targetFolder || "photos" } : {}),
           }),
@@ -312,16 +308,13 @@ export function CrmImportModal({
     const newSlug = generateSlug(addr);
 
     try {
-      // Send the Supabase JWT — the backend derives the caller's user_id from
-      // the verified token (the user_id body param is no longer trusted).
-      const authHeaders = await getRichardAuthHeaders();
+      // Same-origin proxy attaches the JWT server-side (the reliable path).
       const res = await fetch(
-        `${backendUrl}/api/integrations/companycam/projects/${selectedProject.id}/import`,
+        `/api/integrations/companycam/projects/${selectedProject.id}/import`,
         {
           method: "POST",
-          headers: { "Content-Type": "application/json", ...authHeaders },
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            user_id: userId,
             slug: newSlug,
             selected_indices: Array.from(selectedPhotoIndices).sort((a, b) => a - b),
             ...(targetPath ? { target_path: targetPath, target_folder: targetFolder || "photos" } : {}),
