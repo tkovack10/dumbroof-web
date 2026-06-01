@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Spectral, Libre_Franklin, IBM_Plex_Mono } from "next/font/google";
 import { AgenticDropZone, type DropItem, type IntakeCategory } from "@/components/agentic-drop-zone";
 import { RichardIcon } from "@/components/richard-icon";
+import { trackBoth, FunnelEvent } from "@/lib/track";
 
 // ── Anonymous Richard-chat landing (/start), Spectral skin ─────────────────
 // Ad-pointable route that drops a visitor STRAIGHT into a Richard conversation,
@@ -164,6 +165,10 @@ export function StartChat() {
   const [tipIdx, setTipIdx] = useState(0);
 
   const recognitionRef = useRef<unknown>(null);
+  // Item ids already counted for START_INTAKE_READY — the drop zone fires
+  // onItemsChange several times per file (classifying → uploading → ready), so
+  // we dedup by id to fire the funnel event exactly ONCE per file.
+  const countedReadyRef = useRef<Set<string>>(new Set());
   const [micSupported, setMicSupported] = useState(false);
 
   const readyItems = items.filter((it) => it.status === "ready");
@@ -178,6 +183,13 @@ export function StartChat() {
   useEffect(() => {
     const t = setInterval(() => setTipIdx((i) => (i + 1) % TIPS.length), 4200);
     return () => clearInterval(t);
+  }, []);
+
+  // Funnel: ad-clicker landed on /start. GA4 auto-fires page_view; this is the
+  // NAMED funnel step (GA4 + Vercel + funnel_events DB) so /start can be compared
+  // to /fb/whoops in the landing split test. Once per mount.
+  useEffect(() => {
+    trackBoth(FunnelEvent.START_LANDING_VIEW, { funnel: FUNNEL });
   }, []);
 
   // Web Speech dictation — progressive enhancement, self-contained (no backend).
@@ -247,6 +259,22 @@ export function StartChat() {
     const prevReadyCount = items.filter((it) => it.status === "ready").length;
     const nextReady = next.filter((it) => it.status === "ready");
     setItems(next);
+    // Funnel: fire START_INTAKE_READY ONCE per file — dedup by item id (the drop
+    // zone emits onItemsChange several times per file, so a count-delta guard
+    // double-counts). GA4 + Vercel + funnel_events DB, + a Meta custom event for
+    // mid-funnel visibility.
+    const newlyReady = nextReady.filter((it) => !countedReadyRef.current.has(it.id));
+    if (newlyReady.length > 0) {
+      for (const it of newlyReady) countedReadyRef.current.add(it.id);
+      const newCats = Array.from(new Set(newlyReady.map((it) => it.category))).join(",");
+      trackBoth(FunnelEvent.START_INTAKE_READY, { ready_count: newlyReady.length, categories: newCats });
+      try {
+        window.fbq?.("trackCustom", "StartIntakeReady", { categories: newCats, ready_count: newlyReady.length });
+      } catch {
+        /* non-fatal — analytics must never break the flow */
+      }
+    }
+
     if (nextReady.length > prevReadyCount) {
       const cats = new Set<IntakeCategory>();
       for (const it of nextReady) cats.add(it.category);
@@ -287,6 +315,17 @@ export function StartChat() {
       } catch {
         /* non-fatal */
       }
+    }
+    // Funnel: intent-to-activate — the key /start conversion step (clicking
+    // through to signup with files staged). trackBoth uses sendBeacon so it
+    // survives the navigation; a Meta custom event mirrors it for mid-funnel
+    // visibility (the standard StartTrial fires downstream on claim creation).
+    const catList = Array.from(readyCats).join(",");
+    trackBoth(FunnelEvent.START_CLAIM_CLICKED, { ready_count: readyItems.length, categories: catList });
+    try {
+      window.fbq?.("trackCustom", "StartClaimClicked", { categories: catList, ready_count: readyItems.length });
+    } catch {
+      /* non-fatal */
     }
     // Files are already staged anonymously under the instant-intake cookie
     // token. Hand off to the existing signup → /instant/continue pipeline.
