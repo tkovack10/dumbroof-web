@@ -1108,6 +1108,7 @@ export default function ClaimDetailPage() {
                 claimId={claim.id}
                 claimOutcome={claim.claim_outcome || null}
                 hasForensicWin={hasForensicWin}
+                unlockedOverride={!isForensicOnly}
               />
             ) : null,
             installSupplements: isReady ? (

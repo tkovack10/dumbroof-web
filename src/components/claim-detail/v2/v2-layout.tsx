@@ -11,6 +11,7 @@ import { PhotosTab } from "./tabs/photos-tab";
 import { CommsTab } from "./tabs/comms-tab";
 import { CloseoutTab } from "./tabs/closeout-tab";
 import { RichardTab } from "./tabs/richard-tab";
+import { RichardIcon } from "@/components/richard-icon";
 import { V2_DESKTOP_TABS, type V2Props, type V2TabKey } from "./types";
 
 /**
@@ -155,11 +156,11 @@ export function V2Layout({ claim, slots, userId, isReprocessing, onUpload, onRep
               setActive("richard");
               if (typeof window !== "undefined") window.scrollTo({ top: 0, behavior: "smooth" });
             }}
-            className="sm:hidden fixed bottom-[76px] right-4 z-40 w-14 h-14 rounded-full bg-gradient-to-br from-[var(--pink)] to-[var(--blue)] text-white shadow-[0_8px_24px_rgba(0,0,0,0.45)] flex items-center justify-center text-2xl active:scale-95 transition-transform"
+            className="sm:hidden fixed bottom-[96px] right-4 z-40 w-14 h-14 rounded-full overflow-hidden shadow-[0_8px_24px_rgba(0,0,0,0.45)] ring-1 ring-white/15 active:scale-95 transition-transform"
             aria-label="Ask Richard"
             title="Ask Richard"
           >
-            🤖
+            <RichardIcon size={56} className="w-14 h-14" />
           </button>
         </main>
 

@@ -88,7 +88,7 @@ export function ClaimMoneyActions({ claimId }: { claimId: string }) {
 
   return (
     <>
-      <div className="fixed bottom-24 right-4 sm:bottom-6 sm:right-6 z-30 flex flex-col gap-2 items-end">
+      <div className="fixed bottom-[280px] right-4 sm:bottom-6 sm:right-6 z-30 flex flex-col gap-2 items-end">
         <button
           type="button"
           onClick={() => setShowCheck(true)}
