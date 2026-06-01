@@ -85,14 +85,30 @@ export function CrmImportModal({
 
   if (!open) return null;
 
-  // Returns true (and flips into the re-login state) when a backend call 401s.
-  const handle401 = (res: Response): boolean => {
-    if (res.status === 401) {
+  // Handle a 401, distinguishing the two backends that both use HTTP 401:
+  //   • DumbRoof auth gate  → { detail: "Authentication required" }  → re-login
+  //   • CompanyCam bad key  → { error: "companycam_auth_failed" }    → reconnect
+  // The body is read via res.clone() so the caller's own res.json() still works.
+  // Returns true when it handled a 401 (caller should stop), false otherwise.
+  const handle401 = async (res: Response): Promise<boolean> => {
+    if (res.status !== 401) return false;
+    let data: { error?: string; message?: string } = {};
+    try {
+      data = await res.clone().json();
+    } catch {
+      /* empty/non-JSON body — treat as the auth-gate case */
+    }
+    if (data?.error === "companycam_auth_failed") {
+      setSessionExpired(false);
+      setError(
+        (data.message || "Your CompanyCam API key is invalid or expired.") +
+          " Go to Settings → Integrations to reconnect with a fresh API key."
+      );
+    } else {
       setSessionExpired(true);
       setError(SESSION_EXPIRED_MESSAGE);
-      return true;
     }
-    return false;
+    return true;
   };
 
   const generateSlug = (address: string) => {
@@ -117,7 +133,7 @@ export function CrmImportModal({
         `${backendUrl}/api/integrations/acculynx/jobs?user_id=${userId}&search=${encodeURIComponent(search)}`,
         { headers: authHeaders }
       );
-      if (handle401(res)) { setJobs([]); setSearching(false); return; }
+      if (await handle401(res)) { setJobs([]); setSearching(false); return; }
       const data = await res.json();
       setJobs(data.jobs || []);
       if ((data.jobs || []).length === 0) {
@@ -141,7 +157,7 @@ export function CrmImportModal({
         `${backendUrl}/api/integrations/companycam/projects?user_id=${userId}&query=${encodeURIComponent(search)}`,
         { headers: authHeaders }
       );
-      if (handle401(res)) { setProjects([]); setSearching(false); return; }
+      if (await handle401(res)) { setProjects([]); setSearching(false); return; }
       const data = await res.json();
       if (!res.ok || data.error) {
         setProjects([]);
@@ -189,7 +205,7 @@ export function CrmImportModal({
         `${backendUrl}/api/integrations/companycam/projects/${project.id}/photos?user_id=${userId}`,
         { headers: authHeaders }
       );
-      if (handle401(res)) { setPhotos([]); setLoadingPhotos(false); setStep("photos"); return; }
+      if (await handle401(res)) { setPhotos([]); setLoadingPhotos(false); setStep("photos"); return; }
       const data = await res.json();
       if (!res.ok || data.error) {
         setPhotos([]);
@@ -258,7 +274,7 @@ export function CrmImportModal({
           }),
         }
       );
-      if (handle401(res)) { setStep("preview"); return; }
+      if (await handle401(res)) { setStep("preview"); return; }
       const data = await res.json();
       setImportProgress(
         `Imported ${data.photo_count || 0} photos. Populating form...`
@@ -313,7 +329,7 @@ export function CrmImportModal({
         }
       );
 
-      if (handle401(res)) { setStep("photos"); return; }
+      if (await handle401(res)) { setStep("photos"); return; }
       // Capture the body whether the response was ok or not — backend often
       // returns 200 with partial results, or a non-200 with { error, message,
       // detail } that the generic catch was hiding.
