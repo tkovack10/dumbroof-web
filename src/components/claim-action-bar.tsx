@@ -154,9 +154,12 @@ export function ClaimActionBar({ claim, isReprocessing, onUpload, onReprocess, u
 
   return (
     <>
-      {/* Mobile: full bottom bar — `sm:hidden` */}
+      {/* Mobile bottom bar — v1 only. On v2 the V2Layout TabBar owns the fixed
+          bottom slot (identical position + z-index), so this bar would paint
+          over the nav tabs; v2 surfaces these actions in the HighlightsPanel
+          instead (mirrors the desktop pill, which is likewise v2-hidden below). */}
       <div
-        className="sm:hidden fixed left-0 right-0 bottom-0 z-30 bg-[var(--navy)]/95 backdrop-blur-xl border-t border-white/[0.08]"
+        className={`${uiVersion === "v2" ? "hidden" : "sm:hidden"} fixed left-0 right-0 bottom-0 z-30 bg-[var(--navy)]/95 backdrop-blur-xl border-t border-white/[0.08]`}
         style={{ paddingBottom: "max(env(safe-area-inset-bottom), 8px)" }}
       >
         {/* Right side reserves 96px for the Richard FAB (bottom-right floating launcher) */}

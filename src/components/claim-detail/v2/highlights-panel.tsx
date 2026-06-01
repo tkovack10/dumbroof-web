@@ -104,6 +104,36 @@ export function HighlightsPanel({
           )}
         </div>
 
+        {/* Mobile actions — desktop shows these inline beside the title
+            (`hidden sm:flex` above). On mobile they live here as a full-width
+            row; v2's fixed bottom slot is the TabBar (no bottom action bar). */}
+        {onPrimaryAction && (
+          <div className="flex sm:hidden items-center gap-2 mt-3">
+            <button
+              onClick={onPrimaryAction}
+              className="flex-1 bg-gradient-to-br from-[var(--pink)]/15 to-[var(--blue)]/15 border border-[var(--pink)]/30 text-white px-4 py-2.5 rounded-lg text-sm font-semibold transition-colors hover:bg-[var(--pink)]/25 hover:border-[var(--pink)]/50 whitespace-nowrap"
+            >
+              {primaryActionLabel || "Continue"}
+            </button>
+            <button
+              onClick={() => {
+                onUpload();
+                onUploadGoToDocuments?.();
+              }}
+              className="bg-white/[0.04] border border-white/[0.1] text-white px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-white/[0.08] whitespace-nowrap"
+            >
+              Upload
+            </button>
+            <button
+              onClick={onReprocess}
+              disabled={isReprocessing}
+              className="bg-white/[0.04] border border-white/[0.1] text-white px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-white/[0.08] disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+            >
+              {isReprocessing ? "…" : "Reprocess"}
+            </button>
+          </div>
+        )}
+
         {/* Variance + chips row */}
         <div className="flex flex-wrap items-center gap-2 mt-2">
           {variance !== 0 && (

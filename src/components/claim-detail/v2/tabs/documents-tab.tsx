@@ -9,8 +9,9 @@ interface Props {
 
 /**
  * Documents tab — generated PDFs (with click-to-send) on top, source documents
- * below. Mobile collapses this tab into Overview (per the IA spec) — see
- * V2_MOBILE_TABS in types.ts.
+ * below, then the "Add more documents" upload form (AOB / scope / measurements).
+ * Shown on BOTH desktop and mobile — the upload form has no home on Overview, so
+ * mobile keeps its own Documents tab (see V2_MOBILE_TABS in types.ts).
  *
  * When reprocessing, the generated docs block is empty (slot returns null
  * because isReady=false). Show a placeholder so the user understands what's
