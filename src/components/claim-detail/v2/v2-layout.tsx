@@ -145,6 +145,22 @@ export function V2Layout({ claim, slots, userId, isReprocessing, onUpload, onRep
           >
             ⓘ
           </button>
+
+          {/* Floating Richard launcher (mobile) — Tom wants a persistent Richard
+              button in addition to the bottom "Ask Richard" tab. Opens the
+              already-mounted Richard tab (no second chat instance → Richard
+              never double-mounts). Sits above the bottom tab bar (z-40 > z-30). */}
+          <button
+            onClick={() => {
+              setActive("richard");
+              if (typeof window !== "undefined") window.scrollTo({ top: 0, behavior: "smooth" });
+            }}
+            className="sm:hidden fixed bottom-[76px] right-4 z-40 w-14 h-14 rounded-full bg-gradient-to-br from-[var(--pink)] to-[var(--blue)] text-white shadow-[0_8px_24px_rgba(0,0,0,0.45)] flex items-center justify-center text-2xl active:scale-95 transition-transform"
+            aria-label="Ask Richard"
+            title="Ask Richard"
+          >
+            🤖
+          </button>
         </main>
 
         {/* Desktop right-rail inspector */}

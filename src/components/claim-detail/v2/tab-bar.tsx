@@ -93,13 +93,15 @@ export function TabBar({ active, onChange, badges }: TabBarProps) {
                 </span>
                 {/* ALWAYS show the label on mobile. It was active-only (an
                     icon-only bar), so reps couldn't find the Scope tab / supplement
-                    composer. Labels make the mobile nav match desktop's clarity. */}
+                    composer. Labels make the mobile nav match desktop's clarity.
+                    7 tabs now share the bar → labels are 9px, centered, may wrap;
+                    "Ask Richard" shortens to "Richard" to fit its column. */}
                 <span
-                  className={`leading-none text-[10px] mt-0.5 transition-opacity duration-200 ${
+                  className={`text-center leading-[1.1] text-[9px] mt-0.5 px-0.5 transition-opacity duration-200 ${
                     isActive ? "opacity-100 font-semibold" : "opacity-75 font-medium"
                   }`}
                 >
-                  {V2_TAB_LABELS[k]}
+                  {k === "richard" ? "Richard" : V2_TAB_LABELS[k]}
                 </span>
                 {badge != null && badge > 0 && (
                   <span

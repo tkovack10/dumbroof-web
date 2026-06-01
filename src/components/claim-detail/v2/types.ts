@@ -95,7 +95,9 @@ export const V2_TAB_ICONS: Record<V2TabKey, string> = {
   closeout: "🎯",
 };
 
-// Mobile collapses Documents into Overview. "Ask Richard" is a first-class tab
-// on both (replaces the old floating FAB on v2).
-export const V2_MOBILE_TABS: V2TabKey[] = ["overview", "scope", "photos", "comms", "richard", "closeout"];
+// Mobile shows the FULL desktop tab set (Tom: every desktop tab must be on
+// mobile too). "Ask Richard" is a first-class tab on both (replaces the old
+// floating FAB on v2). Documents MUST stay a tab — its upload form
+// (uploadDocsBlock / AOB) has no home on Overview.
+export const V2_MOBILE_TABS: V2TabKey[] = ["overview", "documents", "scope", "photos", "comms", "richard", "closeout"];
 export const V2_DESKTOP_TABS: V2TabKey[] = ["overview", "documents", "scope", "photos", "comms", "richard", "closeout"];
