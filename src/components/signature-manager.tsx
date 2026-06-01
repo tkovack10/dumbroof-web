@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { FileUploadZone } from "@/components/file-upload-zone";
-import { directUpload } from "@/lib/upload-utils";
+import { directUpload, ensurePdfFile } from "@/lib/upload-utils";
+import { UNIVERSAL_UPLOAD_ACCEPT } from "@/lib/claim-constants";
 
 interface Props {
   claimId: string;
@@ -484,8 +485,8 @@ export function SignatureManager({ claimId, claimAddress, carrierName, userId, f
                 </div>
                 <FileUploadZone
                   label="Signed Document"
-                  description="Upload the pre-signed PDF"
-                  accept=".pdf"
+                  description="Upload the signed AOB — a phone photo or a PDF both work, we convert it for you."
+                  accept={UNIVERSAL_UPLOAD_ACCEPT}
                   files={signedPdfFile}
                   onFilesChange={setSignedPdfFile}
                 />
@@ -494,13 +495,23 @@ export function SignatureManager({ claimId, claimAddress, carrierName, userId, f
                     if (!homeownerName || !homeownerEmail || signedPdfFile.length === 0) return;
                     setUploadingSigned(true);
                     try {
-                      const file = signedPdfFile[0];
+                      // Convert a photographed AOB → real PDF in the browser so
+                      // the carrier attachment actually opens (users never convert
+                      // for us). Falls back to the original file if it can't be
+                      // decoded, so we name the upload from the real file type —
+                      // never a mislabeled `.pdf`.
+                      const file = await ensurePdfFile(signedPdfFile[0]);
+                      const isPdfNow =
+                        file.type === "application/pdf" || /\.pdf$/i.test(file.name);
+                      const ext = isPdfNow
+                        ? "pdf"
+                        : file.name.split(".").pop()?.toLowerCase() || "bin";
                       const signRes = await fetch("/api/storage/sign-upload", {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
                         body: JSON.stringify({
                           folder: "aob",
-                          fileName: `signed_${docType}_${Date.now()}.pdf`,
+                          fileName: `signed_${docType}_${Date.now()}.${ext}`,
                           claimPath: filePath,
                         }),
                       });

@@ -1,5 +1,14 @@
 export type UploadCategory = "photos" | "measurements" | "scope" | "weather" | "other";
 
+// Universal accept — DumbRoof never makes a user convert a file just to upload it.
+// Every category accepts phone photos (incl. HEIC/HEIF from iPhones), PDFs, scans,
+// and office docs, so iOS never greys out the file the user actually has (e.g. a
+// photographed AOB or carrier scope). Server-side conversion normalizes whatever
+// lands here. Categories differ by destination folder + label, NOT by what they
+// let you pick.
+export const UNIVERSAL_UPLOAD_ACCEPT =
+  ".pdf,.jpg,.jpeg,.png,.heic,.heif,.webp,.tiff,.tif,.bmp,.gif,.doc,.docx,.zip";
+
 export const CATEGORY_CONFIG: Record<
   UploadCategory,
   { label: string; description: string; accept: string; multiple: boolean; dbField: string; folder: string }
@@ -7,23 +16,23 @@ export const CATEGORY_CONFIG: Record<
   photos: {
     label: "Photos",
     description: "Inspection photos, construction photos, damage close-ups. ZIP/PDF also supported.",
-    accept: ".jpg,.jpeg,.png,.heic,.heif,.webp,.tiff,.tif,.bmp,.pdf,.zip",
+    accept: UNIVERSAL_UPLOAD_ACCEPT,
     multiple: true,
     dbField: "photo_files",
     folder: "photos",
   },
   measurements: {
     label: "Measurements",
-    description: "EagleView report, roof measurements, or satellite measurement PDF",
-    accept: ".pdf,.jpg,.jpeg,.png,.zip",
+    description: "EagleView report, roof measurements, or satellite measurement. A photo of the report works too — we convert it.",
+    accept: UNIVERSAL_UPLOAD_ACCEPT,
     multiple: true,
     dbField: "measurement_files",
     folder: "measurements",
   },
   scope: {
     label: "Carrier Scope",
-    description: "Insurance company estimate, adjuster report, or revised scope",
-    accept: ".pdf",
+    description: "Insurance estimate, adjuster report, AOB, or revised scope. Photo or PDF — we convert it for you.",
+    accept: UNIVERSAL_UPLOAD_ACCEPT,
     multiple: true,
     dbField: "scope_files",
     folder: "scope",
@@ -31,15 +40,15 @@ export const CATEGORY_CONFIG: Record<
   weather: {
     label: "Weather Data",
     description: "HailTrace report, NOAA data, or storm documentation",
-    accept: ".pdf,.jpg,.jpeg,.png,.heic,.heif,.webp,.tiff,.tif,.bmp,.zip",
+    accept: UNIVERSAL_UPLOAD_ACCEPT,
     multiple: true,
     dbField: "weather_files",
     folder: "weather",
   },
   other: {
     label: "Other",
-    description: "Email screenshots, adjuster correspondence, change orders, etc.",
-    accept: ".pdf,.jpg,.jpeg,.png,.heic,.heif,.webp,.tiff,.tif,.bmp,.doc,.docx,.zip",
+    description: "AOB, email screenshots, adjuster correspondence, change orders, etc.",
+    accept: UNIVERSAL_UPLOAD_ACCEPT,
     multiple: true,
     dbField: "other_files",
     folder: "other",

@@ -223,3 +223,79 @@ export async function uploadFilesBatched(
 
   return { uploaded, errors };
 }
+
+// Decode an image File (incl. HEIC on Safari, which can render it) to JPEG bytes
+// via canvas, capping the long edge so a 12MP phone photo becomes a reasonably
+// sized, still-legible document page.
+async function imageToJpegBytes(
+  file: File
+): Promise<{ bytes: Uint8Array; width: number; height: number }> {
+  const url = URL.createObjectURL(file);
+  try {
+    const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const im = new Image();
+      im.onload = () => resolve(im);
+      im.onerror = () => reject(new Error("image decode failed"));
+      im.src = url;
+    });
+    const MAX = 2600;
+    let w = img.naturalWidth || img.width;
+    let h = img.naturalHeight || img.height;
+    if (!w || !h) throw new Error("zero-size image");
+    if (Math.max(w, h) > MAX) {
+      const s = MAX / Math.max(w, h);
+      w = Math.round(w * s);
+      h = Math.round(h * s);
+    }
+    const canvas = document.createElement("canvas");
+    canvas.width = w;
+    canvas.height = h;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("no 2d canvas context");
+    ctx.drawImage(img, 0, 0, w, h);
+    const blob = await new Promise<Blob | null>((res) =>
+      canvas.toBlob(res, "image/jpeg", 0.92)
+    );
+    if (!blob) throw new Error("jpeg encode failed");
+    const bytes = new Uint8Array(await blob.arrayBuffer());
+    return { bytes, width: w, height: h };
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
+
+/**
+ * "Users should never have to convert for DumbRoof." Turn a photo of a document
+ * (e.g. a signed AOB snapped on a phone) into a real single-page PDF in the
+ * browser, so it flows through the same `.pdf` path the rest of the pipeline —
+ * and the carrier email attachment — expects, and the carrier can actually open
+ * it. Already-PDF files pass through untouched; a non-image / non-pdf file
+ * (e.g. .docx) passes through too. If the browser can't decode the image
+ * (e.g. HEIC on a non-Safari browser), we return the ORIGINAL file rather than
+ * block the user — the caller should name the upload from the returned file's
+ * real type so it's never a mislabeled `.pdf`.
+ */
+export async function ensurePdfFile(file: File): Promise<File> {
+  const looksPdf = file.type === "application/pdf" || /\.pdf$/i.test(file.name);
+  if (looksPdf) return file;
+  const looksImage =
+    file.type.startsWith("image/") ||
+    /\.(jpe?g|png|heic|heif|webp|tiff?|bmp|gif)$/i.test(file.name);
+  if (!looksImage) return file;
+
+  try {
+    const { bytes, width, height } = await imageToJpegBytes(file);
+    const { PDFDocument } = await import("pdf-lib");
+    const pdf = await PDFDocument.create();
+    const jpg = await pdf.embedJpg(bytes);
+    const page = pdf.addPage([width, height]);
+    page.drawImage(jpg, { x: 0, y: 0, width, height });
+    const pdfBytes = await pdf.save();
+    const base = file.name.replace(/\.[^.]+$/, "").trim() || "document";
+    // Copy into a fresh ArrayBuffer-backed view so it's a valid BlobPart
+    // (TS 5.7 no longer accepts a Uint8Array<ArrayBufferLike> directly).
+    return new File([new Uint8Array(pdfBytes)], `${base}.pdf`, { type: "application/pdf" });
+  } catch {
+    return file; // never block the user
+  }
+}
