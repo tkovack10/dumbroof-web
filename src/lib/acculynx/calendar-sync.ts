@@ -72,17 +72,24 @@ interface AccuLynxEvent {
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-/** The address for an install event: prefer structured `location`, else the title
- *  (USARM puts the address in the title). */
-function eventAddress(ev: AccuLynxEvent): string {
-  return (ev.location && ev.location.trim()) || ev.title || "";
+/** The install address for an event. USARM enters installs as appointments whose
+ *  TITLE is the property address (+ scope), e.g. "16 willard st greene ny 30 sq".
+ *  Meetings / inspections / sales appts instead carry a DESCRIPTION title (e.g.
+ *  "Pre con meeting", "Adjuster meeting", a person's name) plus the site in the
+ *  `location` field — so we classify on the TITLE to avoid pulling those non-install
+ *  site appointments onto the install board. Structured Labor/Material orders, if a
+ *  company uses them, may instead carry the address in `location`. */
+function installAddress(ev: AccuLynxEvent): string | null {
+  if (parseAddr(ev.title)) return ev.title as string;
+  if (ev.eventType && STRUCTURED_INSTALL_TYPES.has(ev.eventType) && parseAddr(ev.location)) {
+    return ev.location as string;
+  }
+  return null;
 }
 
-/** Is this a roof install? Title/location parses to a street address, or it's a
- *  structured Labor/Material order. */
+/** Is this a roof install? (Its title is a street address, or it's a structured order.) */
 function isInstallEvent(ev: AccuLynxEvent): boolean {
-  if (ev.eventType && STRUCTURED_INSTALL_TYPES.has(ev.eventType)) return true;
-  return parseAddr(eventAddress(ev)) !== null;
+  return installAddress(ev) !== null;
 }
 
 async function accuFetch<T>(apiKey: string, path: string): Promise<T> {
@@ -218,7 +225,8 @@ export async function syncCompanyCalendar(
 
   // 4. Upsert each event + match by address + (for matches) a production schedule.
   for (const ev of events) {
-    const match = matchAddress(eventAddress(ev), idx);
+    const addr = installAddress(ev) ?? ev.title ?? "";
+    const match = matchAddress(addr, idx);
     const matchedClaimId = match?.id ?? null;
     if (matchedClaimId) result.matched++;
     else result.unmatched++;
@@ -235,7 +243,7 @@ export async function syncCompanyCalendar(
           job_name: ev.jobName ?? null,
           title: ev.title ?? null,
           location: ev.location ?? null,
-          address_norm: normalizeAddress(eventAddress(ev)) || null,
+          address_norm: normalizeAddress(addr) || null,
           notes: ev.notes ?? null,
           event_type: ev.eventType ?? null,
           is_production: true, // only install events are stored
