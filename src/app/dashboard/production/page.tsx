@@ -11,9 +11,10 @@ import { ScheduleClaimModal } from "@/components/schedule-claim-modal";
 import { AdminTabStrip } from "@/components/admin-tab-strip";
 import { RichardSuggestionBanner } from "@/components/richard-suggestion-banner";
 import { NeedsInstallList } from "@/components/needs-install-list";
+import { UnlinkedInstallsList } from "@/components/unlinked-installs-list";
 
 type View = "week" | "month";
-type ProductionTab = "unscheduled" | "calendar" | "crews";
+type ProductionTab = "unscheduled" | "calendar" | "crews" | "unlinked";
 
 function startOfWeek(d: Date): Date {
   const x = new Date(d);
@@ -56,6 +57,7 @@ export default function ProductionPage() {
   const [modalOpen, setModalOpen] = useState(false);
   const [prefillClaimId, setPrefillClaimId] = useState<string | null>(null);
   const [needsInstallCount, setNeedsInstallCount] = useState<number>(0);
+  const [unlinkedCount, setUnlinkedCount] = useState<number>(0);
 
   // Window for fetching — pad by 7 days on each side
   const { from, to } = useMemo(() => {
@@ -185,6 +187,7 @@ export default function ProductionPage() {
             { key: "unscheduled", label: "Unscheduled", count: needsInstallCount },
             { key: "calendar",    label: "Calendar",    count: counts.scheduled },
             { key: "crews",       label: "Crews",       count: crews.length },
+            { key: "unlinked",    label: "AccuLynx",    count: unlinkedCount },
           ]}
           active={tab}
           onChange={setTab}
@@ -236,6 +239,14 @@ export default function ProductionPage() {
               </div>
             )}
           </div>
+        )}
+
+        {tab === "unlinked" && (
+          <UnlinkedInstallsList
+            refreshKey={schedules.length}
+            onCountChange={setUnlinkedCount}
+            onLinked={load}
+          />
         )}
 
         {tab !== "calendar" ? null : (

@@ -12,6 +12,8 @@ export interface Schedule {
   notify_homeowner: boolean;
   notified_at: string | null;
   notes: string | null;
+  /** 'acculynx' = pulled from the AccuLynx company calendar by the daily sync. */
+  origin?: "manual" | "acculynx";
   claim?: {
     address: string | null;
     homeowner_name: string | null;
@@ -229,7 +231,9 @@ export function ProductionCalendar({
                       } 25%, transparent)`,
                       color: crewColor.get(s.crew_id ?? "") ?? "#22D8FF",
                     }}
+                    title={s.origin === "acculynx" ? "Synced from AccuLynx" : undefined}
                   >
+                    {s.origin === "acculynx" ? "⟲ " : ""}
                     {s.claim?.address ?? "Scheduled"}
                   </div>
                 ))}
@@ -268,8 +272,16 @@ function ScheduleChip({
         opacity: statusOpacity,
       }}
     >
-      <div className="text-xs font-semibold text-white truncate">
-        {schedule.claim?.address ?? "Scheduled claim"}
+      <div className="text-xs font-semibold text-white truncate flex items-center gap-1">
+        {schedule.origin === "acculynx" && (
+          <span
+            className="inline-block text-[8px] font-bold px-1 py-px rounded bg-[var(--amber)]/20 text-[var(--amber)] leading-none flex-shrink-0"
+            title="Synced from AccuLynx"
+          >
+            AL
+          </span>
+        )}
+        <span className="truncate">{schedule.claim?.address ?? "Scheduled claim"}</span>
       </div>
       <div className="text-[10px] text-[var(--gray-muted)] flex items-center gap-1 mt-0.5">
         <span>{fmtTime(schedule.scheduled_at)}</span>
