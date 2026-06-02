@@ -79,8 +79,14 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
  *  `location` field — so we classify on the TITLE to avoid pulling those non-install
  *  site appointments onto the install board. Structured Labor/Material orders, if a
  *  company uses them, may instead carry the address in `location`. */
+// Appointment titles that START with an address but are NOT installs — adjuster
+// visits, inspections, estimates, sales/precon meetings (e.g. "59 rotary adjuster",
+// "22 stokes ave … 9am inspection"). Excluded so they don't create install blocks.
+const NON_INSTALL_TITLE = /\b(adjuster|inspection|inspecti|reinspect|estimate|sales|meeting|pre[-\s]?con|walk[-\s]?through|walkthrough)\b/i;
+
 function installAddress(ev: AccuLynxEvent): string | null {
-  if (parseAddr(ev.title)) return ev.title as string;
+  const title = ev.title || "";
+  if (parseAddr(title) && !NON_INSTALL_TITLE.test(title)) return title;
   if (ev.eventType && STRUCTURED_INSTALL_TYPES.has(ev.eventType) && parseAddr(ev.location)) {
     return ev.location as string;
   }
