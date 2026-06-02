@@ -70,6 +70,10 @@
       "schedule": "30 15 * * *"
     },
     {
+      "path": "/api/cron/acculynx-calendar-sync",
+      "schedule": "0 11 * * *"
+    },
+    {
       "path": "/api/cron/homeowner-sequences",
       "schedule": "0 13 * * *"
     },
